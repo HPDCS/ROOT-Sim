@@ -1,12 +1,11 @@
-==========================================================================================
-===                                   ROOT-Sim                                         ===
-===   Brought to you by the High Performance and Dependable Computing Systems (HPDCS)  ===
-===                         at Sapienza, University of Rome                            ===
-===                                                                                    ===
-===                  http://www.dis.uniroma1.it/~hpdcs/ROOT-Sim                        ===
-==========================================================================================
+# The ROme OpTimistic Simulator (ROOT-Sim) #
 
+*Brought to you by the High Performance and Dependable Computing Systems (HPDCS)
+at Sapienza, University of Rome*
 
+http://www.dis.uniroma1.it/~hpdcs/ROOT-Sim
+
+----------------------------------------------------------------------------------------
 
 The ROme OpTimistic Simulator is an Open Source, parallel/distributed simulation 
 platform developed using C/POSIX technology, which is based on a simulation kernel
@@ -25,7 +24,5 @@ data structure implementing the object state-layout.
 
 
 For information on configuration, installation, and usage, please refer to our online
-documentation web page:
-
-                      http://www.dis.uniroma1.it/~hpdcs/ROOT-Sim
+documentation web page: http://www.dis.uniroma1.it/~hpdcs/ROOT-Sim
 
