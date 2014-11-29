@@ -1,0 +1,2 @@
+KERNEL=="ktblmgr", SUBSYSTEM=="rootsim", MODE="0444"
+/etc/udev/rules.d/10-local.rules

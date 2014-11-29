@@ -1,0 +1,62 @@
+.\" The ROme OpTimistic Simulator (ROOT-Sim) Manual
+.\" written by the High Performance and Dependable Computing Systems
+.\" Sapienza, University of Rome
+.\" http://www.dis.uniroma1.it/~hpdcs
+.\"
+.\" May 09 2011, Alessandro Pellegrini
+.\" 	First version of the manpages
+
+.TH SetState 3 2011-05-09 "The ROme OpTimistic Simulator"
+
+.SH NAME
+SetState - Tells the ROOT-Sim to use a different state for a certain simulation object.
+
+.SH SYNOPSIS
+.B #include <ROOT-Sim.h>
+
+
+.B void SetState(void *\fInew_state\fP);
+
+
+.SH DESCRIPTION
+
+SetState is part of ROOT-Sim's API. By definition of the programming model, the simulation
+state is located into malloc'd memory, and the platform silently and transparently restores
+it to previous one, whenever a rollback operation is performed, due to an inconsistency
+in the simulation caused by an out-of-order execution of events.
+
+This means that the simulation kernel must be aware of the location of the simulation state.
+To allow perfect transparency, the first call to malloc is considered by the simulation kernel
+to be the main container of the simulation state. Nevertheless, a programmer might want to
+perform some other malloc operations in the INIT event before actually allocating the state or,
+during the simulation, might want to allocate a completely new state. If any of these situations
+are encountered, a call to SetState must be performed, in order to inform the simulation
+kernel that user's requirements are different from the standard one specified in the programming
+model and to make it able to correctly track changes in the objects' states, needed to
+correctly perform rollback operations, if needed.
+
+.SH ERRORS
+
+This function returns no errors.
+
+.SH EXAMPLES
+
+See \fIProcessEvent\fP manpage for an example involving SetState.
+
+.SH SEE ALSO
+.BR ROOT-Sim (7),
+.BR ProcessEvent (3),
+.BR OnGVT (3),
+.BR ScheduleNewEvent (3),
+.BR rootsim (3),
+.BR ROOT-Sim.h (3)
+
+.SH COPYRIGHT
+ROOT-Sim is developed by the
+.I High Performance and Dependable Computing Systems
+(HPDCS) Group at
+.I Sapienza, University of Rome,
+all the copyrights belong to the Group, and the software is released under GPL-3 License.
+
+
+For further details, see the page http://www.dis.uniroma1.it/~hpdcs/ROOT-Sim/

@@ -1,0 +1,327 @@
+2014-03-05 Alessandro Pellegrini <pellegrini@dis.uniroma1.it>
+	* Serial Simulator: Merging the serial simulator with the main ROOT-Sim kernel
+
+2014-02-28 Alessandro Pellegrini <pellegrini@dis.uniroma1.it>
+	* Rendez Vous Subsystem: finished the preliminary implementation of the Rendez-Vous Subsystem
+
+2014-02-21 Alessandro Pellegrini <pellegrini@dis.uniroma1.it>
+	* Shared Simulation State: bridging the Kernel Module with the simulation kernel.
+		The system is now being modified to support LP suspension/resume.
+
+2014-02-20 Alessandro Pellegrini <pellegrini@dis.uniroma1.it>
+	* LP memory allocator: implemented a LP memory preallocator working with mmap.
+		This is being coupled with the kernel module facilities via ioctl() calls.
+
+2014-02-16 Alessandro Pellegrini <pellegrini@dis.uniroma1.it>
+	* New Multithreaded Version: Today, after more than one month of debugging
+		the new multithreaded version is almost completely stable.
+		Debugging has made me insert several perfomance drops here and there, so
+		now it starts the process of enhancing the performance of operations on the
+		critical path of the simulator.
+
+
+2014-01-04 Francesco Quaglia <quaglia@dis.uniroma1.it>
+	* Kernel Module: The kernel has been patched to call a module hook
+		upon process/thread rescheduling to correct the memory
+		view the ROOT-Sim processes are getting
+
+
+2014-01-28 Alessandro Pellegrini <pellegrini@dis.uniroma1.it>
+	* Rollback: Outgoing messages are correctly registered. During the
+		rollback operation anti-messages are correctly sent and received.
+		Still missing the logic associated with anti-messages handling in
+		bottom halves management.
+		
+		
+2014-01-28 Francesco Quaglia <quaglia@dis.uniroma1.it>
+	* Kernel Module: The kernel module is correctly working. There is still a small
+		bug which causes the OS kernel to hung after several executions. It's
+		likely related to buddy system's corruption.
+	 	
+
+2013-12-17 Alessandro Pellegrini <pellegrini@dis.uniroma1.it>
+	* Rollback: Reimplemented the rollback operation. Still missing the antimessages
+		sending.
+	
+
+2013-12-17 Alessandro Pellegrini <pellegrini@dis.uniroma1.it>
+	* Numerical Library: numerical initialization is fully contained within
+		the numerical library. Some of the stale code in init.c has been moved.
+	* Scheduler: reimplemented (static) LP <-> KLTs binding. Added a 'lid' field in
+		the LP control block, used to translate KLT binding to local id.
+		Added new LP states: SILENT_EXEC and ROLLBACK. The first is used
+		to notify ScheduleNewEvent that messages must be discarded. The second
+		is used to notify the scheduler that, before executing the next event
+		a rollback operation must be executed.
+	* Communication: output queue is now using a compact envelope type to keep
+		information used to send antimessages. Created a type for the bottom halves.
+	* Lists: added the logic to push an object on the list head. This breaks ordering,
+		but can be used to implement LIFO queues.
+	* Multithread: If a KLT calls system_exit due to an error, LPS is unmapped and other
+		threads might incur in segfault. Adding an error flag, to silently
+		shutdown the simulation in case of an error.
+	* Rollback: identified the point where the rollback operation should be triggered.
+	
+
+2013-12-16 Alessandro Pellegrini <pellegrini@dis.uniroma1.it>
+	* Applications: ported all application examples to the new code base
+	* Code base: fixed all memory leaks. Tested the simulator with all
+		the available examples. There is a problem with Traffic:
+		a call to malloc() returns NULL. This happens after that
+		DyMeLoR calls __real_realloc. Maybe there is a bug there...
+	* Scheduler: starting to reimplement LP binding towards KLTs
+
+
+2013-12-15 Francesco Quaglia <quaglia@dis.uniroma1.it>
+	* Kernel Module: Correctly accessing PDP entries
+	
+
+2013-12-13 Francesco Quaglia <quaglia@dis.uniroma1.it>
+	* Kernel Module: Correctly accessing PML4 entries
+	
+	
+2013-12-13 Alessandro Pellegrini <pellegrini@dis.uniroma1.it>
+	* Code base: fixing memory leaks
+	* Kernel Module: Correctly accessing PML4 entries and PDP entries
+	
+
+2013-12-12 Alessandro Pellegrini <pellegrini@dis.uniroma1.it>
+	* CCGS: Silent execution is now called to realign LPs' states to the freshly computed
+		gvt value. All the applications have been modified to have 'LP id' as the first
+		parameter. Finished rewriting the subsystem.
+	* State Management: reimplemented silent execution, relying on the new LP scheduling paradigm.
+	* Global: checking for memory leaks.
+	* Lists: list_truncate was not updating the size of the list. list_pop() now just
+		deletes the first element.
+	
+
+2013-12-11 Alessandro Pellegrini <pellegrini@dis.uniroma1.it>
+	* Today: it's a very cool date. 11/12/13. We must wait for year 2103 for such
+		a cool date to come back. I'm looking forward to that entry log!!!
+	* Code base: finished polishing warnings throughout the code.
+	* Shell: there is still a warning in yy_scan_bytes: warning: comparison between
+		signed and unsigned integer expressions. There is bug file 140 addressing
+		this issue: http://sourceforge.net/p/flex/bugs/140/
+		It appears that the bug has been fixed, and the patch will appear in versions
+		> 2.5.37. Current release is 2.5.37, so this should be fixed in future
+		releases.
+	* Numerical library: signedness error in manual initialization of master seed
+	* GVT: the reduction is computed correctly. Fossil collection is correctly removing
+		data structures. 
+	* main: fixed a small bug that might entail a wrong kid number printing
+	* CCGS: Starting to reintegrate CCGS for termination detection.
+
+
+
+2013-12-10 Francesco Quaglia <quaglia@dis.uniroma1.it>
+	* Kernel Module: now the first part of the module is working, even when running
+		multiple threads.
+
+
+2013-12-10 Alessandro Pellegrini <pellegrini@dis.uniroma1.it>
+	* Kernel Module: worked with Francesco, see his changelog entry
+	* Overall Code Base: corrected about 100 warnings in the whole code. Added a lot
+		of warning flags in the development CFLAGS macro, to avoid bad debugging
+		surprises
+		
+
+2013-12-09 Alessandro Pellegrini <pellegrini@dis.uniroma1.it>
+	* GVT: Rewriting the overall GVT. I think there is a stack corruption somewhere,
+		cause the debugging trace is very stange. I have activated all the warning
+		levels at compile time. There is a segfault in the fossil collection,
+		but in a place where the function should not be called...
+
+
+2013-12-05 Francesco Quaglia <quaglia@dis.uniroma1.it>
+	* Kernel Module: added the code to inspect the content of the PML4 page directory. mmapping is
+		working fine, and shut down of the process as well.
+
+2013-12-06 Alessandro Pellegrini <pellegrini@dis.uniroma1.it>
+	* ULT: the subsystem has been ported to Cygwin and Windows, using Windows Fibers. Testing
+		has not been done very thoroughly. A small bug was introduced in the Linux version
+		during the porting, and this has been fixed.
+	* GVT: rewriting the subsystem. Up to now, only one KLT per kernel is allowed to run
+		the distributed protocol. I should check whether it's possible to rely on more cores
+		to perform the reduction in parallel. System is actually not stable.
+	* Kernel Module: added support to print CR registers, to inspect the current execution mode.
+
+
+2013-12-05 Francesco Quaglia <quaglia@dis.uniroma1.it>
+
+	* Kernel Module: added code to inspect the content of a pgd (either original or replaced)
+
+
+2013-12-05 Alessandro Pellegrini <pellegrini@dis.uniroma1.it>
+	* Kernel Module: fixed header inclusions. It now compiles on kernel 3.* as well, and
+		the stub is correctly working.header inclusions.
+		Added a compile time check to determine whether we have at least kernel 2.6.25
+		as I'm using pagemap functions.
+	* State Saving: added a function to force state saving, independently of checkpointing
+		interval. This is used upon the invocation of SetState() during INIT event,
+		to create a first snapshot in the simulation. It will be useful during the
+		reimplementation of the incremental checkpointing, and the autonomic checkpointing.
+		Periodic State Saving and Copy State Saving are correctly working, when using
+		1 KLT and 1024 LPs. There was a small (historic!) bug that caused an off-by-one
+		error in the computation of the checkpointing interval.
+	* GVT Subsystem: starting to completely rewrite the GVT subsystem...
+		Module snapshots.c as been removed (there was only one function from the CCGS
+		subsystem there). Moved to main gvt.c module, and marked static. This could
+		be moved to a separate ccgs.c module, if there is enough code to justify this.
+	* Timers: the macro DECLARE_TIMER() has been superseded by the new timer_t type.
+		Other macros have been case-lowered to resemble functions. Additionally, they
+		have been restructured to be is-safe.
+
+
+2013-12-04 Francesco Quaglia <quaglia@dis.uniroma1.it>
+
+	* Kernel Module: fixed a bug that caused a general protection error when updating CR3
+
+
+2013-12-04 Alessandro Pellegrini <pellegrini@dis.uniroma1.it>
+	* Lists: fixed a small bug that caused priority inversion in the input event queue
+	* Scheduler: rewritten functions to retrieve next event's timestamp and make bound
+		advance during the execution.
+	* Communication: fixed small bugs that prevented correct insertion of newly scheduled
+		events.
+	* Topology: micro optimizations in some checks on boundaries, in the case of Hexagonal
+		or Square topology. Addedd a sanity check that prevents the finder, when
+		only 1 LP is in the system, to loop indefinitely.
+	* Global Execution: after this commit, if we run 1 LP on 1 KLT, the flow of (forward)
+		events is correctly restored! There is still no computation of the GVT,
+		so no output is printed during the execution, the memory exhausts soon,
+		and there is no termination detection yet.
+		The forward execution has been tested using more than 1 LP and it works.
+	* State Management: I have reinserted calls to LogState. Using 1 LP 1 KLT, it
+		segfaults when executing subsequent events.
+
+
+2013-12-03 Alessandro Pellegrini <pellegrini@dis.uniroma1.it>
+	* User Level Threads: Porting ULT to cygwin (more for development reasons).
+		sigaltstack is missing, so a different way must be used to create
+		the thread's stack.
+
+
+2013-12-02 Francesco Quaglia <quaglia@dis.uniroma1.it>
+
+	* Kernel Module: Carrying on the development of the module. The page tables are
+		now swapped and CR3 register is updated. There is still some bug, as the
+		kernel panics when the application exits.
+
+
+2013-11-29 Alessandro Pellegrini <pellegrini@dis.uniroma1.it>
+
+	* Communication: most of the (local) communication subsystem has
+		been rewritten. Still has to debug local message enqueueing,
+		as there are problems when scheduling a new event. Only
+		INIT is correctly scheduled and processed. Still running
+		with only one kernel-level thread and one user-level
+		thread (LP).
+	* User Level Threads: ULT has been moved to the arch dependend
+		part of the simulator. Current code for creating/scheduling
+		ULT has been flagged as Linux-dependent code.
+
+
+2013-11-28 Alessandro Pellegrini <pellegrini@dis.uniroma1.it>
+
+	* Scheduler: it is now the scheduler duty to decide which LP must
+		be scheduled, and to actually schedule it. A whole lot
+		of code has been changed to support this refactoring
+
+
+2013-11-27 Alessandro Pellegrini <pellegrini@dis.uniroma1.it>
+
+	* Simulator Codebase: rewritten most of the portion of the code on the critical path.
+		Everything is still unstable, as INIT event is not place in the input queue,
+		and actual user-level thread does nothing. This is just a starting point
+		for a runtime testing of the new codebase.
+	* Backtrace: merged code from an older branch to show a call backtrace upon segfault.
+		This can be enabled using the new --backtrace runtime option.
+	* Queues: now queues are correctly initialized
+	* INIT event: INIT event is now generated and placed into the input queue of every LP
+
+
+2013-11-26 Alessandro Pellegrini <pellegrini@dis.uniroma1.it>
+
+	* Kernel Module: cleaned up kernel module code. Now we have /sys endpoints correctly created.
+		If errors happen upon module initialization, everything should be cleaned up
+		before failing
+
+
+2013-11-26 Francesco Quaglia <quaglia@dis.uniroma1.it>
+
+	* Kernel Module: implmented a stub of the module's pgd allocation
+
+
+2013-11-21 Alessandro Pellegrini <pellegrini@dis.uniroma1.it>
+
+	* Linked Lists: fixed minor bugs
+	* State Management: reimplementation concluded. Still unstable, have to test and debug
+	* Message Queue Management: reimplementing message queues according to the new list implementation
+	* LP execution state: an LP can now be ready, blocked or active
+
+
+2013-11-20 Alessandro Pellegrini <pellegrini@dis.uniroma1.it>
+
+	* Kernel Module: Sketching the kernel module to manage multiple page tables
+
+
+2013-11-19 Alessandro Pellegrini <pellegrini@dis.uniroma1.it>
+
+	* State Management: Rewritten code to rely on new linked list implementation. Still unstable.
+
+
+2013-11-13 Alessandro Pellegrini <pellegrini@dis.uniroma1.it>
+
+	* Page-Table Kernel Module: Created the skeleton for the new kernel module, which will
+		support different per-thread page tables.
+	* Queues: Continuing the migration to the new list implementation
+	* Memory Management: state handling subsystem is being merged into memory management subsystem
+	* Execution Flow: reimplementing the logic behind rollback operation
+
+
+2013-11-11 Alessandro Pellegrini <pellegrini@dis.uniroma1.it>
+
+	* Scheduler: minor bugfixes
+	* Event Processing: The code to invoke ProcessEvent() callback has been refactored. A single
+		entry point is provided, so that when a LP must be activated, independently if it's
+		in forward execution, in coasting forward or in initialization, the internal scheduler's
+		API activate_LP() can be invoked. This, in turn, activates the LP's user-level thread.
+	* Queues: Starting migrating the queues management code base to the new list implementation
+	* Data Types: Modifying datatypes names: suffixes _type are being changed to _t. time_type
+		has been changed to simtime_t, to avoid collision with standard time_t. queue_type
+		has been discarded, as its role was only to support linked lists, which is in turn
+		done by relying on list(msg_t) new supported type.
+
+
+
+2013-11-08 Alessandro Pellegrini <pellegrini@dis.uniroma1.it>
+
+	* Userspace LP threads: created support for creating userspace threads for LP scheduling
+	* Scheduler reorganization: reorganizing scheduler organization to cope with LP user threads
+
+
+
+2013-11-06 Alessandro Pellegrini <pellegrini@dis.uniroma1.it>
+
+	* LP execution state revisited: restructuring LPs' execution state, to simplify accessing
+		data and support events' preemption
+
+
+
+2013-11-05 Alessandro Pellegrini <pellegrini@dis.uniroma1.it>
+
+	* Linked Lists reimplemented: this new version will simplify handling events, and will
+		allow the insertion of "fake" events to support intra-/inter-kernel management
+		operations.
+	* ChangeLog: compliant changelog created. It's impossible to track all the changes made so far...
+
+
+
+2011-05-15 ROOT-Sim Team  <rootsim@egooglegroups.com>
+
+	* Version 0.9.0-RC1: this is the first official release of ROOT-Sim
+	* Dynamic Memory Logger Subsystem: memory management subsystem incorporated
+	* Incremental Dynamic Memory Manager Subsystem
+	* Smallest Timestamp First O(n) Scheduler
+	* Smallest Timestamp First O(1) Scheduler
+	* Consistent Committed Global State Subsystem

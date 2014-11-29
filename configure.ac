@@ -1,0 +1,344 @@
+AC_PREREQ([2.67])
+
+AC_INIT([ROOT-Sim],[1.0.0],[rootsim@googlegroups.com],[rootsim],[http://www.dis.uniroma1.it/~hpdcs/ROOT-Sim/])
+AC_CONFIG_SRCDIR([src])
+#AC_CONFIG_FILES([Makefile], [doc/doxy.conf])
+AM_INIT_AUTOMAKE([1.11 -Wall foreign subdir-objects])
+AM_SILENT_RULES([yes])
+AC_CONFIG_MACRO_DIR([m4])
+AC_USE_SYSTEM_EXTENSIONS
+
+
+# Development CFLAGS
+#FINAL_CFLAGS="-g -Wall -Wextra -O0 -Wswitch-enum -Wcast-align -Wpointer-arith -Wstrict-overflow=5 -Wstrict-prototypes -Winline -Wundef -Wnested-externs -Wshadow -Wunreachable-code -Wfloat-equal -Wredundant-decls -Wold-style-definition -std=c99 -fno-omit-frame-pointer -ffloat-store -fno-common -fstrict-aliasing -fgnu89-inline -rdynamic -lm -lpthread"
+# Simple Debugging CFLAGS
+FINAL_CFLAGS="-g -lm -lpthread"
+# Release CFLAGS
+//FINAL_CFLAGS="-O3 -lm -lpthread"
+
+
+
+
+#----------------------------------------------------------------------------
+# Check for languages
+#----------------------------------------------------------------------------
+AC_LANG([C])
+AC_C_VOLATILE
+AC_C_CHAR_UNSIGNED
+
+
+
+
+#----------------------------------------------------------------------------
+# Checks for programs.
+#----------------------------------------------------------------------------
+AC_PROG_CC([gcc])
+AC_PROG_MAKE_SET
+AC_PROG_MKDIR_P
+AC_PROG_LEX
+AC_PROG_YACC
+AC_PROG_CC_C_O
+AM_PROG_CC_C_O
+LT_INIT
+
+
+if test "$YACC" = yacc; then
+  AC_MSG_ERROR([Unable to correctly locate bison on this machine.])
+fi
+
+if test "x$LEX" != xflex; then
+  AC_MSG_ERROR([Unable to correctly locate flex on this machine.])
+fi
+
+
+#----------------------------------------------------------------------------
+# Checks for doxygen, if asked to
+#----------------------------------------------------------------------------
+AC_ARG_WITH([doxygen],
+  [AS_HELP_STRING([--with-doxygen], [use doxygen to generate ROOT-Sim documentation.])],
+  [AC_CHECK_PROG([DOXYGEN], [doxygen], [doxygen])
+    case "$withval" in
+    yes) test -z "$DOXYGEN" && AC_MSG_ERROR([doxygen not found.]) ;;
+    no) DOXYGEN="" ;;
+    *)   AC_MSG_ERROR([Bad value ${withval} for --with-doxygen.]) ;;
+   esac])
+AM_CONDITIONAL([HAVE_DOXYGEN], [test -n "$DOXYGEN"])
+
+
+#----------------------------------------------------------------------------
+# Checks for C header files.
+#----------------------------------------------------------------------------
+AC_HEADER_STDC
+AC_CHECK_HEADERS([fcntl.h float.h limits.h stdint.h stdlib.h string.h sys/time.h unistd.h pthread.h getopt.h])
+
+
+
+
+#----------------------------------------------------------------------------
+# Checks for typedefs, structures, and compiler characteristics.
+#----------------------------------------------------------------------------
+AC_C_INLINE
+AC_TYPE_INT16_T
+AC_TYPE_INT32_T
+AC_TYPE_INT8_T
+AC_TYPE_PID_T
+AC_TYPE_SIZE_T
+AC_TYPE_UINT16_T
+AC_TYPE_UINT32_T
+AC_TYPE_UINT64_T
+AC_TYPE_UINT8_T
+
+
+
+
+#----------------------------------------------------------------------------
+# Checks for library functions.
+#----------------------------------------------------------------------------
+AC_FUNC_MALLOC
+AC_FUNC_REALLOC
+AC_FUNC_MEMCMP
+AC_FUNC_STRNLEN
+AC_FUNC_STRTOD
+AC_CHECK_FUNCS([bzero gettimeofday mkdir pow rint sqrt strtol log2])
+
+
+
+
+
+#----------------------------------------------------------------------------
+# Check for architecture
+#----------------------------------------------------------------------------
+#
+# We rely on assembly modules, so we can support only the following architectures.
+# Perform a test here, and halt if an unsupported architecture is found.
+
+AC_CANONICAL_HOST
+
+AC_MSG_CHECKING([for a supported CPU])
+
+case "${host_cpu}" in
+
+# When we will resupport x86, uncomment these lines!
+
+     i?86)
+	AC_MSG_RESULT([yes, ${host_cpu}])
+	AC_DEFINE([ARCH_X86])
+	ARCH_MAX="x86"
+	;;
+
+     x86_64)
+        AC_MSG_RESULT([yes, ${host_cpu}])
+        AC_DEFINE([ARCH_X86_64])
+        ;;
+
+#     *)
+#        AC_MSG_RESULT([no, ${host_cpu}])
+#        AC_MSG_ERROR([Unsupported host architecture. Currently ROOT-Sim supports only x86_64 systems.])
+#        ;;
+
+esac
+
+
+
+
+#----------------------------------------------------------------------------
+# Check for Operating System
+#----------------------------------------------------------------------------
+#
+# This must go after CPU check, as it relies on AC_CANONICAL_HOST
+#
+
+AC_MSG_CHECKING([for supported host Operating System])
+
+case $host_os in
+  linux*)
+        # Do something specific for linux
+        AC_MSG_RESULT([yes, ${host_os}])
+        AC_DEFINE([OS_LINUX])
+	;;
+  cygwin*)
+        # Do something specific for cygwin
+        AC_MSG_RESULT([yes, ${host_os}])
+        AC_DEFINE([OS_CYGWIN])
+	;;
+    *)
+        #Default Case
+        AC_MSG_RESULT([no, ${host_os}])
+        AC_MSG_ERROR([Your platform is not currently supported])
+        ;;
+esac
+
+
+
+#----------------------------------------------------------------------------
+# MPI checks
+#----------------------------------------------------------------------------
+# Do we have a useable MPI setup on the primary and/or secondary targets?
+# On Linux, by default, assumes mpicc and -m32/-m64
+# Note: this is a kludge in that it assumes the specified mpicc 
+# understands -m32/-m64 regardless of what is specified using
+# --with-mpicc=.
+MPI_CC="mpicc"
+
+
+
+AC_ARG_WITH(mpicc,
+  [AS_HELP_STRING([--with-mpicc=ARG], [use ARG as MPI-2 Compliant compiler.])],
+   MPI_CC=$withval
+)
+AC_SUBST(MPI_CC)
+
+
+
+## See if MPI_CC works 
+AC_MSG_CHECKING([for an MPI2-compliant C compiler and mpi.h])
+saved_CC=$CC
+saved_CFLAGS=$CFLAGS
+CC=$MPI_CC
+AC_LINK_IFELSE([AC_LANG_PROGRAM([[
+#include <mpi.h>
+#include <stdio.h>
+]], [[
+  int ni, na, nd, comb;
+  int r = MPI_Init(NULL,NULL);
+  r |= MPI_Type_get_envelope( MPI_INT, &ni, &na, &nd, &comb );
+  r |= MPI_Finalize();
+  return r;
+]])], [
+AC_MSG_RESULT([yes, $MPI_CC])
+], [
+AC_MSG_RESULT([no])
+AC_MSG_ERROR([An MPI compliant compiler is required to build ROOT-Sim])
+])
+
+
+
+#----------------------------------------------------------------------------
+# Check if we can use the tick timer
+#----------------------------------------------------------------------------
+
+
+AC_MSG_CHECKING([if assembler knows rdtsc instruction])
+
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[]], [[
+  do { 
+    unsigned int lo;
+    unsigned int hi;
+    __asm__ __volatile__ ("rdtsc" : "=a" (lo), "=d" (hi));
+    ((unsigned long long)hi) << 32 | lo;
+  }
+  while (0)
+]])], [
+AC_DEFINE([HAVE_RDTSC])
+AC_MSG_RESULT([yes])
+], [
+AC_MSG_RESULT([no])
+])
+
+
+#----------------------------------------------------------------------------
+# Family instructions checks.
+# These are used to support a specific version of the memcmp for the
+# early check termination.
+#----------------------------------------------------------------------------
+
+
+# does the x86/amd64 assembler understand SSE3 instructions?
+AC_MSG_CHECKING([if assembler knows SSE3])
+
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[]], [[
+  do { long long int x;
+     __asm__ __volatile__("fisttpq (%0)" : :"r"(&x) ); }
+  while (0)
+]])], [
+AC_DEFINE([HAVE_SSE3])
+AC_MSG_RESULT([yes])
+], [
+ac_have_as_sse3=no
+AC_MSG_RESULT([no])
+])
+
+
+
+
+# does the x86/amd64 assembler understand SSSE3 instructions?
+AC_MSG_CHECKING([if assembler knows SSSE3])
+
+save_CFLAGS="$CFLAGS"
+CFLAGS="$CFLAGS -msse"
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[]], [[
+  do { long long int x;
+   __asm__ __volatile__(
+      "pabsb (%0),%%xmm7" : : "r"(&x) : "xmm7" ); }
+  while (0)
+]])], [
+AC_DEFINE([HAVE_SSSE3])
+AC_MSG_RESULT([yes])
+], [
+AC_MSG_RESULT([no])
+])
+CFLAGS="$save_CFLAGS"
+
+
+
+
+
+# does the x86/amd64 assembler understand SSE 4.2 instructions?
+AC_MSG_CHECKING([if assembler knows SSE4.2])
+
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[]], [[
+  do { long long int x;
+   __asm__ __volatile__(
+      "crc32q %%r15,%%r15" : : : "r15" );
+   __asm__ __volatile__(
+      "pblendvb (%%rcx), %%xmm11" : : : "memory", "xmm11");
+   __asm__ __volatile__(
+      "aesdec %%xmm2, %%xmm1" : : : "xmm2", "xmm1"); }
+  while (0)
+]])], [
+AC_DEFINE([HAVE_SSE42])
+AC_MSG_RESULT([yes])
+], [
+AC_MSG_RESULT([no])
+])
+
+
+
+
+#----------------------------------------------------------------------------
+# Check scripts sizes.
+# The compiler script is dynamically built in order to create ad compile
+# time linker scripts which will be used to produce the final version
+# of the executable. We compute here the sizes of those cat'd scripts
+# in order to make the compiler behave consistently with the last version
+# of the linker scripts provided in the installation.
+#----------------------------------------------------------------------------
+AC_MSG_CHECKING([compiler and linker scripts sizes])
+AC_SUBST([cc_script_lines], [$(wc -l scripts/rootsim-cc.in | sed 's,\ .*,,g')])
+AC_SUBST([cc_lddata1_lines], [$(wc -l scripts/ld-data1 | sed 's,\ .*,,g')])
+AC_SUBST([cc_lddata2_lines], [$(wc -l scripts/ld-data2 | sed 's,\ .*,,g')])
+AC_SUBST([cc_ldfinal_lines], [$(wc -l scripts/ld-final | sed 's,\ .*,,g')])
+AC_MSG_RESULT([ok])
+
+
+CFLAGS="$FINAL_CFLAGS"
+
+# Generate Makefiles for all these subfolders
+#AC_OUTPUT
+AC_CONFIG_FILES([Makefile \
+		doc/Makefile \
+		doc/doxy.conf \
+		man/Makefile \
+		scripts/Makefile \
+		examples/Makefile \
+		examples/nosql/Makefile \
+		examples/pcs/Makefile \
+		examples/phold/Makefile \
+		examples/tcar/Makefile \
+		examples/traffic/Makefile \
+		examples/packet/Makefile \
+		src/Makefile \
+		src/shell/Makefile \
+		src/simulator/Makefile \
+	])
+AC_OUTPUT

@@ -1,0 +1,16 @@
+SECTIONS  {
+        .data_i :
+        {
+        APP-incremental.o (.data)
+        APP-incremental.o (.data1)
+        }
+        .bss_i :
+        {
+        APP-incremental.o (.bss)
+        }
+        .rodata_i :
+        {
+        APP-incremental.o (.rodata)
+        APP-incremental.o (.rodata1)
+        }
+}
