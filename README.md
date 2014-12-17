@@ -1,4 +1,4 @@
-# The ROme OpTimistic Simulator (ROOT-Sim) #
+# The ROme OpTimistic Simulator (ROOT-Sim) [![Build Status](https://travis-ci.org/alessandropellegrini/ROOT-Sim.svg?branch=master)](https://travis-ci.org/alessandropellegrini/ROOT-Sim)
 
 *Brought to you by the High Performance and Dependable Computing Systems (HPDCS)
 at Sapienza, University of Rome*

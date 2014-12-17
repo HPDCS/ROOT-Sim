@@ -5,7 +5,7 @@ before_script:
  - libtoolize
  - aclocal
  - autoconf
- - automake
+ - automake --add-missing
  - chmod +x configure
 
 script: ./configure && make
