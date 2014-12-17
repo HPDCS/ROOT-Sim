@@ -2,6 +2,7 @@ language: c
 compiler: gcc
 
 before_script:
+ - apt-get install -y libopenmpi-dev
  - chmod +x configure
 
 script: ./configure && make
