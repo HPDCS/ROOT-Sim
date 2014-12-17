@@ -4,4 +4,4 @@ AM_MAKEFLAGS = -s
 AUTOMAKE_OPTIONS = subdir-objects
 
 
-SUBDIRS = simulator shell
+SUBDIRS = simulator 

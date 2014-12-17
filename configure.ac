@@ -34,20 +34,10 @@ AC_C_CHAR_UNSIGNED
 AC_PROG_CC([gcc])
 AC_PROG_MAKE_SET
 AC_PROG_MKDIR_P
-AC_PROG_LEX
-AC_PROG_YACC
 AC_PROG_CC_C_O
 AM_PROG_CC_C_O
 LT_INIT
 
-
-if test "$YACC" = yacc; then
-  AC_MSG_ERROR([Unable to correctly locate bison on this machine.])
-fi
-
-if test "x$LEX" != xflex; then
-  AC_MSG_ERROR([Unable to correctly locate flex on this machine.])
-fi
 
 
 #----------------------------------------------------------------------------
@@ -63,15 +53,10 @@ AC_CHECK_HEADERS([fcntl.h float.h limits.h stdint.h stdlib.h string.h sys/time.h
 # Checks for typedefs, structures, and compiler characteristics.
 #----------------------------------------------------------------------------
 AC_C_INLINE
-AC_TYPE_INT16_T
 AC_TYPE_INT32_T
-AC_TYPE_INT8_T
-AC_TYPE_PID_T
 AC_TYPE_SIZE_T
-AC_TYPE_UINT16_T
 AC_TYPE_UINT32_T
 AC_TYPE_UINT64_T
-AC_TYPE_UINT8_T
 
 
 
@@ -279,7 +264,6 @@ AC_CONFIG_FILES([Makefile \
 		examples/traffic/Makefile \
 		examples/packet/Makefile \
 		src/Makefile \
-		src/shell/Makefile \
 		src/simulator/Makefile \
 	])
 AC_OUTPUT
