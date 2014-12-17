@@ -2,7 +2,6 @@ AC_PREREQ([2.67])
 
 AC_INIT([ROOT-Sim],[1.0.0],[rootsim@googlegroups.com],[rootsim],[http://www.dis.uniroma1.it/~hpdcs/ROOT-Sim/])
 AC_CONFIG_SRCDIR([src])
-#AC_CONFIG_FILES([Makefile], [doc/doxy.conf])
 AM_INIT_AUTOMAKE([1.11 -Wall foreign subdir-objects])
 AM_SILENT_RULES([yes])
 AC_CONFIG_MACRO_DIR([m4])
@@ -49,20 +48,6 @@ fi
 if test "x$LEX" != xflex; then
   AC_MSG_ERROR([Unable to correctly locate flex on this machine.])
 fi
-
-
-#----------------------------------------------------------------------------
-# Checks for doxygen, if asked to
-#----------------------------------------------------------------------------
-AC_ARG_WITH([doxygen],
-  [AS_HELP_STRING([--with-doxygen], [use doxygen to generate ROOT-Sim documentation.])],
-  [AC_CHECK_PROG([DOXYGEN], [doxygen], [doxygen])
-    case "$withval" in
-    yes) test -z "$DOXYGEN" && AC_MSG_ERROR([doxygen not found.]) ;;
-    no) DOXYGEN="" ;;
-    *)   AC_MSG_ERROR([Bad value ${withval} for --with-doxygen.]) ;;
-   esac])
-AM_CONDITIONAL([HAVE_DOXYGEN], [test -n "$DOXYGEN"])
 
 
 #----------------------------------------------------------------------------
@@ -168,48 +153,6 @@ case $host_os in
         ;;
 esac
 
-
-
-#----------------------------------------------------------------------------
-# MPI checks
-#----------------------------------------------------------------------------
-# Do we have a useable MPI setup on the primary and/or secondary targets?
-# On Linux, by default, assumes mpicc and -m32/-m64
-# Note: this is a kludge in that it assumes the specified mpicc 
-# understands -m32/-m64 regardless of what is specified using
-# --with-mpicc=.
-MPI_CC="mpicc"
-
-
-
-AC_ARG_WITH(mpicc,
-  [AS_HELP_STRING([--with-mpicc=ARG], [use ARG as MPI-2 Compliant compiler.])],
-   MPI_CC=$withval
-)
-AC_SUBST(MPI_CC)
-
-
-
-## See if MPI_CC works 
-AC_MSG_CHECKING([for an MPI2-compliant C compiler and mpi.h])
-saved_CC=$CC
-saved_CFLAGS=$CFLAGS
-CC=$MPI_CC
-AC_LINK_IFELSE([AC_LANG_PROGRAM([[
-#include <mpi.h>
-#include <stdio.h>
-]], [[
-  int ni, na, nd, comb;
-  int r = MPI_Init(NULL,NULL);
-  r |= MPI_Type_get_envelope( MPI_INT, &ni, &na, &nd, &comb );
-  r |= MPI_Finalize();
-  return r;
-]])], [
-AC_MSG_RESULT([yes, $MPI_CC])
-], [
-AC_MSG_RESULT([no])
-AC_MSG_ERROR([An MPI compliant compiler is required to build ROOT-Sim])
-])
 
 
 
@@ -326,8 +269,6 @@ CFLAGS="$FINAL_CFLAGS"
 # Generate Makefiles for all these subfolders
 #AC_OUTPUT
 AC_CONFIG_FILES([Makefile \
-		doc/Makefile \
-		doc/doxy.conf \
 		man/Makefile \
 		scripts/Makefile \
 		examples/Makefile \
