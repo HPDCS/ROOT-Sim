@@ -2,6 +2,10 @@ language: c
 compiler: gcc
 
 before_script:
+ - libtoolize
+ - aclocal
+ - autoconf
+ - automake
  - chmod +x configure
 
 script: ./configure && make
