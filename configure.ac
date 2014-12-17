@@ -9,13 +9,11 @@ AC_USE_SYSTEM_EXTENSIONS
 
 
 # Development CFLAGS
-#FINAL_CFLAGS="-g -Wall -Wextra -O0 -Wswitch-enum -Wcast-align -Wpointer-arith -Wstrict-overflow=5 -Wstrict-prototypes -Winline -Wundef -Wnested-externs -Wshadow -Wunreachable-code -Wfloat-equal -Wredundant-decls -Wold-style-definition -std=c99 -fno-omit-frame-pointer -ffloat-store -fno-common -fstrict-aliasing -fgnu89-inline -rdynamic -lm -lpthread"
+FINAL_CFLAGS="-g -Wall -Wextra -O0 -Wswitch-enum -Wcast-align -Wpointer-arith -Wstrict-overflow=5 -Wstrict-prototypes -Winline -Wundef -Wnested-externs -Wshadow -Wunreachable-code -Wfloat-equal -Wredundant-decls -Wold-style-definition -std=c99 -fno-omit-frame-pointer -ffloat-store -fno-common -fstrict-aliasing -fgnu89-inline -rdynamic -lm -lpthread"
 # Simple Debugging CFLAGS
-FINAL_CFLAGS="-g -lm -lpthread"
+#FINAL_CFLAGS="-g -lm -lpthread"
 # Release CFLAGS
 #FINAL_CFLAGS="-O3 -lm -lpthread"
-
-
 
 
 #----------------------------------------------------------------------------
@@ -24,8 +22,6 @@ FINAL_CFLAGS="-g -lm -lpthread"
 AC_LANG([C])
 AC_C_VOLATILE
 AC_C_CHAR_UNSIGNED
-
-
 
 
 #----------------------------------------------------------------------------
@@ -39,12 +35,10 @@ AM_PROG_CC_C_O
 LT_INIT
 
 
-
 #----------------------------------------------------------------------------
 # Checks for C header files.
 #----------------------------------------------------------------------------
 AC_HEADER_STDC
-
 
 
 #----------------------------------------------------------------------------

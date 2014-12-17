@@ -15,7 +15,7 @@
 ##############################################################################
 # Global configuration variables
 ##############################################################################
-MPI_CC=@MPI_CC@
+CC=@CC@
 VERSION=@VERSION@
 ARCH=@ARCH@
 bindir=@bindir@
@@ -71,8 +71,8 @@ build_cleanup()
 #rm $$.ld-data1
 #rm $$.ld-data2
 #rm $$.ld-final
-#rm APP*.o
-#rm *.o
+rm *.o
+rm *.o.rs
 #rm branch-table
 #rm branch-table-light
 #rm offset-table-start-inc
@@ -84,6 +84,7 @@ build_cleanup()
 #rm padding-monitor.c
 #rm riferimenti
 #rm riferimenti-mon
+rm original
 echo "process done"
 }
 
@@ -103,7 +104,7 @@ fi
 ##############################################################################
 # The ROOT-Sim CC script begins here
 ##############################################################################
-CC="$MPI_CC -L $libdir -I $includedir"   # This is how we will call the compiler.
+CC="$CC -L $libdir -I $includedir -lpthread"   # This is how we will call the compiler.
 LD=ld
 PARTIAL=0
 OUTNAME=a.out
@@ -206,7 +207,7 @@ done
 
 $LD -r ${OBJECTS//.o/.o.rs} -o APP.o
 cp APP.o APP-original.o
-cp APP.o originale
+cp APP.o original
 rm *.APP.o
 
 # Print some fancy text to let the user know we are actually doing something...
