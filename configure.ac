@@ -13,7 +13,7 @@ AC_USE_SYSTEM_EXTENSIONS
 # Simple Debugging CFLAGS
 FINAL_CFLAGS="-g -lm -lpthread"
 # Release CFLAGS
-//FINAL_CFLAGS="-O3 -lm -lpthread"
+#FINAL_CFLAGS="-O3 -lm -lpthread"
 
 
 
