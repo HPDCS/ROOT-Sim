@@ -346,12 +346,9 @@ static int parse_cmd_line(int argc, char **argv) {
 *
 * @param argc number of parameters passed at command line 
 * @param argv array of parameters passed at command line
-*
-* @todo refactor the application level initialization
 */
 void SystemInit(int argc, char **argv) {
 	register unsigned int t;
-	int ack = 0;
 	int application_args;
 
 	// Parse the argument passed at command line, to initialize the internal configuration
@@ -379,17 +376,6 @@ void SystemInit(int argc, char **argv) {
 		ScheduleNewEvent = ParallelScheduleNewEvent;
 	}
 
-// TODO: Alessandro: I'm removing MPI support now, for development of single-machine multithreaded interaction
-// rank is declared to be 0 at the beginning of this function, so the only running kernel will be master kernel
-	// Initialize MPI
-//	MPI_Init(&argc, &argv);
-//	MPI_Comm_rank(MPI_COMM_WORLD, &kid);
-//	MPI_Comm_size(MPI_COMM_WORLD, &size);
-
-
-	// From now on, calling rootsim_error will entail MPI shutdown
-	mpi_is_initialized = true;
-
 
 	if (master_kernel()) {
 
@@ -408,7 +394,7 @@ void SystemInit(int argc, char **argv) {
 			"LPs Distribution Mode across Kernels: %d\n"
 			"Check Termination Mode: %d\n"
 			"Blocking GVT: %d\n"
-			"Set Seed: %d\n"
+			"Set Seed: %ld\n"
 			"****************************\n"
 			"*    Simulation Started    *\n"
 			"****************************\n",
@@ -428,52 +414,19 @@ void SystemInit(int argc, char **argv) {
 			rootsim_config.set_seed);
 	}
 
-// TODO: MPI: Reinserire
-//	comm_barrier(MPI_COMM_WORLD);
-//	MPI_Buffer_attach(buff, SLOTS * sizeof(msg_t));
-	
-	
-	
 	// Master Kernel initializes some variables, which are then passed to other kernel instances
 	if (master_kernel()) {
 
 		// Master kernel creates the base output directory
 		_mkdir(rootsim_config.output_dir);
 		
-		// Ask MPI how may nodes are present in the system
-// TODO: MPI: reinserire
-/*		if(MPI_Comm_size(MPI_COMM_WORLD, (int *)&n_ker) != MPI_SUCCESS) {
-			rootsim_error(true, "Unable to determine total kernel number. Aborting...");
-		}	
-*/		
 		n_ker = 1;
-		// Map the logical processes onto kernel instances
 		distribute_lps_on_kernels();
-
-		// Send other kernel instances their configuration variables
-		for (t = 1; t < n_ker; t++) {
-			
-// TODO: MPI: reinserire
-/*			comm_send(&n_ker, sizeof(n_ker), MPI_CHAR, t, MSG_INIT_MPI, MPI_COMM_WORLD);
-			comm_send(&n_prc_tot, sizeof(n_prc_tot), MPI_CHAR, t, MSG_INIT_MPI, MPI_COMM_WORLD);
-			comm_basic_send((char *)kernel, sizeof(int)*n_prc_tot, MPI_CHAR, t, MSG_INIT_MPI, MPI_COMM_WORLD);
-			comm_send(&ack, sizeof(ack), MPI_CHAR, t, MSG_UNLOCK, MPI_COMM_WORLD);
-			comm_recv(&ack, sizeof(ack), MPI_CHAR, t, MSG_ACKNOWLEDGE, MPI_COMM_WORLD, MPI_STATUS_IGNORE);			
-*/		}
 
 	} else { // Slave kernels
 
 		kernel = (unsigned int *)rsalloc(sizeof(unsigned int)*(n_prc_tot));
-	
-//		comm_recv(&n_ker,sizeof(n_ker),MPI_CHAR,0, MSG_INIT_MPI, MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-//		comm_recv(&n_prc_tot,sizeof(n_prc_tot),MPI_CHAR,0, MSG_INIT_MPI, MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-//		comm_recv(kernel, sizeof(int)*n_prc_tot,MPI_CHAR,0, MSG_INIT_MPI, MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-//		comm_recv(&ack,sizeof(ack),MPI_CHAR,0,MSG_UNLOCK , MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-//		comm_send(&ack,sizeof(ack),MPI_CHAR,0,MSG_ACKNOWLEDGE,MPI_COMM_WORLD);
 	}
-
-//	comm_barrier(MPI_COMM_WORLD);
-
 
 	// Initialize ROOT-Sim subsystems.
 	// All init routines are executed serially (there is no notion of threads in there)
@@ -485,8 +438,6 @@ void SystemInit(int argc, char **argv) {
 	dymelor_init();
 	gvt_init();
 	numerical_init();
-
-
 
 	// Initialize the LP control block for each locally hosted LP
 	// and schedule the special INIT event

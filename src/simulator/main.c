@@ -128,9 +128,7 @@ void *main_simulation_loop(void *arg) {
 		// Activate one LP and process one event. Send messages produced during the events' execution
 		schedule();
 
-//#if !defined(FINE_GRAIN_DEBUG) && !defined(STEP_EXEC)
 		my_time_barrier = gvt_operations();
-//#endif
 
 		// Only a master thread can return a value different from -1
 		if (D_DIFFER(my_time_barrier, -1.0)) {
@@ -140,49 +138,8 @@ void *main_simulation_loop(void *arg) {
 				gvt_passed++;	
 			}
 		}
-
-#if defined(FINE_GRAIN_DEBUG) || defined(STEP_EXEC)
-		thread_barrier(&debug_barrier);
-		#ifndef STEP_EXEC
-		if(master_thread()) {
-			printf("----------------\n");
-		}
-		#endif
-		thread_barrier(&debug_barrier);
-#endif
 	}
 
-#ifdef FINE_GRAIN_DEBUG
-	if(master_thread()) {
-		printf("Numero di messaggi rimasti nelle code: \n");
-		unsigned int x;
-		for(x = 0; x < n_prc_tot; x++) {
-			printf("LP %d: %d\n", x, list_sizeof(LPS[x]->queue_in));
-			fflush(stdout);
-		}
-		
-		printf("LVT degli eventi nelle code: \n");
-		for(x = 0; x < n_prc_tot; x++) {
-			printf("LP %d: ", x);
-			msg_t *queue_ptr = list_head(LPS[x]->queue_in);
-			while(queue_ptr != NULL) {
-				printf("%f, ", queue_ptr->timestamp);
-				queue_ptr = list_next(queue_ptr);
-			}
-			printf("\n");
-			fflush(stdout);
-		}
-		
-		printf("LVT corrente dei processi: \n");
-		for(x = 0; x < n_prc_tot; x++) {
-			printf("LP %d: %f\n", x, lvt(x));
-			fflush(stdout);
-		}
-	}
-#endif
-//	spin_lock(&tot_lock);
-//	tot_committed += tot_committed_per_th;
-//	spin_unlock(&tot_lock);
 	return NULL;
 }
 
