@@ -1,3 +1,7 @@
 language: c
 compiler: gcc
+
+before_script:
+ - chmod +x configure
+
 script: ./configure && make
