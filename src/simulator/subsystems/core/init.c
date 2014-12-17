@@ -465,14 +465,14 @@ void SystemInit(int argc, char **argv) {
 
 		kernel = (unsigned int *)rsalloc(sizeof(unsigned int)*(n_prc_tot));
 	
-		comm_recv(&n_ker,sizeof(n_ker),MPI_CHAR,0, MSG_INIT_MPI, MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-		comm_recv(&n_prc_tot,sizeof(n_prc_tot),MPI_CHAR,0, MSG_INIT_MPI, MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-		comm_recv(kernel, sizeof(int)*n_prc_tot,MPI_CHAR,0, MSG_INIT_MPI, MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-		comm_recv(&ack,sizeof(ack),MPI_CHAR,0,MSG_UNLOCK , MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-		comm_send(&ack,sizeof(ack),MPI_CHAR,0,MSG_ACKNOWLEDGE,MPI_COMM_WORLD);
+//		comm_recv(&n_ker,sizeof(n_ker),MPI_CHAR,0, MSG_INIT_MPI, MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+//		comm_recv(&n_prc_tot,sizeof(n_prc_tot),MPI_CHAR,0, MSG_INIT_MPI, MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+//		comm_recv(kernel, sizeof(int)*n_prc_tot,MPI_CHAR,0, MSG_INIT_MPI, MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+//		comm_recv(&ack,sizeof(ack),MPI_CHAR,0,MSG_UNLOCK , MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+//		comm_send(&ack,sizeof(ack),MPI_CHAR,0,MSG_ACKNOWLEDGE,MPI_COMM_WORLD);
 	}
 
-	comm_barrier(MPI_COMM_WORLD);
+//	comm_barrier(MPI_COMM_WORLD);
 
 
 	// Initialize ROOT-Sim subsystems.
