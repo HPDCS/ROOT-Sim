@@ -4,7 +4,6 @@
 #include <string.h>
 #include <errno.h>
 #include <time.h>
-#include <mpi.h>
 #include <math.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -360,7 +359,7 @@ void flush_statistics(void){
 	fflush(fout);
 
 	// Global Statistics
-	MPI_Reduce(&kernel_stats.tot_events, &system_wide_stats.tot_events, 1, MPI_FLOAT, MPI_SUM, 0, MPI_COMM_WORLD);
+/*	MPI_Reduce(&kernel_stats.tot_events, &system_wide_stats.tot_events, 1, MPI_FLOAT, MPI_SUM, 0, MPI_COMM_WORLD);
 	MPI_Reduce(&kernel_stats.committed_events, &system_wide_stats.committed_events, 1, MPI_FLOAT, MPI_SUM, 0, MPI_COMM_WORLD);
 	MPI_Reduce(&kernel_stats.committed_eventsRP, &system_wide_stats.committed_eventsRP, 1, MPI_FLOAT, MPI_SUM, 0, MPI_COMM_WORLD);
 	MPI_Reduce(&kernel_stats.tot_rollbacks, &system_wide_stats.tot_rollbacks, 1, MPI_FLOAT, MPI_SUM, 0, MPI_COMM_WORLD);
@@ -376,7 +375,7 @@ void flush_statistics(void){
 	
 	MPI_Reduce(&kernel_stats.event_time, &system_wide_stats.event_time, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 	MPI_Reduce(&kernel_stats.ckpt_time, &system_wide_stats.ckpt_time, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-
+*/
 
 	// Calculate an average on the number of kernel
 	if (master_kernel()) {

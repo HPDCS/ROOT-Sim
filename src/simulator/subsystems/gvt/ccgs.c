@@ -26,9 +26,6 @@
 * @author Alessandro Pellegrini
 */
 
-// TODO: questo qui va tolto, deve sopravvivere solo in communication.c
-#include <mpi.h>
-
 #include <stdbool.h>
 #include <core/core.h>
 #include <mm/dymelor.h>
@@ -76,7 +73,7 @@ static void do_compute_snapshot(state_t * __restrict__ time_barrier_pointer[]) {
 	// If there is only one kernel, set the termination locally,
 	// otherwise collect all the states, using MPI's Logical AND reduction.
 	if(n_ker > 1) {
-		comm_reduce(&ccgs_completed_simulation, &check_res, 1, MPI_BYTE, MPI_LAND, 0, MPI_COMM_WORLD);
+//		comm_reduce(&ccgs_completed_simulation, &check_res, 1, MPI_BYTE, MPI_LAND, 0, MPI_COMM_WORLD);
 	} else {
 		ccgs_completed_simulation = check_res;
 	}

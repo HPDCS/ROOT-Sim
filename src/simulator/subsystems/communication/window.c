@@ -28,7 +28,6 @@
 
 
 #include <stdlib.h>
-#include <mpi.h>
 #include <float.h>
 
 #include <core/core.h>
@@ -139,7 +138,7 @@ void register_msg(msg_t *msg) {
 
 
 
-
+#if 0
 /**
 * This function update the ack window upon new acks reception 
 *
@@ -217,7 +216,7 @@ void send_forced_ack(void) {
 		}
 	}
 }
-
+#endif
 
 
 

@@ -26,7 +26,6 @@
 * @author Alessandro Pellegrini
 */
 
-#include <mpi.h>
 #include <gvt/gvt.h>
 #include <gvt/ccgs.h>
 #include <mm/state.h>
@@ -217,7 +216,6 @@ __thread unsigned int tot_committed_per_th = 0;
 
 
 
-
 /**
 * This function is used by slave Kernels to receive the new GVT value from the Master Kernel
 *
@@ -235,7 +233,7 @@ __thread unsigned int tot_committed_per_th = 0;
 
 
 	do {
-		comm_probe(MPI_ANY_SOURCE, MSG_NEW_GVT, MPI_COMM_WORLD, &should_check, MPI_STATUS_IGNORE);
+//		comm_probe(MPI_ANY_SOURCE, MSG_NEW_GVT, MPI_COMM_WORLD, &should_check, MPI_STATUS_IGNORE);
 
 	} while(should_check == false && rootsim_config.blocking_gvt);
 
@@ -313,7 +311,7 @@ __thread unsigned int tot_committed_per_th = 0;
 
 
 
-
+#if 0
 
 
 /**
@@ -633,3 +631,5 @@ simtime_t gvt_operations_old(void) {
 	
 	return adopted_gvt;
 }
+
+#endif

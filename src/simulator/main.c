@@ -28,7 +28,6 @@
 
 
 #include <stdlib.h>
-#include <mpi.h> 
 #include <errno.h>
 #include <math.h>
 #include <string.h>

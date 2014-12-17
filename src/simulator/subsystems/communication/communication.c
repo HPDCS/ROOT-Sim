@@ -25,7 +25,6 @@
 * @author Roberto Vitali
 *
 */
-#include <mpi.h>
 
 #include <stdlib.h>
 #include <float.h>
@@ -176,135 +175,6 @@ void send_antimessages(unsigned int lid, simtime_t simtime) {
 
 
 
-/**
-* 
-*
-* @author Roberto Vitali
-*/
-int comm_send(void *buf, size_t count, MPI_Datatype datatype, int dest, int tag, MPI_Comm comm) {
-	(void)buf;
-	(void)count;
-	(void)datatype;
-	(void)dest;
-	(void)tag;
-	(void)comm;
-	#if 0
-		return MPI_Send(buf, (int)count, datatype, dest, tag, comm);
-	#endif
-	return MPI_SUCCESS;
-}
-
-
-
-/**
-* 
-*
-* @author Roberto Vitali
-*/
-int comm_basic_send(void *buf, size_t count, MPI_Datatype datatype, int dest, int tag, MPI_Comm comm) {
-	(void)buf;
-	(void)count;
-	(void)datatype;
-	(void)dest;
-	(void)tag;
-	(void)comm;
-	#if 0
-		return MPI_Bsend(buf, (int)count, datatype, dest, tag, comm);
-	#endif
-	return MPI_SUCCESS;
-}
-
-
-
-
-
-/**
-* 
-*
-* @author Roberto Vitali
-*/
-int comm_recv(void *buf, size_t count, MPI_Datatype datatype, int source, int tag, MPI_Comm comm, MPI_Status *status) {
-	(void)buf;
-	(void)count;
-	(void)datatype;
-	(void)source;
-	(void)tag;
-	(void)comm;
-	(void)status;
-	#if 0
-		return MPI_Recv(buf, (int)count, datatype, (int)source, tag, comm, status);
-	#endif
-	return MPI_SUCCESS;
-}
-
-
-
-
-/**
-* 
-*
-* @author Roberto Vitali
-*/
-int comm_reduce(void *sendbuf, void *recvbuf, size_t count, MPI_Datatype datatype, MPI_Op op, int root, MPI_Comm comm) {
-	(void)sendbuf;
-	(void)recvbuf;
-	(void)count;
-	(void)datatype;
-	(void)op;
-	(void)root;
-	(void)comm;
-	// TODO
-	#if 0
-		return MPI_Reduce(sendbuf, recvbuf, (int)count, datatype, op, (int)root, comm);
-	#endif
-	return MPI_SUCCESS;
-}
-
-
-
-
-/**
-* 
-*
-* @author Roberto Vitali
-*/
-int comm_probe(int source, int tag, MPI_Comm comm, int *flag, MPI_Status *status) {
-	(void)source;
-	(void)tag;
-	(void)comm;
-	(void)flag;
-	(void)status;
-	// TODO
-	#if 0
-		return MPI_Iprobe((int)source, tag, comm, flag, status);
-	#endif
-	return MPI_SUCCESS;
-}
-
-
-
-
-/**
-* 
-*
-* @author Roberto Vitali
-*/
-int comm_probe_and_block(int source, int tag, MPI_Comm comm, int *flag, MPI_Status *status) {
-	(void)source;
-	(void)tag;
-	(void)comm;
-	(void)flag;
-	(void)status;
-	// TODO
-	#if 0
-		return MPI_Iprobe((int)source, tag, comm, flag, status);
-	#endif
-	return MPI_SUCCESS;
-}
-
-
-
-
 
 /**
 * 
@@ -326,44 +196,9 @@ int comm_finalize(void) {
 	}
 	
 //	return MPI_Finalize();
-	return MPI_SUCCESS;
+	return 0;
+
 }
-
-
-
-
-/**
-* 
-*
-* @author Roberto Vitali
-*/
-int comm_abort(MPI_Comm comm, int errorcode) {
-	(void)comm;
-	(void)errorcode;
-	// TODO
-	#if 0
-		return MPI_Abort(comm, errorcode);
-	#endif
-	return MPI_SUCCESS;
-}
-
-
-
-
-/**
-* 
-*
-* @author Roberto Vitali
-*/
-int comm_barrier(MPI_Comm comm) {
-	(void)comm;
-	// TODO
-	#if 0
-		return MPI_Barrier(comm);
-	#endif
-	return MPI_SUCCESS;
-}
-
 
 
 
@@ -401,7 +236,7 @@ void Send(msg_t *msg) {
 *
 * @author Francesco Quaglia
 */
-simtime_t receive_time_barrier(simtime_t max) {
+/*simtime_t receive_time_barrier(simtime_t max) {
 	register unsigned int i;
 	simtime_t tmp;
 
@@ -416,7 +251,7 @@ simtime_t receive_time_barrier(simtime_t max) {
 	}
 
 	return max;
-}
+}*/
 
 
 

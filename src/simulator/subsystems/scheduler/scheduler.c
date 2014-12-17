@@ -26,7 +26,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
-#include <mpi.h>
 
 #include <core/core.h>
 #include <core/timer.h>
@@ -87,7 +86,7 @@ void scheduler_init(void) {
 	register unsigned int i;
 
 	// TODO: implementare con delle broadcast!!
-	if(n_ker > 1) {
+/*	if(n_ker > 1) {
 		if (master_kernel()) {
 			for (i = 1; i < n_ker; i++) {
 				comm_send(&rootsim_config.scheduler, sizeof(rootsim_config.scheduler), MPI_CHAR, i, MSG_INIT_MPI, MPI_COMM_WORLD);
@@ -96,7 +95,7 @@ void scheduler_init(void) {
 			comm_recv(&rootsim_config.scheduler, sizeof(rootsim_config.scheduler), MPI_CHAR, 0, MSG_INIT_MPI, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 		}
 	}
-
+*/
 	// Allocate LPS control blocks
 	LPS = (LP_state **)rsalloc(n_prc * sizeof(LP_state *));
 	for (i = 0; i < n_prc; i++) {

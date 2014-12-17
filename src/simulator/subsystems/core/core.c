@@ -226,7 +226,7 @@ void simulation_shutdown(int code) {
 
 		// All kernels must exit at the same time
 		if(n_ker > 1) {
-			comm_barrier(MPI_COMM_WORLD);
+//			comm_barrier(MPI_COMM_WORLD);
 		}
 		
 		if(master_thread()) {

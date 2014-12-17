@@ -31,7 +31,6 @@
 #ifndef _COMMUNICATION_H_
 #define _COMMUNICATION_H_
 
-#include <mpi.h>
 #include <core/core.h>
 
 
@@ -109,15 +108,7 @@ extern void ParallelScheduleNewEvent(unsigned int, simtime_t, unsigned int, void
 /* Functions invoked by other modules */
 extern void communication_init(void);
 extern void communication_fini(void);
-extern int comm_send(void *buf, size_t count, MPI_Datatype datatype, int dest, int tag, MPI_Comm comm);
-extern int comm_basic_send( void *buf, size_t count, MPI_Datatype datatype, int dest, int tag, MPI_Comm comm);
-extern int comm_recv(void *buf, size_t count, MPI_Datatype datatype, int source, int tag, MPI_Comm comm, MPI_Status *status);
-extern int comm_reduce(void *sendbuf, void *recvbuf, size_t count, MPI_Datatype datatype, MPI_Op op, int root, MPI_Comm comm);
-extern int comm_probe(int source, int tag, MPI_Comm comm, int *flag, MPI_Status *status);
-extern int comm_probe_and_block(int source, int tag, MPI_Comm comm, int *flag, MPI_Status *status);
 extern int comm_finalize(void);
-extern int comm_abort(MPI_Comm comm, int errorcode);
-extern int comm_barrier(MPI_Comm comm);
 extern void Send(msg_t *msg);
 extern simtime_t receive_time_barrier(simtime_t max);
 extern int messages_checking(void);
