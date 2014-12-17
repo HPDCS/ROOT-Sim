@@ -44,34 +44,6 @@ LT_INIT
 # Checks for C header files.
 #----------------------------------------------------------------------------
 AC_HEADER_STDC
-AC_CHECK_HEADERS([fcntl.h float.h limits.h stdint.h stdlib.h string.h sys/time.h unistd.h pthread.h getopt.h])
-
-
-
-
-#----------------------------------------------------------------------------
-# Checks for typedefs, structures, and compiler characteristics.
-#----------------------------------------------------------------------------
-AC_C_INLINE
-AC_TYPE_INT32_T
-AC_TYPE_SIZE_T
-AC_TYPE_UINT32_T
-AC_TYPE_UINT64_T
-
-
-
-
-#----------------------------------------------------------------------------
-# Checks for library functions.
-#----------------------------------------------------------------------------
-AC_FUNC_MALLOC
-AC_FUNC_REALLOC
-AC_FUNC_MEMCMP
-AC_FUNC_STRNLEN
-AC_FUNC_STRTOD
-AC_CHECK_FUNCS([bzero gettimeofday mkdir pow rint sqrt strtol log2])
-
-
 
 
 
