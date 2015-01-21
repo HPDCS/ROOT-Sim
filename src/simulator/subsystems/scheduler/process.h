@@ -70,19 +70,21 @@ typedef struct _LP_state {
 
 	/// Seed to generate pseudo-random values
 	seed_type	seed;
-	
+
+#ifndef DISABLE_ULT	
 	/// LP execution state
 	LP_context_t	context;
 	
 	/// LP execution state when blocked during the execution of an event 
 	LP_context_t	default_context;
 
+	/// Process' stack
+	void 		*stack;
+#endif /* DISABLE_ULT */
+
 	/// ID of the worker thread towards which the LP is bound
 	unsigned int	worker_thread;
 	
-	/// Process' stack
-	void 		*stack;
-
 	/// Current execution state of the LP
 	short unsigned int state;
 

@@ -121,7 +121,9 @@ static void destroy_LPs(void) {
 		rsfree(LPS[i]->bottom_halves);
 		
 		// Destroy stacks
+		#ifndef DISABLE_ULT
 		lp_free(LPS[i]->stack);
+		#endif
 	}
 
 }
@@ -167,7 +169,9 @@ static void LP_main_loop(void *args) {
 	(void)args; // this is to make the compiler stop complaining about unused args
 
 	// Save a default context
+	#ifndef DISABLE_ULT
 	context_save(&LPS[current_lp]->default_context);
+	#endif
 
 	while(true) {
 
@@ -181,7 +185,11 @@ static void LP_main_loop(void *args) {
 		LPS[current_lp]->event_total_time += delta_event_timer;
 		
 		// Give back control to the simulation kernel's user-level thread
+		#ifndef DISABLE_ULT
 		context_switch(&LPS[current_lp]->context, &kernel_context);
+		#else
+		return;
+		#endif
 	}
 }
 
@@ -206,7 +214,9 @@ void initialize_LP(unsigned int lp) {
 	unsigned int i;
 
 	// Allocate LP stack
+	#ifndef DISABLE_ULT
 	LPS[lp]->stack = get_ult_stack(lp, LP_STACK_SIZE);
+	#endif
 	
 	// Set the initial checkpointing period for this LP.
 	// If the checkpointing period is fixed, this will not change during the
@@ -243,7 +253,9 @@ void initialize_LP(unsigned int lp) {
 	#endif
 
 	// Create user thread
+	#ifndef DISABLE_ULT
 	context_create(&LPS[lp]->context, LP_main_loop, NULL, LPS[lp]->stack, LP_STACK_SIZE);
+	#endif
 }
 
 
@@ -279,7 +291,11 @@ void activate_LP(unsigned int lp, simtime_t lvt, void *evt, void *state) {
 	// Activate memory view for the current LP
 	lp_alloc_schedule();
 
+	#ifndef DISABLE_ULT
 	context_switch(&kernel_context, &LPS[lp]->context);
+	#else
+	LP_main_loop(NULL);
+	#endif
 	
 	// Deactivate memory view for the current LP if no conflict has arisen
 	if(!is_blocked_state(LPS[lp]->state)) {
@@ -415,8 +431,12 @@ void schedule(void) {
     	
     	if(LPS[lid]->state == LP_STATE_ROLLBACK) {
 		rollback(lid);
+
 		// Discard any possible execution state related to a blocked execution
+		#ifndef DISABLE_ULT
 		memcpy(&LPS[lid]->context, &LPS[lid]->default_context, sizeof(LP_context_t));
+		#endif
+
 		LPS[lid]->state = LP_STATE_READY;
 		send_outgoing_msgs(lid);
 		return;

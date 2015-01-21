@@ -24,6 +24,11 @@
 * @author Alessandro Pellegrini
 */
 
+
+#ifndef DISABLE_ULT
+
+
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -271,4 +276,9 @@ void context_create(LP_context_t *context, void (*entry_point)(void *), void *ar
 	context->jb = CreateFiber(stack_size, (LPFIBER_START_ROUTINE)entry_point, args);
 }
 
-#endif
+#endif /* OS */
+
+
+#endif /* DISABLE_ULT */
+
+

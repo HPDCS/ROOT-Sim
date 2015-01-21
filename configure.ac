@@ -198,6 +198,23 @@ AC_MSG_RESULT([no])
 
 
 
+#----------------------------------------------------------------------------
+# COMPILE TIME OPTIONS
+#
+# From here on, we enable/disable compile time switches for the simulator
+#----------------------------------------------------------------------------
+
+
+# Disable ULT. Everything is run in the same context, in the same stack
+
+AC_ARG_ENABLE([ult],
+    AS_HELP_STRING([--disable-ult], [Disable User-Level Threads for LP scheduling]))
+
+AS_IF([test "x$enable_foo" != "xno"], [
+  AC_DEFINE([DISABLE_ULT])
+])
+
+
 
 #----------------------------------------------------------------------------
 # Check scripts sizes.

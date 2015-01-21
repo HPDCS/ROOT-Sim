@@ -30,6 +30,10 @@
 #define __ULT_H
 
 
+#ifndef DISABLE_ULT
+
+
+
 #if defined(OS_LINUX)
 
 #include <setjmp.h>
@@ -99,7 +103,7 @@ typedef struct __execution_context_t kernel_context_t;
 #define get_ult_stack() ()
 
 
-#endif
+#endif /* OS */
 
 
 // These are the APIs that, independently of the underlying arch, must be exposed by this module
@@ -109,3 +113,7 @@ extern void context_create(LP_context_t *context, void (*entry_point)(void *), v
 extern __thread kernel_context_t kernel_context;
 
 #endif /* #define __ULT_H */
+
+#endif /* DISABLE_ULT */
+
+
