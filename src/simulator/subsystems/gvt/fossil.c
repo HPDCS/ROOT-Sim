@@ -54,9 +54,6 @@ void fossil_collection(unsigned int lid, simtime_t time_barrier) {
 	state_t *state;
 
 
-
-//	return;
-	
 	// TODO: controllare il boundary esatto con gli antimessaggi immessi nel sistema!
 	time_barrier = time_barrier;
 	

@@ -26,8 +26,6 @@ librootsim_a_SOURCES =	main.c \
 			subsystems/serial/serial.c \
 			subsystems/statistics/statistics.c \
 			subsystems/gvt/gvt.c \
-			subsystems/gvt/gvt-nostro.c \
-			subsystems/gvt/gvt-fujimoto.c \
 			subsystems/gvt/fossil.c \
 			subsystems/gvt/ccgs.c \
 			subsystems/communication/window.c \

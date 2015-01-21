@@ -104,10 +104,8 @@ am_librootsim_a_OBJECTS = main.$(OBJEXT) lib/numerical.$(OBJEXT) \
 	subsystems/scheduler/control.$(OBJEXT) \
 	subsystems/serial/serial.$(OBJEXT) \
 	subsystems/statistics/statistics.$(OBJEXT) \
-	subsystems/gvt/gvt.$(OBJEXT) \
-	subsystems/gvt/gvt-nostro.$(OBJEXT) \
-	subsystems/gvt/gvt-fujimoto.$(OBJEXT) \
-	subsystems/gvt/fossil.$(OBJEXT) subsystems/gvt/ccgs.$(OBJEXT) \
+	subsystems/gvt/gvt.$(OBJEXT) subsystems/gvt/fossil.$(OBJEXT) \
+	subsystems/gvt/ccgs.$(OBJEXT) \
 	subsystems/communication/window.$(OBJEXT) \
 	subsystems/communication/communication.$(OBJEXT)
 librootsim_a_OBJECTS = $(am_librootsim_a_OBJECTS)
@@ -291,8 +289,6 @@ librootsim_a_SOURCES = main.c \
 			subsystems/serial/serial.c \
 			subsystems/statistics/statistics.c \
 			subsystems/gvt/gvt.c \
-			subsystems/gvt/gvt-nostro.c \
-			subsystems/gvt/gvt-fujimoto.c \
 			subsystems/gvt/fossil.c \
 			subsystems/gvt/ccgs.c \
 			subsystems/communication/window.c \
@@ -487,10 +483,6 @@ subsystems/gvt/$(DEPDIR)/$(am__dirstamp):
 	@: > subsystems/gvt/$(DEPDIR)/$(am__dirstamp)
 subsystems/gvt/gvt.$(OBJEXT): subsystems/gvt/$(am__dirstamp) \
 	subsystems/gvt/$(DEPDIR)/$(am__dirstamp)
-subsystems/gvt/gvt-nostro.$(OBJEXT): subsystems/gvt/$(am__dirstamp) \
-	subsystems/gvt/$(DEPDIR)/$(am__dirstamp)
-subsystems/gvt/gvt-fujimoto.$(OBJEXT): subsystems/gvt/$(am__dirstamp) \
-	subsystems/gvt/$(DEPDIR)/$(am__dirstamp)
 subsystems/gvt/fossil.$(OBJEXT): subsystems/gvt/$(am__dirstamp) \
 	subsystems/gvt/$(DEPDIR)/$(am__dirstamp)
 subsystems/gvt/ccgs.$(OBJEXT): subsystems/gvt/$(am__dirstamp) \
@@ -542,8 +534,6 @@ mostlyclean-compile:
 	-rm -f subsystems/datatypes/list.$(OBJEXT)
 	-rm -f subsystems/gvt/ccgs.$(OBJEXT)
 	-rm -f subsystems/gvt/fossil.$(OBJEXT)
-	-rm -f subsystems/gvt/gvt-fujimoto.$(OBJEXT)
-	-rm -f subsystems/gvt/gvt-nostro.$(OBJEXT)
 	-rm -f subsystems/gvt/gvt.$(OBJEXT)
 	-rm -f subsystems/lib-wrapper/wrapper.$(OBJEXT)
 	-rm -f subsystems/mm/checkpoints.$(OBJEXT)
@@ -577,8 +567,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@subsystems/datatypes/$(DEPDIR)/list.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@subsystems/gvt/$(DEPDIR)/ccgs.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@subsystems/gvt/$(DEPDIR)/fossil.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@subsystems/gvt/$(DEPDIR)/gvt-fujimoto.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@subsystems/gvt/$(DEPDIR)/gvt-nostro.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@subsystems/gvt/$(DEPDIR)/gvt.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@subsystems/lib-wrapper/$(DEPDIR)/wrapper.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@subsystems/mm/$(DEPDIR)/checkpoints.Po@am__quote@
