@@ -25,7 +25,7 @@
 */
 
 
-#ifndef DISABLE_ULT
+#ifdef ENABLE_ULT
 
 
 
@@ -279,6 +279,6 @@ void context_create(LP_context_t *context, void (*entry_point)(void *), void *ar
 #endif /* OS */
 
 
-#endif /* DISABLE_ULT */
+#endif /* ENABLE_ULT */
 
 

@@ -11605,9 +11605,9 @@ if test "${enable_ult+set}" = set; then :
 fi
 
 
-if test "x$enable_foo" != "xno"; then :
+if test "x$enable_ult" != "xno"; then :
 
-  $as_echo "#define DISABLE_ULT 1" >>confdefs.h
+  $as_echo "#define ENABLE_ULT 1" >>confdefs.h
 
 
 fi

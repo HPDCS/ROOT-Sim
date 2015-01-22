@@ -71,7 +71,7 @@ typedef struct _LP_state {
 	/// Seed to generate pseudo-random values
 	seed_type	seed;
 
-#ifndef DISABLE_ULT	
+#ifdef ENABLE_ULT	
 	/// LP execution state
 	LP_context_t	context;
 	
@@ -80,7 +80,7 @@ typedef struct _LP_state {
 
 	/// Process' stack
 	void 		*stack;
-#endif /* DISABLE_ULT */
+#endif /* ENABLE_ULT */
 
 	/// ID of the worker thread towards which the LP is bound
 	unsigned int	worker_thread;

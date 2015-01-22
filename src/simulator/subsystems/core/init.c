@@ -394,10 +394,7 @@ void SystemInit(int argc, char **argv) {
 			"LPs Distribution Mode across Kernels: %d\n"
 			"Check Termination Mode: %d\n"
 			"Blocking GVT: %d\n"
-			"Set Seed: %ld\n"
-			"****************************\n"
-			"*    Simulation Started    *\n"
-			"****************************\n",
+			"Set Seed: %ld\n",
 			get_cores(),
 			n_cores,
 			n_prc_tot,
@@ -439,6 +436,9 @@ void SystemInit(int argc, char **argv) {
 	gvt_init();
 	numerical_init();
 
+	printf("Initializing LPs... ");
+	fflush(stdout);
+
 	// Initialize the LP control block for each locally hosted LP
 	// and schedule the special INIT event
 	for (t = 0; t < n_prc; t++) {
@@ -473,6 +473,13 @@ void SystemInit(int argc, char **argv) {
 		
 		Send(&init_event);
 	}
+
+	printf("done\n");
+
+
+	printf("****************************\n"
+               "*    Simulation Started    *\n"
+               "****************************\n");
 }	    
 
 

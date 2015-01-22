@@ -30,7 +30,7 @@
 #define __ULT_H
 
 
-#ifndef DISABLE_ULT
+#ifdef ENABLE_ULT
 
 
 
@@ -114,6 +114,6 @@ extern __thread kernel_context_t kernel_context;
 
 #endif /* #define __ULT_H */
 
-#endif /* DISABLE_ULT */
+#endif /* ENABLE_ULT */
 
 

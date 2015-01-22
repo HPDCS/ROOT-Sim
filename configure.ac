@@ -210,8 +210,8 @@ AC_MSG_RESULT([no])
 AC_ARG_ENABLE([ult],
     AS_HELP_STRING([--disable-ult], [Disable User-Level Threads for LP scheduling]))
 
-AS_IF([test "x$enable_foo" != "xno"], [
-  AC_DEFINE([DISABLE_ULT])
+AS_IF([test "x$enable_ult" != "xno"], [
+  AC_DEFINE([ENABLE_ULT])
 ])
 
 
