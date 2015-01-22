@@ -254,7 +254,7 @@ simtime_t gvt_operations(void) {
 		if(my_phase == phase_aware) {
 			new_gvt = INFTY;
 			
-			for(i = 0; i < n_prc_per_thread; i++) {
+			for(i = 0; i < n_cores; i++) {
 				new_gvt = min(local_min[i], new_gvt);
 			}
 			
