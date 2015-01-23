@@ -240,6 +240,5 @@ AC_CONFIG_FILES([Makefile \
 		man/Makefile \
 		scripts/Makefile \
 		src/Makefile \
-		src/simulator/Makefile \
 	])
 AC_OUTPUT

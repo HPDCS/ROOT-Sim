@@ -11640,7 +11640,7 @@ CFLAGS="$FINAL_CFLAGS"
 
 # Generate Makefiles for all these subfolders
 #AC_OUTPUT
-ac_config_files="$ac_config_files Makefile man/Makefile scripts/Makefile src/Makefile src/simulator/Makefile"
+ac_config_files="$ac_config_files Makefile man/Makefile scripts/Makefile src/Makefile"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -12641,7 +12641,6 @@ do
     "man/Makefile") CONFIG_FILES="$CONFIG_FILES man/Makefile" ;;
     "scripts/Makefile") CONFIG_FILES="$CONFIG_FILES scripts/Makefile" ;;
     "src/Makefile") CONFIG_FILES="$CONFIG_FILES src/Makefile" ;;
-    "src/simulator/Makefile") CONFIG_FILES="$CONFIG_FILES src/simulator/Makefile" ;;
 
   *) as_fn_error $? "invalid argument: \`$ac_config_target'" "$LINENO" 5 ;;
   esac

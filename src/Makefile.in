@@ -14,6 +14,8 @@
 # PARTICULAR PURPOSE.
 
 @SET_MAKE@
+
+
 VPATH = @srcdir@
 pkgdatadir = $(datadir)/@PACKAGE@
 pkgincludedir = $(includedir)/@PACKAGE@
@@ -34,7 +36,8 @@ POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
 subdir = src
-DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
+DIST_COMMON = $(librootsim_include_HEADERS) $(srcdir)/Makefile.am \
+	$(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/libtool.m4 \
 	$(top_srcdir)/m4/ltoptions.m4 $(top_srcdir)/m4/ltsugar.m4 \
@@ -45,55 +48,96 @@ am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 mkinstalldirs = $(install_sh) -d
 CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
-AM_V_GEN = $(am__v_GEN_$(V))
-am__v_GEN_ = $(am__v_GEN_$(AM_DEFAULT_VERBOSITY))
-am__v_GEN_0 = @echo "  GEN   " $@;
+am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
+am__vpath_adj = case $$p in \
+    $(srcdir)/*) f=`echo "$$p" | sed "s|^$$srcdirstrip/||"`;; \
+    *) f=$$p;; \
+  esac;
+am__strip_dir = f=`echo $$p | sed -e 's|^.*/||'`;
+am__install_max = 40
+am__nobase_strip_setup = \
+  srcdirstrip=`echo "$(srcdir)" | sed 's/[].[^$$\\*|]/\\\\&/g'`
+am__nobase_strip = \
+  for p in $$list; do echo "$$p"; done | sed -e "s|$$srcdirstrip/||"
+am__nobase_list = $(am__nobase_strip_setup); \
+  for p in $$list; do echo "$$p $$p"; done | \
+  sed "s| $$srcdirstrip/| |;"' / .*\//!s/ .*/ ./; s,\( .*\)/[^/]*$$,\1,' | \
+  $(AWK) 'BEGIN { files["."] = "" } { files[$$2] = files[$$2] " " $$1; \
+    if (++n[$$2] == $(am__install_max)) \
+      { print $$2, files[$$2]; n[$$2] = 0; files[$$2] = "" } } \
+    END { for (dir in files) print dir, files[dir] }'
+am__base_list = \
+  sed '$$!N;$$!N;$$!N;$$!N;$$!N;$$!N;$$!N;s/\n/ /g' | \
+  sed '$$!N;$$!N;$$!N;$$!N;s/\n/ /g'
+am__installdirs = "$(DESTDIR)$(libdir)" \
+	"$(DESTDIR)$(librootsim_includedir)"
+LIBRARIES = $(lib_LIBRARIES)
+ARFLAGS = cru
+AM_V_AR = $(am__v_AR_$(V))
+am__v_AR_ = $(am__v_AR_$(AM_DEFAULT_VERBOSITY))
+am__v_AR_0 = @echo "  AR    " $@;
 AM_V_at = $(am__v_at_$(V))
 am__v_at_ = $(am__v_at_$(AM_DEFAULT_VERBOSITY))
 am__v_at_0 = @
-SOURCES =
-DIST_SOURCES =
-RECURSIVE_TARGETS = all-recursive check-recursive dvi-recursive \
-	html-recursive info-recursive install-data-recursive \
-	install-dvi-recursive install-exec-recursive \
-	install-html-recursive install-info-recursive \
-	install-pdf-recursive install-ps-recursive install-recursive \
-	installcheck-recursive installdirs-recursive pdf-recursive \
-	ps-recursive uninstall-recursive
-RECURSIVE_CLEAN_TARGETS = mostlyclean-recursive clean-recursive	\
-  distclean-recursive maintainer-clean-recursive
-AM_RECURSIVE_TARGETS = $(RECURSIVE_TARGETS:-recursive=) \
-	$(RECURSIVE_CLEAN_TARGETS:-recursive=) tags TAGS ctags CTAGS \
-	distdir
+libdymelor_a_AR = $(AR) $(ARFLAGS)
+libdymelor_a_LIBADD =
+am__dirstamp = $(am__leading_dot)dirstamp
+am_libdymelor_a_OBJECTS = mm/checkpoints.$(OBJEXT) \
+	mm/dymelor.$(OBJEXT) mm/lp-alloc.$(OBJEXT) mm/malloc.$(OBJEXT)
+libdymelor_a_OBJECTS = $(am_libdymelor_a_OBJECTS)
+librootsim_a_AR = $(AR) $(ARFLAGS)
+librootsim_a_LIBADD =
+am_librootsim_a_OBJECTS = main.$(OBJEXT) lib/numerical.$(OBJEXT) \
+	lib/parseparam.$(OBJEXT) lib/topology.$(OBJEXT) \
+	arch/thread.$(OBJEXT) arch/ult.$(OBJEXT) arch/x86.$(OBJEXT) \
+	datatypes/array.$(OBJEXT) datatypes/list.$(OBJEXT) \
+	datatypes/calqueue.$(OBJEXT) mm/state.$(OBJEXT) \
+	queues/queues.$(OBJEXT) core/init.$(OBJEXT) \
+	core/core.$(OBJEXT) scheduler/stf.$(OBJEXT) \
+	scheduler/scheduler.$(OBJEXT) scheduler/control.$(OBJEXT) \
+	serial/serial.$(OBJEXT) statistics/statistics.$(OBJEXT) \
+	gvt/gvt.$(OBJEXT) gvt/fossil.$(OBJEXT) gvt/ccgs.$(OBJEXT) \
+	communication/window.$(OBJEXT) \
+	communication/communication.$(OBJEXT)
+librootsim_a_OBJECTS = $(am_librootsim_a_OBJECTS)
+libwrapperl_a_AR = $(AR) $(ARFLAGS)
+libwrapperl_a_LIBADD =
+am_libwrapperl_a_OBJECTS = lib-wrapper/wrapper.$(OBJEXT)
+libwrapperl_a_OBJECTS = $(am_libwrapperl_a_OBJECTS)
+DEFAULT_INCLUDES = -I.@am__isrc@
+depcomp = $(SHELL) $(top_srcdir)/depcomp
+am__depfiles_maybe = depfiles
+am__mv = mv -f
+COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
+	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
+AM_V_lt = $(am__v_lt_$(V))
+am__v_lt_ = $(am__v_lt_$(AM_DEFAULT_VERBOSITY))
+am__v_lt_0 = --silent
+LTCOMPILE = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
+	$(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) \
+	$(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) \
+	$(AM_CFLAGS) $(CFLAGS)
+AM_V_CC = $(am__v_CC_$(V))
+am__v_CC_ = $(am__v_CC_$(AM_DEFAULT_VERBOSITY))
+am__v_CC_0 = @echo "  CC    " $@;
+CCLD = $(CC)
+LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
+	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
+	$(AM_LDFLAGS) $(LDFLAGS) -o $@
+AM_V_CCLD = $(am__v_CCLD_$(V))
+am__v_CCLD_ = $(am__v_CCLD_$(AM_DEFAULT_VERBOSITY))
+am__v_CCLD_0 = @echo "  CCLD  " $@;
+AM_V_GEN = $(am__v_GEN_$(V))
+am__v_GEN_ = $(am__v_GEN_$(AM_DEFAULT_VERBOSITY))
+am__v_GEN_0 = @echo "  GEN   " $@;
+SOURCES = $(libdymelor_a_SOURCES) $(librootsim_a_SOURCES) \
+	$(libwrapperl_a_SOURCES)
+DIST_SOURCES = $(libdymelor_a_SOURCES) $(librootsim_a_SOURCES) \
+	$(libwrapperl_a_SOURCES)
+HEADERS = $(librootsim_include_HEADERS)
 ETAGS = etags
 CTAGS = ctags
-DIST_SUBDIRS = $(SUBDIRS)
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
-am__relativize = \
-  dir0=`pwd`; \
-  sed_first='s,^\([^/]*\)/.*$$,\1,'; \
-  sed_rest='s,^[^/]*/*,,'; \
-  sed_last='s,^.*/\([^/]*\)$$,\1,'; \
-  sed_butlast='s,/*[^/]*$$,,'; \
-  while test -n "$$dir1"; do \
-    first=`echo "$$dir1" | sed -e "$$sed_first"`; \
-    if test "$$first" != "."; then \
-      if test "$$first" = ".."; then \
-        dir2=`echo "$$dir0" | sed -e "$$sed_last"`/"$$dir2"; \
-        dir0=`echo "$$dir0" | sed -e "$$sed_butlast"`; \
-      else \
-        first2=`echo "$$dir2" | sed -e "$$sed_first"`; \
-        if test "$$first2" = "$$first"; then \
-          dir2=`echo "$$dir2" | sed -e "$$sed_rest"`; \
-        else \
-          dir2="../$$dir2"; \
-        fi; \
-        dir0="$$dir0"/"$$first"; \
-      fi; \
-    fi; \
-    dir1=`echo "$$dir1" | sed -e "$$sed_rest"`; \
-  done; \
-  reldir="$$dir2"
 ACLOCAL = @ACLOCAL@
 AMTAR = @AMTAR@
 AM_DEFAULT_VERBOSITY = @AM_DEFAULT_VERBOSITY@
@@ -211,13 +255,47 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 ACLOCAL_AMFLAGS = -I m4
-AM_CFLAGS = -I$(top_srcdir)/src/simulator -I$(top_srcdir)/src/simulator/subsystems
+AM_CFLAGS = -I$(top_srcdir)/src 
 AM_MAKEFLAGS = -s
 AUTOMAKE_OPTIONS = subdir-objects
-SUBDIRS = simulator 
-all: all-recursive
+librootsim_include_HEADERS = ROOT-Sim.h
+librootsim_includedir = $(includedir)
+lib_LIBRARIES = librootsim.a libwrapperl.a libdymelor.a
+librootsim_a_SOURCES = main.c \
+			lib/numerical.c \
+			lib/parseparam.c \
+			lib/topology.c \
+			arch/thread.c \
+			arch/ult.c \
+			arch/x86.c \
+			datatypes/array.c \
+			datatypes/list.c \
+			datatypes/calqueue.c \
+			mm/state.c \
+			queues/queues.c \
+			core/init.c \
+			core/core.c \
+			scheduler/stf.c \
+			scheduler/scheduler.c \
+			scheduler/control.c \
+			serial/serial.c \
+			statistics/statistics.c \
+			gvt/gvt.c \
+			gvt/fossil.c \
+			gvt/ccgs.c \
+			communication/window.c \
+			communication/communication.c
+
+libwrapperl_a_SOURCES = lib-wrapper/wrapper.c
+libdymelor_a_SOURCES = mm/checkpoints.c \
+			mm/dymelor.c \
+			mm/lp-alloc.c \
+			mm/malloc.c
+
+all: all-am
 
 .SUFFIXES:
+.SUFFIXES: .c .lo .o .obj
 $(srcdir)/Makefile.in:  $(srcdir)/Makefile.am  $(am__configure_deps)
 	@for dep in $?; do \
 	  case '$(am__configure_deps)' in \
@@ -248,82 +326,289 @@ $(top_srcdir)/configure:  $(am__configure_deps)
 $(ACLOCAL_M4):  $(am__aclocal_m4_deps)
 	cd $(top_builddir) && $(MAKE) $(AM_MAKEFLAGS) am--refresh
 $(am__aclocal_m4_deps):
+install-libLIBRARIES: $(lib_LIBRARIES)
+	@$(NORMAL_INSTALL)
+	test -z "$(libdir)" || $(MKDIR_P) "$(DESTDIR)$(libdir)"
+	@list='$(lib_LIBRARIES)'; test -n "$(libdir)" || list=; \
+	list2=; for p in $$list; do \
+	  if test -f $$p; then \
+	    list2="$$list2 $$p"; \
+	  else :; fi; \
+	done; \
+	test -z "$$list2" || { \
+	  echo " $(INSTALL_DATA) $$list2 '$(DESTDIR)$(libdir)'"; \
+	  $(INSTALL_DATA) $$list2 "$(DESTDIR)$(libdir)" || exit $$?; }
+	@$(POST_INSTALL)
+	@list='$(lib_LIBRARIES)'; test -n "$(libdir)" || list=; \
+	for p in $$list; do \
+	  if test -f $$p; then \
+	    $(am__strip_dir) \
+	    echo " ( cd '$(DESTDIR)$(libdir)' && $(RANLIB) $$f )"; \
+	    ( cd "$(DESTDIR)$(libdir)" && $(RANLIB) $$f ) || exit $$?; \
+	  else :; fi; \
+	done
+
+uninstall-libLIBRARIES:
+	@$(NORMAL_UNINSTALL)
+	@list='$(lib_LIBRARIES)'; test -n "$(libdir)" || list=; \
+	files=`for p in $$list; do echo $$p; done | sed -e 's|^.*/||'`; \
+	test -n "$$files" || exit 0; \
+	echo " ( cd '$(DESTDIR)$(libdir)' && rm -f "$$files" )"; \
+	cd "$(DESTDIR)$(libdir)" && rm -f $$files
+
+clean-libLIBRARIES:
+	-test -z "$(lib_LIBRARIES)" || rm -f $(lib_LIBRARIES)
+mm/$(am__dirstamp):
+	@$(MKDIR_P) mm
+	@: > mm/$(am__dirstamp)
+mm/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) mm/$(DEPDIR)
+	@: > mm/$(DEPDIR)/$(am__dirstamp)
+mm/checkpoints.$(OBJEXT): mm/$(am__dirstamp) \
+	mm/$(DEPDIR)/$(am__dirstamp)
+mm/dymelor.$(OBJEXT): mm/$(am__dirstamp) mm/$(DEPDIR)/$(am__dirstamp)
+mm/lp-alloc.$(OBJEXT): mm/$(am__dirstamp) mm/$(DEPDIR)/$(am__dirstamp)
+mm/malloc.$(OBJEXT): mm/$(am__dirstamp) mm/$(DEPDIR)/$(am__dirstamp)
+libdymelor.a: $(libdymelor_a_OBJECTS) $(libdymelor_a_DEPENDENCIES) 
+	$(AM_V_at)-rm -f libdymelor.a
+	$(AM_V_AR)$(libdymelor_a_AR) libdymelor.a $(libdymelor_a_OBJECTS) $(libdymelor_a_LIBADD)
+	$(AM_V_at)$(RANLIB) libdymelor.a
+lib/$(am__dirstamp):
+	@$(MKDIR_P) lib
+	@: > lib/$(am__dirstamp)
+lib/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) lib/$(DEPDIR)
+	@: > lib/$(DEPDIR)/$(am__dirstamp)
+lib/numerical.$(OBJEXT): lib/$(am__dirstamp) \
+	lib/$(DEPDIR)/$(am__dirstamp)
+lib/parseparam.$(OBJEXT): lib/$(am__dirstamp) \
+	lib/$(DEPDIR)/$(am__dirstamp)
+lib/topology.$(OBJEXT): lib/$(am__dirstamp) \
+	lib/$(DEPDIR)/$(am__dirstamp)
+arch/$(am__dirstamp):
+	@$(MKDIR_P) arch
+	@: > arch/$(am__dirstamp)
+arch/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) arch/$(DEPDIR)
+	@: > arch/$(DEPDIR)/$(am__dirstamp)
+arch/thread.$(OBJEXT): arch/$(am__dirstamp) \
+	arch/$(DEPDIR)/$(am__dirstamp)
+arch/ult.$(OBJEXT): arch/$(am__dirstamp) \
+	arch/$(DEPDIR)/$(am__dirstamp)
+arch/x86.$(OBJEXT): arch/$(am__dirstamp) \
+	arch/$(DEPDIR)/$(am__dirstamp)
+datatypes/$(am__dirstamp):
+	@$(MKDIR_P) datatypes
+	@: > datatypes/$(am__dirstamp)
+datatypes/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) datatypes/$(DEPDIR)
+	@: > datatypes/$(DEPDIR)/$(am__dirstamp)
+datatypes/array.$(OBJEXT): datatypes/$(am__dirstamp) \
+	datatypes/$(DEPDIR)/$(am__dirstamp)
+datatypes/list.$(OBJEXT): datatypes/$(am__dirstamp) \
+	datatypes/$(DEPDIR)/$(am__dirstamp)
+datatypes/calqueue.$(OBJEXT): datatypes/$(am__dirstamp) \
+	datatypes/$(DEPDIR)/$(am__dirstamp)
+mm/state.$(OBJEXT): mm/$(am__dirstamp) mm/$(DEPDIR)/$(am__dirstamp)
+queues/$(am__dirstamp):
+	@$(MKDIR_P) queues
+	@: > queues/$(am__dirstamp)
+queues/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) queues/$(DEPDIR)
+	@: > queues/$(DEPDIR)/$(am__dirstamp)
+queues/queues.$(OBJEXT): queues/$(am__dirstamp) \
+	queues/$(DEPDIR)/$(am__dirstamp)
+core/$(am__dirstamp):
+	@$(MKDIR_P) core
+	@: > core/$(am__dirstamp)
+core/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) core/$(DEPDIR)
+	@: > core/$(DEPDIR)/$(am__dirstamp)
+core/init.$(OBJEXT): core/$(am__dirstamp) \
+	core/$(DEPDIR)/$(am__dirstamp)
+core/core.$(OBJEXT): core/$(am__dirstamp) \
+	core/$(DEPDIR)/$(am__dirstamp)
+scheduler/$(am__dirstamp):
+	@$(MKDIR_P) scheduler
+	@: > scheduler/$(am__dirstamp)
+scheduler/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) scheduler/$(DEPDIR)
+	@: > scheduler/$(DEPDIR)/$(am__dirstamp)
+scheduler/stf.$(OBJEXT): scheduler/$(am__dirstamp) \
+	scheduler/$(DEPDIR)/$(am__dirstamp)
+scheduler/scheduler.$(OBJEXT): scheduler/$(am__dirstamp) \
+	scheduler/$(DEPDIR)/$(am__dirstamp)
+scheduler/control.$(OBJEXT): scheduler/$(am__dirstamp) \
+	scheduler/$(DEPDIR)/$(am__dirstamp)
+serial/$(am__dirstamp):
+	@$(MKDIR_P) serial
+	@: > serial/$(am__dirstamp)
+serial/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) serial/$(DEPDIR)
+	@: > serial/$(DEPDIR)/$(am__dirstamp)
+serial/serial.$(OBJEXT): serial/$(am__dirstamp) \
+	serial/$(DEPDIR)/$(am__dirstamp)
+statistics/$(am__dirstamp):
+	@$(MKDIR_P) statistics
+	@: > statistics/$(am__dirstamp)
+statistics/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) statistics/$(DEPDIR)
+	@: > statistics/$(DEPDIR)/$(am__dirstamp)
+statistics/statistics.$(OBJEXT): statistics/$(am__dirstamp) \
+	statistics/$(DEPDIR)/$(am__dirstamp)
+gvt/$(am__dirstamp):
+	@$(MKDIR_P) gvt
+	@: > gvt/$(am__dirstamp)
+gvt/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) gvt/$(DEPDIR)
+	@: > gvt/$(DEPDIR)/$(am__dirstamp)
+gvt/gvt.$(OBJEXT): gvt/$(am__dirstamp) gvt/$(DEPDIR)/$(am__dirstamp)
+gvt/fossil.$(OBJEXT): gvt/$(am__dirstamp) \
+	gvt/$(DEPDIR)/$(am__dirstamp)
+gvt/ccgs.$(OBJEXT): gvt/$(am__dirstamp) gvt/$(DEPDIR)/$(am__dirstamp)
+communication/$(am__dirstamp):
+	@$(MKDIR_P) communication
+	@: > communication/$(am__dirstamp)
+communication/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) communication/$(DEPDIR)
+	@: > communication/$(DEPDIR)/$(am__dirstamp)
+communication/window.$(OBJEXT): communication/$(am__dirstamp) \
+	communication/$(DEPDIR)/$(am__dirstamp)
+communication/communication.$(OBJEXT): communication/$(am__dirstamp) \
+	communication/$(DEPDIR)/$(am__dirstamp)
+librootsim.a: $(librootsim_a_OBJECTS) $(librootsim_a_DEPENDENCIES) 
+	$(AM_V_at)-rm -f librootsim.a
+	$(AM_V_AR)$(librootsim_a_AR) librootsim.a $(librootsim_a_OBJECTS) $(librootsim_a_LIBADD)
+	$(AM_V_at)$(RANLIB) librootsim.a
+lib-wrapper/$(am__dirstamp):
+	@$(MKDIR_P) lib-wrapper
+	@: > lib-wrapper/$(am__dirstamp)
+lib-wrapper/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) lib-wrapper/$(DEPDIR)
+	@: > lib-wrapper/$(DEPDIR)/$(am__dirstamp)
+lib-wrapper/wrapper.$(OBJEXT): lib-wrapper/$(am__dirstamp) \
+	lib-wrapper/$(DEPDIR)/$(am__dirstamp)
+libwrapperl.a: $(libwrapperl_a_OBJECTS) $(libwrapperl_a_DEPENDENCIES) 
+	$(AM_V_at)-rm -f libwrapperl.a
+	$(AM_V_AR)$(libwrapperl_a_AR) libwrapperl.a $(libwrapperl_a_OBJECTS) $(libwrapperl_a_LIBADD)
+	$(AM_V_at)$(RANLIB) libwrapperl.a
+
+mostlyclean-compile:
+	-rm -f *.$(OBJEXT)
+	-rm -f arch/thread.$(OBJEXT)
+	-rm -f arch/ult.$(OBJEXT)
+	-rm -f arch/x86.$(OBJEXT)
+	-rm -f communication/communication.$(OBJEXT)
+	-rm -f communication/window.$(OBJEXT)
+	-rm -f core/core.$(OBJEXT)
+	-rm -f core/init.$(OBJEXT)
+	-rm -f datatypes/array.$(OBJEXT)
+	-rm -f datatypes/calqueue.$(OBJEXT)
+	-rm -f datatypes/list.$(OBJEXT)
+	-rm -f gvt/ccgs.$(OBJEXT)
+	-rm -f gvt/fossil.$(OBJEXT)
+	-rm -f gvt/gvt.$(OBJEXT)
+	-rm -f lib-wrapper/wrapper.$(OBJEXT)
+	-rm -f lib/numerical.$(OBJEXT)
+	-rm -f lib/parseparam.$(OBJEXT)
+	-rm -f lib/topology.$(OBJEXT)
+	-rm -f mm/checkpoints.$(OBJEXT)
+	-rm -f mm/dymelor.$(OBJEXT)
+	-rm -f mm/lp-alloc.$(OBJEXT)
+	-rm -f mm/malloc.$(OBJEXT)
+	-rm -f mm/state.$(OBJEXT)
+	-rm -f queues/queues.$(OBJEXT)
+	-rm -f scheduler/control.$(OBJEXT)
+	-rm -f scheduler/scheduler.$(OBJEXT)
+	-rm -f scheduler/stf.$(OBJEXT)
+	-rm -f serial/serial.$(OBJEXT)
+	-rm -f statistics/statistics.$(OBJEXT)
+
+distclean-compile:
+	-rm -f *.tab.c
+
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/main.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@arch/$(DEPDIR)/thread.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@arch/$(DEPDIR)/ult.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@arch/$(DEPDIR)/x86.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@communication/$(DEPDIR)/communication.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@communication/$(DEPDIR)/window.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@core/$(DEPDIR)/core.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@core/$(DEPDIR)/init.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@datatypes/$(DEPDIR)/array.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@datatypes/$(DEPDIR)/calqueue.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@datatypes/$(DEPDIR)/list.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@gvt/$(DEPDIR)/ccgs.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@gvt/$(DEPDIR)/fossil.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@gvt/$(DEPDIR)/gvt.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@lib-wrapper/$(DEPDIR)/wrapper.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@lib/$(DEPDIR)/numerical.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@lib/$(DEPDIR)/parseparam.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@lib/$(DEPDIR)/topology.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@mm/$(DEPDIR)/checkpoints.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@mm/$(DEPDIR)/dymelor.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@mm/$(DEPDIR)/lp-alloc.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@mm/$(DEPDIR)/malloc.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@mm/$(DEPDIR)/state.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@queues/$(DEPDIR)/queues.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@scheduler/$(DEPDIR)/control.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@scheduler/$(DEPDIR)/scheduler.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@scheduler/$(DEPDIR)/stf.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@serial/$(DEPDIR)/serial.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@statistics/$(DEPDIR)/statistics.Po@am__quote@
+
+.c.o:
+@am__fastdepCC_TRUE@	$(AM_V_CC)depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.o$$||'`;\
+@am__fastdepCC_TRUE@	$(COMPILE) -MT $@ -MD -MP -MF $$depbase.Tpo -c -o $@ $< &&\
+@am__fastdepCC_TRUE@	$(am__mv) $$depbase.Tpo $$depbase.Po
+@am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(COMPILE) -c -o $@ $<
+
+.c.obj:
+@am__fastdepCC_TRUE@	$(AM_V_CC)depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.obj$$||'`;\
+@am__fastdepCC_TRUE@	$(COMPILE) -MT $@ -MD -MP -MF $$depbase.Tpo -c -o $@ `$(CYGPATH_W) '$<'` &&\
+@am__fastdepCC_TRUE@	$(am__mv) $$depbase.Tpo $$depbase.Po
+@am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(COMPILE) -c -o $@ `$(CYGPATH_W) '$<'`
+
+.c.lo:
+@am__fastdepCC_TRUE@	$(AM_V_CC)depbase=`echo $@ | sed 's|[^/]*$$|$(DEPDIR)/&|;s|\.lo$$||'`;\
+@am__fastdepCC_TRUE@	$(LTCOMPILE) -MT $@ -MD -MP -MF $$depbase.Tpo -c -o $@ $< &&\
+@am__fastdepCC_TRUE@	$(am__mv) $$depbase.Tpo $$depbase.Plo
+@am__fastdepCC_FALSE@	$(AM_V_CC) @AM_BACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='$<' object='$@' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(LTCOMPILE) -c -o $@ $<
 
 mostlyclean-libtool:
 	-rm -f *.lo
 
 clean-libtool:
 	-rm -rf .libs _libs
-
-# This directory's subdirectories are mostly independent; you can cd
-# into them and run `make' without going through this Makefile.
-# To change the values of `make' variables: instead of editing Makefiles,
-# (1) if the variable is set in `config.status', edit `config.status'
-#     (which will cause the Makefiles to be regenerated when you run `make');
-# (2) otherwise, pass the desired values on the `make' command line.
-$(RECURSIVE_TARGETS):
-	@fail= failcom='exit 1'; \
-	for f in x $$MAKEFLAGS; do \
-	  case $$f in \
-	    *=* | --[!k]*);; \
-	    *k*) failcom='fail=yes';; \
-	  esac; \
-	done; \
-	dot_seen=no; \
-	target=`echo $@ | sed s/-recursive//`; \
-	list='$(SUBDIRS)'; for subdir in $$list; do \
-	  echo "Making $$target in $$subdir"; \
-	  if test "$$subdir" = "."; then \
-	    dot_seen=yes; \
-	    local_target="$$target-am"; \
-	  else \
-	    local_target="$$target"; \
-	  fi; \
-	  ($(am__cd) $$subdir && $(MAKE) $(AM_MAKEFLAGS) $$local_target) \
-	  || eval $$failcom; \
-	done; \
-	if test "$$dot_seen" = "no"; then \
-	  $(MAKE) $(AM_MAKEFLAGS) "$$target-am" || exit 1; \
-	fi; test -z "$$fail"
-
-$(RECURSIVE_CLEAN_TARGETS):
-	@fail= failcom='exit 1'; \
-	for f in x $$MAKEFLAGS; do \
-	  case $$f in \
-	    *=* | --[!k]*);; \
-	    *k*) failcom='fail=yes';; \
-	  esac; \
-	done; \
-	dot_seen=no; \
-	case "$@" in \
-	  distclean-* | maintainer-clean-*) list='$(DIST_SUBDIRS)' ;; \
-	  *) list='$(SUBDIRS)' ;; \
-	esac; \
-	rev=''; for subdir in $$list; do \
-	  if test "$$subdir" = "."; then :; else \
-	    rev="$$subdir $$rev"; \
-	  fi; \
-	done; \
-	rev="$$rev ."; \
-	target=`echo $@ | sed s/-recursive//`; \
-	for subdir in $$rev; do \
-	  echo "Making $$target in $$subdir"; \
-	  if test "$$subdir" = "."; then \
-	    local_target="$$target-am"; \
-	  else \
-	    local_target="$$target"; \
-	  fi; \
-	  ($(am__cd) $$subdir && $(MAKE) $(AM_MAKEFLAGS) $$local_target) \
-	  || eval $$failcom; \
-	done && test -z "$$fail"
-tags-recursive:
-	list='$(SUBDIRS)'; for subdir in $$list; do \
-	  test "$$subdir" = . || ($(am__cd) $$subdir && $(MAKE) $(AM_MAKEFLAGS) tags); \
+install-librootsim_includeHEADERS: $(librootsim_include_HEADERS)
+	@$(NORMAL_INSTALL)
+	test -z "$(librootsim_includedir)" || $(MKDIR_P) "$(DESTDIR)$(librootsim_includedir)"
+	@list='$(librootsim_include_HEADERS)'; test -n "$(librootsim_includedir)" || list=; \
+	for p in $$list; do \
+	  if test -f "$$p"; then d=; else d="$(srcdir)/"; fi; \
+	  echo "$$d$$p"; \
+	done | $(am__base_list) | \
+	while read files; do \
+	  echo " $(INSTALL_HEADER) $$files '$(DESTDIR)$(librootsim_includedir)'"; \
+	  $(INSTALL_HEADER) $$files "$(DESTDIR)$(librootsim_includedir)" || exit $$?; \
 	done
-ctags-recursive:
-	list='$(SUBDIRS)'; for subdir in $$list; do \
-	  test "$$subdir" = . || ($(am__cd) $$subdir && $(MAKE) $(AM_MAKEFLAGS) ctags); \
-	done
+
+uninstall-librootsim_includeHEADERS:
+	@$(NORMAL_UNINSTALL)
+	@list='$(librootsim_include_HEADERS)'; test -n "$(librootsim_includedir)" || list=; \
+	files=`for p in $$list; do echo $$p; done | sed -e 's|^.*/||'`; \
+	test -n "$$files" || exit 0; \
+	echo " ( cd '$(DESTDIR)$(librootsim_includedir)' && rm -f" $$files ")"; \
+	cd "$(DESTDIR)$(librootsim_includedir)" && rm -f $$files
 
 ID: $(HEADERS) $(SOURCES) $(LISP) $(TAGS_FILES)
 	list='$(SOURCES) $(HEADERS) $(LISP) $(TAGS_FILES)'; \
@@ -335,23 +620,10 @@ ID: $(HEADERS) $(SOURCES) $(LISP) $(TAGS_FILES)
 	mkid -fID $$unique
 tags: TAGS
 
-TAGS: tags-recursive $(HEADERS) $(SOURCES)  $(TAGS_DEPENDENCIES) \
+TAGS:  $(HEADERS) $(SOURCES)  $(TAGS_DEPENDENCIES) \
 		$(TAGS_FILES) $(LISP)
 	set x; \
 	here=`pwd`; \
-	if ($(ETAGS) --etags-include --version) >/dev/null 2>&1; then \
-	  include_option=--etags-include; \
-	  empty_fix=.; \
-	else \
-	  include_option=--include; \
-	  empty_fix=; \
-	fi; \
-	list='$(SUBDIRS)'; for subdir in $$list; do \
-	  if test "$$subdir" = .; then :; else \
-	    test ! -f $$subdir/TAGS || \
-	      set "$$@" "$$include_option=$$here/$$subdir/TAGS"; \
-	  fi; \
-	done; \
 	list='$(SOURCES) $(HEADERS)  $(LISP) $(TAGS_FILES)'; \
 	unique=`for i in $$list; do \
 	    if test -f "$$i"; then echo $$i; else echo $(srcdir)/$$i; fi; \
@@ -370,7 +642,7 @@ TAGS: tags-recursive $(HEADERS) $(SOURCES)  $(TAGS_DEPENDENCIES) \
 	  fi; \
 	fi
 ctags: CTAGS
-CTAGS: ctags-recursive $(HEADERS) $(SOURCES)  $(TAGS_DEPENDENCIES) \
+CTAGS:  $(HEADERS) $(SOURCES)  $(TAGS_DEPENDENCIES) \
 		$(TAGS_FILES) $(LISP)
 	list='$(SOURCES) $(HEADERS)  $(LISP) $(TAGS_FILES)'; \
 	unique=`for i in $$list; do \
@@ -420,48 +692,22 @@ distdir: $(DISTFILES)
 	    || exit 1; \
 	  fi; \
 	done
-	@list='$(DIST_SUBDIRS)'; for subdir in $$list; do \
-	  if test "$$subdir" = .; then :; else \
-	    test -d "$(distdir)/$$subdir" \
-	    || $(MKDIR_P) "$(distdir)/$$subdir" \
-	    || exit 1; \
-	  fi; \
-	done
-	@list='$(DIST_SUBDIRS)'; for subdir in $$list; do \
-	  if test "$$subdir" = .; then :; else \
-	    dir1=$$subdir; dir2="$(distdir)/$$subdir"; \
-	    $(am__relativize); \
-	    new_distdir=$$reldir; \
-	    dir1=$$subdir; dir2="$(top_distdir)"; \
-	    $(am__relativize); \
-	    new_top_distdir=$$reldir; \
-	    echo " (cd $$subdir && $(MAKE) $(AM_MAKEFLAGS) top_distdir="$$new_top_distdir" distdir="$$new_distdir" \\"; \
-	    echo "     am__remove_distdir=: am__skip_length_check=: am__skip_mode_fix=: distdir)"; \
-	    ($(am__cd) $$subdir && \
-	      $(MAKE) $(AM_MAKEFLAGS) \
-	        top_distdir="$$new_top_distdir" \
-	        distdir="$$new_distdir" \
-		am__remove_distdir=: \
-		am__skip_length_check=: \
-		am__skip_mode_fix=: \
-	        distdir) \
-	      || exit 1; \
-	  fi; \
-	done
 check-am: all-am
-check: check-recursive
-all-am: Makefile
-installdirs: installdirs-recursive
-installdirs-am:
-install: install-recursive
-install-exec: install-exec-recursive
-install-data: install-data-recursive
-uninstall: uninstall-recursive
+check: check-am
+all-am: Makefile $(LIBRARIES) $(HEADERS)
+installdirs:
+	for dir in "$(DESTDIR)$(libdir)" "$(DESTDIR)$(librootsim_includedir)"; do \
+	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
+	done
+install: install-am
+install-exec: install-exec-am
+install-data: install-data-am
+uninstall: uninstall-am
 
 install-am: all-am
 	@$(MAKE) $(AM_MAKEFLAGS) install-exec-am install-data-am
 
-installcheck: installcheck-recursive
+installcheck: installcheck-am
 install-strip:
 	$(MAKE) $(AM_MAKEFLAGS) INSTALL_PROGRAM="$(INSTALL_STRIP_PROGRAM)" \
 	  install_sh_PROGRAM="$(INSTALL_STRIP_PROGRAM)" INSTALL_STRIP_FLAG=-s \
@@ -474,92 +720,123 @@ clean-generic:
 distclean-generic:
 	-test -z "$(CONFIG_CLEAN_FILES)" || rm -f $(CONFIG_CLEAN_FILES)
 	-test . = "$(srcdir)" || test -z "$(CONFIG_CLEAN_VPATH_FILES)" || rm -f $(CONFIG_CLEAN_VPATH_FILES)
+	-rm -f arch/$(DEPDIR)/$(am__dirstamp)
+	-rm -f arch/$(am__dirstamp)
+	-rm -f communication/$(DEPDIR)/$(am__dirstamp)
+	-rm -f communication/$(am__dirstamp)
+	-rm -f core/$(DEPDIR)/$(am__dirstamp)
+	-rm -f core/$(am__dirstamp)
+	-rm -f datatypes/$(DEPDIR)/$(am__dirstamp)
+	-rm -f datatypes/$(am__dirstamp)
+	-rm -f gvt/$(DEPDIR)/$(am__dirstamp)
+	-rm -f gvt/$(am__dirstamp)
+	-rm -f lib-wrapper/$(DEPDIR)/$(am__dirstamp)
+	-rm -f lib-wrapper/$(am__dirstamp)
+	-rm -f lib/$(DEPDIR)/$(am__dirstamp)
+	-rm -f lib/$(am__dirstamp)
+	-rm -f mm/$(DEPDIR)/$(am__dirstamp)
+	-rm -f mm/$(am__dirstamp)
+	-rm -f queues/$(DEPDIR)/$(am__dirstamp)
+	-rm -f queues/$(am__dirstamp)
+	-rm -f scheduler/$(DEPDIR)/$(am__dirstamp)
+	-rm -f scheduler/$(am__dirstamp)
+	-rm -f serial/$(DEPDIR)/$(am__dirstamp)
+	-rm -f serial/$(am__dirstamp)
+	-rm -f statistics/$(DEPDIR)/$(am__dirstamp)
+	-rm -f statistics/$(am__dirstamp)
 
 maintainer-clean-generic:
 	@echo "This command is intended for maintainers to use"
 	@echo "it deletes files that may require special tools to rebuild."
-clean: clean-recursive
+clean: clean-am
 
-clean-am: clean-generic clean-libtool mostlyclean-am
+clean-am: clean-generic clean-libLIBRARIES clean-libtool \
+	mostlyclean-am
 
-distclean: distclean-recursive
+distclean: distclean-am
+	-rm -rf ./$(DEPDIR) arch/$(DEPDIR) communication/$(DEPDIR) core/$(DEPDIR) datatypes/$(DEPDIR) gvt/$(DEPDIR) lib-wrapper/$(DEPDIR) lib/$(DEPDIR) mm/$(DEPDIR) queues/$(DEPDIR) scheduler/$(DEPDIR) serial/$(DEPDIR) statistics/$(DEPDIR)
 	-rm -f Makefile
-distclean-am: clean-am distclean-generic distclean-tags
+distclean-am: clean-am distclean-compile distclean-generic \
+	distclean-tags
 
-dvi: dvi-recursive
+dvi: dvi-am
 
 dvi-am:
 
-html: html-recursive
+html: html-am
 
 html-am:
 
-info: info-recursive
+info: info-am
 
 info-am:
 
-install-data-am:
+install-data-am: install-librootsim_includeHEADERS
 
-install-dvi: install-dvi-recursive
+install-dvi: install-dvi-am
 
 install-dvi-am:
 
-install-exec-am:
+install-exec-am: install-libLIBRARIES
 
-install-html: install-html-recursive
+install-html: install-html-am
 
 install-html-am:
 
-install-info: install-info-recursive
+install-info: install-info-am
 
 install-info-am:
 
 install-man:
 
-install-pdf: install-pdf-recursive
+install-pdf: install-pdf-am
 
 install-pdf-am:
 
-install-ps: install-ps-recursive
+install-ps: install-ps-am
 
 install-ps-am:
 
 installcheck-am:
 
-maintainer-clean: maintainer-clean-recursive
+maintainer-clean: maintainer-clean-am
+	-rm -rf ./$(DEPDIR) arch/$(DEPDIR) communication/$(DEPDIR) core/$(DEPDIR) datatypes/$(DEPDIR) gvt/$(DEPDIR) lib-wrapper/$(DEPDIR) lib/$(DEPDIR) mm/$(DEPDIR) queues/$(DEPDIR) scheduler/$(DEPDIR) serial/$(DEPDIR) statistics/$(DEPDIR)
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 
-mostlyclean: mostlyclean-recursive
+mostlyclean: mostlyclean-am
 
-mostlyclean-am: mostlyclean-generic mostlyclean-libtool
+mostlyclean-am: mostlyclean-compile mostlyclean-generic \
+	mostlyclean-libtool
 
-pdf: pdf-recursive
+pdf: pdf-am
 
 pdf-am:
 
-ps: ps-recursive
+ps: ps-am
 
 ps-am:
 
-uninstall-am:
+uninstall-am: uninstall-libLIBRARIES \
+	uninstall-librootsim_includeHEADERS
 
-.MAKE: $(RECURSIVE_CLEAN_TARGETS) $(RECURSIVE_TARGETS) ctags-recursive \
-	install-am install-strip tags-recursive
+.MAKE: install-am install-strip
 
-.PHONY: $(RECURSIVE_CLEAN_TARGETS) $(RECURSIVE_TARGETS) CTAGS GTAGS \
-	all all-am check check-am clean clean-generic clean-libtool \
-	ctags ctags-recursive distclean distclean-generic \
-	distclean-libtool distclean-tags distdir dvi dvi-am html \
-	html-am info info-am install install-am install-data \
-	install-data-am install-dvi install-dvi-am install-exec \
-	install-exec-am install-html install-html-am install-info \
-	install-info-am install-man install-pdf install-pdf-am \
-	install-ps install-ps-am install-strip installcheck \
-	installcheck-am installdirs installdirs-am maintainer-clean \
-	maintainer-clean-generic mostlyclean mostlyclean-generic \
-	mostlyclean-libtool pdf pdf-am ps ps-am tags tags-recursive \
-	uninstall uninstall-am
+.PHONY: CTAGS GTAGS all all-am check check-am clean clean-generic \
+	clean-libLIBRARIES clean-libtool ctags distclean \
+	distclean-compile distclean-generic distclean-libtool \
+	distclean-tags distdir dvi dvi-am html html-am info info-am \
+	install install-am install-data install-data-am install-dvi \
+	install-dvi-am install-exec install-exec-am install-html \
+	install-html-am install-info install-info-am \
+	install-libLIBRARIES install-librootsim_includeHEADERS \
+	install-man install-pdf install-pdf-am install-ps \
+	install-ps-am install-strip installcheck installcheck-am \
+	installdirs maintainer-clean maintainer-clean-generic \
+	mostlyclean mostlyclean-compile mostlyclean-generic \
+	mostlyclean-libtool pdf pdf-am ps ps-am tags uninstall \
+	uninstall-am uninstall-libLIBRARIES \
+	uninstall-librootsim_includeHEADERS
 
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
