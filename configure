@@ -11640,7 +11640,7 @@ CFLAGS="$FINAL_CFLAGS"
 
 # Generate Makefiles for all these subfolders
 #AC_OUTPUT
-ac_config_files="$ac_config_files Makefile man/Makefile scripts/Makefile examples/Makefile examples/nosql/Makefile examples/pcs/Makefile examples/phold/Makefile examples/tcar/Makefile examples/traffic/Makefile examples/packet/Makefile src/Makefile src/simulator/Makefile"
+ac_config_files="$ac_config_files Makefile man/Makefile scripts/Makefile src/Makefile src/simulator/Makefile"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -12640,13 +12640,6 @@ do
     "Makefile") CONFIG_FILES="$CONFIG_FILES Makefile" ;;
     "man/Makefile") CONFIG_FILES="$CONFIG_FILES man/Makefile" ;;
     "scripts/Makefile") CONFIG_FILES="$CONFIG_FILES scripts/Makefile" ;;
-    "examples/Makefile") CONFIG_FILES="$CONFIG_FILES examples/Makefile" ;;
-    "examples/nosql/Makefile") CONFIG_FILES="$CONFIG_FILES examples/nosql/Makefile" ;;
-    "examples/pcs/Makefile") CONFIG_FILES="$CONFIG_FILES examples/pcs/Makefile" ;;
-    "examples/phold/Makefile") CONFIG_FILES="$CONFIG_FILES examples/phold/Makefile" ;;
-    "examples/tcar/Makefile") CONFIG_FILES="$CONFIG_FILES examples/tcar/Makefile" ;;
-    "examples/traffic/Makefile") CONFIG_FILES="$CONFIG_FILES examples/traffic/Makefile" ;;
-    "examples/packet/Makefile") CONFIG_FILES="$CONFIG_FILES examples/packet/Makefile" ;;
     "src/Makefile") CONFIG_FILES="$CONFIG_FILES src/Makefile" ;;
     "src/simulator/Makefile") CONFIG_FILES="$CONFIG_FILES src/simulator/Makefile" ;;
 

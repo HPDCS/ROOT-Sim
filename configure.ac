@@ -239,13 +239,6 @@ CFLAGS="$FINAL_CFLAGS"
 AC_CONFIG_FILES([Makefile \
 		man/Makefile \
 		scripts/Makefile \
-		examples/Makefile \
-		examples/nosql/Makefile \
-		examples/pcs/Makefile \
-		examples/phold/Makefile \
-		examples/tcar/Makefile \
-		examples/traffic/Makefile \
-		examples/packet/Makefile \
 		src/Makefile \
 		src/simulator/Makefile \
 	])
