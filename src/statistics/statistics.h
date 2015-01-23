@@ -68,7 +68,7 @@ extern void statistics_init(void);
 extern void statistics_fini(void);
 extern void _mkdir(const char *path);
 extern void start_statistics(void);
-extern int stop_statistics(void);
+extern int statistics_stop(int exit_code);
 extern void flush_statistics(void);
 
 #endif /* _STATISTICS_H */

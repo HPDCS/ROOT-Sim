@@ -43,7 +43,6 @@ static time_t end_time;
 static struct timeval start_timevalue;
 
 
-// TODO: ma è elegante conservare questo time qiu?!
 /// This is a timer that start during the initialization of statistics subsystem and can be used to know the total simulation time
 timer simulation_timer;
 
@@ -59,14 +58,61 @@ static int last_file;
 /// Number of allocable file for the statistics subsystem
 static int max_file;
 
-
-
-static int new_file(char *, int);
-
-
-
 static struct stat_type	kernel_stats,
-			 system_wide_stats;
+			system_wide_stats;
+
+
+/**
+* This function create a new file
+*
+* @author Roberto Vitali
+*
+* param file_name The name of the file. If the file is local to each kernel, the kernel id is suffixed at the file name
+* param type It indicates if the file is kernel-wide (one file per kernel), or system-wide (a unique file)
+* 
+*/
+static int new_file(char *file_name, int type) {
+
+	FILE	*file_temp;
+	char	*f_name;
+	int	name_length;
+	char 	*destination_dir;
+
+	if (last_file >= max_file - 1) {
+		max_file *= 2;
+		files = realloc(files, max_file);
+		if (files == NULL)
+			rootsim_error(true, "Error in allocating new space for files");
+	}
+	
+	switch (type) {
+		case PER_KERNEL:
+			destination_dir = kernel_dir;
+			break;
+
+		case UNIQUE:
+			destination_dir = rootsim_config.output_dir;
+			break;
+	}
+
+	name_length = strlen(destination_dir) + strlen(file_name) + 2;
+	f_name = (char *)rsalloc(name_length);
+	bzero(f_name, name_length);
+	strcpy(f_name, destination_dir);
+	f_name = strcat(f_name, "/");
+	f_name = strcat(f_name, file_name);
+	
+	if ( (type == UNIQUE && master_kernel()) || type != UNIQUE) {
+		if ( (file_temp = fopen(f_name, "w")) == NULL)  {
+			rsfree(f_name);
+			rootsim_error(true, "Cannot open %s\n", f_name);
+		}
+		files[last_file++] = file_temp;
+	}
+
+	rsfree(f_name);
+	return last_file - 1;
+}
 
 /**
 * This function initialize the Statistics subsystem
@@ -152,60 +198,6 @@ void _mkdir(const char *path) {
 
 
 /**
-* This function create a new file
-*
-* @author Roberto Vitali
-*
-* param file_name The name of the file. If the file is local to each kernel, the kernel id is suffixed at the file name
-* param type It indicates if the file is kernel-wide (one file per kernel), or system-wide (a unique file)
-* 
-*/
-static int new_file(char *file_name, int type) {
-
-	FILE	*file_temp;
-	char	*f_name;
-	int	name_length;
-	char 	*destination_dir;
-
-	if (last_file >= max_file - 1) {
-		max_file *= 2;
-		files = realloc(files, max_file);
-		if (files == NULL)
-			rootsim_error(true, "Error in allocating new space for files");
-	}
-	
-	switch (type) {
-		case PER_KERNEL:
-			destination_dir = kernel_dir;
-			break;
-
-		case UNIQUE:
-			destination_dir = rootsim_config.output_dir;
-			break;
-	}
-
-	name_length = strlen(destination_dir) + strlen(file_name) + 2;
-	f_name = (char *)rsalloc(name_length);
-	bzero(f_name, name_length);
-	strcpy(f_name, destination_dir);
-	f_name = strcat(f_name, "/");
-	f_name = strcat(f_name, file_name);
-	
-	if ( (type == UNIQUE && master_kernel()) || type != UNIQUE) {
-		if ( (file_temp = fopen(f_name, "w")) == NULL)  {
-			rsfree(f_name);
-			rootsim_error(true, "Cannot open the file %s\n", f_name);
-		}
-		files[last_file++] = file_temp;
-	}
-
-	rsfree(f_name);
-	return last_file - 1;
-}
-
-
-
-/**
 * This function manage the simulation time used to in the statistics, and print to the output file the starting simulation header
 *
 * @author Francesco Quaglia 
@@ -244,7 +236,7 @@ void start_statistics(void){
 * @author Roberto Vitali
 *
 */
-int stop_statistics(void){
+int statistics_stop(int exit_code){
 	int total_time = timer_value(simulation_timer);
 	if (master_kernel()) {
 		fprintf(fout, "TOTAL TIME: ");
@@ -253,7 +245,15 @@ int stop_statistics(void){
 		
 	}
 	
-	fprintf(fout, "\n--------- SIMULATION CORRECTLY COMPLETED ----------\n");
+	if(exit_code == EXIT_FAILURE) {
+		fprintf(fout, "\n--------- SIMULATION ABNORMALLY TERMINATED ----------\n");
+		printf("\n--------- SIMULATION ABNORMALLY TERMINATED ----------\n");
+	}
+	if(exit_code == EXIT_SUCCESS) {
+		fprintf(fout, "\n--------- SIMULATION CORRECTLY COMPLETED ----------\n");
+		printf("\n--------- SIMULATION CORRECTLY COMPLETED ----------\n");
+	}	
+	
 	fflush(fout);
 	return total_time;
 }
@@ -429,3 +429,7 @@ void flush_statistics(void){
 	} 
 }
 
+
+
+void statistics_post_data(void) {
+}

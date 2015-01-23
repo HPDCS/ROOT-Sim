@@ -264,6 +264,8 @@ void context_create(LP_context_t *context, void (*entry_point)(void *), void *ar
 
 void context_create(LP_context_t *context, void (*entry_point)(void *), void *args, void *stack, size_t stack_size) {
 	
+	(void)stack;
+	
 	static bool once = false;
 	
 	if(once == false) {
