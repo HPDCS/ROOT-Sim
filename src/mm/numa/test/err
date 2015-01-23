@@ -1,0 +1,337 @@
+MDT entries are 256 (page size is 4096 - sizeof mdt entry is 16)
+INIT: sobj 0 - base address is 0x7fabdc971000 - active are 0 - MDT size is 256
+init allocator returned code: 0
+returned mdt is at address 0x7fabdc971000
+numpages is 1
+allocate segment: request for 1 bytes - actual allocation is of 1 pages
+actual allocation is at address 0x7fabdc970000
+mdt entry 0 is at address 0x7fabdc971000 - content: addr is 0x7fabdc970000 - num pages is 1
+segment allocation 0 for sobj 0 asking for 1 bytes returned address 0x7fabdc970000
+trying to memset ..
+memset done
+returned mdt is at address 0x7fabdc971010
+numpages is 2
+allocate segment: request for 4097 bytes - actual allocation is of 2 pages
+actual allocation is at address 0x7fabdbff6000
+mdt entry 0 is at address 0x7fabdc971000 - content: addr is 0x7fabdc970000 - num pages is 1
+mdt entry 1 is at address 0x7fabdc971010 - content: addr is 0x7fabdbff6000 - num pages is 2
+segment allocation 1 for sobj 0 asking for 4097 bytes returned address 0x7fabdbff6000
+trying to memset ..
+memset done
+returned mdt is at address 0x7fabdc971020
+numpages is 3
+allocate segment: request for 8193 bytes - actual allocation is of 3 pages
+actual allocation is at address 0xffffffffffffffff
+segment allocation 2 for sobj 0 asking for 8193 bytes returned address (nil)
+returned mdt is at address 0x7fabdc971020
+numpages is 3
+allocate segment: request for 8193 bytes - actual allocation is of 3 pages
+actual allocation is at address 0xffffffffffffffff
+returned mdt is at address 0x7fabdc971020
+numpages is 4
+allocate segment: request for 12289 bytes - actual allocation is of 4 pages
+actual allocation is at address 0x7fabdc96f000
+mdt entry 0 is at address 0x7fabdc971000 - content: addr is 0x7fabdc970000 - num pages is 1
+mdt entry 1 is at address 0x7fabdc971010 - content: addr is 0x7fabdbff6000 - num pages is 2
+mdt entry 2 is at address 0x7fabdc971020 - content: addr is 0x7fabdc96f000 - num pages is 4
+segment allocation 3 for sobj 0 asking for 12289 bytes returned address 0x7fabdc96f000
+trying to memset ..
+memset done
+returned mdt is at address 0x7fabdc971030
+numpages is 5
+allocate segment: request for 16385 bytes - actual allocation is of 5 pages
+actual allocation is at address 0x7fabdc865000
+mdt entry 0 is at address 0x7fabdc971000 - content: addr is 0x7fabdc970000 - num pages is 1
+mdt entry 1 is at address 0x7fabdc971010 - content: addr is 0x7fabdbff6000 - num pages is 2
+mdt entry 2 is at address 0x7fabdc971020 - content: addr is 0x7fabdc96f000 - num pages is 4
+mdt entry 3 is at address 0x7fabdc971030 - content: addr is 0x7fabdc865000 - num pages is 5
+segment allocation 4 for sobj 0 asking for 16385 bytes returned address 0x7fabdc865000
+trying to memset ..
+memset done
+returned mdt is at address 0x7fabdc971040
+numpages is 6
+allocate segment: request for 20481 bytes - actual allocation is of 6 pages
+actual allocation is at address 0x7fab9bff6000
+mdt entry 0 is at address 0x7fabdc971000 - content: addr is 0x7fabdc970000 - num pages is 1
+mdt entry 1 is at address 0x7fabdc971010 - content: addr is 0x7fabdbff6000 - num pages is 2
+mdt entry 2 is at address 0x7fabdc971020 - content: addr is 0x7fabdc96f000 - num pages is 4
+mdt entry 3 is at address 0x7fabdc971030 - content: addr is 0x7fabdc865000 - num pages is 5
+mdt entry 4 is at address 0x7fabdc971040 - content: addr is 0x7fab9bff6000 - num pages is 6
+segment allocation 5 for sobj 0 asking for 20481 bytes returned address 0x7fab9bff6000
+trying to memset ..
+memset done
+returned mdt is at address 0x7fabdc971050
+numpages is 7
+allocate segment: request for 24577 bytes - actual allocation is of 7 pages
+actual allocation is at address 0x7fabdc96e000
+mdt entry 0 is at address 0x7fabdc971000 - content: addr is 0x7fabdc970000 - num pages is 1
+mdt entry 1 is at address 0x7fabdc971010 - content: addr is 0x7fabdbff6000 - num pages is 2
+mdt entry 2 is at address 0x7fabdc971020 - content: addr is 0x7fabdc96f000 - num pages is 4
+mdt entry 3 is at address 0x7fabdc971030 - content: addr is 0x7fabdc865000 - num pages is 5
+mdt entry 4 is at address 0x7fabdc971040 - content: addr is 0x7fab9bff6000 - num pages is 6
+mdt entry 5 is at address 0x7fabdc971050 - content: addr is 0x7fabdc96e000 - num pages is 7
+segment allocation 6 for sobj 0 asking for 24577 bytes returned address 0x7fabdc96e000
+trying to memset ..
+memset done
+returned mdt is at address 0x7fabdc971060
+numpages is 8
+allocate segment: request for 28673 bytes - actual allocation is of 8 pages
+actual allocation is at address 0x7fabdc825000
+mdt entry 0 is at address 0x7fabdc971000 - content: addr is 0x7fabdc970000 - num pages is 1
+mdt entry 1 is at address 0x7fabdc971010 - content: addr is 0x7fabdbff6000 - num pages is 2
+mdt entry 2 is at address 0x7fabdc971020 - content: addr is 0x7fabdc96f000 - num pages is 4
+mdt entry 3 is at address 0x7fabdc971030 - content: addr is 0x7fabdc865000 - num pages is 5
+mdt entry 4 is at address 0x7fabdc971040 - content: addr is 0x7fab9bff6000 - num pages is 6
+mdt entry 5 is at address 0x7fabdc971050 - content: addr is 0x7fabdc96e000 - num pages is 7
+mdt entry 6 is at address 0x7fabdc971060 - content: addr is 0x7fabdc825000 - num pages is 8
+segment allocation 7 for sobj 0 asking for 28673 bytes returned address 0x7fabdc825000
+trying to memset ..
+memset done
+returned mdt is at address 0x7fabdc971070
+numpages is 9
+allocate segment: request for 32769 bytes - actual allocation is of 9 pages
+actual allocation is at address 0x7fab8bff6000
+mdt entry 0 is at address 0x7fabdc971000 - content: addr is 0x7fabdc970000 - num pages is 1
+mdt entry 1 is at address 0x7fabdc971010 - content: addr is 0x7fabdbff6000 - num pages is 2
+mdt entry 2 is at address 0x7fabdc971020 - content: addr is 0x7fabdc96f000 - num pages is 4
+mdt entry 3 is at address 0x7fabdc971030 - content: addr is 0x7fabdc865000 - num pages is 5
+mdt entry 4 is at address 0x7fabdc971040 - content: addr is 0x7fab9bff6000 - num pages is 6
+mdt entry 5 is at address 0x7fabdc971050 - content: addr is 0x7fabdc96e000 - num pages is 7
+mdt entry 6 is at address 0x7fabdc971060 - content: addr is 0x7fabdc825000 - num pages is 8
+mdt entry 7 is at address 0x7fabdc971070 - content: addr is 0x7fab8bff6000 - num pages is 9
+segment allocation 8 for sobj 0 asking for 32769 bytes returned address 0x7fab8bff6000
+trying to memset ..
+memset done
+returned mdt is at address 0x7fabdc971080
+numpages is 10
+allocate segment: request for 36865 bytes - actual allocation is of 10 pages
+actual allocation is at address 0x7fab8bff5000
+mdt entry 0 is at address 0x7fabdc971000 - content: addr is 0x7fabdc970000 - num pages is 1
+mdt entry 1 is at address 0x7fabdc971010 - content: addr is 0x7fabdbff6000 - num pages is 2
+mdt entry 2 is at address 0x7fabdc971020 - content: addr is 0x7fabdc96f000 - num pages is 4
+mdt entry 3 is at address 0x7fabdc971030 - content: addr is 0x7fabdc865000 - num pages is 5
+mdt entry 4 is at address 0x7fabdc971040 - content: addr is 0x7fab9bff6000 - num pages is 6
+mdt entry 5 is at address 0x7fabdc971050 - content: addr is 0x7fabdc96e000 - num pages is 7
+mdt entry 6 is at address 0x7fabdc971060 - content: addr is 0x7fabdc825000 - num pages is 8
+mdt entry 7 is at address 0x7fabdc971070 - content: addr is 0x7fab8bff6000 - num pages is 9
+mdt entry 8 is at address 0x7fabdc971080 - content: addr is 0x7fab8bff5000 - num pages is 10
+segment allocation 9 for sobj 0 asking for 36865 bytes returned address 0x7fab8bff5000
+trying to memset ..
+memset done
+returned mdt is at address 0x7fabdc971090
+numpages is 11
+allocate segment: request for 40961 bytes - actual allocation is of 11 pages
+actual allocation is at address 0x7fab8bfe5000
+mdt entry 0 is at address 0x7fabdc971000 - content: addr is 0x7fabdc970000 - num pages is 1
+mdt entry 1 is at address 0x7fabdc971010 - content: addr is 0x7fabdbff6000 - num pages is 2
+mdt entry 2 is at address 0x7fabdc971020 - content: addr is 0x7fabdc96f000 - num pages is 4
+mdt entry 3 is at address 0x7fabdc971030 - content: addr is 0x7fabdc865000 - num pages is 5
+mdt entry 4 is at address 0x7fabdc971040 - content: addr is 0x7fab9bff6000 - num pages is 6
+mdt entry 5 is at address 0x7fabdc971050 - content: addr is 0x7fabdc96e000 - num pages is 7
+mdt entry 6 is at address 0x7fabdc971060 - content: addr is 0x7fabdc825000 - num pages is 8
+mdt entry 7 is at address 0x7fabdc971070 - content: addr is 0x7fab8bff6000 - num pages is 9
+mdt entry 8 is at address 0x7fabdc971080 - content: addr is 0x7fab8bff5000 - num pages is 10
+mdt entry 9 is at address 0x7fabdc971090 - content: addr is 0x7fab8bfe5000 - num pages is 11
+segment allocation 10 for sobj 0 asking for 40961 bytes returned address 0x7fab8bfe5000
+trying to memset ..
+memset done
+returned mdt is at address 0x7fabdc9710a0
+numpages is 12
+allocate segment: request for 45057 bytes - actual allocation is of 12 pages
+actual allocation is at address 0x7fab87fe5000
+mdt entry 0 is at address 0x7fabdc971000 - content: addr is 0x7fabdc970000 - num pages is 1
+mdt entry 1 is at address 0x7fabdc971010 - content: addr is 0x7fabdbff6000 - num pages is 2
+mdt entry 2 is at address 0x7fabdc971020 - content: addr is 0x7fabdc96f000 - num pages is 4
+mdt entry 3 is at address 0x7fabdc971030 - content: addr is 0x7fabdc865000 - num pages is 5
+mdt entry 4 is at address 0x7fabdc971040 - content: addr is 0x7fab9bff6000 - num pages is 6
+mdt entry 5 is at address 0x7fabdc971050 - content: addr is 0x7fabdc96e000 - num pages is 7
+mdt entry 6 is at address 0x7fabdc971060 - content: addr is 0x7fabdc825000 - num pages is 8
+mdt entry 7 is at address 0x7fabdc971070 - content: addr is 0x7fab8bff6000 - num pages is 9
+mdt entry 8 is at address 0x7fabdc971080 - content: addr is 0x7fab8bff5000 - num pages is 10
+mdt entry 9 is at address 0x7fabdc971090 - content: addr is 0x7fab8bfe5000 - num pages is 11
+mdt entry 10 is at address 0x7fabdc9710a0 - content: addr is 0x7fab87fe5000 - num pages is 12
+segment allocation 11 for sobj 0 asking for 45057 bytes returned address 0x7fab87fe5000
+trying to memset ..
+memset done
+returned mdt is at address 0x7fabdc9710b0
+numpages is 13
+allocate segment: request for 49153 bytes - actual allocation is of 13 pages
+actual allocation is at address 0x7fab87fe4000
+mdt entry 0 is at address 0x7fabdc971000 - content: addr is 0x7fabdc970000 - num pages is 1
+mdt entry 1 is at address 0x7fabdc971010 - content: addr is 0x7fabdbff6000 - num pages is 2
+mdt entry 2 is at address 0x7fabdc971020 - content: addr is 0x7fabdc96f000 - num pages is 4
+mdt entry 3 is at address 0x7fabdc971030 - content: addr is 0x7fabdc865000 - num pages is 5
+mdt entry 4 is at address 0x7fabdc971040 - content: addr is 0x7fab9bff6000 - num pages is 6
+mdt entry 5 is at address 0x7fabdc971050 - content: addr is 0x7fabdc96e000 - num pages is 7
+mdt entry 6 is at address 0x7fabdc971060 - content: addr is 0x7fabdc825000 - num pages is 8
+mdt entry 7 is at address 0x7fabdc971070 - content: addr is 0x7fab8bff6000 - num pages is 9
+mdt entry 8 is at address 0x7fabdc971080 - content: addr is 0x7fab8bff5000 - num pages is 10
+mdt entry 9 is at address 0x7fabdc971090 - content: addr is 0x7fab8bfe5000 - num pages is 11
+mdt entry 10 is at address 0x7fabdc9710a0 - content: addr is 0x7fab87fe5000 - num pages is 12
+mdt entry 11 is at address 0x7fabdc9710b0 - content: addr is 0x7fab87fe4000 - num pages is 13
+segment allocation 12 for sobj 0 asking for 49153 bytes returned address 0x7fab87fe4000
+trying to memset ..
+memset done
+returned mdt is at address 0x7fabdc9710c0
+numpages is 14
+allocate segment: request for 53249 bytes - actual allocation is of 14 pages
+actual allocation is at address 0x7fab87fe0000
+mdt entry 0 is at address 0x7fabdc971000 - content: addr is 0x7fabdc970000 - num pages is 1
+mdt entry 1 is at address 0x7fabdc971010 - content: addr is 0x7fabdbff6000 - num pages is 2
+mdt entry 2 is at address 0x7fabdc971020 - content: addr is 0x7fabdc96f000 - num pages is 4
+mdt entry 3 is at address 0x7fabdc971030 - content: addr is 0x7fabdc865000 - num pages is 5
+mdt entry 4 is at address 0x7fabdc971040 - content: addr is 0x7fab9bff6000 - num pages is 6
+mdt entry 5 is at address 0x7fabdc971050 - content: addr is 0x7fabdc96e000 - num pages is 7
+mdt entry 6 is at address 0x7fabdc971060 - content: addr is 0x7fabdc825000 - num pages is 8
+mdt entry 7 is at address 0x7fabdc971070 - content: addr is 0x7fab8bff6000 - num pages is 9
+mdt entry 8 is at address 0x7fabdc971080 - content: addr is 0x7fab8bff5000 - num pages is 10
+mdt entry 9 is at address 0x7fabdc971090 - content: addr is 0x7fab8bfe5000 - num pages is 11
+mdt entry 10 is at address 0x7fabdc9710a0 - content: addr is 0x7fab87fe5000 - num pages is 12
+mdt entry 11 is at address 0x7fabdc9710b0 - content: addr is 0x7fab87fe4000 - num pages is 13
+mdt entry 12 is at address 0x7fabdc9710c0 - content: addr is 0x7fab87fe0000 - num pages is 14
+segment allocation 13 for sobj 0 asking for 53249 bytes returned address 0x7fab87fe0000
+trying to memset ..
+memset done
+returned mdt is at address 0x7fabdc9710d0
+numpages is 15
+allocate segment: request for 57345 bytes - actual allocation is of 15 pages
+actual allocation is at address 0x7fab86fe0000
+mdt entry 0 is at address 0x7fabdc971000 - content: addr is 0x7fabdc970000 - num pages is 1
+mdt entry 1 is at address 0x7fabdc971010 - content: addr is 0x7fabdbff6000 - num pages is 2
+mdt entry 2 is at address 0x7fabdc971020 - content: addr is 0x7fabdc96f000 - num pages is 4
+mdt entry 3 is at address 0x7fabdc971030 - content: addr is 0x7fabdc865000 - num pages is 5
+mdt entry 4 is at address 0x7fabdc971040 - content: addr is 0x7fab9bff6000 - num pages is 6
+mdt entry 5 is at address 0x7fabdc971050 - content: addr is 0x7fabdc96e000 - num pages is 7
+mdt entry 6 is at address 0x7fabdc971060 - content: addr is 0x7fabdc825000 - num pages is 8
+mdt entry 7 is at address 0x7fabdc971070 - content: addr is 0x7fab8bff6000 - num pages is 9
+mdt entry 8 is at address 0x7fabdc971080 - content: addr is 0x7fab8bff5000 - num pages is 10
+mdt entry 9 is at address 0x7fabdc971090 - content: addr is 0x7fab8bfe5000 - num pages is 11
+mdt entry 10 is at address 0x7fabdc9710a0 - content: addr is 0x7fab87fe5000 - num pages is 12
+mdt entry 11 is at address 0x7fabdc9710b0 - content: addr is 0x7fab87fe4000 - num pages is 13
+mdt entry 12 is at address 0x7fabdc9710c0 - content: addr is 0x7fab87fe0000 - num pages is 14
+mdt entry 13 is at address 0x7fabdc9710d0 - content: addr is 0x7fab86fe0000 - num pages is 15
+segment allocation 14 for sobj 0 asking for 57345 bytes returned address 0x7fab86fe0000
+trying to memset ..
+memset done
+returned mdt is at address 0x7fabdc9710e0
+numpages is 16
+allocate segment: request for 61441 bytes - actual allocation is of 16 pages
+actual allocation is at address 0x7fab86fdf000
+mdt entry 0 is at address 0x7fabdc971000 - content: addr is 0x7fabdc970000 - num pages is 1
+mdt entry 1 is at address 0x7fabdc971010 - content: addr is 0x7fabdbff6000 - num pages is 2
+mdt entry 2 is at address 0x7fabdc971020 - content: addr is 0x7fabdc96f000 - num pages is 4
+mdt entry 3 is at address 0x7fabdc971030 - content: addr is 0x7fabdc865000 - num pages is 5
+mdt entry 4 is at address 0x7fabdc971040 - content: addr is 0x7fab9bff6000 - num pages is 6
+mdt entry 5 is at address 0x7fabdc971050 - content: addr is 0x7fabdc96e000 - num pages is 7
+mdt entry 6 is at address 0x7fabdc971060 - content: addr is 0x7fabdc825000 - num pages is 8
+mdt entry 7 is at address 0x7fabdc971070 - content: addr is 0x7fab8bff6000 - num pages is 9
+mdt entry 8 is at address 0x7fabdc971080 - content: addr is 0x7fab8bff5000 - num pages is 10
+mdt entry 9 is at address 0x7fabdc971090 - content: addr is 0x7fab8bfe5000 - num pages is 11
+mdt entry 10 is at address 0x7fabdc9710a0 - content: addr is 0x7fab87fe5000 - num pages is 12
+mdt entry 11 is at address 0x7fabdc9710b0 - content: addr is 0x7fab87fe4000 - num pages is 13
+mdt entry 12 is at address 0x7fabdc9710c0 - content: addr is 0x7fab87fe0000 - num pages is 14
+mdt entry 13 is at address 0x7fabdc9710d0 - content: addr is 0x7fab86fe0000 - num pages is 15
+mdt entry 14 is at address 0x7fabdc9710e0 - content: addr is 0x7fab86fdf000 - num pages is 16
+segment allocation 15 for sobj 0 asking for 61441 bytes returned address 0x7fab86fdf000
+trying to memset ..
+memset done
+returned mdt is at address 0x7fabdc9710f0
+numpages is 17
+allocate segment: request for 65537 bytes - actual allocation is of 17 pages
+actual allocation is at address 0x7fab86fde000
+mdt entry 0 is at address 0x7fabdc971000 - content: addr is 0x7fabdc970000 - num pages is 1
+mdt entry 1 is at address 0x7fabdc971010 - content: addr is 0x7fabdbff6000 - num pages is 2
+mdt entry 2 is at address 0x7fabdc971020 - content: addr is 0x7fabdc96f000 - num pages is 4
+mdt entry 3 is at address 0x7fabdc971030 - content: addr is 0x7fabdc865000 - num pages is 5
+mdt entry 4 is at address 0x7fabdc971040 - content: addr is 0x7fab9bff6000 - num pages is 6
+mdt entry 5 is at address 0x7fabdc971050 - content: addr is 0x7fabdc96e000 - num pages is 7
+mdt entry 6 is at address 0x7fabdc971060 - content: addr is 0x7fabdc825000 - num pages is 8
+mdt entry 7 is at address 0x7fabdc971070 - content: addr is 0x7fab8bff6000 - num pages is 9
+mdt entry 8 is at address 0x7fabdc971080 - content: addr is 0x7fab8bff5000 - num pages is 10
+mdt entry 9 is at address 0x7fabdc971090 - content: addr is 0x7fab8bfe5000 - num pages is 11
+mdt entry 10 is at address 0x7fabdc9710a0 - content: addr is 0x7fab87fe5000 - num pages is 12
+mdt entry 11 is at address 0x7fabdc9710b0 - content: addr is 0x7fab87fe4000 - num pages is 13
+mdt entry 12 is at address 0x7fabdc9710c0 - content: addr is 0x7fab87fe0000 - num pages is 14
+mdt entry 13 is at address 0x7fabdc9710d0 - content: addr is 0x7fab86fe0000 - num pages is 15
+mdt entry 14 is at address 0x7fabdc9710e0 - content: addr is 0x7fab86fdf000 - num pages is 16
+mdt entry 15 is at address 0x7fabdc9710f0 - content: addr is 0x7fab86fde000 - num pages is 17
+segment allocation 16 for sobj 0 asking for 65537 bytes returned address 0x7fab86fde000
+trying to memset ..
+memset done
+returned mdt is at address 0x7fabdc971100
+numpages is 18
+allocate segment: request for 69633 bytes - actual allocation is of 18 pages
+actual allocation is at address 0x7fab86bde000
+mdt entry 0 is at address 0x7fabdc971000 - content: addr is 0x7fabdc970000 - num pages is 1
+mdt entry 1 is at address 0x7fabdc971010 - content: addr is 0x7fabdbff6000 - num pages is 2
+mdt entry 2 is at address 0x7fabdc971020 - content: addr is 0x7fabdc96f000 - num pages is 4
+mdt entry 3 is at address 0x7fabdc971030 - content: addr is 0x7fabdc865000 - num pages is 5
+mdt entry 4 is at address 0x7fabdc971040 - content: addr is 0x7fab9bff6000 - num pages is 6
+mdt entry 5 is at address 0x7fabdc971050 - content: addr is 0x7fabdc96e000 - num pages is 7
+mdt entry 6 is at address 0x7fabdc971060 - content: addr is 0x7fabdc825000 - num pages is 8
+mdt entry 7 is at address 0x7fabdc971070 - content: addr is 0x7fab8bff6000 - num pages is 9
+mdt entry 8 is at address 0x7fabdc971080 - content: addr is 0x7fab8bff5000 - num pages is 10
+mdt entry 9 is at address 0x7fabdc971090 - content: addr is 0x7fab8bfe5000 - num pages is 11
+mdt entry 10 is at address 0x7fabdc9710a0 - content: addr is 0x7fab87fe5000 - num pages is 12
+mdt entry 11 is at address 0x7fabdc9710b0 - content: addr is 0x7fab87fe4000 - num pages is 13
+mdt entry 12 is at address 0x7fabdc9710c0 - content: addr is 0x7fab87fe0000 - num pages is 14
+mdt entry 13 is at address 0x7fabdc9710d0 - content: addr is 0x7fab86fe0000 - num pages is 15
+mdt entry 14 is at address 0x7fabdc9710e0 - content: addr is 0x7fab86fdf000 - num pages is 16
+mdt entry 15 is at address 0x7fabdc9710f0 - content: addr is 0x7fab86fde000 - num pages is 17
+mdt entry 16 is at address 0x7fabdc971100 - content: addr is 0x7fab86bde000 - num pages is 18
+segment allocation 17 for sobj 0 asking for 69633 bytes returned address 0x7fab86bde000
+trying to memset ..
+memset done
+returned mdt is at address 0x7fabdc971110
+numpages is 19
+allocate segment: request for 73729 bytes - actual allocation is of 19 pages
+actual allocation is at address 0xffffffffffffffff
+segment allocation 18 for sobj 0 asking for 73729 bytes returned address (nil)
+returned mdt is at address 0x7fabdc971110
+numpages is 19
+allocate segment: request for 73729 bytes - actual allocation is of 19 pages
+actual allocation is at address 0xffffffffffffffff
+returned mdt is at address 0x7fabdc971110
+numpages is 20
+allocate segment: request for 77825 bytes - actual allocation is of 20 pages
+actual allocation is at address 0x7fab86bdd000
+mdt entry 0 is at address 0x7fabdc971000 - content: addr is 0x7fabdc970000 - num pages is 1
+mdt entry 1 is at address 0x7fabdc971010 - content: addr is 0x7fabdbff6000 - num pages is 2
+mdt entry 2 is at address 0x7fabdc971020 - content: addr is 0x7fabdc96f000 - num pages is 4
+mdt entry 3 is at address 0x7fabdc971030 - content: addr is 0x7fabdc865000 - num pages is 5
+mdt entry 4 is at address 0x7fabdc971040 - content: addr is 0x7fab9bff6000 - num pages is 6
+mdt entry 5 is at address 0x7fabdc971050 - content: addr is 0x7fabdc96e000 - num pages is 7
+mdt entry 6 is at address 0x7fabdc971060 - content: addr is 0x7fabdc825000 - num pages is 8
+mdt entry 7 is at address 0x7fabdc971070 - content: addr is 0x7fab8bff6000 - num pages is 9
+mdt entry 8 is at address 0x7fabdc971080 - content: addr is 0x7fab8bff5000 - num pages is 10
+mdt entry 9 is at address 0x7fabdc971090 - content: addr is 0x7fab8bfe5000 - num pages is 11
+mdt entry 10 is at address 0x7fabdc9710a0 - content: addr is 0x7fab87fe5000 - num pages is 12
+mdt entry 11 is at address 0x7fabdc9710b0 - content: addr is 0x7fab87fe4000 - num pages is 13
+mdt entry 12 is at address 0x7fabdc9710c0 - content: addr is 0x7fab87fe0000 - num pages is 14
+mdt entry 13 is at address 0x7fabdc9710d0 - content: addr is 0x7fab86fe0000 - num pages is 15
+mdt entry 14 is at address 0x7fabdc9710e0 - content: addr is 0x7fab86fdf000 - num pages is 16
+mdt entry 15 is at address 0x7fabdc9710f0 - content: addr is 0x7fab86fde000 - num pages is 17
+mdt entry 16 is at address 0x7fabdc971100 - content: addr is 0x7fab86bde000 - num pages is 18
+mdt entry 17 is at address 0x7fabdc971110 - content: addr is 0x7fab86bdd000 - num pages is 20
+segment allocation 19 for sobj 0 asking for 77825 bytes returned address 0x7fab86bdd000
+trying to memset ..
+memset done
+total allocations for sobj 0 are 20 - failures are 2 - successses are 18
+mdt entry 0 is at address 0x7fabdc971000 - content: addr is 0x7fabdc970000 - num pages is 1
+mdt entry 1 is at address 0x7fabdc971010 - content: addr is 0x7fabdbff6000 - num pages is 2
+mdt entry 2 is at address 0x7fabdc971020 - content: addr is 0x7fabdc96f000 - num pages is 4
+mdt entry 3 is at address 0x7fabdc971030 - content: addr is 0x7fabdc865000 - num pages is 5
+mdt entry 4 is at address 0x7fabdc971040 - content: addr is 0x7fab9bff6000 - num pages is 6
+mdt entry 5 is at address 0x7fabdc971050 - content: addr is 0x7fabdc96e000 - num pages is 7
+mdt entry 6 is at address 0x7fabdc971060 - content: addr is 0x7fabdc825000 - num pages is 8
+mdt entry 7 is at address 0x7fabdc971070 - content: addr is 0x7fab8bff6000 - num pages is 9
+mdt entry 8 is at address 0x7fabdc971080 - content: addr is 0x7fab8bff5000 - num pages is 10
+mdt entry 9 is at address 0x7fabdc971090 - content: addr is 0x7fab8bfe5000 - num pages is 11
+mdt entry 10 is at address 0x7fabdc9710a0 - content: addr is 0x7fab87fe5000 - num pages is 12
+mdt entry 11 is at address 0x7fabdc9710b0 - content: addr is 0x7fab87fe4000 - num pages is 13
+mdt entry 12 is at address 0x7fabdc9710c0 - content: addr is 0x7fab87fe0000 - num pages is 14
+mdt entry 13 is at address 0x7fabdc9710d0 - content: addr is 0x7fab86fe0000 - num pages is 15
+mdt entry 14 is at address 0x7fabdc9710e0 - content: addr is 0x7fab86fdf000 - num pages is 16
+mdt entry 15 is at address 0x7fabdc9710f0 - content: addr is 0x7fab86fde000 - num pages is 17
+mdt entry 16 is at address 0x7fabdc971100 - content: addr is 0x7fab86bde000 - num pages is 18
+mdt entry 17 is at address 0x7fabdc971110 - content: addr is 0x7fab86bdd000 - num pages is 20
