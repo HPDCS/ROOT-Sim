@@ -66,10 +66,8 @@ static void ECS_stub(int ds, unsigned int hitted_object){
 
 	printf("ECS synch started on pgd %d - start wait for hitted object num %d by %d\n", ds, hitted_object, current_lp); 
 	fflush(stdout);
-//	ECS_indexes[ds] += 1;
-//    ECS_synch_table[ds][ECS_indexes[ds]] = hitted_object;
 
-// do whatever you want, but you need to reopen access to the objects you cross-depend on before returning
+	// do whatever you want, but you need to reopen access to the objects you cross-depend on before returning
 
 	// Generate a Rendez-Vous Mark
 	if(LPS[current_lp]->wait_on_rendezvous == 0) {
@@ -319,15 +317,10 @@ void lp_alloc_schedule(void) {
 	
 	ioctl_info sched_info;
 	
-//	current[pgd_ds] = pgd_ds;
-	// Keep track of the current_lp being scheduled: its memory map must be opened for reading/writing
-//	LPS[current_lp]->ECS_index += 1;
-//	LPS[current_lp]->ECS_synch_table[LPS[current_lp]->ECS_index] = current_lp;
-
 	sched_info.ds = pgd_ds; // this is current
 	sched_info.count = LPS[current_lp]->ECS_index + 1; // it's a counter
 	sched_info.objects = LPS[current_lp]->ECS_synch_table; // pgd descriptor range from 0 to number threads - a subset of object ids 
-	//sched_info.objects = &pgd_ds; // pgd descriptor range from 0 to number threads - a subset of object ids 
+
 	/* passing into LP mode - here for the pgd_ds-th LP */
 	ioctl(ioctl_fd,IOCTL_SCHEDULE_ON_PGD, &sched_info);
 

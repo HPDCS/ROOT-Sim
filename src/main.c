@@ -154,8 +154,6 @@ void *main_simulation_loop(void *arg) {
 * @param argv Arguments passed to ROOT-Sim
 * @return Exit code
 */
-
-
 int main(int argc, char **argv) {
 
 	timer_start(sim_startup_time);
