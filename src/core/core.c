@@ -86,6 +86,31 @@ static bool sim_error = false;
 /// This variable is used by rootsim_error to know whether fatal errors involve stopping MPI or not
 bool mpi_is_initialized = false;
 
+/// This flag tells whether we are exiting from the kernel of from userspace
+bool exit_silently_from_kernel = false;
+
+
+
+/**
+ * This function is used to terminate with not much pain the simulation
+ * if the user model inadvertently calls exit(). It displays a warning
+ * message, and then tries to silently shutdown.
+ * The software enters this function using the standard atexit() API.
+ *
+ * @author Alessandro Pellegrini
+ */
+void exit_from_simulation_model(void) {
+	if(!exit_silently_from_kernel) {
+		exit_silently_from_kernel = true;
+
+		printf("Warning: exit() has been called from the model.\n"
+		       "The simulation will now halt, but its unlikely what you really wanted...\n"
+		       "You should use OnGVT() instead. See the manpages for an explanation.\n");
+
+		simulation_shutdown(EXIT_FAILURE);
+	}
+}
+
 
 /**
 * This function initilizes basic functionalities within ROOT-Sim. In particular, it
@@ -132,10 +157,13 @@ void base_init(void) {
 		n_prc_per_kernel[kernel[i]]++;
 	}
 	
-	
+
+	// TODO: questo va rimesso a posto quando ci rilanciamo sul distribuito
 	for (i = n_prc; i < n_prc_tot; i++) {
 		to_gid[i] = -1;
 	}
+
+	atexit(exit_from_simulation_model);
 }
 
 
@@ -159,6 +187,8 @@ void base_fini(void){
 	rsfree(to_lid);
 	rsfree(OnGVT);
 	rsfree(ProcessEvent);
+
+	exit_silently_from_kernel = true;
 }
 
 
@@ -227,7 +257,10 @@ void simulation_shutdown(int code) {
 		if(master_kernel()) {
 		}
 	}
-	
+
+	statistics_stop(code);
+	statistics_fini();
+
 	if(!rootsim_config.serial) {
 
 		// All kernels must exit at the same time
@@ -244,12 +277,12 @@ void simulation_shutdown(int code) {
 		}
 	}
 	
-	statistics_stop(code);
 	
 	thread_barrier(&all_thread_barrier);
 	
 	exit(code);
 }
+
 
 
 inline bool simulation_error(void) {
