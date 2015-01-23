@@ -40,6 +40,9 @@
 #include <mm/dymelor.h>
 
 
+/// Barrier for all worker threads
+barrier_t all_thread_barrier;
+
 /// Mapping between kernel instances and logical processes
 unsigned int *kernel;
 
@@ -83,6 +86,7 @@ static bool sim_error = false;
 /// This variable is used by rootsim_error to know whether fatal errors involve stopping MPI or not
 bool mpi_is_initialized = false;
 
+
 /**
 * This function initilizes basic functionalities within ROOT-Sim. In particular, it
 * creates a mapping between logical processes and kernel instances.
@@ -94,6 +98,8 @@ bool mpi_is_initialized = false;
 */
 void base_init(void) {
 	register unsigned int i; 
+	
+	barrier_init(&all_thread_barrier, n_cores);
 
 	n_prc = 0;
 	ProcessEvent = rsalloc(sizeof(void *) * n_prc_tot);
@@ -236,9 +242,12 @@ void simulation_shutdown(int code) {
 			communication_fini();
 			base_fini();
 		}
-		
-		// TODO: qui ci vuole una barriera tra tutti i thread
 	}
+	
+	statistics_stop(code);
+	
+	thread_barrier(&all_thread_barrier);
+	
 	exit(code);
 }
 

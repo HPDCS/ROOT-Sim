@@ -90,8 +90,6 @@ unsigned int tot_committed = 0;
 spinlock_t tot_lock;
 
 
-timer sim_startup_time;
-
 /**
 * This function implements the main simulation loop
 *
@@ -110,10 +108,9 @@ void *main_simulation_loop(void *arg) {
 	#ifdef HAVE_LINUX_KERNEL_MAP_MODULE
 	lp_alloc_thread_init();
 	#endif
-
-	if(master_thread()) {
-		printf("initialization time: %d\n", timer_value(sim_startup_time));
-	}
+	
+	// Worker Threads synchronization barrier: they all should start working together
+	thread_barrier(&all_thread_barrier);
 	
 	while (!end_computing(gvt_passed)) {
 			
@@ -158,24 +155,12 @@ void *main_simulation_loop(void *arg) {
 
 int main(int argc, char **argv) {
 
-	timer_start(sim_startup_time);
-
 	SystemInit(argc, argv);
 
 	if(rootsim_config.serial) {
 		serial_simulation();
 	} else {
 	
-		#if defined(FINE_GRAIN_DEBUG) || defined(STEP_EXEC)
-		printf("[DEBUG] Running with fine grain debugging\n");
-		barrier_init(&debug_barrier, n_cores);
-		#endif
-
-		timer sim_timer;
-		timer_start(sim_timer);
-
-		// TODO: DOPO LA CREAZIONE DEI THREAD, CI VUOLE UNA BARRIERA MPI NEL CASO DI PIÙ PROCESSI
-
 		// The number of locally required threads is now set. Detach them and then join the main simulation loop
 		if(!simulation_error()) {
 			if(n_cores > 1) {
@@ -187,23 +172,8 @@ int main(int argc, char **argv) {
 	
 		// If we're exiting due to an error, we neatly shut down the simulation
 		if(simulation_error()) {
-			if(master_kernel()) {
-				printf("Simulation abnormally terminated.\n");
-			}
 			simulation_shutdown(EXIT_FAILURE);
 		}
-		
-		if(master_kernel()) {
-			printf("Simulation completed.\n");
-		}
-
-	
-		unsigned int i;
-		unsigned int tot_rb = 0;
-		for(i = 0; i < n_prc; i++) {
-			tot_rb += LPS[i]->count_rollbacks;
-		}
-		printf("Total time: %.02f msec - total committed events:%d - rollbacks: %d\n", timer_value_micro(sim_timer)/1000.0, tot_committed, tot_rb); 
 		simulation_shutdown(EXIT_SUCCESS);
 	}
 }

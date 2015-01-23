@@ -39,8 +39,7 @@
 #include <stdint.h>
 
 #include <lib/numerical.h>
-
-
+#include <arch/thread.h>
 
 // If this macro is set, multithread execution advances at steps (after each simulation loop
 // all the threads synchronize) and verbose output is produced for all actions involving
@@ -132,12 +131,18 @@
 
 
 /// Macro to find the maximum among two values
+#ifdef max
+#undef max
+#endif
 #define max(a,b) \
    ({ __typeof__ (a) _a = (a); \
        __typeof__ (b) _b = (b); \
      _a > _b ? _a : _b; })
 
 /// Macro to find the minimum among two values
+#ifdef min
+#undef min
+#endif
 #define min(a,b) \
    ({ __typeof__ (a) _a = (a); \
        __typeof__ (b) _b = (b); \
@@ -205,6 +210,9 @@ typedef struct _simulation_configuration {
 	seed_type set_seed;		/// The master seed to be used in this run
 } simulation_configuration;
 
+
+/// Barrier for all worker threads
+extern barrier_t all_thread_barrier;
 
 // XXX: this should be refactored someway
 extern unsigned int	kid,		/* Kernel ID for the local kernel */
