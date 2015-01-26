@@ -541,7 +541,7 @@ void list_pop(void *li) {
 
 
 
-void __list_trunc(void *li, double key, size_t key_position, unsigned short int direction) {
+unsigned int __list_trunc(void *li, double key, size_t key_position, unsigned short int direction) {
 
 	struct rootsim_list_node *n;
 	struct rootsim_list_node *n_adjacent;
@@ -655,6 +655,6 @@ void __list_trunc(void *li, double key, size_t key_position, unsigned short int 
 	
 	l->size -= deleted;
 	assert(l->size == (size_before - deleted));
-	return;
+	return deleted;
 }
 

@@ -28,47 +28,88 @@
 #ifndef _STATISTICS_H
 #define _STATISTICS_H
 
-#define PER_KERNEL	0
-#define PER_LP		1
-#define UNIQUE		2
-#define PREALLOC_FILE	3
+/// This macro pre-allocates space for statistics files.
+#define NUM_FILES	3
 
-#ifndef OUTPUT_FILE
-#define OUTPUT_FILE	"kernel"
-#endif
+/// This macro specified the default output directory, if nothing is passed as an option
+#define DEFAULT_OUTPUT_DIR "outputs"
 
-extern FILE 		*fout;		/* Output file, overwritten at each execution */
-extern FILE 		*f_perf_stat;
+/* Definition of Statistics file levels */
+#define STAT_PER_THREAD	0
+#define STAT_UNIQUE	1
 
-struct stat_type {
-	int kid;
+/// This macro gets the file descriptor of a specific file
+#define get_file(type, idx) ({\
+			FILE *__stat_file_ptr;\
+			if(type == STAT_PER_THREAD)\
+				__stat_file_ptr = thread_files[tid][idx];\
+			else if(type == STAT_UNIQUE)\
+				__stat_file_ptr = unique_files[idx];\
+			__stat_file_ptr;\
+		})
 
-	float 	Fr,
+
+/* Definition of statistics file names/indices for unique files */
+#define GLOBAL_STAT_NAME "execution_stats"
+#define GLOBAL_STAT	 0
+
+
+/* Definition of statistics file names/indices for per-thread files */
+#define THREAD_STAT_NAME "local_stats"
+#define THREAD_STAT	 0
+#define GVT_STAT_NAME	 "gvt"
+#define GVT_STAT	 1
+#define LP_STATS_NAME	 "lps"
+#define LP_STATS	 2
+
+
+/* Definition of LP Statistics Post Messages */
+#define STAT_ANTIMESSAGE	1
+#define STAT_EVENT		2
+#define STAT_COMMITTED		3
+#define STAT_ROLLBACK		4
+#define STAT_CKPT		5
+#define STAT_CKPT_TIME		6
+#define STAT_CKPT_MEM		7
+#define STAT_RECOVERY		8
+#define STAT_RECOVERY_TIME	9
+#define STAT_EVENT_TIME		10
+#define STAT_IDLE_CYCLES	11
+
+
+/* Definition of Global Statistics Post Messages */
+#define STAT_SIM_START		1001
+#define STAT_GVT		1002
+
+
+
+// Structure to keep track of (incremental) statistics
+struct stat_t {
+	double 	Fr,
 		Lr,
 		Ef,
 		tot_antimessages,
 		tot_events,
 		committed_events,
-		committed_eventsRP,
 		tot_rollbacks,
 		tot_ckpts,
+		ckpt_time,
 		ckpt_cost,
+		ckpt_mem,
+		tot_recoveries,
+		recovery_time,
 		recovery_cost,
-		tot_checkpoints,
-		tot_recoveries;
-		
-	double	event_time,
-		ckpt_time;
+		event_time,
+		idle_cycles;
 };
 
-extern FILE **files;
-extern struct timeval simulation_timer;
-
+extern void _mkdir(const char *path);
 extern void statistics_init(void);
 extern void statistics_fini(void);
-extern void _mkdir(const char *path);
-extern void start_statistics(void);
-extern int statistics_stop(int exit_code);
-extern void flush_statistics(void);
+extern void statistics_stop(int exit_code);
+extern inline void statistics_post_lp_data(unsigned int lid, unsigned int type, double data);
+extern inline void statistics_post_other_data(unsigned int type, double data);
+
+
 
 #endif /* _STATISTICS_H */

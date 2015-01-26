@@ -33,6 +33,7 @@
 #include <core/timer.h>
 #include <scheduler/process.h>
 #include <scheduler/scheduler.h> // this is for n_prc_per_thread
+#include <statistics/statistics.h>
 
 
 
@@ -266,7 +267,9 @@ simtime_t gvt_operations(void) {
 				// The last one passing here, resets GVT flag
 				iCAS(&GVT_flag, 1, 0);
 			}
-			
+
+			// Dump statistics
+			statistics_post_other_data(STAT_GVT, new_gvt);
 		
 			// Execute fossil collection and termination detection	
 			return adopt_new_gvt(new_gvt);

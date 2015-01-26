@@ -34,6 +34,9 @@
 #define OPT_SERIAL		21
 
 
+// TODO: a vector of vector with text name of numerical options, which should be used for parsing options and for displaying names
+// static char *opt_opt[][] = { ... }
+
 
 static char *opt_desc[] = {
 	"",

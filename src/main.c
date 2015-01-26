@@ -85,11 +85,6 @@ static bool end_computing(int gvt_passed) {
 }
 
 
-extern __thread unsigned int tot_committed_per_th;
-unsigned int tot_committed = 0;
-spinlock_t tot_lock;
-
-
 /**
 * This function implements the main simulation loop
 *

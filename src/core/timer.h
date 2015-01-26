@@ -47,6 +47,8 @@ typedef struct timeval timer;
 					__rs_timedif -= timer_name.tv_sec * 1000 + timer_name.tv_usec / 1000;\
 					__rs_timedif;\
 				})
+				
+#define timer_value_seconds(timer_name) ((double)timer_value(timer_name) / 1000.0)
 
 #define timer_value_micro(timer_name) ({\
 					struct timeval __rs_tmp_timer;\

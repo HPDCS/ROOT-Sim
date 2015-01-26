@@ -91,7 +91,7 @@ typedef struct _LP_state {
 	/// This variable mainains the current checkpointing interval for the LP
 	unsigned int	ckpt_period;
 	
-	/// Counts how many events executed from the last checkpoint
+	/// Counts how many events executed from the last checkpoint (to support PSS)
 	unsigned int	from_last_ckpt;
 	
 	/// If this variable is set, the next invocation to LogState() takes a new state log, independently of the checkpointing interval
@@ -100,11 +100,8 @@ typedef struct _LP_state {
 	/// Input messages queue
 	list(msg_t)	queue_in;
 	
-	/// Pointer to the last correctly elaborated message/event
+	/// Pointer to the last correctly elaborated event
 	msg_t		*bound;
-	
-	/// Pointer to the bound that must be restored due to a rollback operation. If this pointer is not NULL, then the LP's state *must* be LP_STATE_ROLLBACK, to notify the kernel that a rollback operation must be executed upon next scheduling operation.
-//	msg_t		*rollback_bound;
 	
 	/// Output messages queue
 	list(msg_hdr_t)	queue_out;
@@ -121,83 +118,8 @@ typedef struct _LP_state {
 	/// Processed rendezvous queue
 	list(msg_t)	rendezvous_queue;
 
-
-/* ROBA DA RISISTEMARE */
-
-
-	/// Counter of the total events, committed and undone for each local LP
-	unsigned long 	total_events;
-	
-	// Struggle messages counter
-	unsigned long 	count_stragglers;
-	
-	/// Antimessages counter
-	unsigned long 	total_antimessages;
-
-	/// Event total execution time
-	double		event_total_time;
-
-	long int	count_rollbacks;
-	
-	long int	saved_states_counter;
-	
-	
-	
-
-
-	
-
-
-
-/* ROBA DA REIMPLEMENTARE */
-
-
-
-
-	/// The first snapshot after the first transitorial phase
-//	state_t		*first_snapshot;
-	
-	/// The last collected snapshot
-//	state_t 	*last_snapshot;
-	
-
-
-
-
-/* ROBA DA VEDERE SE SERVE ANCORA */
-
-
-
-	
-	
-	/// Minimum local virtual time of the LP
-//	simtime_t	min_lvt;
-
 	/// Unique identifier within the LP
 	unsigned long long	mark;
-	
-//	double		current_time;
-	
-	
-	 
-
-	
-	/// Counts how many events executed from the last check of the dirty state dimension
-//	int		from_last_check;
-	
-	/// Counts how many events executed from the last adaptive operation
-//	int		from_last_adapt_point;
-	
-	/// Total time fo state saving
-//	double		ckpt_total_time;
-	
-//	double		old_committed_time;
-	
-//	double		total_time;
-	
-//	double		old_total_time;
-	
-//	long int	contatore_stati_salvati;
 
 	#ifdef HAVE_LINUX_KERNEL_MAP_MODULE
 	unsigned int ECS_synch_table[MAX_CROSS_STATE_DEPENDENCIES];
@@ -207,11 +129,8 @@ typedef struct _LP_state {
 	/// Buffer used by KLTs for buffering outgoing messages during the execution of an event
 	outgoing_t outgoing_buffer;
 
-
 	unsigned long long	wait_on_rendezvous;
 	unsigned int		wait_on_object;
-	
-
 	
 } LP_state;
 
