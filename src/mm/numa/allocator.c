@@ -8,12 +8,14 @@
 #define AUDIT if(1)
 
 mem_map maps[MAX_SOBJS];
+map_move moves[MAX_SOBJS];
 int handled_sobjs = -1;
 
 
 
 void audit(){
 
+	printf("MAPS tabel is at address %p\n",maps);
 	printf("MDT entries are %d (page size is %d - sizeof mdt entry is %d)\n",MDT_ENTRIES,PAGE_SIZE,sizeof(mdt_entry));
 	
 
@@ -60,12 +62,19 @@ int init_allocator(int sobjs){
 		printf("INIT: sobj %d - base address is %p - active are %d - MDT size is %d\n",i,maps[i].base, maps[i].active, maps[i].size);
 	}
 	
+	set_daemon_maps(maps,moves);
+	init_move(sobjs);
+
+	set_BH_map(maps);
+	init_BH();
+
 	return SUCCESS;
 
 bad_init:
 	return INIT_ERROR; 
 }
 
+/*
 int init_BH(){
 
 	int i;
@@ -92,7 +101,7 @@ bad_init:
 
 
 }
-
+*/
 void* allocate_segment(int sobj, int size){
 
 	mdt_entry* mdt;
@@ -113,8 +122,14 @@ void* allocate_segment(int sobj, int size){
 
 	if(numpages > MAX_SEGMENT_SIZE) goto bad_allocate;
 
+	ret = lock(sobj);
+	if(ret == FAILURE) goto bad_allocate;
+
 	mdt = get_new_mdt_entry(sobj);
-	if (mdt == NULL) goto bad_allocate;
+	if (mdt == NULL) {
+		unlock(sobj);
+		goto bad_allocate;
+	}
 
 	AUDIT
 	printf("returned mdt is at address %p\n",mdt);
@@ -130,16 +145,17 @@ void* allocate_segment(int sobj, int size){
 
 	if (segment == MAP_FAILED) {
 		release_mdt_entry(sobj);
-		AUDIT{
-			if( ret == MDT_RELEASE_FAILURE) printf("bad mdt release\n");
-		}
+		unlock(sobj);
 		goto bad_allocate;
 	}
 
 	mdt->addr = segment;
 	mdt->numpages = numpages;
-	
+
+	AUDIT	
 	audit_map(sobj);
+
+	unlock(sobj);
 
 	return segment;
 
