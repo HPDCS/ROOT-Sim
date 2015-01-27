@@ -45,17 +45,17 @@ static __thread char thread_dir[512];
 *
 * @param file_name The name of the file. If the file is local to each kernel, the kernel id is suffixed at the file name
 * @param type It indicates if the file is kernel-wide (one file per kernel), or system-wide (a unique file)
-* @param index The index where to store the file in the corresponding array
+* @param idx The index where to store the file in the corresponding array
 * 
 */
-static void new_file(char *file_name, int type, int index) {
+static void new_file(char *file_name, int type, int idx) {
 	register unsigned int i;
 	FILE	*f;
 	char 	*destination_dir;
 	char	f_name[1024];
 	
 	// Sanity check
-	if(index >= NUM_FILES) {
+	if(idx >= NUM_FILES) {
 		rootsim_error(true, "Asking for too many statistics files. Check the value of NUM_FILES. Aborting...\n");
 	}
 
@@ -80,20 +80,27 @@ static void new_file(char *file_name, int type, int index) {
 		if ( (f = fopen(f_name, "w")) == NULL)  {
 			rootsim_error(true, "Cannot open %s\n", f_name);
 		}
-		unique_files[index] = f;
+		unique_files[idx] = f;
 		
 	} else if (type == STAT_PER_THREAD) {
 		for(i = 0; i < n_cores; i++) {
 			if ( (f = fopen(f_name, "w")) == NULL)  {
 				rootsim_error(true, "Cannot open %s\n", f_name);
 			}
-			thread_files[i][index] = f;
+			thread_files[i][idx] = f;
 		}
 	}
 }
 
 
-
+static inline FILE *get_file(unsigned int type, unsigned idx) {
+			FILE *f;
+			if(type == STAT_PER_THREAD)
+				f = thread_files[tid][idx];
+			else if(type == STAT_UNIQUE)
+				f = unique_files[idx];
+			return f;
+}
 
 /**
 * This is an helper-function to allow the statistics subsystem create a new directory
@@ -327,7 +334,7 @@ static void statistics_flush_gvt(double gvt) {
 	double exec_time;
 	
 	// Dump on file only if required
-	if( !rootsim_config.stats == STATS_ALL && !rootsim_config.stats == STATS_PERF) {
+	if( rootsim_config.stats != STATS_ALL && rootsim_config.stats != STATS_PERF) {
 		return;
 	}
 	

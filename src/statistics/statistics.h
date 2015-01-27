@@ -38,16 +38,6 @@
 #define STAT_PER_THREAD	0
 #define STAT_UNIQUE	1
 
-/// This macro gets the file descriptor of a specific file
-#define get_file(type, idx) ({\
-			FILE *__stat_file_ptr;\
-			if(type == STAT_PER_THREAD)\
-				__stat_file_ptr = thread_files[tid][idx];\
-			else if(type == STAT_UNIQUE)\
-				__stat_file_ptr = unique_files[idx];\
-			__stat_file_ptr;\
-		})
-
 
 /* Definition of statistics file names/indices for unique files */
 #define GLOBAL_STAT_NAME "execution_stats"
