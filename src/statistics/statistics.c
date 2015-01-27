@@ -460,7 +460,10 @@ void statistics_stop(int exit_code) {
 	statistics_flush();
 
 	if (master_kernel() && master_thread()) {
-		fprintf(f, "TOTAL TIME: %.03f seconds", timer_value_seconds(simulation_timer));
+		double total_time = timer_value_seconds(simulation_timer);
+		printf("total_time = %f\n", total_time);
+		fflush(stdout);
+		fprintf(f, "TOTAL TIME: %.03f seconds", total_time);
 
 		if(exit_code == EXIT_FAILURE) {
 			fprintf(f, "\n--------- SIMULATION ABNORMALLY TERMINATED ----------\n");

@@ -260,8 +260,10 @@ void simulation_shutdown(int code) {
 
 	statistics_stop(code);
 	statistics_fini();
-
+	
 	if(!rootsim_config.serial) {
+		
+		thread_barrier(&all_thread_barrier);
 
 		// All kernels must exit at the same time
 		if(n_ker > 1) {
@@ -276,9 +278,6 @@ void simulation_shutdown(int code) {
 			base_fini();
 		}
 	}
-	
-	
-	thread_barrier(&all_thread_barrier);
 	
 	exit(code);
 }

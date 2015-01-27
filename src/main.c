@@ -92,7 +92,8 @@ static bool end_computing(int gvt_passed) {
 *
 * @author Francesco Quaglia
 */
-void *main_simulation_loop(void *arg) {
+static void *main_simulation_loop(void *arg) __attribute__ ((noreturn));
+static void *main_simulation_loop(void *arg) {
 	
 	(void)arg;
 
@@ -132,7 +133,11 @@ void *main_simulation_loop(void *arg) {
 		}
 	}
 
-	return NULL;
+	// If we're exiting due to an error, we neatly shut down the simulation
+	if(simulation_error()) {
+		simulation_shutdown(EXIT_FAILURE);
+	}
+	simulation_shutdown(EXIT_SUCCESS);
 }
 
 
@@ -164,12 +169,6 @@ int main(int argc, char **argv) {
 		
 			main_simulation_loop(NULL);
 		}
-	
-		// If we're exiting due to an error, we neatly shut down the simulation
-		if(simulation_error()) {
-			simulation_shutdown(EXIT_FAILURE);
-		}
-		simulation_shutdown(EXIT_SUCCESS);
 	}
 }
 
