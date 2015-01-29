@@ -63,7 +63,6 @@ typedef struct timeval timer;
 #define timer_tostring(timer_name, string) do {\
 					time_t __nowtime;\
 					struct tm *__nowtm;\
-					gettimeofday(&timer_name, NULL);\
 					__nowtime = timer_name.tv_sec;\
 					__nowtm = localtime(&__nowtime);\
 					strftime(string, sizeof string, "%Y-%m-%d %H:%M:%S", __nowtm);\

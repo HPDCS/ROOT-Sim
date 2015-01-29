@@ -268,7 +268,6 @@ void statistics_stop(int exit_code) {
 	// Stop the simulation timer immediately to avoid considering the statistics reduction time
 	if (master_kernel() && master_thread()) {
 		timer_start(simulation_finished);
-		printf("%f %d %d\n", timer_value_seconds(simulation_timer), timer_value_milli(simulation_timer), timer_value_micro(simulation_timer));
 		total_time = timer_value_seconds(simulation_timer);
 	}
 	
