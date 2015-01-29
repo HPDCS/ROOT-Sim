@@ -94,9 +94,6 @@ void deallocation(unsigned int me, lp_state_type *pointer, int ch, event_content
 				c->prev->next = c->next;
 		}
 		RESET_CHANNEL(pointer, ch);
-		if(!c->marked) {
-			pointer->non_marked_free++;
-		}
 		free(c->sir_data);
 		
 		free(c);
@@ -135,7 +132,6 @@ int allocation(lp_state_type *pointer) {
 	
 		c->next = NULL;
 		c->prev = pointer->channels;
-		c->marked = false;
 		c->channel_id = index;
 		c->sir_data = (sir_data_per_cell*)malloc(sizeof(sir_data_per_cell));
 		if(c->sir_data == NULL){
