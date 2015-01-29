@@ -31,7 +31,11 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+
+#if defined(OS_LINUX)
 #include <stropts.h>
+#endif
+
 
 #include <core/core.h>
 #include <mm/malloc.h>

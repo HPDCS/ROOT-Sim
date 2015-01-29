@@ -40,6 +40,9 @@
 #include <mm/dymelor.h>
 
 
+/// Barrier for all worker threads
+barrier_t all_thread_barrier;
+
 /// Mapping between kernel instances and logical processes
 unsigned int *kernel;
 
@@ -83,6 +86,32 @@ static bool sim_error = false;
 /// This variable is used by rootsim_error to know whether fatal errors involve stopping MPI or not
 bool mpi_is_initialized = false;
 
+/// This flag tells whether we are exiting from the kernel of from userspace
+bool exit_silently_from_kernel = false;
+
+
+
+/**
+ * This function is used to terminate with not much pain the simulation
+ * if the user model inadvertently calls exit(). It displays a warning
+ * message, and then tries to silently shutdown.
+ * The software enters this function using the standard atexit() API.
+ *
+ * @author Alessandro Pellegrini
+ */
+void exit_from_simulation_model(void) {
+	if(!exit_silently_from_kernel) {
+		exit_silently_from_kernel = true;
+
+		printf("Warning: exit() has been called from the model.\n"
+		       "The simulation will now halt, but its unlikely what you really wanted...\n"
+		       "You should use OnGVT() instead. See the manpages for an explanation.\n");
+
+		simulation_shutdown(EXIT_FAILURE);
+	}
+}
+
+
 /**
 * This function initilizes basic functionalities within ROOT-Sim. In particular, it
 * creates a mapping between logical processes and kernel instances.
@@ -94,6 +123,8 @@ bool mpi_is_initialized = false;
 */
 void base_init(void) {
 	register unsigned int i; 
+	
+	barrier_init(&all_thread_barrier, n_cores);
 
 	n_prc = 0;
 	ProcessEvent = rsalloc(sizeof(void *) * n_prc_tot);
@@ -126,10 +157,13 @@ void base_init(void) {
 		n_prc_per_kernel[kernel[i]]++;
 	}
 	
-	
+
+	// TODO: questo va rimesso a posto quando ci rilanciamo sul distribuito
 	for (i = n_prc; i < n_prc_tot; i++) {
 		to_gid[i] = -1;
 	}
+
+	atexit(exit_from_simulation_model);
 }
 
 
@@ -214,6 +248,8 @@ unsigned int GidToKernel(unsigned int gid) {
 */
 void simulation_shutdown(int code) {
 	
+	exit_silently_from_kernel = true;
+	
 	if(mpi_is_initialized) {
 		comm_finalize();
 		
@@ -221,8 +257,12 @@ void simulation_shutdown(int code) {
 		if(master_kernel()) {
 		}
 	}
+
+	statistics_stop(code);
 	
 	if(!rootsim_config.serial) {
+		
+		thread_barrier(&all_thread_barrier);
 
 		// All kernels must exit at the same time
 		if(n_ker > 1) {
@@ -230,17 +270,18 @@ void simulation_shutdown(int code) {
 		}
 		
 		if(master_thread()) {
+			statistics_fini();
 			dymelor_fini();
 			scheduler_fini();
 			gvt_fini();
 			communication_fini();
 			base_fini();
 		}
-		
-		// TODO: qui ci vuole una barriera tra tutti i thread
 	}
+	
 	exit(code);
 }
+
 
 
 inline bool simulation_error(void) {

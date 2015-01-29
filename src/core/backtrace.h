@@ -246,8 +246,8 @@ void bt_sighandler(int sig, siginfo_t *info, void *opaque) {
 
 #else /* OS_LINUX */
 
+// The backtrace code works only on unix
 #define INIT_BACKTRACE()	{}
-#warning Backtrace not available on this platform, option is disabled
 
 #endif /* OS_LINUX */
 

@@ -39,8 +39,8 @@
 #include <stdint.h>
 
 #include <lib/numerical.h>
-
-
+#include <arch/thread.h>
+#include <statistics/statistics.h>
 
 // If this macro is set, multithread execution advances at steps (after each simulation loop
 // all the threads synchronize) and verbose output is produced for all actions involving
@@ -92,13 +92,6 @@
 #define VERBOSE_DEBUG	1701
 #define VERBOSE_NO	1702
 
-// XXX: This should be moved to stats.h
-#define STATS_ALL	1800	
-#define STATS_LOCAL	1801
-#define STATS_PERF	1802
-#define STATS_KERNEL	1803
-
-
 
 // XXX Do we still use transient time?
 /// Transient duration (in msec)
@@ -132,12 +125,18 @@
 
 
 /// Macro to find the maximum among two values
+#ifdef max
+#undef max
+#endif
 #define max(a,b) \
    ({ __typeof__ (a) _a = (a); \
        __typeof__ (b) _b = (b); \
      _a > _b ? _a : _b; })
 
 /// Macro to find the minimum among two values
+#ifdef min
+#undef min
+#endif
 #define min(a,b) \
    ({ __typeof__ (a) _a = (a); \
        __typeof__ (b) _b = (b); \
@@ -200,11 +199,14 @@ typedef struct _simulation_configuration {
 	bool blocking_gvt;		/// GVT protocol blocking or not
 	bool deterministic_seed;	/// Does not change the seed value config file that will be read during the next runs
 	int verbose;			/// Kernel verbose
-	bool stats;			/// Produce performance statistic file (default yes)
+	enum stat_levels stats;		/// Produce performance statistic file (default STATS_ALL)
 	bool serial;			// If the simulation must be run serially
 	seed_type set_seed;		/// The master seed to be used in this run
 } simulation_configuration;
 
+
+/// Barrier for all worker threads
+extern barrier_t all_thread_barrier;
 
 // XXX: this should be refactored someway
 extern unsigned int	kid,		/* Kernel ID for the local kernel */

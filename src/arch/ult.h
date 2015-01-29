@@ -49,13 +49,11 @@ typedef struct __execution_context_t kernel_context_t;
 
 
 /// Save machine context for userspace context switch. This is used only in initialization.
-#define context_save(context) \
-		setjmp((context)->jb)
+#define context_save(context)  setjmp((context)->jb)
 
 
 /// Restore machine context for userspace context switch. This is used only in inizialitaion.
-#define context_restore(context) \
-		longjmp((context)->jb, 1)
+#define context_restore(context)  longjmp((context)->jb, 1)
 
 
 /// Swicth machine context for userspace context switch. This is used to schedule a LP or return control to simulation kernel
@@ -100,7 +98,9 @@ typedef struct __execution_context_t kernel_context_t;
 
 
 // On Windows/Cygwin we use fibers, so there is no need to allocate LP's stacks
-#define get_ult_stack() ()
+#define get_ult_stack(lid, size) NULL
+#define context_save(context) {}
+#define context_restore(context) {}
 
 
 #endif /* OS */

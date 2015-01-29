@@ -55,15 +55,13 @@
 	((int)I % BITS)) )
 
 
-// struttura rappresentante il contenuto applicativo di un messaggio scambiato tra LP
+// Message exchanged among LPs
 typedef struct _event_content_type {
 	unsigned int cell;
 	unsigned int from;
 	simtime_t sent_at;
 	int channel;
 	simtime_t   call_term_time;
-//	bool *channel_mark;
-//	int *dummy;
 } event_content_type;
 
 #define CROSS_PATH_GAIN		0.00000000000005
@@ -81,7 +79,6 @@ typedef struct _sir_data_per_cell{
 // Taglia di 16 byte
 typedef struct _channel{
 	int channel_id;
-	bool marked;
 	sir_data_per_cell *sir_data;
 	struct _channel *next;
 	struct _channel *prev;
@@ -115,18 +112,8 @@ typedef struct _lp_state_type{
 	
 	unsigned int *channel_state;
 	struct _channel *channels;
-
-	unsigned int non_marked_free;
-	int dummy;
 } lp_state_type;
 
-
-
-//#define malloc(size) ({printf("%s:%n: malloc di %d\n", __FILE__, __LINE__, size); fflush(stdout);\
-//		void *__mem_ptr = malloc(size); \
-//		printf("restituito ma dalloc %p\n", __mem_ptr); \
-//		__mem_ptr; \
-//	})
 
 
 

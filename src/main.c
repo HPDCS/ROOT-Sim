@@ -57,22 +57,17 @@ barrier_t debug_barrier;
 
 
 /**
-* This function handles termination. Messages sent are for synchronization purposes.
-*
-* @author Francesco Quaglia
-*
-* @param gvt_passed The number of passed gvt computations. Given that the gvt is performed over a periodic base it represents also a wall-clock-time measure
+* This function checks the different possibilities for termination detection termination.
 */
-static bool end_computing(int gvt_passed) {
+static bool end_computing(void) {
 
 	// Did CCGS decide to terminate the simulation?
 	if(ccgs_can_halt_simulation()) {
 		return true;
 	}
 	
-	// TODO: gvt_passed è un intero che conta il numero di chiamate a GVT, ma se l'intervallo
-	// è diverso da 1, allora la terminazione avviene dopo un numero di secondi sbagliato!
-	if(rootsim_config.simulation_time != 0 && gvt_passed >= rootsim_config.simulation_time) {
+	// Termination detection based on passed (committed) simulation time
+	if(rootsim_config.simulation_time != 0 && (int)get_last_gvt() >= rootsim_config.simulation_time) {
 		return true;
 	}
 		
@@ -85,13 +80,6 @@ static bool end_computing(int gvt_passed) {
 }
 
 
-extern __thread unsigned int tot_committed_per_th;
-unsigned int tot_committed = 0;
-spinlock_t tot_lock;
-
-
-timer sim_startup_time;
-
 /**
 * This function implements the main simulation loop
 *
@@ -99,23 +87,22 @@ timer sim_startup_time;
 *
 * @author Francesco Quaglia
 */
-void *main_simulation_loop(void *arg) {
+static void *main_simulation_loop(void *arg) __attribute__ ((noreturn));
+static void *main_simulation_loop(void *arg) {
 	
 	(void)arg;
 
 	int kid_num_digits = (int)ceil(log10(n_ker));
 	simtime_t my_time_barrier = -1.0;
-	int gvt_passed = 0;
 
 	#ifdef HAVE_LINUX_KERNEL_MAP_MODULE
 	lp_alloc_thread_init();
 	#endif
-
-	if(master_thread()) {
-		printf("initialization time: %d\n", timer_value(sim_startup_time));
-	}
 	
-	while (!end_computing(gvt_passed)) {
+	// Worker Threads synchronization barrier: they all should start working together
+	thread_barrier(&all_thread_barrier);
+	
+	while (!end_computing()) {
 			
 		// Recompute the LPs-thread binding
 		rebind_LPs();
@@ -135,12 +122,15 @@ void *main_simulation_loop(void *arg) {
 			if (rootsim_config.verbose == VERBOSE_INFO || rootsim_config.verbose == VERBOSE_DEBUG) {
 				printf("(%0*d) MY TIME BARRIER %f\n", kid_num_digits, kid, my_time_barrier);
 				fflush(stdout);
-				gvt_passed++;	
 			}
 		}
 	}
 
-	return NULL;
+	// If we're exiting due to an error, we neatly shut down the simulation
+	if(simulation_error()) {
+		simulation_shutdown(EXIT_FAILURE);
+	}
+	simulation_shutdown(EXIT_SUCCESS);
 }
 
 
@@ -156,24 +146,12 @@ void *main_simulation_loop(void *arg) {
 */
 int main(int argc, char **argv) {
 
-	timer_start(sim_startup_time);
-
 	SystemInit(argc, argv);
 
 	if(rootsim_config.serial) {
 		serial_simulation();
 	} else {
 	
-		#if defined(FINE_GRAIN_DEBUG) || defined(STEP_EXEC)
-		printf("[DEBUG] Running with fine grain debugging\n");
-		barrier_init(&debug_barrier, n_cores);
-		#endif
-
-		timer sim_timer;
-		timer_start(sim_timer);
-
-		// TODO: DOPO LA CREAZIONE DEI THREAD, CI VUOLE UNA BARRIERA MPI NEL CASO DI PIÙ PROCESSI
-
 		// The number of locally required threads is now set. Detach them and then join the main simulation loop
 		if(!simulation_error()) {
 			if(n_cores > 1) {
@@ -182,27 +160,6 @@ int main(int argc, char **argv) {
 		
 			main_simulation_loop(NULL);
 		}
-	
-		// If we're exiting due to an error, we neatly shut down the simulation
-		if(simulation_error()) {
-			if(master_kernel()) {
-				printf("Simulation abnormally terminated.\n");
-			}
-			simulation_shutdown(EXIT_FAILURE);
-		}
-		
-		if(master_kernel()) {
-			printf("Simulation completed.\n");
-		}
-
-	
-		unsigned int i;
-		unsigned int tot_rb = 0;
-		for(i = 0; i < n_prc; i++) {
-			tot_rb += LPS[i]->count_rollbacks;
-		}
-		printf("Total time: %.02f msec - total committed events:%d - rollbacks: %d\n", timer_value_micro(sim_timer)/1000.0, tot_committed, tot_rb); 
-		simulation_shutdown(EXIT_SUCCESS);
 	}
 }
 

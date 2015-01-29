@@ -36,24 +36,7 @@
 #include <core/core.h>
 #include <scheduler/scheduler.h>
 #include <scheduler/process.h>
-
-
-
-
-/// Used to monitor the internal cost to checkpoint one byte of memory
-double checkpoint_cost_per_byte;
-
-/// Used to monitor the internal cost to restore one byte of memory
-double recovery_cost_per_byte;
-
-/// Keeps track of how many checkpointing operations have been invoked so far
-unsigned long total_checkpoints;
-
-/// Keeps track of how many recovery operations have been invoked so far
-unsigned long total_recoveries;
-
-double checkpoint_bytes_total;
-
+#include <statistics/statistics.h>
 
 
 /**
@@ -207,9 +190,8 @@ void *log_full(int lid) {
 	m_state[lid]->total_inc_size = 0;
 
 	int checkpoint_time = timer_value_micro(checkpoint_timer);
-	checkpoint_cost_per_byte += checkpoint_time;
-	total_checkpoints++;
-	checkpoint_bytes_total += size;
+	statistics_post_lp_data(lid, STAT_CKPT_TIME, (double)checkpoint_time);
+	statistics_post_lp_data(lid, STAT_CKPT_MEM, (double)size);
 
 	return log;
 }
@@ -235,6 +217,7 @@ void *log_full(int lid) {
 *         along with the relative meta-data which can be used to perform a restore operation.
 */
 void *log_state(int lid) {
+	statistics_post_lp_data(lid, STAT_CKPT, 1.0);
 	return log_full(lid);
 }
 
@@ -418,9 +401,7 @@ void restore_full(int lid, void *log) {
 	m_state[lid]->total_inc_size = 0;
 
 	int recovery_time = timer_value_micro(recovery_timer);
-	recovery_cost_per_byte += recovery_time;
-	total_recoveries++;
-
+	statistics_post_lp_data(lid, STAT_RECOVERY_TIME, (double)recovery_time);
 }
 
 
@@ -438,6 +419,7 @@ void restore_full(int lid, void *log) {
 * @param queue_node a pointer to the simulation state which must be restored in the logical process
 */
 void log_restore(int lid, state_t *state_queue_node) {
+	statistics_post_lp_data(lid, STAT_RECOVERY, 1.0);
 	restore_full(lid, state_queue_node->log);
 }
 
