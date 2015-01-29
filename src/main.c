@@ -57,22 +57,17 @@ barrier_t debug_barrier;
 
 
 /**
-* This function handles termination. Messages sent are for synchronization purposes.
-*
-* @author Francesco Quaglia
-*
-* @param gvt_passed The number of passed gvt computations. Given that the gvt is performed over a periodic base it represents also a wall-clock-time measure
+* This function checks the different possibilities for termination detection termination.
 */
-static bool end_computing(int gvt_passed) {
+static bool end_computing(void) {
 
 	// Did CCGS decide to terminate the simulation?
 	if(ccgs_can_halt_simulation()) {
 		return true;
 	}
 	
-	// TODO: gvt_passed è un intero che conta il numero di chiamate a GVT, ma se l'intervallo
-	// è diverso da 1, allora la terminazione avviene dopo un numero di secondi sbagliato!
-	if(rootsim_config.simulation_time != 0 && gvt_passed >= rootsim_config.simulation_time) {
+	// Termination detection based on passed (committed) simulation time
+	if(rootsim_config.simulation_time != 0 && (int)get_last_gvt() >= rootsim_config.simulation_time) {
 		return true;
 	}
 		
@@ -99,7 +94,6 @@ static void *main_simulation_loop(void *arg) {
 
 	int kid_num_digits = (int)ceil(log10(n_ker));
 	simtime_t my_time_barrier = -1.0;
-	int gvt_passed = 0;
 
 	#ifdef HAVE_LINUX_KERNEL_MAP_MODULE
 	lp_alloc_thread_init();
@@ -108,7 +102,7 @@ static void *main_simulation_loop(void *arg) {
 	// Worker Threads synchronization barrier: they all should start working together
 	thread_barrier(&all_thread_barrier);
 	
-	while (!end_computing(gvt_passed)) {
+	while (!end_computing()) {
 			
 		// Recompute the LPs-thread binding
 		rebind_LPs();
@@ -128,7 +122,6 @@ static void *main_simulation_loop(void *arg) {
 			if (rootsim_config.verbose == VERBOSE_INFO || rootsim_config.verbose == VERBOSE_DEBUG) {
 				printf("(%0*d) MY TIME BARRIER %f\n", kid_num_digits, kid, my_time_barrier);
 				fflush(stdout);
-				gvt_passed++;	
 			}
 		}
 	}

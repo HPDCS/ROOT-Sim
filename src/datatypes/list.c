@@ -553,7 +553,7 @@ unsigned int __list_trunc(void *li, double key, size_t key_position, unsigned sh
 	
 	// Attempting to truncate an empty list?
 	if(l->size == 0) {
-		return;
+		return 0;
 	}
 
 	if(direction == LIST_TRUNC_AFTER) {

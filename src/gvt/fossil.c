@@ -143,6 +143,7 @@ simtime_t adopt_new_gvt(simtime_t new_gvt) {
 		clean_buffers_on_gvt(LPS_bound[i]->lid, time_barrier_pointer[i]->lvt);
 	}
 
+	// This is used only for printing purposes.
 	if(master_thread()) {
 		return local_time_barrier;
 	}

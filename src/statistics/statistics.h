@@ -34,6 +34,9 @@
 /// This macro specified the default output directory, if nothing is passed as an option
 #define DEFAULT_OUTPUT_DIR "outputs"
 
+/// Longest length of a path
+#define MAX_PATHLEN 512
+
 /* Definition of Statistics file levels */
 #define STAT_PER_THREAD	0
 #define STAT_UNIQUE	1
@@ -73,12 +76,14 @@
 
 
 
+enum stat_levels {STATS_GLOBAL, STATS_PERF, STATS_LP, STATS_ALL};
+
+
+
+
 // Structure to keep track of (incremental) statistics
 struct stat_t {
-	double 	Fr,
-		Lr,
-		Ef,
-		tot_antimessages,
+	double 	tot_antimessages,
 		tot_events,
 		committed_events,
 		tot_rollbacks,

@@ -187,8 +187,6 @@ void base_fini(void){
 	rsfree(to_lid);
 	rsfree(OnGVT);
 	rsfree(ProcessEvent);
-
-	exit_silently_from_kernel = true;
 }
 
 
@@ -250,6 +248,8 @@ unsigned int GidToKernel(unsigned int gid) {
 */
 void simulation_shutdown(int code) {
 	
+	exit_silently_from_kernel = true;
+	
 	if(mpi_is_initialized) {
 		comm_finalize();
 		
@@ -259,7 +259,6 @@ void simulation_shutdown(int code) {
 	}
 
 	statistics_stop(code);
-	statistics_fini();
 	
 	if(!rootsim_config.serial) {
 		
@@ -271,6 +270,7 @@ void simulation_shutdown(int code) {
 		}
 		
 		if(master_thread()) {
+			statistics_fini();
 			dymelor_fini();
 			scheduler_fini();
 			gvt_fini();

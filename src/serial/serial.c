@@ -113,7 +113,7 @@ void serial_simulation(void) {
 		ProcessEvent_light(current_lp, current_lvt, event->type, event->event_content, event->size, serial_states[current_lp]);
 		current_lp = IDLE_PROCESS;
 		
-		serial_simulation_time += timer_value(serial_event_execution);
+		serial_simulation_time += timer_value_milli(serial_event_execution);
 		serial_processed_events++;
 
 		// Termination detection can happen only after the state is initialized
@@ -134,7 +134,7 @@ void serial_simulation(void) {
 		}
 		
 		// Simulate the execution of GVT protocol
-	        if (timer_value(serial_gvt_timer) > (int)rootsim_config.gvt_time_period) {
+	        if (timer_value_milli(serial_gvt_timer) > (int)rootsim_config.gvt_time_period) {
 	                timer_restart(serial_gvt_timer);
 	                printf("MY TIME BARRIER: %f\n", current_lvt);
 		}

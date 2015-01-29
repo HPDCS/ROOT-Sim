@@ -262,12 +262,12 @@ static int parse_cmd_line(int argc, char **argv) {
 			case OPT_STATS:
 				if(strcmp(optarg, "all") == 0) {
 					rootsim_config.stats = STATS_ALL;
-				} else if(strcmp(optarg, "local") == 0) {
-					rootsim_config.stats = STATS_LOCAL;
 				} else if(strcmp(optarg, "performance") == 0) {
 					rootsim_config.stats = STATS_PERF;
-				} else if(strcmp(optarg, "kernel") == 0) {
-					rootsim_config.stats = STATS_KERNEL;
+				} else if(strcmp(optarg, "lp") == 0) {
+					rootsim_config.stats = STATS_LP;
+				} else if(strcmp(optarg, "global") == 0) {
+					rootsim_config.stats = STATS_GLOBAL;
 				} else {
 					rootsim_error(true, "Invalid argument for stats");
 					return -1;
@@ -342,7 +342,6 @@ void SystemInit(int argc, char **argv) {
 		numerical_init();
 		dymelor_init();
 		statistics_init();
-		_mkdir(rootsim_config.output_dir);
 		serial_init(argc, argv, application_args);
 		return;
 	} else {

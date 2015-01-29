@@ -78,6 +78,13 @@ static atomic_t counter_end;
 static volatile unsigned int GVT_flag = 0;
 
 
+/** Keep track of the last computed gvt value. Its a per-thread variable
+ * to avoid synchronization on it, but eventually all threads write here
+ * the same exact value.
+ */
+static __thread simtime_t last_gvt = 0.0;
+
+
 
 /* Per-thread private data */
 
@@ -87,7 +94,7 @@ static __thread enum gvt_phases my_phase = phase_A;
 /// Per-thread GVT round counter
 static __thread unsigned int my_GVT_round = 0;
 
-/// The local (per-thread) minimum. This allows 
+/// The local (per-thread) minimum. It's not TLS, rather an array, to allow reduction by master thread
 static simtime_t *local_min;
 
 
@@ -96,7 +103,7 @@ static simtime_t *local_min;
 
 
 /**
-* Initializer of the GVT subsystem
+* Initialization of the GVT subsystem
 *
 * @author Alessandro Pellegrini
 */
@@ -127,6 +134,15 @@ void gvt_fini(void){
 }
 
 
+/**
+ * This function returns the last computed GVT value at each thread.
+ * It can be safely used concurrently to keep track of the evolution of
+ * the committed trajectory. It's so far mainly used for termination
+ * detection based on passed simulation time.
+ */
+inline simtime_t get_last_gvt(void) {
+	return last_gvt;
+}
 
 
 
@@ -150,7 +166,6 @@ void gvt_fini(void){
 */
 simtime_t gvt_operations(void) {
 	register unsigned int i;
-	int delta_gvt_timer;
 	simtime_t new_gvt;
 	
 	// These variables are used to check if certain phases are (locally) passed.
@@ -168,10 +183,7 @@ simtime_t gvt_operations(void) {
 	if(GVT_flag == 0 && atomic_read(&counter_end) == 0) {
 		
 		// Has enough time passed since the last GVT reduction?
-		delta_gvt_timer = timer_value(gvt_timer);
-		// TODO: credo che abs() non serva più a nulla, è solo un retaggio storico rimasto qua
-		// TODO: anche il cast a int non ha più senso
-		if (abs(delta_gvt_timer) > (int)rootsim_config.gvt_time_period &&
+		if ( timer_value_milli(gvt_timer) > (int)rootsim_config.gvt_time_period &&
 		    iCAS(&current_GVT_round, my_GVT_round, my_GVT_round + 1)) {
 	   
 			// Reset atomic counters and make all threads compute the GVT
@@ -191,7 +203,7 @@ simtime_t gvt_operations(void) {
 		
 		if(my_phase == phase_A) {
 			
-			// Someone has modified the GVT round(possibly me).
+			// Someone has modified the GVT round (possibly me).
 			// Keep track of this update
 			my_GVT_round = current_GVT_round;
 			
@@ -271,7 +283,13 @@ simtime_t gvt_operations(void) {
 			// Dump statistics
 			statistics_post_other_data(STAT_GVT, new_gvt);
 		
-			// Execute fossil collection and termination detection	
+			// Execute fossil collection and termination detection
+			// Each thread stores the last computed value in last_gvt,
+			// while the return value is the gvt only for the master
+			// thread. To check for termination based on simulation time,
+			// this variable must be explicitly inspected using
+			// get_last_gvt()
+			last_gvt = new_gvt;
 			return adopt_new_gvt(new_gvt);
 		}
 		
@@ -289,8 +307,7 @@ simtime_t gvt_operations(void) {
 			atomic_dec(&counter_end);
 		}
 	}
-	
-	// This is never reached
+
 	return -1.0;
 }
 

@@ -13,7 +13,7 @@ Makefile
 
 /aclocal.m4
 /autom4te.cache/
-#/config.*
+/config.*
 #/configure
 #/compile
 #/depcomp
@@ -30,3 +30,4 @@ Makefile
 *~
 
 rootsim-cc
+outputs/
