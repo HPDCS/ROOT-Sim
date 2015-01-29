@@ -31,7 +31,7 @@
 #include <gvt/ccgs.h>
 #include <mm/state.h>
 #include <scheduler/process.h>
-
+#include <statistics/statistics.h>
 
 
 /// Counter for the invocations of adopt_new_gvt. This is used to determine whether a consistent state must be reconstructed
@@ -52,6 +52,7 @@ static unsigned long long snapshot_cycles;
 */
 void fossil_collection(unsigned int lid, simtime_t time_barrier) {
 	state_t *state;
+	double committed_events;
 
 
 	// TODO: controllare il boundary esatto con gli antimessaggi immessi nel sistema!
@@ -62,7 +63,9 @@ void fossil_collection(unsigned int lid, simtime_t time_barrier) {
 	#endif
 
 	// Truncate the input queue
-	list_trunc_before(LPS[lid]->queue_in, timestamp, time_barrier);
+	committed_events = (double)list_trunc_before(LPS[lid]->queue_in, timestamp, time_barrier);
+	statistics_post_lp_data(lid, STAT_COMMITTED, committed_events);
+	
 	#ifdef TRACE_INPUT_QUEUE
 	trace_input_queue(lid);
 	#endif
@@ -140,6 +143,7 @@ simtime_t adopt_new_gvt(simtime_t new_gvt) {
 		clean_buffers_on_gvt(LPS_bound[i]->lid, time_barrier_pointer[i]->lvt);
 	}
 
+	// This is used only for printing purposes.
 	if(master_thread()) {
 		return local_time_barrier;
 	}

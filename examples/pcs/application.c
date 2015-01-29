@@ -110,11 +110,6 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 			break;
 
 
-/*		case MARK_CHANNEL:
-			*event_content->channel_mark = true;
-			break;
-
-*/	
 		case START_CALL:
 			
 			state->arriving_calls++;
@@ -172,18 +167,11 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 					c = c->prev;
 				}
 			
-				if(1 || new_event_content.call_term_time <=  handoff_time) {
+				if(new_event_content.call_term_time <=  handoff_time) {
 					ScheduleNewEvent(me, new_event_content.call_term_time, END_CALL, &new_event_content, sizeof(new_event_content));
-					// I'm going to free the channel, so I mark it already
-					c->marked = true;
 				} else {
 					new_event_content.cell = FindReceiver(TOPOLOGY_HEXAGON);
 					ScheduleNewEvent(me, handoff_time, HANDOFF_LEAVE, &new_event_content, sizeof(new_event_content));
-
-					// The remote object should mark the channel as doomed before I will execute the event
-//					new_event_content.channel_mark = &c->marked;
-//					timestamp = now + (handoff_time - now) * 0.99;
-//					ScheduleNewEvent(new_event_content.cell, timestamp, MARK_CHANNEL, &new_event_content, sizeof(new_event_content));
 				}
 			}
 
@@ -254,28 +242,12 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 						handoff_time = now+ 
 			    			(simtime_t) (5 * Random());
 				}
-				
-				
-				
-/*				// Collect a pointer to the freshly allocated channel
-				c = state->channels;
-				while(c != NULL){
-				if(c->channel_id == new_event_content.channel)
-					break;
-					c = c->prev;
-				}
-*/			
+						
 				if(new_event_content.call_term_time <=  handoff_time ) {
 					ScheduleNewEvent(me , new_event_content.call_term_time, END_CALL, &new_event_content, sizeof(new_event_content));
-					// I'm going to free the channel, so I mark it already
-//					c->marked = true;
 				} else {
 					new_event_content.cell = FindReceiver(TOPOLOGY_HEXAGON);
 					ScheduleNewEvent(me , new_event_content.call_term_time, HANDOFF_LEAVE, &new_event_content, sizeof(new_event_content));
-					// The remote object should mark the channel as doomed before I will execute the event
-//					new_event_content.channel_mark = &c->marked;
-//					timestamp = now + (handoff_time - now) * 0.99;
-//					ScheduleNewEvent(new_event_content.cell, timestamp, MARK_CHANNEL, &new_event_content, sizeof(new_event_content));
 				}
 			}
 			
@@ -307,39 +279,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 
 bool OnGVT(unsigned int me, lp_state_type *snapshot) {
 
-/*
-	if((double)snapshot->complete_calls / (double)complete_calls < 1.0) {
-		printf("LP %d: %f\% (%d/%d)\n", me, (double)snapshot->complete_calls / (double)complete_calls * 100, snapshot->complete_calls, complete_calls);
-	}
-*/
-/*
-if(me == 0)  {
-	printf( "%d (%f):\n\t"
-		"channels: %d\n\t"
-		"arriving: %d\n\t"
-		"complete: %d\n\t"
-		"blocked on setup: %d\n\t"
-		"blocked on handoff: %d\n\t"
-		"leaving handoffs: %d\n\t"
-		"arriving handoffs: %d\n\t"
-		"cont no sir aim: %d\n",
-		 me, snapshot->lvt,
-		snapshot->channel_counter,
-		snapshot->arriving_calls,
-		snapshot->complete_calls,
-		snapshot->blocked_on_setup,
-		snapshot->blocked_on_handoff,
-		snapshot->leaving_handoffs,
-		snapshot->arriving_handoffs,
-		snapshot->cont_no_sir_aim);
-}
-*/
-/*	if(snapshot->non_marked_free > 0) {
-		printf("LP %d has %d unmarked free operations at committed time %f\n", me, snapshot->non_marked_free, snapshot->lvt);
-	}
-*/
 	if (snapshot->complete_calls < complete_calls) 
 		return false;
 	return true;	
 }
-

@@ -31,7 +31,7 @@
 #include <time.h>
 #include <sys/time.h>
 
-/* gettimeoofday() timers  - TODO: SHOULD BE DEPRECATED */
+/* gettimeofday() timers  - TODO: SHOULD BE DEPRECATED */
 typedef struct timeval timer;
 
 
@@ -39,7 +39,9 @@ typedef struct timeval timer;
 
 #define timer_restart(timer_name) gettimeofday(&timer_name, NULL)
 
-#define timer_value(timer_name) ({\
+#define timer_value_seconds(timer_name) ((double)timer_value_milli(timer_name) / 1000.0)
+
+#define timer_value_milli(timer_name) ({\
 					struct timeval __rs_tmp_timer;\
 					int __rs_timedif;\
 					gettimeofday(&__rs_tmp_timer, NULL);\
@@ -57,8 +59,15 @@ typedef struct timeval timer;
 					__rs_timedif;\
 				})
 
-#define timer_print(timedif) fprintf(fout,"%d", timedif)
-
+/// string must be a char array of at least 64 bytes to keep the whole string
+#define timer_tostring(timer_name, string) do {\
+					time_t __nowtime;\
+					struct tm *__nowtm;\
+					gettimeofday(&timer_name, NULL);\
+					__nowtime = timer_name.tv_sec;\
+					__nowtm = localtime(&__nowtime);\
+					strftime(string, sizeof string, "%Y-%m-%d %H:%M:%S", __nowtm);\
+				} while(0)
 
 
 
