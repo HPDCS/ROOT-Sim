@@ -44,31 +44,6 @@
 
 
 
-#ifdef TRACE_INPUT_QUEUE
-void __trace_input_queue(char * file, int line, unsigned int lid) {
-	
-	msg_t *m = list_head(LPS[lid]->queue_in);
-	bool passed_bound = false;
-	
-	printf("\n[QUEUE IN TRACE] (LP %d from %s:%d): ", lid, file, line);
-	while(m != NULL) {
-		printf("%f (%d, %p), type: %d, channel: %d\n", m->timestamp, m->sender, m, m->type, ((event_content_type *)(m->event_content))->channel);
-		if(LPS[lid]->bound != NULL) {
-			if(LPS[lid]->bound == m) {
-				passed_bound = true;
-			}
-			if(m->timestamp > LPS[lid]->bound->timestamp && !passed_bound) {
-				printf("[ERROR IN BOUND], ");
-			}
-		}
-		m = list_next(m);
-	}
-	printf("bound: %p (%f)\n", LPS[lid]->bound, (LPS[lid]->bound != NULL ? LPS[lid]->bound->timestamp : -1.0));
-}
-#endif
-
-
-
 
 /**
 * This function returns the timestamp of the last executed event
@@ -93,8 +68,6 @@ simtime_t last_event_timestamp(unsigned int lid) {
 
 
 
-
-
 /**
 * This function return the timestamp of the next-to-execute event
 *
@@ -108,10 +81,6 @@ simtime_t next_event_timestamp(unsigned int id) {
 
 	simtime_t ret = -1.0;
 	msg_t *evt;
-
-//#ifdef FINE_GRAIN_DEBUG
-//	printf("[NEXT EVENT] Searching for an event for LP %u, its bound is %p (timestamp %f)\n", id, LPS[id]->bound, (LPS[id]->bound != NULL ? LPS[id]->bound->timestamp : 0.0));
-//#endif
 
 	// The bound can be NULL in the first execution or if it has gone back	
 	if (LPS[id]->bound == NULL && !list_empty(LPS[id]->queue_in)) {
@@ -145,25 +114,15 @@ simtime_t next_event_timestamp(unsigned int id) {
 */
 msg_t *advance_to_next_event(unsigned int lid) {
 
-	#ifdef FINE_GRAIN_DEBUG
-	printf("[ADVANCE TO NEXT EVENT] LP %d updates is bound\n", lid);
-	#endif
-
 	if (LPS[lid]->bound == NULL) {
 		if (!list_empty(LPS[lid]->queue_in)) {
 			LPS[lid]->bound = list_head(LPS[lid]->queue_in);
-			#ifdef TRACE_INPUT_QUEUE
-			trace_input_queue(lid);
-			#endif
 		} else {
 			return NULL;
 		}
 	} else {
 		if (list_next(LPS[lid]->bound) != NULL) {
 			LPS[lid]->bound = list_next(LPS[lid]->bound);
-			#ifdef TRACE_INPUT_QUEUE
-			trace_input_queue(lid);
-			#endif
 		} else {
 			return NULL;
 		}
@@ -305,10 +264,6 @@ void process_bottom_halves(void) {
 						abort();
 					} else {
 						
-						#ifdef FINE_GRAIN_DEBUG
-						printf("[ANTIMESSAGE] Deleting event for LP %d at time %f ptr %p due to antimessage sent by %d at time %f", msg_ptr->receiver, msg_ptr->timestamp, list_container_of(msg_ptr), msg->sender, msg->timestamp);
-						#endif
-
 						// If the antimessage is in the past, we have to rollback
 						if(msg->timestamp <= lvt(lid_receiver)) {
 
@@ -317,23 +272,8 @@ void process_bottom_halves(void) {
 								LPS[lid_receiver]->bound = list_prev(LPS[lid_receiver]->bound);
 							}
 							LPS[lid_receiver]->state = LP_STATE_ROLLBACK;
-							#ifdef FINE_GRAIN_DEBUG
-							printf(", this rollbacks to time %f", LPS[lid_receiver]->bound->timestamp);
-							#endif
-							#ifdef TRACE_INPUT_QUEUE
-							trace_input_queue(lid_receiver);
-							#endif
-
 						}
-						#ifdef FINE_GRAIN_DEBUG
-						printf("\n");
-						#endif
-
 						list_delete_by_content(LPS[lid_receiver]->queue_in, msg_ptr);
-
-						#ifdef TRACE_INPUT_QUEUE
-						trace_input_queue(lid_receiver);
-						#endif
 					}
 					
 					break;
@@ -342,13 +282,6 @@ void process_bottom_halves(void) {
 				
 					msg = list_insert(LPS[lid_receiver]->queue_in, timestamp, msg);
 									
-					#ifdef FINE_GRAIN_DEBUG
-					printf("[BOTTOM HALVES] LP %d receives from %d at time %f a positive message placed in %p", msg->receiver, msg->sender, msg->timestamp, msg);
-					#endif
-					#ifdef TRACE_INPUT_QUEUE
-					trace_input_queue(lid_receiver);
-					#endif
-					
 					// Check if we've just inserted an out-of-order event
 					if(LPS[lid_receiver]->bound != NULL) {
 						if(msg->timestamp < lvt(lid_receiver)) {
@@ -358,20 +291,8 @@ void process_bottom_halves(void) {
 							}
 							LPS[lid_receiver]->state = LP_STATE_ROLLBACK;
 							LPS[lid_receiver]->state = LP_STATE_ROLLBACK;
-
-							#ifdef TRACE_INPUT_QUEUE
-							trace_input_queue(lid_receiver);
-							#endif
-
-							#ifdef FINE_GRAIN_DEBUG
-							printf(", this rollbacks to time %f", LPS[lid_receiver]->bound->timestamp);
-							#endif
-
 						}
 					}
-					#ifdef FINE_GRAIN_DEBUG	
-					printf("\n");
-					#endif
 					break;
 
 				default:
@@ -381,10 +302,8 @@ void process_bottom_halves(void) {
 		    expunge_msg:
 			list_pop(processing);
 		}
-
 		rsfree(processing);
 	}
-//	flush_in_transit_bound();
 }
 
 

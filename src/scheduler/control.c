@@ -41,10 +41,6 @@ void unblock_synchronized_objects(unsigned int lid) {
 	unsigned int i;
 	msg_t control_msg;
 
-	#ifdef FINE_GRAIN_DEBUG
-	printf("[UNBLOCK] %d is unblocking remote objects:\n", lid);
-	#endif
-
 	for(i = 1; i <= LPS[lid]->ECS_index; i++) {
 		bzero(&control_msg, sizeof(msg_t));
 		control_msg.sender = LidToGid(lid);
@@ -55,19 +51,10 @@ void unblock_synchronized_objects(unsigned int lid) {
 		control_msg.is_antimessage = false;
 		control_msg.rendezvous_mark = LPS[lid]->wait_on_rendezvous;
 		
-		#ifdef FINE_GRAIN_DEBUG
-		printf("\t%d\t", LPS[lid]->ECS_synch_table[i]);
-		#endif
-		
 		Send(&control_msg);
 	}
 
 	LPS[lid]->wait_on_rendezvous = 0;
-
-
-	#ifdef FINE_GRAIN_DEBUG
-	printf("\n");
-	#endif
 }
 #endif
 
@@ -82,11 +69,6 @@ void rollback_control_message(unsigned int lid, simtime_t simtime) {
 
 	msg = list_tail(LPS[lid]->rendezvous_queue);
 	while(msg != NULL && msg->timestamp > simtime) {
-	
-
-		#ifdef FINE_GRAIN_DEBUG
-		printf("[RENDEZVOUS ROLLACK] sending a RENDEZVOUS ROLLBACK message to %d\n", msg->sender);
-		#endif
 
 		// antimessaggio di controllo
 		bzero(&control_antimessage, sizeof(msg_t));
@@ -116,10 +98,6 @@ bool anti_control_message(msg_t * msg) {
 
 		unsigned int lid_receiver = msg->receiver;
 
-		#ifdef FINE_GRAIN_DEBUG
-		printf("[RENDEZVOUS ROLLACK] %d is undoing a rendezvous point\n", lid_receiver);
-		#endif
-
 		if(tid != LPS[lid_receiver]->worker_thread) {
 			printf("ERRORE ERRORE ERRORE\n");
 			abort();
@@ -130,7 +108,6 @@ bool anti_control_message(msg_t * msg) {
 		}
 
 		if(old_rendezvous == NULL) {
-//			rootsim_error(true, "I'm asked to annihilate a rendezvous point, but there is no such rendezvous mark: %llu\n", msg->rendezvous_mark);
 			return false;
 		}
 
@@ -176,22 +153,13 @@ bool receive_control_msg(msg_t *msg) {
 	switch(msg->type) {
 
 		case RENDEZVOUS_START:
-			#ifdef FINE_GRAIN_DEBUG
-			printf("[SYNCH] %d has received a RENDEZVOUS START request from %d\n", msg->receiver, msg->sender);
-			#endif
 			return true;
 
 		case RENDEZVOUS_ACK:
 			if(LPS[msg->receiver]->state == LP_STATE_ROLLBACK) {
-				#ifdef FINE_GRAIN_DEBUG
-				printf("[SYNCH] %d is discarding a RENDEZVOUS ACK message because has to roll back\n", msg->receiver);
-				#endif
 				break;
 			}
 
-			#ifdef FINE_GRAIN_DEBUG
-			printf("[SYNCH] %d has received a RENDEZVOUS ACK message and is passing in READY FOR SYNCH state\n", msg->receiver);
-			#endif
 			if(LPS[msg->receiver]->wait_on_rendezvous == msg->rendezvous_mark) {
 				LPS[msg->receiver]->state = LP_STATE_READY_FOR_SYNCH;
 			}
@@ -199,10 +167,6 @@ bool receive_control_msg(msg_t *msg) {
 			break;
 
 		case RENDEZVOUS_UNBLOCK:
-			#ifdef FINE_GRAIN_DEBUG
-			printf("[UNBLOCK] %d has received a RENDEZVOUS UNBLOCK message and is passing in READY state\n", msg->receiver);
-			#endif
-//			if(LPS[msg->receiver]-> state != LP_STATE_WAIT_FOR_UNBLOCK) {
 			if(LPS[msg->receiver]->wait_on_rendezvous == msg->rendezvous_mark) {
 				LPS[msg->receiver]->state = LP_STATE_READY;
 				LPS[msg->receiver]->wait_on_rendezvous = 0;
@@ -217,9 +181,6 @@ bool receive_control_msg(msg_t *msg) {
 			break;
 
 		case RENDEZVOUS_ROLLBACK:
-			#ifdef FINE_GRAIN_DEBUG
-			printf("[RENDEZVOUS ROLLBACK] %d has received a RENDEZVOUS ROLLBACK message\n", msg->receiver);
-			#endif
 			return true;
 
 		default:
@@ -252,9 +213,6 @@ bool process_control_msg(msg_t *msg) {
 			// Place this into input queue
 			LPS[msg->receiver]->wait_on_rendezvous = msg->rendezvous_mark;
 
-			#ifdef FINE_GRAIN_DEBUG
-			printf("[SYNCH] %d has processed the RENDEZVOUS START request from %d and is now in WAIT FOR UNBLOCK state. RENDEZVOUS ACK message sent back.\n", msg->receiver, msg->sender);
-			#endif
 			LPS[msg->receiver]->state = LP_STATE_WAIT_FOR_UNBLOCK;
 			bzero(&control_msg, sizeof(msg_t));
 			control_msg.sender = msg->receiver;
@@ -267,20 +225,6 @@ bool process_control_msg(msg_t *msg) {
 			Send(&control_msg);
 			break;
 
-/*		case RENDEZVOUS_ACK:
-			#ifdef FINE_GRAIN_DEBUG
-			printf("[SYNCH] %d has processed the RENDEZVOUS ACK message from %d and is now in READY state.\n", msg->receiver, msg->sender);
-			#endif
-			LPS[msg->receiver]->state = LP_STATE_READY_FOR_SYNCH;
-			return true;
-*/
-/*		case RENDEZVOUS_UNBLOCK:
-			#ifdef FINE_GRAIN_DEBUG
-			printf("[SYNCH] %d has processed the RENDEZVOUS UNBLOCK request from %d and is now in READY state.\n", msg->receiver, msg->sender);
-			#endif
-			LPS[msg->receiver]->state = LP_STATE_READY;
-			break;
-*/
 		default:
 			rootsim_error(true, "Trying to handle a control message which is meaningless at schedule time: %d\n", msg->type);
 

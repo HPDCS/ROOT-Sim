@@ -209,21 +209,10 @@ int comm_finalize(void) {
 * @author Francesco Quaglia
 */
 void Send(msg_t *msg) {
-
-#ifdef FINE_GRAIN_DEBUG	
-	printf("[SEND%s] LP %d (at time %f) send %smessagge to %d (at time %f)\n", (msg->is_antimessage ? " ANTIMESSAGE" : ""), msg->sender, lvt(msg->sender), (msg->is_antimessage ? "an anti" : "a "), msg->receiver, msg->timestamp);
-#endif
-
 	// Check whether the message recepient is local or remote
 	if(GidToKernel(msg->receiver) == kid) { // is local
 		insert_bottom_half(msg);
 	} else { // is remote
-
-		// Register the message as sent (for GVT calculation)	
-//		register_msg(msg);
-//		gvt_messages_sent[GidToKernel(msg->receiver)]++;
-
-//		(void)comm_basic_send((char *)&msg, sizeof(msg_t), MPI_CHAR, (int)GidToKernel(msg->receiver), MSG_EVENT, MPI_COMM_WORLD);
 		rootsim_error(true, "Calling an operation not yet reimplemented, this should never happen!\n", __FILE__, __LINE__);
 	}
 }

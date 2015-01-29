@@ -50,11 +50,4 @@ extern msg_t *free_queue_out_elem(unsigned int, msg_t *);
 extern void insert_bottom_half(msg_t *msg);
 extern void process_bottom_halves(void);
 extern unsigned long long generate_mark(unsigned int);
-
-#ifdef TRACE_INPUT_QUEUE
-#define trace_input_queue(lid) __trace_input_queue(__FILE__, __LINE__, lid)
-extern void __trace_input_queue(char *, int, unsigned int);
 #endif
-
-#endif
-

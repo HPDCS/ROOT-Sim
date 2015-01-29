@@ -58,9 +58,6 @@ void (*SetState)(void *new_state);
 */
 void LogState(unsigned int lid) {
 
-	timer state_timer;
-	timer_start(state_timer);
-
 	bool take_snapshot = false;
 	state_t new_state; // If inserted, list API makes a copy of this
 
@@ -112,14 +109,7 @@ void LogState(unsigned int lid) {
 		// list_insert() makes a copy of the payload, which is then returned. This is our state bound.
 		LPS[lid]->state_bound = list_insert_tail(LPS[lid]->queue_states, &new_state);
 		
-		#ifdef FINE_GRAIN_DEBUG	
-		printf("[LOG] Taking a snapshot for LP %d at time %f: %p\n", LidToGid(lid), lvt(lid), LPS[lid]->state_bound);
-		#endif
 	}
-
-	// TODO: statistics
-//	int delta_state_timer = timer_value_micro(state_timer);
-//	LPS[lid]->ckpt_total_time += delta_state_timer;
 }
 
 
@@ -146,10 +136,6 @@ unsigned int silent_execution(unsigned int lid, void *state_buffer, msg_t *evt, 
 	old_state = LPS[lid]->state;
 	LPS[lid]->state = LP_STATE_SILENT_EXEC;
 	
-	#ifdef FINE_GRAIN_DEBUG	
-	printf("[SILENT EXECUTION] LP %d: ", LidToGid(lid));
-	#endif
-	
 	// Reprocess events. Outgoing messages are explicitly discarded, as this part of
 	// the simulation has been already executed at least once
 	while(evt != NULL && evt->timestamp <= final_time) {
@@ -162,28 +148,13 @@ unsigned int silent_execution(unsigned int lid, void *state_buffer, msg_t *evt, 
 
 		events++;
 
-		#ifdef FINE_GRAIN_DEBUG	
-		printf("%f, ", evt->timestamp);
-		#endif
-
 		if(bound != NULL) {
 			*bound = evt;
-			#ifdef TRACE_INPUT_QUEUE
-			trace_input_queue(lid);
-			#endif
 		}
 
 		activate_LP(lid, evt->timestamp, evt, state_buffer);	
 		evt = list_next(evt);
 	}
-	
-	#ifdef FINE_GRAIN_DEBUG	
-	if(evt != NULL) {
-		printf("[%f, %p]\n", evt->timestamp, evt);
-	} else {
-		printf("[NO EVENTS AFTER]\n");
-	}
-	#endif
 	
 	LPS[lid]->state = old_state;
 	
@@ -220,10 +191,6 @@ void rollback(unsigned int lid) {
 	
 	restore_time = LPS[lid]->bound->timestamp;
 
-	#ifdef FINE_GRAIN_DEBUG	
-	printf("[ROLLBACK] LP %d rollbacks to %f due to %d\n", lid, restore_time, list_next(LPS[lid]->bound)->sender);
-	#endif
-	
 	// Send antimessages
 	send_antimessages(lid, restore_time);
 
@@ -243,34 +210,12 @@ void rollback(unsigned int lid) {
 	
 	// Coasting forward, updating the bound
 
-	#ifdef FINE_GRAIN_DEBUG
-	printf("[SILENT EXECUTION] (%d) bound: %f, first_event_after_log: %f\n", lid, LPS[lid]->bound->timestamp, list_next(LPS[lid]->state_bound->last_event)->timestamp);
-	#endif
-
 	// TODO: ma può essere davvero nullo questo? forse solo intorno a INIT...
 	if(LPS[lid]->state_bound->last_event != NULL) {
 		silent_execution(lid, restore_state->buffer_state, list_next(LPS[lid]->state_bound->last_event), restore_time, &LPS[lid]->bound);
 	}
 
 	rollback_control_message(lid, restore_time);
-
-/*
-	msg_ptr = LPS[lid]->bound;
-	while(msg_ptr != NULL) {
-//		msg_ptr_next = list_next(msg_ptr);
-		// This sends control antimessages
-		rollback_control_message(msg_ptr);
-//		if(rollback_control_message(msg_ptr)) {
-//			list_delete_by_content(LPS[lid]->queue_in, msg_ptr);
-//		}
-//		msg_ptr = msg_ptr_next;
-		msg_ptr = list_next(msg_ptr);
-	}
-
-*/	
-	#ifdef FINE_GRAIN_DEBUG
-	printf("[SILENT EXECUTION] (%d) new bound: %f, %p\n", lid, LPS[lid]->bound->timestamp, list_container_of(LPS[lid]->bound));
-	#endif
 }
 
 

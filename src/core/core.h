@@ -42,21 +42,6 @@
 #include <arch/thread.h>
 #include <statistics/statistics.h>
 
-// If this macro is set, multithread execution advances at steps (after each simulation loop
-// all the threads synchronize) and verbose output is produced for all actions involving
-// event scheduling, forward and backwards execution.
-//#define FINE_GRAIN_DEBUG
-
-// If this macro is set, multithread execution advances at steps
-//#define STEP_EXEC
-
-// If this flag is set, input queue's content is printed after each changing operation
-//#define TRACE_INPUT_QUEUE
-
-
-
-
-
 /// If set, ROOT-Sim will produce statistics on the execution
 #define PLATFORM_STATS				
 

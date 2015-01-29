@@ -54,22 +54,13 @@ void fossil_collection(unsigned int lid, simtime_t time_barrier) {
 	state_t *state;
 	double committed_events;
 
-
 	// TODO: controllare il boundary esatto con gli antimessaggi immessi nel sistema!
 	time_barrier = time_barrier;
 	
-	#ifdef FINE_GRAIN_DEBUG
-	printf("[FOSSIL COLLECTION] LP 0 executes fossil collection at barrier %f\n", time_barrier);
-	#endif
-
 	// Truncate the input queue
 	committed_events = (double)list_trunc_before(LPS[lid]->queue_in, timestamp, time_barrier);
 	statistics_post_lp_data(lid, STAT_COMMITTED, committed_events);
 	
-	#ifdef TRACE_INPUT_QUEUE
-	trace_input_queue(lid);
-	#endif
-
 	// Truncate the output queue
 	list_trunc_before(LPS[lid]->queue_out, send_time, time_barrier);
 	

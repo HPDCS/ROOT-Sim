@@ -50,12 +50,6 @@
 #undef _INIT_FROM_MAIN
 
 
-
-#if defined(FINE_GRAIN_DEBUG) || defined(STEP_EXEC)
-barrier_t debug_barrier;
-#endif
-
-
 /**
 * This function checks the different possibilities for termination detection termination.
 */
