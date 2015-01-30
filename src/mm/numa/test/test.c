@@ -4,7 +4,7 @@
 #include "allocator.h"
 #include <unistd.h>
 
-
+char* allpages[1024];
 
 int main(int argc, char** argv){
 
@@ -16,6 +16,8 @@ int main(int argc, char** argv){
 	int target;
 	int success;
 	int failure;
+	int id;
+	unsigned node_id;
 
 	if (argc < 3) {
 		printf("bad number of arguments\n");
@@ -136,6 +138,7 @@ int main(int argc, char** argv){
 		}
 		if(addr != NULL){
 			success++;
+			allpages[i] = addr;
 			printf("trying to memset ..\n");
 			memset(addr,'f',(i*(PAGE_SIZE))+1);
 			printf("memset done\n");
@@ -148,8 +151,20 @@ int main(int argc, char** argv){
 	  printf("total allocations for sobj %d are %d - failures are %d - successses are %d\n",j,numentries,failure,success);
 	  audit_map(j);
 
-	}
-	return 0;
 
 	}
+
+	//move phase
+	while(1){
+	   printf("give me the sobj to move: ");
+	   scanf("%d",&id);
+	   printf("give me the target numa node: ");
+	   scanf("%u",&node_id);
+
+	   move_sobj(id,node_id);
+//	   for(i=0;i<success;i++) memset(allpages[i],'q',(i*(PAGE_SIZE))+1);
+
+	}
+	}
+	return 0;
 }

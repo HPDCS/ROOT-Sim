@@ -14,6 +14,7 @@ typedef struct _mem_map{
 	int   expired_msgs; //number of messages currently present in the live bottom half
 	int   expired_offset; // offset of the oldest undelivered msg from the expired pool
 	int   expired_boundary; //memory occupancy (in bytes) of live messages
+	char* actual_bh_addresses[2];// these are the stable pointers seen for ottom half buffers' migration across numa nodes
 } mem_map; 
 
 typedef struct _mdt_entry{ //mdt stands for 'meta data table'

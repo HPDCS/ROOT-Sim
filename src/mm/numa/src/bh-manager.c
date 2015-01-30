@@ -8,9 +8,13 @@
 #include <pthread.h>
 #include "bh-manager.h"
 
+#define AUDIT if(1)
 
 mem_map * bhmaps;
 char fictitious[MAX_MSG_SIZE];
+
+pthread_spinlock_t bh_write[MAX_SOBJS];
+pthread_spinlock_t bh_read[MAX_SOBJS];
 
 extern int handled_sobjs;
 
@@ -43,10 +47,18 @@ int init_BH(){
                 addr = allocate_page();
                 if (addr == NULL) goto bad_init;
                 bhmaps[i].live_bh = addr;
+		bhmaps[i].actual_bh_addresses[0] = addr;
                 addr = allocate_page();
                 if (addr == NULL) goto bad_init;
                 bhmaps[i].expired_bh = addr;
+		bhmaps[i].actual_bh_addresses[1] = addr;
         }
+
+        for (i=0; i<sobjs; i++){
+		pthread_spin_init(&bh_write[i],0);
+		pthread_spin_init(&bh_read[i],0);
+	}
+	
         
         return SUCCESS;
 
@@ -64,18 +76,30 @@ int insert_BH(int sobj, void* msg, int size){// this needs to be atomic per sobj
 	int residual_store;
 	int offset;
 
-	if(bhmaps[sobj].live_boundary >= BH_SIZE) goto bad_insert;
+
+	if( (sobj<0) || sobj >= handled_sobjs) goto bad_insert;
 
 	if( (size<=0) || size > MAX_MSG_SIZE) goto bad_insert;
 
 	if( msg == NULL ) goto bad_insert;
+
+
+	pthread_spin_lock(&bh_write[sobj]);
+
+	if(bhmaps[sobj].live_boundary >= BH_SIZE) {
+		pthread_spin_unlock(&bh_write[sobj]);
+		goto bad_insert;
+	}
 
 	tag = size;
 	needed_store = tag + sizeof(tag);
 
 	residual_store = BH_SIZE - bhmaps[sobj].live_boundary;
 	
-	if( residual_store < needed_store ) goto bad_insert;
+	if( residual_store < needed_store ){ 
+		pthread_spin_unlock(&bh_write[sobj]);
+		goto bad_insert;
+	}
 
 	offset = bhmaps[sobj].live_boundary;
 
@@ -88,10 +112,15 @@ int insert_BH(int sobj, void* msg, int size){// this needs to be atomic per sobj
 	bhmaps[sobj].live_boundary += needed_store;
 
 	bhmaps[sobj].live_msgs += 1;
+
+	pthread_spin_unlock(&bh_write[sobj]);
 	
 	return SUCCESS;
 
 bad_insert: 
+
+	AUDIT
+	printf("BH insert failure - sobj %d\n",sobj);
 
 	return FAILURE;
 
@@ -105,14 +134,23 @@ void* get_BH(int sobj){// this needs to be atomic per sobj - synch is left to th
 	int msg_offset;
 	
 
+	if( (sobj<0) || sobj >= handled_sobjs) goto no_msg;
+	
+	pthread_spin_lock(&bh_read[sobj]);
+
 	if(bhmaps[sobj].expired_msgs <= 0 ) {
 	
+		pthread_spin_lock(&bh_write[sobj]);
 		switch_bh(sobj);
+		pthread_spin_unlock(&bh_write[sobj]);
 
 	}
 
 	
-	if(bhmaps[sobj].expired_msgs <= 0 ) goto no_msg;
+	if(bhmaps[sobj].expired_msgs <= 0 ){
+		pthread_spin_unlock(&bh_read[sobj]);
+		goto no_msg;
+	}
 
 	msg_offset = bhmaps[sobj].expired_offset;  
 
@@ -131,6 +169,8 @@ void* get_BH(int sobj){// this needs to be atomic per sobj - synch is left to th
 	bhmaps[sobj].expired_offset = (char*)msg_addr - bhmaps[sobj].expired_bh;
 
 	bhmaps[sobj].expired_msgs -= 1;
+
+	pthread_spin_unlock(&bh_read[sobj]);
 
 	return buff;
 

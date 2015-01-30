@@ -5,3 +5,5 @@
 
 void * background_work( void* );
 int verify( int );
+void move_BH(int , unsigned );
+

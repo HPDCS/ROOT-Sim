@@ -69,6 +69,7 @@ void move_sobj(int sobj, unsigned numa_node){
 	int totpages;
 	int ret;
                 
+	AUDIT
 	printf("audit on maps: %p - handled objs is %d\n",daemonmaps,handled_sobjs);
 
         if( (sobj < 0)||(sobj>=handled_sobjs) ){
@@ -87,6 +88,8 @@ void move_sobj(int sobj, unsigned numa_node){
 
 		move_segment(mdte,numa_node);
         }
+
+	move_BH(sobj,numa_node);
 
         return ;
 }
@@ -116,6 +119,8 @@ void move_segment(mdt_entry *mdte, unsigned numa_node){
 move_operation:
 	ret = numa_move_pages(0, pagecount, pages, nodes, status, MPOL_MF_MOVE);
 	printf("PAGE MOVE operation (page count is %d target node is %u) returned %d\n",pagecount,numa_node,ret);
+
+/*
 	for (i=0;i<pagecount;i++){
 		printf("     details: status[%i] is %d\n",i,status[i]);
 		if (status[i] != numa_node) retry = 1;
@@ -125,6 +130,29 @@ move_operation:
 		alreadytried = 1;
 		 goto move_operation;
 	}
+*/
+
+}
+
+
+void move_BH(int sobj, unsigned numa_node){
+
+	char**pages;
+	int i;
+	int ret;
+	int pagecount = 2; //1 page per bh (live and expired) 
+
+	pages = daemonmaps[sobj].actual_bh_addresses;
+
+	for (i=0;i<pagecount;i++){
+		nodes[i] = numa_node;
+	}	
+
+	ret = numa_move_pages(0, pagecount, pages, nodes, status, MPOL_MF_MOVE);
+
+	AUDIT
+	printf("HB move - sobj %d - return value is %d\n",sobj,ret);
+
 }
 
 int lock(int sobj){
