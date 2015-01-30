@@ -30,7 +30,6 @@
 #define __ROOTSIM__ATOMIC_H
 
 #include <stdbool.h>
-#include <arch/atomic.h>
 
 
 

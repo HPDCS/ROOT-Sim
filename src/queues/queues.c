@@ -266,6 +266,8 @@ void process_bottom_halves(void) {
 			switch (msg->is_antimessage) {
 
 				case true:
+				
+					statistics_post_lp_data(msg->receiver, STAT_ANTIMESSAGE, 1.0);
 
 					// Check if it is an anti control message
 //					if(anti_control_message(msg)) {

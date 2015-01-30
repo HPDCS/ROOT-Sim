@@ -228,7 +228,7 @@ extern char *__list_extract(void *li, unsigned int size, double key, size_t key_
 extern bool __list_delete(void *li, unsigned int size, double key, size_t key_position);
 extern char *__list_extract_by_content(void *li, unsigned int size, void *ptr, bool copy);
 extern char *__list_find(void *li, double key, size_t key_position);
-extern void __list_trunc(void *li, double key, size_t key_position, unsigned short int direction);
+extern unsigned int __list_trunc(void *li, double key, size_t key_position, unsigned short int direction);
 extern void list_pop(void *li);
 
 #endif /* __LIST_DATATYPE_H */

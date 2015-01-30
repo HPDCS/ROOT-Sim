@@ -42,6 +42,7 @@
 #include <arch/thread.h>
 #include <communication/communication.h>
 #include <gvt/gvt.h>
+#include <statistics/statistics.h>
 
 #include <mm/modules/ktblmgr/ktblmgr.h>
 
@@ -67,10 +68,7 @@ __thread msg_t *current_evt;
 /// This global variable tells the simulator what is the LP currently being scheduled on the current worker thread
 __thread void *current_state;
 
-/// This global variable keeps track of the number of execution cycles where no events were available on the current worker thread
-static __thread int idle_cycles;
-
-static atomic_t INIT_barrier; 
+static barrier_t INIT_barrier; 
 
 
 /*
@@ -105,7 +103,7 @@ void scheduler_init(void) {
 	}
 
 	// Initialize the INIT barrier
-	atomic_set(&INIT_barrier, n_prc_tot);
+	barrier_init(&INIT_barrier, n_cores);
 	
 }
 
@@ -182,7 +180,9 @@ static void LP_main_loop(void *args) {
 		ProcessEvent[current_lp](LidToGid(current_lp), current_evt->timestamp, current_evt->type, current_evt->event_content, current_evt->size, current_state);
 
 		int delta_event_timer = timer_value_micro(event_timer);
-		LPS[current_lp]->event_total_time += delta_event_timer;
+	
+		statistics_post_lp_data(current_lp, STAT_EVENT, 1.0);
+		statistics_post_lp_data(current_lp, STAT_EVENT_TIME, delta_event_timer);
 		
 		// Give back control to the simulation kernel's user-level thread
 		#ifdef ENABLE_ULT
@@ -382,7 +382,6 @@ void rebind_LPs(void) {
 */
 void schedule(void) {
 
-	static __thread unsigned int consecutive_idle_cycles = 0;
 	unsigned int lid;
 	msg_t *event;
 	void *state;
@@ -409,26 +408,12 @@ void schedule(void) {
 		printf("[SCHEDULE] Thread %d has no events to process!\n", tid);
 		#endif
 		
-		idle_cycles++;
-		consecutive_idle_cycles++;
-/*		if(consecutive_idle_cycles % 100 == 0) {
-			rootsim_error(false, "No events to be processed by worker thread %d, %d consecutive idle cycles.\n", tid, consecutive_idle_cycles);
-			bool tutti = true;
-			unsigned i;
-			for(i = 0; i < n_prc_per_thread; i++) {
-				tutti &= (bool)is_blocked_state(LPS_bound[i]->state);
-			}
-			printf("tutti bloccati: %d\n", tutti);
-		}
-*///		if(consecutive_idle_cycles == MAX_CONSECUTIVE_IDLE_CYCLES) {
-//			rootsim_error(true, "Too many consecutive idle cycles. Aborting...\n");
-//		}
+		statistics_post_lp_data(lid, STAT_IDLE_CYCLES, 1.0);
+
       		return;
     	}
-    	   	
-    	consecutive_idle_cycles = 0;
 
-    	
+	// If we have to rollback
     	if(LPS[lid]->state == LP_STATE_ROLLBACK) {
 		rollback(lid);
 
@@ -459,19 +444,12 @@ void schedule(void) {
 
 	// Manage the INIT barrier
 	if(event->type == INIT) {
-		atomic_dec(&INIT_barrier);
+		thread_barrier(&INIT_barrier);
 	}
-
-	// Spin on the barrier if needed. This works only
-	// if the used scheduler processes events (locally)
-	// in a timestamp increasing order
-	while(atomic_read(&INIT_barrier) > 0 && event->type != INIT);
 
 	if(!process_control_msg(event)) {
 		return;
 	}
-
-	LPS[lid]->total_events++;
 
 	#ifdef FINE_GRAIN_DEBUG
 	printf("[SCHEDULE] Scheduling to LP %u at time %f the event %p\n", lid, event->timestamp, event);

@@ -51,9 +51,6 @@
 #include <serial/serial.h>
 
 
-/// This variable keeps the path in which ROOT-Sim will output simulation results
-char *output_dir;
-
 /// This variable keeps the executable's name
 char *program_name;
 
@@ -92,7 +89,6 @@ static int parse_cmd_line(int argc, char **argv) {
 	int length;
 	int c;
 	int option_index;
-	char *new_output_dir = NULL;
 
     	if(argc < 2) {
 		usage(argv);
@@ -102,7 +98,7 @@ static int parse_cmd_line(int argc, char **argv) {
     	program_name = argv[0];
 
 	// Store the predefined values, before reading any overriding one
-	rootsim_config.output_dir = NULL;
+	rootsim_config.output_dir = DEFAULT_OUTPUT_DIR;
 	rootsim_config.backtrace = false;
 	rootsim_config.gvt_time_period = 1000;
 	rootsim_config.scheduler = SMALLEST_TIMESTAMP_FIRST;
@@ -152,9 +148,8 @@ static int parse_cmd_line(int argc, char **argv) {
 
 			case OPT_OUTPUT_DIR:
 				length = strlen(optarg);
-				output_dir = (char *)rsalloc(length + 1);
-				strcpy(output_dir, optarg);
-				rootsim_config.output_dir = output_dir;
+				rootsim_config.output_dir = (char *)rsalloc(length + 1);
+				strcpy(rootsim_config.output_dir, optarg);
 				break;
 
 			case OPT_SCHEDULER:
@@ -217,7 +212,7 @@ static int parse_cmd_line(int argc, char **argv) {
 				break;
 
 			case OPT_NPRC:
-				n_prc_tot = parseIntLimits(optarg, 1, MAX_LPs); // In this way, a change in MAX_LPs is reflected here!
+				n_prc_tot = parseIntLimits(optarg, 1, MAX_LPs); // In this way, a change in MAX_LPs is reflected here
 				break;
 
 			case OPT_BLOCKING_GVT:
@@ -267,12 +262,12 @@ static int parse_cmd_line(int argc, char **argv) {
 			case OPT_STATS:
 				if(strcmp(optarg, "all") == 0) {
 					rootsim_config.stats = STATS_ALL;
-				} else if(strcmp(optarg, "local") == 0) {
-					rootsim_config.stats = STATS_LOCAL;
 				} else if(strcmp(optarg, "performance") == 0) {
 					rootsim_config.stats = STATS_PERF;
-				} else if(strcmp(optarg, "kernel") == 0) {
-					rootsim_config.stats = STATS_KERNEL;
+				} else if(strcmp(optarg, "lp") == 0) {
+					rootsim_config.stats = STATS_LP;
+				} else if(strcmp(optarg, "global") == 0) {
+					rootsim_config.stats = STATS_GLOBAL;
 				} else {
 					rootsim_error(true, "Invalid argument for stats");
 					return -1;
@@ -302,33 +297,11 @@ static int parse_cmd_line(int argc, char **argv) {
 	}
 
 
-	if (rootsim_config.output_dir == NULL) {
-		if (output_dir != NULL) {
-			rsfree(output_dir);
-		}
-		output_dir = (char *)rsalloc(strlen(OUTPUT_DIR) + 3);
-		sprintf(output_dir, "%s/", OUTPUT_DIR);
-		rootsim_config.output_dir = output_dir;
-	} else {
-		if (rootsim_config.output_dir[0] != '/' && 
-		    rootsim_config.output_dir[0] != '~' && 
-		    rootsim_config.output_dir[0] != '.' ) {
-			new_output_dir = (char *)rsalloc(strlen(output_dir) + 3);
-			sprintf(new_output_dir, "%s/", output_dir);
-			rsfree(output_dir);
-			output_dir = new_output_dir;
-			rootsim_config.output_dir = output_dir;
-		}
-	}
 	if (!rootsim_config.serial && rootsim_config.snapshot == INVALID_SNAPSHOT)
 		rootsim_config.snapshot = FULL_SNAPSHOT; // TODO: in the future, default to AUTONOMIC_
 
 	if (!rootsim_config.serial && rootsim_config.checkpointing == INVALID_STATE_SAVING)
 		rootsim_config.checkpointing = PERIODIC_STATE_SAVING;
-
-
-	// FIXME: this must be removed, it is here just to override any setting
-	rootsim_config.stats = STATS_ALL;
 
 
 	// Return the first argv element where to find app args
@@ -368,7 +341,7 @@ void SystemInit(int argc, char **argv) {
 		ScheduleNewEvent = SerialScheduleNewEvent;
 		numerical_init();
 		dymelor_init();
-		_mkdir(rootsim_config.output_dir);
+		statistics_init();
 		serial_init(argc, argv, application_args);
 		return;
 	} else {
@@ -413,15 +386,9 @@ void SystemInit(int argc, char **argv) {
 
 	// Master Kernel initializes some variables, which are then passed to other kernel instances
 	if (master_kernel()) {
-
-		// Master kernel creates the base output directory
-		_mkdir(rootsim_config.output_dir);
-		
 		n_ker = 1;
 		distribute_lps_on_kernels();
-
 	} else { // Slave kernels
-
 		kernel = (unsigned int *)rsalloc(sizeof(unsigned int)*(n_prc_tot));
 	}
 
@@ -476,6 +443,8 @@ void SystemInit(int argc, char **argv) {
 
 	printf("done\n");
 
+	// Notify the statistics subsystem that we are now starting the actual simulation
+	statistics_post_other_data(STAT_SIM_START, 1.0);
 
 	printf("****************************\n"
                "*    Simulation Started    *\n"

@@ -216,7 +216,7 @@ void rollback(unsigned int lid) {
 		return;
 	}
 
-	LPS[lid]->count_rollbacks++;
+	statistics_post_lp_data(lid, STAT_ROLLBACK, 1.0);
 	
 	restore_time = LPS[lid]->bound->timestamp;
 
