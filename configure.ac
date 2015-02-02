@@ -216,6 +216,21 @@ AS_IF([test "x$enable_ult" != "xno"], [
 
 
 
+
+#----------------------------------------------------------------------------
+# Doxygen Documentation
+#
+# If doxygen is installed on the box, generate a commodity Makefile in the
+# doc subfolder to generate the documentation. This must be called explicitly,
+# as it is separated from the main Makefile.
+#----------------------------------------------------------------------------
+AC_CHECK_PROGS([DOXYGEN], [doxygen])
+AM_CONDITIONAL([HAVE_DOXYGEN], [test -n "$DOXYGEN"])
+AM_COND_IF([HAVE_DOXYGEN], [AC_CONFIG_FILES([doc/doxy.conf])])
+AM_COND_IF([HAVE_DOXYGEN], [AC_CONFIG_FILES([doc/Makefile])])
+
+
+
 #----------------------------------------------------------------------------
 # Check scripts sizes.
 # The compiler script is dynamically built in order to create ad compile
