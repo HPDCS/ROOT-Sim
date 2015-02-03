@@ -356,10 +356,6 @@ void rebind_LPs(void) {
 			if(offset == tid) {
 				LPS_bound[n_prc_per_thread++] = LPS[i];
 				LPS[i]->worker_thread = tid;
-				
-				#ifdef FINE_GRAIN_DEBUG
-				printf("[LPs BINDING] Thread %d takes LP %d\n", tid, i);
-				#endif
 			}
 			i++;
 			j++;
@@ -403,13 +399,7 @@ void schedule(void) {
 
 	// No logical process found with events to be processed
 	if (lid == IDLE_PROCESS) {
-		
-		#ifdef FINE_GRAIN_DEBUG
-		printf("[SCHEDULE] Thread %d has no events to process!\n", tid);
-		#endif
-		
 		statistics_post_lp_data(lid, STAT_IDLE_CYCLES, 1.0);
-
       		return;
     	}
 
@@ -451,10 +441,6 @@ void schedule(void) {
 		return;
 	}
 
-	#ifdef FINE_GRAIN_DEBUG
-	printf("[SCHEDULE] Scheduling to LP %u at time %f the event %p\n", lid, event->timestamp, event);
-	#endif
-    	
 	//state = (!list_empty(LPS[lid]->queue_states) ? list_tail(LPS[lid]->queue_states)->buffer_state : NULL);
 	state = LPS[lid]->state_bound->buffer_state;
 

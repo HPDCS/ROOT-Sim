@@ -50,12 +50,6 @@
 #undef _INIT_FROM_MAIN
 
 
-
-#if defined(FINE_GRAIN_DEBUG) || defined(STEP_EXEC)
-barrier_t debug_barrier;
-#endif
-
-
 /**
 * This function checks the different possibilities for termination detection termination.
 */
@@ -92,7 +86,6 @@ static void *main_simulation_loop(void *arg) {
 	
 	(void)arg;
 
-	int kid_num_digits = (int)ceil(log10(n_ker));
 	simtime_t my_time_barrier = -1.0;
 
 	#ifdef HAVE_LINUX_KERNEL_MAP_MODULE
@@ -117,10 +110,10 @@ static void *main_simulation_loop(void *arg) {
 
 		my_time_barrier = gvt_operations();
 
-		// Only a master thread can return a value different from -1
-		if (D_DIFFER(my_time_barrier, -1.0)) {
+		// Only a master thread on master kernel prints the time barrier
+		if (master_kernel() && master_thread () && D_DIFFER(my_time_barrier, -1.0)) {
 			if (rootsim_config.verbose == VERBOSE_INFO || rootsim_config.verbose == VERBOSE_DEBUG) {
-				printf("(%0*d) MY TIME BARRIER %f\n", kid_num_digits, kid, my_time_barrier);
+				printf("TIME BARRIER %f\n", my_time_barrier);
 				fflush(stdout);
 			}
 		}

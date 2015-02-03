@@ -42,21 +42,6 @@
 #include <arch/thread.h>
 #include <statistics/statistics.h>
 
-// If this macro is set, multithread execution advances at steps (after each simulation loop
-// all the threads synchronize) and verbose output is produced for all actions involving
-// event scheduling, forward and backwards execution.
-//#define FINE_GRAIN_DEBUG
-
-// If this macro is set, multithread execution advances at steps
-//#define STEP_EXEC
-
-// If this flag is set, input queue's content is printed after each changing operation
-//#define TRACE_INPUT_QUEUE
-
-
-
-
-
 /// If set, ROOT-Sim will produce statistics on the execution
 #define PLATFORM_STATS				
 
@@ -146,8 +131,7 @@
 // to avoid a circular inclusion, but I hate this! :(
 struct _state_t;
 
-typedef int antimessage_t;
-#define other 3
+typedef enum {positive, negative, other} message_kind_t;
 
 
 /// Message Type definition
@@ -159,11 +143,10 @@ typedef struct _msg_t {
 	simtime_t		timestamp;
 	simtime_t		send_time;
 	// TODO: risistemare questa cosa degli antimessaggi
-//	bool			is_antimessage;
-	antimessage_t		is_antimessage;
+	message_kind_t		message_kind;
 	unsigned long long	mark;	/// Unique identifier of the message, used for antimessages
 	unsigned long long	rendezvous_mark;	/// Unique identifier of the message, used for rendez-vous events
-	struct _state_t 	*is_first_event_of;
+//	struct _state_t 	*is_first_event_of;
 	// Application informations
 	char event_content[MAX_EVENT_SIZE];
 	int size;
@@ -236,6 +219,7 @@ extern void rootsim_error(bool fatal, const char *msg, ...);
 extern void distribute_lps_on_kernels(void);
 extern void simulation_shutdown(int code) __attribute__((noreturn));
 extern inline bool simulation_error(void);
+extern void initialization_complete(void);
 
 #endif
 

@@ -68,6 +68,7 @@
 #define STAT_RECOVERY_TIME	9
 #define STAT_EVENT_TIME		10
 #define STAT_IDLE_CYCLES	11
+#define STAT_SILENT		12
 
 
 /* Definition of Global Statistics Post Messages */
@@ -86,6 +87,7 @@ struct stat_t {
 	double 	tot_antimessages,
 		tot_events,
 		committed_events,
+		reprocessed_events,
 		tot_rollbacks,
 		tot_ckpts,
 		ckpt_time,

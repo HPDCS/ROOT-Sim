@@ -31,6 +31,24 @@
 #include <mm/malloc.h>
 
 
+
+#define debug_enter() do {\
+	atomic_inc(&l->counter);\
+	if(atomic_read(&l->counter) > 1) {\
+		printf("thread %d spinning on bug!\n", tid);\
+		while(1);\
+	}\
+	} while(0)
+	
+#define debug_exit() do {\
+	if(atomic_read(&l->counter) > 1) {\
+		printf("thread %d spinning on bug!\n", tid);\
+		while(1);\
+	}\
+	atomic_dec(&l->counter);\
+	} while(0)
+
+
 /**
 * This function inserts a new element at the beginning of the list.
 * It is not safe (and not easily readable) to call this function directly. Rather,
@@ -57,6 +75,8 @@
 char *__list_insert_head(void *li, unsigned int size, void *data) {
 
 	rootsim_list *l = (rootsim_list *)li;
+	
+	debug_enter();
 
 	assert(l);
 
@@ -85,6 +105,9 @@ char *__list_insert_head(void *li, unsigned int size, void *data) {
     insert_end:
 	l->size++;
 	assert(l->size == (size_before + 1));
+	
+	debug_exit();
+	
 	return new_n->data;
 }
 
@@ -117,6 +140,8 @@ char *__list_insert_head(void *li, unsigned int size, void *data) {
 char *__list_insert_tail(void *li, unsigned int size, void *data) {
 
 	rootsim_list *l = (rootsim_list *)li;
+	
+	debug_enter();
 
 	assert(l);
 	size_t size_before = l->size;
@@ -144,6 +169,7 @@ char *__list_insert_tail(void *li, unsigned int size, void *data) {
     insert_end:
 	l->size++;
 	assert(l->size == (size_before + 1));
+	debug_exit();
 	return new_n->data;
 }
 
@@ -179,6 +205,8 @@ char *__list_insert_tail(void *li, unsigned int size, void *data) {
 char *__list_insert(void *li, unsigned int size, size_t key_position, void *data) {
 
 	rootsim_list *l = (rootsim_list *)li;
+	
+	debug_enter();
 
 	assert(l);
 	size_t size_before = l->size;
@@ -202,32 +230,14 @@ char *__list_insert(void *li, unsigned int size, size_t key_position, void *data
 		goto insert_end;
 	}
 	
-	// If the distance is higher from the head, we scan from there,
-	// otherwise we scan backwards from the tail
-//	if((key - get_key(l->head->data)) <= (key - get_key(l->tail->data))) {
-
-		// Find where to add the node
-//		n = l->head;
-//		while(n != NULL) {
-//			if(key < get_key(&n->data)) {
-//				break;
-//			}
-//			n = n->next;
-//		}
-
-//	} else {
-		//~ printf("Inserisco dalla coda %f: ", key);
-		n = l->tail;
-		while(n != NULL) {
-			//~ printf("%f, ", get_key(&n->data));
-			if(key >= get_key(&n->data) || n == l->head) {
-				break;
-			}
-			n = n->prev;
+	n = l->tail;
+	while(n != NULL) {
+		if(key >= get_key(&n->data) || n == l->head) {
+			break;
 		}
-		//~ printf("\n");
-		n = n->next;
-//	}
+		n = n->prev;
+	}
+	n = n->next;
 
 	// Insert correctly depending on the position
 	if(n == NULL) { // tail
@@ -250,6 +260,7 @@ char *__list_insert(void *li, unsigned int size, size_t key_position, void *data
     insert_end:
 	l->size++;
 	assert(l->size == (size_before + 1));
+	debug_exit();
 	return new_n->data;
 }
 
@@ -284,11 +295,13 @@ char *__list_insert(void *li, unsigned int size, size_t key_position, void *data
 char *__list_extract(void *li, unsigned int size, double key, size_t key_position) {
 
 	rootsim_list *l = (rootsim_list *)li;
+	
+	debug_enter();
 
 	assert(l);
 	size_t size_before = l->size;
 
-	char *content;
+	char *content = NULL;
 	struct rootsim_list_node *n = l->head;
 	double curr_key;
 
@@ -326,8 +339,10 @@ char *__list_extract(void *li, unsigned int size, double key, size_t key_positio
 		}
 		n = n->next;
 	}
+	
+	debug_exit();
 
-	return NULL;
+	return content;
 }
 
 
@@ -393,6 +408,8 @@ bool __list_delete(void *li, unsigned int size, double key, size_t key_position)
 char *__list_extract_by_content(void *li, unsigned int size, void *ptr, bool copy) {
 
         rootsim_list *l = (rootsim_list *)li;
+        
+        debug_enter();
 
 	assert(l);
 	size_t size_before = l->size;
@@ -400,13 +417,7 @@ char *__list_extract_by_content(void *li, unsigned int size, void *ptr, bool cop
 	struct rootsim_list_node *n = list_container_of(ptr);
 	char *content = NULL;
 	
-//	printf("Elimino %p, ", ptr);
-//	printf("cont (%p, %p, %p), ", n->prev, n, n->next);
-//	printf("h %p, ", l->head);
-//	printf("t %p, ", l->tail);
-		
 	if(l->head == n) {
-//		printf("1, ");
 		l->head = n->next;
 		if(l->head != NULL) {
 			l->head->prev = NULL;
@@ -414,7 +425,6 @@ char *__list_extract_by_content(void *li, unsigned int size, void *ptr, bool cop
 	}
 		
 	if(l->tail == n) {
-//		printf("2, ");
 		l->tail = n->prev;
 		if(l->tail != NULL) {
 			l->tail->next = NULL;
@@ -422,17 +432,13 @@ char *__list_extract_by_content(void *li, unsigned int size, void *ptr, bool cop
 	}
 	
 	if(n->next != NULL) {
-//		printf("3, ");
 		n->next->prev = n->prev;
 	}
  
 	if(n->prev != NULL) {
-//		printf("4, ");
 		n->prev->next = n->next;
 	}
 	
-//	printf("h %p, t %p\n", l->head, l->tail);
-
 	if(copy) {
 		content = rsalloc(size);
 		memcpy(content, &n->data, size);
@@ -444,6 +450,8 @@ char *__list_extract_by_content(void *li, unsigned int size, void *ptr, bool cop
 
 	l->size--;
 	assert(l->size == (size_before - 1));
+	
+	debug_exit();
 	return content;
 }
 
@@ -479,6 +487,8 @@ char *__list_find(void *li, double key, size_t key_position) {
         rootsim_list *l = (rootsim_list *)li;
 
 	assert(l);
+	
+	debug_enter();
 
 	struct rootsim_list_node *n = l->head;
 	double curr_key;
@@ -492,6 +502,8 @@ char *__list_find(void *li, double key, size_t key_position) {
 		}
 		n = n->next;
 	}
+	
+        debug_exit();
 
 	return NULL;
 }
@@ -517,6 +529,8 @@ char *__list_find(void *li, double key, size_t key_position) {
 void list_pop(void *li) {
 
         rootsim_list *l = (rootsim_list *)li;
+        
+        debug_enter();
 
 	assert(l);
 	size_t size_before = l->size;
@@ -537,6 +551,8 @@ void list_pop(void *li) {
 		l->size--;
 		assert(l->size == (size_before - 1));
 	}
+	
+        debug_exit();
 }
 
 
@@ -547,13 +563,15 @@ unsigned int __list_trunc(void *li, double key, size_t key_position, unsigned sh
 	struct rootsim_list_node *n_adjacent;
 	rootsim_list *l = (rootsim_list *)li;
 	unsigned int deleted = 0;
+	
+	debug_enter();
 
 	assert(l);
 	size_t size_before = l->size;
 	
 	// Attempting to truncate an empty list?
 	if(l->size == 0) {
-		return 0;
+		goto out;
 	}
 
 	if(direction == LIST_TRUNC_AFTER) {
@@ -574,87 +592,10 @@ unsigned int __list_trunc(void *li, double key, size_t key_position, unsigned sh
 	l->head = n;
 
 
-
-/*	
-	// Find the element where to start. Since we're truncating
-	// from a certain value, we consider the case where this
-	// value is not a key of some node. In fact, if we trunc after 5,
-	// and the list is 4 --> 6, we have to delete 6, but we're not going
-	// to find 5. So we scan the list for the first element which is
-	// >= the given time, and then adjust depending on the direction.
-	// Remember that the truncating logic is that if a node has the
-	// same value as the key passed, then that node is not deleted!
-	n = l->head;
-	while(n != NULL && get_key(&n->data) < key) {
-		n = n->next;
-	}
-
-	if(n == NULL) {
-		return;
-	}
-
-	if(D_DIFFER(get_key(&n->data), key)) {
-		if(direction == LIST_TRUNC_AFTER) {
-			n = n->prev;
-			if(n == NULL) {
-				return;
-			}
-		}
-	}
-	
-	switch(direction) {
-		case LIST_TRUNC_AFTER:
-			
-			// If we're truncating forward from the tail, there is no work to do
-			if(l->tail ==  n) {
-				break;
-			}
-			
-			l->tail = n;
-			n = n->next;
-			l->tail->next = NULL;
-
-			while(n != NULL) {
-				deleted++;
-				n_adjacent = n->next;
-				n->next = (void *)0xBAADF00D;
-				n->prev = (void *)0xBAADF00D;
-				rsfree(n);
-				n = n_adjacent;
-			}
-
-			break;
-
-
-		case LIST_TRUNC_BEFORE:
-		
-			// If we're truncating backwards from the head, there is no work to do
-			if(l->head ==  n) {
-				break;
-			}
-			
-			l->head = n;
-			n = n->prev;
-			l->head->prev = NULL;
-
-			while(n != NULL) {
-				deleted++;
-				n_adjacent = n->prev;
-				n->next = (void *)0xFEEDFACE;
-				n->prev = (void *)0xFEEDFACE;
-				rsfree(n);
-				n = n_adjacent;
-			}
-
-			break;
-
-		default:
-			rootsim_error(true, "Unsupported list truncating direction\n");
-	}
-*/
-	
 	l->size -= deleted;
 	assert(l->size == (size_before - deleted));
+    out:
+        debug_exit();
 	return deleted;
 }
 

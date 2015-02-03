@@ -41,20 +41,7 @@
 extern simtime_t last_event_timestamp(unsigned int);
 extern simtime_t next_event_timestamp(unsigned int);
 extern msg_t *advance_to_next_event(unsigned int);
-extern msg_t *get_last_event(unsigned int);
-extern void clean_queue_in(unsigned int, simtime_t);
-extern void clean_queue_out(unsigned int, simtime_t);
-extern simtime_t last_event_to_execute(msg_t *, simtime_t);
-extern msg_t *free_queue_out_elem(unsigned int, msg_t *);
-
 extern void insert_bottom_half(msg_t *msg);
 extern void process_bottom_halves(void);
 extern unsigned long long generate_mark(unsigned int);
-
-#ifdef TRACE_INPUT_QUEUE
-#define trace_input_queue(lid) __trace_input_queue(__FILE__, __LINE__, lid)
-extern void __trace_input_queue(char *, int, unsigned int);
 #endif
-
-#endif
-

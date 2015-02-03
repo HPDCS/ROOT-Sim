@@ -24,7 +24,7 @@
 
 
 /// This is a timer that start during the initialization of statistics subsystem and can be used to know the total simulation time
-static timer simulation_timer;
+timer simulation_timer;
 
 /// Pointers to unique files
 static FILE **unique_files;
@@ -268,7 +268,6 @@ void statistics_stop(int exit_code) {
 	// Stop the simulation timer immediately to avoid considering the statistics reduction time
 	if (master_kernel() && master_thread()) {
 		timer_start(simulation_finished);
-		printf("%f %d %d\n", timer_value_seconds(simulation_timer), timer_value_milli(simulation_timer), timer_value_micro(simulation_timer));
 		total_time = timer_value_seconds(simulation_timer);
 	}
 	
@@ -281,6 +280,7 @@ void statistics_stop(int exit_code) {
 			   "\"LID\"\t"
 			   "\"TOTAL EVENTS\"\t"
 			   "\"COMMITTED EVENTS\"\t"
+			   "\"REPROCESSED EVENTS\"\t"
 			   "\"ROLLBACKS\"\t"
 			   "\"ANTIMESSAGES\"\t"
 			   "\"AVERAGE EVENT COST\"\t"
@@ -295,6 +295,7 @@ void statistics_stop(int exit_code) {
 			fprintf(f, "%d\t", lid);
 			fprintf(f, "%d\t", (int)lp_stats[lid].tot_events);
 			fprintf(f, "%d\t", (int)lp_stats[lid].committed_events);
+			fprintf(f, "%d\t", (int)lp_stats[lid].reprocessed_events);
 			fprintf(f, "%d\t", (int)lp_stats[lid].tot_rollbacks);
 			fprintf(f, "%d\t", (int)lp_stats[lid].tot_antimessages);
 			fprintf(f, "%f\t", lp_stats[lid].event_time / lp_stats[lid].tot_events);
@@ -315,6 +316,7 @@ void statistics_stop(int exit_code) {
 		thread_stats[tid].tot_antimessages += lp_stats[lid].tot_antimessages;
 		thread_stats[tid].tot_events += lp_stats[lid].tot_events;
 		thread_stats[tid].committed_events += lp_stats[lid].committed_events;
+		thread_stats[tid].reprocessed_events += lp_stats[lid].reprocessed_events;
 		thread_stats[tid].tot_rollbacks += lp_stats[lid].tot_rollbacks;
 		thread_stats[tid].tot_ckpts += lp_stats[lid].tot_ckpts;
 		thread_stats[tid].ckpt_time += lp_stats[lid].ckpt_time;
@@ -345,9 +347,10 @@ void statistics_stop(int exit_code) {
 	fprintf(f, "LPs HOSTED BY THREAD ...... : %d \n", 		n_prc_per_thread);
 	fprintf(f, "\n");
 	fprintf(f, "TOTAL EXECUTED EVENTS ..... : %.0f \n", 		thread_stats[tid].tot_events);
-	fprintf(f, "TOTAL COMMITTED EVENTS..... : %.0f \n", 		thread_stats[tid].committed_events);		
-	fprintf(f, "TOTAL ROLLBACKS EXECUTED... : %.0f \n", 		thread_stats[tid].tot_rollbacks);		
-	fprintf(f, "TOTAL ANTIMESSAGES......... : %.0f \n", 		thread_stats[tid].tot_antimessages);		
+	fprintf(f, "TOTAL COMMITTED EVENTS..... : %.0f \n", 		thread_stats[tid].committed_events);
+	fprintf(f, "TOTAL REPROCESSED EVENTS... : %.0f \n", 		thread_stats[tid].reprocessed_events);
+	fprintf(f, "TOTAL ROLLBACKS EXECUTED... : %.0f \n", 		thread_stats[tid].tot_rollbacks);
+	fprintf(f, "TOTAL ANTIMESSAGES......... : %.0f \n", 		thread_stats[tid].tot_antimessages);
 	fprintf(f, "ROLLBACK FREQUENCY......... : %.2f %%\n",		rollback_frequency * 100);
 	fprintf(f, "ROLLBACK LENGTH............ : %.2f events\n",	rollback_length);
 	fprintf(f, "EFFICIENCY................. : %.2f %%\n",		efficiency);
@@ -372,14 +375,16 @@ void statistics_stop(int exit_code) {
 	/* (only one thread does the reduction, not necessarily the master) */
 
 
+	thread_barrier(&all_thread_barrier);
 
-	if(thread_barrier(&all_thread_barrier)) {
+	if(master_kernel() && master_thread()) {
 		
 		// Sum up all threads statistics
 		for(i = 0; i < n_cores; i++) {
 			system_wide_stats.tot_antimessages += thread_stats[i].tot_antimessages;
 			system_wide_stats.tot_events += thread_stats[i].tot_events;
 			system_wide_stats.committed_events += thread_stats[i].committed_events;
+			system_wide_stats.reprocessed_events += thread_stats[i].reprocessed_events;
 			system_wide_stats.tot_rollbacks += thread_stats[i].tot_rollbacks;
 			system_wide_stats.tot_ckpts += thread_stats[i].tot_ckpts;
 			system_wide_stats.ckpt_time += thread_stats[i].ckpt_time;
@@ -420,7 +425,8 @@ void statistics_stop(int exit_code) {
 		fprintf(f, "TOTAL_THREADS ............. : %d \n", 		n_cores);
 		fprintf(f, "\n");
 		fprintf(f, "TOTAL EXECUTED EVENTS ..... : %.0f \n", 		system_wide_stats.tot_events);
-		fprintf(f, "TOTAL COMMITTED EVENTS..... : %.0f \n", 		system_wide_stats.committed_events);		
+		fprintf(f, "TOTAL COMMITTED EVENTS..... : %.0f \n", 		system_wide_stats.committed_events);
+		fprintf(f, "TOTAL REPROCESSED EVENTS... : %.0f \n", 		system_wide_stats.reprocessed_events);
 		fprintf(f, "TOTAL ROLLBACKS EXECUTED... : %.0f \n", 		system_wide_stats.tot_rollbacks);		
 		fprintf(f, "TOTAL ANTIMESSAGES......... : %.0f \n", 		system_wide_stats.tot_antimessages);		
 		fprintf(f, "ROLLBACK FREQUENCY......... : %.2f %%\n",		rollback_frequency * 100);
@@ -583,11 +589,11 @@ inline void statistics_post_lp_data(unsigned int lid, unsigned int type, double 
 	switch(type) {
 		
 		case STAT_ANTIMESSAGE:
-			lp_stats_gvt[lid].tot_antimessages++;
+			lp_stats_gvt[lid].tot_antimessages += 1.0;
 			break;
 			
 		case STAT_EVENT:
-			lp_stats_gvt[lid].tot_events++;
+			lp_stats_gvt[lid].tot_events += 1.0;
 			break;
 			
 		case STAT_EVENT_TIME:
@@ -599,11 +605,11 @@ inline void statistics_post_lp_data(unsigned int lid, unsigned int type, double 
 			break;
 			
 		case STAT_ROLLBACK:
-			lp_stats_gvt[lid].tot_rollbacks++;
+			lp_stats_gvt[lid].tot_rollbacks += 1.0;
 			break;
 			
 		case STAT_CKPT:
-			lp_stats_gvt[lid].tot_ckpts++;
+			lp_stats_gvt[lid].tot_ckpts += 1.0;
 			break;
 		
 		case STAT_CKPT_MEM:
@@ -622,8 +628,12 @@ inline void statistics_post_lp_data(unsigned int lid, unsigned int type, double 
 			lp_stats_gvt[lid].recovery_time += data;
 			break;
 			
-		case STAT_IDLE_CYCLES:
-			lp_stats_gvt[lid].idle_cycles++;
+		case STAT_IDLE_CYCLES: // TODO: this is a per-thread statistic!
+			lp_stats_gvt[0].idle_cycles++;
+			break;
+			
+		case STAT_SILENT:
+			lp_stats_gvt[lid].reprocessed_events += data;
 			break;
 		
 		default:
@@ -654,12 +664,14 @@ inline void statistics_post_other_data(unsigned int type, double data) {
 				lp_stats[lid].tot_events += lp_stats_gvt[lid].tot_events;
 				lp_stats[lid].event_time += lp_stats_gvt[lid].event_time;
 				lp_stats[lid].committed_events += lp_stats_gvt[lid].committed_events;
+				lp_stats[lid].tot_rollbacks += lp_stats_gvt[lid].tot_rollbacks;
 				lp_stats[lid].tot_ckpts += lp_stats_gvt[lid].tot_ckpts;
 				lp_stats[lid].ckpt_mem += lp_stats_gvt[lid].ckpt_mem;
 				lp_stats[lid].ckpt_time += lp_stats_gvt[lid].ckpt_time;
 				lp_stats[lid].tot_recoveries += lp_stats_gvt[lid].tot_recoveries;
 				lp_stats[lid].recovery_time += lp_stats_gvt[lid].recovery_time;
 				lp_stats[lid].idle_cycles += lp_stats_gvt[lid].idle_cycles;
+				lp_stats[lid].reprocessed_events += lp_stats_gvt[lid].reprocessed_events;
 				
 				bzero(&lp_stats_gvt[LPS_bound[i]->lid], sizeof(struct stat_t));
 			}

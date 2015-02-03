@@ -101,12 +101,11 @@ inline bool ccgs_can_halt_simulation(void) {
 */
 void ccgs_compute_snapshot(state_t * time_barrier_pointer[], simtime_t gvt) {
 
-//	return;
-	
 	register unsigned int i;
 	register unsigned int lid;
 
 	state_t temporary_log;
+	msg_t *realignment_evt;
 
 	for(i = 0; i < n_prc_per_thread; i++) {
 
@@ -137,8 +136,12 @@ void ccgs_compute_snapshot(state_t * time_barrier_pointer[], simtime_t gvt) {
 		if(!is_blocked_state(LPS[lid]->state))  {
 			// Realign the state to the current GVT value
 			if(time_barrier_pointer[i]->last_event != NULL) {
-				int reproc;
-				reproc = silent_execution(lid, time_barrier_pointer[i]->buffer_state, list_next(time_barrier_pointer[i]->last_event), gvt, NULL);
+				realignment_evt = list_next(time_barrier_pointer[i]->last_event);
+				while(realignment_evt != NULL && realignment_evt->timestamp < gvt) {
+					realignment_evt = list_next(realignment_evt);
+				}
+				
+				silent_execution(lid, time_barrier_pointer[i]->buffer_state, list_next(time_barrier_pointer[i]->last_event), realignment_evt);
 			}
 		}
 			
