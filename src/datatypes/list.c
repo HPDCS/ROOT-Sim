@@ -590,6 +590,8 @@ unsigned int __list_trunc(void *li, double key, size_t key_position, unsigned sh
                 n = n_adjacent;
 	}
 	l->head = n;
+	if(l->head != NULL)
+		l->head->prev = (void *)0xBAADBEEF;
 
 
 	l->size -= deleted;

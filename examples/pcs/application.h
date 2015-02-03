@@ -56,7 +56,7 @@
 
 // Message exchanged among LPs
 typedef struct _event_content_type {
-	unsigned int cell;
+	int cell;
 	unsigned int from;
 	simtime_t sent_at;
 	int channel;
