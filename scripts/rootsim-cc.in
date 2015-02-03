@@ -109,8 +109,7 @@ LD=ld
 PARTIAL=0
 OUTNAME=a.out
 SOURCES=
-CFLAGS=""
-CFLAGS="-g -g3"
+CFLAGS="-lpthread"
 
 next_in_cflags="no"
 next_in_outname="no"
