@@ -10,7 +10,7 @@ unsigned int FindReceiver(int topology) {
 	// receiver is not unsigned, because we exploit -1 as a border case in the bidring topology.
 	int receiver;
  	double u;
- 	
+
 
  	// These must be unsigned. They are not checked for negative (wrong) values,
  	// but they would overflow, and are caught by a different check.
@@ -27,18 +27,18 @@ unsigned int FindReceiver(int topology) {
 			#define SE	3
 			#define E	4
 			#define NE	5
-			
+
 			// Convert linear coords to hexagonal coords
 			edge = sqrt(n_prc_tot);
 			x = current_lp % edge;
 			y = current_lp / edge;
-			
+
 			// Sanity check!
 			if(edge * edge != n_prc_tot) {
 				rootsim_error(true, "Hexagonal map wrongly specified!\n");
 				return 0;
 			}
-			
+
 			// Very simple case!
 			if(n_prc_tot == 1) {
 				receiver = current_lp;
@@ -85,13 +85,13 @@ unsigned int FindReceiver(int topology) {
 				}
 
 				invalid = true;
-			
+
 			// We don't check is nx < 0 || ny < 0, as they are unsigned and therefore overflow
 			} while(nx >= edge || ny >= edge);
 
 			// Convert back to linear coordinates
 			receiver = (ny * edge + nx);
-			
+
 			#undef NE
 			#undef NW
 			#undef W
@@ -108,28 +108,28 @@ unsigned int FindReceiver(int topology) {
 			#define W	1
 			#define S	2
 			#define E	3
-			
+
 			// Convert linear coords to square coords
 			edge = sqrt(n_prc_tot);
 			x = current_lp % edge;
 			y = current_lp / edge;
-			
+
 			// Sanity check!
 			if(edge * edge != n_prc_tot) {
 				rootsim_error(true, "Square map wrongly specified!\n");
 				return 0;
 			}
-			
-						
+
+
 			// Very simple case!
 			if(n_prc_tot == 1) {
 				receiver = current_lp;
 				break;
 			}
-			
+
 			// Find a random neighbour
 			do {
-			
+
 				receiver = 4 * Random();
 				if(receiver == 4) {
 					receiver = 3;
@@ -161,7 +161,7 @@ unsigned int FindReceiver(int topology) {
 
 			// Convert back to linear coordinates
 			receiver = (ny * edge + nx);
-			
+
 			#undef N
 			#undef W
 			#undef S
@@ -172,17 +172,17 @@ unsigned int FindReceiver(int topology) {
 
 
 		case TOPOLOGY_MESH:
-			
+
 			receiver = (int)(n_prc_tot * Random());
 			break;
 
 
-		
+
 		case TOPOLOGY_BIDRING:
 
 			u = Random();
 
-			if (u < 0.5) { 
+			if (u < 0.5) {
 				receiver = current_lp - 1;
 			} else {
 				receiver= current_lp + 1;
@@ -196,19 +196,19 @@ unsigned int FindReceiver(int topology) {
 			if ((unsigned int)receiver == n_prc_tot) {
 				receiver = 0;
 			}
-			
+
 			break;
 
 
 
 		case TOPOLOGY_RING:
-		
+
 			receiver= current_lp + 1;
-			
+
 			if ((unsigned int)receiver == n_prc_tot) {
 				receiver = 0;
 			}
-			
+
 			break;
 
 

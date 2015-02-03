@@ -4,25 +4,25 @@
 *
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
-* 
+*
 * ROOT-Sim is free software; you can redistribute it and/or modify it under the
 * terms of the GNU General Public License as published by the Free Software
 * Foundation; either version 3 of the License, or (at your option) any later
 * version.
-* 
+*
 * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
 * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-* 
+*
 * You should have received a copy of the GNU General Public License along with
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-* 
+*
 * @file list.c
 * @brief This module implemets the general-purpose list implementation used
 *	 in the simulator
 * @author Alessandro Pellegrini
-* @date November 5, 2013 
+* @date November 5, 2013
 */
 
 
@@ -39,7 +39,7 @@
 		while(1);\
 	}\
 	} while(0)
-	
+
 #define debug_exit() do {\
 	if(atomic_read(&l->counter) > 1) {\
 		printf("thread %d spinning on bug!\n", tid);\
@@ -57,9 +57,9 @@
 * This function allocates new memory to copy the payload pointed by data. If
 * data points to a malloc'd data structure, then the caller should free it after
 * calling list_insert(), to prevent memory leaks.
-* 
+*
 * @author Alessandro Pellegrini
-* 
+*
 * @param li a pointer to the list data strucuture. Note that if passed through the
 *           list_insert_head() macro, the type of the pointer is the same as the content,
 *           but the pointed memory contains a buffer whose actual type is rootsim_list.
@@ -75,7 +75,7 @@
 char *__list_insert_head(void *li, unsigned int size, void *data) {
 
 	rootsim_list *l = (rootsim_list *)li;
-	
+
 	debug_enter();
 
 	assert(l);
@@ -105,9 +105,9 @@ char *__list_insert_head(void *li, unsigned int size, void *data) {
     insert_end:
 	l->size++;
 	assert(l->size == (size_before + 1));
-	
+
 	debug_exit();
-	
+
 	return new_n->data;
 }
 
@@ -122,9 +122,9 @@ char *__list_insert_head(void *li, unsigned int size, void *data) {
 * This function allocates new memory to copy the payload pointed by data. If
 * data points to a malloc'd data structure, then the caller should free it after
 * calling list_insert(), to prevent memory leaks.
-* 
+*
 * @author Alessandro Pellegrini
-* 
+*
 * @param li a pointer to the list data strucuture. Note that if passed through the
 *           list_insert_tail() macro, the type of the pointer is the same as the content,
 *           but the pointed memory contains a buffer whose actual type is rootsim_list.
@@ -140,7 +140,7 @@ char *__list_insert_head(void *li, unsigned int size, void *data) {
 char *__list_insert_tail(void *li, unsigned int size, void *data) {
 
 	rootsim_list *l = (rootsim_list *)li;
-	
+
 	debug_enter();
 
 	assert(l);
@@ -185,9 +185,9 @@ char *__list_insert_tail(void *li, unsigned int size, void *data) {
 * This function allocates new memory to copy the payload pointed by data. If
 * data points to a malloc'd data structure, then the caller should free it after
 * calling list_insert(), to prevent memory leaks.
-* 
+*
 * @author Alessandro Pellegrini
-* 
+*
 * @param li a pointer to the list data strucuture. Note that if passed through the
 *           list_insert() macro, the type of the pointer is the same as the content,
 *           but the pointed memory contains a buffer whose actual type is rootsim_list.
@@ -205,7 +205,7 @@ char *__list_insert_tail(void *li, unsigned int size, void *data) {
 char *__list_insert(void *li, unsigned int size, size_t key_position, void *data) {
 
 	rootsim_list *l = (rootsim_list *)li;
-	
+
 	debug_enter();
 
 	assert(l);
@@ -229,7 +229,7 @@ char *__list_insert(void *li, unsigned int size, size_t key_position, void *data
 		l->tail = new_n;
 		goto insert_end;
 	}
-	
+
 	n = l->tail;
 	while(n != NULL) {
 		if(key >= get_key(&n->data) || n == l->head) {
@@ -276,9 +276,9 @@ char *__list_insert(void *li, unsigned int size, size_t key_position, void *data
 * It is not safe (and not easily readable) to call this function directly. Rather,
 * there is the list_extract() macro (defined in <datatypes/list.h>) which sets
 * correctly many parameters, and provides a more useful API.
-* 
+*
 * @author Alessandro Pellegrini
-* 
+*
 * @param li a pointer to the list data strucuture. Note that if passed through the
 *           list_extract() macro, the type of the pointer is the same as the content,
 *           but the pointed memory contains a buffer whose actual type is rootsim_list.
@@ -295,7 +295,7 @@ char *__list_insert(void *li, unsigned int size, size_t key_position, void *data
 char *__list_extract(void *li, unsigned int size, double key, size_t key_position) {
 
 	rootsim_list *l = (rootsim_list *)li;
-	
+
 	debug_enter();
 
 	assert(l);
@@ -312,20 +312,20 @@ char *__list_extract(void *li, unsigned int size, double key, size_t key_positio
 				l->head = n->next;
 				l->head->prev = NULL;
 			}
-		
+
 			if(l->tail == n) {
 				l->tail = n->prev;
 				l->tail->next = NULL;
 			}
-	
+
 			if(n->next != NULL) {
 				n->next->prev = n->prev;
 			}
- 
+
 			if(n->prev != NULL) {
 				n->prev->next = n->next;
 			}
-			
+
 			content = rsalloc(size);
 			memcpy(content, &n->data, size);
 			n->next = (void *)0xDEADBEEF;
@@ -339,7 +339,7 @@ char *__list_extract(void *li, unsigned int size, double key, size_t key_positio
 		}
 		n = n->next;
 	}
-	
+
 	debug_exit();
 
 	return content;
@@ -353,9 +353,9 @@ char *__list_extract(void *li, unsigned int size, double key, size_t key_positio
 * It is not safe (and not easily readable) to call this function directly. Rather,
 * there is the list_delete() macro (defined in <datatypes/list.h>) which sets
 * correctly many parameters, and provides a more useful API.
-* 
+*
 * @author Alessandro Pellegrini
-* 
+*
 * @param li a pointer to the list data strucuture. Note that if passed through the
 *           list_delete() macro, the type of the pointer is the same as the content,
 *           but the pointed memory contains a buffer whose actual type is rootsim_list.
@@ -390,9 +390,9 @@ bool __list_delete(void *li, unsigned int size, double key, size_t key_position)
 * It is not safe (and not easily readable) to call this function directly. Rather,
 * there are the list_extract_by_content() and list_delete_by_content() macros
 * (defined in <datatypes/list.h>) which set correctly many parameters, and provide a more useful API.
-* 
+*
 * @author Alessandro Pellegrini
-* 
+*
 * @param li a pointer to the list data strucuture. Note that if passed through the
 *           list_extract_by_content() macro, the type of the pointer is the same as the content,
 *           but the pointed memory contains a buffer whose actual type is rootsim_list.
@@ -408,7 +408,7 @@ bool __list_delete(void *li, unsigned int size, double key, size_t key_position)
 char *__list_extract_by_content(void *li, unsigned int size, void *ptr, bool copy) {
 
         rootsim_list *l = (rootsim_list *)li;
-        
+
         debug_enter();
 
 	assert(l);
@@ -416,29 +416,29 @@ char *__list_extract_by_content(void *li, unsigned int size, void *ptr, bool cop
 
 	struct rootsim_list_node *n = list_container_of(ptr);
 	char *content = NULL;
-	
+
 	if(l->head == n) {
 		l->head = n->next;
 		if(l->head != NULL) {
 			l->head->prev = NULL;
 		}
 	}
-		
+
 	if(l->tail == n) {
 		l->tail = n->prev;
 		if(l->tail != NULL) {
 			l->tail->next = NULL;
 		}
 	}
-	
+
 	if(n->next != NULL) {
 		n->next->prev = n->prev;
 	}
- 
+
 	if(n->prev != NULL) {
 		n->prev->next = n->next;
 	}
-	
+
 	if(copy) {
 		content = rsalloc(size);
 		memcpy(content, &n->data, size);
@@ -450,7 +450,7 @@ char *__list_extract_by_content(void *li, unsigned int size, void *ptr, bool cop
 
 	l->size--;
 	assert(l->size == (size_before - 1));
-	
+
 	debug_exit();
 	return content;
 }
@@ -467,9 +467,9 @@ char *__list_extract_by_content(void *li, unsigned int size, void *ptr, bool cop
 * It is not safe (and not easily readable) to call this function directly. Rather,
 * there is the list_find() macro (defined in <datatypes/list.h>) which sets correctly
 * many parameters, and provide a more useful API.
-* 
+*
 * @author Alessandro Pellegrini
-* 
+*
 * @param li a pointer to the list data strucuture. Note that if passed through the
 *           list_find() macro, the type of the pointer is the same as the content,
 *           but the pointed memory contains a buffer whose actual type is rootsim_list.
@@ -487,7 +487,7 @@ char *__list_find(void *li, double key, size_t key_position) {
         rootsim_list *l = (rootsim_list *)li;
 
 	assert(l);
-	
+
 	debug_enter();
 
 	struct rootsim_list_node *n = l->head;
@@ -502,7 +502,7 @@ char *__list_find(void *li, double key, size_t key_position) {
 		}
 		n = n->next;
 	}
-	
+
         debug_exit();
 
 	return NULL;
@@ -515,9 +515,9 @@ char *__list_find(void *li, double key, size_t key_position) {
 * It is not safe (and not easily readable) to call this function directly. Rather,
 * there is the list_pop() macro (defined in <datatypes/list.h>) which sets correctly
 * many parameters, and provide a more useful API.
-* 
+*
 * @author Alessandro Pellegrini
-* 
+*
 * @param li a pointer to the list data strucuture. Note that if passed through the
 *           list_pop() macro, the type of the pointer is the same as the content,
 *           but the pointed memory contains a buffer whose actual type is rootsim_list.
@@ -529,7 +529,7 @@ char *__list_find(void *li, double key, size_t key_position) {
 void list_pop(void *li) {
 
         rootsim_list *l = (rootsim_list *)li;
-        
+
         debug_enter();
 
 	assert(l);
@@ -551,7 +551,7 @@ void list_pop(void *li) {
 		l->size--;
 		assert(l->size == (size_before - 1));
 	}
-	
+
         debug_exit();
 }
 
@@ -563,12 +563,12 @@ unsigned int __list_trunc(void *li, double key, size_t key_position, unsigned sh
 	struct rootsim_list_node *n_adjacent;
 	rootsim_list *l = (rootsim_list *)li;
 	unsigned int deleted = 0;
-	
+
 	debug_enter();
 
 	assert(l);
 	size_t size_before = l->size;
-	
+
 	// Attempting to truncate an empty list?
 	if(l->size == 0) {
 		goto out;
@@ -590,6 +590,8 @@ unsigned int __list_trunc(void *li, double key, size_t key_position, unsigned sh
                 n = n_adjacent;
 	}
 	l->head = n;
+	if(l->head != NULL)
+		l->head->prev = (void *)0xBAADBEEF;
 
 
 	l->size -= deleted;

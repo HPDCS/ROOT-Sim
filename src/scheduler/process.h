@@ -4,20 +4,20 @@
 *
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
-* 
+*
 * ROOT-Sim is free software; you can redistribute it and/or modify it under the
 * terms of the GNU General Public License as published by the Free Software
 * Foundation; either version 3 of the License, or (at your option) any later
 * version.
-* 
+*
 * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
 * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-* 
+*
 * You should have received a copy of the GNU General Public License along with
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-* 
+*
 * @file process.h
 * @brief This header defines a LP control block, keeping information about both
 *        simulation state and execution state as a user thread.
@@ -61,21 +61,21 @@
 
 
 typedef struct _LP_state {
-	
+
 	/// Local ID of the thread (used to translate from bound LPs to local id)
 	unsigned int 	lid;
-	
+
 	/// Logical Process lock, used to serialize accesses to concurrent data structures
 	spinlock_t	lock;
 
 	/// Seed to generate pseudo-random values
 	seed_type	seed;
 
-#ifdef ENABLE_ULT	
+#ifdef ENABLE_ULT
 	/// LP execution state
 	LP_context_t	context;
-	
-	/// LP execution state when blocked during the execution of an event 
+
+	/// LP execution state when blocked during the execution of an event
 	LP_context_t	default_context;
 
 	/// Process' stack
@@ -84,34 +84,34 @@ typedef struct _LP_state {
 
 	/// ID of the worker thread towards which the LP is bound
 	unsigned int	worker_thread;
-	
+
 	/// Current execution state of the LP
 	short unsigned int state;
 
 	/// This variable mainains the current checkpointing interval for the LP
 	unsigned int	ckpt_period;
-	
+
 	/// Counts how many events executed from the last checkpoint (to support PSS)
 	unsigned int	from_last_ckpt;
-	
+
 	/// If this variable is set, the next invocation to LogState() takes a new state log, independently of the checkpointing interval
 	bool		state_log_forced;
 
 	/// Input messages queue
 	list(msg_t)	queue_in;
-	
+
 	/// Pointer to the last correctly elaborated event
 	msg_t		*bound;
-	
+
 	/// Output messages queue
 	list(msg_hdr_t)	queue_out;
-	
+
 	/// Saved states queue
 	list(state_t)	queue_states;
-	
+
 	/// Pointer to the last-taken snapshot
 	state_t		*state_bound;
-	
+
 	/// Bottom halves queue
 	list(msg_t)	bottom_halves;
 
@@ -131,7 +131,7 @@ typedef struct _LP_state {
 
 	unsigned long long	wait_on_rendezvous;
 	unsigned int		wait_on_object;
-	
+
 } LP_state;
 
 
@@ -142,7 +142,7 @@ typedef struct _LP_state {
  */
 #define lvt(lid) (LPS[lid]->bound != NULL ? LPS[lid]->bound->timestamp : 0.0)
 
-	
+
 
 extern LP_state **LPS;
 

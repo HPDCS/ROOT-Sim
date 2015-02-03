@@ -55,7 +55,7 @@ double recompute_ta(double ref_ta, simtime_t time_now) {
 double generate_cross_path_gain(lp_state_type *pointer) {
 	double value;
 	double variation;
-	
+
 	variation = 10 * Random();
 	variation = pow ((double)10.0 , (variation / 10));
 	value = CROSS_PATH_GAIN * variation;
@@ -65,7 +65,7 @@ double generate_cross_path_gain(lp_state_type *pointer) {
 double generate_path_gain(lp_state_type *pointer) {
 	double value;
 	double variation;
-	
+
 	variation = 10 * Random();
 	variation = pow ((double)10.0 , (variation / 10));
 	value = PATH_GAIN * variation;
@@ -74,7 +74,7 @@ double generate_path_gain(lp_state_type *pointer) {
 
 void deallocation(unsigned int me, lp_state_type *pointer, int ch, event_content_type *evt, simtime_t lvt) {
 	channel *c;
-	
+
 	c = pointer->channels;
 	while(c != NULL){
 		if(c->channel_id == ch)
@@ -95,7 +95,7 @@ void deallocation(unsigned int me, lp_state_type *pointer, int ch, event_content
 		}
 		RESET_CHANNEL(pointer, ch);
 		free(c->sir_data);
-		
+
 		free(c);
 	} else {
 		printf("(%d) Unable to deallocate on %p, channel is %d at time %f\n", me, c, ch, lvt);
@@ -105,11 +105,11 @@ void deallocation(unsigned int me, lp_state_type *pointer, int ch, event_content
 }
 
 int allocation(lp_state_type *pointer) {
-	
+
 	int i;
   	int index;
 	double summ;
-	
+
 	channel *c, *ch;
 
 	index = -1;
@@ -119,9 +119,9 @@ int allocation(lp_state_type *pointer) {
 			break;
 		}
 	}
-	
+
 	if(index != -1){
-		
+
 		SET_CHANNEL(pointer,index);
 
 		c = (channel*)malloc(sizeof(channel));
@@ -129,7 +129,7 @@ int allocation(lp_state_type *pointer) {
 			printf("malloc error: unable to allocate channel!\n");
 			exit(-1);
 		}
-	
+
 		c->next = NULL;
 		c->prev = pointer->channels;
 		c->channel_id = index;
@@ -138,15 +138,15 @@ int allocation(lp_state_type *pointer) {
 			printf("malloc error: unable to allocate SIR data!\n");
 			exit(-1);
 		}
-		
+
 		if(pointer->channels != NULL)
 			pointer->channels->next = c;
 		pointer->channels = c;
-	
+
 		summ = 0.0;
-		
+
 		if (pointer->check_fading) {
-			ch = pointer->channels->prev;	
+			ch = pointer->channels->prev;
 
 			while(ch != NULL){
 				ch->sir_data->fading = Expent(1.0);

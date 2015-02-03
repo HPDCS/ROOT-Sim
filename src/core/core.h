@@ -4,26 +4,26 @@
 *
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
-* 
+*
 * ROOT-Sim is free software; you can redistribute it and/or modify it under the
 * terms of the GNU General Public License as published by the Free Software
 * Foundation; either version 3 of the License, or (at your option) any later
 * version.
-* 
+*
 * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
 * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-* 
+*
 * You should have received a copy of the GNU General Public License along with
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-* 
+*
 * @file core.h
 * @brief This header defines all the shared symbols which are needed by different subsystems
 * @author Francesco Quaglia
 * @author Roberto Vitali
 * @author Alessandro Pellegrini
-* 
+*
 */
 
 
@@ -43,7 +43,7 @@
 #include <statistics/statistics.h>
 
 /// If set, ROOT-Sim will produce statistics on the execution
-#define PLATFORM_STATS				
+#define PLATFORM_STATS
 
 /// This macro expands to true if the local kernel is the master kernel
 #define master_kernel() (kid == 0)
@@ -73,7 +73,7 @@
 #define MAX_EVENT_SIZE	(110 * sizeof(int))
 
 // XXX: this should be moved somewhere else...
-#define VERBOSE_INFO	1700	
+#define VERBOSE_INFO	1700
 #define VERBOSE_DEBUG	1701
 #define VERBOSE_NO	1702
 

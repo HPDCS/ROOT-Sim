@@ -25,9 +25,9 @@ static double	top_threshold,
 
 static double	buckettop,
 		cwidth;
-		
-		
-		
+
+
+
 static calqueue_node *calqueue_deq(void);
 
 
@@ -57,7 +57,7 @@ static void localinit(int qbase, int nbucks, double bwidth, double startprio) {
 	for(i = 0; i < nbuckets; i++) {
 		calendar[i] = NULL;
 	}
-	
+
 	// Setup initial position in queue
 	lastprio = startprio;
 	n = (long)((double)startprio / cwidth);	// Virtual bucket
@@ -120,7 +120,7 @@ static double new_width(void) {
 
 	// Re-insert temp node 0
 	calqueue_put(temp[0]->timestamp, temp[0]->payload);
-	
+
 	// Recalculate ignoring large separations
 	for(i = 1; i < nsamples; i++) {
 		if((temp[i]->timestamp - temp[i-1]->timestamp) < (average * 2.0)) {
@@ -129,7 +129,7 @@ static double new_width(void) {
 		}
 		calqueue_put(temp[i]->timestamp, temp[i]->payload);
 	}
-	
+
 	// Free the temp structure (the events have been re-injected in the queue)
 	for(i = 0; i < 25; i++) {
 		if(temp[i] != NULL) {
@@ -304,7 +304,7 @@ void calqueue_put(double timestamp, void *payload) {
 		new_node->next = traverse->next;
 		traverse->next = new_node;
 	}
-	
+
 	// Update queue size
 	qsize++;
 
@@ -319,12 +319,12 @@ void calqueue_put(double timestamp, void *payload) {
 void *calqueue_get(void) {
 	calqueue_node *node;
 	void *payload;
-		
+
 	node = calqueue_deq();
 	if(node == NULL) {
 		return NULL;
 	}
-	
+
 	payload = node->payload;
 	rsfree(node);
 	return payload;

@@ -4,20 +4,20 @@
 *
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
-* 
+*
 * ROOT-Sim is free software; you can redistribute it and/or modify it under the
 * terms of the GNU General Public License as published by the Free Software
 * Foundation; either version 3 of the License, or (at your option) any later
 * version.
-* 
+*
 * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
 * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-* 
+*
 * You should have received a copy of the GNU General Public License along with
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-* 
+*
 * @file init.c
 * @brief This module implements the simulator initialization routines
 * @author Francesco Quaglia
@@ -80,9 +80,9 @@ static void usage(char **argv) {
 * @author Francesco Quaglia
 * @author Alessandro Pellegrini
 *
-* @param argc number of parameters passed at command line 
+* @param argc number of parameters passed at command line
 * @param argv array of parameters passed at command line
-* 
+*
 * @return the index of the first application-level parameter
 */
 static int parse_cmd_line(int argc, char **argv) {
@@ -93,7 +93,7 @@ static int parse_cmd_line(int argc, char **argv) {
     	if(argc < 2) {
 		usage(argv);
     	}
-    	
+
     	// Keep track of the program name
     	program_name = argv[0];
 
@@ -291,7 +291,7 @@ static int parse_cmd_line(int argc, char **argv) {
 
 		#undef parseIntLimits
 	}
-	
+
 	if(!rootsim_config.serial && n_prc_tot < n_cores) {
 		rootsim_error(true, "Requested a simulation run with %u LPs and %u worker threads: the mapping is not possible. Aborting...\n", n_prc_tot, n_cores);
 	}
@@ -306,7 +306,7 @@ static int parse_cmd_line(int argc, char **argv) {
 
 	// Return the first argv element where to find app args
 	return optind;
-	
+
 }
 
 
@@ -317,7 +317,7 @@ static int parse_cmd_line(int argc, char **argv) {
 * @author Francesco Quaglia
 * @author Alessandro Pellegrini
 *
-* @param argc number of parameters passed at command line 
+* @param argc number of parameters passed at command line
 * @param argv array of parameters passed at command line
 */
 void SystemInit(int argc, char **argv) {
@@ -329,7 +329,7 @@ void SystemInit(int argc, char **argv) {
 	if(application_args == -1) {
 		return;
 	}
-	
+
 	// Initialize the backtrace handler if required
 	if(rootsim_config.backtrace && master_kernel() && master_thread()) {
 		INIT_BACKTRACE();
@@ -412,16 +412,16 @@ void SystemInit(int argc, char **argv) {
 
 		// Create user level thread for the current LP and initialize LP control block
 		initialize_LP(t);
-		
+
 		// Take a dummy log to allow SetState() during the execution of INIT
 		LogState(t);
-		
+
 		// We must pass the application-level args to the LP in the INIT event.
 		// Skip all the NULL args (if any)
 		int w = application_args;
 		while (argv[w] != NULL && (argv[w][0] == '\0' || argv[w][0] == ' '))
 			w++;
-		
+
 		// Schedule an INIT event to the newly instantiated LP
 		msg_t init_event = {
 			sender: LidToGid(t),
@@ -432,17 +432,17 @@ void SystemInit(int argc, char **argv) {
 			size: argc - w,
 			message_kind: positive,
 		};
-		
+
 		// Copy the relevant string pointers to the INIT event payload
 		if((argc - w) > 0) {
 			memcpy(init_event.event_content, &argv[w], (argc - w) * sizeof(char *));
 		}
-		
+
 		Send(&init_event);
 	}
 
 	printf("done\n");
-	
+
 	initialization_complete();
 
 	// Notify the statistics subsystem that we are now starting the actual simulation
@@ -451,7 +451,7 @@ void SystemInit(int argc, char **argv) {
 	printf("****************************\n"
                "*    Simulation Started    *\n"
                "****************************\n");
-}	    
+}
 
 
 

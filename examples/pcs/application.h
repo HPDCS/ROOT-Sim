@@ -56,7 +56,7 @@
 
 // Message exchanged among LPs
 typedef struct _event_content_type {
-	unsigned int cell;
+	int cell;
 	unsigned int from;
 	simtime_t sent_at;
 	int channel;
@@ -94,21 +94,21 @@ typedef struct _lp_state_type{
 	unsigned int arriving_handoffs;
 	unsigned int cont_no_sir_aim;
 	unsigned int executed_events;
-	
+
 	simtime_t lvt;
-	
+
 	double ta;
 	double ref_ta;
 	double ta_duration;
 	double ta_change;
-	
+
 	int channels_per_cell;
 	int total_calls;
 
-	bool check_fading;	
+	bool check_fading;
 	bool fading_recheck;
 	bool variable_ta;
-	
+
 	unsigned int *channel_state;
 	struct _channel *channels;
 } lp_state_type;

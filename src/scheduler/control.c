@@ -4,23 +4,23 @@
 *
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
-* 
+*
 * ROOT-Sim is free software; you can redistribute it and/or modify it under the
 * terms of the GNU General Public License as published by the Free Software
 * Foundation; either version 3 of the License, or (at your option) any later
 * version.
-* 
+*
 * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
 * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-* 
+*
 * You should have received a copy of the GNU General Public License along with
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-* 
+*
 * @file control.c
-* @brief 
-* @author 
+* @brief
+* @author
 */
 
 
@@ -45,12 +45,12 @@ void unblock_synchronized_objects(unsigned int lid) {
 		bzero(&control_msg, sizeof(msg_t));
 		control_msg.sender = LidToGid(lid);
 		control_msg.receiver = LidToGid(LPS[lid]->ECS_synch_table[i]);
-		control_msg.type = RENDEZVOUS_UNBLOCK;	
+		control_msg.type = RENDEZVOUS_UNBLOCK;
 		control_msg.timestamp = lvt(lid);
 		control_msg.send_time = lvt(lid);
 		control_msg.message_kind = positive;
 		control_msg.rendezvous_mark = LPS[lid]->wait_on_rendezvous;
-		
+
 		Send(&control_msg);
 	}
 
@@ -60,7 +60,7 @@ void unblock_synchronized_objects(unsigned int lid) {
 
 void rollback_control_message(unsigned int lid, simtime_t simtime) {
 	msg_t control_antimessage;
-	
+
 	msg_t *msg, *msg_prev;
 
 	if(list_empty(LPS[lid]->rendezvous_queue)) {
@@ -164,7 +164,7 @@ bool receive_control_msg(msg_t *msg) {
 			if(LPS[msg->receiver]->wait_on_rendezvous == msg->rendezvous_mark) {
 				LPS[msg->receiver]->state = LP_STATE_READY_FOR_SYNCH;
 			}
-			
+
 			break;
 
 		case RENDEZVOUS_UNBLOCK:
@@ -218,7 +218,7 @@ bool process_control_msg(msg_t *msg) {
 			bzero(&control_msg, sizeof(msg_t));
 			control_msg.sender = msg->receiver;
 			control_msg.receiver = msg->sender;
-			control_msg.type = RENDEZVOUS_ACK;	
+			control_msg.type = RENDEZVOUS_ACK;
 			control_msg.timestamp = msg->timestamp;
 			control_msg.send_time = msg->timestamp;
 			control_msg.message_kind = positive;

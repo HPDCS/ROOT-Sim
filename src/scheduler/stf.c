@@ -18,7 +18,7 @@ unsigned int smallest_timestamp_first(void) {
 	simtime_t min_bound = INFTY;
 	unsigned int next = IDLE_PROCESS;
 	register unsigned int i;
-	
+
 	// For each local process
 	for (i = 0; i < n_prc_per_thread; i++) {
 
@@ -28,11 +28,11 @@ unsigned int smallest_timestamp_first(void) {
 		if(is_blocked_state(LPS_bound[i]->state)) {
 			continue;
 		}
-		
+
 		// Compute the next event's timestamp. Translate the id from the local binding to the local ID
 		evt_time = next_event_timestamp(LPS_bound[i]->lid);
-		
-		if(evt_time > -1) {		
+
+		if(evt_time > -1) {
 			if((D_EQUAL(min_timestamp, -1)) || ((min_timestamp > -1) && (evt_time < min_timestamp))) {
 				min_timestamp = evt_time;
 				next = LPS_bound[i]->lid;
@@ -41,13 +41,13 @@ unsigned int smallest_timestamp_first(void) {
 	}
 
 //	update_bound(min_bound);
-	
+
 	// Return the process to execute
 	if(D_EQUAL(min_timestamp, -1)) {
 		return IDLE_PROCESS;
 	} else {
 		return next;
 	}
- 
+
 }
 

@@ -30,9 +30,9 @@
 #define MASK 0x00000001LL         // Mask used to check, set and unset bits
 #define NUM_CHUNKS_PER_BLOCK (sizeof(int) * 8)
 
-#define CHECK_BIT(A,I) ( A[(int)((int)(I) / NUM_CHUNKS_PER_BLOCK)] & (MASK << (int)(I) % NUM_CHUNKS_PER_BLOCK) ) 
-#define SET_BIT(A,I) ( A[(int)((int)(I) / NUM_CHUNKS_PER_BLOCK)] |= (MASK << (int)(I) % NUM_CHUNKS_PER_BLOCK) ) 
-#define RESET_BIT(A,I) ( A[(int)((int)(I) / NUM_CHUNKS_PER_BLOCK)] &= ~(MASK << (int)(I) % NUM_CHUNKS_PER_BLOCK) ) 
+#define CHECK_BIT(A,I) ( A[(int)((int)(I) / NUM_CHUNKS_PER_BLOCK)] & (MASK << (int)(I) % NUM_CHUNKS_PER_BLOCK) )
+#define SET_BIT(A,I) ( A[(int)((int)(I) / NUM_CHUNKS_PER_BLOCK)] |= (MASK << (int)(I) % NUM_CHUNKS_PER_BLOCK) )
+#define RESET_BIT(A,I) ( A[(int)((int)(I) / NUM_CHUNKS_PER_BLOCK)] &= ~(MASK << (int)(I) % NUM_CHUNKS_PER_BLOCK) )
 
 
 #define BITMAP_SIZE(size) ((int)ceil((size)/NUM_CHUNKS_PER_BLOCK) * sizeof(int))

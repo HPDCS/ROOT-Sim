@@ -9,7 +9,7 @@
 *
 * For any information, you can find contact information on my personal webpage:
 * http://www.dis.uniroma1.it/~pellegrini
-*  
+*
 * @file init.c
 * @brief This module implements the initialization functions
 * @author Alessandro Pellegrini
@@ -253,7 +253,7 @@ static void parse_topology_line(char *line, int *state, simulation_objects *objs
 
 		return;
 	}
-	
+
 	// Parse the line and create the LP information
 	switch(*state) {
 		case INTERSECT_S:
@@ -278,7 +278,7 @@ static void print_adjacencies(int me, topology_t *t, char *n) {
 	int i;
 
 	printf("%s (%04d): ", n, me);
-	
+
 	for(i = 0; i < t->num_neighbours; i++) {
 		printf("%d, ", t->neighbours[i]);
 	}
@@ -290,14 +290,14 @@ static void print_adjacencies(int me, topology_t *t, char *n) {
 
 
 static simulation_objects *allocate_LPs(void) {
-	
+
 	simulation_objects *objs = malloc(sizeof(simulation_objects));
 	bzero(objs, sizeof(simulation_objects));
 
 	objs->LPs = malloc(sizeof(lp_t *) * n_prc_tot);
 	bzero(objs->LPs, sizeof(lp_t *) * n_prc_tot);
 
-	return objs; 
+	return objs;
 }
 
 
@@ -328,7 +328,7 @@ static void compute_total_road(FILE *f) {
 	int i;
 
 	bzero(line, LINE_LENGTH);
-	
+
 	// Skip lines until we get to the [ROUTES] section
 	do {
 		ret = fgets(line, LINE_LENGTH, f);
@@ -344,7 +344,7 @@ static void compute_total_road(FILE *f) {
 	// Parse remaining lines and sum the length arguments
 	while(fgets(line, LINE_LENGTH, f) != NULL) {
 
-		line[strlen(line) - 1] = '\0'; // Remove trailing '\n'		
+		line[strlen(line) - 1] = '\0'; // Remove trailing '\n'
 
 		// Check comments and blank lines
 		if(line[0] == '#' || line[0] == '\0') {
@@ -353,7 +353,7 @@ static void compute_total_road(FILE *f) {
 
 		// Get to the length argument in the line
 		source = line;
-	
+
 		for(i = 0; i < LENGTH_ARG; i++) {
 
 			token = strtok(source, ", \t");
@@ -370,10 +370,10 @@ static void compute_total_road(FILE *f) {
 		}
 
 		// sum it up
-		total_model_road += parseInt(token);		
+		total_model_road += parseInt(token);
 
 	}
-	
+
 }
 
 
@@ -386,7 +386,7 @@ void init_my_state(int me, lp_state_type *sym_state) {
 	topology_t *topology;
 	neighbour_t *n;
 
-	
+
 	// Open the file
 	FILE *f = fopen(FILENAME, "r");
 	if(f == NULL) {
@@ -453,7 +453,7 @@ void init_my_state(int me, lp_state_type *sym_state) {
 		fflush(stderr);
 		exit(EXIT_FAILURE);
 	}
-	
+
 
 	// Print information on the current LP's topology
 	//print_adjacencies(me, topology, my_lp->name);

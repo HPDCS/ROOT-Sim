@@ -140,12 +140,12 @@ int register_my_page_fault_handler(void){
 
     idtr.address = new_idt_table_page;
     idtr.size = default_idtr.size;
-    
+
     //copy the old idt table to the new one
     new_idt = (gate_desc *)idtr.address;
     memcpy(new_idt, old_idt, idtr.size);
     pack_gate(&new_idt[PGFAULT_NR], GATE_INTERRUPT, (unsigned long)my_page_fault, 0, 0, __KERNEL_CS);
-    
+
     //load idt for all the processors
     printk(KERN_INFO "my_virt_drv: load the new idt table.\n");
     load_idt(&idtr);
