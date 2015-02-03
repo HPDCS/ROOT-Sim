@@ -130,7 +130,7 @@ static int parse_cmd_line(int argc, char **argv) {
 					char *endptr;\
 					period = strtol(s, &endptr, 10);\
 					if(!(*s != '\0' && *endptr == '\0' && period >= low && period <= high)) {\
-						rootsim_error(true, "Invalid option value: %s", s);\
+						rootsim_error(true, "Invalid option value: %s\n", s);\
 					}\
 					period;\
 				     })
@@ -430,7 +430,7 @@ void SystemInit(int argc, char **argv) {
 			timestamp: 0.0,
 			mark: generate_mark(LidToGid(t)),
 			size: argc - w,
-			is_antimessage: false,
+			message_kind: positive,
 		};
 		
 		// Copy the relevant string pointers to the INIT event payload
@@ -442,6 +442,8 @@ void SystemInit(int argc, char **argv) {
 	}
 
 	printf("done\n");
+	
+	initialization_complete();
 
 	// Notify the statistics subsystem that we are now starting the actual simulation
 	statistics_post_other_data(STAT_SIM_START, 1.0);

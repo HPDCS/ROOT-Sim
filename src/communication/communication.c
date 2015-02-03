@@ -38,18 +38,11 @@
 #include <datatypes/list.h>
 
 
-
 /// This is the function pointer to correctly set ScheduleNewEvent API version, depending if we're running serially or parallelly
 void (* ScheduleNewEvent)(unsigned int gid_receiver, simtime_t timestamp, unsigned int event_type, void *event_content, unsigned int event_size);
 
-
-
 /// Buffer used by MPI for outgoing messages
 static char buff[SLOTS * sizeof(msg_t)];
-
-
-
-//static bool pending_msg(void);
 
 
 /**
@@ -112,7 +105,7 @@ void ParallelScheduleNewEvent(unsigned int gid_receiver, simtime_t timestamp, un
 	event.type = event_type;	
 	event.timestamp = timestamp;
 	event.send_time = lvt(current_lp);
-	event.is_antimessage = false;
+	event.message_kind = positive;
 	event.mark = generate_mark(current_lp);
 	event.size = event_size;
 
@@ -141,34 +134,43 @@ void ParallelScheduleNewEvent(unsigned int gid_receiver, simtime_t timestamp, un
 *
 * @param lid The Logical Process Id
 */
-void send_antimessages(unsigned int lid, simtime_t simtime) {
+void send_antimessages(unsigned int lid, simtime_t after_simtime) {
 	msg_hdr_t *anti_msg,
-		  *anti_msg_prev;
+		  *anti_msg_next;
 	
 	msg_t msg;
 	
 	if (list_empty(LPS[lid]->queue_out))
 		return;
 
-	
-	// Get the first message header with a timestamp >= simtime
+
+	// Get the first message header with a timestamp <= after_simtime
 	anti_msg = list_tail(LPS[lid]->queue_out);
-	while(anti_msg != NULL && anti_msg->send_time > simtime) {
-			
+	while(anti_msg != NULL && anti_msg->send_time > after_simtime)
+		anti_msg = list_prev(anti_msg);
+
+	// The next event is the first event with a sendtime > after_simtime, if any
+	if(anti_msg == NULL)
+		return;
+		
+	anti_msg = list_next(anti_msg);
+	
+	// Now send all antimessages
+	while(anti_msg != NULL) {
 		bzero(&msg, sizeof(msg_t));
 		msg.sender = anti_msg->sender;
 		msg.receiver = anti_msg->receiver;
 		msg.timestamp = anti_msg->timestamp;
 		msg.send_time = anti_msg->send_time;
 		msg.mark = anti_msg->mark;
-		msg.is_antimessage = true;
+		msg.message_kind = negative;
 			
 		Send(&msg);
 		
 		// Remove the already sent antimessage from output queue
-		anti_msg_prev = list_prev(anti_msg);
+		anti_msg_next = list_next(anti_msg);
 		list_delete_by_content(LPS[lid]->queue_out, anti_msg);
-		anti_msg = anti_msg_prev;
+		anti_msg = anti_msg_next;
 	}
 }
 

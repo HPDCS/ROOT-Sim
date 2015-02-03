@@ -289,8 +289,8 @@ simtime_t gvt_operations(void) {
 			// thread. To check for termination based on simulation time,
 			// this variable must be explicitly inspected using
 			// get_last_gvt()
-			last_gvt = new_gvt;
-			return adopt_new_gvt(new_gvt);
+			last_gvt = adopt_new_gvt(new_gvt);;
+			return last_gvt;
 		}
 		
 		

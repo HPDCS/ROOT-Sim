@@ -47,22 +47,12 @@ static unsigned long long snapshot_cycles;
 * @author Francesco Quaglia
 *
 * @param lid The logical process' local identifier
-* @param new_gvt The current barrier
-* @param state State queue
+* @param time_barrier The current barrier
 */
 void fossil_collection(unsigned int lid, simtime_t time_barrier) {
 	state_t *state;
+	msg_t *last_kept_event;
 	double committed_events;
-
-	// TODO: controllare il boundary esatto con gli antimessaggi immessi nel sistema!
-	time_barrier = time_barrier;
-	
-	// Truncate the input queue
-	committed_events = (double)list_trunc_before(LPS[lid]->queue_in, timestamp, time_barrier);
-	statistics_post_lp_data(lid, STAT_COMMITTED, committed_events);
-	
-	// Truncate the output queue
-	list_trunc_before(LPS[lid]->queue_out, send_time, time_barrier);
 	
 	// State list must be handled differently, as nodes point to malloc'd
 	// nodes. We therefore manually scan the list and free the memory.	
@@ -71,6 +61,20 @@ void fossil_collection(unsigned int lid, simtime_t time_barrier) {
 		state->last_event = (void *)0xDEADBABE;
 		list_pop(LPS[lid]->queue_states);
 	}
+	
+	// At the beginning, we have one initial log which is taken before INIT.
+	// This is the only case where last_event can point NULL.
+	// If this is the barrier log, then we don't have to truncate anything
+	if(list_head(LPS[lid]->queue_states)->last_event == NULL)
+		return;
+	
+	// Truncate the input queue, accounting for the event which is pointed by the lastly kept state
+	last_kept_event = list_head(LPS[lid]->queue_states)->last_event;
+	committed_events = (double)list_trunc_before(LPS[lid]->queue_in, timestamp, last_kept_event->timestamp);
+	statistics_post_lp_data(lid, STAT_COMMITTED, committed_events);
+	
+	// Truncate the output queue
+	list_trunc_before(LPS[lid]->queue_out, send_time, last_kept_event->timestamp);
 }
 
 
@@ -134,11 +138,6 @@ simtime_t adopt_new_gvt(simtime_t new_gvt) {
 		clean_buffers_on_gvt(LPS_bound[i]->lid, time_barrier_pointer[i]->lvt);
 	}
 
-	// This is used only for printing purposes.
-	if(master_thread()) {
-		return local_time_barrier;
-	}
-	
-	return -1.0;
+	return local_time_barrier;
 }
 

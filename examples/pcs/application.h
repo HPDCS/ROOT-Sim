@@ -31,7 +31,6 @@
 #define HANDOFF_LEAVE	30
 #define HANDOFF_RECV	31
 #define FADING_RECHECK	40
-//#define MARK_CHANNEL	50
 #define DUMMY_READ	60
 #define DUMMY_WRITE	61
 

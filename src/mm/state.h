@@ -66,6 +66,6 @@ extern void clean_queue_states(unsigned int lid, simtime_t new_gvt);
 extern void rebuild_state(unsigned int lid, state_t *state_pointer, simtime_t time);
 extern void set_checkpoint_period(unsigned int lid, int period);
 extern void force_LP_checkpoint(unsigned int lid);
-extern unsigned int silent_execution(unsigned int lid, void *state_buffer, msg_t *evt, simtime_t final_time, msg_t **);
+extern unsigned int silent_execution(unsigned int lid, void *state_buffer, msg_t *evt, msg_t *final_evt);
 #endif /* _STATE_MGNT_H_ */
 

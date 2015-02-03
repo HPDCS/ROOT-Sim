@@ -98,8 +98,6 @@ simtime_t next_event_timestamp(unsigned int id) {
 
 
 
-
-
 /**
 * This function advances the pointer to the last correctly executed event (bound).
 * It is called right before the execution of it. This means that after this
@@ -137,46 +135,16 @@ msg_t *advance_to_next_event(unsigned int lid) {
 
 
 /**
-* This function advance the pointer to the last correctly executed event,
-*  it is called right before the execution of it
+* Insert a message in the bottom halft of a locally-hosted LP. Of course,
+* the LP must be locally hosted. This is guaranteed by the fact
+* that the only point where this function is called is from Send(),
+* which checks whether the LP is hosted locally from this kernel
+* instance or not.
 *
-* @author Francesco Quaglia
-*
-* @param lid The Light Process id
-* @return The pointer to the last correctly executed event
+* @author Alessandro Pellegrini
+* 
+* @param msg The message to be added into some LP's bottom half. 
 */
-msg_t *get_last_event(unsigned int lid) {
-	return LPS[lid]->bound;
-}
-
-
-
-
-
-
-
-
-
-
-/**
-* This function removes one element from the outgoing queue
-*
-* @author Francesco Quaglia
-*
-* @param p The element to be removed
-* @return The event right after the one removed if it exhist, NULL otherwise
-*/
-msg_t *free_queue_out_elem(unsigned int lid, msg_t *msg) {
-
-	list_delete_by_content(LPS[lid]->queue_out, msg);
-
-	// TODO: a che serve quello che viene restituito qui?
-	return NULL;
-}
-
-
-
-
 void insert_bottom_half(msg_t *msg) {
 	
 	unsigned int lid = GidToLid(msg->receiver);
@@ -193,10 +161,10 @@ void insert_bottom_half(msg_t *msg) {
 * @author Alessandro Pellegrini
 */
 void process_bottom_halves(void) {
-	register unsigned int i;
+	unsigned int i;
 	unsigned int lid_receiver;
-	msg_t *msg;
-	msg_t *msg_ptr;
+	msg_t *msg_to_process;
+	msg_t *matched_msg;
 	list(msg_t) processing;
 	
 	for(i = 0; i < n_prc_per_thread; i++) {
@@ -207,43 +175,29 @@ void process_bottom_halves(void) {
 		spin_unlock(&LPS_bound[i]->lock);
 
 		while(!list_empty(processing)) {
-			msg = list_head(processing);
+			msg_to_process = list_head(processing);
 			
-			lid_receiver = msg->receiver;
+			lid_receiver = msg_to_process->receiver;
 
-			if(!receive_control_msg(msg)) {
+			if(!receive_control_msg(msg_to_process)) {
 				goto expunge_msg;
 			}
 
-			// Check if it is an anti control message
-			if(msg->is_antimessage == other) {
-				if(!anti_control_message(msg)) {
-					goto expunge_msg;
-				}
-			}
+			switch (msg_to_process->message_kind) {
 
-			switch (msg->is_antimessage) {
-
-				case true:
+				// It's an antimessage
+				case negative:
 				
-					statistics_post_lp_data(msg->receiver, STAT_ANTIMESSAGE, 1.0);
-
-					// Check if it is an anti control message
-//					if(anti_control_message(msg)) {
-//						goto expunge_msg;
-//					}
+					statistics_post_lp_data(msg_to_process->receiver, STAT_ANTIMESSAGE, 1.0);
 					
-					
-					// TODO: cambiare la macro list_delete per gestire qualsiasi
-					// tipo di chiave ed utilizzarla qui invece della ricerca manuale
-					//list_delete(LPS[lid_receiver]->queue_in, mark, msg->mark);
-					msg_ptr = list_head(LPS[lid_receiver]->queue_in);
-					while(msg_ptr != NULL && msg_ptr->mark != msg->mark) {
-						msg_ptr = list_next(msg_ptr);
+					// Find the message matching the antimessage
+					matched_msg = list_tail(LPS[lid_receiver]->queue_in);
+					while(matched_msg != NULL && matched_msg->mark != msg_to_process->mark) {
+						matched_msg = list_prev(matched_msg);
 					}
 					
-					if(msg_ptr == NULL) {
-						rootsim_error(false, "LP %d Received an antimessage with mark %llu at LP %u from LP %u, but no such mark found in the input queue!\n", LPS_bound[i]->lid, msg->mark, msg->receiver, msg->sender);
+					if(matched_msg == NULL) {
+						rootsim_error(false, "LP %d Received an antimessage with mark %llu at LP %u from LP %u, but no such mark found in the input queue!\n", LPS_bound[i]->lid, msg_to_process->mark, msg_to_process->receiver, msg_to_process->sender);
 						printf("Message Content:"
 							"sender: %d\n"
 							"receiver: %d\n"
@@ -253,45 +207,56 @@ void process_bottom_halves(void) {
 							"is antimessage %d\n"
 							"mark: %llu\n"
 							"rendezvous mark %llu\n",
-							msg->sender,
-							msg->receiver,
-							msg->type,
-							msg->timestamp,
-							msg->send_time,
-							msg->is_antimessage,
-							msg->mark,
-							msg->rendezvous_mark);
+							msg_to_process->sender,
+							msg_to_process->receiver,
+							msg_to_process->type,
+							msg_to_process->timestamp,
+							msg_to_process->send_time,
+							msg_to_process->message_kind,
+							msg_to_process->mark,
+							msg_to_process->rendezvous_mark);
+						fflush(stdout);
 						abort();
 					} else {
 						
-						// If the antimessage is in the past, we have to rollback
-						if(msg->timestamp <= lvt(lid_receiver)) {
+						// If the matched message is in the past, we have to rollback
+						if(matched_msg->timestamp <= lvt(lid_receiver)) {
 
-							LPS[lid_receiver]->bound = msg_ptr;
-							while (LPS[lid_receiver]->bound != NULL && LPS[lid_receiver]->bound->timestamp >= msg_ptr->timestamp) {
+							LPS[lid_receiver]->bound = list_prev(matched_msg);
+							while (LPS[lid_receiver]->bound != NULL && LPS[lid_receiver]->bound->timestamp > msg_to_process->timestamp) {
 								LPS[lid_receiver]->bound = list_prev(LPS[lid_receiver]->bound);
 							}
 							LPS[lid_receiver]->state = LP_STATE_ROLLBACK;
 						}
-						list_delete_by_content(LPS[lid_receiver]->queue_in, msg_ptr);
+						
+						// Delete the matched message
+						list_delete_by_content(LPS[lid_receiver]->queue_in, matched_msg);
 					}
 					
 					break;
 
-				case false:
+				// It's a positive message
+				case positive:
 				
-					msg = list_insert(LPS[lid_receiver]->queue_in, timestamp, msg);
+					msg_to_process = list_insert(LPS[lid_receiver]->queue_in, timestamp, msg_to_process);
 									
 					// Check if we've just inserted an out-of-order event
 					if(LPS[lid_receiver]->bound != NULL) {
-						if(msg->timestamp < lvt(lid_receiver)) {
-							LPS[lid_receiver]->bound = msg;
-							while ((LPS[lid_receiver]->bound != NULL) && LPS[lid_receiver]->bound->timestamp >= msg->timestamp) {
+						if(msg_to_process->timestamp < lvt(lid_receiver)) {
+							LPS[lid_receiver]->bound = list_prev(msg_to_process);
+							while ((LPS[lid_receiver]->bound != NULL) && LPS[lid_receiver]->bound->timestamp >= msg_to_process->timestamp) {
 								LPS[lid_receiver]->bound = list_prev(LPS[lid_receiver]->bound);
 							}
 							LPS[lid_receiver]->state = LP_STATE_ROLLBACK;
-							LPS[lid_receiver]->state = LP_STATE_ROLLBACK;
 						}
+					}
+					break;
+					
+				// It's a control message
+				case other:
+					// Check if it is an anti control message
+					if(!anti_control_message(msg_to_process)) {
+						goto expunge_msg;
 					}
 					break;
 
@@ -305,101 +270,6 @@ void process_bottom_halves(void) {
 		rsfree(processing);
 	}
 }
-
-
-/**
-* This function implements the operations needed to let a process send a message locally.
-* It is called by the function Send: this is the reason why it has been decoupled from
-* Message Checking.
-*
-* bound points to the last messagge correctly computed. Upon receiving a straggler or an
-* annihilator, bound will point to the immediately preceding message (with respect to the
-* timestamps).
-* In this case, this means we have to rollback the state, and will point us to the
-* event from which to restart.
-* That pointer is rolled back in this function, while is updated in NextEvent.
-*
-* Depending on the message received, recipient process' in queues are updated:
-*   - if it is a positive message, it is enqueued, ordered with respect to ascending
-*     timestamps; if the timestamp is lower than the receiver's lvt (i.e., it is a
-*     straggler), bound's value is updated;
-*   - if it is a negative message, the corresponding positive message is extracted from
-*     the queue. If it is a straggler as well, or if it's timestamp is the same as the
-*     one of the last correctly executed event (bound), the bound is updated.
-*
-* CAVEAT: When entering MessageChecking, when DataUpdating is called for the first time,
-*         we set bound->timestamp = lvt.
-*         If more than one message for the same process is read in sequence, it may happen
-*         that bound gets updated so that is points to the last CORRECTLY processed event.
-*         This is the main reason why message's timestamp is checked against current bound->timestamp,
-*	  rather than lvt.
-*
-*	  Not doing this, the following (uncorrect) pattern might be encountered:
-*	  ...|3|5|20|30|40
-*         lvt = 30, bound->tms = 30;
-*
-*         msg.rms = 15 is received, so: ...|3|5|15|20|30|40
-*         since msg.tms < lvt we have bount->tms = prec(15) = 5
-*
-*	  msg.tms = 25 is received, so: ...|3|5|15|20|25|30|40
-*	  since msg.tms < lvt we have bound-> tms = prec(25) = 20
-*
-*	  Upon rollback execution, lvt will be (erroneously) restored to 20 instead
-*         of the correct value lvt = 5;
-*
-* @author Francesco Quaglia
-*
-* @param msg The incoming event to handle by the current kernel
-*/
-// TODO: this is no longer needed!
-/*void DataUpdating(msg_t *msg) {
-
-	unsigned int lid_receiver;
-
-	lid_receiver = GidToLid(msg->receiver);
-
-	switch (msg->is_antimessage) {
-
-		case true:
-
-			// Remove the msg with the same exact mark
-			list_delete(LPS[lid_receiver]->queue_in, mark, msg->mark);
-			break;
-
-		case false:
-//			list_insert(LPS[lid_receiver]->queue_in, timestamp, msg);
-			insert_bottom_half(lid_receiver, msg);
-			break;
-
-		default:
-			rootsim_error(true, "Received a message which is neither positive nor negative. Aborting...\n");
-	}
-
-
-
-	// TODO: this logic must be rewritten!!!
-
-	/// If it has been arrived a straggler (either positive or negative)
-	/// The bound is updated, it now points to the event with timestamp immediately smaller
-
-	if ((LPS[lid_receiver]->bound) && (msg->timestamp < LPS[lid_receiver]->bound->timestamp)) {
-	// The message is a straggler message
-
-		p = LPS[lid_receiver]->bound;	
-
-		// TODO: rewrite all this!
-		while ( (p) && (p->timestamp >= msg->timestamp) ) {
-			p->min_timestamp = -1;
-			p = p->prec;			
-		}
-		LPS[lid_receiver]->bound = p;		
-
-		LPS[lid_receiver]->count_stragglers++;
-
-		send_antimessages( lid_receiver );
-	}
-
-}*/
 
 
 
@@ -421,5 +291,6 @@ unsigned long long generate_mark(unsigned int lid) {
 	unsigned long long k1 = (unsigned long long)LidToGid(lid);
 	unsigned long long k2 = LPS[lid]->mark++;
 	
+	// TODO: change / with >> 1
 	return (unsigned long long)( ((k1 + k2) * (k1 + k2 + 1) / 2) + k2 );
 }

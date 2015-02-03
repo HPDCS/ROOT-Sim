@@ -89,6 +89,9 @@ bool mpi_is_initialized = false;
 /// This flag tells whether we are exiting from the kernel of from userspace
 bool exit_silently_from_kernel = false;
 
+/// This flag is set when the initialization of the simulator is complete, with no errors
+bool init_complete = false;
+
 
 
 /**
@@ -100,6 +103,10 @@ bool exit_silently_from_kernel = false;
  * @author Alessandro Pellegrini
  */
 void exit_from_simulation_model(void) {
+
+	if(!init_complete)
+		return;
+
 	if(!exit_silently_from_kernel) {
 		exit_silently_from_kernel = true;
 
@@ -318,6 +325,11 @@ void rootsim_error(bool fatal, const char *msg, ...) {
 		if(rootsim_config.serial) {
 			abort();
 		} else {
+			
+			if(!init_complete) {
+				exit(EXIT_FAILURE);
+			}
+			
 			// Notify all KLT to shut down the simulation
 			sim_error = true;
 		}
@@ -381,3 +393,10 @@ void distribute_lps_on_kernels(void) {
 	}
 }
 
+
+/**
+ * This function records that the initialization is complete.
+ */
+void initialization_complete(void) {
+	init_complete = true;
+}

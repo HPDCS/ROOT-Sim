@@ -54,7 +54,6 @@ void (*SetState)(void *new_state);
 * @author Alessandro Pellegrini
 *
 * @param lid The Light Process Identifier
-* @param last_event pointer to the last event executed just before the log
 */
 void LogState(unsigned int lid) {
 
@@ -121,14 +120,13 @@ void LogState(unsigned int lid) {
 * @author Alessandro Pellegrini
 *
 * @param lid The id of the Light Process
-* @param state The simulation state to be passed to the LP
+* @param state_buffer The simulation state to be passed to the LP
 * @param pointer The pointer to the element of the input event queue from which start the re-execution
 * @param final_time The time where align the re-execution
-* @param bound If not null, silent execution updates the passed bound pointer to the last reprocessed event
 * 
 * @return The number of events re-processed during the silent execution
 */
-unsigned int silent_execution(unsigned int lid, void *state_buffer, msg_t *evt, simtime_t final_time, msg_t **bound) {
+unsigned int silent_execution(unsigned int lid, void *state_buffer, msg_t *evt, msg_t *final_evt) {
 	unsigned int events = 0;
 	unsigned short int old_state;
 	
@@ -136,28 +134,27 @@ unsigned int silent_execution(unsigned int lid, void *state_buffer, msg_t *evt, 
 	old_state = LPS[lid]->state;
 	LPS[lid]->state = LP_STATE_SILENT_EXEC;
 	
+	// This is true
+	if(evt == final_evt)
+		goto out;
+
 	// Reprocess events. Outgoing messages are explicitly discarded, as this part of
 	// the simulation has been already executed at least once
-	while(evt != NULL && evt->timestamp <= final_time) {
-
-
+	while(evt != NULL && evt != final_evt) {
+		
 		if(!reprocess_control_msg(evt)) {
 			evt = list_next(evt);
 			continue;
 		}
 
 		events++;
-
-		if(bound != NULL) {
-			*bound = evt;
-		}
-
+		
 		activate_LP(lid, evt->timestamp, evt, state_buffer);	
 		evt = list_next(evt);
 	}
 	
+    out:
 	LPS[lid]->state = old_state;
-	
 	return events;
 }
 
@@ -178,9 +175,10 @@ unsigned int silent_execution(unsigned int lid, void *state_buffer, msg_t *evt, 
 void rollback(unsigned int lid) {
 	
 	state_t *restore_state, *s;
-	simtime_t restore_time;
-	msg_t *msg_ptr, *msg_ptr_next;
-	
+	msg_t *last_correct_event;
+	msg_t *reprocess_from;
+	unsigned int reprocessed_events;
+
 	// Sanity check
 	if(LPS[lid]->state != LP_STATE_ROLLBACK) {
 		rootsim_error(false, "I'm asked to roll back LP %d's execution, but rollback_bound is not set. Ignoring...\n", LidToGid(lid));
@@ -188,56 +186,59 @@ void rollback(unsigned int lid) {
 	}
 
 	statistics_post_lp_data(lid, STAT_ROLLBACK, 1.0);
-	
-	restore_time = LPS[lid]->bound->timestamp;
+
+	last_correct_event = LPS[lid]->bound;
 
 	// Send antimessages
-	send_antimessages(lid, restore_time);
+	send_antimessages(lid, last_correct_event->timestamp);
 
 	// Find the state to be restored, and prune the wrongly computed states
 	restore_state = list_tail(LPS[lid]->queue_states);
-	while (restore_state != NULL && restore_state->lvt > restore_time) {
+	while (restore_state != NULL && restore_state->lvt > last_correct_event->timestamp) { // It's > rather than >= because we have already taken into account simultaneous events
 		s = restore_state;
 		restore_state = list_prev(restore_state);
 		log_delete(s->log);
 		s->last_event = (void *)0xDEADC0DE;
 		list_delete_by_content(LPS[lid]->queue_states, s);
 	}
-		
+
 	// Restore the simulation state and correct the state bound
 	log_restore(lid, restore_state);
 	LPS[lid]->state_bound = restore_state;
-	
-	// Coasting forward, updating the bound
 
-	// TODO: ma può essere davvero nullo questo? forse solo intorno a INIT...
-	if(LPS[lid]->state_bound->last_event != NULL) {
-		silent_execution(lid, restore_state->buffer_state, list_next(LPS[lid]->state_bound->last_event), restore_time, &LPS[lid]->bound);
+	// Coasting forward, updating the bound. The very first log (before INIT)
+	// has no last_event set
+	if(restore_state->last_event == NULL) {
+		reprocess_from = list_head(LPS[lid]->queue_in);
+	} else {
+		reprocess_from = list_next(restore_state->last_event);
 	}
-
-	rollback_control_message(lid, restore_time);
+	reprocessed_events = silent_execution(lid, restore_state->buffer_state, reprocess_from, list_next(last_correct_event));
+	statistics_post_lp_data(lid, STAT_SILENT, (double)reprocessed_events);
+	
+	// Control messages must be rolled back as well
+	rollback_control_message(lid, last_correct_event->timestamp);
 }
 
 
 
 
 /**
-* This function computes the time barrier
+* This function computes the time barrier, namely the first state snapshot
+* which is associated with a simulation time <= that the passed simtime
 *
 * @author Francesco Quaglia
 * @author Alessandro Pellegrini
 *
 * @param lid The light Process Id
-* @param gvt The global virtual time
+* @param simtime The simulation time to be associated with a state barrier
 * @return A pointer to the state that represents the time barrier
 */
-state_t *find_time_barrier(int lid, simtime_t gvt) {
+state_t *find_time_barrier(int lid, simtime_t simtime) {
 
 	state_t *barrier_state;
 
-//	gvt *=0.5;
-
-	if(D_EQUAL(gvt, 0.0)) {
+	if(D_EQUAL(simtime, 0.0)) {
 		return list_head(LPS[lid]->queue_states);
 	}
 
@@ -247,30 +248,14 @@ state_t *find_time_barrier(int lid, simtime_t gvt) {
 	if(barrier_state == NULL) {
 		return NULL;
 	}
-	
-	//~ barrier_state = curr;
 
-	//~ printf("Find time barrier (GVT = %f, head = %f, curr: %p %f): ", gvt, list_head(LPS[lid]->queue_states)->lvt, curr, curr->lvt);
-	// current must point to the state with lvt equals to or immediately under the gvt
-	while (barrier_state != NULL && barrier_state->lvt > gvt) {
-		//~ printf("%f, ", curr->lvt);
-		//~ barrier_state = curr;
-		//~ curr = list_prev(curr);
+	// Must point to the state with lvt immediately before the GVT
+	while (barrier_state != NULL && barrier_state->lvt >= simtime) {
 		barrier_state = list_prev(barrier_state);
-		//~ printf("(curr %p %f), ", curr, curr->lvt);
   	}
-  	//~ printf("\n");
-  	
-	// Sanity checks
-	// TODO: This should not be necessary, but if removed sometimes it crashes (e.g., w/ fujimoto's gvt)
-	if(barrier_state == NULL) {
-		return list_head(LPS[lid]->queue_states);
-	}
-//	printf("%d: GVT = %f, bound: %f, TB = %f, p: %f, n: %f\n", lid, gvt, LPS[lid]->bound->timestamp, barrier_state->lvt, 
-//		(list_prev(barrier_state) != NULL ? list_prev(barrier_state)->lvt : -1.0),
-//		(list_next(barrier_state) != NULL ? list_next(barrier_state)->lvt : -1.0));
-	if (barrier_state->lvt > gvt) {
-		rootsim_error(true, "Time barrier=%f, found for LP %d. Greater than gvt=%f! Aborting...\n", barrier_state->lvt, lid, gvt);
+
+	if (barrier_state->lvt > simtime) {
+		rootsim_error(true, "Time barrier=%f, found for LP %d. Greater than gvt=%f! Aborting...\n", barrier_state->lvt, lid, simtime);
 	}
 
 /*
@@ -281,8 +266,8 @@ state_t *find_time_barrier(int lid, simtime_t gvt) {
 	  	current = list_prev(current);
 	} 
 */
-	return barrier_state;
 
+	return barrier_state;
 }
 
 

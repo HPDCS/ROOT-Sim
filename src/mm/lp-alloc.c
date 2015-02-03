@@ -88,7 +88,7 @@ static void ECS_stub(int ds, unsigned int hitted_object){
         control_msg.type = RENDEZVOUS_START;
 	control_msg.timestamp = current_lvt;
 	control_msg.send_time = current_lvt;
-	control_msg.is_antimessage = false;
+	control_msg.message_kind = positive;
 	control_msg.rendezvous_mark = current_evt->rendezvous_mark;
 	control_msg.mark = generate_mark(current_lp);
 

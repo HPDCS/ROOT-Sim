@@ -48,7 +48,7 @@ void unblock_synchronized_objects(unsigned int lid) {
 		control_msg.type = RENDEZVOUS_UNBLOCK;	
 		control_msg.timestamp = lvt(lid);
 		control_msg.send_time = lvt(lid);
-		control_msg.is_antimessage = false;
+		control_msg.message_kind = positive;
 		control_msg.rendezvous_mark = LPS[lid]->wait_on_rendezvous;
 		
 		Send(&control_msg);
@@ -70,7 +70,7 @@ void rollback_control_message(unsigned int lid, simtime_t simtime) {
 	msg = list_tail(LPS[lid]->rendezvous_queue);
 	while(msg != NULL && msg->timestamp > simtime) {
 
-		// antimessaggio di controllo
+		// Control antimessage
 		bzero(&control_antimessage, sizeof(msg_t));
 		control_antimessage.type = RENDEZVOUS_ROLLBACK;
                 control_antimessage.sender = msg->receiver;
@@ -78,7 +78,7 @@ void rollback_control_message(unsigned int lid, simtime_t simtime) {
                 control_antimessage.timestamp = msg->timestamp;
                 control_antimessage.send_time = msg->send_time;
 		control_antimessage.rendezvous_mark = msg->rendezvous_mark;
-                control_antimessage.is_antimessage = other;
+                control_antimessage.message_kind = other;
 
                 Send(&control_antimessage);
 
@@ -130,6 +130,7 @@ bool anti_control_message(msg_t * msg) {
 
 	return true;
 }
+
 // return true if the control message should be reprocessed during silent exceution
 bool reprocess_control_msg(msg_t *msg) {
 
@@ -220,7 +221,7 @@ bool process_control_msg(msg_t *msg) {
 			control_msg.type = RENDEZVOUS_ACK;	
 			control_msg.timestamp = msg->timestamp;
 			control_msg.send_time = msg->timestamp;
-			control_msg.is_antimessage = false;
+			control_msg.message_kind = positive;
 			control_msg.rendezvous_mark = msg->rendezvous_mark;
 			Send(&control_msg);
 			break;

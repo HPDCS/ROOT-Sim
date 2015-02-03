@@ -36,6 +36,8 @@
 #include <core/core.h>
 #include <mm/malloc.h>
 
+#include <arch/atomic.h>
+
 /// This is the encapsulating structure of a list node. Any payload can be contained by this.
 struct rootsim_list_node {
 	struct rootsim_list_node *next;
@@ -50,6 +52,7 @@ struct rootsim_list {
 	unsigned int size;
 	struct rootsim_list_node *head;
 	struct rootsim_list_node *tail;
+	atomic_t counter;
 };
 
 
