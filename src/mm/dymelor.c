@@ -4,20 +4,20 @@
 *
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
-* 
+*
 * ROOT-Sim is free software; you can redistribute it and/or modify it under the
 * terms of the GNU General Public License as published by the Free Software
 * Foundation; either version 3 of the License, or (at your option) any later
 * version.
-* 
+*
 * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
 * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-* 
+*
 * You should have received a copy of the GNU General Public License along with
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-* 
+*
 * @file dymelor.c
 * @brief This module implements all the logic and all the routines supporting
 *        ROOT-Sim's memory manager subsystem
@@ -85,7 +85,7 @@ static void find_next_free(malloc_area*);
 void dymelor_init(void) {
 
 	register unsigned int i;
-	
+
 	// Preallocate memory for the LPs
 	lp_alloc_init();
 
@@ -93,11 +93,11 @@ void dymelor_init(void) {
 
 //		m_state[i] = (malloc_state*)__real_malloc(sizeof(malloc_state));
 		m_state[i] = (malloc_state*)rsalloc(sizeof(malloc_state));
-		if(m_state[i] == NULL) 
+		if(m_state[i] == NULL)
 			rootsim_error(true, "Unable to allocate memory on malloc init");
 
 		malloc_state_init(m_state[i]);
-		
+
 		// Next (first) log must be taken, and taken full!
 		force_LP_checkpoint(i);
 		force_full[i] = FORCE_FULL_NEXT;
@@ -130,7 +130,7 @@ void dymelor_fini(void){
 		rsfree(m_state[i]->areas);
 		rsfree(m_state[i]);
 	}
-	
+
 	// Release as well memory used for remaining logs
 	for(i = 0; i < n_prc; i++) {
 		while(!list_empty(LPS[i]->queue_states)) {
@@ -138,7 +138,7 @@ void dymelor_fini(void){
 			list_pop(LPS[i]->queue_states);
 		}
 	}
-	
+
 	lp_alloc_fini();
 }
 
@@ -175,7 +175,7 @@ static void malloc_area_init(malloc_area *m_area, size_t size, int num_chunks){
 
 	m_area->prev = -1;
 	m_area->next = -1;
-	
+
 	SET_AREA_LOCK_BIT(m_area);
 
 }
@@ -269,7 +269,7 @@ void dirty_mem(void *base, int size) {
 
 
 //	unsigned long long current_cost;
-	
+
 	// Sanity check on passed address
 /*	if(base == NULL) {
 		rootsim_error(false, "Trying to access NULL. Memory interception aborted\n");
@@ -571,9 +571,9 @@ void *__wrap_malloc(size_t size) {
 	malloc_area *m_area, *prev_area;
 	void *ptr, *final_address;
 	int bitmap_blocks, num_chunks, malloc_area_idx;
-	
+
 	int j;
-	
+
 	if(rootsim_config.serial) {
 		return rsalloc(size);
 	}
@@ -584,7 +584,7 @@ void *__wrap_malloc(size_t size) {
 		rootsim_error(false, "Requested a memory allocation of %d but the limit is %d. Reconfigure MAX_CHUNK_SIZE. Returning NULL.\n", size, MAX_CHUNK_SIZE);
 		return NULL;
 	}
-	
+
 	j = (int)log2(size) - (int)log2(MIN_CHUNK_SIZE);
 
 	m_area = &m_state[current_lp]->areas[(int)log2(size) - (int)log2(MIN_CHUNK_SIZE)];
@@ -610,14 +610,14 @@ void *__wrap_malloc(size_t size) {
 
 			tmp = (malloc_area *)rsrealloc(m_state[current_lp]->areas, m_state[current_lp]->max_num_areas * sizeof(malloc_area));
 			if(tmp == NULL){
-				
+
 				/**
 				* @todo can we find a better way to handle the realloc failure?
 				*/
 				rootsim_error(false,  "DyMeLoR: cannot reallocate the block of malloc_area.");
 
 				m_state[current_lp]->max_num_areas = m_state[current_lp]->max_num_areas >> 1;
-				
+
 				return NULL;
 			}
 
@@ -666,7 +666,7 @@ void *__wrap_malloc(size_t size) {
 	ptr = (void*)((char*)m_area->area + (m_area->next_chunk * size));
 
 	SET_USE_BIT(m_area, m_area->next_chunk);
-	
+
 	bitmap_blocks = m_area->num_chunks / NUM_CHUNKS_PER_BLOCK;
 	if(bitmap_blocks < 1)
 		bitmap_blocks = 1;
@@ -676,7 +676,7 @@ void *__wrap_malloc(size_t size) {
 		m_state[current_lp]->bitmap_size += bitmap_blocks * BLOCK_SIZE;
 		m_state[current_lp]->busy_areas++;
 	}
-	
+
 	if(m_area->state_changed == 0) {
 		m_state[current_lp]->dirty_bitmap_size += bitmap_blocks * BLOCK_SIZE;
 		m_state[current_lp]->dirty_areas++;
@@ -694,7 +694,7 @@ void *__wrap_malloc(size_t size) {
 		} else
 			m_state[current_lp]->total_log_size += size;
 	}
-	
+
 	find_next_free(m_area);
 
 	int chk_size = m_area->chunk_size;
@@ -732,12 +732,12 @@ void __wrap_free(void *ptr) {
 	malloc_area * m_area;
 	int idx, bitmap_blocks;
 	size_t chunk_size;
-	
+
 	if(rootsim_config.serial) {
 		rsfree(ptr);
 		return;
 	}
-	
+
 	if(ptr == NULL){
 		rootsim_error(false, "Invalid pointer during free");
 		return;
@@ -801,9 +801,9 @@ void __wrap_free(void *ptr) {
 			RESET_LOG_MODE_BIT(m_area);
 			m_state[current_lp]->total_log_size -= (m_area->num_chunks - m_area->alloc_chunks) * chunk_size;
 		}
-	} else 
+	} else
 		m_state[current_lp]->total_log_size -= chunk_size;
-	
+
 }
 
 
@@ -824,7 +824,7 @@ void *__wrap_realloc(void *ptr, size_t size){
 	void *new_buffer;
 	size_t old_size;
 	malloc_area *m_area;
-	
+
 	if(rootsim_config.serial) {
 		return rsrealloc(ptr, size);
 	}
@@ -845,7 +845,7 @@ void *__wrap_realloc(void *ptr, size_t size){
 		return NULL;
 	}
 
-	// The size could be greater than the real request, but it does not matter since the realloc specific requires that 
+	// The size could be greater than the real request, but it does not matter since the realloc specific requires that
 	// is copied at least the smaller buffer size between the new and the old one
 	old_size = m_area->chunk_size;
 
@@ -857,7 +857,7 @@ void *__wrap_realloc(void *ptr, size_t size){
 	memcpy(new_buffer, ptr, size > old_size ? size : old_size);
 	__wrap_free(ptr);
 
-	return new_buffer;	
+	return new_buffer;
 }
 
 
@@ -875,7 +875,7 @@ void *__wrap_realloc(void *ptr, size_t size){
 void *__wrap_calloc(size_t nmemb, size_t size){
 
 	void *buffer;
-	
+
 	if(rootsim_config.serial) {
 		return rscalloc(nmemb, size);
 	}
@@ -885,7 +885,7 @@ void *__wrap_calloc(size_t nmemb, size_t size){
 
 	buffer = __wrap_malloc(nmemb * size);
 	if (buffer == NULL)
-		return NULL;	
+		return NULL;
 
 	bzero(buffer, nmemb * size);
 
@@ -897,7 +897,7 @@ void *__wrap_calloc(size_t nmemb, size_t size){
 
 /**
 * This function resets the state of the currently scheduled LP. Must be necessarily invoked after the
-* simulation 
+* simulation
 *
 * @author Roberto Toccaceli
 * @author Francesco Quaglia
@@ -945,7 +945,7 @@ void reset_state(void){
 * @author Roberto Vitali
 *
 * @param log Pointer to a valid log (no sanity check is performed on log, for efficiency purposes)
-* @return true if log points to a partial log, false otherwise. Note that if log points 
+* @return true if log points to a partial log, false otherwise. Note that if log points
 */
 bool is_incremental(void *log) {
 	if (((malloc_state *)log)->is_incremental == 1)
@@ -962,7 +962,7 @@ bool is_incremental(void *log) {
 *
 * @param lid The Logical Process id
 * @param last_state the state to perform the check against
-* @param checked_bytes 
+* @param checked_bytes
 */
 size_t dirty_size(unsigned int lid, void *last_state, double *checked_bytes) {
 
@@ -996,7 +996,7 @@ size_t dirty_size(unsigned int lid, void *last_state, double *checked_bytes) {
 		RESET_BIT_AT(chunk_size, 0);
 		RESET_BIT_AT(chunk_size, 1);
 		big_check_size = chunk_size * CHECK_SIZE;
-		big_size_offset = (int)((3./4) * chunk_size) - big_check_size; 
+		big_size_offset = (int)((3./4) * chunk_size) - big_check_size;
 
 		curr_area = &m_state[lid]->areas[curr_old_area->idx];
 
@@ -1022,7 +1022,7 @@ size_t dirty_size(unsigned int lid, void *last_state, double *checked_bytes) {
 
 					if(chunk_size <= LITTLE_SIZE) {
 
-						check_address = (char *)curr_area->area + (j_blocks_skip + k) * chunk_size; 
+						check_address = (char *)curr_area->area + (j_blocks_skip + k) * chunk_size;
 
 						mem_check = memcmp(ptr, check_address, chunk_size);
 						if (mem_check != 0) {
@@ -1034,7 +1034,7 @@ size_t dirty_size(unsigned int lid, void *last_state, double *checked_bytes) {
 					} else {
 
 						// Begin
-						check_address = (char *)curr_area->area + (j_blocks_skip + k) * chunk_size; 
+						check_address = (char *)curr_area->area + (j_blocks_skip + k) * chunk_size;
 						mem_check = memcmp(ptr, check_address, big_check_size);
 						if (mem_check != 0) {
 							dirty_chunks++;
@@ -1062,7 +1062,7 @@ size_t dirty_size(unsigned int lid, void *last_state, double *checked_bytes) {
 				check_next_chunk:
 
 				if(CHECK_BIT_AT(old_bitmap[j], k))
-					ptr += chunk_size; 
+					ptr += chunk_size;
 			}
 		}
 		if (dirty_area == 1) {
@@ -1097,7 +1097,7 @@ void clean_buffers_on_gvt(unsigned int lid, simtime_t time_barrier){
 
 				// lp_free
 				lp_free(m_area->use_bitmap);
-				
+
 				m_area->use_bitmap = NULL;
 				m_area->dirty_bitmap = NULL;
 				m_area->area = NULL;

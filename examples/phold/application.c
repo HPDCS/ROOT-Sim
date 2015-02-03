@@ -21,7 +21,7 @@ double	write_distribution,
 
 
 void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *event_content, unsigned int size, void *state) {
-	
+
 	simtime_t timestamp;
 	int 	i, j,
 		curr_num_buff;
@@ -46,7 +46,7 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 			complete_alloc = COMPLETE_ALLOC;
 			write_distribution = WRITE_DISTRIBUTION;
 			read_distribution = READ_DISTRIBUTION;
-			tau = TAU;			
+			tau = TAU;
 
 			// Read runtime parameters
 			if(IsParameterPresent(event_content, "object_total_size"))
@@ -54,7 +54,7 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 
 			if(IsParameterPresent(event_content, "timestamp_distribution"))
 				timestamp_distribution = GetParameterInt(event_content, "timestamp_distribution");
-			
+
 			if(IsParameterPresent(event_content, "max_size"))
 				max_size = GetParameterInt(event_content, "max_size");
 
@@ -66,7 +66,7 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 
 			if(IsParameterPresent(event_content, "complete_alloc"))
 				complete_alloc = GetParameterInt(event_content, "complete_alloc");
-				
+
 			if(IsParameterPresent(event_content, "read_correction"))
 				read_correction = GetParameterInt(event_content, "read_correction");
 
@@ -132,7 +132,7 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 
 			current_size = min_size;
 			remaining_size = object_total_size;
-			
+
 			// Allocate memory for buffers
 			for (i = 0; i < num_buffers; i++){
 
@@ -152,7 +152,7 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 				state_ptr->total_size += (current_size * curr_num_buff);
 
 				printf("[%d, %d] ", curr_num_buff, (int)current_size);
-		
+
 				state_ptr->head_buffs[i] = malloc(sizeof(buffers));
 				state_ptr->head_buffs[i]->prev = NULL;
 				state_ptr->head_buffs[i]->next = NULL;
@@ -184,10 +184,10 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 			}
 
 			break;
-		
+
 
 		case ALLOC: {
-			
+
 			allocation_op(state_ptr, event_content->size);
 
 			read_op(state_ptr);
@@ -221,17 +221,17 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 
 			// Is there a buffer to be deallocated?
 			if(current_size == -1) {
-				ScheduleNewEvent(me, timestamp, DEALLOC, NULL, 0);	
+				ScheduleNewEvent(me, timestamp, DEALLOC, NULL, 0);
 				break;
 			} else {
 
 				new_event.size = current_size;
 
 				ScheduleNewEvent(me, timestamp, ALLOC, &new_event, sizeof(event_content_type));
-				ScheduleNewEvent(recv, timestamp, DEALLOC, NULL, 0);	
+				ScheduleNewEvent(recv, timestamp, DEALLOC, NULL, 0);
 
 			}
-			
+
 			read_op(state_ptr);
 			write_op(state_ptr);
 

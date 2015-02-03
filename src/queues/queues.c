@@ -4,20 +4,20 @@
 *
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
-* 
+*
 * ROOT-Sim is free software; you can redistribute it and/or modify it under the
 * terms of the GNU General Public License as published by the Free Software
 * Foundation; either version 3 of the License, or (at your option) any later
 * version.
-* 
+*
 * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
 * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-* 
+*
 * You should have received a copy of the GNU General Public License along with
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-* 
+*
 * @file queues.c
 * @brief This module implements the event/message queues subsystem
 * @author Francesco Quaglia
@@ -62,9 +62,9 @@ simtime_t last_event_timestamp(unsigned int lid) {
 		// Ok, no bound: this means that the LP has not even executed INIT. We force the timestamp to 0!
 		ret = 0.0;
 	}
-	
+
 	return ret;
-} 
+}
 
 
 
@@ -82,7 +82,7 @@ simtime_t next_event_timestamp(unsigned int id) {
 	simtime_t ret = -1.0;
 	msg_t *evt;
 
-	// The bound can be NULL in the first execution or if it has gone back	
+	// The bound can be NULL in the first execution or if it has gone back
 	if (LPS[id]->bound == NULL && !list_empty(LPS[id]->queue_in)) {
 		ret = list_head(LPS[id]->queue_in)->timestamp;
 	} else {
@@ -94,7 +94,7 @@ simtime_t next_event_timestamp(unsigned int id) {
 
 	return ret;
 
-} 
+}
 
 
 
@@ -142,13 +142,13 @@ msg_t *advance_to_next_event(unsigned int lid) {
 * instance or not.
 *
 * @author Alessandro Pellegrini
-* 
-* @param msg The message to be added into some LP's bottom half. 
+*
+* @param msg The message to be added into some LP's bottom half.
 */
 void insert_bottom_half(msg_t *msg) {
-	
+
 	unsigned int lid = GidToLid(msg->receiver);
-	
+
 	spin_lock(&LPS[lid]->lock);
 	(void)list_insert_tail(LPS[lid]->bottom_halves, msg);
 	spin_unlock(&LPS[lid]->lock);
@@ -166,9 +166,9 @@ void process_bottom_halves(void) {
 	msg_t *msg_to_process;
 	msg_t *matched_msg;
 	list(msg_t) processing;
-	
+
 	for(i = 0; i < n_prc_per_thread; i++) {
-		
+
 		spin_lock(&LPS_bound[i]->lock);
 		processing = LPS_bound[i]->bottom_halves;
 		LPS_bound[i]->bottom_halves = new_list(msg_t);
@@ -176,7 +176,7 @@ void process_bottom_halves(void) {
 
 		while(!list_empty(processing)) {
 			msg_to_process = list_head(processing);
-			
+
 			lid_receiver = msg_to_process->receiver;
 
 			if(!receive_control_msg(msg_to_process)) {
@@ -187,15 +187,15 @@ void process_bottom_halves(void) {
 
 				// It's an antimessage
 				case negative:
-				
+
 					statistics_post_lp_data(msg_to_process->receiver, STAT_ANTIMESSAGE, 1.0);
-					
+
 					// Find the message matching the antimessage
 					matched_msg = list_tail(LPS[lid_receiver]->queue_in);
 					while(matched_msg != NULL && matched_msg->mark != msg_to_process->mark) {
 						matched_msg = list_prev(matched_msg);
 					}
-					
+
 					if(matched_msg == NULL) {
 						rootsim_error(false, "LP %d Received an antimessage with mark %llu at LP %u from LP %u, but no such mark found in the input queue!\n", LPS_bound[i]->lid, msg_to_process->mark, msg_to_process->receiver, msg_to_process->sender);
 						printf("Message Content:"
@@ -218,7 +218,7 @@ void process_bottom_halves(void) {
 						fflush(stdout);
 						abort();
 					} else {
-						
+
 						// If the matched message is in the past, we have to rollback
 						if(matched_msg->timestamp <= lvt(lid_receiver)) {
 
@@ -228,18 +228,18 @@ void process_bottom_halves(void) {
 							}
 							LPS[lid_receiver]->state = LP_STATE_ROLLBACK;
 						}
-						
+
 						// Delete the matched message
 						list_delete_by_content(LPS[lid_receiver]->queue_in, matched_msg);
 					}
-					
+
 					break;
 
 				// It's a positive message
 				case positive:
-				
+
 					msg_to_process = list_insert(LPS[lid_receiver]->queue_in, timestamp, msg_to_process);
-									
+
 					// Check if we've just inserted an out-of-order event
 					if(LPS[lid_receiver]->bound != NULL) {
 						if(msg_to_process->timestamp < lvt(lid_receiver)) {
@@ -251,7 +251,7 @@ void process_bottom_halves(void) {
 						}
 					}
 					break;
-					
+
 				// It's a control message
 				case other:
 					// Check if it is an anti control message
@@ -263,7 +263,7 @@ void process_bottom_halves(void) {
 				default:
 					rootsim_error(true, "Received a message which is neither positive nor negative. Aborting...\n");
 			}
-		
+
 		    expunge_msg:
 			list_pop(processing);
 		}
@@ -290,7 +290,7 @@ void process_bottom_halves(void) {
 unsigned long long generate_mark(unsigned int lid) {
 	unsigned long long k1 = (unsigned long long)LidToGid(lid);
 	unsigned long long k2 = LPS[lid]->mark++;
-	
+
 	// TODO: change / with >> 1
 	return (unsigned long long)( ((k1 + k2) * (k1 + k2 + 1) / 2) + k2 );
 }

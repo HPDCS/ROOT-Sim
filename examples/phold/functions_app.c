@@ -29,7 +29,7 @@ void read_op(lp_state_type *state_ptr) {
 	if (state_ptr->num_elementi == 0)
 		return;
 
-	unsigned int read_size, already_read = 0;	
+	unsigned int read_size, already_read = 0;
 	int start_idx, i;
 	buffers *pointers[num_buffers];
 
@@ -54,7 +54,7 @@ void read_op(lp_state_type *state_ptr) {
 		}
 		i = (i + 1) % num_buffers;
 	}
-	
+
 }
 
 // This function implements a write operation over the set of allocated buffers
@@ -75,7 +75,7 @@ void write_op(lp_state_type *state_ptr){
                 pointers[i] = state_ptr->head_buffs[i];
 
 	write_size = (unsigned int)(write_distribution * state_ptr->total_size);
-	
+
 	if(write_correction == UNIFORM) {
 		write_size *= (unsigned int)Random();
 	} else if(write_correction == EXPO) {
@@ -130,7 +130,7 @@ void allocation_op(lp_state_type *state_ptr, int idx){
 }
 
 
-// This function implements 
+// This function implements
 int deallocation_op(lp_state_type *state_ptr) {
 
 	buffers *curr;

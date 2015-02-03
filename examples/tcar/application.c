@@ -6,7 +6,7 @@
 
 
 void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *event_content, int event_size, lp_state_type *pointer) {
-		
+
 	event_content_type new_event_content;
 
 	new_event_content.cell = -1;
@@ -15,19 +15,19 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 	int i;
 	int receiver, TEMP;
 	int trails;
-	
+
 	simtime_t timestamp=0;
 
 	switch(event_type) {
-		
+
 		case INIT:
-			
+
 			pointer = (lp_state_type *)malloc(sizeof(lp_state_type));
 			if(pointer == NULL){
 				rootsim_error(true, "%s:%d: Unable to allocate memory!\n", __FILE__, __LINE__);
 			}
 			SetState(pointer);
-			
+
 			if(NUM_CELLE_OCCUPATE > n_prc_tot){
 				rootsim_error(true, "%s:%d: Require more cell than available LPs\n", __FILE__, __LINE__);
 			}
@@ -48,7 +48,7 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 					}
 				}
 			}
-			
+
 
 			// Set the values for neighbours. If one is non valid, then set it to -1
 			for(i = 0; i < 6; i++) {
@@ -61,11 +61,11 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 
 			break;
 
-	
+
 		case REGION_IN:
-				 
+
 			pointer->trails++;
-			
+
 			new_event_content.cell = me;
 			new_event_content.new_trails = pointer->trails;
 
@@ -85,11 +85,11 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 
 
 		case UPDATE_NEIGHBORS:
-			
+
 			for (i = 0; i < 6; i++) {
 				if(event_content->cell == GetNeighbourId(me, i)) {
 					pointer->neighbour_trails[i] = event_content->new_trails;
-				}	
+				}
 			}
 
 			break;
@@ -97,7 +97,7 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 
 		case REGION_OUT:
 
-			// Go to the neighbour who has the smallest trails count							
+			// Go to the neighbour who has the smallest trails count
 			trails = INT_MAX;
 			for(i = 0; i < 6; i++) {
 				if(pointer->neighbour_trails[i] != -1) {
@@ -110,12 +110,12 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 			TEMP = receiver;
 			receiver = GetNeighbourId(me, receiver);
 
-			switch (DISTRIBUZIONE) {   
+			switch (DISTRIBUZIONE) {
 
 				case UNIFORME:
 					timestamp= now + (simtime_t) (TIME_STEP * Random());
 					break;
-	
+
 				case ESPONENZIALE:
 					timestamp= now + (simtime_t)(Expent(TIME_STEP));
 					break;
@@ -123,7 +123,7 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 				default:
 					timestamp= now + (simtime_t)(TIME_STEP * Random());
 		   			break;
-			   								
+
 			}
 
 					if(receiver >= n_prc_tot || receiver < 0)
@@ -131,10 +131,10 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 			ScheduleNewEvent(receiver, timestamp, REGION_IN, NULL, 0);
 			break;
 
-      		default: 
+      		default:
 			rootsim_error(true, "Error: unsupported event: %d\n", event_type);
 			break;
-	} 
+	}
 }
 
 
@@ -144,6 +144,6 @@ int OnGVT(unsigned int me, lp_state_type *snapshot) {
 
  	if(snapshot->trails > VISITE_MINIME)
 		return true;
-		
+
 	return false;
 }

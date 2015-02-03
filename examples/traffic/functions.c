@@ -9,7 +9,7 @@
 *
 * For any information, you can find contact information on my personal webpage:
 * http://www.dis.uniroma1.it/~pellegrini
-*  
+*
 * @file functions.c
 * @brief Implementation of functions for supporting the simulation
 * @author Alessandro Pellegrini
@@ -194,10 +194,10 @@ int check_car_leaving(lp_state_type *state, int from, int me) {
 				return 1;
 			}
 		}
-	} 
+	}
 
 	return 0;
-	
+
 }
 
 
@@ -216,7 +216,7 @@ void forward_car(lp_state_type *state, int from, int me) {
 
 
 	// If there is an accident, sum up its remaining duration
-	if(state->accident) {	
+	if(state->accident) {
 		timestamp += state->accident_end - state->lvt;
 	}
 
@@ -256,7 +256,7 @@ void forward_car(lp_state_type *state, int from, int me) {
 
 	// Schedule me the notion that the car has left
 	ScheduleNewEvent(me, timestamp, LEFT, NULL, 0);
-	
+
 }
 
 

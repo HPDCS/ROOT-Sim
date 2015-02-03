@@ -4,20 +4,20 @@
 *
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
-* 
+*
 * ROOT-Sim is free software; you can redistribute it and/or modify it under the
 * terms of the GNU General Public License as published by the Free Software
 * Foundation; either version 3 of the License, or (at your option) any later
 * version.
-* 
+*
 * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
 * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-* 
+*
 * You should have received a copy of the GNU General Public License along with
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-* 
+*
 * @file numerical.c
 * @brief In this module there are the implementations of Piece-Wise Deterministic
 *        numerical distribution implementations
@@ -53,10 +53,10 @@ static seed_type master_seed;
 * @date 05 sep 2013
 */
 double Random(void) {
-	
+
 	uint32_t *seed1;
 	uint32_t *seed2;
-	
+
 	if(rootsim_config.serial) {
 		seed1 = (uint32_t *)&master_seed;
 		seed2 = (uint32_t *)((char *)&master_seed + (sizeof(uint32_t)));
@@ -99,7 +99,7 @@ int RandomRangeNonUniform(int x, int min, int max) {
 * @date 3/16/2011
 */
 double Expent(double mean) {
-	
+
 	if(mean < 0) {
 		fprintf(stderr, "Error: in call to Expent() passed a negative mean value\n");
 		abort();
@@ -292,7 +292,7 @@ seed_type sanitize_seed(seed_type cur_seed) {
                 temp -= UINT32_C(0x464FFFFF);
         if (temp == 0) {
                 // Any integer multiple of 0x464FFFFF, including 0, is a bad state.
-                // Use an alternate state value by inverting the original value. 
+                // Use an alternate state value by inverting the original value.
                 temp = state_orig ^ UINT32_C(0xFFFFFFFF);
                 while (temp >= UINT32_C(0x464FFFFF))
                         temp -= UINT32_C(0x464FFFFF);
@@ -329,40 +329,40 @@ static void load_seed(void) {
 	seed_type new_seed;
 	char conf_file[512];
 	FILE *fp;
-	
+
 	// Get the path to the configuration file
 	sprintf(conf_file, "%s/.rootsim/numerical.conf", getenv("HOME"));
-	
+
 	// Check if the file exists. If not, we have to create configuration
 	if ((fp = fopen(conf_file, "r+")) == NULL) {
-		
+
 		// Try to build the path to the configuration folder.
 		sprintf(conf_file, "%s/.rootsim", getenv("HOME"));
 		_mkdir(conf_file);
-		
+
 		// Create and initialize the file
 		sprintf(conf_file, "%s/.rootsim/numerical.conf", getenv("HOME"));
 		if ((fp = fopen(conf_file, "w")) == NULL) {
 			rootsim_error(true, "Unable to create the numerical library configuration file %s. Aborting...", conf_file);
 		}
-		
+
 		// We now initialize the first long random number. Thanks Unix!
 		// TODO: THIS IS NOT PORTABLE!
 		int fd;
 		if ((fd = open("/dev/random", O_RDONLY)) == -1) {
 			rootsim_error(true, "Unable to initialize the numerical library configuration file %s. Aborting...", conf_file);
-    
+
 		}
 		read(fd, &new_seed, sizeof(seed_type));
 		close(fd);
 		fprintf(fp, "%llu\n", (unsigned long long)new_seed); // We cast, so that we get an integer representing just a bit sequence
 		fclose(fp);
-		
+
 	}
 
 	// Is seed manually specified?
 	if(rootsim_config.set_seed > 0) {
-		
+
 		if(!single_print) {
 			single_print = true;
 			printf("Manually setting master seed to %llu\n", (unsigned long long)rootsim_config.set_seed);
@@ -379,7 +379,7 @@ static void load_seed(void) {
 	// Load the initial seed
 	fscanf(fp, "%llu", (unsigned long long *)&master_seed);
 
-	
+
 	// Replace the initial seed
 	if (rootsim_config.deterministic_seed == false) {
 		rewind(fp);
@@ -402,7 +402,7 @@ static void load_seed(void) {
 void numerical_init(void) {
 
 	unsigned int i;
-	
+
 	// Initialize the master seed
 	load_seed();
 
@@ -410,7 +410,7 @@ void numerical_init(void) {
 	for(i = 0; i < n_prc; i++) {
 		LPS[i]->seed = sanitize_seed(ROR((int64_t)master_seed, LidToGid(i) % RS_WORD_LENGTH));
 	}
-	
+
 }
 #undef RS_WORD_LENGTH
 #undef ROR

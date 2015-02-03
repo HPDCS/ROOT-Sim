@@ -16,10 +16,10 @@
 #define OBJECT_TOTAL_SIZE	16000
 #define NUM_BUFFERS		3
 #define TAU			5
-#define COMPLETE_ALLOC		5000 
+#define COMPLETE_ALLOC		5000
 
 // Event types
-#define ALLOC		1	
+#define ALLOC		1
 #define DEALLOC 	2
 
 

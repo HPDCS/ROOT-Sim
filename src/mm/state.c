@@ -4,22 +4,22 @@
 *
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
-* 
+*
 * ROOT-Sim is free software; you can redistribute it and/or modify it under the
 * terms of the GNU General Public License as published by the Free Software
 * Foundation; either version 3 of the License, or (at your option) any later
 * version.
-* 
+*
 * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
 * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-* 
+*
 * You should have received a copy of the GNU General Public License along with
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-* 
+*
 * @file state.c
-* @brief The state module is responsible for managing LPs' simulation states. 
+* @brief The state module is responsible for managing LPs' simulation states.
 *	In particular, it allows to take a snapshot, to restore a previous snapshot,
 *	and to silently re-execute a portion of simulation events to bring
 *	a LP to a partiuclar LVT value for which no simulation state
@@ -63,10 +63,10 @@ void LogState(unsigned int lid) {
 	if(is_blocked_state(LPS[lid]->state)) {
 		return;
 	}
-	
+
 	// Keep track of the invocations to LogState
 	LPS[lid]->from_last_ckpt++;
-	
+
 	if(LPS[lid]->state_log_forced) {
 		LPS[lid]->state_log_forced = false;
 		LPS[lid]->from_last_ckpt = 0;
@@ -95,19 +95,19 @@ void LogState(unsigned int lid) {
     skip_switch:
 
 	// Shall we take a log?
-	if (take_snapshot) { 
+	if (take_snapshot) {
 
 		// Take a log and set the associated LVT
 		new_state.log = log_state(lid);
 		new_state.lvt = lvt(lid);
 		new_state.last_event = LPS[lid]->bound;
-		
+
 		// We take as the buffer state the last one associated with a SetState() call, if any
 		new_state.buffer_state = (LPS[lid]->state_bound != NULL ? LPS[lid]->state_bound->buffer_state : NULL);
-		
+
 		// list_insert() makes a copy of the payload, which is then returned. This is our state bound.
 		LPS[lid]->state_bound = list_insert_tail(LPS[lid]->queue_states, &new_state);
-		
+
 	}
 }
 
@@ -123,17 +123,17 @@ void LogState(unsigned int lid) {
 * @param state_buffer The simulation state to be passed to the LP
 * @param pointer The pointer to the element of the input event queue from which start the re-execution
 * @param final_time The time where align the re-execution
-* 
+*
 * @return The number of events re-processed during the silent execution
 */
 unsigned int silent_execution(unsigned int lid, void *state_buffer, msg_t *evt, msg_t *final_evt) {
 	unsigned int events = 0;
 	unsigned short int old_state;
-	
+
 	// current state can be either idle READY, BLOCKED or ROLLBACK, so we save it and then put it back in place
 	old_state = LPS[lid]->state;
 	LPS[lid]->state = LP_STATE_SILENT_EXEC;
-	
+
 	// This is true
 	if(evt == final_evt)
 		goto out;
@@ -141,18 +141,18 @@ unsigned int silent_execution(unsigned int lid, void *state_buffer, msg_t *evt, 
 	// Reprocess events. Outgoing messages are explicitly discarded, as this part of
 	// the simulation has been already executed at least once
 	while(evt != NULL && evt != final_evt) {
-		
+
 		if(!reprocess_control_msg(evt)) {
 			evt = list_next(evt);
 			continue;
 		}
 
 		events++;
-		
-		activate_LP(lid, evt->timestamp, evt, state_buffer);	
+
+		activate_LP(lid, evt->timestamp, evt, state_buffer);
 		evt = list_next(evt);
 	}
-	
+
     out:
 	LPS[lid]->state = old_state;
 	return events;
@@ -173,7 +173,7 @@ unsigned int silent_execution(unsigned int lid, void *state_buffer, msg_t *evt, 
 * @param lid The Logical Process Id
 */
 void rollback(unsigned int lid) {
-	
+
 	state_t *restore_state, *s;
 	msg_t *last_correct_event;
 	msg_t *reprocess_from;
@@ -215,7 +215,7 @@ void rollback(unsigned int lid) {
 	}
 	reprocessed_events = silent_execution(lid, restore_state->buffer_state, reprocess_from, list_next(last_correct_event));
 	statistics_post_lp_data(lid, STAT_SILENT, (double)reprocessed_events);
-	
+
 	// Control messages must be rolled back as well
 	rollback_control_message(lid, last_correct_event->timestamp);
 }
@@ -243,7 +243,7 @@ state_t *find_time_barrier(int lid, simtime_t simtime) {
 	}
 
 	barrier_state = list_tail(LPS[lid]->queue_states);
-	
+
 	// Sanity check. This might happen if the LP has not executed INIT at the time of the first GVT reduction
 	if(barrier_state == NULL) {
 		return NULL;
@@ -264,7 +264,7 @@ state_t *find_time_barrier(int lid, simtime_t simtime) {
 		if(is_incremental(current->log) == false)
 			break;
 	  	current = list_prev(current);
-	} 
+	}
 */
 
 	return barrier_state;
@@ -283,7 +283,7 @@ state_t *find_time_barrier(int lid, simtime_t simtime) {
 * @todo malloc wrapper
 */
 void ParallelSetState(void *new_state) {
-	
+
 	// TODO: cosa succede se il modello chiama SetState durante la silent execution chiamata da CCGS? Si fa inspection di uno stato diverso...
 	// If we are reprocessing events, then SetState was already called
 	if(LPS[current_lp]->state == LP_STATE_SILENT_EXEC) {
@@ -294,7 +294,7 @@ void ParallelSetState(void *new_state) {
 		force_LP_checkpoint(current_lp);
 		LogState(current_lp);
 	}
-*/	
+*/
 	LPS[current_lp]->state_bound->buffer_state = new_state;
 }
 
@@ -329,7 +329,7 @@ void set_checkpoint_mode(int ckpt_mode) {
 * @param period The new checkpoint period
 */
 void set_checkpoint_period(unsigned int lid, int period) {
-	LPS[lid]->ckpt_period = period; 
+	LPS[lid]->ckpt_period = period;
 }
 
 
@@ -344,6 +344,6 @@ void set_checkpoint_period(unsigned int lid, int period) {
 * @param period The new checkpoint period
 */
 void force_LP_checkpoint(unsigned int lid) {
-	LPS[lid]->state_log_forced = true; 
+	LPS[lid]->state_log_forced = true;
 }
 

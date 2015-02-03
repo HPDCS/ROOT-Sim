@@ -10,7 +10,7 @@
 
 static unsigned int map_hexagon_to_linear(unsigned int x, unsigned int y) {
 	unsigned int edge;
-	
+
 	edge = sqrt(num_cells);
 
 	// Sanity checks
@@ -20,16 +20,16 @@ static unsigned int map_hexagon_to_linear(unsigned int x, unsigned int y) {
 	if(x > edge || y > edge) {
 		rootsim_error(true, "Coordinates (%u, %u) are higher than maximum (%u, %u)\n", x, y, edge, edge);
 	}
-	
+
 	return y * edge + x;
 }
 
 
 static void map_linear_to_hexagon(unsigned int linear, unsigned int *x, unsigned int *y) {
 	unsigned int edge;
-	
+
 	edge = sqrt(num_cells);
-	
+
 	// Sanity checks
 	if(edge * edge != num_cells) {
 		printf("Hexagonal map wrongly specified!\n");
@@ -39,15 +39,15 @@ static void map_linear_to_hexagon(unsigned int linear, unsigned int *x, unsigned
 		printf("Required cell %u is higher than the total number of cells %u\n", linear, num_cells);
 		abort();
 	}
-	
+
 	*x = linear % edge;
-	*y = linear / edge;	
+	*y = linear / edge;
 }
 
 
 static unsigned int opposite_direction_of(unsigned int direction) {
 	unsigned int opposite;
-	
+
 	switch(direction) {
 		case NE:
 			opposite = SW;
@@ -76,7 +76,7 @@ static unsigned int opposite_direction_of(unsigned int direction) {
 }
 
 static char *direction_name(unsigned int direction) {
-	
+
 	switch(direction) {
 		case NE:
 			return "NE";
@@ -108,28 +108,28 @@ static double a_star(agent_state_type *state, unsigned int current_cell, unsigne
 	unsigned int x1, y1, x2, y2;
 	unsigned int tentative_cell;
 	double distance_increment;
-	
-	
+
+
 	*good_direction = UINT_MAX;
-	
+
 	SET_BIT(state->a_star_map, current_cell);
-	
+
 	map_linear_to_hexagon(state->target_cell, &x1, &y1);
-	
+
 	for(i = 0; i < 6; i ++) {
-		
+
 		// Is there a cell to reach in this direction?
 		if(!isValidNeighbour(current_cell, i)) {
 			continue;
 		}
-		
+
 		tentative_cell = GetNeighbourId(current_cell, i);
-		
+
 		// We don't simply visit a cell already visited!
 		if(CHECK_BIT(state->a_star_map, tentative_cell)) {
 			continue;
 		}
-		
+
 		// Can I go in that direction?
 		if(state->visit_map[current_cell].neighbours[i] != -1) {
 
@@ -139,14 +139,14 @@ static double a_star(agent_state_type *state, unsigned int current_cell, unsigne
 				*good_direction = i;
 				return 0.0;
 			}
-			
+
 			// Compute the distance from the target if we make that move
 			map_linear_to_hexagon(tentative_cell, &x2, &y2);
 			dx = x1-x2;
 			dy = y2-y1;
 			distance_increment = a_star(state, tentative_cell, good_direction);
 			current_distance = sqrt( dx*dx + dy*dy );
-			
+
 			// Is it a good choice?
 			if(current_distance < INFTY && current_distance < min_distance) {
 				min_distance = current_distance;
@@ -159,25 +159,25 @@ static double a_star(agent_state_type *state, unsigned int current_cell, unsigne
 //		printf("direction: %d\n", *good_direction); fflush(stdout);
 //		printf("%d, ", GetNeighbourId(current_cell, *good_direction));
 //	}
-	
+
 	// We're getting far!
 	//~ if(min_distance > distance) {
 		//~ return INFTY;
 	//~ }
-	
+
 	return min_distance;
 }
 
 
 static unsigned int compute_my_direction(agent_state_type *state) {
 	unsigned int good_direction = UINT_MAX;
-	
+
 	bzero(state->a_star_map, BITMAP_SIZE(num_cells));
-	
+
 //	printf("A* from %d to %d: ", state->current_cell, state->target_cell);
-	
+
 	a_star(state, state->current_cell, &good_direction);
-	
+
 //	printf("\n");
 /*	unsigned int x1, y1;
 	unsigned int x2, y2;
@@ -202,7 +202,7 @@ static unsigned int compute_my_direction(agent_state_type *state) {
 			}
 		}
 	}
-*/	
+*/
 	return good_direction;
 }
 
@@ -214,13 +214,13 @@ static unsigned int closest_frontier(agent_state_type *state, unsigned int curr_
 	double distance;
 	double min_distance = INFTY;
 	unsigned int target = -1;
-	
+
 	map_linear_to_hexagon(curr_cell, &curr_x, &curr_y);
-	
+
 	for(i = 0; i < num_cells; i++) {
-		
+
 		if(!state->visit_map[i].visited) {
-			
+
 			if(i == exclude) {
 				// I know this is a frontier, but I don't want to go there
 				continue;
@@ -231,16 +231,16 @@ static unsigned int closest_frontier(agent_state_type *state, unsigned int curr_
 /*			is_reachable = false;
 			for(j = 0; j < 6; j++) {
 				if(isValidNeighbour(i, j) &&
-				   state->visit_map[GetNeighbourId(i, j)].visited && 
+				   state->visit_map[GetNeighbourId(i, j)].visited &&
 				   state->visit_map[GetNeighbourId(i, j)].neighbours[opposite_direction_of(j)] != 1) {
 					is_reachable = true;
 				}
 			}
-			
+
 			if(is_reachable) {
 */				map_linear_to_hexagon(i, &x, &y);
 				distance = sqrt((curr_x - x)*(curr_x - x) + (curr_y - y)*(curr_y - y));
-				
+
 				if(distance < min_distance) {
 					min_distance = distance;
 					target = i;
@@ -248,7 +248,7 @@ static unsigned int closest_frontier(agent_state_type *state, unsigned int curr_
 //			}
 		}
 	}
-	
+
 	return target;
 }
 
@@ -277,15 +277,15 @@ void AgentProcessEvent(int me, simtime_t now, int event_type, event_content_type
 			// Allocate the map bitmap
 			state->visit_map = malloc(num_cells * sizeof(map_t));
 			bzero(state->visit_map, num_cells * sizeof(map_t));
-			
+
 			state->current_cell = UINT_MAX;
 			state->target_cell = UINT_MAX;
-			
+
 			// Initialize the a_star visit bitmap
 			state->a_star_map = ALLOCATE_BITMAP(num_cells);
 
 			states[me] = pointer;
-			
+
 			new_event.cell = RandomRange(0, num_cells - 1);
 			new_event.coming_from = -1;
 			ScheduleNewEvent(me, 10 * Random() + 1, REGION_IN, &new_event, sizeof(event_content_type));
@@ -304,19 +304,19 @@ void AgentProcessEvent(int me, simtime_t now, int event_type, event_content_type
 
 //			printf("Robot %d e' in cella %d, ", me - num_cells, state->current_cell);
 			fflush(stdout);
-					
+
 			// Register the position of the robot in the cell
 			cell = (cell_state_type *)states[state->current_cell];
 			cell->present_agents++;
 			SET_BIT(cell->agents, me - num_cells);
-			
+
 			// Mark the cell as explored and "discover" the surroundings
 			if(!state->visit_map[state->current_cell].visited) {
 				state->visit_map[state->current_cell].visited = true;
 				state->visited_cells++;
 				memcpy(&state->visit_map[state->current_cell].neighbours, cell->neighbours, sizeof(unsigned int) * 6);
 			}
-			
+
 			// Have I reached my target? In case, forget the target and go on exploring randomly
 			if(state->current_cell == state->target_cell) {
 				state->target_cell = UINT_MAX;
@@ -324,14 +324,14 @@ void AgentProcessEvent(int me, simtime_t now, int event_type, event_content_type
 
 			// Is there any other robot in the cell? In case coordinate, otherwise explore alone
 			if(cell->present_agents > 1) {
-				
+
 				for(i = 0; i < (n_prc_tot - num_cells); i++) {
 					if(CHECK_BIT(cell->agents, i)) {
-						
+
 						// Exchange information about the map
 						robot = (agent_state_type *)states[num_cells + i];
 						for(j = 0; j < num_cells; j++) {
-							
+
 							if(robot->visit_map[j].visited) {
 								memcpy(&state->visit_map[j], &robot->visit_map[j], sizeof(map_t));
 								state->visited_cells++;
@@ -340,15 +340,15 @@ void AgentProcessEvent(int me, simtime_t now, int event_type, event_content_type
 								robot->visited_cells++;
 							}
 						}
-						
+
 						// We have met!
 						state->met_robots++;
 						robot->met_robots++;
-						
+
 						// Give a frontier to this robot to reach
 						robot->target_cell = closest_frontier(state, state->current_cell, -1);
 						state->target_cell = closest_frontier(state, state->current_cell, robot->current_cell);
-						
+
 						break;
 					}
 				}
@@ -361,18 +361,18 @@ void AgentProcessEvent(int me, simtime_t now, int event_type, event_content_type
 				state->target_cell = UINT_MAX;
 			}
 
-			
+
 			// If we have a target, try to reach it, otherwise explore alone
 			if(state->target_cell == UINT_MAX) {
 				state->target_cell = closest_frontier(state, state->current_cell, -1);
 				if(state->target_cell == UINT_MAX) {
 					state->target_cell = RandomRange(0, num_cells - 1);
-				}			
+				}
 			}
 
 			state->direction = compute_my_direction(state);
-			
-			// If computed direction is UINT_MAX, then there is no path to the target. 
+
+			// If computed direction is UINT_MAX, then there is no path to the target.
 			// Just take a random direction
 			if(!isValidNeighbour(state->current_cell, state->direction)) {
 //				printf("%d at time %f is in %d reaching %d but no path found\n", me, now, state->current_cell, state->target_cell);
@@ -388,7 +388,7 @@ void AgentProcessEvent(int me, simtime_t now, int event_type, event_content_type
 
 //			printf("ha direzione %s, ", direction_name(state->direction));
 			fflush(stdout);
-	
+
 
 			// We can now mooooove!
 			new_event.cell = GetNeighbourId(state->current_cell, state->direction);
@@ -400,10 +400,10 @@ void AgentProcessEvent(int me, simtime_t now, int event_type, event_content_type
 				abort();
 			}
 			timestamp = now + Expent(TIME_STEP);
-			
+
 			ScheduleNewEvent(me, timestamp, REGION_IN, &new_event, sizeof(event_content_type));
 			break;
-			
+
 		default:
 			abort();
 	}
@@ -412,14 +412,14 @@ void AgentProcessEvent(int me, simtime_t now, int event_type, event_content_type
 
 
 int AgentOnGVT(unsigned int me, agent_state_type *state) {
-	
+
 	if((double)state->visited_cells / num_cells < 1.0) {
 		printf("Robot %d: %.02f percent --- %d meetings so far --- currently in cell %d\n", me - num_cells, (double)state->visited_cells / num_cells * 100, state->met_robots, state->current_cell);
-		
+
 	} else {
 		return true;
 	}
-	
+
 	return false;
 }
 

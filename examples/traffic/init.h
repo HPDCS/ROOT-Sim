@@ -9,7 +9,7 @@
 *
 * For any information, you can find contact information on my personal webpage:
 * http://www.dis.uniroma1.it/~pellegrini
-*  
+*
 * @file init.h
 * @brief Definition for supporting text-file parsing
 * @author Alessandro Pellegrini

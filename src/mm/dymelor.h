@@ -4,20 +4,20 @@
 *
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
-* 
+*
 * ROOT-Sim is free software; you can redistribute it and/or modify it under the
 * terms of the GNU General Public License as published by the Free Software
 * Foundation; either version 3 of the License, or (at your option) any later
 * version.
-* 
+*
 * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
 * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-* 
+*
 * You should have received a copy of the GNU General Public License along with
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-* 
+*
 * @file dymelor.h
 * @brief This is the Memory Management Subsystem main header file
 * @author Francesco Quaglia
@@ -61,7 +61,7 @@
 
 #define CACHE_SIZE 32768	// Must be a power of 2!
 #define MIN_CHUNK_SIZE 32	// Size (in bytes) of the smallest chunk provideable by DyMeLoR
-#define MAX_CHUNK_SIZE 1048576	// Size (in bytes) of the biggest one. Notice that if this number 
+#define MAX_CHUNK_SIZE 1048576	// Size (in bytes) of the biggest one. Notice that if this number
 				// is too large, performance (and memory usage) might be affected.
 				// If it is too small, large amount of memory requests by the
 				// application level software (i.e, larger than this number)
@@ -71,7 +71,7 @@
 #define MAX_NUM_AREAS (NUM_AREAS * 2) 	// Maximum number of allocatable malloc_areas. If MAX_NUM_AREAS
 				// malloc_areas are filled at runtime, subsequent malloc() requests
 				// by the application level software will fail.
-#define MAX_LIMIT_NUM_AREAS 100 
+#define MAX_LIMIT_NUM_AREAS 100
 #define MIN_NUM_CHUNKS 64	// Minimum number of chunks per malloc_area
 #define MAX_NUM_CHUNKS 1024	// Maximum number of chunks per malloc_area
 
@@ -79,7 +79,7 @@
 #define MIN_LOG_THRESHOLD 1.7	// Threshold to check if a malloc_area is overused TODO: retest
 
 
-#ifndef INCREMENTAL_GRANULARITY	
+#ifndef INCREMENTAL_GRANULARITY
  #define INCREMENTAL_GRANULARITY 50 // Number of incremental logs before a full log is forced
 #endif
 
@@ -244,7 +244,7 @@ extern double checkpoint_bytes_total;
 // DyMeLoR API
 extern void dymelor_init(void);
 extern void dymelor_fini(void);
-extern void set_force_full(unsigned int, int);	
+extern void set_force_full(unsigned int, int);
 extern void dirty_mem(void *, int);
 extern size_t get_state_size(int);
 extern size_t get_log_size(void *);
@@ -286,7 +286,7 @@ extern void lp_alloc_thread_fini(void);
 
 #else
 
-#define lp_alloc_thread_init()	{} 
+#define lp_alloc_thread_init()	{}
 #define lp_alloc_schedule()		{}
 #define lp_alloc_deschedule()	{}
 #define lp_alloc_thread_fini()	{}

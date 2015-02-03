@@ -47,7 +47,7 @@ typedef struct _event_content_type {
 
 
 
-	 
+
 typedef struct _lp_state_type{
 	int trails;
 	int neighbour_trails[6];

@@ -4,22 +4,22 @@
 *
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
-* 
+*
 * ROOT-Sim is free software; you can redistribute it and/or modify it under the
 * terms of the GNU General Public License as published by the Free Software
 * Foundation; either version 3 of the License, or (at your option) any later
 * version.
-* 
+*
 * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
 * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-* 
+*
 * You should have received a copy of the GNU General Public License along with
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-* 
+*
 * @file queues.c
-* @brief 
+* @brief
 * @author Francesco Quaglia
 */
 
@@ -68,7 +68,7 @@ __thread msg_t *current_evt;
 /// This global variable tells the simulator what is the LP currently being scheduled on the current worker thread
 __thread void *current_state;
 
-static barrier_t INIT_barrier; 
+static barrier_t INIT_barrier;
 
 
 /*
@@ -104,7 +104,7 @@ void scheduler_init(void) {
 
 	// Initialize the INIT barrier
 	barrier_init(&INIT_barrier, n_cores);
-	
+
 }
 
 
@@ -117,7 +117,7 @@ static void destroy_LPs(void) {
 		rsfree(LPS[i]->queue_out);
 		rsfree(LPS[i]->queue_states);
 		rsfree(LPS[i]->bottom_halves);
-		
+
 		// Destroy stacks
 		#ifdef ENABLE_ULT
 		lp_free(LPS[i]->stack);
@@ -137,12 +137,12 @@ void scheduler_fini(void) {
 	register unsigned int i;
 
 	destroy_LPs();
-	
+
 	for (i = 0; i < n_prc; i++) {
 		rsfree(LPS[i]);
 	}
 	rsfree(LPS);
-	
+
 	rsfree(LPS_bound);
 }
 
@@ -163,7 +163,7 @@ void scheduler_fini(void) {
 * @param args arguments passed to the LP main loop. Currently, this is not used.
 */
 static void LP_main_loop(void *args) {
-	
+
 	(void)args; // this is to make the compiler stop complaining about unused args
 
 	// Save a default context
@@ -176,14 +176,14 @@ static void LP_main_loop(void *args) {
 		// Process the event
 		timer event_timer;
 		timer_start(event_timer);
-		
+
 		ProcessEvent[current_lp](LidToGid(current_lp), current_evt->timestamp, current_evt->type, current_evt->event_content, current_evt->size, current_state);
 
 		int delta_event_timer = timer_value_micro(event_timer);
-	
+
 		statistics_post_lp_data(current_lp, STAT_EVENT, 1.0);
 		statistics_post_lp_data(current_lp, STAT_EVENT_TIME, delta_event_timer);
-		
+
 		// Give back control to the simulation kernel's user-level thread
 		#ifdef ENABLE_ULT
 		context_switch(&LPS[current_lp]->context, &kernel_context);
@@ -217,7 +217,7 @@ void initialize_LP(unsigned int lp) {
 	#ifdef ENABLE_ULT
 	LPS[lp]->stack = get_ult_stack(lp, LP_STACK_SIZE);
 	#endif
-	
+
 	// Set the initial checkpointing period for this LP.
 	// If the checkpointing period is fixed, this will not change during the
 	// execution. Otherwise, new calls to this function will (locally) update
@@ -227,17 +227,17 @@ void initialize_LP(unsigned int lp) {
 
 	// Initially, every LP is ready
 	LPS[lp]->state = LP_STATE_READY;
-	
+
 	// Initialize the queues
 	LPS[lp]->queue_in = new_list(msg_t);
 	LPS[lp]->queue_out = new_list(msg_hdr_t);
 	LPS[lp]->queue_states = new_list(state_t);
 	LPS[lp]->bottom_halves = new_list(msg_t);
 	LPS[lp]->rendezvous_queue = new_list(msg_t);
-	
+
 	// Assign the local ID to the LP
 	LPS[lp]->lid = lp;
-	
+
 	// Initialize the LP lock
 	spinlock_init(&LPS[lp]->lock);
 
@@ -245,7 +245,7 @@ void initialize_LP(unsigned int lp) {
 	for(i = 0; i < n_cores; i++) {
 		LPS[lp]->outgoing_buffer.min_in_transit[i] = INFTY;
 	}
-	
+
 	#ifdef HAVE_LINUX_KERNEL_MAP_MODULE
 	// No read/write dependencies open so far for the LP. The current lp is always opened
 	LPS[lp]->ECS_index = 0;
@@ -287,7 +287,7 @@ void activate_LP(unsigned int lp, simtime_t lvt, void *evt, void *state) {
 	current_lvt = lvt;
 	current_evt = evt;
 	current_state = state;
-	
+
 	// Activate memory view for the current LP
 	lp_alloc_schedule();
 
@@ -296,12 +296,12 @@ void activate_LP(unsigned int lp, simtime_t lvt, void *evt, void *state) {
 	#else
 	LP_main_loop(NULL);
 	#endif
-	
+
 	// Deactivate memory view for the current LP if no conflict has arisen
 	if(!is_blocked_state(LPS[lp]->state)) {
 		lp_alloc_deschedule();
 	}
-	
+
 	current_lp = IDLE_PROCESS;
 	current_lvt = -1.0;
 	current_evt = NULL;
@@ -316,7 +316,7 @@ void activate_LP(unsigned int lp, simtime_t lvt, void *evt, void *state) {
 * Whenever it is invoked, the binding is recreated, depending on the specified
 * policy. Currently, only a fixed binding is implemented, so calling again this
 * function deterministically regenerates the same binding.
-* 
+*
 * @author Alessandro Pellegrini
 */
 void rebind_LPs(void) {
@@ -324,29 +324,29 @@ void rebind_LPs(void) {
 	unsigned int buf1;
 	unsigned int offset;
 	unsigned int block_leftover;
-	
+
 	static __thread bool already_allocated = false;
-	
+
 	// This is a guard because it's meaningless to recalculate a static
 	// LP allocation now.
 	if(already_allocated) {
 		return;
 	}
-	
+
 	already_allocated = true;
-	
+
 	if(LPS_bound == NULL) {
 		LPS_bound = rsalloc(sizeof(LP_state *) * n_prc);
 		bzero(LPS_bound, sizeof(LP_state *) * n_prc);
 	}
-	
+
 	buf1 = (n_prc / n_cores);
 	block_leftover = n_prc - buf1 * n_cores;
 
 	if (block_leftover > 0) {
 		buf1++;
 	}
-	
+
 	n_prc_per_thread = 0;
 	i = 0;
 	offset = 0;
@@ -373,7 +373,7 @@ void rebind_LPs(void) {
 /**
 * This function checks wihch LP must be activated (if any),
 * and in turn activates it. This is used only to support forward execution.
-* 
+*
 * @author Alessandro Pellegrini
 */
 void schedule(void) {
@@ -385,16 +385,16 @@ void schedule(void) {
 	#ifdef HAVE_LINUX_KERNEL_MAP_MODULE
 	bool resume_execution = false;
 	#endif
-	
+
 	// Find next LP to be executed, depending on the chosen scheduler
 	switch (rootsim_config.scheduler) {
-		
-		case SMALLEST_TIMESTAMP_FIRST: 
+
+		case SMALLEST_TIMESTAMP_FIRST:
 			lid = smallest_timestamp_first();
 			break;
-		
-		default: 
-			lid = smallest_timestamp_first();							
+
+		default:
+			lid = smallest_timestamp_first();
 	}
 
 	// No logical process found with events to be processed
@@ -459,7 +459,7 @@ void schedule(void) {
 		LPS[lid]->state = LP_STATE_READY;
 		send_outgoing_msgs(lid);
 	}
-	
+
 	#ifdef HAVE_LINUX_KERNEL_MAP_MODULE
 	if(resume_execution && !is_blocked_state(LPS[lid]->state)) {
 		unblock_synchronized_objects(lid);
@@ -467,7 +467,7 @@ void schedule(void) {
 		force_LP_checkpoint(lid);
 	}
 	#endif
-	
+
 	// Log the state, if needed
 	LogState(lid);
 
