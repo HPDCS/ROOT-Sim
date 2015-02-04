@@ -29,6 +29,7 @@
 #include <ROOT-Sim.h>
 #include <arch/thread.h>
 #include <gvt/gvt.h>
+#include <gvt/ccgs.h>
 #include <core/core.h>
 #include <core/timer.h>
 #include <scheduler/process.h>
@@ -186,6 +187,9 @@ simtime_t gvt_operations(void) {
 		if ( timer_value_milli(gvt_timer) > (int)rootsim_config.gvt_time_period &&
 		    iCAS(&current_GVT_round, my_GVT_round, my_GVT_round + 1)) {
 
+			// Reduce the current CCGS termination detection
+			ccgs_reduce_termination();
+
 			// Reset atomic counters and make all threads compute the GVT
 			atomic_set(&counter_A, n_cores);
 			atomic_set(&counter_send, n_cores);
@@ -206,12 +210,14 @@ simtime_t gvt_operations(void) {
 			// Someone has modified the GVT round (possibly me).
 			// Keep track of this update
 			my_GVT_round = current_GVT_round;
+			
+			process_bottom_halves();
 
 			for(i = 0; i < n_prc_per_thread; i++) {
 				if(LPS_bound[i]->bound != NULL) {
-					local_min[tid] = min(local_min[tid], LPS_bound[i]->bound->timestamp);
+					local_min[tid] = min(local_min[tid], next_event_timestamp(LPS_bound[i]->lid));
 				} else {
-					local_min[tid] = 0.0;
+					local_min[tid] = 0.0; //TODO: impossible
 					break;
 				}
 			}
@@ -249,9 +255,11 @@ simtime_t gvt_operations(void) {
 		if(local_my_GVT_phase_B_executed) {
 			local_my_GVT_phase_B_executed = false;
 
+			process_bottom_halves();
+
 			for(i = 0; i < n_prc_per_thread; i++) {
 				if(LPS_bound[i]->bound != NULL) {
-					local_min[tid] = min(local_min[tid], LPS_bound[i]->bound->timestamp);
+					local_min[tid] = min(local_min[tid], next_event_timestamp(LPS_bound[i]->lid));
 				} else {
 					local_min[tid] = 0.0;
 					break;
@@ -270,6 +278,7 @@ simtime_t gvt_operations(void) {
 			for(i = 0; i < n_cores; i++) {
 				new_gvt = min(local_min[i], new_gvt);
 			}
+			new_gvt = 0.999 * new_gvt;
 
 			atomic_dec(&counter_aware);
 

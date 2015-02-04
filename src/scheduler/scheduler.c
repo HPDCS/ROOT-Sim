@@ -227,6 +227,9 @@ void initialize_LP(unsigned int lp) {
 
 	// Initially, every LP is ready
 	LPS[lp]->state = LP_STATE_READY;
+	
+	// There is no current state layout at the beginning
+	LPS[lp]->current_base_pointer = NULL;
 
 	// Initialize the queues
 	LPS[lp]->queue_in = new_list(msg_t);
@@ -441,8 +444,7 @@ void schedule(void) {
 		return;
 	}
 
-	//state = (!list_empty(LPS[lid]->queue_states) ? list_tail(LPS[lid]->queue_states)->buffer_state : NULL);
-	state = LPS[lid]->state_bound->buffer_state;
+	state = LPS[lid]->current_base_pointer;
 
 	#ifdef HAVE_LINUX_KERNEL_MAP_MODULE
 	// In case we are resuming an interrupted execution, we keep track of this.
@@ -451,7 +453,7 @@ void schedule(void) {
 		resume_execution = true;
 	}
 	#endif
-
+	
 	// Schedule the LP user-level thread
 	LPS[lid]->state = LP_STATE_RUNNING;
 	activate_LP(lid, lvt(lid), event, state);

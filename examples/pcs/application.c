@@ -129,16 +129,13 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 
 					case UNIFORM:
 						new_event_content.call_term_time = now + (simtime_t)(state->ta_duration * Random());
-
 						break;
 
 					case EXPONENTIAL:
 						new_event_content.call_term_time = now + (simtime_t)(Expent(state->ta_duration));
-
 						break;
 
 					default:
-
  						new_event_content.call_term_time = now + (simtime_t) (5 * Random() );
 				}
 
@@ -159,14 +156,6 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 
 				}
 
-				// Collect a pointer to the freshly allocated channel
-				c = state->channels;
-				while(c != NULL){
-				if(c->channel_id == new_event_content.channel)
-					break;
-					c = c->prev;
-				}
-
 				if(new_event_content.call_term_time <=  handoff_time) {
 					ScheduleNewEvent(me, new_event_content.call_term_time, END_CALL, &new_event_content, sizeof(new_event_content));
 				} else {
@@ -179,7 +168,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 			if (state->variable_ta)
 				state->ta = recompute_ta(state->ref_ta, now);
 
-			// Determine the time at which the call will end
+			// Determine the time at which a new call will be issued
 			switch (DISTRIBUTION) {
 
 				case UNIFORM:
@@ -214,7 +203,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 			deallocation(me, state, event_content->channel, event_content, now);
 
 			new_event_content.call_term_time =  event_content->call_term_time;
-			ScheduleNewEvent(event_content->cell, now, HANDOFF_RECV, &new_event_content, sizeof(new_event_content));
+			ScheduleNewEvent(event_content->cell, now + 0.01, HANDOFF_RECV, &new_event_content, sizeof(new_event_content));
 			break;
 
         	case HANDOFF_RECV:
@@ -231,11 +220,11 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 
 				switch (CELL_CHANGE_DISTRIBUTION) {
 					case UNIFORM:
-						handoff_time  = now + (simtime_t) ((state->ta_change) * Random());
+						handoff_time  = now + (simtime_t)((state->ta_change) * Random());
 
 						break;
 					case EXPONENTIAL:
-						handoff_time = now + (simtime_t)( Expent( state->ta_change ));
+						handoff_time = now + (simtime_t)(Expent( state->ta_change ));
 
 						break;
 					default:
@@ -244,10 +233,10 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 				}
 
 				if(new_event_content.call_term_time <=  handoff_time ) {
-					ScheduleNewEvent(me , new_event_content.call_term_time, END_CALL, &new_event_content, sizeof(new_event_content));
+					ScheduleNewEvent(me, new_event_content.call_term_time, END_CALL, &new_event_content, sizeof(new_event_content));
 				} else {
 					new_event_content.cell = FindReceiver(TOPOLOGY_HEXAGON);
-					ScheduleNewEvent(me , new_event_content.call_term_time, HANDOFF_LEAVE, &new_event_content, sizeof(new_event_content));
+					ScheduleNewEvent(me, handoff_time, HANDOFF_LEAVE, &new_event_content, sizeof(new_event_content));
 				}
 			}
 

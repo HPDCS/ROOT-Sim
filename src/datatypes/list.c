@@ -31,24 +31,6 @@
 #include <mm/malloc.h>
 
 
-
-#define debug_enter() do {\
-	atomic_inc(&l->counter);\
-	if(atomic_read(&l->counter) > 1) {\
-		printf("thread %d spinning on bug!\n", tid);\
-		while(1);\
-	}\
-	} while(0)
-
-#define debug_exit() do {\
-	if(atomic_read(&l->counter) > 1) {\
-		printf("thread %d spinning on bug!\n", tid);\
-		while(1);\
-	}\
-	atomic_dec(&l->counter);\
-	} while(0)
-
-
 /**
 * This function inserts a new element at the beginning of the list.
 * It is not safe (and not easily readable) to call this function directly. Rather,
@@ -75,8 +57,6 @@
 char *__list_insert_head(void *li, unsigned int size, void *data) {
 
 	rootsim_list *l = (rootsim_list *)li;
-
-	debug_enter();
 
 	assert(l);
 
@@ -105,8 +85,6 @@ char *__list_insert_head(void *li, unsigned int size, void *data) {
     insert_end:
 	l->size++;
 	assert(l->size == (size_before + 1));
-
-	debug_exit();
 
 	return new_n->data;
 }
@@ -141,8 +119,6 @@ char *__list_insert_tail(void *li, unsigned int size, void *data) {
 
 	rootsim_list *l = (rootsim_list *)li;
 
-	debug_enter();
-
 	assert(l);
 	size_t size_before = l->size;
 
@@ -169,10 +145,17 @@ char *__list_insert_tail(void *li, unsigned int size, void *data) {
     insert_end:
 	l->size++;
 	assert(l->size == (size_before + 1));
-	debug_exit();
 	return new_n->data;
 }
 
+
+void dump_l(struct rootsim_list_node *n, size_t key_position) {
+	while(n != NULL) {
+		printf("%f -> ", get_key(&n->data));
+		n = n->next;
+	}
+	printf("\n");
+}
 
 
 /**
@@ -206,8 +189,6 @@ char *__list_insert(void *li, unsigned int size, size_t key_position, void *data
 
 	rootsim_list *l = (rootsim_list *)li;
 
-	debug_enter();
-
 	assert(l);
 	size_t size_before = l->size;
 
@@ -229,38 +210,40 @@ char *__list_insert(void *li, unsigned int size, size_t key_position, void *data
 		l->tail = new_n;
 		goto insert_end;
 	}
+	
+//	printf("\nInserisco %f in %p\n", key, li);
+//	printf("prima: ");
+//	dump_l(l->head, key_position);
 
 	n = l->tail;
-	while(n != NULL) {
-		if(key >= get_key(&n->data) || n == l->head) {
-			break;
-		}
+	while(n != NULL && key < get_key(&n->data)) {
 		n = n->prev;
 	}
-	n = n->next;
-
+		
 	// Insert correctly depending on the position
-	if(n == NULL) { // tail
+ 	if(n == l->tail) { // tail
 		new_n->next = NULL;
 		l->tail->next = new_n;
 		new_n->prev = l->tail;
 		l->tail = new_n;
-	} else if(n == l->head) {
+	} else if(n == NULL) { // head
 		new_n->prev = NULL;
 		new_n->next = l->head;
 		l->head->prev = new_n;
 		l->head = new_n;
 	} else { // middle
-		new_n->prev = n->prev;
-		n->prev->next = new_n;
-		new_n->next = n;
-		n->prev = new_n;
+		new_n->prev = n;
+		new_n->next = n->next;
+		n->next->prev = new_n;
+		n->next = new_n;
 	}
-
+	
+//	printf("dopo: ");
+//	dump_l(l->head, key_position);
+	
     insert_end:
 	l->size++;
 	assert(l->size == (size_before + 1));
-	debug_exit();
 	return new_n->data;
 }
 
@@ -295,8 +278,6 @@ char *__list_insert(void *li, unsigned int size, size_t key_position, void *data
 char *__list_extract(void *li, unsigned int size, double key, size_t key_position) {
 
 	rootsim_list *l = (rootsim_list *)li;
-
-	debug_enter();
 
 	assert(l);
 	size_t size_before = l->size;
@@ -339,8 +320,6 @@ char *__list_extract(void *li, unsigned int size, double key, size_t key_positio
 		}
 		n = n->next;
 	}
-
-	debug_exit();
 
 	return content;
 }
@@ -409,8 +388,6 @@ char *__list_extract_by_content(void *li, unsigned int size, void *ptr, bool cop
 
         rootsim_list *l = (rootsim_list *)li;
 
-        debug_enter();
-
 	assert(l);
 	size_t size_before = l->size;
 
@@ -451,7 +428,6 @@ char *__list_extract_by_content(void *li, unsigned int size, void *ptr, bool cop
 	l->size--;
 	assert(l->size == (size_before - 1));
 
-	debug_exit();
 	return content;
 }
 
@@ -488,8 +464,6 @@ char *__list_find(void *li, double key, size_t key_position) {
 
 	assert(l);
 
-	debug_enter();
-
 	struct rootsim_list_node *n = l->head;
 	double curr_key;
 
@@ -502,8 +476,6 @@ char *__list_find(void *li, double key, size_t key_position) {
 		}
 		n = n->next;
 	}
-
-        debug_exit();
 
 	return NULL;
 }
@@ -530,8 +502,6 @@ void list_pop(void *li) {
 
         rootsim_list *l = (rootsim_list *)li;
 
-        debug_enter();
-
 	assert(l);
 	size_t size_before = l->size;
 
@@ -551,12 +521,10 @@ void list_pop(void *li) {
 		l->size--;
 		assert(l->size == (size_before - 1));
 	}
-
-        debug_exit();
 }
 
 
-
+// element associated with key is not truncated
 unsigned int __list_trunc(void *li, double key, size_t key_position, unsigned short int direction) {
 
 	struct rootsim_list_node *n;
@@ -564,13 +532,12 @@ unsigned int __list_trunc(void *li, double key, size_t key_position, unsigned sh
 	rootsim_list *l = (rootsim_list *)li;
 	unsigned int deleted = 0;
 
-	debug_enter();
-
 	assert(l);
 	size_t size_before = l->size;
 
 	// Attempting to truncate an empty list?
 	if(l->size == 0) {
+		printf("PANICO SIZE == 0\n");
 		goto out;
 	}
 
@@ -591,13 +558,12 @@ unsigned int __list_trunc(void *li, double key, size_t key_position, unsigned sh
 	}
 	l->head = n;
 	if(l->head != NULL)
-		l->head->prev = (void *)0xBAADBEEF;
+		l->head->prev = NULL;
 
 
 	l->size -= deleted;
 	assert(l->size == (size_before - deleted));
     out:
-        debug_exit();
 	return deleted;
 }
 

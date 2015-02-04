@@ -96,6 +96,9 @@ typedef struct _LP_state {
 
 	/// If this variable is set, the next invocation to LogState() takes a new state log, independently of the checkpointing interval
 	bool		state_log_forced;
+	
+	/// The current state base pointer (updated by SetState())
+	void 		*current_base_pointer;
 
 	/// Input messages queue
 	list(msg_t)	queue_in;
@@ -108,9 +111,6 @@ typedef struct _LP_state {
 
 	/// Saved states queue
 	list(state_t)	queue_states;
-
-	/// Pointer to the last-taken snapshot
-	state_t		*state_bound;
 
 	/// Bottom halves queue
 	list(msg_t)	bottom_halves;

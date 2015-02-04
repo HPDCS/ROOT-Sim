@@ -53,6 +53,8 @@ void fossil_collection(unsigned int lid, simtime_t time_barrier) {
 	state_t *state;
 	msg_t *last_kept_event;
 	double committed_events;
+	
+	time_barrier = 0.7 * time_barrier;
 
 	// State list must be handled differently, as nodes point to malloc'd
 	// nodes. We therefore manually scan the list and free the memory.
@@ -62,17 +64,8 @@ void fossil_collection(unsigned int lid, simtime_t time_barrier) {
 		list_pop(LPS[lid]->queue_states);
 	}
 
-	// At the beginning, we have one initial log which is taken before INIT.
-	// This is the only case where last_event can point NULL.
-	// If this is the barrier log, then we don't have to truncate anything
-	if(list_head(LPS[lid]->queue_states)->last_event == NULL)
-		return;
-
 	// Determine queue pruning horizon
 	last_kept_event = list_head(LPS[lid]->queue_states)->last_event;
-	last_kept_event = list_prev(last_kept_event);
-	if(last_kept_event == NULL)
-		return;
 
 	// Truncate the input queue, accounting for the event which is pointed by the lastly kept state
 	committed_events = (double)list_trunc_before(LPS[lid]->queue_in, timestamp, last_kept_event->timestamp);
@@ -109,20 +102,11 @@ simtime_t adopt_new_gvt(simtime_t new_gvt) {
 
 		time_barrier_pointer[i] = find_time_barrier(LPS_bound[i]->lid, new_gvt);
 
-		// This can happen if the GVT computation happens before the execution of INIT.
-		// In real simulations this happens very rarely (if the number of LPs is very high
-		// and INIT is a long event), during debugging almost every time
-		// due to SIGUSR1 signals for ULT creation
-		if (time_barrier_pointer[i] == NULL) {
-			continue;
-		}
-
 		lp_time_barrier = time_barrier_pointer[i]->lvt;
 		if (lp_time_barrier > -1) {
 			local_time_barrier = min(local_time_barrier, lp_time_barrier);
 		}
 	}
-
 
 	// If needed, call the CCGS subsystem
 	if(compute_snapshot) {
@@ -131,11 +115,6 @@ simtime_t adopt_new_gvt(simtime_t new_gvt) {
 
 
 	for(i = 0; i < n_prc_per_thread; i++) {
-
-		// Again, the same sanity check as before
-		if(time_barrier_pointer[i] == NULL) {
-			continue;
-		}
 
 		// Execute the fossil collection
 		fossil_collection(LPS_bound[i]->lid, time_barrier_pointer[i]->lvt);

@@ -101,16 +101,23 @@ void LogState(unsigned int lid) {
 		new_state.log = log_state(lid);
 		new_state.lvt = lvt(lid);
 		new_state.last_event = LPS[lid]->bound;
+		new_state.state = LPS[lid]->state;
 
 		// We take as the buffer state the last one associated with a SetState() call, if any
-		new_state.buffer_state = (LPS[lid]->state_bound != NULL ? LPS[lid]->state_bound->buffer_state : NULL);
+		new_state.base_pointer = LPS[lid]->current_base_pointer;
 
-		// list_insert() makes a copy of the payload, which is then returned. This is our state bound.
-		LPS[lid]->state_bound = list_insert_tail(LPS[lid]->queue_states, &new_state);
+		// list_insert() makes a copy of the payload
+		(void)list_insert_tail(LPS[lid]->queue_states, &new_state);
 
 	}
 }
 
+
+void RestoreState(unsigned int lid, state_t *restore_state) {
+	log_restore(lid, restore_state);
+	LPS[lid]->current_base_pointer = restore_state->base_pointer;
+	LPS[lid]->state = restore_state->state;
+}
 
 
 /**
@@ -184,11 +191,11 @@ void rollback(unsigned int lid) {
 		rootsim_error(false, "I'm asked to roll back LP %d's execution, but rollback_bound is not set. Ignoring...\n", LidToGid(lid));
 		return;
 	}
-
+	
 	statistics_post_lp_data(lid, STAT_ROLLBACK, 1.0);
 
 	last_correct_event = LPS[lid]->bound;
-
+	
 	// Send antimessages
 	send_antimessages(lid, last_correct_event->timestamp);
 
@@ -202,9 +209,8 @@ void rollback(unsigned int lid) {
 		list_delete_by_content(LPS[lid]->queue_states, s);
 	}
 
-	// Restore the simulation state and correct the state bound
-	log_restore(lid, restore_state);
-	LPS[lid]->state_bound = restore_state;
+	// Restore the simulation state and correct the state base pointer
+	RestoreState(lid, restore_state);
 
 	// Coasting forward, updating the bound. The very first log (before INIT)
 	// has no last_event set
@@ -213,7 +219,7 @@ void rollback(unsigned int lid) {
 	} else {
 		reprocess_from = list_next(restore_state->last_event);
 	}
-	reprocessed_events = silent_execution(lid, restore_state->buffer_state, reprocess_from, list_next(last_correct_event));
+	reprocessed_events = silent_execution(lid, LPS[lid]->current_base_pointer, reprocess_from, list_next(last_correct_event));
 	statistics_post_lp_data(lid, STAT_SILENT, (double)reprocessed_events);
 
 	// Control messages must be rolled back as well
@@ -244,15 +250,12 @@ state_t *find_time_barrier(int lid, simtime_t simtime) {
 
 	barrier_state = list_tail(LPS[lid]->queue_states);
 
-	// Sanity check. This might happen if the LP has not executed INIT at the time of the first GVT reduction
-	if(barrier_state == NULL) {
-		return NULL;
-	}
-
 	// Must point to the state with lvt immediately before the GVT
 	while (barrier_state != NULL && barrier_state->lvt >= simtime) {
 		barrier_state = list_prev(barrier_state);
   	}
+  	if(barrier_state == NULL)
+		barrier_state = list_head(LPS[lid]->queue_states);
 
 	if (barrier_state->lvt > simtime) {
 		rootsim_error(true, "Time barrier=%f, found for LP %d. Greater than gvt=%f! Aborting...\n", barrier_state->lvt, lid, simtime);
@@ -283,19 +286,7 @@ state_t *find_time_barrier(int lid, simtime_t simtime) {
 * @todo malloc wrapper
 */
 void ParallelSetState(void *new_state) {
-
-	// TODO: cosa succede se il modello chiama SetState durante la silent execution chiamata da CCGS? Si fa inspection di uno stato diverso...
-	// If we are reprocessing events, then SetState was already called
-	if(LPS[current_lp]->state == LP_STATE_SILENT_EXEC) {
-		return;
-	}
-
-/*	if(list_empty(LPS[current_lp]->queue_states)) {
-		force_LP_checkpoint(current_lp);
-		LogState(current_lp);
-	}
-*/
-	LPS[current_lp]->state_bound->buffer_state = new_state;
+	LPS[current_lp]->current_base_pointer = new_state;
 }
 
 
