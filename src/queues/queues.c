@@ -223,11 +223,7 @@ void process_bottom_halves(void) {
 
 						// If the matched message is in the past, we have to rollback
 						if(matched_msg->timestamp <= lvt(lid_receiver)) {
-
 							LPS[lid_receiver]->bound = list_prev(matched_msg);
-							while (LPS[lid_receiver]->bound != NULL && LPS[lid_receiver]->bound->timestamp >= msg_to_process->timestamp) {
-								LPS[lid_receiver]->bound = list_prev(LPS[lid_receiver]->bound);
-							}
 							LPS[lid_receiver]->state = LP_STATE_ROLLBACK;
 						}
 
@@ -243,19 +239,9 @@ void process_bottom_halves(void) {
 					msg_to_process = list_insert(LPS[lid_receiver]->queue_in, timestamp, msg_to_process);
 
 					// Check if we've just inserted an out-of-order event
-					if(LPS[lid_receiver]->bound != NULL) {
-						if(msg_to_process->timestamp < lvt(lid_receiver)) {
-							LPS[lid_receiver]->bound = list_prev(msg_to_process);
-							simtime_t simultaneous_time = LPS[lid_receiver]->bound->timestamp;
-							while ((LPS[lid_receiver]->bound != NULL) && LPS[lid_receiver]->bound->timestamp == simultaneous_time) {
-								LPS[lid_receiver]->bound = list_prev(LPS[lid_receiver]->bound);
-							}
-							if(LPS[lid_receiver]->bound == NULL) {
-								printf("PANICO simultaneous time %f\n", simultaneous_time);
-								LPS[lid_receiver]->bound = list_head(LPS[lid_receiver]->queue_in);
-							}
-							LPS[lid_receiver]->state = LP_STATE_ROLLBACK;
-						}
+					if(msg_to_process->timestamp < lvt(lid_receiver)) {
+						LPS[lid_receiver]->bound = list_prev(msg_to_process);
+						LPS[lid_receiver]->state = LP_STATE_ROLLBACK;
 					}
 					break;
 
