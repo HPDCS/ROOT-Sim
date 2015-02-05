@@ -91,6 +91,8 @@ unsigned int FindReceiver(int topology) {
 
 			// Convert back to linear coordinates
 			receiver = (ny * edge + nx);
+			if(receiver == current_lp)
+				printf("FindReceiver == me\n");
 
 			#undef NE
 			#undef NW

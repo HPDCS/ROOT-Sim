@@ -50,16 +50,19 @@ typedef struct _state_t {
 	/// Simulation time associated with the state log
 	simtime_t	lvt;
 	/// This is a pointer used to keep track of changes to simulation states via <SetState>()
-	void		*buffer_state;
+	void		*base_pointer;
 	/// A pointer to the actual log
 	void		*log;
 	/// This log has been taken after the execution of this event. This is useful to speedup silent execution.
 	msg_t		*last_event;
+	/// Execution state
+	short unsigned int state;
 } state_t;
 
 
 extern void ParallelSetState(void *new_state);
 extern void LogState(unsigned int);
+extern void RestoreState(unsigned int lid, state_t *restore_state);
 extern void rollback(unsigned int lid);
 extern state_t *find_time_barrier(int lid,  simtime_t time);
 extern void clean_queue_states(unsigned int lid, simtime_t new_gvt);

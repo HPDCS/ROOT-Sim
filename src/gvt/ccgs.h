@@ -38,6 +38,7 @@
 #include <mm/state.h>
 
 extern inline bool ccgs_can_halt_simulation(void);
+extern void ccgs_reduce_termination(void);
 extern void ccgs_compute_snapshot(state_t *time_barrier_pointer[], simtime_t gvt);
 
 #endif /* __CCGS_H */

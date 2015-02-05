@@ -413,9 +413,6 @@ void SystemInit(int argc, char **argv) {
 		// Create user level thread for the current LP and initialize LP control block
 		initialize_LP(t);
 
-		// Take a dummy log to allow SetState() during the execution of INIT
-		LogState(t);
-
 		// We must pass the application-level args to the LP in the INIT event.
 		// Skip all the NULL args (if any)
 		int w = application_args;
@@ -428,6 +425,7 @@ void SystemInit(int argc, char **argv) {
 			receiver: LidToGid(t),
 			type: INIT,
 			timestamp: 0.0,
+			send_time: 0.0,
 			mark: generate_mark(LidToGid(t)),
 			size: argc - w,
 			message_kind: positive,
@@ -438,7 +436,9 @@ void SystemInit(int argc, char **argv) {
 			memcpy(init_event.event_content, &argv[w], (argc - w) * sizeof(char *));
 		}
 
-		Send(&init_event);
+//		Send(&init_event);
+		list_insert_head(LPS[t]->queue_in, &init_event);
+		LPS[t]->state_log_forced = true;
 	}
 
 	printf("done\n");

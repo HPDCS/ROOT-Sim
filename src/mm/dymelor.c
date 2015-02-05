@@ -267,7 +267,7 @@ void dirty_mem(void *base, int size) {
 	// TODO: Quando reintegriamo l'incrementale questo qui deve ricomparire!
 	return;
 
-
+#if 0
 //	unsigned long long current_cost;
 
 	// Sanity check on passed address
@@ -331,7 +331,7 @@ void dirty_mem(void *base, int size) {
                         }
                 }
 	}
-
+#endif
 }
 
 
