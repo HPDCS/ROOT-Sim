@@ -8,13 +8,16 @@ AC_CONFIG_MACRO_DIR([m4])
 AC_USE_SYSTEM_EXTENSIONS
 
 
-# Development CFLAGS
-FINAL_CFLAGS="-g3 -pg -Wall -Wextra -O0 -Wswitch-enum -Wcast-align -Wpointer-arith -Wstrict-overflow=5 -Wstrict-prototypes -Winline -Wundef -Wnested-externs -Wshadow -Wunreachable-code -Wfloat-equal -Wredundant-decls -Wold-style-definition -std=c99 -fno-omit-frame-pointer -ffloat-store -fno-common -fstrict-aliasing -fgnu89-inline -rdynamic -lm -lpthread"
-# Simple Debugging CFLAGS
-#FINAL_CFLAGS="-g -lm -lpthread"
-# Release CFLAGS
-#FINAL_CFLAGS="-O3 -lm -lpthread"
 
+
+# Debugging symbols or not?
+FINAL_CFLAGS="-O3 -lm -lpthread"
+AC_ARG_ENABLE([debug],
+    AS_HELP_STRING([--enable-debug], [Enable debugging of the platform]))
+
+AS_IF([test "x$enable_debug" = "xyes"], [
+	FINAL_CFLAGS="-g3 -pg -Wall -Wextra -O0 -Wswitch-enum -Wcast-align -Wpointer-arith -Wstrict-overflow=5 -Wstrict-prototypes -Winline -Wundef -Wnested-externs -Wshadow -Wunreachable-code -Wfloat-equal -Wredundant-decls -Wold-style-definition -std=c99 -fno-omit-frame-pointer -ffloat-store -fno-common -fstrict-aliasing -fgnu89-inline -rdynamic -lm -lpthread"
+])
 
 #----------------------------------------------------------------------------
 # Check for languages
