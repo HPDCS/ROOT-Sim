@@ -11,6 +11,7 @@ librootsim_a_SOURCES =	main.c \
 			lib/numerical.c \
 			lib/parseparam.c \
 			lib/topology.c \
+			arch/memusage.c \
 			arch/thread.c \
 			arch/ult.c \
 			arch/x86.c \

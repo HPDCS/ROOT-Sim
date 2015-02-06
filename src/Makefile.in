@@ -89,7 +89,8 @@ librootsim_a_AR = $(AR) $(ARFLAGS)
 librootsim_a_LIBADD =
 am_librootsim_a_OBJECTS = main.$(OBJEXT) lib/numerical.$(OBJEXT) \
 	lib/parseparam.$(OBJEXT) lib/topology.$(OBJEXT) \
-	arch/thread.$(OBJEXT) arch/ult.$(OBJEXT) arch/x86.$(OBJEXT) \
+	arch/memusage.$(OBJEXT) arch/thread.$(OBJEXT) \
+	arch/ult.$(OBJEXT) arch/x86.$(OBJEXT) \
 	datatypes/array.$(OBJEXT) datatypes/list.$(OBJEXT) \
 	datatypes/calqueue.$(OBJEXT) mm/state.$(OBJEXT) \
 	queues/queues.$(OBJEXT) core/init.$(OBJEXT) \
@@ -266,6 +267,7 @@ librootsim_a_SOURCES = main.c \
 			lib/numerical.c \
 			lib/parseparam.c \
 			lib/topology.c \
+			arch/memusage.c \
 			arch/thread.c \
 			arch/ult.c \
 			arch/x86.c \
@@ -392,6 +394,8 @@ arch/$(am__dirstamp):
 arch/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) arch/$(DEPDIR)
 	@: > arch/$(DEPDIR)/$(am__dirstamp)
+arch/memusage.$(OBJEXT): arch/$(am__dirstamp) \
+	arch/$(DEPDIR)/$(am__dirstamp)
 arch/thread.$(OBJEXT): arch/$(am__dirstamp) \
 	arch/$(DEPDIR)/$(am__dirstamp)
 arch/ult.$(OBJEXT): arch/$(am__dirstamp) \
@@ -496,6 +500,7 @@ libwrapperl.a: $(libwrapperl_a_OBJECTS) $(libwrapperl_a_DEPENDENCIES)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
+	-rm -f arch/memusage.$(OBJEXT)
 	-rm -f arch/thread.$(OBJEXT)
 	-rm -f arch/ult.$(OBJEXT)
 	-rm -f arch/x86.$(OBJEXT)
@@ -529,6 +534,7 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/main.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@arch/$(DEPDIR)/memusage.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arch/$(DEPDIR)/thread.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arch/$(DEPDIR)/ult.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arch/$(DEPDIR)/x86.Po@am__quote@
