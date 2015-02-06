@@ -31,9 +31,6 @@
 #define HANDOFF_LEAVE	30
 #define HANDOFF_RECV	31
 #define FADING_RECHECK	40
-//#define MARK_CHANNEL	50
-#define DUMMY_READ	60
-#define DUMMY_WRITE	61
 
 #define FADING_RECHECK_FREQUENCY	300	// Every 5 Minutes
 
@@ -57,11 +54,11 @@
 
 // Message exchanged among LPs
 typedef struct _event_content_type {
-	unsigned int cell;
-	unsigned int from;
-	simtime_t sent_at;
-	int channel;
-	simtime_t   call_term_time;
+	int cell; // The destination cell of an event
+	unsigned int from; // The sender of the event (in case of HANDOFF_RECV)
+	simtime_t sent_at; // Simulation time at which the call was handed off
+	int channel; // Channel to be freed in case of END_CALL
+	simtime_t   call_term_time; // Termination time of the call (used mainly in HANDOFF_RECV)
 } event_content_type;
 
 #define CROSS_PATH_GAIN		0.00000000000005
@@ -72,49 +69,47 @@ typedef struct _event_content_type {
 
 // Taglia di 16 byte
 typedef struct _sir_data_per_cell{
-    double fading;
-    double power;
+    double fading; // Fading of the call
+    double power; // Power allocated to the call
 } sir_data_per_cell;
 
 // Taglia di 16 byte
 typedef struct _channel{
-	int channel_id;
-	sir_data_per_cell *sir_data;
+	int channel_id; // Number of the channel
+	sir_data_per_cell *sir_data; // Signal/Interference Ratio data
 	struct _channel *next;
 	struct _channel *prev;
 } channel;
 
 
 typedef struct _lp_state_type{
-	unsigned int channel_counter;
-	unsigned int arriving_calls;
-	unsigned int complete_calls;
-	unsigned int blocked_on_setup;
-	unsigned int blocked_on_handoff;
-	unsigned int leaving_handoffs;
-	unsigned int arriving_handoffs;
-	unsigned int cont_no_sir_aim;
-	unsigned int executed_events;
-	
-	simtime_t lvt;
-	
-	double ta;
-	double ref_ta;
-	double ta_duration;
-	double ta_change;
-	
-	int channels_per_cell;
-	int total_calls;
+	unsigned int channel_counter; // How many channels are currently free
+	unsigned int arriving_calls; // How many calls have been delivered within this cell
+	unsigned int complete_calls; // Number of calls which were completed within this cell
+	unsigned int blocked_on_setup; // Number of calls blocked due to lack of free channels
+	unsigned int blocked_on_handoff; // Number of calls blocked due to lack of free channels in HANDOFF_RECV
+	unsigned int leaving_handoffs; // How many calls were diverted to a different cell
+	unsigned int arriving_handoffs; // How many calls were received from other cells
+	unsigned int cont_no_sir_aim; // Used for fading recheck
+	unsigned int executed_events; // Total number of events
 
-	bool check_fading;	
+	simtime_t lvt; // Last executed event was at this simulation time
+
+	double ta; // Current call interarrival frequency for this cell
+	double ref_ta; // Initial call interarrival frequency (same for all cells)
+	double ta_duration; // Average duration of a call
+	double ta_change; // Average time after which a call is diverted to another cell
+
+	int channels_per_cell; // Total channels in this cell
+	int total_calls; 
+
+	bool check_fading; // Is the model set up to periodically recompute the fading of all ongoing calls?
 	bool fading_recheck;
-	bool variable_ta;
-	
+	bool variable_ta; // Should the call interarrival frequency change depending on the current time?
+
 	unsigned int *channel_state;
 	struct _channel *channels;
 } lp_state_type;
-
-
 
 
 double recompute_ta(double ref_ta, simtime_t now);

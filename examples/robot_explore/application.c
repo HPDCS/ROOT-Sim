@@ -20,13 +20,13 @@ void ProcessEvent(int me, simtime_t now, int event_type, void *event_content, in
 			rootsim_error(true, "You must specify the number of cells (num_cells)\n");
 		}
 		num_cells = GetParameterInt(event_content, "num_cells");
-		
+
 		if(num_cells >= n_prc_tot) {
 			rootsim_error(true, "With %d cells I need at least %d LPs\n", num_cells, num_cells + 1);
 		}
 	}
 
-		
+
 	if(is_agent(me)) {
 		AgentProcessEvent(me, now, event_type, event_content, event_size, pointer);
 	} else {
@@ -36,12 +36,12 @@ void ProcessEvent(int me, simtime_t now, int event_type, void *event_content, in
 
 
 int OnGVT(unsigned int me, void *snapshot) {
-	
+
 	if(is_agent(me)) {
 		return AgentOnGVT(me, snapshot);
 	} else  {
 		return CellOnGVT(me, snapshot);
 	}
-		
+
 	return true;
 }

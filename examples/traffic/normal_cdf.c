@@ -19,7 +19,7 @@ References: - W.J. Cody.
               Marcel Dekker, 1980
 Implemented by: Christian Borgelt
 ----------------------------------------------------------------------*/
-static double unitcdf(double x) {	
+static double unitcdf(double x) {
 	double y, z, u;		/* square, absolute value of x */
 
 	if (x > 8.572)
@@ -96,7 +96,7 @@ double contourcdf(double min, double max, double mean, double var) {
 
 	minCDF = normcdf(min, mean, var);
 	maxCDF = normcdf(max, mean, var);
-	
+
 	return (maxCDF - minCDF);
 }
 

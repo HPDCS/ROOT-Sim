@@ -4,25 +4,25 @@
 *
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
-* 
+*
 * ROOT-Sim is free software; you can redistribute it and/or modify it under the
 * terms of the GNU General Public License as published by the Free Software
 * Foundation; either version 3 of the License, or (at your option) any later
 * version.
-* 
+*
 * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
 * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-* 
+*
 * You should have received a copy of the GNU General Public License along with
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-* 
+*
 * @file list.c
 * @brief This module implemets the general-purpose list implementation used
 *	 in the simulator
 * @author Alessandro Pellegrini
-* @date November 5, 2013 
+* @date November 5, 2013
 */
 
 
@@ -39,9 +39,9 @@
 * This function allocates new memory to copy the payload pointed by data. If
 * data points to a malloc'd data structure, then the caller should free it after
 * calling list_insert(), to prevent memory leaks.
-* 
+*
 * @author Alessandro Pellegrini
-* 
+*
 * @param li a pointer to the list data strucuture. Note that if passed through the
 *           list_insert_head() macro, the type of the pointer is the same as the content,
 *           but the pointed memory contains a buffer whose actual type is rootsim_list.
@@ -85,6 +85,7 @@ char *__list_insert_head(void *li, unsigned int size, void *data) {
     insert_end:
 	l->size++;
 	assert(l->size == (size_before + 1));
+
 	return new_n->data;
 }
 
@@ -99,9 +100,9 @@ char *__list_insert_head(void *li, unsigned int size, void *data) {
 * This function allocates new memory to copy the payload pointed by data. If
 * data points to a malloc'd data structure, then the caller should free it after
 * calling list_insert(), to prevent memory leaks.
-* 
+*
 * @author Alessandro Pellegrini
-* 
+*
 * @param li a pointer to the list data strucuture. Note that if passed through the
 *           list_insert_tail() macro, the type of the pointer is the same as the content,
 *           but the pointed memory contains a buffer whose actual type is rootsim_list.
@@ -148,6 +149,14 @@ char *__list_insert_tail(void *li, unsigned int size, void *data) {
 }
 
 
+void dump_l(struct rootsim_list_node *n, size_t key_position) {
+	while(n != NULL) {
+		printf("%f -> ", get_key(&n->data));
+		n = n->next;
+	}
+	printf("\n");
+}
+
 
 /**
 * This function inserts a new element into the specified ordered doubly-linked list.
@@ -159,9 +168,9 @@ char *__list_insert_tail(void *li, unsigned int size, void *data) {
 * This function allocates new memory to copy the payload pointed by data. If
 * data points to a malloc'd data structure, then the caller should free it after
 * calling list_insert(), to prevent memory leaks.
-* 
+*
 * @author Alessandro Pellegrini
-* 
+*
 * @param li a pointer to the list data strucuture. Note that if passed through the
 *           list_insert() macro, the type of the pointer is the same as the content,
 *           but the pointed memory contains a buffer whose actual type is rootsim_list.
@@ -202,51 +211,36 @@ char *__list_insert(void *li, unsigned int size, size_t key_position, void *data
 		goto insert_end;
 	}
 	
-	// If the distance is higher from the head, we scan from there,
-	// otherwise we scan backwards from the tail
-//	if((key - get_key(l->head->data)) <= (key - get_key(l->tail->data))) {
+//	printf("\nInserisco %f in %p\n", key, li);
+//	printf("prima: ");
+//	dump_l(l->head, key_position);
 
-		// Find where to add the node
-//		n = l->head;
-//		while(n != NULL) {
-//			if(key < get_key(&n->data)) {
-//				break;
-//			}
-//			n = n->next;
-//		}
-
-//	} else {
-		//~ printf("Inserisco dalla coda %f: ", key);
-		n = l->tail;
-		while(n != NULL) {
-			//~ printf("%f, ", get_key(&n->data));
-			if(key >= get_key(&n->data) || n == l->head) {
-				break;
-			}
-			n = n->prev;
-		}
-		//~ printf("\n");
-		n = n->next;
-//	}
-
+	n = l->tail;
+	while(n != NULL && key < get_key(&n->data)) {
+		n = n->prev;
+	}
+		
 	// Insert correctly depending on the position
-	if(n == NULL) { // tail
+ 	if(n == l->tail) { // tail
 		new_n->next = NULL;
 		l->tail->next = new_n;
 		new_n->prev = l->tail;
 		l->tail = new_n;
-	} else if(n == l->head) {
+	} else if(n == NULL) { // head
 		new_n->prev = NULL;
 		new_n->next = l->head;
 		l->head->prev = new_n;
 		l->head = new_n;
 	} else { // middle
-		new_n->prev = n->prev;
-		n->prev->next = new_n;
-		new_n->next = n;
-		n->prev = new_n;
+		new_n->prev = n;
+		new_n->next = n->next;
+		n->next->prev = new_n;
+		n->next = new_n;
 	}
-
+	
+//	printf("dopo: ");
+//	dump_l(l->head, key_position);
+	
     insert_end:
 	l->size++;
 	assert(l->size == (size_before + 1));
@@ -265,9 +259,9 @@ char *__list_insert(void *li, unsigned int size, size_t key_position, void *data
 * It is not safe (and not easily readable) to call this function directly. Rather,
 * there is the list_extract() macro (defined in <datatypes/list.h>) which sets
 * correctly many parameters, and provides a more useful API.
-* 
+*
 * @author Alessandro Pellegrini
-* 
+*
 * @param li a pointer to the list data strucuture. Note that if passed through the
 *           list_extract() macro, the type of the pointer is the same as the content,
 *           but the pointed memory contains a buffer whose actual type is rootsim_list.
@@ -288,7 +282,7 @@ char *__list_extract(void *li, unsigned int size, double key, size_t key_positio
 	assert(l);
 	size_t size_before = l->size;
 
-	char *content;
+	char *content = NULL;
 	struct rootsim_list_node *n = l->head;
 	double curr_key;
 
@@ -299,20 +293,20 @@ char *__list_extract(void *li, unsigned int size, double key, size_t key_positio
 				l->head = n->next;
 				l->head->prev = NULL;
 			}
-		
+
 			if(l->tail == n) {
 				l->tail = n->prev;
 				l->tail->next = NULL;
 			}
-	
+
 			if(n->next != NULL) {
 				n->next->prev = n->prev;
 			}
- 
+
 			if(n->prev != NULL) {
 				n->prev->next = n->next;
 			}
-			
+
 			content = rsalloc(size);
 			memcpy(content, &n->data, size);
 			n->next = (void *)0xDEADBEEF;
@@ -327,7 +321,7 @@ char *__list_extract(void *li, unsigned int size, double key, size_t key_positio
 		n = n->next;
 	}
 
-	return NULL;
+	return content;
 }
 
 
@@ -338,9 +332,9 @@ char *__list_extract(void *li, unsigned int size, double key, size_t key_positio
 * It is not safe (and not easily readable) to call this function directly. Rather,
 * there is the list_delete() macro (defined in <datatypes/list.h>) which sets
 * correctly many parameters, and provides a more useful API.
-* 
+*
 * @author Alessandro Pellegrini
-* 
+*
 * @param li a pointer to the list data strucuture. Note that if passed through the
 *           list_delete() macro, the type of the pointer is the same as the content,
 *           but the pointed memory contains a buffer whose actual type is rootsim_list.
@@ -375,9 +369,9 @@ bool __list_delete(void *li, unsigned int size, double key, size_t key_position)
 * It is not safe (and not easily readable) to call this function directly. Rather,
 * there are the list_extract_by_content() and list_delete_by_content() macros
 * (defined in <datatypes/list.h>) which set correctly many parameters, and provide a more useful API.
-* 
+*
 * @author Alessandro Pellegrini
-* 
+*
 * @param li a pointer to the list data strucuture. Note that if passed through the
 *           list_extract_by_content() macro, the type of the pointer is the same as the content,
 *           but the pointed memory contains a buffer whose actual type is rootsim_list.
@@ -399,39 +393,28 @@ char *__list_extract_by_content(void *li, unsigned int size, void *ptr, bool cop
 
 	struct rootsim_list_node *n = list_container_of(ptr);
 	char *content = NULL;
-	
-//	printf("Elimino %p, ", ptr);
-//	printf("cont (%p, %p, %p), ", n->prev, n, n->next);
-//	printf("h %p, ", l->head);
-//	printf("t %p, ", l->tail);
-		
+
 	if(l->head == n) {
-//		printf("1, ");
 		l->head = n->next;
 		if(l->head != NULL) {
 			l->head->prev = NULL;
 		}
 	}
-		
+
 	if(l->tail == n) {
-//		printf("2, ");
 		l->tail = n->prev;
 		if(l->tail != NULL) {
 			l->tail->next = NULL;
 		}
 	}
-	
+
 	if(n->next != NULL) {
-//		printf("3, ");
 		n->next->prev = n->prev;
 	}
- 
+
 	if(n->prev != NULL) {
-//		printf("4, ");
 		n->prev->next = n->next;
 	}
-	
-//	printf("h %p, t %p\n", l->head, l->tail);
 
 	if(copy) {
 		content = rsalloc(size);
@@ -444,6 +427,7 @@ char *__list_extract_by_content(void *li, unsigned int size, void *ptr, bool cop
 
 	l->size--;
 	assert(l->size == (size_before - 1));
+
 	return content;
 }
 
@@ -459,9 +443,9 @@ char *__list_extract_by_content(void *li, unsigned int size, void *ptr, bool cop
 * It is not safe (and not easily readable) to call this function directly. Rather,
 * there is the list_find() macro (defined in <datatypes/list.h>) which sets correctly
 * many parameters, and provide a more useful API.
-* 
+*
 * @author Alessandro Pellegrini
-* 
+*
 * @param li a pointer to the list data strucuture. Note that if passed through the
 *           list_find() macro, the type of the pointer is the same as the content,
 *           but the pointed memory contains a buffer whose actual type is rootsim_list.
@@ -503,9 +487,9 @@ char *__list_find(void *li, double key, size_t key_position) {
 * It is not safe (and not easily readable) to call this function directly. Rather,
 * there is the list_pop() macro (defined in <datatypes/list.h>) which sets correctly
 * many parameters, and provide a more useful API.
-* 
+*
 * @author Alessandro Pellegrini
-* 
+*
 * @param li a pointer to the list data strucuture. Note that if passed through the
 *           list_pop() macro, the type of the pointer is the same as the content,
 *           but the pointed memory contains a buffer whose actual type is rootsim_list.
@@ -540,7 +524,7 @@ void list_pop(void *li) {
 }
 
 
-
+// element associated with key is not truncated
 unsigned int __list_trunc(void *li, double key, size_t key_position, unsigned short int direction) {
 
 	struct rootsim_list_node *n;
@@ -550,10 +534,11 @@ unsigned int __list_trunc(void *li, double key, size_t key_position, unsigned sh
 
 	assert(l);
 	size_t size_before = l->size;
-	
+
 	// Attempting to truncate an empty list?
 	if(l->size == 0) {
-		return 0;
+		printf("PANICO SIZE == 0\n");
+		goto out;
 	}
 
 	if(direction == LIST_TRUNC_AFTER) {
@@ -572,89 +557,13 @@ unsigned int __list_trunc(void *li, double key, size_t key_position, unsigned sh
                 n = n_adjacent;
 	}
 	l->head = n;
+	if(l->head != NULL)
+		l->head->prev = NULL;
 
 
-
-/*	
-	// Find the element where to start. Since we're truncating
-	// from a certain value, we consider the case where this
-	// value is not a key of some node. In fact, if we trunc after 5,
-	// and the list is 4 --> 6, we have to delete 6, but we're not going
-	// to find 5. So we scan the list for the first element which is
-	// >= the given time, and then adjust depending on the direction.
-	// Remember that the truncating logic is that if a node has the
-	// same value as the key passed, then that node is not deleted!
-	n = l->head;
-	while(n != NULL && get_key(&n->data) < key) {
-		n = n->next;
-	}
-
-	if(n == NULL) {
-		return;
-	}
-
-	if(D_DIFFER(get_key(&n->data), key)) {
-		if(direction == LIST_TRUNC_AFTER) {
-			n = n->prev;
-			if(n == NULL) {
-				return;
-			}
-		}
-	}
-	
-	switch(direction) {
-		case LIST_TRUNC_AFTER:
-			
-			// If we're truncating forward from the tail, there is no work to do
-			if(l->tail ==  n) {
-				break;
-			}
-			
-			l->tail = n;
-			n = n->next;
-			l->tail->next = NULL;
-
-			while(n != NULL) {
-				deleted++;
-				n_adjacent = n->next;
-				n->next = (void *)0xBAADF00D;
-				n->prev = (void *)0xBAADF00D;
-				rsfree(n);
-				n = n_adjacent;
-			}
-
-			break;
-
-
-		case LIST_TRUNC_BEFORE:
-		
-			// If we're truncating backwards from the head, there is no work to do
-			if(l->head ==  n) {
-				break;
-			}
-			
-			l->head = n;
-			n = n->prev;
-			l->head->prev = NULL;
-
-			while(n != NULL) {
-				deleted++;
-				n_adjacent = n->prev;
-				n->next = (void *)0xFEEDFACE;
-				n->prev = (void *)0xFEEDFACE;
-				rsfree(n);
-				n = n_adjacent;
-			}
-
-			break;
-
-		default:
-			rootsim_error(true, "Unsupported list truncating direction\n");
-	}
-*/
-	
 	l->size -= deleted;
 	assert(l->size == (size_before - deleted));
+    out:
 	return deleted;
 }
 

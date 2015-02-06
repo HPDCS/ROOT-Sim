@@ -9,7 +9,7 @@
 *
 * For any information, you can find contact information on my personal webpage:
 * http://www.dis.uniroma1.it/~pellegrini
-*  
+*
 * @file application.c
 * @brief This module contains events' handler and check termination callbacks
 * @author Alessandro Pellegrini
@@ -68,15 +68,15 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 
 	switch(event_type) {
 
-		// This event initializes the simulation state for each LP and inject first events		
-		case INIT:	
+		// This event initializes the simulation state for each LP and inject first events
+		case INIT:
 			state = (lp_state_type *)malloc(sizeof(lp_state_type));
 			if(state == NULL){
 				fprintf(stderr, "ERROR: Unable to allocate simulation state!\n");
 				fflush(stderr);
 				exit(EXIT_FAILURE);
 			}
-			
+
 			SetState(state);
 
 			char **arguments = (char **)event_content;
@@ -175,10 +175,10 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 			// the next car entering
 			if(event_content->injection && state->lp_type == JUNCTION) {
 				inject_new_cars(state, me);
-			} 
+			}
 			// HACK
 /*			else if(state->lp_type == SEGMENT && event_content->injection) {
-				timestamp = now + (simtime_t)(Expent(10000)); 
+				timestamp = now + (simtime_t)(Expent(10000));
 				new_event_content.from = me;
 				new_event_content.injection = 1;
 				ScheduleNewEvent(me, timestamp, ARRIVAL, &new_event_content, sizeof(event_content_type));
@@ -221,7 +221,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 
 
 /*		case FREE_ROAD:
-			
+
 			// Restore normal traffic conditions
 			state->accident = 0;
 
@@ -232,10 +232,10 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 		case COLLECT_STAT:
 			// il campo from nell'evento dice dove salvare le statistiche
 			break;
-	
 
-      		default: 
-			printf(" state simulation: error - inconsistent event (me = %d - event type = %d)\n",me,event_type); 
+
+      		default:
+			printf(" state simulation: error - inconsistent event (me = %d - event type = %d)\n",me,event_type);
 			break;
 	}
 }
@@ -251,9 +251,9 @@ int OnGVT(unsigned int me, lp_state_type *snapshot) {
 */
 	// TODO: Aggregare le statistiche!!!
 
-	if (snapshot->lvt < EXECUTION_TIME) 
+	if (snapshot->lvt < EXECUTION_TIME)
 		return 0;
-	return 1;	
+	return 1;
 }
 
 

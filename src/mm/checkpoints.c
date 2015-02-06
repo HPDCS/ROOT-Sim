@@ -4,20 +4,20 @@
 *
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
-* 
+*
 * ROOT-Sim is free software; you can redistribute it and/or modify it under the
 * terms of the GNU General Public License as published by the Free Software
 * Foundation; either version 3 of the License, or (at your option) any later
 * version.
-* 
+*
 * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
 * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-* 
+*
 * You should have received a copy of the GNU General Public License along with
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-* 
+*
 * @file checkpoints.c
 * @brief This module implements the routines to save and restore checkpoints,
 *        both full and incremental
@@ -78,7 +78,7 @@ void *log_full(int lid) {
 	int i, j, k, idx, bitmap_blocks;
 	size_t size, chunk_size;
 	malloc_area * m_area;
-	
+
 	// Timers for self-tuning of the simulation platform
 	timer checkpoint_timer;
 	timer_start(checkpoint_timer);
@@ -87,7 +87,7 @@ void *log_full(int lid) {
 
 	// This code is in a malloc-wrapper package, so here we call the real malloc
 	log = rsalloc(size);
-	
+
 	if(log == NULL)
 		rootsim_error(true, "(%d) Unable to acquire memory for logging the current state (memory exhausted?)");
 
@@ -112,7 +112,7 @@ void *log_full(int lid) {
 
 		// Copy the bitmap
 		bitmap_blocks = m_area->num_chunks / NUM_CHUNKS_PER_BLOCK;
-		if (bitmap_blocks < 1) 
+		if (bitmap_blocks < 1)
 			bitmap_blocks = 1;
 
 		// Check if there is at least one chunk used in the area
@@ -122,9 +122,9 @@ void *log_full(int lid) {
 			m_area->state_changed = 0;
 
 			if (m_area->use_bitmap != NULL) {
-				for(j = 0; j < bitmap_blocks; j++) 
+				for(j = 0; j < bitmap_blocks; j++)
 					m_area->dirty_bitmap[j] = 0;
-			}			
+			}
 
 			continue;
 		}
@@ -144,17 +144,17 @@ void *log_full(int lid) {
 		// using a threshold-based heuristic
 		if(CHECK_LOG_MODE_BIT(m_area)){
 
-			// If the malloc_area is almost (over a threshold) full, copy it entirely	
+			// If the malloc_area is almost (over a threshold) full, copy it entirely
 			memcpy(ptr, m_area->area, m_area->num_chunks * chunk_size);
 			ptr = (void*)((char*)ptr + m_area->num_chunks * chunk_size);
-		
+
 		} else {
 			// Copy only the allocated chunks
 			for(j = 0; j < bitmap_blocks; j++){
 
 				// Check the allocation bitmap on a per-block basis, to enhance scan speed
 				if(m_area->use_bitmap[j] == 0) {
-					// Empty (no-chunks-allocated) block: skip to the next					
+					// Empty (no-chunks-allocated) block: skip to the next
 					continue;
 
 				} else {
@@ -427,7 +427,7 @@ void log_restore(int lid, state_t *state_queue_node) {
 
 /**
 * This function is called directly from the simulation platform kernel to delete a certain log
-* during the fossil collection. 
+* during the fossil collection.
 *
 * @author Alessandro Pellegrini
 * @author Roberto Vitali

@@ -4,20 +4,20 @@
 *
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
-* 
+*
 * ROOT-Sim is free software; you can redistribute it and/or modify it under the
 * terms of the GNU General Public License as published by the Free Software
 * Foundation; either version 3 of the License, or (at your option) any later
 * version.
-* 
+*
 * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
 * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-* 
+*
 * You should have received a copy of the GNU General Public License along with
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-* 
+*
 * @file communication.c
 * @brief This module implements all the communication routines, for exchanging
 *        messages among different logical processes and simulator instances.
@@ -38,18 +38,11 @@
 #include <datatypes/list.h>
 
 
-
 /// This is the function pointer to correctly set ScheduleNewEvent API version, depending if we're running serially or parallelly
 void (* ScheduleNewEvent)(unsigned int gid_receiver, simtime_t timestamp, unsigned int event_type, void *event_content, unsigned int event_size);
 
-
-
 /// Buffer used by MPI for outgoing messages
 static char buff[SLOTS * sizeof(msg_t)];
-
-
-
-//static bool pending_msg(void);
 
 
 /**
@@ -87,39 +80,39 @@ void communication_fini(void) {
 * @param event_size Size of event's payload
 */
 void ParallelScheduleNewEvent(unsigned int gid_receiver, simtime_t timestamp, unsigned int event_type, void *event_content, unsigned int event_size) {
-	msg_t event; 
-	
+	msg_t event;
+
 	// In Silent execution, we do not send again already sent messages
 	if(LPS[current_lp]->state == LP_STATE_SILENT_EXEC) {
 		return;
 	}
-	
+
 	// Check whether the destination LP is out of range
 	if(gid_receiver > n_prc_tot - 1) {	// It's unsigned, so no need to check whether it's < 0
 		rootsim_error(false, "Warning: the destination LP %d is out of range. The event has been ignored\n", gid_receiver);
 		return;
 	}
-	
+
 	// Check if the associated timestamp is negative
 	if(timestamp < lvt(current_lp)) {
-		rootsim_error(true, "LP %d is trying to generate events in the past! (Current LVT = %f, generated event's timestamp = %f) Aborting...\n", current_lp, lvt(current_lp), timestamp);
+		rootsim_error(true, "LP %d is trying to generate an event (type %d) to %d in the past! (Current LVT = %f, generated event's timestamp = %f) Aborting...\n", current_lp, event_type, gid_receiver, lvt(current_lp), timestamp);
 	}
-	
-	// Copy all the information into the event structure	
+
+	// Copy all the information into the event structure
 	bzero(&event, sizeof(msg_t));
 	event.sender = LidToGid(current_lp);
 	event.receiver = gid_receiver;
-	event.type = event_type;	
+	event.type = event_type;
 	event.timestamp = timestamp;
 	event.send_time = lvt(current_lp);
-	event.is_antimessage = false;
+	event.message_kind = positive;
 	event.mark = generate_mark(current_lp);
 	event.size = event_size;
 
 	if(event.type == RENDEZVOUS_START) {
 		event.rendezvous_mark = current_evt->rendezvous_mark;
 	}
-	
+
 	if(event_size > MAX_EVENT_SIZE) {
 		rootsim_error(true, "Event size exceeds MAX_EVENT_SIZE: %d\n", event_size);
 	}
@@ -141,34 +134,42 @@ void ParallelScheduleNewEvent(unsigned int gid_receiver, simtime_t timestamp, un
 *
 * @param lid The Logical Process Id
 */
-void send_antimessages(unsigned int lid, simtime_t simtime) {
+void send_antimessages(unsigned int lid, simtime_t after_simtime) {
 	msg_hdr_t *anti_msg,
-		  *anti_msg_prev;
-	
+		  *anti_msg_next;
+
 	msg_t msg;
-	
+
 	if (list_empty(LPS[lid]->queue_out))
 		return;
 
-	
-	// Get the first message header with a timestamp >= simtime
+	// Get the first message header with a timestamp <= after_simtime
 	anti_msg = list_tail(LPS[lid]->queue_out);
-	while(anti_msg != NULL && anti_msg->send_time > simtime) {
-			
+	while(anti_msg != NULL && anti_msg->send_time > after_simtime)
+		anti_msg = list_prev(anti_msg);
+
+	// The next event is the first event with a sendtime > after_simtime, if any
+	if(anti_msg == NULL)
+		return;
+
+	anti_msg = list_next(anti_msg);
+
+	// Now send all antimessages
+	while(anti_msg != NULL) {
 		bzero(&msg, sizeof(msg_t));
 		msg.sender = anti_msg->sender;
 		msg.receiver = anti_msg->receiver;
 		msg.timestamp = anti_msg->timestamp;
 		msg.send_time = anti_msg->send_time;
 		msg.mark = anti_msg->mark;
-		msg.is_antimessage = true;
-			
+		msg.message_kind = negative;
+
 		Send(&msg);
-		
+
 		// Remove the already sent antimessage from output queue
-		anti_msg_prev = list_prev(anti_msg);
+		anti_msg_next = list_next(anti_msg);
 		list_delete_by_content(LPS[lid]->queue_out, anti_msg);
-		anti_msg = anti_msg_prev;
+		anti_msg = anti_msg_next;
 	}
 }
 
@@ -177,14 +178,14 @@ void send_antimessages(unsigned int lid, simtime_t simtime) {
 
 
 /**
-* 
+*
 *
 * @author Roberto Vitali
 */
 int comm_finalize(void) {
-	
+
 	register unsigned int i;
-	
+
 	// Release as well memory used for remaining input/output queues
 	for(i = 0; i < n_prc; i++) {
 		while(!list_empty(LPS[i]->queue_in)) {
@@ -194,7 +195,7 @@ int comm_finalize(void) {
 			list_pop(LPS[i]->queue_out);
 		}
 	}
-	
+
 //	return MPI_Finalize();
 	return 0;
 
@@ -209,21 +210,10 @@ int comm_finalize(void) {
 * @author Francesco Quaglia
 */
 void Send(msg_t *msg) {
-
-#ifdef FINE_GRAIN_DEBUG	
-	printf("[SEND%s] LP %d (at time %f) send %smessagge to %d (at time %f)\n", (msg->is_antimessage ? " ANTIMESSAGE" : ""), msg->sender, lvt(msg->sender), (msg->is_antimessage ? "an anti" : "a "), msg->receiver, msg->timestamp);
-#endif
-
 	// Check whether the message recepient is local or remote
 	if(GidToKernel(msg->receiver) == kid) { // is local
 		insert_bottom_half(msg);
 	} else { // is remote
-
-		// Register the message as sent (for GVT calculation)	
-//		register_msg(msg);
-//		gvt_messages_sent[GidToKernel(msg->receiver)]++;
-
-//		(void)comm_basic_send((char *)&msg, sizeof(msg_t), MPI_CHAR, (int)GidToKernel(msg->receiver), MSG_EVENT, MPI_COMM_WORLD);
 		rootsim_error(true, "Calling an operation not yet reimplemented, this should never happen!\n", __FILE__, __LINE__);
 	}
 }
@@ -258,12 +248,12 @@ void Send(msg_t *msg) {
 
 #if 0
 /**
-* 
+*
 *
 * @author Francesco Quaglia
 */
 static bool pending_msg(void) {
-   
+
     int flag = 0;
 
     (void)comm_probe(MPI_ANY_SOURCE, MSG_EVENT, MPI_COMM_WORLD, &flag, MPI_STATUS_IGNORE);
@@ -273,7 +263,7 @@ static bool pending_msg(void) {
 
 
 /**
-* 
+*
 *
 * @author Francesco Quaglia
 */
@@ -294,7 +284,7 @@ int messages_checking(void) {
 	// If we have pending messages, we process all of them in order to update the queues
  	while(pending_msg()){
 
-		at_least_one_message = 1; 
+		at_least_one_message = 1;
 
 		// Receive the message
 	    	(void)comm_recv((char*)&msg, sizeof(msg_t), MPI_CHAR, MPI_ANY_SOURCE, MSG_EVENT, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
@@ -302,15 +292,15 @@ int messages_checking(void) {
 		// For GVT Operations
 		gvt_messages_rcvd[GidToKernel(msg.sender)] += 1;
 
-			    
-		// Update the queues						
+
+		// Update the queues
 //		DataUpdating(&msg);
-	    
+
 	}
-	
+
 	// Did we receive at least one message?
 	return at_least_one_message;
-	
+
 }
 #endif
 
@@ -319,7 +309,7 @@ int messages_checking(void) {
 
 
 /**
-* 
+*
 *
 * @author Francesco Quaglia
 */
@@ -329,10 +319,10 @@ void insert_outgoing_msg(msg_t *msg) {
 	if(LPS[current_lp]->outgoing_buffer.size == MAX_OUTGOING_MSG){
 		rootsim_error(true, "Outgoing message queue full! Too many events scheduled by one single event. Aborting...");
 	}
-	
+
 	// Message structure was declared on stack in ScheduleNewEvent: make a copy!
 	LPS[current_lp]->outgoing_buffer.outgoing_msgs[LPS[current_lp]->outgoing_buffer.size++] = *msg;
-	
+
 	// Store the minimum timestamp of outgoing messages
 	if(msg->timestamp < LPS[current_lp]->outgoing_buffer.min_in_transit[LPS[current_lp]->worker_thread]) {
 		LPS[current_lp]->outgoing_buffer.min_in_transit[LPS[current_lp]->worker_thread] = msg->timestamp;
@@ -346,11 +336,11 @@ void send_outgoing_msgs(unsigned int lid) {
 	register unsigned int i = 0;
 	msg_t *msg;
 	msg_hdr_t msg_hdr;
-	
+
 	for(i = 0; i < LPS[lid]->outgoing_buffer.size; i++) {
 		msg = &LPS[lid]->outgoing_buffer.outgoing_msgs[i];
 		Send(msg);
-		
+
 		// Register the message in the sender's output queue, for antimessage management
 		msg_hdr.sender = msg->sender;
 		msg_hdr.receiver = msg->receiver;
@@ -359,6 +349,6 @@ void send_outgoing_msgs(unsigned int lid) {
 		msg_hdr.mark = msg->mark;
 		(void)list_insert(LPS[msg->sender]->queue_out, send_time, &msg_hdr);
 	}
-	
+
 	LPS[lid]->outgoing_buffer.size = 0;
 }

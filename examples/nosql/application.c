@@ -10,7 +10,7 @@
 
 
 void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_type *event_content, unsigned int size, void *ptr) {
-	
+
 	int i;
 	int j;
 
@@ -18,21 +18,21 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 	simtime_t timestamp;
 
 	bzero(&new_event_content, sizeof(new_event_content));
-	
+
 	lp_state_type *state;
 	state = (lp_state_type*)ptr;
-	
+
 	if(state != NULL) {
 		state->lvt = now;
 	}
 
 
 	for(i = 0; i < LOOP; i++);
-	
+
 	switch(event_type) {
-			
+
 		case INIT:
-		
+
 			// Initialize the LP's state
 			state = (lp_state_type *)malloc(sizeof(lp_state_type));
 			if (state == NULL){
@@ -41,7 +41,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 			}
 
 			SetState(state);
-			
+
 			bzero(state, sizeof(lp_state_type));
 
 
@@ -50,22 +50,22 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 
 			break;
 
-	
+
 		case START_TX:
 
 			state->residual_tx_ops = RandomRange(MIN_OP_COUNT, MAX_OP_COUNT);
 			state->read_set_size = RandomRange(10, MAX_RS_SIZE);
 //			state->read_set = malloc(sizeof(int) * state->read_set_size);
-			
+
 			timestamp = now + (simtime_t)Expent(TX_OP_ARRIVAL);
 
 			ScheduleNewEvent(me, timestamp, TX_OP, NULL, 0);
-	
+
 
 
 			break;
 
-			
+
 		case TX_OP:
 
 
@@ -92,7 +92,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 				#ifndef ECS
 				memcpy(new_event_content.read_set, state->read_set, sizeof(int) * state->read_set_size);
 				#endif
-				
+
 				new_event_content.second = false;
 //				ScheduleNewEvent(recv, timestamp, PREPARE, &new_event_content, sizeof(new_event_content));
 				new_event_content.second = true;
@@ -101,7 +101,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 				timestamp= now + (simtime_t)Expent(TX_OP);
 				ScheduleNewEvent(me, timestamp, START_TX, NULL, 0);
 			state->committed_tx++;
-				
+
 			}
 
 			break;
@@ -143,10 +143,10 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 
 			break;
 
-		default: 
+		default:
 			fprintf(stdout, "PCS: Unknown event type! (me = %d - event type = %d)\n", me, event_type);
 			abort();
-			
+
 	}
 }
 

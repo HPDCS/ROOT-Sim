@@ -15,7 +15,7 @@
  *
  * To allow printing of function names, your code must be compiled using the -rdynamic
  * option. If this option is not specified, only hex addresses will be printed.
- * 
+ *
  * This header needs addr2line (binutils) to retrieve the file:line string given an address.
  */
 
@@ -116,35 +116,35 @@ static inline char *get_file_line(char *addr) {
 	FILE *fp;
 	char *in_buffer = rsalloc(MAX_CHARS);
 	char cmd[MAX_CHARS];
-	
+
 	sprintf(cmd, "addr2line --exe %s %s", program_name, addr);
-	
+
 	fp = popen(cmd, "r");
 	fgets(in_buffer, MAX_CHARS, fp);
 
 	pclose(fp);
-	
+
 	return in_buffer;
 	#undef MAX_CHARS
 }
 
 
 static inline char *extract_word_from_string(char *input_str, char start_word_delim, char end_word_delim) {
-	
+
 	char *c;
 	char *start;
-	
+
 	c = input_str;
 	while(*c != start_word_delim) {
 		c++;
 	}
 	start = c + 1;
-	
+
 	while(*c != end_word_delim) {
 		c++;
 	}
 	*c = '\0';
-	
+
 	return start;
 }
 
@@ -153,7 +153,7 @@ static inline char *extract_word_from_string(char *input_str, char start_word_de
 /*
 From man getcontext:
 
-The mcontext_t type is machine-dependent and opaque. 
+The mcontext_t type is machine-dependent and opaque.
 The ucontext_t type is a structure that has at least the following fields:
 
 typedef struct ucontext {

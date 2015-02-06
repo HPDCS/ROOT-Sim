@@ -31,3 +31,6 @@ Makefile
 
 rootsim-cc
 outputs/
+
+doxy.conf
+doxyfile.stamp

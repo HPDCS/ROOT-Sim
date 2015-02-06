@@ -8,13 +8,16 @@ AC_CONFIG_MACRO_DIR([m4])
 AC_USE_SYSTEM_EXTENSIONS
 
 
-# Development CFLAGS
-FINAL_CFLAGS="-g -pg -Wall -Wextra -O0 -Wswitch-enum -Wcast-align -Wpointer-arith -Wstrict-overflow=5 -Wstrict-prototypes -Winline -Wundef -Wnested-externs -Wshadow -Wunreachable-code -Wfloat-equal -Wredundant-decls -Wold-style-definition -std=c99 -fno-omit-frame-pointer -ffloat-store -fno-common -fstrict-aliasing -fgnu89-inline -rdynamic -lm -lpthread"
-# Simple Debugging CFLAGS
-#FINAL_CFLAGS="-g -lm -lpthread"
-# Release CFLAGS
-#FINAL_CFLAGS="-O3 -lm -lpthread"
 
+
+# Debugging symbols or not?
+FINAL_CFLAGS="-O3 -lm -lpthread"
+AC_ARG_ENABLE([debug],
+    AS_HELP_STRING([--enable-debug], [Enable debugging of the platform]))
+
+AS_IF([test "x$enable_debug" = "xyes"], [
+	FINAL_CFLAGS="-g3 -pg -Wall -Wextra -O0 -Wswitch-enum -Wcast-align -Wpointer-arith -Wstrict-overflow=5 -Wstrict-prototypes -Winline -Wundef -Wnested-externs -Wshadow -Wunreachable-code -Wfloat-equal -Wredundant-decls -Wold-style-definition -std=c99 -fno-omit-frame-pointer -ffloat-store -fno-common -fstrict-aliasing -fgnu89-inline -rdynamic -lm -lpthread"
+])
 
 #----------------------------------------------------------------------------
 # Check for languages
@@ -213,6 +216,21 @@ AC_ARG_ENABLE([ult],
 AS_IF([test "x$enable_ult" != "xno"], [
   AC_DEFINE([ENABLE_ULT])
 ])
+
+
+
+
+#----------------------------------------------------------------------------
+# Doxygen Documentation
+#
+# If doxygen is installed on the box, generate a commodity Makefile in the
+# doc subfolder to generate the documentation. This must be called explicitly,
+# as it is separated from the main Makefile.
+#----------------------------------------------------------------------------
+AC_CHECK_PROGS([DOXYGEN], [doxygen])
+AM_CONDITIONAL([HAVE_DOXYGEN], [test -n "$DOXYGEN"])
+AM_COND_IF([HAVE_DOXYGEN], [AC_CONFIG_FILES([doc/doxy.conf])])
+AM_COND_IF([HAVE_DOXYGEN], [AC_CONFIG_FILES([doc/Makefile])])
 
 
 

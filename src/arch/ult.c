@@ -4,20 +4,20 @@
 *
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
-* 
+*
 * ROOT-Sim is free software; you can redistribute it and/or modify it under the
 * terms of the GNU General Public License as published by the Free Software
 * Foundation; either version 3 of the License, or (at your option) any later
 * version.
-* 
+*
 * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
 * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-* 
+*
 * You should have received a copy of the GNU General Public License along with
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-* 
+*
 * @file ult.c
 * @brief The User-Level Thread module allows the creation/scheduling of a user-level thread
 * 	in an architecture-dependent way.
@@ -65,9 +65,9 @@ static sigset_t			context_creat_sigs;
 * When this function is called, a zeroed page-aligned stack for the ULT is created and returned.
 * The size of the stack can be specified by using the parameter. It's suggested to give a stack
 * size which is a multiple of the page size. Nevertheless, no check is done by this function.
-* 
+*
 * @author Alessandro Pellegrini
-* 
+*
 * @param size The size of the requested stack
 * @return A pointer to the allocated and zeroed page-aligned stack
 */
@@ -86,7 +86,7 @@ void *get_ult_stack(unsigned int lid, size_t size) {
 	if (reminder != 0) {
 		size += getpagesize() - reminder;
 	}
-	
+
 /*	err = posix_memalign(&stack, getpagesize(), size);
 	if(err == EINVAL) {
 		rootsim_error(true, "Error allocating LP stack: invalid alignment.\n");
@@ -100,9 +100,9 @@ void *get_ult_stack(unsigned int lid, size_t size) {
 	if(stack == NULL) {
 		rootsim_error(true, "Error allocating LP stack: not enough memory.\n");
 	}
-	
+
 	bzero(stack, size);
-	
+
 	return stack;
 }
 
@@ -118,7 +118,7 @@ void *get_ult_stack(unsigned int lid, size_t size) {
 * "Portable Multithreading: the Signal Stack Trick for User-Space Thread Creation"
 * Proceedings of the 2000 USENIX Annual Technical Conference
 * June 2000
-* 
+*
 * @author Ralf Engelschall
 */
 static void context_create_boot(void) {
@@ -155,11 +155,11 @@ static void context_create_boot(void) {
 * "Portable Multithreading: the Signal Stack Trick for User-Space Thread Creation"
 * Proceedings of the 2000 USENIX Annual Technical Conference
 * June 2000
-* 
+*
 * @author Ralf Engelschall
 */
 static void context_create_trampoline(int sig) {
-	
+
 	(void)sig;
 
 	if(context_save(context_creat) == 0) {
@@ -191,7 +191,7 @@ static void context_create_trampoline(int sig) {
 * "Portable Multithreading: the Signal Stack Trick for User-Space Thread Creation"
 * Proceedings of the 2000 USENIX Annual Technical Conference
 * June 2000
-* 
+*
 * @author Ralf Engelschall
 *
 * @param context the variable where to store the execution context for the created user-level thread
@@ -263,17 +263,17 @@ void context_create(LP_context_t *context, void (*entry_point)(void *), void *ar
 
 
 void context_create(LP_context_t *context, void (*entry_point)(void *), void *args, void *stack, size_t stack_size) {
-	
+
 	(void)stack;
-	
+
 	static bool once = false;
-	
+
 	if(once == false) {
 		once = true;
 		// Convert the current thread to a fiber. This allows to schedule other fibers.
 		kernel_context.jb = ConvertThreadToFiber(NULL);
 	}
-	
+
 	// Create a new fiber for the LP
 	context->jb = CreateFiber(stack_size, (LPFIBER_START_ROUTINE)entry_point, args);
 }

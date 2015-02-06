@@ -4,20 +4,20 @@
 *
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
-* 
+*
 * ROOT-Sim is free software; you can redistribute it and/or modify it under the
 * terms of the GNU General Public License as published by the Free Software
 * Foundation; either version 3 of the License, or (at your option) any later
 * version.
-* 
+*
 * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
 * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-* 
+*
 * You should have received a copy of the GNU General Public License along with
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-* 
+*
 * @file fossil.c
 * @brief In this module all the housekeeping operations related to GVT computation phase
 * 	 are present.
@@ -47,39 +47,33 @@ static unsigned long long snapshot_cycles;
 * @author Francesco Quaglia
 *
 * @param lid The logical process' local identifier
-* @param new_gvt The current barrier
-* @param state State queue
+* @param time_barrier The current barrier
 */
 void fossil_collection(unsigned int lid, simtime_t time_barrier) {
 	state_t *state;
+	msg_t *last_kept_event;
 	double committed_events;
-
-
-	// TODO: controllare il boundary esatto con gli antimessaggi immessi nel sistema!
-	time_barrier = time_barrier;
 	
-	#ifdef FINE_GRAIN_DEBUG
-	printf("[FOSSIL COLLECTION] LP 0 executes fossil collection at barrier %f\n", time_barrier);
-	#endif
+	time_barrier = 0.7 * time_barrier;
 
-	// Truncate the input queue
-	committed_events = (double)list_trunc_before(LPS[lid]->queue_in, timestamp, time_barrier);
-	statistics_post_lp_data(lid, STAT_COMMITTED, committed_events);
-	
-	#ifdef TRACE_INPUT_QUEUE
-	trace_input_queue(lid);
-	#endif
-
-	// Truncate the output queue
-	list_trunc_before(LPS[lid]->queue_out, send_time, time_barrier);
-	
 	// State list must be handled differently, as nodes point to malloc'd
-	// nodes. We therefore manually scan the list and free the memory.	
+	// nodes. We therefore manually scan the list and free the memory.
 	while( (state = list_head(LPS[lid]->queue_states)) != NULL && state->lvt < time_barrier) {
 		log_delete(list_head(LPS[lid]->queue_states)->log);
 		state->last_event = (void *)0xDEADBABE;
 		list_pop(LPS[lid]->queue_states);
 	}
+
+	// Determine queue pruning horizon
+	last_kept_event = list_head(LPS[lid]->queue_states)->last_event;
+
+	// Truncate the input queue, accounting for the event which is pointed by the lastly kept state
+	committed_events = (double)list_trunc_before(LPS[lid]->queue_in, timestamp, last_kept_event->timestamp);
+	statistics_post_lp_data(lid, STAT_COMMITTED, committed_events);
+
+	// Truncate the output queue
+	list_trunc_before(LPS[lid]->queue_out, send_time, last_kept_event->timestamp);
+
 }
 
 
@@ -98,23 +92,15 @@ simtime_t adopt_new_gvt(simtime_t new_gvt) {
 	simtime_t local_time_barrier = INFTY;
 	simtime_t lp_time_barrier;
 	bool compute_snapshot;
-	
+
 	// Snapshot should be recomputed only periodically
 	snapshot_cycles++;
 	compute_snapshot = ((snapshot_cycles % rootsim_config.gvt_snapshot_cycles) == 0);
 
-	// Precompute the time barrier for each process 
+	// Precompute the time barrier for each process
 	for (i = 0; i < n_prc_per_thread; i++) {
 
 		time_barrier_pointer[i] = find_time_barrier(LPS_bound[i]->lid, new_gvt);
-		
-		// This can happen if the GVT computation happens before the execution of INIT.
-		// In real simulations this happens very rarely (if the number of LPs is very high
-		// and INIT is a long event), during debugging almost every time
-		// due to SIGUSR1 signals for ULT creation
-		if (time_barrier_pointer[i] == NULL) {
-			continue;
-		}
 
 		lp_time_barrier = time_barrier_pointer[i]->lvt;
 		if (lp_time_barrier > -1) {
@@ -122,7 +108,6 @@ simtime_t adopt_new_gvt(simtime_t new_gvt) {
 		}
 	}
 
-	
 	// If needed, call the CCGS subsystem
 	if(compute_snapshot) {
 		ccgs_compute_snapshot(time_barrier_pointer, new_gvt);
@@ -130,12 +115,7 @@ simtime_t adopt_new_gvt(simtime_t new_gvt) {
 
 
 	for(i = 0; i < n_prc_per_thread; i++) {
-		
-		// Again, the same sanity check as before
-		if(time_barrier_pointer[i] == NULL) {
-			continue;
-		}
-		
+
 		// Execute the fossil collection
 		fossil_collection(LPS_bound[i]->lid, time_barrier_pointer[i]->lvt);
 
@@ -143,11 +123,6 @@ simtime_t adopt_new_gvt(simtime_t new_gvt) {
 		clean_buffers_on_gvt(LPS_bound[i]->lid, time_barrier_pointer[i]->lvt);
 	}
 
-	// This is used only for printing purposes.
-	if(master_thread()) {
-		return local_time_barrier;
-	}
-	
-	return -1.0;
+	return local_time_barrier;
 }
 

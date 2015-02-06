@@ -4,20 +4,20 @@
 *
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
-* 
+*
 * ROOT-Sim is free software; you can redistribute it and/or modify it under the
 * terms of the GNU General Public License as published by the Free Software
 * Foundation; either version 3 of the License, or (at your option) any later
 * version.
-* 
+*
 * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
 * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-* 
+*
 * You should have received a copy of the GNU General Public License along with
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-* 
+*
 * @file window.c
 * @brief This module implements the acking windows used to notify other instances
 *        of the simulator that a set of messages has been received and correctly
@@ -109,9 +109,9 @@ void register_msg(msg_t *msg) {
 
 	// Operate on the local buffer targeted at a particular destination kernel
 	k = GidToKernel(msg->receiver);
-	
+
 	register unsigned int next = buffer[k].next_wnd;
-	
+
 	if (buffer[k].wnd_buffer[next].msg_number == 0) { // Message box is empty
 		buffer[k].wnd_buffer[next].msg_number++;
 		buffer[k].wnd_buffer[next].min_timestamp = msg->timestamp;
@@ -131,7 +131,7 @@ void register_msg(msg_t *msg) {
 		if (buffer[k].next_wnd == buffer[k].first_wnd) {
 			rootsim_error(true, "Error, ack window overflow\n");
 		}
-	}		
+	}
 
 }
 
@@ -140,7 +140,7 @@ void register_msg(msg_t *msg) {
 
 #if 0
 /**
-* This function update the ack window upon new acks reception 
+* This function update the ack window upon new acks reception
 *
 * @author Francesco Quaglia
 * @author Roberto Vitali
@@ -163,9 +163,9 @@ void receive_ack(void) {
 
 			comm_abort(MPI_COMM_WORLD, 0);
 			rootsim_error(true, "Negative messages sent. gvt_messages_sent[%d] = %d\n\n", from_kernel, gvt_messages_sent[from_kernel]);
-			
+
 		}
-		acked_messages[from_kernel] += ack_number;		
+		acked_messages[from_kernel] += ack_number;
 
 		int next = buffer[from_kernel].next_wnd;
 		int first = buffer[from_kernel].first_wnd;
@@ -182,12 +182,12 @@ void receive_ack(void) {
 			buffer[from_kernel].wnd_buffer[i % WND_BUFFER_LENGTH].msg_number = 0;
 			buffer[from_kernel].wnd_buffer[i % WND_BUFFER_LENGTH].min_timestamp = -1;
 		}
-		
+
 		buffer[from_kernel].first_wnd = i % WND_BUFFER_LENGTH;
-		
+
 		if(acked_messages[from_kernel] > 0)
 			acked_messages[from_kernel] = acked_messages[from_kernel] % WINDOW_DIMENSION;
-	}	
+	}
 }
 
 
@@ -199,12 +199,12 @@ void receive_ack(void) {
 * @author Francesco Quaglia
 */
 void send_forced_ack(void) {
-	register unsigned int i;		
-	
-	int delta_ack_timer = timer_value(ack_timer);	
+	register unsigned int i;
 
-	if (abs(delta_ack_timer) > (time_t) (GVT_ACK_TIME_PERIOD - 1)) { 
-		timer_restart(ack_timer);		
+	int delta_ack_timer = timer_value(ack_timer);
+
+	if (abs(delta_ack_timer) > (time_t) (GVT_ACK_TIME_PERIOD - 1)) {
+		timer_restart(ack_timer);
 		for (i = 0; i < n_ker; i++) {
 			if (i != kid && gvt_messages_rcvd[i]!=0) {
 				// Send the total number of messages which were received from kernel i.
@@ -272,7 +272,7 @@ simtime_t local_min_timestamp(void) {
 		}
 		//~ printf("%d: lvt = %f, min = %f\n", i, tmp, min);
 	}
-	
+
 	return min2;
 }
 

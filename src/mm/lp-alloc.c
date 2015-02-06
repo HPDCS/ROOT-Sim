@@ -4,20 +4,20 @@
 *
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
-* 
+*
 * ROOT-Sim is free software; you can redistribute it and/or modify it under the
 * terms of the GNU General Public License as published by the Free Software
 * Foundation; either version 3 of the License, or (at your option) any later
 * version.
-* 
+*
 * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
 * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-* 
+*
 * You should have received a copy of the GNU General Public License along with
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-* 
+*
 * @file lp-alloc.c
 * @brief LP's memory pre-allocator. This layer stands below DyMeLoR, and is the
 * 		connection point to the Linux Kernel Module for Memory Management, when
@@ -68,12 +68,10 @@ static void ECS_stub(int ds, unsigned int hitted_object){
 	msg_t control_msg;
 	msg_hdr_t msg_hdr;
 
-	printf("ECS synch started on pgd %d - start wait for hitted object num %d by %d\n", ds, hitted_object, current_lp); 
+	printf("ECS synch started on pgd %d - start wait for hitted object num %d by %d\n", ds, hitted_object, current_lp);
 	fflush(stdout);
-//	ECS_indexes[ds] += 1;
-//    ECS_synch_table[ds][ECS_indexes[ds]] = hitted_object;
 
-// do whatever you want, but you need to reopen access to the objects you cross-depend on before returning
+	// do whatever you want, but you need to reopen access to the objects you cross-depend on before returning
 
 	// Generate a Rendez-Vous Mark
 	if(LPS[current_lp]->wait_on_rendezvous == 0) {
@@ -88,7 +86,7 @@ static void ECS_stub(int ds, unsigned int hitted_object){
         control_msg.type = RENDEZVOUS_START;
 	control_msg.timestamp = current_lvt;
 	control_msg.send_time = current_lvt;
-	control_msg.is_antimessage = false;
+	control_msg.message_kind = positive;
 	control_msg.rendezvous_mark = current_evt->rendezvous_mark;
 	control_msg.mark = generate_mark(current_lp);
 
@@ -104,29 +102,29 @@ static void ECS_stub(int ds, unsigned int hitted_object){
 	(void)list_insert(LPS[current_lp]->queue_out, send_time, &msg_hdr);
 
 
-	// Block the execution of this LP 
+	// Block the execution of this LP
 	LPS[current_lp]->state = LP_STATE_WAIT_FOR_SYNCH;
 	LPS[current_lp]->wait_on_object = LidToGid(hitted_object);
 
 	// Store which LP we are waiting for synchronization. Upon reschedule, it is open immediately
 	LPS[current_lp]->ECS_index++;
 	LPS[current_lp]->ECS_synch_table[LPS[current_lp]->ECS_index] = hitted_object;
-	
+
 	Send(&control_msg);
-	
+
 	// TODO: QUESTA RIGA E' COMMENTATA SOLTANTO PER UNO DEI TEST!!
 	// Give back control to the simulation kernel's user-level thread
 	context_switch(&LPS[current_lp]->context, &kernel_context);
 //	lp_alloc_schedule();
-	
+
 
 //	sched_info.ds = ds;
 //	sched_info.count = ECS_indexes[ds] + 1; // +1 since index ranges from 0
 //	sched_info.objects = ECS_synch_table[ds];
 	/* passing into LP mode - here for the ECS table registered objects */
 //	ioctl(ioctl_fd,IOCTL_SCHEDULE_ON_PGD, &sched_info);
-	
-} 
+
+}
 
 
 static void rootsim_cross_state_dependency_handler(void) { // for now a simple printf of the cross-state dependency involved LP
@@ -156,7 +154,7 @@ static void rootsim_cross_state_dependency_handler(void) { // for now a simple p
 	__asm__ __volatile__("movq 0x18(%%rbp), %%rax; movq %%rax, %0" : "=m"(__addr) : );
 	__asm__ __volatile__("movq 0x10(%%rbp), %%rax; movq %%rax, %0" : "=m"(__id) : );
 	__asm__ __volatile__("movq 0x8(%%rbp), %%rax; movq %%rax, %0" : "=m"(__pgd_ds) : );
-	
+
 	printf("rootsim callback received by the kernel need to sync, pointer passed is %p - hitted object is %u - pdg is %u\n", __addr, __id, __pgd_ds);
 	ECS_stub((int)__pgd_ds,(unsigned int)__id);
 	__asm__ __volatile__("pop %r15");
@@ -184,7 +182,7 @@ static void rootsim_cross_state_dependency_handler(void) { // for now a simple p
 
 
 void *lp_malloc_unscheduled(unsigned int lid, size_t s) {
-	
+
 	void *ret = NULL;
 
 	if((char *)lp_memory_regions[lid].brk + s < (char *)lp_memory_regions[lid].start + PER_LP_PREALLOCATED_MEMORY) {
@@ -219,9 +217,9 @@ void *lp_realloc(void *ptr, size_t new_s) {
 
 
 void lp_alloc_init(void) {
-	
+
 	unsigned int i;
-	
+
 	#ifdef HAVE_LINUX_KERNEL_MAP_MODULE
 	int ret;
 
@@ -229,12 +227,12 @@ void lp_alloc_init(void) {
 	if (ioctl_fd == -1) {
 		rootsim_error(true, "Error in opening special device file. ROOT-Sim is compiled for using the ktblmgr linux kernel module, which seems to be not loaded.");
 	}
-	
+
 	/* reset of the whole special device file */
 	ret = ioctl(ioctl_fd, IOCTL_SET_ANCESTOR_PGD);  //ioctl call
 	printf("set ancestor returned %d\n",ret);
 	#endif
-	
+
 
 	lp_memory_regions = rsalloc(n_prc * sizeof(struct _lp_memory));
 
@@ -242,7 +240,7 @@ void lp_alloc_init(void) {
 	lp_memory_ioctl_info.ds = -1;
 	lp_memory_ioctl_info.addr = LP_PREALLOCATION_INITIAL_ADDRESS;
 	lp_memory_ioctl_info.mapped_processes = n_prc;
-	
+
 	callback_function =  rootsim_cross_state_dependency_handler;
 	lp_memory_ioctl_info.callback = callback_function;
 
@@ -263,13 +261,13 @@ void lp_alloc_init(void) {
 	int allocation_counter = 0;
 
 	for(i = 0; i < num_mmap; i++) {
-		
+
 		// map memory
 		addr = mmap((void*)addr,size,PROT_READ|PROT_WRITE,MAP_PRIVATE|MAP_ANONYMOUS|MAP_FIXED,0,0);
 		// Access the memory in write mode to force the kernel to create the page table entries
 		addr[0] = 'x';
 		addr[1] = addr[0];
-		
+
 		// Keep track of the per-LP allocated memory
 		if(allocation_counter % 2 == 0) {
 			lp_memory_regions[i/2].start = lp_memory_regions[i/2].brk = addr;
@@ -278,27 +276,27 @@ void lp_alloc_init(void) {
 
 		addr += size;
 	}
-	
+
 	#ifdef HAVE_LINUX_KERNEL_MAP_MODULE
-	/* post of the ioctl_table to the special device file - for internal initialization */ 
+	/* post of the ioctl_table to the special device file - for internal initialization */
 	ret = ioctl(ioctl_fd, IOCTL_SET_VM_RANGE, &lp_memory_ioctl_info);
 	#endif
 }
 
 
 void lp_alloc_fini(void) {
-	
+
 	unsigned int i;
 
 	unsigned int num_mmap = n_prc * 2;
 	size_t size = PER_LP_PREALLOCATED_MEMORY / 2;
 	char *addr = LP_PREALLOCATION_INITIAL_ADDRESS;
-	
+
 	for(i = 0; i < num_mmap; i++) {
 		munmap(addr, size);
 		addr += size;
 	}
-	
+
 	#ifdef HAVE_LINUX_KERNEL_MAP_MODULE
 	close(ioctl_fd); // closing (hence releasing) the special device file
 	#endif
@@ -311,7 +309,7 @@ void lp_alloc_fini(void) {
 
 void lp_alloc_thread_init(void) {
 	/* required to manage the per-thread memory view */
-	pgd_ds = ioctl(ioctl_fd, IOCTL_GET_PGD);  //ioctl call 
+	pgd_ds = ioctl(ioctl_fd, IOCTL_GET_PGD);  //ioctl call
 	printf("rootsim thread: pgd descriptor is %d\n",pgd_ds);
 	fflush(stdout);
 }
@@ -320,18 +318,13 @@ void lp_alloc_thread_init(void) {
 
 
 void lp_alloc_schedule(void) {
-	
+
 	ioctl_info sched_info;
 	
-//	current[pgd_ds] = pgd_ds;
-	// Keep track of the current_lp being scheduled: its memory map must be opened for reading/writing
-//	LPS[current_lp]->ECS_index += 1;
-//	LPS[current_lp]->ECS_synch_table[LPS[current_lp]->ECS_index] = current_lp;
-
 	sched_info.ds = pgd_ds; // this is current
 	sched_info.count = LPS[current_lp]->ECS_index + 1; // it's a counter
 	sched_info.objects = LPS[current_lp]->ECS_synch_table; // pgd descriptor range from 0 to number threads - a subset of object ids 
-	//sched_info.objects = &pgd_ds; // pgd descriptor range from 0 to number threads - a subset of object ids 
+
 	/* passing into LP mode - here for the pgd_ds-th LP */
 	ioctl(ioctl_fd,IOCTL_SCHEDULE_ON_PGD, &sched_info);
 

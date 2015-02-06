@@ -4,20 +4,20 @@
 *
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
-* 
+*
 * ROOT-Sim is free software; you can redistribute it and/or modify it under the
 * terms of the GNU General Public License as published by the Free Software
 * Foundation; either version 3 of the License, or (at your option) any later
 * version.
-* 
+*
 * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
 * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-* 
+*
 * You should have received a copy of the GNU General Public License along with
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-* 
+*
 * @file base.c
 * @brief This module implements core functionalities for ROOT-Sim and declares
 *        core global variables for the simulator
@@ -89,6 +89,9 @@ bool mpi_is_initialized = false;
 /// This flag tells whether we are exiting from the kernel of from userspace
 bool exit_silently_from_kernel = false;
 
+/// This flag is set when the initialization of the simulator is complete, with no errors
+bool init_complete = false;
+
 
 
 /**
@@ -100,6 +103,10 @@ bool exit_silently_from_kernel = false;
  * @author Alessandro Pellegrini
  */
 void exit_from_simulation_model(void) {
+
+	if(!init_complete)
+		return;
+
 	if(!exit_silently_from_kernel) {
 		exit_silently_from_kernel = true;
 
@@ -122,8 +129,8 @@ void exit_from_simulation_model(void) {
 *
 */
 void base_init(void) {
-	register unsigned int i; 
-	
+	register unsigned int i;
+
 	barrier_init(&all_thread_barrier, n_cores);
 
 	n_prc = 0;
@@ -156,7 +163,7 @@ void base_init(void) {
 		kernel_lid_to_gid[kernel[i]][n_prc_per_kernel[kernel[i]]] = i;
 		n_prc_per_kernel[kernel[i]]++;
 	}
-	
+
 
 	// TODO: questo va rimesso a posto quando ci rilanciamo sul distribuito
 	for (i = n_prc; i < n_prc_tot; i++) {
@@ -231,7 +238,7 @@ unsigned int GidToLid(unsigned int gid) {
 * @return The id of the kernel currently hosting the logical process
 */
 unsigned int GidToKernel(unsigned int gid) {
-	// restituisce il kernel su cui si trova il processo identificato da gid	
+	// restituisce il kernel su cui si trova il processo identificato da gid
 	return kernel[gid];
 }
 
@@ -247,28 +254,28 @@ unsigned int GidToKernel(unsigned int gid) {
 * @param code The exit code to be returned by the process
 */
 void simulation_shutdown(int code) {
-	
+
 	exit_silently_from_kernel = true;
-	
+
 	if(mpi_is_initialized) {
 		comm_finalize();
-		
+
 		// TODO: qui è necessario notificare agli altri kernel che c'è stato un errore ed è necessario fare lo shutdown
 		if(master_kernel()) {
 		}
 	}
 
 	statistics_stop(code);
-	
+
 	if(!rootsim_config.serial) {
-		
+
 		thread_barrier(&all_thread_barrier);
 
 		// All kernels must exit at the same time
 		if(n_ker > 1) {
 //			comm_barrier(MPI_COMM_WORLD);
 		}
-		
+
 		if(master_thread()) {
 			statistics_fini();
 			dymelor_fini();
@@ -278,7 +285,7 @@ void simulation_shutdown(int code) {
 			base_fini();
 		}
 	}
-	
+
 	exit(code);
 }
 
@@ -318,6 +325,11 @@ void rootsim_error(bool fatal, const char *msg, ...) {
 		if(rootsim_config.serial) {
 			abort();
 		} else {
+
+			if(!init_complete) {
+				exit(EXIT_FAILURE);
+			}
+
 			// Notify all KLT to shut down the simulation
 			sim_error = true;
 		}
@@ -344,7 +356,7 @@ void distribute_lps_on_kernels(void) {
 	// Sanity check on number of LPs
 	if(n_prc_tot < n_ker)
 		rootsim_error(true, "Unable to allocate %d logical processes on %d kernels: must have at least %d LPs\n", n_prc_tot, n_ker, n_ker);
- 
+
 	kernel = (unsigned int *)rsalloc(sizeof(unsigned int) * n_prc_tot);
 
 
@@ -381,3 +393,10 @@ void distribute_lps_on_kernels(void) {
 	}
 }
 
+
+/**
+ * This function records that the initialization is complete.
+ */
+void initialization_complete(void) {
+	init_complete = true;
+}

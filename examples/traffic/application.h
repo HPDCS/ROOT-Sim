@@ -9,7 +9,7 @@
 *
 * For any information, you can find contact information on my personal webpage:
 * http://www.dis.uniroma1.it/~pellegrini
-*  
+*
 * @file application.h
 * @brief Global simulation data types and definitions
 * @author Alessandro Pellegrini
@@ -82,7 +82,7 @@
 //#define CAR_ENTER_NUM	10	// How many cars (on average) join the route from a junction
 //#define CAR_LEAVE_NUM	10	// How many cars (on average) leave the route from a junction
 
-//#define HIGH_LOAD_LEAVE		0.1	
+//#define HIGH_LOAD_LEAVE		0.1
 //#define NORMAL_LOAD_LEAVE	1
 
 //#define HIGH_LOAD_ENTER		1.5
@@ -102,8 +102,8 @@
 
 // <------ Togliere per il rilascio!
 #include <float.h>
-#define WORD_LENGTH (8 * sizeof(unsigned long)) 
-#define ROR(value, places) ((value << (places)) | (value >> (WORD_LENGTH - (places)))); 
+#define WORD_LENGTH (8 * sizeof(unsigned long))
+#define ROR(value, places) ((value << (places)) | (value >> (WORD_LENGTH - (places))));
 #define D_EQUAL(a,b) (fabs((a) - (b)) < DBL_EPSILON)
 #define D_EQUAL_ZERO(a) (fabs(a) < DBL_EPSILON)
 #define D_DIFFER(a,b) (fabs((a) - (b)) >= DBL_EPSILON)

@@ -4,20 +4,20 @@
 *
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
-* 
+*
 * ROOT-Sim is free software; you can redistribute it and/or modify it under the
 * terms of the GNU General Public License as published by the Free Software
 * Foundation; either version 3 of the License, or (at your option) any later
 * version.
-* 
+*
 * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
 * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-* 
+*
 * You should have received a copy of the GNU General Public License along with
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-* 
+*
 * @file gvt.c
 * @brief This module implements the GVT reduction. The current implementation
 * 	 is non blocking for observable simulation plaftorms.
@@ -29,6 +29,7 @@
 #include <ROOT-Sim.h>
 #include <arch/thread.h>
 #include <gvt/gvt.h>
+#include <gvt/ccgs.h>
 #include <core/core.h>
 #include <core/timer.h>
 #include <scheduler/process.h>
@@ -112,13 +113,13 @@ void gvt_init(void) {
 
 	// This allows the first GVT phase to start
 	atomic_set(&counter_end, 0);
-	
+
 	// Initialize the local minima
 	local_min = malloc(sizeof(simtime_t) * n_cores);
 	for(i = 0; i < n_cores; i++) {
 		local_min[i] = INFTY;
 	}
-	
+
 	timer_start(gvt_timer);
 }
 
@@ -157,7 +158,7 @@ inline simtime_t get_last_gvt(void) {
 * check whether a GVT computation is occurring, or if a computation must be started.
 *
 * @author Alessandro Pellegrini
-* 
+*
 * @return The newly computed GVT value, or -1.0. Only a Master Thread should return a value
 * 	  different from -1.0, to avoid generating too much information. If every thread
 * 	  will return a value different from -1.0, nothing will be broken, but all the values
@@ -167,25 +168,19 @@ inline simtime_t get_last_gvt(void) {
 simtime_t gvt_operations(void) {
 	register unsigned int i;
 	simtime_t new_gvt;
-	
-	// These variables are used to check if certain phases are (locally) passed.
-	// This allows to implment the same Algorithm 2 in the paper
-	// without having to manually interact with the other subsystems from
-	// here (at the cost of executing more main-loop cycles) to converge
-	// to a correct value of the GVT.
-	static __thread bool local_my_GVT_phase_send_executed = false;
-	static __thread bool local_my_GVT_phase_B_executed = false;
-	
-	
+
 	// GVT reduction initialization.
 	// This is different from the paper's pseudocode to reduce
 	// slightly the number of clock reads
 	if(GVT_flag == 0 && atomic_read(&counter_end) == 0) {
-		
+
 		// Has enough time passed since the last GVT reduction?
 		if ( timer_value_milli(gvt_timer) > (int)rootsim_config.gvt_time_period &&
 		    iCAS(&current_GVT_round, my_GVT_round, my_GVT_round + 1)) {
-	   
+
+			// Reduce the current CCGS termination detection
+			ccgs_reduce_termination();
+
 			// Reset atomic counters and make all threads compute the GVT
 			atomic_set(&counter_A, n_cores);
 			atomic_set(&counter_send, n_cores);
@@ -193,27 +188,24 @@ simtime_t gvt_operations(void) {
 			atomic_set(&counter_aware, n_cores);
 			atomic_set(&counter_end, n_cores);
 			GVT_flag = 1;
-			
+
 			timer_restart(gvt_timer);
 		}
 	}
-	
-	
+
+
 	if(GVT_flag == 1) {
-		
+
 		if(my_phase == phase_A) {
-			
+
 			// Someone has modified the GVT round (possibly me).
 			// Keep track of this update
 			my_GVT_round = current_GVT_round;
-			
+
+			process_bottom_halves();
+
 			for(i = 0; i < n_prc_per_thread; i++) {
-				if(LPS_bound[i]->bound != NULL) {
-					local_min[tid] = min(local_min[tid], LPS_bound[i]->bound->timestamp);
-				} else {
-					local_min[tid] = 0.0;
-					break;
-				}
+				local_min[tid] = min(local_min[tid], LPS_bound[i]->bound->timestamp);
 			}
 			my_phase = phase_send;	// Entering phase send
 			atomic_dec(&counter_A);	// Notify finalization of phase A
@@ -221,79 +213,58 @@ simtime_t gvt_operations(void) {
 		}
 
 
-		if(my_phase == phase_send && atomic_read(&counter_A) == 0 && !local_my_GVT_phase_send_executed) {
-			// Actually execute phase send after I have executed an additional
-			// cycle. This guarantees that operations at lines 21, 22, and 23
-			// in Algorithm 2 are actually executed, without calling other subsystems
-			// from here.
-			local_my_GVT_phase_send_executed = true;
-			return -1.0;
-		}
-		
-		if(local_my_GVT_phase_send_executed) {
-			// Reset the flag to check whether we have executed an
-			// additional cycle in case of the send phase
-			local_my_GVT_phase_send_executed = false;
-			
+		if(my_phase == phase_send && atomic_read(&counter_A) == 0) {
+			process_bottom_halves();
+			schedule();
 			my_phase = phase_B;
 			atomic_dec(&counter_send);
 			return  -1.0;
 		}
-		
-		if(my_phase == phase_B && atomic_read(&counter_send) == 0 && !local_my_GVT_phase_B_executed) {
-			// Same case for the previous phase_send here, regarding line 29 of the algorithm
-			local_my_GVT_phase_B_executed = true;
-			return -1.0;
-		}
-		
-		if(local_my_GVT_phase_B_executed) {
-			local_my_GVT_phase_B_executed = false;
-			
+
+		if(my_phase == phase_B && atomic_read(&counter_send) == 0) {
+			process_bottom_halves();
+
 			for(i = 0; i < n_prc_per_thread; i++) {
-				if(LPS_bound[i]->bound != NULL) {
-					local_min[tid] = min(local_min[tid], LPS_bound[i]->bound->timestamp);
-				} else {
-					local_min[tid] = 0.0;
-					break;
-				}
+				local_min[tid] = min(local_min[tid], LPS_bound[i]->bound->timestamp);
 			}
-			
+
 			my_phase = phase_aware;
 			atomic_dec(&counter_B);
 			return  -1.0;
 		}
-		
-		
-		if(my_phase == phase_aware) {
+
+
+		if(my_phase == phase_aware && atomic_read(&counter_B) == 0) {
 			new_gvt = INFTY;
-			
+
 			for(i = 0; i < n_cores; i++) {
 				new_gvt = min(local_min[i], new_gvt);
 			}
-			
-			atomic_dec(&counter_aware);
-			
+
 			my_phase = phase_end;
-					
+
+			atomic_dec(&counter_aware);
+
 			if(atomic_read(&counter_aware) == 0) {
 				// The last one passing here, resets GVT flag
 				iCAS(&GVT_flag, 1, 0);
 			}
 
-			// Dump statistics
-			statistics_post_other_data(STAT_GVT, new_gvt);
-		
 			// Execute fossil collection and termination detection
 			// Each thread stores the last computed value in last_gvt,
 			// while the return value is the gvt only for the master
 			// thread. To check for termination based on simulation time,
 			// this variable must be explicitly inspected using
 			// get_last_gvt()
-			last_gvt = new_gvt;
-			return adopt_new_gvt(new_gvt);
+			last_gvt = adopt_new_gvt(new_gvt);
+
+			// Dump statistics
+			statistics_post_other_data(STAT_GVT, new_gvt);
+
+			return last_gvt;
 		}
-		
-		
+
+
 	} else {
 
 		// GVT flag is not set. We check whether we can reset the

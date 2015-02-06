@@ -4,20 +4,20 @@
 *
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
-* 
+*
 * ROOT-Sim is free software; you can redistribute it and/or modify it under the
 * terms of the GNU General Public License as published by the Free Software
 * Foundation; either version 3 of the License, or (at your option) any later
 * version.
-* 
+*
 * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
 * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-* 
+*
 * You should have received a copy of the GNU General Public License along with
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-* 
+*
 * @file statistics.h
 * @brief State Management subsystem's header
 * @author Francesco Quaglia
@@ -68,11 +68,13 @@
 #define STAT_RECOVERY_TIME	9
 #define STAT_EVENT_TIME		10
 #define STAT_IDLE_CYCLES	11
+#define STAT_SILENT		12
 
 
 /* Definition of Global Statistics Post Messages */
 #define STAT_SIM_START		1001
 #define STAT_GVT		1002
+#define STAT_GVT_TIME		1003
 
 
 
@@ -86,6 +88,7 @@ struct stat_t {
 	double 	tot_antimessages,
 		tot_events,
 		committed_events,
+		reprocessed_events,
 		tot_rollbacks,
 		tot_ckpts,
 		ckpt_time,
@@ -95,7 +98,10 @@ struct stat_t {
 		recovery_time,
 		recovery_cost,
 		event_time,
-		idle_cycles;
+		idle_cycles,
+		memory_usage,
+		gvt_computations,
+		gvt_time; // Used only in sequential simulation
 };
 
 extern void _mkdir(const char *path);
