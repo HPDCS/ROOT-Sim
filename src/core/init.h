@@ -85,6 +85,7 @@ static struct option long_options[] = {
 	{"stats",		required_argument,	0, OPT_STATS},
 	{"seed",		required_argument,	0, OPT_SEED},
 	{"serial",		no_argument,		0, OPT_SERIAL},
+	{"sequential",		no_argument,		0, OPT_SERIAL},
 	{0,			0,			0, 0}
 };
 
