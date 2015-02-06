@@ -74,6 +74,7 @@
 /* Definition of Global Statistics Post Messages */
 #define STAT_SIM_START		1001
 #define STAT_GVT		1002
+#define STAT_GVT_TIME		1003
 
 
 
@@ -99,7 +100,8 @@ struct stat_t {
 		event_time,
 		idle_cycles,
 		memory_usage,
-		gvt_computations;
+		gvt_computations,
+		gvt_time; // Used only in sequential simulation
 };
 
 extern void _mkdir(const char *path);
