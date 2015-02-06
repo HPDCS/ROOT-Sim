@@ -97,7 +97,9 @@ struct stat_t {
 		recovery_time,
 		recovery_cost,
 		event_time,
-		idle_cycles;
+		idle_cycles,
+		memory_usage,
+		gvt_computations;
 };
 
 extern void _mkdir(const char *path);

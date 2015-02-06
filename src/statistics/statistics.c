@@ -11,6 +11,7 @@
 
 
 #include <arch/thread.h>
+#include <arch/memusage.h>
 #include <core/core.h>
 #include <scheduler/process.h>
 #include <scheduler/scheduler.h>
@@ -359,6 +360,9 @@ void statistics_stop(int exit_code) {
 	fprintf(f, "AVERAGE CHECKPOINT COST.... : %.3f us\n",		thread_stats[tid].ckpt_cost / thread_stats[tid].tot_ckpts);
 	fprintf(f, "AVERAGE RECOVERY COST...... : %.3f us\n",		(thread_stats[tid].tot_recoveries > 0 ? thread_stats[tid].recovery_cost / thread_stats[tid].tot_recoveries : 0));
 	fprintf(f, "AVERAGE LOG SIZE........... : %s\n",		format_size(thread_stats[tid].ckpt_mem / thread_stats[tid].tot_ckpts));
+	fprintf(f, "IDLE CYCLES................ : %.0f\n",		thread_stats[tid].idle_cycles);
+	fprintf(f, "NUMBER OF GVT REDUCTIONS... : %.0f\n",		thread_stats[tid].gvt_computations);
+	fprintf(f, "AVERAGE MEMORY USAGE....... : %s\n",		format_size(thread_stats[tid].memory_usage / thread_stats[tid].gvt_computations));
 
 	if(exit_code == EXIT_FAILURE) {
 		fprintf(f, "\n--------- SIMULATION ABNORMALLY TERMINATED ----------\n");
@@ -395,7 +399,10 @@ void statistics_stop(int exit_code) {
 			system_wide_stats.recovery_cost += thread_stats[i].recovery_cost;
 			system_wide_stats.event_time += thread_stats[i].event_time;
 			system_wide_stats.idle_cycles += thread_stats[i].idle_cycles;
+			system_wide_stats.memory_usage += thread_stats[i].memory_usage;
 		}
+		// GVT computations are the same for all threads
+		system_wide_stats.gvt_computations += thread_stats[0].gvt_computations;
 
 		// Compute derived statistics and dump everything
 		f = get_file(STAT_UNIQUE, GLOBAL_STAT); // TODO: quando reintegriamo il distribuito, la selezione del file qui deve cambiare
@@ -439,6 +446,10 @@ void statistics_stop(int exit_code) {
 		fprintf(f, "AVERAGE LOG SIZE........... : %s\n",		format_size(system_wide_stats.ckpt_mem / system_wide_stats.tot_ckpts));
 		fprintf(f, "\n");
 		fprintf(f, "LAST COMMITTED GVT ........ : %f\n",		get_last_gvt());
+		fprintf(f, "IDLE CYCLES................ : %.0f\n",		system_wide_stats.idle_cycles);
+		fprintf(f, "NUMBER OF GVT REDUCTIONS... : %.0f\n",		system_wide_stats.gvt_computations);
+		fprintf(f, "AVERAGE MEMORY USAGE....... : %s\n",		format_size(system_wide_stats.memory_usage / system_wide_stats.gvt_computations));
+		fprintf(f, "PEAK MEMORY USAGE.......... : %s\n",		format_size(getPeakRSS()));
 
 		if(exit_code == EXIT_FAILURE) {
 			fprintf(f, "\n--------- SIMULATION ABNORMALLY TERMINATED ----------\n");
@@ -628,8 +639,8 @@ inline void statistics_post_lp_data(unsigned int lid, unsigned int type, double 
 			lp_stats_gvt[lid].recovery_time += data;
 			break;
 
-		case STAT_IDLE_CYCLES: // TODO: this is a per-thread statistic!
-			lp_stats_gvt[0].idle_cycles++;
+		case STAT_IDLE_CYCLES:
+			thread_stats[tid].idle_cycles++;
 			break;
 
 		case STAT_SILENT:
@@ -670,8 +681,9 @@ inline void statistics_post_other_data(unsigned int type, double data) {
 				lp_stats[lid].ckpt_time += lp_stats_gvt[lid].ckpt_time;
 				lp_stats[lid].tot_recoveries += lp_stats_gvt[lid].tot_recoveries;
 				lp_stats[lid].recovery_time += lp_stats_gvt[lid].recovery_time;
-				lp_stats[lid].idle_cycles += lp_stats_gvt[lid].idle_cycles;
 				lp_stats[lid].reprocessed_events += lp_stats_gvt[lid].reprocessed_events;
+				thread_stats[tid].memory_usage += (double)getCurrentRSS();
+				thread_stats[tid].gvt_computations += 1.0;
 
 				bzero(&lp_stats_gvt[LPS_bound[i]->lid], sizeof(struct stat_t));
 			}
