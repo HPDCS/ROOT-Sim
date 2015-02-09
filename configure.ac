@@ -38,21 +38,6 @@ AM_PROG_CC_C_O
 LT_INIT
 
 
-#----------------------------------------------------------------------------
-# Checks for C header files and libraries
-#----------------------------------------------------------------------------
-
-# Check for POSIX thread support
-AX_PTHREAD([
-		LIBS="$LIBS $PTHREAD_LIBS"
-                CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
-                CC="$PTHREAD_CC"
-                AC_SUBST([LIBS])
-                AC_SUBST([CFLAGS])
-                AC_SUBST([CC])
-            ],
-            [AC_MSG_ERROR([POSIX threads support is required])])
-
 
 #----------------------------------------------------------------------------
 # Check for architecture
@@ -87,6 +72,23 @@ case "${host_cpu}" in
 
 esac
 
+
+
+#----------------------------------------------------------------------------
+# Checks for C header files and libraries
+#----------------------------------------------------------------------------
+AC_CHECK_LIB([m], [log], [true], AC_MSG_FAILURE([libm not found]))
+
+# Check for POSIX thread support
+AX_PTHREAD([], [AC_MSG_ERROR([PTHREAD support not found])])
+
+LIBS="$PTHREAD_LIBS $LIBS"
+CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
+CC="$PTHREAD_CC"
+
+AC_SUBST([LIBS])
+AC_SUBST([CFLAGS])
+AC_SUBST([CC])
 
 
 

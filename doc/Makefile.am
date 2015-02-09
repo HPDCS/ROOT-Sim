@@ -1,3 +1,5 @@
+ACLOCAL_AMFLAGS = -I m4
+
 if HAVE_DOXYGEN
 directory = $(top_srcdir)/docs/man/man3/
 

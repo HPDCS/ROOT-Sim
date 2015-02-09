@@ -1,12 +1,18 @@
 language: c
 compiler: gcc
 
-before_script:
- - autoupdate
- - libtoolize
- - aclocal
- - autoconf
- - automake --add-missing
- - chmod +x configure
+install:
+  - sudo apt-get update -qq
+  - sudo apt-get install -qq automake pkg-config build-essential libtool automake autoconf m4
 
-script: ./configure && make
+before_script:
+  - sudo ldconfig
+  - autoupdate
+  - m4 --version
+  - automake --version
+  - autoconf --version
+
+script:
+  - ./autogen.sh
+  - ./configure
+  - make
