@@ -265,6 +265,10 @@ void dirty_mem(void *base, int size) {
 
 
 	// TODO: Quando reintegriamo l'incrementale questo qui deve ricomparire!
+	(void)base;
+	(void)size;
+
+
 	return;
 
 #if 0
@@ -387,34 +391,14 @@ size_t get_state_size(int lp){
 * @return The whole size of the state (metadata included)
 *
 */
-size_t get_log_size(void *log){
-	if (log == NULL)
+size_t get_log_size(void *ckpt){
+	if (ckpt == NULL)
 		return 0;
-	malloc_state *logged_state = (malloc_state *)log;
-	if (is_incremental(log))
+	malloc_state *logged_state = (malloc_state *)ckpt;
+	if (is_incremental(ckpt))
 		return sizeof(malloc_state) + sizeof(seed_type) + logged_state->dirty_areas * sizeof(malloc_area) + logged_state->dirty_bitmap_size + logged_state->total_inc_size;
 	else
 		return sizeof(malloc_state) + sizeof(seed_type) + logged_state->busy_areas * sizeof(malloc_area) + logged_state->bitmap_size + logged_state->total_log_size;
-}
-
-
-
-/**
-* This function returns the whole size of an incremental log (metadata included)
-*
-* @author Alessandro Pellegrini
-* @author Roberto Vitali
-*
-* @param log The pointer to the log, or to the state
-* @return The whole size of an incremental log (metadata included)
-*/
-size_t get_inc_log_size(void *log){
-
-	if (log == NULL)
-		return 0;
-
-	malloc_state *logged_state = (malloc_state *)log;
-	return sizeof(malloc_state) + sizeof(seed_type) + logged_state->dirty_areas * sizeof(malloc_area) + logged_state->dirty_bitmap_size + logged_state->total_inc_size;
 }
 
 
@@ -947,10 +931,8 @@ void reset_state(void){
 * @param log Pointer to a valid log (no sanity check is performed on log, for efficiency purposes)
 * @return true if log points to a partial log, false otherwise. Note that if log points
 */
-bool is_incremental(void *log) {
-	if (((malloc_state *)log)->is_incremental == 1)
-		return 1;
-	return 0;
+bool is_incremental(void *ckpt) {
+	return ((malloc_state *)ckpt)->is_incremental;
 }
 
 

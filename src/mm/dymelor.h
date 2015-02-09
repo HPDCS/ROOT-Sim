@@ -131,7 +131,6 @@
 #define FORCE_FULL_NEXT	1
 #define FORCE_FULL	2
 
-//#define DIRTY_APPROXIMATION_STATS
 
 
 /** This defines a cache line used to perform inverse query lookup, in order to determine which area
@@ -171,7 +170,7 @@ typedef struct _malloc_area malloc_area;
 
 /// Definition of the memory map
 struct _malloc_state {
-	int is_incremental;		/// Tells if it is an incremental log or a full one (when used for logging)
+	bool is_incremental;		/// Tells if it is an incremental log or a full one (when used for logging)
 	size_t total_log_size;
 	size_t total_inc_size;
 	size_t bitmap_size;
@@ -202,7 +201,6 @@ typedef struct _malloc_state malloc_state;
   * so this must be reflected in the number of mmap calls in lp-alloc.c!
   */
 #define PER_LP_PREALLOCATED_MEMORY	512*512*4096 // Allow 1 GB of virtual space per LP
-//#define PER_LP_PREALLOCATED_MEMORY	1024*1024*128
 
 
 /// This macro tells the LP memory preallocator where to start preallocating. This must be a PDP entry-aligned value!
@@ -287,7 +285,7 @@ extern void lp_alloc_thread_fini(void);
 #else
 
 #define lp_alloc_thread_init()	{}
-#define lp_alloc_schedule()		{}
+#define lp_alloc_schedule()	{}
 #define lp_alloc_deschedule()	{}
 #define lp_alloc_thread_fini()	{}
 

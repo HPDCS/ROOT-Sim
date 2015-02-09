@@ -27,11 +27,10 @@
 */
 
 
+#include <unistd.h>
 #include <stdlib.h>
-#include <errno.h>
 #include <math.h>
 #include <string.h>
-#include <unistd.h>
 
 #include <core/core.h>
 #include <arch/thread.h>
@@ -154,5 +153,7 @@ int main(int argc, char **argv) {
 			main_simulation_loop(NULL);
 		}
 	}
+
+	return 0;
 }
 

@@ -81,7 +81,8 @@ void ccgs_compute_snapshot(state_t *time_barrier_pointer[], simtime_t gvt) {
 	register unsigned int lid;
 
 	state_t temporary_log;
-	msg_t *realignment_evt;
+//	msg_t *realignment_evt;
+	(void)gvt; // This is required in state reconstruction which is currently commented out
 
 	for(i = 0; i < n_prc_per_thread; i++) {
 

@@ -32,6 +32,7 @@
 
 #include <setjmp.h>
 
+#include <ROOT-Sim.h>
 #include <core/core.h>
 #include <queues/queues.h>
 #include <communication/communication.h>

@@ -42,7 +42,7 @@
 void (* ScheduleNewEvent)(unsigned int gid_receiver, simtime_t timestamp, unsigned int event_type, void *event_content, unsigned int event_size);
 
 /// Buffer used by MPI for outgoing messages
-static char buff[SLOTS * sizeof(msg_t)];
+//static char buff[SLOTS * sizeof(msg_t)];
 
 
 /**
