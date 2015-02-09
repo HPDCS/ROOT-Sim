@@ -2,6 +2,7 @@ language: c
 compiler: gcc
 
 before_script:
+ - autoupdate
  - libtoolize
  - aclocal
  - autoconf

@@ -43,7 +43,7 @@ LT_INIT
 #----------------------------------------------------------------------------
 
 # Check for POSIX thread support
-ACX_PTHREAD([
+AX_PTHREAD([
 		LIBS="$LIBS $PTHREAD_LIBS"
                 CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
                 CC="$PTHREAD_CC"
