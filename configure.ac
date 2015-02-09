@@ -1,4 +1,4 @@
-AC_PREREQ([2.67])
+C_PREREQ([2.67])
 
 AC_INIT([ROOT-Sim],[1.0.0],[rootsim@googlegroups.com],[rootsim],[http://www.dis.uniroma1.it/~hpdcs/ROOT-Sim/])
 AC_CONFIG_SRCDIR([src])
@@ -11,20 +11,20 @@ AC_USE_SYSTEM_EXTENSIONS
 
 
 # Debugging symbols or not?
-FINAL_CFLAGS="-O3 -lm -lpthread"
+CFLAGS="-O3 -lm"
 AC_ARG_ENABLE([debug],
     AS_HELP_STRING([--enable-debug], [Enable debugging of the platform]))
 
 AS_IF([test "x$enable_debug" = "xyes"], [
-	FINAL_CFLAGS="-g3 -pg -Wall -Wextra -O0 -Wswitch-enum -Wcast-align -Wpointer-arith -Wstrict-overflow=5 -Wstrict-prototypes -Winline -Wundef -Wnested-externs -Wshadow -Wunreachable-code -Wfloat-equal -Wredundant-decls -Wold-style-definition -std=c99 -fno-omit-frame-pointer -ffloat-store -fno-common -fstrict-aliasing -fgnu89-inline -rdynamic -lm -lpthread"
+	CFLAGS="-g3 -pg -Wall -Wextra -O0 -Wswitch-enum -Wcast-align -Wpointer-arith -Wstrict-overflow=5 -Wstrict-prototypes -Winline -Wundef -Wnested-externs -Wshadow -Wunreachable-code -Wfloat-equal -Wredundant-decls -Wold-style-definition -std=c99 -fno-omit-frame-pointer -ffloat-store -fno-common -fstrict-aliasing -fgnu89-inline -rdynamic -lm"
 ])
+
+
 
 #----------------------------------------------------------------------------
 # Check for languages
 #----------------------------------------------------------------------------
 AC_LANG([C])
-AC_C_VOLATILE
-AC_C_CHAR_UNSIGNED
 
 
 #----------------------------------------------------------------------------
@@ -39,9 +39,19 @@ LT_INIT
 
 
 #----------------------------------------------------------------------------
-# Checks for C header files.
+# Checks for C header files and libraries
 #----------------------------------------------------------------------------
-AC_HEADER_STDC
+
+# Check for POSIX thread support
+ACX_PTHREAD([
+		LIBS="$LIBS $PTHREAD_LIBS"
+                CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
+                CC="$PTHREAD_CC"
+                AC_SUBST([LIBS])
+                AC_SUBST([CFLAGS])
+                AC_SUBST([CC])
+            ],
+            [AC_MSG_ERROR([POSIX threads support is required])])
 
 
 #----------------------------------------------------------------------------
@@ -250,8 +260,6 @@ AC_SUBST([cc_ldfinal_lines], [$(wc -l scripts/ld-final | sed 's,\ .*,,g')])
 AC_MSG_RESULT([ok])
 
 
-CFLAGS="$FINAL_CFLAGS"
-
 # Generate Makefiles for all these subfolders
 #AC_OUTPUT
 AC_CONFIG_FILES([Makefile \
@@ -260,3 +268,4 @@ AC_CONFIG_FILES([Makefile \
 		src/Makefile \
 	])
 AC_OUTPUT
+
