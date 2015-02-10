@@ -360,11 +360,9 @@ void statistics_stop(int exit_code) {
 			thread_stats[tid].tot_rollbacks += lp_stats[lid].tot_rollbacks;
 			thread_stats[tid].tot_ckpts += lp_stats[lid].tot_ckpts;
 			thread_stats[tid].ckpt_time += lp_stats[lid].ckpt_time;
-			thread_stats[tid].ckpt_cost += lp_stats[lid].ckpt_cost;
 			thread_stats[tid].ckpt_mem += lp_stats[lid].ckpt_mem;
 			thread_stats[tid].tot_recoveries += lp_stats[lid].tot_recoveries;
 			thread_stats[tid].recovery_time += lp_stats[lid].recovery_time;
-			thread_stats[tid].recovery_cost += lp_stats[lid].recovery_cost;
 			thread_stats[tid].event_time += lp_stats[lid].event_time;
 			thread_stats[tid].idle_cycles += lp_stats[lid].idle_cycles;
 		}
@@ -395,9 +393,8 @@ void statistics_stop(int exit_code) {
 		fprintf(f, "ROLLBACK LENGTH............ : %.2f events\n",	rollback_length);
 		fprintf(f, "EFFICIENCY................. : %.2f %%\n",		efficiency);
 		fprintf(f, "AVERAGE EVENT COST......... : %.2f us\n",		thread_stats[tid].event_time / thread_stats[tid].tot_events);
-		fprintf(f, "AVERAGE CKPT COST.......... : %.2f us\n",		thread_stats[tid].ckpt_time / thread_stats[tid].tot_ckpts);
-		fprintf(f, "AVERAGE CHECKPOINT COST.... : %.3f us\n",		thread_stats[tid].ckpt_cost / thread_stats[tid].tot_ckpts);
-		fprintf(f, "AVERAGE RECOVERY COST...... : %.3f us\n",		(thread_stats[tid].tot_recoveries > 0 ? thread_stats[tid].recovery_cost / thread_stats[tid].tot_recoveries : 0));
+		fprintf(f, "AVERAGE CHECKPOINT COST.... : %.2f us\n",		thread_stats[tid].ckpt_time / thread_stats[tid].tot_ckpts);
+		fprintf(f, "AVERAGE RECOVERY COST...... : %.2f us\n",		(thread_stats[tid].tot_recoveries > 0 ? thread_stats[tid].recovery_time / thread_stats[tid].tot_recoveries : 0));
 		fprintf(f, "AVERAGE LOG SIZE........... : %s\n",		format_size(thread_stats[tid].ckpt_mem / thread_stats[tid].tot_ckpts));
 		fprintf(f, "IDLE CYCLES................ : %.0f\n",		thread_stats[tid].idle_cycles);
 		fprintf(f, "NUMBER OF GVT REDUCTIONS... : %.0f\n",		thread_stats[tid].gvt_computations);
@@ -431,11 +428,9 @@ void statistics_stop(int exit_code) {
 				system_wide_stats.tot_rollbacks += thread_stats[i].tot_rollbacks;
 				system_wide_stats.tot_ckpts += thread_stats[i].tot_ckpts;
 				system_wide_stats.ckpt_time += thread_stats[i].ckpt_time;
-				system_wide_stats.ckpt_cost += thread_stats[i].ckpt_cost;
 				system_wide_stats.ckpt_mem += thread_stats[i].ckpt_mem;
 				system_wide_stats.tot_recoveries += thread_stats[i].tot_recoveries;
 				system_wide_stats.recovery_time += thread_stats[i].recovery_time;
-				system_wide_stats.recovery_cost += thread_stats[i].recovery_cost;
 				system_wide_stats.event_time += thread_stats[i].event_time;
 				system_wide_stats.idle_cycles += thread_stats[i].idle_cycles;
 				system_wide_stats.memory_usage += thread_stats[i].memory_usage;
@@ -479,9 +474,8 @@ void statistics_stop(int exit_code) {
 			fprintf(f, "ROLLBACK LENGTH............ : %.2f events\n",	rollback_length);
 			fprintf(f, "EFFICIENCY................. : %.2f %%\n",		efficiency);
 			fprintf(f, "AVERAGE EVENT COST......... : %.2f us\n",		system_wide_stats.event_time / system_wide_stats.tot_events);
-			fprintf(f, "AVERAGE CKPT COST.......... : %.2f us\n",		system_wide_stats.ckpt_time / system_wide_stats.tot_ckpts);
-			fprintf(f, "AVERAGE CHECKPOINT COST.... : %.3f us\n",		system_wide_stats.ckpt_cost / system_wide_stats.tot_ckpts);
-			fprintf(f, "AVERAGE RECOVERY COST...... : %.3f us\n",		(system_wide_stats.tot_recoveries > 0 ? system_wide_stats.recovery_cost / system_wide_stats.tot_recoveries : 0 ));
+			fprintf(f, "AVERAGE CHECKPOINT COST.... : %.2f us\n",		system_wide_stats.ckpt_time / system_wide_stats.tot_ckpts);
+			fprintf(f, "AVERAGE RECOVERY COST...... : %.3f us\n",		(system_wide_stats.tot_recoveries > 0 ? system_wide_stats.recovery_time / system_wide_stats.tot_recoveries : 0 ));
 			fprintf(f, "AVERAGE LOG SIZE........... : %s\n",		format_size(system_wide_stats.ckpt_mem / system_wide_stats.tot_ckpts));
 			fprintf(f, "\n");
 			fprintf(f, "LAST COMMITTED GVT ........ : %f\n",		get_last_gvt());
