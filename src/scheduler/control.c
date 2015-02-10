@@ -90,18 +90,16 @@ void rollback_control_message(unsigned int lid, simtime_t simtime) {
 
 // return false if the antimessage is recognized (and processed) as a control antimessage
 bool anti_control_message(msg_t * msg) {
+
+	#ifndef HAVE_LINUX_KERNEL_MAP_MODULE
+	(void)msg;
+	#else
 	msg_t *old_rendezvous ;
 
-
-	#ifdef  HAVE_LINUX_KERNEL_MAP_MODULE
 	if(msg->type == RENDEZVOUS_ROLLBACK) {
 
 		unsigned int lid_receiver = msg->receiver;
 
-		if(tid != LPS[lid_receiver]->worker_thread) {
-			printf("ERRORE ERRORE ERRORE\n");
-			abort();
-		}
 		old_rendezvous = list_tail(LPS[lid_receiver]->queue_in);
 		while(old_rendezvous != NULL && old_rendezvous->rendezvous_mark != msg->rendezvous_mark) {
 			old_rendezvous = list_prev(old_rendezvous);

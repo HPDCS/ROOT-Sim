@@ -40,9 +40,6 @@
 #include <mm/state.h>
 #include <core/timer.h>
 
-// TODO: serve per la definizione di una macro che poi verrà passata in configure.ac
-#include <mm/modules/ktblmgr/ktblmgr.h>
-
 
 
 
@@ -126,31 +123,21 @@
 #define RESET_BIT_AT(B,K) ( B &= ~(MASK << K) )
 #define CHECK_BIT_AT(B,K) ( B & (MASK << K) )
 
-// Macros to force DyMeLoR to adopt special behaviours (i.e, different from the normal policies) when logging the state
-#define NO_FORCE_FULL	0
-#define FORCE_FULL_NEXT	1
-#define FORCE_FULL	2
-
-//#define DIRTY_APPROXIMATION_STATS
-
-
 /** This defines a cache line used to perform inverse query lookup, in order to determine which area
 *   belongs to (used for free operations)
 */
-struct _cache_line {
+typedef struct _cache_line {
 	void *chunk_init_address;
 	void *chunk_final_address;
 	unsigned int malloc_area_idx;
 	unsigned int lid;
 	int valid_era;
-};
-
-typedef struct _cache_line cache_line;
-
-
+} cache_line;
 
 /// This structure let DyMeLoR handle one malloc area (for serving given-size memory requests)
-struct _malloc_area {
+typedef struct _malloc_area {
+	/// Tells whether the area is related to a recoverable part of the memory map or not
+	bool is_recoverable;
 	size_t chunk_size;
 	int alloc_chunks;
 	int dirty_chunks;
@@ -164,14 +151,12 @@ struct _malloc_area {
 	void *area;
 	int prev;
 	int next;
-};
-
-typedef struct _malloc_area malloc_area;
-
+} malloc_area;
 
 /// Definition of the memory map
-struct _malloc_state {
-	int is_incremental;		/// Tells if it is an incremental log or a full one (when used for logging)
+typedef struct _malloc_state {
+	/// Tells whether it is an incremental log or a full one (when used for logging)
+	bool is_incremental;
 	size_t total_log_size;
 	size_t total_inc_size;
 	size_t bitmap_size;
@@ -182,13 +167,13 @@ struct _malloc_state {
 	int dirty_areas;
 	simtime_t timestamp;
 	struct _malloc_area *areas;
-};
-
-typedef struct _malloc_state malloc_state;
+} malloc_state;
 
 
 
 
+#define is_incremental(ckpt) (((malloc_state *)ckpt)->is_incremental == true)
+#define get_area(base) (malloc_area *)*((malloc_area **)((char *)base - sizeof(long long)))
 
 
 /*****************************************************
@@ -202,7 +187,6 @@ typedef struct _malloc_state malloc_state;
   * so this must be reflected in the number of mmap calls in lp-alloc.c!
   */
 #define PER_LP_PREALLOCATED_MEMORY	512*512*4096 // Allow 1 GB of virtual space per LP
-//#define PER_LP_PREALLOCATED_MEMORY	1024*1024*128
 
 
 /// This macro tells the LP memory preallocator where to start preallocating. This must be a PDP entry-aligned value!
@@ -232,7 +216,7 @@ struct _lp_memory {
 
 extern int incremental_granularity;
 extern int force_full[MAX_LPs];
-extern malloc_state *m_state[MAX_LPs];
+extern malloc_state **recoverable_state;
 extern double checkpoint_cost_per_byte;
 extern double recovery_cost_per_byte;
 extern unsigned long total_checkpoints;
@@ -247,14 +231,12 @@ extern void dymelor_fini(void);
 extern void set_force_full(unsigned int, int);
 extern void dirty_mem(void *, int);
 extern size_t get_state_size(int);
-extern size_t get_log_size(void *);
+extern size_t get_log_size(malloc_state *);
 extern size_t get_inc_log_size(void *);
 extern void *__wrap_malloc(size_t);
 extern void __wrap_free(void *);
 extern void *__wrap_realloc(void *, size_t);
 extern void *__wrap_calloc(size_t, size_t);
-extern void reset_state(void);
-extern bool is_incremental(void *);
 extern int get_granularity(void);
 extern size_t dirty_size(unsigned int, void *, double *);
 extern void clean_buffers_on_gvt(unsigned int, simtime_t);
@@ -287,7 +269,7 @@ extern void lp_alloc_thread_fini(void);
 #else
 
 #define lp_alloc_thread_init()	{}
-#define lp_alloc_schedule()		{}
+#define lp_alloc_schedule()	{}
 #define lp_alloc_deschedule()	{}
 #define lp_alloc_thread_fini()	{}
 

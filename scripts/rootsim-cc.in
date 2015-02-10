@@ -16,6 +16,7 @@
 # Global configuration variables
 ##############################################################################
 CC=@CC@
+CFLAGS=@CFLAGS@
 VERSION=@VERSION@
 ARCH=@ARCH@
 bindir=@bindir@
@@ -104,12 +105,11 @@ fi
 ##############################################################################
 # The ROOT-Sim CC script begins here
 ##############################################################################
-CC="$CC -L $libdir -I $includedir -lpthread"   # This is how we will call the compiler.
+CC="$CC -L $libdir -I $includedir"   # This is how we will call the compiler.
 LD=ld
 PARTIAL=0
 OUTNAME=a.out
 SOURCES=
-CFLAGS="-lpthread"
 
 next_in_cflags="no"
 next_in_outname="no"
@@ -157,22 +157,6 @@ if [ ! -n "$SOURCES" ]; then
 fi
 
 
-# Set compilation variables accordingly
-#NOSTACK=-DNOSTACK
-
-if [ "$ARCH" = "X86" ]; then
-ARCHITECTURE=-Di386
-APPLICATION_START_POINT=0x8046240
-APPLICATION_START_POINT_LIGHT=0x8044240
-fi
-
-if [ "$ARCH" = "X86_64" ]; then
-ARCHITECTURE=-D__x86_64
-APPLICATION_START_POINT=0x600000
-APPLICATION_START_POINT_LIGHT=0x500000
-fi
-
-
 # If partial compilation is invoked, simply call the compiler.
 # -c is actually included into CFLAGS
 if [[ $PARTIAL = 1 ]]; then
@@ -207,7 +191,6 @@ done
 $LD -r ${OBJECTS//.o/.o.rs} -o APP.o
 cp APP.o APP-original.o
 cp APP.o original
-rm *.APP.o
 
 # Print some fancy text to let the user know we are actually doing something...
 #echo "Instrumenting the application code..."

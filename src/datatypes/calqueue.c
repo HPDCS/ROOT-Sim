@@ -252,9 +252,6 @@ static calqueue_node *calqueue_deq(void) {
 	i = temp2;
 	goto calendar_process;
 
-	// To make the compiler happy!
-	return NULL;
-
 }
 
 

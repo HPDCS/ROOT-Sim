@@ -1,5 +1,7 @@
+ACLOCAL_AMFLAGS = -I m4
+
 if HAVE_DOXYGEN
-directory = $(top_srcdir)/docs/man/man3/
+directory = $(top_srcdir)/doc/html/
 
 doxyfile.stamp:
 	$(DOXYGEN) doxy.conf
@@ -9,5 +11,5 @@ CLEANFILES = doxyfile.stamp
 
 all-local: doxyfile.stamp
 clean-local:
-	rm -rf $(top_srcdir)/docs/man
+	rm -rf $(top_srcdir)/doc/html
 endif
