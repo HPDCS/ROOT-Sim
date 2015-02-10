@@ -316,7 +316,7 @@ void rootsim_error(bool fatal, const char *msg, ...) {
 	vsnprintf(buf, 1024, msg, args);
 	va_end(args);
 
-	fprintf(stderr, (fatal ? "[FATAL ERROR (%d)] " : "[WARNING (%d)] "), kid);
+	fprintf(stderr, (fatal ? "[FATAL ERROR] " : "[WARNING] "));
 
 	fprintf(stderr, "%s", buf);\
 	fflush(stderr);
