@@ -77,7 +77,7 @@ void *log_full(int lid) {
 	void *ptr, *ckpt;
 	int i, j, k, idx, bitmap_blocks;
 	size_t size, chunk_size;
-	malloc_area * m_area;
+	malloc_area *m_area;
 
 	// Timers for self-tuning of the simulation platform
 	timer checkpoint_timer;
@@ -183,15 +183,14 @@ void *log_full(int lid) {
 
 	// Sanity check
 	if ((char *)ckpt + size != ptr){
-		rootsim_error(true, "Actual (full) ckpt size is wrong by %d bytes!\nckpt = %p size = %#x (%d), ptr = %p, ckpt + size = %p\n", (char *)ckpt + size - (char *)ptr, ckpt, size, size, ptr, (char *)ckpt + size);
+		rootsim_error(true, "Actual (full) ckpt size is wrong by %d bytes!\nlid = %d ckpt = %p size = %#x (%d), ptr = %p, ckpt + size = %p\n", (char *)ckpt + size - (char *)ptr, lid, ckpt, size, size, ptr, (char *)ckpt + size);
 	}
 
 	recoverable_state[lid]->dirty_areas = 0;
 	recoverable_state[lid]->dirty_bitmap_size = 0;
 	recoverable_state[lid]->total_inc_size = 0;
 
-	int checkpoint_time = timer_value_micro(checkpoint_timer);
-	statistics_post_lp_data(lid, STAT_CKPT_TIME, (double)checkpoint_time);
+	statistics_post_lp_data(lid, STAT_CKPT_TIME, (double)timer_value_micro(checkpoint_timer));
 	statistics_post_lp_data(lid, STAT_CKPT_MEM, (double)size);
 
 	return ckpt;
