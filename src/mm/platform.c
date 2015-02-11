@@ -29,15 +29,9 @@
 #include <mm/dymelor.h>
 #include <core/core.h>
 
-// This code is placed within DyMeLoR library, so we must explicitly call real malloc library!
-void *__real_malloc(size_t);
-void __real_free(void *);
-void *__real_realloc(void *, size_t);
-void *__real_calloc(size_t, size_t);
-
 
 inline void *rsalloc(size_t size) {
-	void *mem_block = __real_malloc(size);
+	void *mem_block = pool_get_memory(size);
 	if(mem_block == NULL) {
 		rootsim_error(true, "Error in Memory Allocation, aborting...");
 	}
@@ -46,16 +40,27 @@ inline void *rsalloc(size_t size) {
 
 
 inline void rsfree(void *ptr) {
-	__real_free(ptr);
+	pool_release_memory(ptr);
 }
 
 
 inline void *rsrealloc(void *ptr, size_t size) {
-	return __real_realloc(ptr, size);
+	return pool_realloc_memory(ptr, size);
 }
 
 
 inline void *rscalloc(size_t nmemb, size_t size) {
-	return __real_calloc(nmemb, size);
+	void *buffer;
+
+	if (nmemb == 0 || size == 0)
+		return NULL;
+
+	buffer = pool_get_memory(nmemb * size);
+	if (buffer == NULL)
+		return NULL;
+
+	bzero(buffer, nmemb * size);
+
+	return buffer;
 }
 

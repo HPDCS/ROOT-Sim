@@ -18,7 +18,7 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file lp-alloc.c
+* @file unrecoverable.c
 * @brief LP's memory pre-allocator. This layer stands below DyMeLoR, and is the
 * 		connection point to the Linux Kernel Module for Memory Management, when
 * 		activated.
@@ -42,10 +42,6 @@
 #include <scheduler/scheduler.h>
 #include <scheduler/process.h>
 #include <arch/ult.h>
-
-
-
-
 
 
 /// Unrecoverable memory state for LPs
@@ -94,47 +90,57 @@ void unrecoverable_fini(void) {
 
 
 void *__umalloc(unsigned int lid, size_t s) {
-
-	void *ret = NULL;
-
-
-	return ret;
+	return do_malloc(unrecoverable_state[lid], s);
 }
 
 
 void __ufree(unsigned int lid, void *ptr) {
-	(void)ptr;
-
-	// TODO: so far, free does not really frees the LP memory :(
-	// This is not a great problem, as a lot of stuff must happen before DyMeLoR
-	// really calls free, and this is unlikely to happen often...
-
+	do_free(unrecoverable_state[lid], ptr);
 }
 
 
 void *__urealloc(unsigned int lid, void *ptr, size_t new_s) {
-	(void)ptr;
-	(void)new_s;
+	
+	void *new_buffer;
+	size_t old_size;
+	malloc_area *m_area;
+	
+	// If ptr is NULL realloc is equivalent to the malloc
+	if (ptr == NULL) {
+		return __umalloc(lid, new_s);
+	}
 
-	// TODO: so far, realloc is not implemented. This is a problem with certain
-	// models which are very memory-greedy. This will be implemented soon...
+	// If ptr is not NULL and the size is 0 realloc is equivalent to the free
+	if (new_s == 0) {
+		__ufree(lid, ptr);
+		return NULL;
+	}
 
-	return NULL;
+	m_area = get_area(ptr);
+
+	// The size could be greater than the real request, but it does not matter since the realloc specific requires that
+	// is copied at least the smaller buffer size between the new and the old one
+	old_size = m_area->chunk_size;
+
+	new_buffer = __umalloc(lid, new_s);
+
+	if (new_buffer == NULL)
+		return NULL;
+
+	memcpy(new_buffer, ptr, new_s > old_size ? new_s : old_size);
+	__ufree(lid, ptr);
+
+	return new_buffer;
 }
 
 
 void *__ucalloc(unsigned int lid, size_t nmemb, size_t size) {
-
 	void *buffer;
-
-	if(rootsim_config.serial) {
-		return rscalloc(nmemb, size);
-	}
 
 	if (nmemb == 0 || size == 0)
 		return NULL;
 
-	buffer = __wrap_malloc(nmemb * size);
+	buffer = __umalloc(lid, nmemb * size);
 	if (buffer == NULL)
 		return NULL;
 

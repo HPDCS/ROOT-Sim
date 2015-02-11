@@ -51,14 +51,14 @@ void *__wrap_memset (void *s, int c, size_t n) {
 }
 
 char *__wrap_strdup(const char *s) {
-	char *ret = (char *)umalloc(strlen(s) + 1);
+	char *ret = (char *)__wrap_malloc(strlen(s) + 1);
 	__real_strcpy(ret, s);
 	dirty_mem(ret, strlen(s));
 	return ret;
 }
 
 char *__wrap_strndup(const char *s, size_t n) {
-	char *ret = (char *)umalloc(n);
+	char *ret = (char *)__wrap_malloc(n);
 	__real_strncpy(ret, s, n);
 	dirty_mem(ret, n);
 	return ret;

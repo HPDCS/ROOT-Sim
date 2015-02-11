@@ -57,7 +57,7 @@
 
 
 #define MIN_CHUNK_SIZE 32	// Size (in bytes) of the smallest chunk provideable by DyMeLoR
-#define MAX_CHUNK_SIZE 1048576	// Size (in bytes) of the biggest one. Notice that if this number
+#define MAX_CHUNK_SIZE 4194304	// Size (in bytes) of the biggest one. Notice that if this number
 				// is too large, performance (and memory usage) might be affected.
 				// If it is too small, large amount of memory requests by the
 				// application level software (i.e, larger than this number)
@@ -209,9 +209,16 @@ extern size_t get_inc_log_size(void *);
 extern int get_granularity(void);
 extern size_t dirty_size(unsigned int, void *, double *);
 extern void clean_buffers_on_gvt(unsigned int, simtime_t);
+extern void recoverable_init(void);
+extern void recoverable_fini(void);
 extern void unrecoverable_init(void);
 extern void unrecoverable_fini(void);
 extern void malloc_state_init(bool recoverable, malloc_state *state);
+extern void *do_malloc(malloc_state * mem_pool, size_t size);
+extern void do_free(malloc_state *mem_pool, void *ptr);
+extern void *pool_get_memory(size_t size);
+extern void pool_release_memory(void *ptr);
+extern void *pool_realloc_memory(void *ptr, size_t size);
 
 // Checkpointing API
 extern void *log_full(int);

@@ -38,4 +38,6 @@ libwrapperl_a_SOURCES = lib-wrapper/wrapper.c
 libdymelor_a_SOURCES = 	mm/checkpoints.c \
 			mm/recoverable.c \
 			mm/unrecoverable.c \
-			mm/platform.c
+			mm/platform.c \
+			mm/dymelor.c \
+			mm/pool.c
