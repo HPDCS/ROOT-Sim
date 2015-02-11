@@ -248,6 +248,9 @@ extern void log_restore(int, state_t *);
 extern void log_delete(void *);
 
 
+extern void unrecoverable_init(void);
+extern void unrecoverable_fini(void);
+
 
 // LP memory preallocation API
 extern void *lp_malloc_unscheduled(unsigned int, size_t);
@@ -275,6 +278,15 @@ extern void lp_alloc_thread_fini(void);
 
 
 #endif /* HAVE_LINUX_KERNEL_MAP_MODULE */
+
+
+
+/* SIMULATION ALLOCATION APIs */
+extern inline void *rsalloc(size_t);
+extern inline void rsfree(void *);
+extern inline void *rsrealloc(void *, size_t);
+extern inline void *rscalloc(size_t, size_t);
+
 
 
 

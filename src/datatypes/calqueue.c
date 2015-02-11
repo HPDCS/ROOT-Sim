@@ -6,7 +6,7 @@
 #include <stdbool.h>
 
 #include <datatypes/calqueue.h>
-#include <mm/malloc.h>
+#include <mm/dymelor.h>
 
 
 // Declare data structures needed for the schedulers

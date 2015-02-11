@@ -21,7 +21,6 @@
 #include <mm/state.h>
 #include <core/timer.h>
 #include <mm/dymelor.h>
-#include <mm/malloc.h>
 
 
 /// This is a timer that start during the initialization of statistics subsystem and can be used to know the total simulation time

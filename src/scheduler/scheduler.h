@@ -39,10 +39,6 @@
 #include <scheduler/stf.h>
 #include <arch/ult.h>
 
-// TODO: serve solo per la macro del modulo kernel che poi verrà spostata in configure.ac
-#include <mm/dymelor.h>
-#include <mm/modules/ktblmgr/ktblmgr.h>
-
 
 /// This macro defines after how many idle cycles the simulation is stopped
 #define MAX_CONSECUTIVE_IDLE_CYCLES	1000

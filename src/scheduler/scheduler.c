@@ -36,15 +36,12 @@
 #include <scheduler/scheduler.h>
 #include <scheduler/stf.h>
 #include <mm/state.h>
-#include <mm/malloc.h>
 #include <mm/dymelor.h>
 #include <statistics/statistics.h>
 #include <arch/thread.h>
 #include <communication/communication.h>
 #include <gvt/gvt.h>
 #include <statistics/statistics.h>
-
-#include <mm/modules/ktblmgr/ktblmgr.h>
 
 
 /// Maintain LPs' simulation and execution states

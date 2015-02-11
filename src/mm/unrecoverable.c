@@ -38,12 +38,60 @@
 
 
 #include <core/core.h>
-#include <mm/malloc.h>
 #include <mm/dymelor.h>
 #include <scheduler/scheduler.h>
 #include <scheduler/process.h>
-#include <mm/modules/ktblmgr/ktblmgr.h>
 #include <arch/ult.h>
+
+
+
+
+
+
+/// Unrecoverable memory state for LPs
+static malloc_state **unrecoverable_state;
+
+
+void unrecoverable_init(void) {
+	unsigned int i;
+
+	unrecoverable_state = rsalloc(sizeof(malloc_state *) * n_prc);
+
+	for(i = 0; i < n_prc; i++){
+		unrecoverable_state[i] = rsalloc(sizeof(malloc_state));
+		if(unrecoverable_state[i] == NULL)
+			rootsim_error(true, "Unable to allocate memory on malloc init");
+
+		malloc_state_init(false, unrecoverable_state[i]);
+	}
+}
+
+void unrecoverable_fini(void) {
+	unsigned int i, j;
+	malloc_area *current_area;
+	
+	for(i = 0; i < n_prc; i++) {
+		for (j = 0; j < (unsigned int)unrecoverable_state[i]->num_areas; j++) {
+			current_area = &(unrecoverable_state[i]->areas[j]);
+			if (current_area != NULL) {
+				if (current_area->use_bitmap != NULL) {
+					lp_free(current_area->use_bitmap);
+				}
+			}
+		}
+		rsfree(unrecoverable_state[i]->areas);
+		rsfree(unrecoverable_state[i]);
+	}
+	rsfree(unrecoverable_state);
+}
+
+
+
+
+
+
+
+
 
 /// This variable keeps track of per-LP allocated (and assigned) memory regions
 static struct _lp_memory *lp_memory_regions;

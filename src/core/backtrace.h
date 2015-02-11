@@ -105,7 +105,7 @@ signal_def signal_data[] =
 	{ "SIGIO", SIGIO, "I/O now possible (4.2 BSD)" },
 	{ "SIGPOLL", SIGPOLL, "Pollable event occurred (System V)" },
 	{ "SIGPWR", SIGPWR, "Power failure restart (System V)" },
-	{ "SIGSYS", SIGSYS, "Bad system ca ll" },
+	{ "SIGSYS", SIGSYS, "Bad system call" },
 };
 
 

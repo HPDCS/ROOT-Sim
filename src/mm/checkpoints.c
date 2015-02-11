@@ -31,7 +31,6 @@
 #include <fcntl.h>
 
 #include <mm/dymelor.h>
-#include <mm/malloc.h>
 #include <core/timer.h>
 #include <core/core.h>
 #include <scheduler/scheduler.h>
@@ -85,14 +84,12 @@ void *log_full(int lid) {
 
 	recoverable_state[lid]->is_incremental = false;
 	size = get_log_size(recoverable_state[lid]);
-	fflush(stdout);
-
-	// This code is in a malloc-wrapper package, so here we call the real malloc
+	
 	ckpt = rsalloc(size);
 
-	if(ckpt == NULL)
+	if(ckpt == NULL) {
 		rootsim_error(true, "(%d) Unable to acquire memory for checkpointing the current state (memory exhausted?)");
-
+	}
 
 	ptr = ckpt;
 
@@ -101,11 +98,9 @@ void *log_full(int lid) {
 	ptr = (void *)((char *)ptr + sizeof(malloc_state));
 	((malloc_state*)ckpt)->timestamp = current_lvt;
 
-
 	// Copy the per-LP Seed State (to make the numerical library rollbackable and PWD)
 	memcpy(ptr, &LPS[lid]->seed, sizeof(seed_type));
 	ptr = (void *)((char *)ptr + sizeof(seed_type));
-
 
 	for(i = 0; i < recoverable_state[lid]->num_areas; i++){
 

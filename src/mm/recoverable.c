@@ -33,19 +33,15 @@
 
 #include <core/core.h>
 #include <mm/dymelor.h>
-#include <mm/malloc.h>
 #include <scheduler/process.h>
 
 
 /// Recoverable memory state for LPs
 malloc_state **recoverable_state;
 
-/// Unrecoverable memory state for LPs
-malloc_state **unrecoverable_state;
-
 /// Maximum number of malloc_areas allocated during the simulation. This variable is used
 /// for correctly restoring an LP's state whenever some areas are deallocated during the simulation.
-int max_num_areas;
+//int max_num_areas;
 
 
 
@@ -99,7 +95,7 @@ static void malloc_area_init(bool recoverable, malloc_area *m_area, size_t size,
 *
 * @param state The pointer to the malloc_state to initialize
 */
-static void malloc_state_init(bool recoverable, malloc_state *state){
+void malloc_state_init(bool recoverable, malloc_state *state){
 
 	int i, num_chunks;
 	size_t chunk_size;
@@ -149,7 +145,6 @@ void dymelor_init(void) {
 	lp_alloc_init();
 	
 	recoverable_state = rsalloc(sizeof(malloc_state *) * n_prc);
-	unrecoverable_state = rsalloc(sizeof(malloc_state *) * n_prc);
 
 	for(i = 0; i < n_prc; i++){
 
@@ -158,15 +153,9 @@ void dymelor_init(void) {
 			rootsim_error(true, "Unable to allocate memory on malloc init");
 
 		malloc_state_init(true, recoverable_state[i]);
-
-		unrecoverable_state[i] = rsalloc(sizeof(malloc_state));
-		if(unrecoverable_state[i] == NULL)
-			rootsim_error(true, "Unable to allocate memory on malloc init");
-
-		malloc_state_init(false, unrecoverable_state[i]);
-		
 	}
-
+	
+	unrecoverable_init();
 }
 
 
@@ -194,6 +183,7 @@ void dymelor_fini(void){
 		rsfree(recoverable_state[i]->areas);
 		rsfree(recoverable_state[i]);
 	}
+	rsfree(recoverable_state);
 
 	// Release as well memory used for remaining logs
 	for(i = 0; i < n_prc; i++) {
@@ -203,6 +193,7 @@ void dymelor_fini(void){
 		}
 	}
 
+	unrecoverable_fini();
 	lp_alloc_fini();
 }
 
@@ -300,22 +291,6 @@ void dirty_mem(void *base, int size) {
 
 
 
-
-/**
-* This function returns the whole size of a LP's state. It can be used as the total size to pack a log
-*
-* @author Alessandro Pellegrini
-* @author Roberto Vitali
-*
-* @param lp The Logical Process Id
-* @return The whole size of the state (included the metadata)
-*/
-size_t get_state_size(int lp){
-	return sizeof(malloc_state) + sizeof(seed_type) +  recoverable_state[lp]->busy_areas * sizeof(malloc_area) + recoverable_state[lp]->bitmap_size + recoverable_state[lp]->total_log_size;
-}
-
-
-
 /**
 * This function returns the whole size of a state. It can be used as the total size to pack a log
 *
@@ -329,7 +304,7 @@ size_t get_state_size(int lp){
 size_t get_log_size(malloc_state *logged_state){
 	if (logged_state == NULL)
 		return 0;
-	
+
 	if (is_incremental(logged_state)) {
 		return sizeof(malloc_state) + sizeof(seed_type) + logged_state->dirty_areas * sizeof(malloc_area) + logged_state->dirty_bitmap_size + logged_state->total_inc_size;
 	} else {
@@ -348,7 +323,7 @@ size_t get_log_size(malloc_state *logged_state){
 * @return The new size
 */
 static size_t compute_size(size_t size){
-	
+
 	// TODO: cambiare in qualcosa del tipo:
 	// size = (size + sizeof(size_t) + (align_to - 1)) & ~ (align_to - 1);
 
@@ -456,7 +431,7 @@ void *__wrap_malloc(size_t size) {
 				/**
 				* @todo can we find a better way to handle the realloc failure?
 				*/
-				rootsim_error(false,  "DyMeLoR: cannot reallocate the block of malloc_area.");
+				rootsim_error(false,  "DyMeLoR: cannot reallocate yet the block of malloc_area.");
 
 				recoverable_state[current_lp]->max_num_areas = recoverable_state[current_lp]->max_num_areas >> 1;
 
@@ -485,10 +460,10 @@ void *__wrap_malloc(size_t size) {
 		bitmap_blocks = num_chunks / NUM_CHUNKS_PER_BLOCK;
 		if(bitmap_blocks < 1)
 			bitmap_blocks = 1;
-			
+
 		if(m_area->is_recoverable) {
 			area_size = bitmap_blocks * BLOCK_SIZE * 2 + num_chunks * size;
-			
+
 			m_area->use_bitmap = (unsigned int *)lp_malloc(area_size);
 
 			if(m_area->use_bitmap == NULL){
@@ -550,7 +525,7 @@ void *__wrap_malloc(size_t size) {
 
 	// Keep track of the malloc_area which this chunk belongs to
 	*((long long *)ptr) = (long long)m_area;
-	return (void*)((char*)ptr + sizeof(void *));
+	return (void*)((char*)ptr + sizeof(long long));
 }
 
 /**
@@ -582,17 +557,10 @@ void __wrap_free(void *ptr) {
 		return;
 	}
 
-	if(ptr == NULL){
-		rootsim_error(false, "Invalid pointer during free");
+	if(ptr == NULL)
 		return;
-	}
-
 
 	m_area = get_area(ptr);
-	if(m_area == NULL){
-		rootsim_error(false, "Invalid pointer during free: malloc_area NULL");
-		return;
-	}
 
 	chunk_size = m_area->chunk_size;
 	RESET_BIT_AT(chunk_size, 0);
@@ -621,7 +589,7 @@ void __wrap_free(void *ptr) {
                 recoverable_state[current_lp]->total_inc_size -= chunk_size;
 
                 if (m_area->dirty_chunks < 0)
-			rootsim_error(true, "Dirty chunk is negative");
+			rootsim_error(true, "%s:%d: Dirty chunk is negative", __FILE__, __LINE__);
         }
 
 	m_area->state_changed = 1;
@@ -635,12 +603,11 @@ void __wrap_free(void *ptr) {
 
 
 	if(m_area->alloc_chunks == 0){
-
 		recoverable_state[current_lp]->bitmap_size -= bitmap_blocks * BLOCK_SIZE;
 		recoverable_state[current_lp]->busy_areas--;
 	}
 
-	if( CHECK_LOG_MODE_BIT(m_area)){
+	if(CHECK_LOG_MODE_BIT(m_area)){
 		if((double)m_area->alloc_chunks / (double)m_area->num_chunks < MIN_LOG_THRESHOLD){
 			RESET_LOG_MODE_BIT(m_area);
 			recoverable_state[current_lp]->total_log_size -= (m_area->num_chunks - m_area->alloc_chunks) * chunk_size;
@@ -685,9 +652,6 @@ void *__wrap_realloc(void *ptr, size_t size){
 	}
 
 	m_area = get_area(ptr);
-	if (m_area == NULL) {
-		return NULL;
-	}
 
 	// The size could be greater than the real request, but it does not matter since the realloc specific requires that
 	// is copied at least the smaller buffer size between the new and the old one
@@ -708,7 +672,7 @@ void *__wrap_realloc(void *ptr, size_t size){
 
 /**
 * This is the wrapper of the real stdlib calloc(). Whenever the application level software
-* calls calloc, the call is redirected to this piece of code which rely on wrap_malloc
+* calls calloc, the call is redirected to this piece of code which relies on wrap_malloc
 *
 * @author Roberto Vitali
 *

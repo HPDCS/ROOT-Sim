@@ -28,7 +28,7 @@
 
 
 #include <datatypes/list.h>
-#include <mm/malloc.h>
+#include <mm/dymelor.h>
 
 
 /**
@@ -211,10 +211,6 @@ char *__list_insert(void *li, unsigned int size, size_t key_position, void *data
 		goto insert_end;
 	}
 	
-//	printf("\nInserisco %f in %p\n", key, li);
-//	printf("prima: ");
-//	dump_l(l->head, key_position);
-
 	n = l->tail;
 	while(n != NULL && key < get_key(&n->data)) {
 		n = n->prev;
