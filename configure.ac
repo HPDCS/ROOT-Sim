@@ -26,6 +26,8 @@ AS_IF([test "x$enable_profile" = "xyes"], [
 	CFLAGS="-pg $CFLAGS"
 ])
 
+CFLAGS="$CFLAGS -lnuma"
+
 
 #----------------------------------------------------------------------------
 # Check for languages

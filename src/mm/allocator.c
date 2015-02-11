@@ -27,10 +27,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/mman.h>
-#include "allocator.h"
 #include <numaif.h>
 #include <errno.h>
 #include <mm/dymelor.h>
+#include <mm/allocator.h>
 
 
 extern void *__real_malloc(size_t);
@@ -96,12 +96,12 @@ int allocator_init(unsigned int sobjs){
 		printf("INIT: sobj %d - base address is %p - active are %d - MDT size is %d\n",i,maps[i].base, maps[i].active, maps[i].size);
 	}
 	
-/*	set_daemon_maps(maps,moves);
+	set_daemon_maps(maps,moves);
 	init_move(sobjs);
 
 	set_BH_map(maps);
 	init_BH();
-*/
+
 	return SUCCESS;
 
 bad_init:
@@ -156,12 +156,12 @@ void* allocate_segment(unsigned int sobj, size_t size){
 
 	if(numpages > MAX_SEGMENT_SIZE) goto bad_allocate;
 
-	//~ ret = lock(sobj);
+	ret = lock(sobj);
 	if(ret == FAILURE) goto bad_allocate;
 
 	mdt = get_new_mdt_entry(sobj);
 	if (mdt == NULL) {
-		//~ unlock(sobj);
+		unlock(sobj);
 		goto bad_allocate;
 	}
 
@@ -179,7 +179,7 @@ void* allocate_segment(unsigned int sobj, size_t size){
 
 	if (segment == MAP_FAILED) {
 		release_mdt_entry(sobj);
-		//~ unlock(sobj);
+		unlock(sobj);
 		goto bad_allocate;
 	}
 
@@ -189,7 +189,7 @@ void* allocate_segment(unsigned int sobj, size_t size){
 	AUDIT	
 	audit_map(sobj);
 
-	//~ unlock(sobj);
+	unlock(sobj);
 
 	return segment;
 
