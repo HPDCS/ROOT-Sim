@@ -4,6 +4,7 @@
 #include <scheduler/scheduler.h>
 #include <scheduler/process.h>
 #include <gvt/gvt.h>
+#include <mm/dymelor.h>
 
 /**
 * This function implements the smallest timestamp first algorithm

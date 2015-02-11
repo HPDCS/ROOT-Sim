@@ -35,7 +35,7 @@
 #include <scheduler/process.h>
 #include <scheduler/scheduler.h> // this is for n_prc_per_thread
 #include <statistics/statistics.h>
-
+#include <mm/dymelor.h>
 
 
 // Defintion of GVT-reduction phases
@@ -115,7 +115,7 @@ void gvt_init(void) {
 	atomic_set(&counter_end, 0);
 
 	// Initialize the local minima
-	local_min = malloc(sizeof(simtime_t) * n_cores);
+	local_min = rsalloc(sizeof(simtime_t) * n_cores);
 	for(i = 0; i < n_cores; i++) {
 		local_min[i] = INFTY;
 	}

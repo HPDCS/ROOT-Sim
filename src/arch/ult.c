@@ -96,7 +96,7 @@ void *get_ult_stack(unsigned int lid, size_t size) {
 	}
 */
 	// The first call to the LP malloc subsystem gives page-aligned memory
-	stack = lp_malloc_unscheduled(lid, size);
+	stack = __umalloc(lid, size);
 	if(stack == NULL) {
 		rootsim_error(true, "Error allocating LP stack: not enough memory.\n");
 	}

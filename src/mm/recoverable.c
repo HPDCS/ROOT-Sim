@@ -95,7 +95,7 @@ static void malloc_area_init(bool recoverable, malloc_area *m_area, size_t size,
 *
 * @param state The pointer to the malloc_state to initialize
 */
-void malloc_state_init(bool recoverable, malloc_state *state){
+void malloc_state_init(bool recoverable, malloc_state *state) {
 
 	int i, num_chunks;
 	size_t chunk_size;
@@ -140,9 +140,6 @@ void malloc_state_init(bool recoverable, malloc_state *state){
 void dymelor_init(void) {
 
 	register unsigned int i;
-
-	// Preallocate memory for the LPs
-	lp_alloc_init();
 	
 	recoverable_state = rsalloc(sizeof(malloc_state *) * n_prc);
 
@@ -176,7 +173,7 @@ void dymelor_fini(void){
 			current_area = &(recoverable_state[i]->areas[j]);
 			if (current_area != NULL) {
 				if (current_area->use_bitmap != NULL) {
-					lp_free(current_area->use_bitmap);
+					ufree(current_area->use_bitmap);
 				}
 			}
 		}
@@ -194,7 +191,6 @@ void dymelor_fini(void){
 	}
 
 	unrecoverable_fini();
-	lp_alloc_fini();
 }
 
 
@@ -464,7 +460,7 @@ void *__wrap_malloc(size_t size) {
 		if(m_area->is_recoverable) {
 			area_size = bitmap_blocks * BLOCK_SIZE * 2 + num_chunks * size;
 
-			m_area->use_bitmap = (unsigned int *)lp_malloc(area_size);
+			m_area->use_bitmap = (unsigned int *)umalloc(area_size);
 
 			if(m_area->use_bitmap == NULL){
 				rootsim_error(true, "DyMeLoR: error allocating space for the use bitmap");
@@ -477,7 +473,7 @@ void *__wrap_malloc(size_t size) {
 
 			m_area->area = (void*)((char*)m_area->use_bitmap + bitmap_blocks * BLOCK_SIZE * 2);
 		} else {
-			m_area->area = lp_malloc(num_chunks * size);
+			m_area->area = umalloc(num_chunks * size);
 		}
 	}
 
@@ -719,8 +715,7 @@ void clean_buffers_on_gvt(unsigned int lid, simtime_t time_barrier){
 
 			if(m_area->use_bitmap != NULL) {
 
-				// lp_free
-				lp_free(m_area->use_bitmap);
+				ufree(m_area->use_bitmap);
 
 				m_area->use_bitmap = NULL;
 				m_area->dirty_bitmap = NULL;

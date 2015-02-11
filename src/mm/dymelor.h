@@ -56,7 +56,6 @@
 #define BLOCK_SIZE sizeof(unsigned int)
 
 
-#define CACHE_SIZE 32768	// Must be a power of 2!
 #define MIN_CHUNK_SIZE 32	// Size (in bytes) of the smallest chunk provideable by DyMeLoR
 #define MAX_CHUNK_SIZE 1048576	// Size (in bytes) of the biggest one. Notice that if this number
 				// is too large, performance (and memory usage) might be affected.
@@ -153,6 +152,7 @@ typedef struct _malloc_area {
 	int next;
 } malloc_area;
 
+
 /// Definition of the memory map
 typedef struct _malloc_state {
 	/// Tells whether it is an incremental log or a full one (when used for logging)
@@ -174,33 +174,6 @@ typedef struct _malloc_state {
 
 #define is_incremental(ckpt) (((malloc_state *)ckpt)->is_incremental == true)
 #define get_area(base) (malloc_area *)*((malloc_area **)((char *)base - sizeof(long long)))
-
-
-/*****************************************************
- * LP memory preallocator definitions and structures *
- *****************************************************/
-
-
-/** This macro describes how much memory is pre-allocated for each LP.
-  * This sets each LP's maximum available memory (minus metadata).
-  * Changing this is non-trivial, as Linux has a limit on the size of an mmap call,
-  * so this must be reflected in the number of mmap calls in lp-alloc.c!
-  */
-#define PER_LP_PREALLOCATED_MEMORY	512*512*4096 // Allow 1 GB of virtual space per LP
-
-
-/// This macro tells the LP memory preallocator where to start preallocating. This must be a PDP entry-aligned value!
-#define LP_PREALLOCATION_INITIAL_ADDRESS	(void *)0x0000008000000000
-
-
-/// This structure describes per-LP memory
-struct _lp_memory {
-	void *start;
-	void *brk;
-};
-
-
-
 
 
 
@@ -233,13 +206,12 @@ extern void dirty_mem(void *, int);
 extern size_t get_state_size(int);
 extern size_t get_log_size(malloc_state *);
 extern size_t get_inc_log_size(void *);
-extern void *__wrap_malloc(size_t);
-extern void __wrap_free(void *);
-extern void *__wrap_realloc(void *, size_t);
-extern void *__wrap_calloc(size_t, size_t);
 extern int get_granularity(void);
 extern size_t dirty_size(unsigned int, void *, double *);
 extern void clean_buffers_on_gvt(unsigned int, simtime_t);
+extern void unrecoverable_init(void);
+extern void unrecoverable_fini(void);
+extern void malloc_state_init(bool recoverable, malloc_state *state);
 
 // Checkpointing API
 extern void *log_full(int);
@@ -247,46 +219,32 @@ extern void *log_state(int);
 extern void log_restore(int, state_t *);
 extern void log_delete(void *);
 
-
-extern void unrecoverable_init(void);
-extern void unrecoverable_fini(void);
-
-
-// LP memory preallocation API
-extern void *lp_malloc_unscheduled(unsigned int, size_t);
-#define lp_malloc(size) lp_malloc_unscheduled(current_lp, size);
-extern void lp_free(void *);
-extern void *lp_realloc(void *, size_t);
-extern void lp_alloc_init(void);
-extern void lp_alloc_fini(void);
+// Recoverable Memory API
+extern void *__wrap_malloc(size_t);
+extern void __wrap_free(void *);
+extern void *__wrap_realloc(void *, size_t);
+extern void *__wrap_calloc(size_t, size_t);
 
 
-#ifdef HAVE_LINUX_KERNEL_MAP_MODULE
+// Unrecoverable Memory API
+extern void *__umalloc(unsigned int, size_t);
+extern void __ufree(unsigned int, void *);
+extern void *__urealloc(unsigned int, void *, size_t);
+extern void *__ucalloc(unsigned int lid, size_t nmemb, size_t size);
+#define umalloc(size) __umalloc(current_lp, size);
+#define ufree(ptr) __ufree(current_lp, ptr);
+#define urealloc(ptr, size) __urealloc(current_lp, ptr, size);
+#define ucalloc(nmemb, size) __umalloc(current_lp, nmbemb, size);
 
-extern void lp_alloc_thread_init(void);
-extern void lp_alloc_schedule(void);
-extern void lp_alloc_deschedule(void);
-extern void lp_alloc_thread_fini(void);
-#define clear_inter_lp_dependencies(lid) (LPS[lid]->ECS_index = 0)
-
-#else
-
-#define lp_alloc_thread_init()	{}
-#define lp_alloc_schedule()	{}
-#define lp_alloc_deschedule()	{}
-#define lp_alloc_thread_fini()	{}
-
-
-#endif /* HAVE_LINUX_KERNEL_MAP_MODULE */
-
-
-
-/* SIMULATION ALLOCATION APIs */
+/* Simulation Platform Memory APIs */
 extern inline void *rsalloc(size_t);
 extern inline void rsfree(void *);
 extern inline void *rsrealloc(void *, size_t);
 extern inline void *rscalloc(size_t, size_t);
 
+
+// This is used to help ensure that the platform is not using malloc.
+#pragma GCC poison malloc free realloc calloc
 
 
 

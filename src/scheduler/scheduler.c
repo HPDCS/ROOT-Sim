@@ -288,19 +288,11 @@ void activate_LP(unsigned int lp, simtime_t lvt, void *evt, void *state) {
 	current_evt = evt;
 	current_state = state;
 
-	// Activate memory view for the current LP
-	lp_alloc_schedule();
-
 	#ifdef ENABLE_ULT
 	context_switch(&kernel_context, &LPS[lp]->context);
 	#else
 	LP_main_loop(NULL);
 	#endif
-
-	// Deactivate memory view for the current LP if no conflict has arisen
-	if(!is_blocked_state(LPS[lp]->state)) {
-		lp_alloc_deschedule();
-	}
 
 	current_lp = IDLE_PROCESS;
 	current_lvt = -1.0;

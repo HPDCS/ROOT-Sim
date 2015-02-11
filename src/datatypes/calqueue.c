@@ -133,7 +133,7 @@ static double new_width(void) {
 	// Free the temp structure (the events have been re-injected in the queue)
 	for(i = 0; i < 25; i++) {
 		if(temp[i] != NULL) {
-			free(temp[i]);
+			rsfree(temp[i]);
 		}
 	}
 
@@ -181,7 +181,7 @@ static void resize(int newsize) {
 		while(temp != NULL) {
 			calqueue_put(temp->timestamp, temp->payload);
 			temp2 = temp->next;
-			free(temp);
+			rsfree(temp);
 			temp = temp2;
 		}
 	}

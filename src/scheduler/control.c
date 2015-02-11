@@ -30,6 +30,7 @@
 #include <scheduler/process.h>
 #include <core/core.h>
 #include <communication/communication.h>
+#include <mm/dymelor.h>
 
 
 #ifdef HAVE_LINUX_KERNEL_MAP_MODULE

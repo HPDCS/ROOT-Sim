@@ -30,6 +30,7 @@
 #include <gvt/gvt.h>
 #include <gvt/ccgs.h>
 #include <mm/state.h>
+#include <mm/dymelor.h>
 #include <scheduler/process.h>
 #include <statistics/statistics.h>
 

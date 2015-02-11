@@ -36,7 +36,7 @@
 #include <statistics/statistics.h>
 #include <scheduler/process.h>
 #include <datatypes/list.h>
-
+#include <mm/dymelor.h>
 
 /// This is the function pointer to correctly set ScheduleNewEvent API version, depending if we're running serially or parallelly
 void (* ScheduleNewEvent)(unsigned int gid_receiver, simtime_t timestamp, unsigned int event_type, void *event_content, unsigned int event_size);
