@@ -37,6 +37,7 @@
 *
 */
 void dymelor_init(void) {
+	allocator_init(n_prc);
 	recoverable_init();
 	unrecoverable_init();
 }
