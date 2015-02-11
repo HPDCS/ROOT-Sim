@@ -85,12 +85,12 @@ void unrecoverable_fini(void) {
 
 
 void *__umalloc(unsigned int lid, size_t s) {
-	return do_malloc(unrecoverable_state[lid], s);
+	return do_malloc(lid, unrecoverable_state[lid], s);
 }
 
 
 void __ufree(unsigned int lid, void *ptr) {
-	do_free(unrecoverable_state[lid], ptr);
+	do_free(lid, unrecoverable_state[lid], ptr);
 }
 
 

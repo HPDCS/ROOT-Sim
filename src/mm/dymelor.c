@@ -206,7 +206,7 @@ static void find_next_free(malloc_area *m_area){
 
 
 
-void *do_malloc(malloc_state *mem_pool, size_t size) {
+void *do_malloc(unsigned int lid, malloc_state *mem_pool, size_t size) {
 	
 	malloc_area *m_area, *prev_area;
 	void *ptr;
@@ -249,7 +249,8 @@ void *do_malloc(malloc_state *mem_pool, size_t size) {
 
 			mem_pool->max_num_areas = mem_pool->max_num_areas << 1;
 
-			tmp = (malloc_area *)pool_realloc_memory(mem_pool->areas, mem_pool->max_num_areas * sizeof(malloc_area));
+			rootsim_error(true, "To reimplement\n");
+//			tmp = (malloc_area *)pool_realloc_memory(mem_pool->areas, mem_pool->max_num_areas * sizeof(malloc_area));
 			if(tmp == NULL){
 
 				/**
@@ -278,38 +279,31 @@ void *do_malloc(malloc_state *mem_pool, size_t size) {
 
 	}
 
-	if(m_area->area == NULL){
+	if(m_area->area == NULL) {
 
 		num_chunks = m_area->num_chunks;
 		bitmap_blocks = num_chunks / NUM_CHUNKS_PER_BLOCK;
 		if(bitmap_blocks < 1)
 			bitmap_blocks = 1;
 
-		if(m_area->is_recoverable) {
-			area_size = bitmap_blocks * BLOCK_SIZE * 2 + sizeof(malloc_area *) + num_chunks * size;
+		area_size = sizeof(malloc_area *) + bitmap_blocks * BLOCK_SIZE * 2 + num_chunks * size;
 
-			m_area->use_bitmap = (unsigned int *)pool_get_memory(area_size);
+		m_area->self_pointer = (malloc_area *)pool_get_memory(lid, area_size);
 
-			if(m_area->use_bitmap == NULL){
-				rootsim_error(true, "DyMeLoR: error allocating space for the use bitmap");
-			}
-
-			m_area->dirty_chunks = 0;
-			bzero(m_area->use_bitmap, area_size);
-
-			m_area->dirty_bitmap = (unsigned int*)((char *)m_area->use_bitmap + bitmap_blocks * BLOCK_SIZE);
-			
-			// Self pointer must be correctly initialized here
-			m_area->self_pointer = (malloc_area *)((char *)m_area->use_bitmap + bitmap_blocks * BLOCK_SIZE * 2);
-			*(long long *)m_area->self_pointer = (long long)m_area;
-
-			m_area->area = (void *)((char*)m_area->use_bitmap + bitmap_blocks * BLOCK_SIZE * 2 + sizeof(malloc_area *));
-		} else {
-			m_area->self_pointer = pool_get_memory(sizeof(malloc_area *) + num_chunks * size);
-			*(long long *)m_area->self_pointer = (long long)m_area;
-			
-			m_area->area = (void *)((char *)m_area->self_pointer + sizeof(malloc_area *));
+		if(m_area->self_pointer == NULL){
+			rootsim_error(true, "DyMeLoR: error allocating space for the use bitmap");
 		}
+
+		m_area->dirty_chunks = 0;
+		bzero(m_area->self_pointer, area_size);
+		
+		*(unsigned long long *)(m_area->self_pointer) = (unsigned long long)m_area;
+
+		m_area->use_bitmap = (unsigned int *)((char *)m_area->self_pointer + sizeof(malloc_area *));
+
+		m_area->dirty_bitmap = (unsigned int*)((char *)m_area->use_bitmap + bitmap_blocks * BLOCK_SIZE);
+		
+		m_area->area = (void *)((char*)m_area->use_bitmap + bitmap_blocks * BLOCK_SIZE * 2);	
 	}
 
 	if(m_area->area == NULL) {
@@ -355,7 +349,7 @@ void *do_malloc(malloc_state *mem_pool, size_t size) {
 	RESET_BIT_AT(chk_size, 1);
 
 	// Keep track of the malloc_area which this chunk belongs to
-	*((long long *)ptr) = *(long long *)m_area->self_pointer;
+	*(unsigned long long *)ptr = (unsigned long long)m_area->self_pointer;
 	return (void*)((char*)ptr + sizeof(long long));
 }
 
@@ -363,7 +357,7 @@ void *do_malloc(malloc_state *mem_pool, size_t size) {
 
 
 // TODO: multiple checks on m_area->is_recoverable. The code should be refactored
-void do_free(malloc_state *mem_pool, void *ptr) {
+void do_free(unsigned int lid, malloc_state *mem_pool, void *ptr) {
 	
 	malloc_area * m_area;
 	int idx, bitmap_blocks;
@@ -434,7 +428,7 @@ void do_free(malloc_state *mem_pool, void *ptr) {
 		} else
 			mem_pool->total_log_size -= chunk_size;
 	} else {
-		pool_release_memory(m_area->area);
+		pool_release_memory(lid, m_area->area);
 		m_area->area = NULL;
 	}
 }

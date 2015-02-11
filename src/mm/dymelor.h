@@ -57,7 +57,7 @@
 
 
 #define MIN_CHUNK_SIZE 32	// Size (in bytes) of the smallest chunk provideable by DyMeLoR
-#define MAX_CHUNK_SIZE 4194304	// Size (in bytes) of the biggest one. Notice that if this number
+#define MAX_CHUNK_SIZE 1048576	// Size (in bytes) of the biggest one. Notice that if this number
 				// is too large, performance (and memory usage) might be affected.
 				// If it is too small, large amount of memory requests by the
 				// application level software (i.e, larger than this number)
@@ -135,9 +135,9 @@ typedef struct _malloc_area {
 	int idx;
 	int state_changed;
 	simtime_t last_access;
+	struct _malloc_area *self_pointer; // This pointer is used in a free operation. Each chunk points here. If malloc_area is moved, only this is updated.
 	unsigned int *use_bitmap;
 	unsigned int *dirty_bitmap;
-	struct _malloc_area *self_pointer; // This pointer is used in a free operation. Each chunk points here. If malloc_area is moved, only this is updated.
 	void *area;
 	int prev;
 	int next;
@@ -164,7 +164,10 @@ typedef struct _malloc_state {
 
 
 #define is_incremental(ckpt) (((malloc_state *)ckpt)->is_incremental == true)
-#define get_area(base) *(malloc_area **)((char *)base - sizeof(long long))
+
+#define get_top_pointer(ptr) ((long long *)((char *)ptr - sizeof(long long)))
+#define get_area_top_pointer(ptr) ( (malloc_area **)(*get_top_pointer(ptr)) )
+#define get_area(ptr) ( *(get_area_top_pointer(ptr)) )
 
 
 
@@ -202,11 +205,10 @@ extern void recoverable_fini(void);
 extern void unrecoverable_init(void);
 extern void unrecoverable_fini(void);
 extern void malloc_state_init(bool recoverable, malloc_state *state);
-extern void *do_malloc(malloc_state * mem_pool, size_t size);
-extern void do_free(malloc_state *mem_pool, void *ptr);
-extern void *pool_get_memory(size_t size);
-extern void pool_release_memory(void *ptr);
-extern void *pool_realloc_memory(void *ptr, size_t size);
+extern void *do_malloc(unsigned int, malloc_state * mem_pool, size_t size);
+extern void do_free(unsigned int, malloc_state *mem_pool, void *ptr);
+extern void *pool_get_memory(unsigned int lid, size_t size);
+extern void pool_release_memory(unsigned int lid, void *ptr);
 
 // Checkpointing API
 extern void *log_full(int);

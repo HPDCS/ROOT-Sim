@@ -329,8 +329,6 @@ void rootsim_error(bool fatal, const char *msg, ...) {
 				exit(EXIT_FAILURE);
 			}
 
-			abort();
-
 			// Notify all KLT to shut down the simulation
 			sim_error = true;
 		}

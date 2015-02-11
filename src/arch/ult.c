@@ -87,16 +87,8 @@ void *get_ult_stack(unsigned int lid, size_t size) {
 		size += getpagesize() - reminder;
 	}
 
-/*	err = posix_memalign(&stack, getpagesize(), size);
-	if(err == EINVAL) {
-		rootsim_error(true, "Error allocating LP stack: invalid alignment.\n");
-	}
-	if(err == ENOMEM) {
-		rootsim_error(true, "Error allocating LP stack: not enough memory.\n");
-	}
-*/
 	// The first call to the LP malloc subsystem gives page-aligned memory
-	stack = __umalloc(lid, size);
+	stack = rsalloc(size);
 	if(stack == NULL) {
 		rootsim_error(true, "Error allocating LP stack: not enough memory.\n");
 	}

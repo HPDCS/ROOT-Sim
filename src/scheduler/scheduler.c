@@ -117,7 +117,7 @@ static void destroy_LPs(void) {
 
 		// Destroy stacks
 		#ifdef ENABLE_ULT
-		lp_free(LPS[i]->stack);
+		rsfree(LPS[i]->stack);
 		#endif
 	}
 

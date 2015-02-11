@@ -27,16 +27,11 @@
 
 extern void *__real_malloc(size_t);
 extern void __real_free(void *);
-extern void *__real_realloc(void *, size_t);
 
-void *pool_get_memory(size_t size) {
+void *pool_get_memory(unsigned int lid, size_t size) {
 	return __real_malloc(size);
 }
 
-void pool_release_memory(void *ptr) {
+void pool_release_memory(unsigned int lid, void *ptr) {
 	__real_free(ptr);
-}
-
-void *pool_realloc_memory(void *ptr, size_t size) {
-	return __real_realloc(ptr, size);
 }

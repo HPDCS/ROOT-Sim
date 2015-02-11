@@ -73,7 +73,7 @@ void recoverable_fini(void) {
 			current_area = &(recoverable_state[i]->areas[j]);
 			if (current_area != NULL) {
 				if (current_area->use_bitmap != NULL) {
-					pool_release_memory(current_area->use_bitmap);
+					pool_release_memory(i, current_area->use_bitmap);
 				}
 			}
 		}
@@ -224,7 +224,7 @@ size_t get_log_size(malloc_state *logged_state){
 *
 */
 void *__wrap_malloc(size_t size) {
-	return do_malloc(recoverable_state[current_lp], size);
+	return do_malloc(current_lp, recoverable_state[current_lp], size);
 }
 
 /**
@@ -246,7 +246,7 @@ void *__wrap_malloc(size_t size) {
 *
 */
 void __wrap_free(void *ptr) {
-	do_free(recoverable_state[current_lp], ptr);
+	do_free(current_lp, recoverable_state[current_lp], ptr);
 }
 
 
@@ -351,7 +351,7 @@ void clean_buffers_on_gvt(unsigned int lid, simtime_t time_barrier){
 
 			if(m_area->use_bitmap != NULL) {
 
-				pool_release_memory(m_area->use_bitmap);
+				pool_release_memory(lid, m_area->use_bitmap);
 
 				m_area->use_bitmap = NULL;
 				m_area->dirty_bitmap = NULL;
@@ -376,6 +376,7 @@ void clean_buffers_on_gvt(unsigned int lid, simtime_t time_barrier){
 					
 					// Update the self pointer
 					*(long long *)m_area->self_pointer = (long long)m_area;
+					
 					// The swapped area will now be checked
 					i--;
 				}
