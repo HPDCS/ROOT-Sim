@@ -40,6 +40,9 @@
 #include <mm/state.h>
 #include <core/timer.h>
 
+// TODO: serve per la definizione di una macro che poi verrà passata in configure.ac
+#include <mm/modules/ktblmgr/ktblmgr.h>
+
 
 
 
@@ -123,21 +126,30 @@
 #define RESET_BIT_AT(B,K) ( B &= ~(MASK << K) )
 #define CHECK_BIT_AT(B,K) ( B & (MASK << K) )
 
+// Macros to force DyMeLoR to adopt special behaviours (i.e, different from the normal policies) when logging the state
+#define NO_FORCE_FULL	0
+#define FORCE_FULL_NEXT	1
+#define FORCE_FULL	2
+
+
+
 /** This defines a cache line used to perform inverse query lookup, in order to determine which area
 *   belongs to (used for free operations)
 */
-typedef struct _cache_line {
+struct _cache_line {
 	void *chunk_init_address;
 	void *chunk_final_address;
 	unsigned int malloc_area_idx;
 	unsigned int lid;
 	int valid_era;
-} cache_line;
+};
+
+typedef struct _cache_line cache_line;
+
+
 
 /// This structure let DyMeLoR handle one malloc area (for serving given-size memory requests)
-typedef struct _malloc_area {
-	/// Tells whether the area is related to a recoverable part of the memory map or not
-	bool is_recoverable;
+struct _malloc_area {
 	size_t chunk_size;
 	int alloc_chunks;
 	int dirty_chunks;
@@ -151,12 +163,14 @@ typedef struct _malloc_area {
 	void *area;
 	int prev;
 	int next;
-} malloc_area;
+};
+
+typedef struct _malloc_area malloc_area;
+
 
 /// Definition of the memory map
-typedef struct _malloc_state {
-	/// Tells whether it is an incremental log or a full one (when used for logging)
-	bool is_incremental;
+struct _malloc_state {
+	bool is_incremental;		/// Tells if it is an incremental log or a full one (when used for logging)
 	size_t total_log_size;
 	size_t total_inc_size;
 	size_t bitmap_size;
@@ -167,13 +181,13 @@ typedef struct _malloc_state {
 	int dirty_areas;
 	simtime_t timestamp;
 	struct _malloc_area *areas;
-} malloc_state;
+};
+
+typedef struct _malloc_state malloc_state;
 
 
 
 
-#define is_incremental(ckpt) (((malloc_state *)ckpt)->is_incremental == true)
-#define get_area(base) (malloc_area *)*((malloc_area **)((char *)base - sizeof(long long)))
 
 
 /*****************************************************
@@ -216,7 +230,7 @@ struct _lp_memory {
 
 extern int incremental_granularity;
 extern int force_full[MAX_LPs];
-extern malloc_state **recoverable_state;
+extern malloc_state *m_state[MAX_LPs];
 extern double checkpoint_cost_per_byte;
 extern double recovery_cost_per_byte;
 extern unsigned long total_checkpoints;
@@ -231,12 +245,14 @@ extern void dymelor_fini(void);
 extern void set_force_full(unsigned int, int);
 extern void dirty_mem(void *, int);
 extern size_t get_state_size(int);
-extern size_t get_log_size(malloc_state *);
+extern size_t get_log_size(void *);
 extern size_t get_inc_log_size(void *);
 extern void *__wrap_malloc(size_t);
 extern void __wrap_free(void *);
 extern void *__wrap_realloc(void *, size_t);
 extern void *__wrap_calloc(size_t, size_t);
+extern void reset_state(void);
+extern bool is_incremental(void *);
 extern int get_granularity(void);
 extern size_t dirty_size(unsigned int, void *, double *);
 extern void clean_buffers_on_gvt(unsigned int, simtime_t);
