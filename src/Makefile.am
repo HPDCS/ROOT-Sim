@@ -40,4 +40,4 @@ libdymelor_a_SOURCES = 	mm/checkpoints.c \
 			mm/unrecoverable.c \
 			mm/platform.c \
 			mm/dymelor.c \
-			mm/pool.c
+			mm/allocator.c
