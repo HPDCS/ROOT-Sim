@@ -346,7 +346,7 @@ void clean_buffers_on_gvt(unsigned int lid, simtime_t time_barrier){
 	// The first NUM_AREAS malloc_areas are placed according to their chunks' sizes. The exceeding malloc_areas can be compacted
 	for(i = NUM_AREAS; i < state->num_areas; i++){
 		m_area = &state->areas[i];
-
+		
 		if(m_area->alloc_chunks == 0 && m_area->last_access < time_barrier && !CHECK_AREA_LOCK_BIT(m_area)){
 
 			if(m_area->use_bitmap != NULL) {
@@ -355,6 +355,7 @@ void clean_buffers_on_gvt(unsigned int lid, simtime_t time_barrier){
 
 				m_area->use_bitmap = NULL;
 				m_area->dirty_bitmap = NULL;
+				m_area->self_pointer = NULL;
 				m_area->area = NULL;
 				m_area->state_changed = 0;
 
@@ -372,6 +373,9 @@ void clean_buffers_on_gvt(unsigned int lid, simtime_t time_barrier){
 						state->areas[m_area->prev].next = m_area->idx;
 					if(m_area->next != -1)
 						state->areas[m_area->next].prev = m_area->idx;
+					
+					// Update the self pointer
+					*(long long *)m_area->self_pointer = (long long)m_area;
 					// The swapped area will now be checked
 					i--;
 				}

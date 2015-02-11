@@ -84,11 +84,6 @@ void unrecoverable_fini(void) {
 
 
 
-
-
-
-
-
 void *__umalloc(unsigned int lid, size_t s) {
 	return do_malloc(unrecoverable_state[lid], s);
 }

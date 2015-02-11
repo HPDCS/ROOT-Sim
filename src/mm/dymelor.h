@@ -122,16 +122,6 @@
 #define RESET_BIT_AT(B,K) ( B &= ~(MASK << K) )
 #define CHECK_BIT_AT(B,K) ( B & (MASK << K) )
 
-/** This defines a cache line used to perform inverse query lookup, in order to determine which area
-*   belongs to (used for free operations)
-*/
-typedef struct _cache_line {
-	void *chunk_init_address;
-	void *chunk_final_address;
-	unsigned int malloc_area_idx;
-	unsigned int lid;
-	int valid_era;
-} cache_line;
 
 /// This structure let DyMeLoR handle one malloc area (for serving given-size memory requests)
 typedef struct _malloc_area {
@@ -147,6 +137,7 @@ typedef struct _malloc_area {
 	simtime_t last_access;
 	unsigned int *use_bitmap;
 	unsigned int *dirty_bitmap;
+	struct _malloc_area *self_pointer; // This pointer is used in a free operation. Each chunk points here. If malloc_area is moved, only this is updated.
 	void *area;
 	int prev;
 	int next;
@@ -173,9 +164,7 @@ typedef struct _malloc_state {
 
 
 #define is_incremental(ckpt) (((malloc_state *)ckpt)->is_incremental == true)
-#define get_area(base) (malloc_area *)*((malloc_area **)((char *)base - sizeof(long long)))
-
-
+#define get_area(base) *(malloc_area **)((char *)base - sizeof(long long))
 
 
 
@@ -208,7 +197,6 @@ extern size_t get_log_size(malloc_state *);
 extern size_t get_inc_log_size(void *);
 extern int get_granularity(void);
 extern size_t dirty_size(unsigned int, void *, double *);
-extern void clean_buffers_on_gvt(unsigned int, simtime_t);
 extern void recoverable_init(void);
 extern void recoverable_fini(void);
 extern void unrecoverable_init(void);
@@ -231,6 +219,7 @@ extern void *__wrap_malloc(size_t);
 extern void __wrap_free(void *);
 extern void *__wrap_realloc(void *, size_t);
 extern void *__wrap_calloc(size_t, size_t);
+extern void clean_buffers_on_gvt(unsigned int, simtime_t);
 
 
 // Unrecoverable Memory API

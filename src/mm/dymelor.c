@@ -85,6 +85,7 @@ static void malloc_area_init(bool recoverable, malloc_area *m_area, size_t size,
 	m_area->last_access = -1;
 	m_area->use_bitmap = NULL;
 	m_area->dirty_bitmap = NULL;
+	m_area->self_pointer = NULL;
 	m_area->area = NULL;
 
 	bitmap_blocks = num_chunks / NUM_CHUNKS_PER_BLOCK;
@@ -285,7 +286,7 @@ void *do_malloc(malloc_state *mem_pool, size_t size) {
 			bitmap_blocks = 1;
 
 		if(m_area->is_recoverable) {
-			area_size = bitmap_blocks * BLOCK_SIZE * 2 + num_chunks * size;
+			area_size = bitmap_blocks * BLOCK_SIZE * 2 + sizeof(malloc_area *) + num_chunks * size;
 
 			m_area->use_bitmap = (unsigned int *)pool_get_memory(area_size);
 
@@ -296,11 +297,18 @@ void *do_malloc(malloc_state *mem_pool, size_t size) {
 			m_area->dirty_chunks = 0;
 			bzero(m_area->use_bitmap, area_size);
 
-			m_area->dirty_bitmap = (unsigned int*)((char*)m_area->use_bitmap + bitmap_blocks * BLOCK_SIZE);
+			m_area->dirty_bitmap = (unsigned int*)((char *)m_area->use_bitmap + bitmap_blocks * BLOCK_SIZE);
+			
+			// Self pointer must be correctly initialized here
+			m_area->self_pointer = (malloc_area *)((char *)m_area->use_bitmap + bitmap_blocks * BLOCK_SIZE * 2);
+			*(long long *)m_area->self_pointer = (long long)m_area;
 
-			m_area->area = (void*)((char*)m_area->use_bitmap + bitmap_blocks * BLOCK_SIZE * 2);
+			m_area->area = (void *)((char*)m_area->use_bitmap + bitmap_blocks * BLOCK_SIZE * 2 + sizeof(malloc_area *));
 		} else {
-			m_area->area = pool_get_memory(num_chunks * size);
+			m_area->self_pointer = pool_get_memory(sizeof(malloc_area *) + num_chunks * size);
+			*(long long *)m_area->self_pointer = (long long)m_area;
+			
+			m_area->area = (void *)((char *)m_area->self_pointer + sizeof(malloc_area *));
 		}
 	}
 
@@ -347,7 +355,7 @@ void *do_malloc(malloc_state *mem_pool, size_t size) {
 	RESET_BIT_AT(chk_size, 1);
 
 	// Keep track of the malloc_area which this chunk belongs to
-	*((long long *)ptr) = (long long)m_area;
+	*((long long *)ptr) = *(long long *)m_area->self_pointer;
 	return (void*)((char*)ptr + sizeof(long long));
 }
 
