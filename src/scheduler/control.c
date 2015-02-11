@@ -30,10 +30,7 @@
 #include <scheduler/process.h>
 #include <core/core.h>
 #include <communication/communication.h>
-
-// TODO: serve solo per vedere la macro  HAVE_LINUX_KERNEL_MAP_MODULE, che poi verrà spostata in configure.ac
-#include <mm/modules/ktblmgr/ktblmgr.h>
-#include <arch/thread.h>
+#include <mm/dymelor.h>
 
 
 #ifdef HAVE_LINUX_KERNEL_MAP_MODULE

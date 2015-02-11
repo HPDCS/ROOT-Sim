@@ -36,6 +36,8 @@ librootsim_a_SOURCES =	main.c \
 libwrapperl_a_SOURCES = lib-wrapper/wrapper.c
 
 libdymelor_a_SOURCES = 	mm/checkpoints.c \
+			mm/recoverable.c \
+			mm/unrecoverable.c \
+			mm/platform.c \
 			mm/dymelor.c \
-			mm/lp-alloc.c \
-			mm/malloc.c
+			mm/pool.c

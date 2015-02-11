@@ -40,7 +40,6 @@
 #include <scheduler/scheduler.h>
 #include <scheduler/process.h>
 #include <mm/dymelor.h>
-#include <mm/modules/ktblmgr/ktblmgr.h>
 #include <serial/serial.h>
 
 

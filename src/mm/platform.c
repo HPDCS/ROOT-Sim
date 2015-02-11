@@ -1,6 +1,6 @@
 /**
-*			Copyright (C) 2008-2015 HPDCS Group
-*			http://www.dis.uniroma1.it/~hpdcs
+*                       Copyright (C) 2008-2015 HPDCS Group
+*                       http://www.dis.uniroma1.it/~hpdcs
 *
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
@@ -18,22 +18,43 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file malloc.h
+* @file malloc.c
 * @brief This is the ROOT-Sim implementation of the malloc library (to come...)
 * @author Alessandro Pellegrini
 */
 
-
-#pragma once
-#ifndef _ROOTSIM_MALLOC_H
-#define _ROOTSIM_MALLOC_H
-
 #include <stddef.h>
+#include <stdlib.h>
 
-extern inline void *rsalloc(size_t);
-extern inline void rsfree(void *);
-extern inline void *rsrealloc(void *, size_t);
-extern inline void *rscalloc(size_t, size_t);
+#include <mm/dymelor.h>
+#include <core/core.h>
 
-#endif /* _ROOTSIM_MALLOC_H */
+
+extern void *__real_malloc(size_t);
+extern void __real_free(void *);
+extern void *__real_realloc(void *, size_t);
+extern void *__real_calloc(size_t, size_t);
+
+inline void *rsalloc(size_t size) {
+	void *mem_block = __real_malloc(size);
+	if(mem_block == NULL) {
+		rootsim_error(true, "Error in Memory Allocation, aborting...");
+	}
+	return mem_block;
+}
+
+
+inline void rsfree(void *ptr) {
+	__real_free(ptr);
+}
+
+
+inline void *rsrealloc(void *ptr, size_t size) {
+	return __real_realloc(ptr, size);
+}
+
+
+inline void *rscalloc(size_t nmemb, size_t size) {
+	return __real_calloc(nmemb, size);
+}
 

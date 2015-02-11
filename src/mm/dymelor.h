@@ -56,7 +56,6 @@
 #define BLOCK_SIZE sizeof(unsigned int)
 
 
-#define CACHE_SIZE 32768	// Must be a power of 2!
 #define MIN_CHUNK_SIZE 32	// Size (in bytes) of the smallest chunk provideable by DyMeLoR
 #define MAX_CHUNK_SIZE 1048576	// Size (in bytes) of the biggest one. Notice that if this number
 				// is too large, performance (and memory usage) might be affected.
@@ -123,16 +122,6 @@
 #define RESET_BIT_AT(B,K) ( B &= ~(MASK << K) )
 #define CHECK_BIT_AT(B,K) ( B & (MASK << K) )
 
-/** This defines a cache line used to perform inverse query lookup, in order to determine which area
-*   belongs to (used for free operations)
-*/
-typedef struct _cache_line {
-	void *chunk_init_address;
-	void *chunk_final_address;
-	unsigned int malloc_area_idx;
-	unsigned int lid;
-	int valid_era;
-} cache_line;
 
 /// This structure let DyMeLoR handle one malloc area (for serving given-size memory requests)
 typedef struct _malloc_area {
@@ -146,12 +135,14 @@ typedef struct _malloc_area {
 	int idx;
 	int state_changed;
 	simtime_t last_access;
+	struct _malloc_area *self_pointer; // This pointer is used in a free operation. Each chunk points here. If malloc_area is moved, only this is updated.
 	unsigned int *use_bitmap;
 	unsigned int *dirty_bitmap;
 	void *area;
 	int prev;
 	int next;
 } malloc_area;
+
 
 /// Definition of the memory map
 typedef struct _malloc_state {
@@ -173,36 +164,10 @@ typedef struct _malloc_state {
 
 
 #define is_incremental(ckpt) (((malloc_state *)ckpt)->is_incremental == true)
-#define get_area(base) (malloc_area *)*((malloc_area **)((char *)base - sizeof(long long)))
 
-
-/*****************************************************
- * LP memory preallocator definitions and structures *
- *****************************************************/
-
-
-/** This macro describes how much memory is pre-allocated for each LP.
-  * This sets each LP's maximum available memory (minus metadata).
-  * Changing this is non-trivial, as Linux has a limit on the size of an mmap call,
-  * so this must be reflected in the number of mmap calls in lp-alloc.c!
-  */
-#define PER_LP_PREALLOCATED_MEMORY	512*512*4096 // Allow 1 GB of virtual space per LP
-
-
-/// This macro tells the LP memory preallocator where to start preallocating. This must be a PDP entry-aligned value!
-#define LP_PREALLOCATION_INITIAL_ADDRESS	(void *)0x0000008000000000
-
-
-/// This structure describes per-LP memory
-struct _lp_memory {
-	void *start;
-	void *brk;
-};
-
-
-
-
-
+#define get_top_pointer(ptr) ((long long *)((char *)ptr - sizeof(long long)))
+#define get_area_top_pointer(ptr) ( (malloc_area **)(*get_top_pointer(ptr)) )
+#define get_area(ptr) ( *(get_area_top_pointer(ptr)) )
 
 
 
@@ -233,13 +198,17 @@ extern void dirty_mem(void *, int);
 extern size_t get_state_size(int);
 extern size_t get_log_size(malloc_state *);
 extern size_t get_inc_log_size(void *);
-extern void *__wrap_malloc(size_t);
-extern void __wrap_free(void *);
-extern void *__wrap_realloc(void *, size_t);
-extern void *__wrap_calloc(size_t, size_t);
 extern int get_granularity(void);
 extern size_t dirty_size(unsigned int, void *, double *);
-extern void clean_buffers_on_gvt(unsigned int, simtime_t);
+extern void recoverable_init(void);
+extern void recoverable_fini(void);
+extern void unrecoverable_init(void);
+extern void unrecoverable_fini(void);
+extern void malloc_state_init(bool recoverable, malloc_state *state);
+extern void *do_malloc(unsigned int, malloc_state * mem_pool, size_t size);
+extern void do_free(unsigned int, malloc_state *mem_pool, void *ptr);
+extern void *pool_get_memory(unsigned int lid, size_t size);
+extern void pool_release_memory(unsigned int lid, void *ptr);
 
 // Checkpointing API
 extern void *log_full(int);
@@ -247,34 +216,33 @@ extern void *log_state(int);
 extern void log_restore(int, state_t *);
 extern void log_delete(void *);
 
+// Recoverable Memory API
+extern void *__wrap_malloc(size_t);
+extern void __wrap_free(void *);
+extern void *__wrap_realloc(void *, size_t);
+extern void *__wrap_calloc(size_t, size_t);
+extern void clean_buffers_on_gvt(unsigned int, simtime_t);
 
 
-// LP memory preallocation API
-extern void *lp_malloc_unscheduled(unsigned int, size_t);
-#define lp_malloc(size) lp_malloc_unscheduled(current_lp, size);
-extern void lp_free(void *);
-extern void *lp_realloc(void *, size_t);
-extern void lp_alloc_init(void);
-extern void lp_alloc_fini(void);
+// Unrecoverable Memory API
+extern void *__umalloc(unsigned int, size_t);
+extern void __ufree(unsigned int, void *);
+extern void *__urealloc(unsigned int, void *, size_t);
+extern void *__ucalloc(unsigned int lid, size_t nmemb, size_t size);
+#define umalloc(size) __umalloc(current_lp, size);
+#define ufree(ptr) __ufree(current_lp, ptr);
+#define urealloc(ptr, size) __urealloc(current_lp, ptr, size);
+#define ucalloc(nmemb, size) __umalloc(current_lp, nmbemb, size);
+
+/* Simulation Platform Memory APIs */
+extern inline void *rsalloc(size_t);
+extern inline void rsfree(void *);
+extern inline void *rsrealloc(void *, size_t);
+extern inline void *rscalloc(size_t, size_t);
 
 
-#ifdef HAVE_LINUX_KERNEL_MAP_MODULE
-
-extern void lp_alloc_thread_init(void);
-extern void lp_alloc_schedule(void);
-extern void lp_alloc_deschedule(void);
-extern void lp_alloc_thread_fini(void);
-#define clear_inter_lp_dependencies(lid) (LPS[lid]->ECS_index = 0)
-
-#else
-
-#define lp_alloc_thread_init()	{}
-#define lp_alloc_schedule()	{}
-#define lp_alloc_deschedule()	{}
-#define lp_alloc_thread_fini()	{}
-
-
-#endif /* HAVE_LINUX_KERNEL_MAP_MODULE */
+// This is used to help ensure that the platform is not using malloc.
+#pragma GCC poison malloc free realloc calloc
 
 
 

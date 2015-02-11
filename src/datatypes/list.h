@@ -34,7 +34,6 @@
 #include <assert.h>
 
 #include <core/core.h>
-#include <mm/malloc.h>
 
 #include <arch/atomic.h>
 

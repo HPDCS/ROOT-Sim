@@ -35,12 +35,12 @@
 #include <stdbool.h>
 
 #include <mm/state.h>
+#include <mm/dymelor.h>
 #include <datatypes/list.h>
 #include <scheduler/scheduler.h>
 #include <arch/ult.h>
 #include <arch/atomic.h>
 #include <lib/numerical.h>
-#include <mm/modules/ktblmgr/ktblmgr.h>
 #include <communication/communication.h>
 
 

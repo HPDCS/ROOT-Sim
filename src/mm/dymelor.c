@@ -19,33 +19,43 @@
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
 * @file dymelor.c
-* @brief This module implements all the logic and all the routines supporting
-*        ROOT-Sim's memory manager subsystem
-* @author Roberto Toccaceli
+* @brief LP's memory pre-allocator. This layer stands below DyMeLoR, and is the
+* 		connection point to the Linux Kernel Module for Memory Management, when
+* 		activated.
 * @author Alessandro Pellegrini
-* @author Roberto Vitali
-* @author Francesco Quaglia
 */
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <errno.h>
-
-#include <core/core.h>
 #include <mm/dymelor.h>
-#include <mm/malloc.h>
-#include <scheduler/process.h>
+#include <scheduler/scheduler.h>
 
 
-/// Recoverable memory state for LPs
-malloc_state **recoverable_state;
+/**
+* This function inizializes the dymelor subsystem
+*
+* @author Alessandro Pellegrini
+* @author Roberto Vitali
+*
+*/
+void dymelor_init(void) {
+	recoverable_init();
+	unrecoverable_init();
+}
 
-/// Unrecoverable memory state for LPs
-malloc_state **unrecoverable_state;
 
-/// Maximum number of malloc_areas allocated during the simulation. This variable is used
-/// for correctly restoring an LP's state whenever some areas are deallocated during the simulation.
-int max_num_areas;
+
+
+/**
+* This function finalizes the dymelor subsystem
+*
+* @author Alessandro Pellegrini
+* @author Roberto Vitali
+*
+*/
+void dymelor_fini(void){
+	recoverable_fini();
+	unrecoverable_fini();
+}
+
 
 
 
@@ -75,6 +85,7 @@ static void malloc_area_init(bool recoverable, malloc_area *m_area, size_t size,
 	m_area->last_access = -1;
 	m_area->use_bitmap = NULL;
 	m_area->dirty_bitmap = NULL;
+	m_area->self_pointer = NULL;
 	m_area->area = NULL;
 
 	bitmap_blocks = num_chunks / NUM_CHUNKS_PER_BLOCK;
@@ -99,7 +110,7 @@ static void malloc_area_init(bool recoverable, malloc_area *m_area, size_t size,
 *
 * @param state The pointer to the malloc_state to initialize
 */
-static void malloc_state_init(bool recoverable, malloc_state *state){
+void malloc_state_init(bool recoverable, malloc_state *state) {
 
 	int i, num_chunks;
 	size_t chunk_size;
@@ -134,208 +145,9 @@ static void malloc_state_init(bool recoverable, malloc_state *state){
 
 }
 
-/**
-* This function inizializes the dymelor subsystem
-*
-* @author Alessandro Pellegrini
-* @author Roberto Vitali
-*
-*/
-void dymelor_init(void) {
-
-	register unsigned int i;
-
-	// Preallocate memory for the LPs
-	lp_alloc_init();
-	
-	recoverable_state = rsalloc(sizeof(malloc_state *) * n_prc);
-	unrecoverable_state = rsalloc(sizeof(malloc_state *) * n_prc);
-
-	for(i = 0; i < n_prc; i++){
-
-		recoverable_state[i] = rsalloc(sizeof(malloc_state));
-		if(recoverable_state[i] == NULL)
-			rootsim_error(true, "Unable to allocate memory on malloc init");
-
-		malloc_state_init(true, recoverable_state[i]);
-
-		unrecoverable_state[i] = rsalloc(sizeof(malloc_state));
-		if(unrecoverable_state[i] == NULL)
-			rootsim_error(true, "Unable to allocate memory on malloc init");
-
-		malloc_state_init(false, unrecoverable_state[i]);
-		
-	}
-
-}
 
 
 
-/**
-* This function finalizes the dymelor subsystem
-*
-* @author Alessandro Pellegrini
-* @author Roberto Vitali
-*
-*/
-void dymelor_fini(void){
-	unsigned int i, j;
-	malloc_area *current_area;
-
-	for(i = 0; i < n_prc; i++) {
-		for (j = 0; j < (unsigned int)recoverable_state[i]->num_areas; j++) {
-			current_area = &(recoverable_state[i]->areas[j]);
-			if (current_area != NULL) {
-				if (current_area->use_bitmap != NULL) {
-					lp_free(current_area->use_bitmap);
-				}
-			}
-		}
-		rsfree(recoverable_state[i]->areas);
-		rsfree(recoverable_state[i]);
-	}
-
-	// Release as well memory used for remaining logs
-	for(i = 0; i < n_prc; i++) {
-		while(!list_empty(LPS[i]->queue_states)) {
-			rsfree(list_head(LPS[i]->queue_states)->log);
-			list_pop(LPS[i]->queue_states);
-		}
-	}
-
-	lp_alloc_fini();
-}
-
-
-
-
-/**
-* This function marks a memory chunk as dirty.
-* It is invoked from assembly modules invoked by calls injected by the instrumentor, and from the
-* third-party library wrapper. Invocations from other parts of the kernel should be handled with
-* great care.
-*
-* @author Alessandro Pellegrini
-* @author Roberto Vitali
-*
-* @param base The initial to the start address of the update
-* @param size The number of bytes being updated
-*/
-void dirty_mem(void *base, int size) {
-
-
-	// TODO: Quando reintegriamo l'incrementale questo qui deve ricomparire!
-	(void)base;
-	(void)size;
-
-
-	return;
-
-#if 0
-//	unsigned long long current_cost;
-
-	// Sanity check on passed address
-/*	if(base == NULL) {
-		rootsim_error(false, "Trying to access NULL. Memory interception aborted\n");
-		return;
-	}
-*/
-/*	if (rootsim_config.snapshot == AUTONOMIC_SNAPSHOT ||
-	    rootsim_config.snapshot == AUTONOMIC_INC_SNAPSHOT ||
-	    rootsim_config.snapshot == AUTONOMIC_FULL_SNAPSHOT)
-		add_counter++;
-*/
-	int 	first_chunk,
-		last_chunk,
-		i,
-		chk_size,
-		bitmap_blocks;
-
-	malloc_area *m_area = get_area(base);
-
-	if(m_area != NULL){
-
-		chk_size = m_area->chunk_size;
-		RESET_BIT_AT(chk_size, 0);
-		RESET_BIT_AT(chk_size, 1);
-
-		// Compute the number of chunks affected by the write
-		first_chunk = (int)(((char *)base - (char *)m_area->area) / chk_size);
-
-		// If size == -1, then we adopt a conservative approach: dirty all the chunks from the base to the end
-		// of the actual malloc area base address belongs to.
-		// This has been inserted to support the wrapping of third-party libraries where the size of the
-		// update (or even the actual update) cannot be statically/dynamically determined.
-		if(size == -1)
-			last_chunk = m_area->num_chunks - 1;
-		else
-			last_chunk = (int)(((char *)base + size - 1 - (char *)m_area->area) / chk_size);
-
-		bitmap_blocks = m_area->num_chunks / NUM_CHUNKS_PER_BLOCK;
-                if(bitmap_blocks < 1)
-                       bitmap_blocks = 1;
-
-		if (m_area->state_changed == 1){
-                        if (m_area->dirty_chunks == 0)
-                                recoverable_state[current_lp]->dirty_bitmap_size += bitmap_blocks * BLOCK_SIZE;
-                } else {
-                        recoverable_state[current_lp]->dirty_areas++;
-                        recoverable_state[current_lp]->dirty_bitmap_size += bitmap_blocks * BLOCK_SIZE * 2;
-                        m_area->state_changed = 1;
-                }
-
-                for(i = first_chunk; i <= last_chunk; i++){
-
-                        // If it is dirted a clean chunk, set it dirty and increase dirty object count for the malloc_area
-                        if (!CHECK_DIRTY_BIT(m_area, i)){
-                                SET_DIRTY_BIT(m_area, i);
-                                recoverable_state[current_lp]->total_inc_size += chk_size;
-
-                                m_area->dirty_chunks++;
-                        }
-                }
-	}
-#endif
-}
-
-
-
-
-/**
-* This function returns the whole size of a LP's state. It can be used as the total size to pack a log
-*
-* @author Alessandro Pellegrini
-* @author Roberto Vitali
-*
-* @param lp The Logical Process Id
-* @return The whole size of the state (included the metadata)
-*/
-size_t get_state_size(int lp){
-	return sizeof(malloc_state) + sizeof(seed_type) +  recoverable_state[lp]->busy_areas * sizeof(malloc_area) + recoverable_state[lp]->bitmap_size + recoverable_state[lp]->total_log_size;
-}
-
-
-
-/**
-* This function returns the whole size of a state. It can be used as the total size to pack a log
-*
-* @author Alessandro Pellegrini
-* @author Roberto Vitali
-*
-* @param log The pointer to the log, or to the state
-* @return The whole size of the state (metadata included)
-*
-*/
-size_t get_log_size(malloc_state *logged_state){
-	if (logged_state == NULL)
-		return 0;
-	
-	if (is_incremental(logged_state)) {
-		return sizeof(malloc_state) + sizeof(seed_type) + logged_state->dirty_areas * sizeof(malloc_area) + logged_state->dirty_bitmap_size + logged_state->total_inc_size;
-	} else {
-		return sizeof(malloc_state) + sizeof(seed_type) + logged_state->busy_areas * sizeof(malloc_area) + logged_state->bitmap_size + logged_state->total_log_size;
-	}
-}
 
 
 /**
@@ -348,7 +160,7 @@ size_t get_log_size(malloc_state *logged_state){
 * @return The new size
 */
 static size_t compute_size(size_t size){
-	
+
 	// TODO: cambiare in qualcosa del tipo:
 	// size = (size + sizeof(size_t) + (align_to - 1)) & ~ (align_to - 1);
 
@@ -364,6 +176,7 @@ static size_t compute_size(size_t size){
 
 	return size_new;
 }
+
 
 
 
@@ -392,23 +205,9 @@ static void find_next_free(malloc_area *m_area){
 
 
 
-/**
-* This is the wrapper of the real stdlib malloc(). Whenever the application level software
-* calls malloc, the call is redirected to this piece of code which use the memory preallocated
-* by the DyMeLoR subsystem for serving the request. If the memory in the malloc_area is exhausted,
-* a new one is created, relying on the stdlib malloc.
-* In future releases, this wrapper will be integrated with the Memory Management subsystem,
-* which is not yet ready for production.
-*
-* @author Roberto Toccaceli
-* @author Francesco Quaglia
-*
-* @param ptr A memory buffer
-* @return The chunk's size
-*
-*/
-void *__wrap_malloc(size_t size) {
 
+void *do_malloc(unsigned int lid, malloc_state *mem_pool, size_t size) {
+	
 	malloc_area *m_area, *prev_area;
 	void *ptr;
 	int bitmap_blocks, num_chunks;
@@ -429,28 +228,29 @@ void *__wrap_malloc(size_t size) {
 
 	j = (int)log2(size) - (int)log2(MIN_CHUNK_SIZE);
 
-	m_area = &recoverable_state[current_lp]->areas[(int)log2(size) - (int)log2(MIN_CHUNK_SIZE)];
+	m_area = &mem_pool->areas[(int)log2(size) - (int)log2(MIN_CHUNK_SIZE)];
 
 	while(m_area != NULL && m_area->alloc_chunks == m_area->num_chunks){
 		prev_area = m_area;
 		if (m_area->next == -1)
 			m_area = NULL;
 		else
-			m_area = &(recoverable_state[current_lp]->areas[m_area->next]);
+			m_area = &(mem_pool->areas[m_area->next]);
 	}
 
 	if(m_area == NULL){
 
-		if(recoverable_state[current_lp]->num_areas == recoverable_state[current_lp]->max_num_areas){
+		if(mem_pool->num_areas == mem_pool->max_num_areas){
 
 			malloc_area *tmp;
 
-			if ((recoverable_state[current_lp]->max_num_areas << 1) > MAX_LIMIT_NUM_AREAS)
+			if ((mem_pool->max_num_areas << 1) > MAX_LIMIT_NUM_AREAS)
 				return NULL;
 
-			recoverable_state[current_lp]->max_num_areas = recoverable_state[current_lp]->max_num_areas << 1;
+			mem_pool->max_num_areas = mem_pool->max_num_areas << 1;
 
-			tmp = (malloc_area *)rsrealloc(recoverable_state[current_lp]->areas, recoverable_state[current_lp]->max_num_areas * sizeof(malloc_area));
+			rootsim_error(true, "To reimplement\n");
+//			tmp = (malloc_area *)pool_realloc_memory(mem_pool->areas, mem_pool->max_num_areas * sizeof(malloc_area));
 			if(tmp == NULL){
 
 				/**
@@ -458,56 +258,56 @@ void *__wrap_malloc(size_t size) {
 				*/
 				rootsim_error(false,  "DyMeLoR: cannot reallocate the block of malloc_area.");
 
-				recoverable_state[current_lp]->max_num_areas = recoverable_state[current_lp]->max_num_areas >> 1;
+				mem_pool->max_num_areas = mem_pool->max_num_areas >> 1;
 
 				return NULL;
 			}
 
-			recoverable_state[current_lp]->areas = tmp;
+			mem_pool->areas = tmp;
 		}
 
 		// Allocate a new malloc area
-		m_area = &recoverable_state[current_lp]->areas[recoverable_state[current_lp]->num_areas];
+		m_area = &mem_pool->areas[mem_pool->num_areas];
 
 		// The malloc area to be instantiated has twice the number of chunks wrt the last full malloc area for the same chunks size
 		malloc_area_init(true, m_area, size, prev_area->num_chunks << 1);
 
-		m_area->idx = recoverable_state[current_lp]->num_areas;
-		recoverable_state[current_lp]->num_areas++;
+		m_area->idx = mem_pool->num_areas;
+		mem_pool->num_areas++;
 		prev_area->next = m_area->idx;
 		m_area->prev = prev_area->idx;
 
 	}
 
-	if(m_area->area == NULL){
+	if(m_area->area == NULL) {
 
 		num_chunks = m_area->num_chunks;
 		bitmap_blocks = num_chunks / NUM_CHUNKS_PER_BLOCK;
 		if(bitmap_blocks < 1)
 			bitmap_blocks = 1;
-			
-		if(m_area->is_recoverable) {
-			area_size = bitmap_blocks * BLOCK_SIZE * 2 + num_chunks * size;
-			
-			m_area->use_bitmap = (unsigned int *)lp_malloc(area_size);
 
-			if(m_area->use_bitmap == NULL){
-				rootsim_error(true, "DyMeLoR: error allocating space for the use bitmap");
-			}
+		area_size = sizeof(malloc_area *) + bitmap_blocks * BLOCK_SIZE * 2 + num_chunks * size;
 
-			m_area->dirty_chunks = 0;
-			bzero(m_area->use_bitmap, area_size);
+		m_area->self_pointer = (malloc_area *)pool_get_memory(lid, area_size);
 
-			m_area->dirty_bitmap = (unsigned int*)((char*)m_area->use_bitmap + bitmap_blocks * BLOCK_SIZE);
-
-			m_area->area = (void*)((char*)m_area->use_bitmap + bitmap_blocks * BLOCK_SIZE * 2);
-		} else {
-			m_area->area = lp_malloc(num_chunks * size);
+		if(m_area->self_pointer == NULL){
+			rootsim_error(true, "DyMeLoR: error allocating space for the use bitmap");
 		}
+
+		m_area->dirty_chunks = 0;
+		bzero(m_area->self_pointer, area_size);
+		
+		*(unsigned long long *)(m_area->self_pointer) = (unsigned long long)m_area;
+
+		m_area->use_bitmap = (unsigned int *)((char *)m_area->self_pointer + sizeof(malloc_area *));
+
+		m_area->dirty_bitmap = (unsigned int*)((char *)m_area->use_bitmap + bitmap_blocks * BLOCK_SIZE);
+		
+		m_area->area = (void *)((char*)m_area->use_bitmap + bitmap_blocks * BLOCK_SIZE * 2);	
 	}
 
 	if(m_area->area == NULL) {
-		rootsim_error(true, "Error while allocating memory for LP %d at %s:%d\n", current_lp, __FILE__, __LINE__);
+		rootsim_error(true, "Error while allocating memory at %s:%d\n", __FILE__, __LINE__);
 	}
 
 	ptr = (void*)((char*)m_area->area + (m_area->next_chunk * size));
@@ -520,13 +320,13 @@ void *__wrap_malloc(size_t size) {
 
 
 	if(m_area->alloc_chunks == 0){
-		recoverable_state[current_lp]->bitmap_size += bitmap_blocks * BLOCK_SIZE;
-		recoverable_state[current_lp]->busy_areas++;
+		mem_pool->bitmap_size += bitmap_blocks * BLOCK_SIZE;
+		mem_pool->busy_areas++;
 	}
 
 	if(m_area->state_changed == 0) {
-		recoverable_state[current_lp]->dirty_bitmap_size += bitmap_blocks * BLOCK_SIZE;
-		recoverable_state[current_lp]->dirty_areas++;
+		mem_pool->dirty_bitmap_size += bitmap_blocks * BLOCK_SIZE;
+		mem_pool->dirty_areas++;
 	}
 
 	m_area->state_changed = 1;
@@ -537,9 +337,9 @@ void *__wrap_malloc(size_t size) {
 	if(!CHECK_LOG_MODE_BIT(m_area)){
 		if((double)m_area->alloc_chunks / (double)m_area->num_chunks > MAX_LOG_THRESHOLD){
 			SET_LOG_MODE_BIT(m_area);
-			recoverable_state[current_lp]->total_log_size += (m_area->num_chunks - (m_area->alloc_chunks - 1)) * size;
+			mem_pool->total_log_size += (m_area->num_chunks - (m_area->alloc_chunks - 1)) * size;
 		} else
-			recoverable_state[current_lp]->total_log_size += size;
+			mem_pool->total_log_size += size;
 	}
 
 	find_next_free(m_area);
@@ -549,30 +349,16 @@ void *__wrap_malloc(size_t size) {
 	RESET_BIT_AT(chk_size, 1);
 
 	// Keep track of the malloc_area which this chunk belongs to
-	*((long long *)ptr) = (long long)m_area;
-	return (void*)((char*)ptr + sizeof(void *));
+	*(unsigned long long *)ptr = (unsigned long long)m_area->self_pointer;
+	return (void*)((char*)ptr + sizeof(long long));
 }
 
-/**
-* This is the wrapper of the real stdlib free(). Whenever the application level software
-* calls free, the call is redirected to this piece of code which will set the chunk in the
-* corresponding malloc_area as not allocated.
-*
-* For further information, please see the paper:
-* 	R. Toccaceli, F. Quaglia
-* 	DyMeLoR: Dynamic Memory Logger and Restorer Library for Optimistic Simulation Objects
-* 	with Generic Memory Layout
-*	Proceedings of the 22nd Workshop on Principles of Advanced and Distributed Simulation
-*	2008
-*
-* @author Roberto Toccaceli
-* @author Francesco Quaglia
-*
-* @param ptr A memory buffer to be free'd
-*
-*/
-void __wrap_free(void *ptr) {
 
+
+
+// TODO: multiple checks on m_area->is_recoverable. The code should be refactored
+void do_free(unsigned int lid, malloc_state *mem_pool, void *ptr) {
+	
 	malloc_area * m_area;
 	int idx, bitmap_blocks;
 	size_t chunk_size;
@@ -582,17 +368,10 @@ void __wrap_free(void *ptr) {
 		return;
 	}
 
-	if(ptr == NULL){
-		rootsim_error(false, "Invalid pointer during free");
+	if(ptr == NULL)
 		return;
-	}
-
 
 	m_area = get_area(ptr);
-	if(m_area == NULL){
-		rootsim_error(false, "Invalid pointer during free: malloc_area NULL");
-		return;
-	}
 
 	chunk_size = m_area->chunk_size;
 	RESET_BIT_AT(chunk_size, 0);
@@ -607,184 +386,50 @@ void __wrap_free(void *ptr) {
 
 
 	if (m_area->state_changed == 0){
-                recoverable_state[current_lp]->dirty_bitmap_size += bitmap_blocks * BLOCK_SIZE;
-                recoverable_state[current_lp]->dirty_areas++;
+                mem_pool->dirty_bitmap_size += bitmap_blocks * BLOCK_SIZE;
+                mem_pool->dirty_areas++;
         }
 
-	if(CHECK_DIRTY_BIT(m_area, idx)){
-                RESET_DIRTY_BIT(m_area, idx);
-                m_area->dirty_chunks--;
+	if(m_area->is_recoverable) {
+		if(CHECK_DIRTY_BIT(m_area, idx)){
+			RESET_DIRTY_BIT(m_area, idx);
+			m_area->dirty_chunks--;
 
-                if (m_area->state_changed == 1 && m_area->dirty_chunks == 0)
-                        recoverable_state[current_lp]->dirty_bitmap_size -= bitmap_blocks * BLOCK_SIZE;
+			if (m_area->state_changed == 1 && m_area->dirty_chunks == 0)
+				mem_pool->dirty_bitmap_size -= bitmap_blocks * BLOCK_SIZE;
 
-                recoverable_state[current_lp]->total_inc_size -= chunk_size;
+			mem_pool->total_inc_size -= chunk_size;
 
-                if (m_area->dirty_chunks < 0)
-			rootsim_error(true, "Dirty chunk is negative");
-        }
+			if (m_area->dirty_chunks < 0)
+				rootsim_error(true, "%s:%d: negative number of chunks", __FILE__, __LINE__);
+		}
 
-	m_area->state_changed = 1;
+		m_area->state_changed = 1;
+		
+		m_area->last_access = current_lvt;
+	 }
 
 	if(idx < m_area->next_chunk)
 		m_area->next_chunk = idx;
 
-
-	m_area->last_access = current_lvt;
 	m_area->alloc_chunks--;
 
-
-	if(m_area->alloc_chunks == 0){
-
-		recoverable_state[current_lp]->bitmap_size -= bitmap_blocks * BLOCK_SIZE;
-		recoverable_state[current_lp]->busy_areas--;
+	if(m_area->alloc_chunks == 0) {
+		mem_pool->bitmap_size -= bitmap_blocks * BLOCK_SIZE;
+		mem_pool->busy_areas--;
 	}
 
-	if( CHECK_LOG_MODE_BIT(m_area)){
-		if((double)m_area->alloc_chunks / (double)m_area->num_chunks < MIN_LOG_THRESHOLD){
-			RESET_LOG_MODE_BIT(m_area);
-			recoverable_state[current_lp]->total_log_size -= (m_area->num_chunks - m_area->alloc_chunks) * chunk_size;
-		}
-	} else
-		recoverable_state[current_lp]->total_log_size -= chunk_size;
-
-}
-
-
-
-/**
-* This is the wrapper of the real stdlib realloc(). Whenever the application level software
-* calls realloc, the call is redirected to this piece of code which rely on wrap_malloc
-*
-* @author Roberto Vitali
-*
-* @param ptr The pointer to be buffer to be reallocated
-* @param size The size of the allocation
-* @return A pointer to the newly allocated buffer
-*
-*/
-void *__wrap_realloc(void *ptr, size_t size){
-
-	void *new_buffer;
-	size_t old_size;
-	malloc_area *m_area;
-
-	if(rootsim_config.serial) {
-		return rsrealloc(ptr, size);
-	}
-
-	// If ptr is NULL realloc is equivalent to the malloc
-	if (ptr == NULL) {
-		return __wrap_malloc(size);
-	}
-
-	// If ptr is not NULL and the size is 0 realloc is equivalent to the free
-	if (size == 0) {
-		__wrap_free(ptr);
-		return NULL;
-	}
-
-	m_area = get_area(ptr);
-	if (m_area == NULL) {
-		return NULL;
-	}
-
-	// The size could be greater than the real request, but it does not matter since the realloc specific requires that
-	// is copied at least the smaller buffer size between the new and the old one
-	old_size = m_area->chunk_size;
-
-	new_buffer = __wrap_malloc(size);
-
-	if (new_buffer == NULL)
-		return NULL;
-
-	memcpy(new_buffer, ptr, size > old_size ? size : old_size);
-	__wrap_free(ptr);
-
-	return new_buffer;
-}
-
-
-
-/**
-* This is the wrapper of the real stdlib calloc(). Whenever the application level software
-* calls calloc, the call is redirected to this piece of code which rely on wrap_malloc
-*
-* @author Roberto Vitali
-*
-* @param size The size of the allocation
-* @return A pointer to the newly allocated buffer
-*
-*/
-void *__wrap_calloc(size_t nmemb, size_t size){
-
-	void *buffer;
-
-	if(rootsim_config.serial) {
-		return rscalloc(nmemb, size);
-	}
-
-	if (nmemb == 0 || size == 0)
-		return NULL;
-
-	buffer = __wrap_malloc(nmemb * size);
-	if (buffer == NULL)
-		return NULL;
-
-	bzero(buffer, nmemb * size);
-
-	return buffer;
-}
-
-
-
-
-void clean_buffers_on_gvt(unsigned int lid, simtime_t time_barrier){
-
-	int i;
-	malloc_state *state;
-	malloc_area *m_area;
-
-	state = recoverable_state[lid];
-
-	// The first NUM_AREAS malloc_areas are placed according to their chunks' sizes. The exceeding malloc_areas can be compacted
-	for(i = NUM_AREAS; i < state->num_areas; i++){
-		m_area = &state->areas[i];
-
-		if(m_area->alloc_chunks == 0 && m_area->last_access < time_barrier && !CHECK_AREA_LOCK_BIT(m_area)){
-
-			if(m_area->use_bitmap != NULL) {
-
-				// lp_free
-				lp_free(m_area->use_bitmap);
-
-				m_area->use_bitmap = NULL;
-				m_area->dirty_bitmap = NULL;
-				m_area->area = NULL;
-				m_area->state_changed = 0;
-
-				// Set the pointers
-				if(m_area->prev != -1)
-					state->areas[m_area->prev].next = m_area->next;
-				if(m_area->next != -1)
-					state->areas[m_area->next].prev = m_area->prev;
-
-				// Swap, if possible
-				if(i < state->num_areas - 1) {
-					memcpy(m_area, &state->areas[state->num_areas - 1], sizeof(malloc_area));
-					m_area->idx = i;
-					if(m_area->prev != -1)
-						state->areas[m_area->prev].next = m_area->idx;
-					if(m_area->next != -1)
-						state->areas[m_area->next].prev = m_area->idx;
-					// The swapped area will now be checked
-					i--;
-				}
-
-				// Decrement the expected number of areas
-				state->num_areas--;
+	if(m_area->is_recoverable) {
+		if(CHECK_LOG_MODE_BIT(m_area)){
+			if((double)m_area->alloc_chunks / (double)m_area->num_chunks < MIN_LOG_THRESHOLD){
+				RESET_LOG_MODE_BIT(m_area);
+				mem_pool->total_log_size -= (m_area->num_chunks - m_area->alloc_chunks) * chunk_size;
 			}
-		}
+		} else
+			mem_pool->total_log_size -= chunk_size;
+	} else {
+		pool_release_memory(lid, m_area->area);
+		m_area->area = NULL;
 	}
 }
 

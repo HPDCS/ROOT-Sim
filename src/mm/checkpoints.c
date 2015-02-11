@@ -31,7 +31,6 @@
 #include <fcntl.h>
 
 #include <mm/dymelor.h>
-#include <mm/malloc.h>
 #include <core/timer.h>
 #include <core/core.h>
 #include <scheduler/scheduler.h>
@@ -77,7 +76,7 @@ void *log_full(int lid) {
 	void *ptr, *ckpt;
 	int i, j, k, idx, bitmap_blocks;
 	size_t size, chunk_size;
-	malloc_area * m_area;
+	malloc_area *m_area;
 
 	// Timers for self-tuning of the simulation platform
 	timer checkpoint_timer;
@@ -85,14 +84,12 @@ void *log_full(int lid) {
 
 	recoverable_state[lid]->is_incremental = false;
 	size = get_log_size(recoverable_state[lid]);
-	fflush(stdout);
-
-	// This code is in a malloc-wrapper package, so here we call the real malloc
+	
 	ckpt = rsalloc(size);
 
-	if(ckpt == NULL)
+	if(ckpt == NULL) {
 		rootsim_error(true, "(%d) Unable to acquire memory for checkpointing the current state (memory exhausted?)");
-
+	}
 
 	ptr = ckpt;
 
@@ -101,11 +98,9 @@ void *log_full(int lid) {
 	ptr = (void *)((char *)ptr + sizeof(malloc_state));
 	((malloc_state*)ckpt)->timestamp = current_lvt;
 
-
 	// Copy the per-LP Seed State (to make the numerical library rollbackable and PWD)
 	memcpy(ptr, &LPS[lid]->seed, sizeof(seed_type));
 	ptr = (void *)((char *)ptr + sizeof(seed_type));
-
 
 	for(i = 0; i < recoverable_state[lid]->num_areas; i++){
 
@@ -183,15 +178,14 @@ void *log_full(int lid) {
 
 	// Sanity check
 	if ((char *)ckpt + size != ptr){
-		rootsim_error(true, "Actual (full) ckpt size is wrong by %d bytes!\nckpt = %p size = %#x (%d), ptr = %p, ckpt + size = %p\n", (char *)ckpt + size - (char *)ptr, ckpt, size, size, ptr, (char *)ckpt + size);
+		rootsim_error(true, "Actual (full) ckpt size is wrong by %d bytes!\nlid = %d ckpt = %p size = %#x (%d), ptr = %p, ckpt + size = %p\n", (char *)ckpt + size - (char *)ptr, lid, ckpt, size, size, ptr, (char *)ckpt + size);
 	}
 
 	recoverable_state[lid]->dirty_areas = 0;
 	recoverable_state[lid]->dirty_bitmap_size = 0;
 	recoverable_state[lid]->total_inc_size = 0;
 
-	int checkpoint_time = timer_value_micro(checkpoint_timer);
-	statistics_post_lp_data(lid, STAT_CKPT_TIME, (double)checkpoint_time);
+	statistics_post_lp_data(lid, STAT_CKPT_TIME, (double)timer_value_micro(checkpoint_timer));
 	statistics_post_lp_data(lid, STAT_CKPT_MEM, (double)size);
 
 	return ckpt;
