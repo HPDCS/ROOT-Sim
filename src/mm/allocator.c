@@ -198,7 +198,7 @@ bad_allocate:
 
 }
 
-char* allocate_page(){
+char* allocate_page(void) {
 
         char* page;
 
@@ -215,7 +215,7 @@ char* allocate_page(){
 	return NULL;
 }
 
-char* allocate_mdt(){
+char* allocate_mdt(void) {
 
         char* page;
 
@@ -226,20 +226,20 @@ char* allocate_mdt(){
 
 mdt_entry* get_new_mdt_entry(int sobj){
 	
-	mem_map* mmap;
+	mem_map* m_map;
 	mdt_entry* mdte;
 		
 	if( (sobj < 0)||(sobj>=handled_sobjs) ) return NULL; 
 
-	mmap = &maps[sobj]; 
+	m_map = &maps[sobj]; 
 
-	if (mmap->active >= mmap->size){
+	if (m_map->active >= m_map->size){
 		goto bad_new_mdt_entry;
 	}
 
-	mmap->active += 1;
+	m_map->active += 1;
 
-	mdte = (mdt_entry*)mmap->base + mmap->active - 1 ;
+	mdte = (mdt_entry*)m_map->base + m_map->active - 1 ;
 
 	return mdte;
 	
@@ -248,19 +248,17 @@ bad_new_mdt_entry:
 }
 
 int release_mdt_entry(int sobj){
-
-	mem_map* mmap;
-	mdt_entry* mdte;
+	mem_map* m_map;
 		
 	if( (sobj < 0)||(sobj>=handled_sobjs) ) return MDT_RELEASE_FAILURE; 
 
-	mmap = &maps[sobj]; 
+	m_map = &maps[sobj]; 
 
-	if (mmap->active <= 0){
+	if (m_map->active <= 0){
 		goto bad_mdt_release;
 	}
 
-	mmap->active -= 1;
+	m_map->active -= 1;
 
 	return SUCCESS; 
 
@@ -272,6 +270,7 @@ bad_mdt_release:
 
 void *pool_get_memory(unsigned int lid, size_t size) {
 	#ifndef NUMA
+	(void)lid;
 	return __real_malloc(size);
 	#else
 	return allocate_segment(lid, size);
@@ -280,6 +279,7 @@ void *pool_get_memory(unsigned int lid, size_t size) {
 
 void pool_release_memory(unsigned int lid, void *ptr) {
 	#ifndef NUMA
+	(void)lid;
 	__real_free(ptr);
 	#else
 	// TODO

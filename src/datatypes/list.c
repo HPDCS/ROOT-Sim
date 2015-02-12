@@ -197,7 +197,6 @@ char *__list_insert(unsigned int lid, void *li, unsigned int size, size_t key_po
 
 	double key = get_key(data);
 
-
 	// Create the new node and populate the entry
 	new_n = umalloc(lid, sizeof(struct rootsim_list_node) + size);
 	memcpy(&new_n->data, data, size);

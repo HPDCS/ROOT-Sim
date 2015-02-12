@@ -35,7 +35,7 @@
 
 #define AUDIT if(1)
 
-mem_map * bhmaps;
+mem_map *bhmaps;
 char fictitious[MAX_MSG_SIZE];
 
 pthread_spinlock_t bh_write[MAX_SOBJS];
@@ -43,11 +43,11 @@ pthread_spinlock_t bh_read[MAX_SOBJS];
 
 extern int handled_sobjs;
 
-void set_BH_map(mem_map* argA ){
+void set_BH_map(mem_map *argA) {
         bhmaps = argA;
 }
 
-int init_BH(){
+int init_BH(void) {
         
         int i;
         char* addr;
@@ -151,15 +151,16 @@ bad_insert:
 
 }
 
-void* get_BH(int sobj){// this needs to be atomic per sobj - synch is left to the upper layer
+void *get_BH(int sobj) { // this needs to be atomic per sobj - synch is left to the upper layer
 
 	int msg_tag;
-	void* buff;
-	void* msg_addr;
+	void *buff;
+	void *msg_addr;
 	int msg_offset;
 	
 
-	if( (sobj<0) || sobj >= handled_sobjs) goto no_msg;
+	if( (sobj < 0) || sobj >= handled_sobjs)
+		goto no_msg;
 	
 	pthread_spin_lock(&bh_read[sobj]);
 
@@ -171,7 +172,6 @@ void* get_BH(int sobj){// this needs to be atomic per sobj - synch is left to th
 
 	}
 
-	
 	if(bhmaps[sobj].expired_msgs <= 0 ){
 		pthread_spin_unlock(&bh_read[sobj]);
 		goto no_msg;
@@ -200,7 +200,6 @@ void* get_BH(int sobj){// this needs to be atomic per sobj - synch is left to th
 	return buff;
 
 no_msg:
-	
 	return NULL;	
 }
 
@@ -225,7 +224,7 @@ void switch_bh(int sobj){
 
 }
 
-void* get_buffer(int size){
+void *get_buffer(int size) {
 	
 	return fictitious;
 }

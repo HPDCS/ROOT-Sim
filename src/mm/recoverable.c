@@ -169,7 +169,7 @@ void dirty_mem(void *base, int size) {
 
                 for(i = first_chunk; i <= last_chunk; i++){
 
-                        // If it is dirted a clean chunk, set it dirty and increase dirty object count for the malloc_area
+                        // If it is dirtied a clean chunk, set it dirty and increase dirty object count for the malloc_area
                         if (!CHECK_DIRTY_BIT(m_area, i)){
                                 SET_DIRTY_BIT(m_area, i);
                                 recoverable_state[current_lp]->total_inc_size += chk_size;

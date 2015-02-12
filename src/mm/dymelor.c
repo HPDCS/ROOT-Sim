@@ -26,6 +26,7 @@
 */
 
 #include <mm/dymelor.h>
+#include <mm/allocator.h>
 #include <scheduler/scheduler.h>
 
 
@@ -213,6 +214,7 @@ void *do_malloc(unsigned int lid, malloc_state *mem_pool, size_t size) {
 	void *ptr;
 	int bitmap_blocks, num_chunks;
 	size_t area_size;
+	bool is_recoverable;
 
 	int j;
 
@@ -230,6 +232,7 @@ void *do_malloc(unsigned int lid, malloc_state *mem_pool, size_t size) {
 	j = (int)log2(size) - (int)log2(MIN_CHUNK_SIZE);
 
 	m_area = &mem_pool->areas[(int)log2(size) - (int)log2(MIN_CHUNK_SIZE)];
+	is_recoverable = m_area->is_recoverable;
 
 	while(m_area != NULL && m_area->alloc_chunks == m_area->num_chunks){
 		prev_area = m_area;
@@ -271,7 +274,7 @@ void *do_malloc(unsigned int lid, malloc_state *mem_pool, size_t size) {
 		m_area = &mem_pool->areas[mem_pool->num_areas];
 
 		// The malloc area to be instantiated has twice the number of chunks wrt the last full malloc area for the same chunks size
-		malloc_area_init(true, m_area, size, prev_area->num_chunks << 1);
+		malloc_area_init(is_recoverable, m_area, size, prev_area->num_chunks << 1);
 
 		m_area->idx = mem_pool->num_areas;
 		mem_pool->num_areas++;
@@ -349,6 +352,8 @@ void *do_malloc(unsigned int lid, malloc_state *mem_pool, size_t size) {
 	RESET_BIT_AT(chk_size, 0);
 	RESET_BIT_AT(chk_size, 1);
 
+	bzero(ptr, chk_size);
+
 	// Keep track of the malloc_area which this chunk belongs to
 	*(unsigned long long *)ptr = (unsigned long long)m_area->self_pointer;
 	return (void*)((char*)ptr + sizeof(long long));
@@ -401,8 +406,10 @@ void do_free(unsigned int lid, malloc_state *mem_pool, void *ptr) {
 
 			mem_pool->total_inc_size -= chunk_size;
 
-			if (m_area->dirty_chunks < 0)
-				rootsim_error(true, "%s:%d: negative number of chunks", __FILE__, __LINE__);
+			if (m_area->dirty_chunks < 0) {
+				rootsim_error(false, "%s:%d: negative number of chunks", __FILE__, __LINE__);
+				abort();
+			}
 		}
 
 		m_area->state_changed = 1;
