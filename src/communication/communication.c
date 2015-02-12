@@ -168,7 +168,7 @@ void send_antimessages(unsigned int lid, simtime_t after_simtime) {
 
 		// Remove the already sent antimessage from output queue
 		anti_msg_next = list_next(anti_msg);
-		list_delete_by_content(LPS[lid]->queue_out, anti_msg);
+		list_delete_by_content(lid, LPS[lid]->queue_out, anti_msg);
 		anti_msg = anti_msg_next;
 	}
 }
@@ -189,10 +189,10 @@ int comm_finalize(void) {
 	// Release as well memory used for remaining input/output queues
 	for(i = 0; i < n_prc; i++) {
 		while(!list_empty(LPS[i]->queue_in)) {
-			list_pop(LPS[i]->queue_in);
+			list_pop(i, LPS[i]->queue_in);
 		}
 		while(!list_empty(LPS[i]->queue_out)) {
-			list_pop(LPS[i]->queue_out);
+			list_pop(i, LPS[i]->queue_out);
 		}
 	}
 
@@ -347,7 +347,7 @@ void send_outgoing_msgs(unsigned int lid) {
 		msg_hdr.timestamp = msg->timestamp;
 		msg_hdr.send_time = msg->send_time;
 		msg_hdr.mark = msg->mark;
-		(void)list_insert(LPS[msg->sender]->queue_out, send_time, &msg_hdr);
+		(void)list_insert(msg->sender, LPS[msg->sender]->queue_out, send_time, &msg_hdr);
 	}
 
 	LPS[lid]->outgoing_buffer.size = 0;

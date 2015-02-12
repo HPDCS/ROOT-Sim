@@ -86,7 +86,7 @@ void recoverable_fini(void) {
 	for(i = 0; i < n_prc; i++) {
 		while(!list_empty(LPS[i]->queue_states)) {
 			rsfree(list_head(LPS[i]->queue_states)->log);
-			list_pop(LPS[i]->queue_states);
+			list_pop(i, LPS[i]->queue_states);
 		}
 	}
 }
@@ -349,9 +349,9 @@ void clean_buffers_on_gvt(unsigned int lid, simtime_t time_barrier){
 		
 		if(m_area->alloc_chunks == 0 && m_area->last_access < time_barrier && !CHECK_AREA_LOCK_BIT(m_area)){
 
-			if(m_area->use_bitmap != NULL) {
+			if(m_area->self_pointer != NULL) {
 
-				pool_release_memory(lid, m_area->use_bitmap);
+				pool_release_memory(lid, m_area->self_pointer);
 
 				m_area->use_bitmap = NULL;
 				m_area->dirty_bitmap = NULL;

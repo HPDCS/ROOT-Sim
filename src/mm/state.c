@@ -107,7 +107,7 @@ void LogState(unsigned int lid) {
 		new_state.base_pointer = LPS[lid]->current_base_pointer;
 
 		// list_insert() makes a copy of the payload
-		(void)list_insert_tail(LPS[lid]->queue_states, &new_state);
+		(void)list_insert_tail(lid, LPS[lid]->queue_states, &new_state);
 
 	}
 }
@@ -206,7 +206,7 @@ void rollback(unsigned int lid) {
 		restore_state = list_prev(restore_state);
 		log_delete(s->log);
 		s->last_event = (void *)0xDEADC0DE;
-		list_delete_by_content(LPS[lid]->queue_states, s);
+		list_delete_by_content(lid, LPS[lid]->queue_states, s);
 	}
 
 	// Restore the simulation state and correct the state base pointer

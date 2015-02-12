@@ -435,7 +435,7 @@ void SystemInit(int argc, char **argv) {
 			memcpy(init_event.event_content, &argv[w], (argc - w) * sizeof(char *));
 		}
 
-		(void)list_insert_head(LPS[t]->queue_in, &init_event);
+		(void)list_insert_head(t, LPS[t]->queue_in, &init_event);
 		LPS[t]->state_log_forced = true;
 	}
 

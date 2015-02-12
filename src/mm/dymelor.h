@@ -225,14 +225,11 @@ extern void clean_buffers_on_gvt(unsigned int, simtime_t);
 
 
 // Unrecoverable Memory API
-extern void *__umalloc(unsigned int, size_t);
-extern void __ufree(unsigned int, void *);
-extern void *__urealloc(unsigned int, void *, size_t);
-extern void *__ucalloc(unsigned int lid, size_t nmemb, size_t size);
-#define umalloc(size) __umalloc(current_lp, size);
-#define ufree(ptr) __ufree(current_lp, ptr);
-#define urealloc(ptr, size) __urealloc(current_lp, ptr, size);
-#define ucalloc(nmemb, size) __umalloc(current_lp, nmbemb, size);
+extern void *umalloc(unsigned int, size_t);
+extern void ufree(unsigned int, void *);
+extern void *urealloc(unsigned int, void *, size_t);
+extern void *ucalloc(unsigned int, size_t nmemb, size_t size);
+
 
 /* Simulation Platform Memory APIs */
 extern inline void *rsalloc(size_t);

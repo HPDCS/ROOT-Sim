@@ -80,7 +80,7 @@ void rollback_control_message(unsigned int lid, simtime_t simtime) {
                 Send(&control_antimessage);
 
 		msg_prev = list_prev(msg);
-		list_delete_by_content(LPS[lid]->rendezvous_queue, msg);
+		list_delete_by_content(lid, LPS[lid]->rendezvous_queue, msg);
 		msg = msg_prev;
 	}
 }

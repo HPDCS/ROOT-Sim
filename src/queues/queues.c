@@ -153,7 +153,7 @@ void insert_bottom_half(msg_t *msg) {
 	unsigned int lid = GidToLid(msg->receiver);
 
 	spin_lock(&LPS[lid]->lock);
-	(void)list_insert_tail(LPS[lid]->bottom_halves, msg);
+	(void)list_insert_tail(lid, LPS[lid]->bottom_halves, msg);
 	spin_unlock(&LPS[lid]->lock);
 }
 
@@ -229,7 +229,7 @@ void process_bottom_halves(void) {
 						}
 
 						// Delete the matched message
-						list_delete_by_content(LPS[lid_receiver]->queue_in, matched_msg);
+						list_delete_by_content(lid_receiver, LPS[lid_receiver]->queue_in, matched_msg);
 					}
 
 					break;
@@ -237,7 +237,7 @@ void process_bottom_halves(void) {
 				// It's a positive message
 				case positive:
 
-					msg_to_process = list_insert(LPS[lid_receiver]->queue_in, timestamp, msg_to_process);
+					msg_to_process = list_insert(lid_receiver, LPS[lid_receiver]->queue_in, timestamp, msg_to_process);
 
 					// Check if we've just inserted an out-of-order event
 					if(msg_to_process->timestamp < lvt(lid_receiver)) {
@@ -259,7 +259,7 @@ void process_bottom_halves(void) {
 			}
 
 		    expunge_msg:
-			list_pop(processing);
+			list_pop(lid_receiver, processing);
 		}
 		rsfree(processing);
 	}
