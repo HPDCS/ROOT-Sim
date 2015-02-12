@@ -72,7 +72,7 @@ void unrecoverable_fini(void) {
 			current_area = &(unrecoverable_state[i]->areas[j]);
 			if (current_area != NULL) {
 				if (current_area->use_bitmap != NULL) {
-					ufree(current_area->use_bitmap);
+					ufree(i, current_area->use_bitmap);
 				}
 			}
 		}
@@ -84,17 +84,17 @@ void unrecoverable_fini(void) {
 
 
 
-void *__umalloc(unsigned int lid, size_t s) {
+void *umalloc(unsigned int lid, size_t s) {
 	return do_malloc(lid, unrecoverable_state[lid], s);
 }
 
 
-void __ufree(unsigned int lid, void *ptr) {
+void ufree(unsigned int lid, void *ptr) {
 	do_free(lid, unrecoverable_state[lid], ptr);
 }
 
 
-void *__urealloc(unsigned int lid, void *ptr, size_t new_s) {
+void *urealloc(unsigned int lid, void *ptr, size_t new_s) {
 	
 	void *new_buffer;
 	size_t old_size;
@@ -102,12 +102,12 @@ void *__urealloc(unsigned int lid, void *ptr, size_t new_s) {
 	
 	// If ptr is NULL realloc is equivalent to the malloc
 	if (ptr == NULL) {
-		return __umalloc(lid, new_s);
+		return umalloc(lid, new_s);
 	}
 
 	// If ptr is not NULL and the size is 0 realloc is equivalent to the free
 	if (new_s == 0) {
-		__ufree(lid, ptr);
+		ufree(lid, ptr);
 		return NULL;
 	}
 
@@ -117,25 +117,25 @@ void *__urealloc(unsigned int lid, void *ptr, size_t new_s) {
 	// is copied at least the smaller buffer size between the new and the old one
 	old_size = m_area->chunk_size;
 
-	new_buffer = __umalloc(lid, new_s);
+	new_buffer = umalloc(lid, new_s);
 
 	if (new_buffer == NULL)
 		return NULL;
 
 	memcpy(new_buffer, ptr, new_s > old_size ? new_s : old_size);
-	__ufree(lid, ptr);
+	ufree(lid, ptr);
 
 	return new_buffer;
 }
 
 
-void *__ucalloc(unsigned int lid, size_t nmemb, size_t size) {
+void *ucalloc(unsigned int lid, size_t nmemb, size_t size) {
 	void *buffer;
 
 	if (nmemb == 0 || size == 0)
 		return NULL;
 
-	buffer = __umalloc(lid, nmemb * size);
+	buffer = umalloc(lid, nmemb * size);
 	if (buffer == NULL)
 		return NULL;
 

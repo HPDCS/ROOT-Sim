@@ -74,18 +74,18 @@ struct rootsim_list {
 			})
 
 /// Insert a new node in the list. Refer to <__list_insert_head>() for a more thorough documentation.
-#define list_insert_head(list, data) \
-			(__typeof__(list))__list_insert_head((list), sizeof *(list), (data))
+#define list_insert_head(lid, list, data) \
+			(__typeof__(list))__list_insert_head((lid), (list), sizeof *(list), (data))
 
 
 /// Insert a new node in the list. Refer to <__list_insert_tail>() for a more thorough documentation.
-#define list_insert_tail(list, data) \
-			(__typeof__(list))__list_insert_tail((list), sizeof *(list), (data))
+#define list_insert_tail(lid, list, data) \
+			(__typeof__(list))__list_insert_tail((lid), (list), sizeof *(list), (data))
 
 
 /// Insert a new node in the list. Refer to <__list_insert>() for a more thorough documentation.
-#define list_insert(list, key_name, data) \
-			(__typeof__(list))__list_insert((list), sizeof *(list), my_offsetof((list), key_name), (data))
+#define list_insert(lid, list, key_name, data) \
+			(__typeof__(list))__list_insert((lid), (list), sizeof *(list), my_offsetof((list), key_name), (data))
 
 /// Remove a node in the list. Refer to <__list_delete>() for a more thorough documentation.
 #define list_delete(list, key_name, key_value) \
@@ -98,15 +98,15 @@ struct rootsim_list {
 /** Remove a node in the list and returns its content by the pointer of the data contained in the node.
  *  Refer to <__list_extract_by_content>() for a more thorough documentation.
  */
-#define list_extract_by_content(list, ptr) \
-		(__typeof__(list))__list_extract_by_content((list), sizeof *(list), (ptr), true)
+#define list_extract_by_content(lid, list, ptr) \
+		(__typeof__(list))__list_extract_by_content((lid), (list), sizeof *(list), (ptr), true)
 
 /** Remove a node in the list by the pointer of the data contained in the node
  *  Refer to <__list_delete_by_content>() for a more thorough documentation.
  *  TODO: there is a memory leak here
  */
-#define list_delete_by_content(list, ptr) \
-		(void)__list_extract_by_content((list), sizeof *(list), (ptr), false)
+#define list_delete_by_content(lid, list, ptr) \
+		ufree((lid), __list_extract_by_content((lid), (list), sizeof *(list), (ptr), false))
 
 /// Find a node in the list. Refer to <__list_find>() for a more thorough documentation.
 #define list_find(list, key_name, key_value) \
@@ -117,13 +117,8 @@ struct rootsim_list {
 #define LIST_TRUNC_BEFORE	11
 
 /// Truncate a list up to a certain point, towards increasing values. Refer to <__list_trunc>() for a more thorough documentation.
-#define list_trunc_before(list, key_name, key_value) \
-		__list_trunc((list), (double)(key_value), my_offsetof((list), key_name), LIST_TRUNC_BEFORE)
-
-/// Truncate a list from a certain point, towards increasing values. Refer to <__list_trunc>() for a more thorough documentation.
-#define list_trunc_after(list, key_name, key_value) \
-		__list_trunc((list), (double)(key_value), my_offsetof((list), key_name), LIST_TRUNC_AFTER)
-
+#define list_trunc_before(lid, list, key_name, key_value) \
+		__list_trunc((lid), (list), (double)(key_value), my_offsetof((list), key_name), LIST_TRUNC_BEFORE)
 
 // Get the size of the current list. Refer to <__list_delete>() for a more thorough documentation.
 #define list_sizeof(list) ((struct rootsim_list *)list)->size
@@ -223,15 +218,15 @@ struct rootsim_list {
 
 #define list_empty(list) (((rootsim_list *)list)->size == 0)
 
-extern char *__list_insert_head(void *li, unsigned int size, void *data);
-extern char *__list_insert_tail(void *li, unsigned int size, void *data);
-extern char *__list_insert(void *li, unsigned int size, size_t key_position, void *data);
-extern char *__list_extract(void *li, unsigned int size, double key, size_t key_position);
-extern bool __list_delete(void *li, unsigned int size, double key, size_t key_position);
-extern char *__list_extract_by_content(void *li, unsigned int size, void *ptr, bool copy);
+extern char *__list_insert_head(unsigned int lid, void *li, unsigned int size, void *data);
+extern char *__list_insert_tail(unsigned int lid, void *li, unsigned int size, void *data);
+extern char *__list_insert(unsigned int lid, void *li, unsigned int size, size_t key_position, void *data);
+extern char *__list_extract(unsigned int lid, void *li, unsigned int size, double key, size_t key_position);
+extern bool __list_delete(unsigned int lid, void *li, unsigned int size, double key, size_t key_position);
+extern char *__list_extract_by_content(unsigned int lid, void *li, unsigned int size, void *ptr, bool copy);
 extern char *__list_find(void *li, double key, size_t key_position);
-extern unsigned int __list_trunc(void *li, double key, size_t key_position, unsigned short int direction);
-extern void list_pop(void *li);
+extern unsigned int __list_trunc(unsigned int lid, void *li, double key, size_t key_position, unsigned short int direction);
+extern void list_pop(unsigned int lid, void *li);
 
 #endif /* __LIST_DATATYPE_H */
 

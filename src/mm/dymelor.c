@@ -428,10 +428,8 @@ void do_free(unsigned int lid, malloc_state *mem_pool, void *ptr) {
 			}
 		} else
 			mem_pool->total_log_size -= chunk_size;
-	} else {
-		pool_release_memory(lid, m_area->area);
-		m_area->area = NULL;
 	}
+	// TODO: when do we free unrecoverable areas?
 }
 
 
