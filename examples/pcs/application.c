@@ -1,22 +1,19 @@
 #include <stdlib.h>
 #include <stdio.h>
-#include <string.h>
+#include <strings.h>
 #include <ROOT-Sim.h>
 
 #include "application.h"
 
 bool pcs_statistics = false;
-int complete_calls = COMPLETE_CALLS;
+unsigned int complete_calls = COMPLETE_CALLS;
 
 
 #define DUMMY_TA 500
 
 
 void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_type *event_content, unsigned int size, void *ptr) {
-
-	char *parameter, *value;
-	channel *c;
-	int w;
+	unsigned int w;
 
 	event_content_type new_event_content;
 
@@ -192,7 +189,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 
 			state->channel_counter++;
 			state->complete_calls++;
-			deallocation(me, state, event_content->channel, event_content, now);
+			deallocation(me, state, event_content->channel, now);
 
 			break;
 
@@ -200,7 +197,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 
 			state->channel_counter++;
 			state->leaving_handoffs++;
-			deallocation(me, state, event_content->channel, event_content, now);
+			deallocation(me, state, event_content->channel, now);
 
 			new_event_content.call_term_time =  event_content->call_term_time;
 			ScheduleNewEvent(event_content->cell, now, HANDOFF_RECV, &new_event_content, sizeof(new_event_content));

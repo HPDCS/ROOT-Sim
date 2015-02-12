@@ -113,9 +113,9 @@ typedef struct _lp_state_type{
 
 
 double recompute_ta(double ref_ta, simtime_t now);
-double generate_cross_path_gain(lp_state_type *state);
-double generate_path_gain(lp_state_type *state);
-void deallocation(unsigned int lp, lp_state_type *state, int channel, event_content_type *, simtime_t);
+double generate_cross_path_gain(void);
+double generate_path_gain(void);
+void deallocation(unsigned int lp, lp_state_type *state, int channel, simtime_t);
 int allocation(lp_state_type *state);
 
 
