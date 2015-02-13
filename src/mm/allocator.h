@@ -26,8 +26,9 @@
 #include <stdlib.h>
 #include <sys/mman.h>
 #include <pthread.h>
+#include <core/core.h>
 
-typedef struct _mem_map{
+typedef struct _mem_map {
 	char* base;   //base address of the chain of meta-data tables for the memory map of the sobj	
 	int   size;   //maximum number of entries in the current meta-data tables of the memory map of the sobj
 	int   active;   //number of valid entries in the meta-data tables of the memory map of the sobj
@@ -55,11 +56,12 @@ typedef struct _map_move{
 } map_move; 
 
 
+#define MDT_PAGES	5
 #define PAGE_SIZE (4*1<<10)
-#define MDT_ENTRIES ((PAGE_SIZE)/sizeof(mdt_entry))
-#define MAX_SEGMENT_SIZE 256 //this is expressed in number of pages
+#define MDT_ENTRIES ((MDT_PAGES * PAGE_SIZE) / sizeof(mdt_entry))
+#define MAX_SEGMENT_SIZE 512 // this is expressed in number of pages
  
-#define MAX_SOBJS  	1024
+#define MAX_SOBJS  	MAX_LPs
 
 #define SUCCESS 		0
 #define FAILURE			-1
@@ -69,6 +71,7 @@ typedef struct _map_move{
 #define MDT_RELEASE_FAILURE	-96
 
 char* allocate_mdt(void);
+char *allocate_pages(int num_pages);
 char* allocate_page(void);
 mdt_entry* get_new_mdt_entry(int );
 int allocator_init(unsigned int);

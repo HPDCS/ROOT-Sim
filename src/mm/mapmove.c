@@ -27,18 +27,22 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/mman.h>
-#include "allocator.h"
 #include <numaif.h>
 #include <numa.h>
 #include <errno.h>
 #include <pthread.h>
-#include "mapmove.h"
+
+#include <mm/allocator.h>
+#include <mm/mapmove.h>
+#include <mm/bh-manager.h>
 
 #define AUDIT if(1)
 
 /* these are required for move_pages - we use max-sized static memory for latency optimization */
 char *pages[MAX_SEGMENT_SIZE];
+char *bh_pages[2 * BH_PAGES];
 int   nodes[MAX_SEGMENT_SIZE];
+int   bh_nodes[2 * BH_PAGES];
 int   status[MAX_SEGMENT_SIZE];
 
 
@@ -158,18 +162,23 @@ void move_segment(mdt_entry *mdte, unsigned numa_node){
 
 void move_BH(int sobj, unsigned numa_node){
 
-	char **pgs;
 	int i;
 	int ret;
-	int pagecount = 2; //1 page per bh (live and expired) 
-
-	pgs = daemonmaps[sobj].actual_bh_addresses;
-
+	int pagecount = 2 * BH_PAGES; // live and expired
+	
+	for(i = 0; i < BH_PAGES; i++) {
+		bh_pages[i] = ((char *)daemonmaps[sobj].actual_bh_addresses[0] + i * PAGE_SIZE);
+	}
+	
+	for(i = BH_PAGES; i < 2*BH_PAGES; i++) {
+		bh_pages[i] = ((char *)daemonmaps[sobj].actual_bh_addresses[1] + i * PAGE_SIZE);
+	}
+	
 	for (i = 0; i < pagecount; i++) {
-		nodes[i] = numa_node;
+		bh_nodes[i] = numa_node;
 	}	
 
-	ret = numa_move_pages(0, pagecount, (void **)pgs, nodes, status, MPOL_MF_MOVE);
+	ret = numa_move_pages(0, pagecount, (void **)bh_pages, bh_nodes, status, MPOL_MF_MOVE);
 
 	AUDIT
 	printf("HB move - sobj %d - return value is %d\n",sobj,ret);

@@ -71,8 +71,8 @@ void unrecoverable_fini(void) {
 		for (j = 0; j < (unsigned int)unrecoverable_state[i]->num_areas; j++) {
 			current_area = &(unrecoverable_state[i]->areas[j]);
 			if (current_area != NULL) {
-				if (current_area->use_bitmap != NULL) {
-					ufree(i, current_area->use_bitmap);
+				if (current_area->self_pointer != NULL) {
+					ufree(i, current_area->self_pointer);
 				}
 			}
 		}
@@ -85,7 +85,12 @@ void unrecoverable_fini(void) {
 
 
 void *umalloc(unsigned int lid, size_t s) {
-	return do_malloc(lid, unrecoverable_state[lid], s);
+	void *ptr;
+	ptr = do_malloc(lid, unrecoverable_state[lid], s);
+	if(ptr == NULL) {
+		abort();
+	}
+	return ptr;
 }
 
 

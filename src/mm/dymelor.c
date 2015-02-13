@@ -218,10 +218,6 @@ void *do_malloc(unsigned int lid, malloc_state *mem_pool, size_t size) {
 
 	int j;
 
-	if(rootsim_config.serial) {
-		return rsalloc(size);
-	}
-
 	size = compute_size(size);
 
 	if(size > MAX_CHUNK_SIZE){
@@ -230,8 +226,7 @@ void *do_malloc(unsigned int lid, malloc_state *mem_pool, size_t size) {
 	}
 
 	j = (int)log2(size) - (int)log2(MIN_CHUNK_SIZE);
-
-	m_area = &mem_pool->areas[(int)log2(size) - (int)log2(MIN_CHUNK_SIZE)];
+	m_area = &mem_pool->areas[j];
 	is_recoverable = m_area->is_recoverable;
 
 	while(m_area != NULL && m_area->alloc_chunks == m_area->num_chunks){
@@ -295,7 +290,7 @@ void *do_malloc(unsigned int lid, malloc_state *mem_pool, size_t size) {
 		m_area->self_pointer = (malloc_area *)pool_get_memory(lid, area_size);
 
 		if(m_area->self_pointer == NULL){
-			rootsim_error(true, "DyMeLoR: error allocating space for the use bitmap");
+			rootsim_error(true, "DyMeLoR: error allocating space");
 		}
 
 		m_area->dirty_chunks = 0;
@@ -314,6 +309,7 @@ void *do_malloc(unsigned int lid, malloc_state *mem_pool, size_t size) {
 		rootsim_error(true, "Error while allocating memory at %s:%d\n", __FILE__, __LINE__);
 	}
 
+	// TODO: ricontrollare come viene inizializzato next_chunk
 	ptr = (void*)((char*)m_area->area + (m_area->next_chunk * size));
 
 	SET_USE_BIT(m_area, m_area->next_chunk);
@@ -322,37 +318,38 @@ void *do_malloc(unsigned int lid, malloc_state *mem_pool, size_t size) {
 	if(bitmap_blocks < 1)
 		bitmap_blocks = 1;
 
+	if(m_area->is_recoverable) {
+		if(m_area->alloc_chunks == 0){
+			mem_pool->bitmap_size += bitmap_blocks * BLOCK_SIZE;
+			mem_pool->busy_areas++;
+		}
 
-	if(m_area->alloc_chunks == 0){
-		mem_pool->bitmap_size += bitmap_blocks * BLOCK_SIZE;
-		mem_pool->busy_areas++;
+		if(m_area->state_changed == 0) {
+			mem_pool->dirty_bitmap_size += bitmap_blocks * BLOCK_SIZE;
+			mem_pool->dirty_areas++;
+		}
+
+		m_area->state_changed = 1;
+		m_area->last_access = current_lvt;
+
+		if(!CHECK_LOG_MODE_BIT(m_area)){
+			if((double)m_area->alloc_chunks / (double)m_area->num_chunks > MAX_LOG_THRESHOLD){
+				SET_LOG_MODE_BIT(m_area);
+				mem_pool->total_log_size += (m_area->num_chunks - (m_area->alloc_chunks - 1)) * size;
+			} else
+				mem_pool->total_log_size += size;
+		}
+
+		//~ int chk_size = m_area->chunk_size;
+		//~ RESET_BIT_AT(chk_size, 0);
+		//~ RESET_BIT_AT(chk_size, 1);
 	}
-
-	if(m_area->state_changed == 0) {
-		mem_pool->dirty_bitmap_size += bitmap_blocks * BLOCK_SIZE;
-		mem_pool->dirty_areas++;
-	}
-
-	m_area->state_changed = 1;
 
 	m_area->alloc_chunks++;
-	m_area->last_access = current_lvt;
-
-	if(!CHECK_LOG_MODE_BIT(m_area)){
-		if((double)m_area->alloc_chunks / (double)m_area->num_chunks > MAX_LOG_THRESHOLD){
-			SET_LOG_MODE_BIT(m_area);
-			mem_pool->total_log_size += (m_area->num_chunks - (m_area->alloc_chunks - 1)) * size;
-		} else
-			mem_pool->total_log_size += size;
-	}
-
 	find_next_free(m_area);
 
-	int chk_size = m_area->chunk_size;
-	RESET_BIT_AT(chk_size, 0);
-	RESET_BIT_AT(chk_size, 1);
-
-	bzero(ptr, chk_size);
+	// TODO: togliere
+	memset(ptr, 0xe8, size);
 
 	// Keep track of the malloc_area which this chunk belongs to
 	*(unsigned long long *)ptr = (unsigned long long)m_area->self_pointer;
@@ -363,6 +360,7 @@ void *do_malloc(unsigned int lid, malloc_state *mem_pool, size_t size) {
 
 
 // TODO: multiple checks on m_area->is_recoverable. The code should be refactored
+// TODO: lid non necessario qui
 void do_free(unsigned int lid, malloc_state *mem_pool, void *ptr) {
 	
 	malloc_area * m_area;
@@ -382,8 +380,12 @@ void do_free(unsigned int lid, malloc_state *mem_pool, void *ptr) {
 	chunk_size = m_area->chunk_size;
 	RESET_BIT_AT(chunk_size, 0);
 	RESET_BIT_AT(chunk_size, 1);
-	idx = (int)((char*)ptr - (char*)m_area->area) / chunk_size;
+	idx = (int)((char *)ptr - (char *)m_area->area) / chunk_size;
 
+	if(!CHECK_USE_BIT(m_area, idx)) {
+		fprintf(stderr, "%s:%d: double free() corruption or address not malloc'd\n", __FILE__, __LINE__);
+		abort();
+	}
 	RESET_USE_BIT(m_area, idx);
 
         bitmap_blocks = m_area->num_chunks / NUM_CHUNKS_PER_BLOCK;
@@ -391,12 +393,13 @@ void do_free(unsigned int lid, malloc_state *mem_pool, void *ptr) {
                 bitmap_blocks = 1;
 
 
-	if (m_area->state_changed == 0){
-                mem_pool->dirty_bitmap_size += bitmap_blocks * BLOCK_SIZE;
-                mem_pool->dirty_areas++;
-        }
-
 	if(m_area->is_recoverable) {
+		if (m_area->state_changed == 0) {
+			mem_pool->dirty_bitmap_size += bitmap_blocks * BLOCK_SIZE;
+			mem_pool->dirty_areas++;
+		}
+
+
 		if(CHECK_DIRTY_BIT(m_area, idx)){
 			RESET_DIRTY_BIT(m_area, idx);
 			m_area->dirty_chunks--;
@@ -415,7 +418,7 @@ void do_free(unsigned int lid, malloc_state *mem_pool, void *ptr) {
 		m_area->state_changed = 1;
 		
 		m_area->last_access = current_lvt;
-	 }
+	}
 
 	if(idx < m_area->next_chunk)
 		m_area->next_chunk = idx;

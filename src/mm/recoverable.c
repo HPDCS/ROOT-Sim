@@ -72,8 +72,8 @@ void recoverable_fini(void) {
 		for (j = 0; j < (unsigned int)recoverable_state[i]->num_areas; j++) {
 			current_area = &(recoverable_state[i]->areas[j]);
 			if (current_area != NULL) {
-				if (current_area->use_bitmap != NULL) {
-					pool_release_memory(i, current_area->use_bitmap);
+				if (current_area->self_pointer != NULL) {
+					pool_release_memory(i, current_area->self_pointer);
 				}
 			}
 		}

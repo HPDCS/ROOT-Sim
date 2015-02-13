@@ -67,8 +67,8 @@ struct rootsim_list {
  *   list(int) = new_list(int);
  *  \endcode
  */
-#define new_list(type)	(type *)({ \
-				void *__lmptr = (void *)rsalloc(sizeof(struct rootsim_list));\
+#define new_list(lid, type)	(type *)({ \
+				void *__lmptr = (void *)umalloc((lid), sizeof(struct rootsim_list));\
 				bzero(__lmptr, sizeof(struct rootsim_list));\
 				__lmptr;\
 			})
@@ -87,6 +87,13 @@ struct rootsim_list {
 #define list_insert(lid, list, key_name, data) \
 			(__typeof__(list))__list_insert((lid), (list), sizeof *(list), my_offsetof((list), key_name), (data))
 
+/// Insert an existing node in the list. Refer to <__list_place>() for a more thorough documentation.
+#define list_place(lid, list, key_name, node) \
+			(__typeof__(list))__list_place((lid), (list), my_offsetof((list), key_name), (node))
+			
+#define list_place_by_content(lid, list, key_name, node) \
+			(__typeof__(list))__list_place((lid), (list), my_offsetof((list), key_name), list_container_of(node))
+			
 /// Remove a node in the list. Refer to <__list_delete>() for a more thorough documentation.
 #define list_delete(list, key_name, key_value) \
 		__list_delete((list), sizeof *(list), (double)(key_value), my_offsetof((list), key_name))
@@ -106,7 +113,7 @@ struct rootsim_list {
  *  TODO: there is a memory leak here
  */
 #define list_delete_by_content(lid, list, ptr) \
-		ufree((lid), __list_extract_by_content((lid), (list), sizeof *(list), (ptr), false))
+		(void)(lid), __list_extract_by_content((lid), (list), sizeof *(list), (ptr), false)
 
 /// Find a node in the list. Refer to <__list_find>() for a more thorough documentation.
 #define list_find(list, key_name, key_value) \
@@ -227,6 +234,11 @@ extern char *__list_extract_by_content(unsigned int lid, void *li, unsigned int 
 extern char *__list_find(void *li, double key, size_t key_position);
 extern unsigned int __list_trunc(unsigned int lid, void *li, double key, size_t key_position, unsigned short int direction);
 extern void list_pop(unsigned int lid, void *li);
+extern char *__list_place(unsigned int lid, void *li, size_t key_position, struct rootsim_list_node *new_n);
+extern void *list_allocate_node(unsigned int lid, size_t size);
+extern void *list_allocate_node_buffer(unsigned int lid, size_t size);
+extern void list_deallocate_node_buffer(unsigned int lid, void *ptr);
+
 
 #endif /* __LIST_DATATYPE_H */
 

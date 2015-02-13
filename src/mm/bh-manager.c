@@ -27,16 +27,19 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
-#include "allocator.h"
 #include <numaif.h>
 #include <errno.h>
 #include <pthread.h>
-#include "bh-manager.h"
 
-#define AUDIT if(1)
+#include <mm/bh-manager.h>
+#include <mm/allocator.h>
+#include <datatypes/list.h>
+
+
+#define AUDIT if(0)
 
 mem_map *bhmaps;
-char fictitious[MAX_MSG_SIZE];
+//char fictitious[MAX_MSG_SIZE];
 
 pthread_spinlock_t bh_write[MAX_SOBJS];
 pthread_spinlock_t bh_read[MAX_SOBJS];
@@ -69,11 +72,11 @@ int init_BH(void) {
        
 
         for (i=0; i<sobjs; i++){
-                addr = allocate_page();
+                addr = allocate_pages(BH_PAGES);
                 if (addr == NULL) goto bad_init;
                 bhmaps[i].live_bh = addr;
 		bhmaps[i].actual_bh_addresses[0] = addr;
-                addr = allocate_page();
+                addr = allocate_pages(BH_PAGES);
                 if (addr == NULL) goto bad_init;
                 bhmaps[i].expired_bh = addr;
 		bhmaps[i].actual_bh_addresses[1] = addr;
@@ -94,7 +97,7 @@ bad_init:
 }
 
 
-int insert_BH(int sobj, void* msg, int size){// this needs to be atomic per sobj - synch is left to the upper layer
+int insert_BH(int sobj, void* msg, int size) {
 
 	int tag;
 	int needed_store;
@@ -144,14 +147,14 @@ int insert_BH(int sobj, void* msg, int size){// this needs to be atomic per sobj
 
 bad_insert: 
 
-	AUDIT
+	//~ AUDIT
 	printf("BH insert failure - sobj %d\n",sobj);
 
 	return FAILURE;
 
 }
 
-void *get_BH(int sobj) { // this needs to be atomic per sobj - synch is left to the upper layer
+void *get_BH(int sobj) {
 
 	int msg_tag;
 	void *buff;
@@ -181,13 +184,13 @@ void *get_BH(int sobj) { // this needs to be atomic per sobj - synch is left to 
 
 	msg_addr = bhmaps[sobj].expired_bh + msg_offset;
 
-	memcpy(&msg_tag,msg_addr,sizeof(msg_tag)); 
+	memcpy(&msg_tag, msg_addr, sizeof(msg_tag)); 
 
-	buff = get_buffer(msg_tag);
+	buff = get_buffer(sobj, msg_tag);
 
 	msg_addr += sizeof(msg_tag);
 
-	memcpy(buff,msg_addr,msg_tag);
+	memcpy(buff, msg_addr, msg_tag);
 
 	msg_addr += msg_tag;
 
@@ -224,7 +227,6 @@ void switch_bh(int sobj){
 
 }
 
-void *get_buffer(int size) {
-	
-	return fictitious;
+void *get_buffer(int sobj, int size) {
+	return list_allocate_node_buffer(sobj, size);
 }

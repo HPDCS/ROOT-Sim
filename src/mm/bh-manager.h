@@ -23,10 +23,14 @@
 * @author Francesco Quaglia
 */
 
+#pragma once
 
-#define MAX_MSG_SIZE 128
-#define BH_SIZE      PAGE_SIZE //this is in bytes
+#include <core/core.h>
 
-void* get_buffer(int);
+#define MAX_MSG_SIZE sizeof(msg_t)
+#define BH_PAGES	20
+#define BH_SIZE      	(BH_PAGES * PAGE_SIZE) //this is in bytes
+
+void *get_buffer(int, int);
 void switch_bh(int);
 

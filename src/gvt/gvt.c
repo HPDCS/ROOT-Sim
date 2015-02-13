@@ -41,6 +41,7 @@
 // Defintion of GVT-reduction phases
 enum gvt_phases {phase_A, phase_send, phase_B, phase_aware, phase_end};
 
+static __thread int you_shall_not_pass = 1024;
 
 
 // Timer to know when we have to start GVT computation.
@@ -173,6 +174,11 @@ simtime_t gvt_operations(void) {
 	// This is different from the paper's pseudocode to reduce
 	// slightly the number of clock reads
 	if(GVT_flag == 0 && atomic_read(&counter_end) == 0) {
+
+		if(you_shall_not_pass > 0) {
+			you_shall_not_pass--;
+			timer_restart(gvt_timer);
+		}
 
 		// Has enough time passed since the last GVT reduction?
 		if ( timer_value_milli(gvt_timer) > (int)rootsim_config.gvt_time_period &&

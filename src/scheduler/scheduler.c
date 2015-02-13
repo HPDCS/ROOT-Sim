@@ -229,11 +229,11 @@ void initialize_LP(unsigned int lp) {
 	LPS[lp]->current_base_pointer = NULL;
 
 	// Initialize the queues
-	LPS[lp]->queue_in = new_list(msg_t);
-	LPS[lp]->queue_out = new_list(msg_hdr_t);
-	LPS[lp]->queue_states = new_list(state_t);
-	LPS[lp]->bottom_halves = new_list(msg_t);
-	LPS[lp]->rendezvous_queue = new_list(msg_t);
+	LPS[lp]->queue_in = new_list(lp, msg_t);
+	LPS[lp]->queue_out = new_list(lp, msg_hdr_t);
+	LPS[lp]->queue_states = new_list(lp, state_t);
+	LPS[lp]->bottom_halves = new_list(lp, msg_t);
+	LPS[lp]->rendezvous_queue = new_list(lp, msg_t);
 
 	// Assign the local ID to the LP
 	LPS[lp]->lid = lp;

@@ -158,6 +158,16 @@ void dump_l(struct rootsim_list_node *n, size_t key_position) {
 }
 
 
+char *__list_insert(unsigned int lid, void *li, unsigned int size, size_t key_position, void *data) {
+	struct rootsim_list_node *new_n;
+	
+	new_n = list_allocate_node(lid, size);
+	bzero(new_n, sizeof(struct rootsim_list_node) + size);
+	memcpy(&new_n->data, data, size);
+
+	return __list_place(lid, li, key_position, new_n);
+}
+
 /**
 * This function inserts a new element into the specified ordered doubly-linked list.
 * The paylaod of a new node can be any pointer to any data structure, provided that
@@ -185,7 +195,7 @@ void dump_l(struct rootsim_list_node *n, size_t key_position) {
 * @return a pointer to the newly-allocated copy of the payload into the list.
 *           This is different from the container node, which is not exposed to the caller.
 */
-char *__list_insert(unsigned int lid, void *li, unsigned int size, size_t key_position, void *data) {
+char *__list_place(unsigned int lid, void *li, size_t key_position, struct rootsim_list_node *new_n) {
 
 	rootsim_list *l = (rootsim_list *)li;
 
@@ -193,13 +203,8 @@ char *__list_insert(unsigned int lid, void *li, unsigned int size, size_t key_po
 	size_t size_before = l->size;
 
 	struct rootsim_list_node *n;
-	struct rootsim_list_node *new_n;
 
-	double key = get_key(data);
-
-	// Create the new node and populate the entry
-	new_n = umalloc(lid, sizeof(struct rootsim_list_node) + size);
-	memcpy(&new_n->data, data, size);
+	double key = get_key(new_n->data);
 
 	// Is the list empty?
 	if(l->size == 0) {
@@ -414,7 +419,7 @@ char *__list_extract_by_content(unsigned int lid, void *li, unsigned int size, v
 	}
 	n->next = (void *)0xDEADC0DE;
 	n->prev = (void *)0xDEADC0DE;
-	bzero(n->data, size);
+//	bzero(n->data, size);
 	ufree(lid, n);
 
 	l->size--;
@@ -558,3 +563,27 @@ unsigned int __list_trunc(unsigned int lid, void *li, double key, size_t key_pos
 	return deleted;
 }
 
+
+void *list_allocate_node(unsigned int lid, size_t size) {
+	struct rootsim_list_node *new_n;
+
+	new_n = umalloc(lid, sizeof(struct rootsim_list_node) + size);
+	bzero(new_n, sizeof(struct rootsim_list_node) + size);
+	return new_n;
+}
+
+void *list_allocate_node_buffer(unsigned int lid, size_t size) {
+	char *ptr;
+	
+	ptr = list_allocate_node(lid, size);
+
+	if(ptr == NULL)
+		return NULL;
+		
+	return (void *)(ptr + sizeof(struct rootsim_list_node));
+}
+
+
+void list_deallocate_node_buffer(unsigned int lid, void *ptr) {
+	ufree(lid, list_container_of(ptr));
+}

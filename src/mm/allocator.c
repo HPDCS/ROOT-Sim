@@ -38,7 +38,7 @@ extern void __real_free(void *);
 
 
 
-#define AUDIT if(1)
+#define AUDIT if(0)
 
 mem_map maps[MAX_SOBJS];
 map_move moves[MAX_SOBJS];
@@ -77,7 +77,6 @@ void audit_map(int sobj){
 
 
 int allocator_init(unsigned int sobjs){
-
 	unsigned int i;
 	char* addr;
 
@@ -198,11 +197,11 @@ bad_allocate:
 
 }
 
-char* allocate_page(void) {
-
+char *allocate_pages(int num_pages) {
+	
         char* page;
 
-        page = (char*)mmap((void*)NULL,PAGE_SIZE, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, 0,0);
+        page = (char*)mmap((void*)NULL, num_pages * PAGE_SIZE, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, 0,0);
 
 	if (page == MAP_FAILED) {
 		goto bad_allocate_page;
@@ -215,11 +214,15 @@ char* allocate_page(void) {
 	return NULL;
 }
 
+char* allocate_page(void) {
+	return allocate_pages(1);
+}
+
 char* allocate_mdt(void) {
 
         char* page;
 
-        page = allocate_page();
+        page = allocate_pages(MDT_PAGES);
 
 	return page;
 }
@@ -267,21 +270,20 @@ bad_mdt_release:
 	return MDT_RELEASE_FAILURE;
 }
 
-
 void *pool_get_memory(unsigned int lid, size_t size) {
-	#ifndef NUMA
-	(void)lid;
-	return __real_malloc(size);
-	#else
+	//~ #ifndef NUMA
+	//~ (void)lid;
+	//~ return __real_malloc(size);
+	//~ #else
 	return allocate_segment(lid, size);
-	#endif
+	//~ #endif
 }
 
 void pool_release_memory(unsigned int lid, void *ptr) {
-	#ifndef NUMA
-	(void)lid;
-	__real_free(ptr);
-	#else
+	//~ #ifndef NUMA
+	//~ (void)lid;
+	//~ __real_free(ptr);
+	//~ #else
 	// TODO
-	#endif
+	//~ #endif
 }
