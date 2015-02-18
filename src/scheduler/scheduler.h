@@ -56,6 +56,7 @@ extern void scheduler_init(void);
 extern void scheduler_fini(void);
 extern void schedule(void);
 extern void initialize_LP(unsigned int lp);
+extern void initialize_LPs(void); // TODO: after paralle setup this must be removed
 extern void activate_LP(unsigned int lp, simtime_t lvt, void *evt, void *state);
 extern void rebind_LPs(void);
 

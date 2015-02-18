@@ -68,8 +68,6 @@ __thread msg_t *current_evt;
 /// This global variable tells the simulator what is the LP currently being scheduled on the current worker thread
 __thread void *current_state;
 
-static barrier_t INIT_barrier;
-
 
 /*
 * This function initializes the scheduler. In particular, it relies on MPI to broadcast to every simulation kernel process
@@ -101,10 +99,6 @@ void scheduler_init(void) {
 		memset(LPS[i], 'x', sizeof(LP_state));
 		bzero(LPS[i], sizeof(LP_state));
 	}
-
-	// Initialize the INIT barrier
-	barrier_init(&INIT_barrier, n_cores);
-
 }
 
 
@@ -261,6 +255,14 @@ void initialize_LP(unsigned int lp) {
 	#endif
 }
 
+
+// TODO: this should be merged in the function above when the parallel setup is complete
+void initialize_LPs(void) {
+	register unsigned int i;
+	for(i = 0; i < n_prc_per_thread; i++) {
+		schedule();
+	}
+}
 
 
 
@@ -433,11 +435,6 @@ void schedule(void) {
 	// a critical condition and we abort.
 	if(event == NULL) {
 		rootsim_error(true, "Critical condition: LP %d seems to have events to be processed, but I cannot find them. Aborting...\n", lid);
-	}
-
-	// Manage the INIT barrier
-	if(event->type == INIT) {
-		thread_barrier(&INIT_barrier);
 	}
 
 	if(!process_control_msg(event)) {

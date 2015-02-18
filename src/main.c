@@ -90,6 +90,10 @@ static void *main_simulation_loop(void *arg) {
 	#ifdef HAVE_LINUX_KERNEL_MAP_MODULE
 	lp_alloc_thread_init();
 	#endif
+	
+	// Do the initial (local) LP binding, then execute INIT at all (local) LPs
+	rebind_LPs();
+	initialize_LPs();
 
 	// Worker Threads synchronization barrier: they all should start working together
 	thread_barrier(&all_thread_barrier);
