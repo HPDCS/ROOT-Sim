@@ -56,10 +56,10 @@ typedef struct _map_move{
 } map_move; 
 
 
-#define MDT_PAGES	5
+#define MDT_PAGES	40
 #define PAGE_SIZE (4*1<<10)
 #define MDT_ENTRIES ((MDT_PAGES * PAGE_SIZE) / sizeof(mdt_entry))
-#define MAX_SEGMENT_SIZE 512 // this is expressed in number of pages
+#define MAX_SEGMENT_SIZE 2048 // this is expressed in number of pages
  
 #define MAX_SOBJS  	MAX_LPs
 
@@ -78,7 +78,7 @@ int allocator_init(unsigned int);
 void* allocate_segment(unsigned int, size_t);
 void audit(void);
 int release_mdt_entry(int);
-void audit_map(int);
+void audit_map(unsigned int);
 void move_sobj(int , unsigned );
 void move_segment(mdt_entry *, unsigned );
 void set_daemon_maps(mem_map *, map_move* );

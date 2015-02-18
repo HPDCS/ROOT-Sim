@@ -145,7 +145,10 @@ int allocation(lp_state_type *pointer) {
 
 		summ = 0.0;
 
-		if (pointer->check_fading) {
+	//	if (pointer->check_fading) {
+	//force this
+
+		if(1){
 			ch = pointer->channels->prev;
 
 			while(ch != NULL){

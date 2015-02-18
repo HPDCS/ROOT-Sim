@@ -52,6 +52,7 @@
 #define MASK 0x00000001		// Mask used to check, set and unset bits
 
 
+//#define NUM_CHUNKS_PER_BLOCK 32
 #define NUM_CHUNKS_PER_BLOCK 32
 #define BLOCK_SIZE sizeof(unsigned int)
 
@@ -68,7 +69,7 @@
 				// malloc_areas are filled at runtime, subsequent malloc() requests
 				// by the application level software will fail.
 #define MAX_LIMIT_NUM_AREAS 100
-#define MIN_NUM_CHUNKS 1024	// Minimum number of chunks per malloc_area
+#define MIN_NUM_CHUNKS 4096	// Minimum number of chunks per malloc_area
 #define MAX_NUM_CHUNKS 4096	// Maximum number of chunks per malloc_area
 
 #define MAX_LOG_THRESHOLD 1.7	// Threshold to check if a malloc_area is underused TODO: retest

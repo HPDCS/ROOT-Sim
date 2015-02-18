@@ -38,7 +38,7 @@ extern void __real_free(void *);
 
 
 
-#define AUDIT if(0)
+#define AUDIT if(1)
 
 mem_map maps[MAX_SOBJS];
 map_move moves[MAX_SOBJS];
@@ -54,13 +54,13 @@ void audit(void) {
 
 }
 
-void audit_map(int sobj){
+void audit_map(unsigned int sobj){
 
 	mem_map* m_map;
 	mdt_entry* mdte;
 	int i;
 		
-	if( (sobj < 0)||(sobj>=handled_sobjs) ){
+	if( (sobj>=handled_sobjs) ){
 		printf("audit request on invalid sobj\n");
 		return ; 
 	}
@@ -151,7 +151,7 @@ void* allocate_segment(unsigned int sobj, size_t size){
 	if (size % PAGE_SIZE) numpages++;
 
 	AUDIT
-	printf("numpages is %d\n",numpages);
+	printf("segment allocation - requested numpages is %d\n",numpages);
 
 	if(numpages > MAX_SEGMENT_SIZE) goto bad_allocate;
 
@@ -165,7 +165,7 @@ void* allocate_segment(unsigned int sobj, size_t size){
 	}
 
 	AUDIT
-	printf("returned mdt is at address %p\n",mdt);
+	printf("segment allocation - returned mdt is at address %p\n",mdt);
 
 
 	AUDIT
@@ -174,7 +174,7 @@ void* allocate_segment(unsigned int sobj, size_t size){
         segment = (char*)mmap((void*)NULL,PAGE_SIZE*numpages, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, 0,0);
 
 	AUDIT
-	printf("actual allocation is at address %p\n",segment);
+	printf("allocate segment: actual allocation is at address %p\n",segment);
 
 	if (segment == MAP_FAILED) {
 		release_mdt_entry(sobj);
