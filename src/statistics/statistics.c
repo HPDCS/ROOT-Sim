@@ -277,16 +277,14 @@ void statistics_stop(int exit_code) {
 			
 		timer_tostring(simulation_timer, timer_string);
 		fprintf(f, "SIMULATION STARTED AT ..... : %s \n", 		timer_string);
-		bzero(timer_string, 64);
 		timer_tostring(simulation_finished, timer_string);
 		fprintf(f, "SIMULATION FINISHED AT .... : %s \n", 		timer_string);
 		fprintf(f, "TOTAL SIMULATION TIME ..... : %.03f seconds \n",	total_time);
 
 		fprintf(f, "\n");
 		fprintf(f, "TOTAL LPs.................. : %d \n", 		n_prc_tot);
-		fprintf(f, "TOTAL_THREADS ............. : %d \n", 		n_cores);
 		fprintf(f, "TOTAL EXECUTED EVENTS ..... : %.0f \n", 		system_wide_stats.tot_events);
-		fprintf(f, "AVERAGE EVENT COST......... : %.2f us\n",		system_wide_stats.event_time / system_wide_stats.tot_events);
+		fprintf(f, "AVERAGE EVENT COST......... : %.3f us\n",		total_time / system_wide_stats.tot_events * 1000 * 1000);
 		fprintf(f, "\n");
 		fprintf(f, "LAST COMMITTED GVT ........ : %f\n",		system_wide_stats.gvt_time);
 		fprintf(f, "AVERAGE MEMORY USAGE....... : %s\n",		format_size(system_wide_stats.memory_usage / system_wide_stats.gvt_computations));
@@ -540,7 +538,7 @@ static void statistics_flush_gvt(double gvt) {
 
 
 /**
-* This function initialize the Statistics subsystem
+* This function initializes the Statistics subsystem
 *
 * @author Alessandro Pellegrini
 */
