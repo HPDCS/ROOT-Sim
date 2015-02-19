@@ -22,8 +22,6 @@ unsigned int smallest_timestamp_first(void) {
 	// For each local process
 	for (i = 0; i < n_prc_per_thread; i++) {
 
-		min_bound = min(min_bound, (LPS_bound[i]->bound != NULL ? LPS_bound[i]->bound->timestamp : 0.0));
-
 		// Blocked LPs cannot be scheduled
 		if(is_blocked_state(LPS_bound[i]->state)) {
 			continue;

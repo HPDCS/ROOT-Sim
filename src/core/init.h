@@ -95,4 +95,10 @@ extern void SystemInit(int argc, char **argv);
 
 #endif
 
+struct app_arguments {
+	char **arguments;
+	int size;
+};
+extern struct app_arguments model_parameters;
+
 #endif /* _INIT_H */
