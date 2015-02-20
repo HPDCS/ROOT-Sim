@@ -36,6 +36,10 @@
 #define master_thread() ((tid & ((1 << sizeof(unsigned int) * 8 / 2)-1)) == 0)
 
 
+/// This macro tells on what core the current thread is running
+#define running_core() (tid & 0x0ffff)
+
+
 /// This structure is used to call the thread creation helper function
 struct _helper_thread {
 	void *(*start_routine)(void*);
