@@ -263,7 +263,6 @@ void initialize_LP(unsigned int lp) {
 
 
 
-
 /**
 * This function is the application-level ProcessEvent() callback entry point.
 * It allows to specify which lp must be scheduled, specifying its lvt, its event
