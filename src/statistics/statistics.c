@@ -9,7 +9,6 @@
 #include <sys/types.h>
 #include <dirent.h>
 
-
 #include <arch/thread.h>
 #include <arch/memusage.h>
 #include <core/core.h>
@@ -19,9 +18,9 @@
 #include <statistics/statistics.h>
 #include <queues/queues.h>
 #include <mm/state.h>
-#include <core/timer.h>
 #include <mm/dymelor.h>
-#include <mm/malloc.h>
+#include <core/timer.h>
+
 
 
 /// This is a timer that start during the initialization of statistics subsystem and can be used to know the total simulation time

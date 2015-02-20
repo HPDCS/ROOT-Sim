@@ -18,22 +18,17 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file malloc.h
-* @brief This is the ROOT-Sim implementation of the malloc library (to come...)
-* @author Alessandro Pellegrini
+* @file mapmove.h
+* @brief 
+* @author Francesco Quaglia
 */
 
+#define SLEEP_PERIOD 1 //this is defined in seconds
+#define NUMA_NODES   8 //numer of handled numa nodes
 
-#pragma once
-#ifndef _ROOTSIM_MALLOC_H
-#define _ROOTSIM_MALLOC_H
+#define unlikelynew(x)  (x!=-1)
 
-#include <stddef.h>
-
-extern inline void *rsalloc(size_t);
-extern inline void rsfree(void *);
-extern inline void *rsrealloc(void *, size_t);
-extern inline void *rscalloc(size_t, size_t);
-
-#endif /* _ROOTSIM_MALLOC_H */
+void * background_work( void* );
+int verify( int );
+void move_BH(int , unsigned );
 

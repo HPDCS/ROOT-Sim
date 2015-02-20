@@ -27,6 +27,7 @@
 #include <string.h>
 #include <stdbool.h>
 
+#include <datatypes/list.h>
 #include <core/core.h>
 #include <core/init.h>
 #include <core/timer.h>
@@ -37,15 +38,12 @@
 #include <scheduler/scheduler.h>
 #include <scheduler/stf.h>
 #include <mm/state.h>
-#include <mm/malloc.h>
 #include <mm/dymelor.h>
 #include <statistics/statistics.h>
 #include <arch/thread.h>
 #include <communication/communication.h>
 #include <gvt/gvt.h>
 #include <statistics/statistics.h>
-
-#include <mm/modules/ktblmgr/ktblmgr.h>
 
 
 /// Maintain LPs' simulation and execution states
@@ -118,7 +116,7 @@ static void destroy_LPs(void) {
 
 		// Destroy stacks
 		#ifdef ENABLE_ULT
-		lp_free(LPS[i]->stack);
+		rsfree(LPS[i]->stack);
 		#endif
 	}
 
@@ -230,11 +228,11 @@ void initialize_LP(unsigned int lp) {
 	LPS[lp]->current_base_pointer = NULL;
 
 	// Initialize the queues
-	LPS[lp]->queue_in = new_list(msg_t);
-	LPS[lp]->queue_out = new_list(msg_hdr_t);
-	LPS[lp]->queue_states = new_list(state_t);
-	LPS[lp]->bottom_halves = new_list(msg_t);
-	LPS[lp]->rendezvous_queue = new_list(msg_t);
+	LPS[lp]->queue_in = new_list(lp, msg_t);
+	LPS[lp]->queue_out = new_list(lp, msg_hdr_t);
+	LPS[lp]->queue_states = new_list(lp, state_t);
+	LPS[lp]->bottom_halves = new_list(lp, msg_t);
+	LPS[lp]->rendezvous_queue = new_list(lp, msg_t);
 
 	// Initialize the LP lock
 	spinlock_init(&LPS[lp]->lock);
@@ -292,7 +290,7 @@ void initialize_worker_thread(void) {
 			memcpy(init_event.event_content, model_parameters.arguments, model_parameters.size * sizeof(char *));
 		}
 
-		(void)list_insert_head(LPS_bound[t]->queue_in, &init_event);
+		(void)list_insert_head(LPS_bound[t]->lid, LPS_bound[t]->queue_in, &init_event);
 		LPS_bound[t]->state_log_forced = true;
 	}
 
@@ -338,19 +336,11 @@ void activate_LP(unsigned int lp, simtime_t lvt, void *evt, void *state) {
 	current_evt = evt;
 	current_state = state;
 
-	// Activate memory view for the current LP
-	lp_alloc_schedule();
-
 	#ifdef ENABLE_ULT
 	context_switch(&kernel_context, &LPS[lp]->context);
 	#else
 	LP_main_loop(NULL);
 	#endif
-
-	// Deactivate memory view for the current LP if no conflict has arisen
-	if(!is_blocked_state(LPS[lp]->state)) {
-		lp_alloc_deschedule();
-	}
 
 	current_lp = IDLE_PROCESS;
 	current_lvt = -1.0;

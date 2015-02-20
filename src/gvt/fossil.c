@@ -30,6 +30,7 @@
 #include <gvt/gvt.h>
 #include <gvt/ccgs.h>
 #include <mm/state.h>
+#include <mm/dymelor.h>
 #include <scheduler/process.h>
 #include <statistics/statistics.h>
 
@@ -61,18 +62,18 @@ void fossil_collection(unsigned int lid, simtime_t time_barrier) {
 	while( (state = list_head(LPS[lid]->queue_states)) != NULL && state->lvt < time_barrier) {
 		log_delete(list_head(LPS[lid]->queue_states)->log);
 		state->last_event = (void *)0xDEADBABE;
-		list_pop(LPS[lid]->queue_states);
+		list_pop(lid, LPS[lid]->queue_states);
 	}
 
 	// Determine queue pruning horizon
 	last_kept_event = list_head(LPS[lid]->queue_states)->last_event;
 
 	// Truncate the input queue, accounting for the event which is pointed by the lastly kept state
-	committed_events = (double)list_trunc_before(LPS[lid]->queue_in, timestamp, last_kept_event->timestamp);
+	committed_events = (double)list_trunc_before(lid, LPS[lid]->queue_in, timestamp, last_kept_event->timestamp);
 	statistics_post_lp_data(lid, STAT_COMMITTED, committed_events);
 
 	// Truncate the output queue
-	list_trunc_before(LPS[lid]->queue_out, send_time, last_kept_event->timestamp);
+	list_trunc_before(lid, LPS[lid]->queue_out, send_time, last_kept_event->timestamp);
 
 }
 

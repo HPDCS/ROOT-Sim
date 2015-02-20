@@ -35,13 +35,14 @@
 #include <scheduler/process.h>
 #include <scheduler/scheduler.h> // this is for n_prc_per_thread
 #include <statistics/statistics.h>
-
+#include <mm/dymelor.h>
 
 static bool first_gvt_invocation = true;
 
 // Defintion of GVT-reduction phases
 enum gvt_phases {phase_A, phase_send, phase_B, phase_aware, phase_end};
 
+static __thread int you_shall_not_pass = 1024;
 
 
 // Timer to know when we have to start GVT computation.
@@ -116,7 +117,7 @@ void gvt_init(void) {
 	atomic_set(&counter_end, 0);
 
 	// Initialize the local minima
-	local_min = malloc(sizeof(simtime_t) * n_cores);
+	local_min = rsalloc(sizeof(simtime_t) * n_cores);
 	for(i = 0; i < n_cores; i++) {
 		local_min[i] = INFTY;
 	}
@@ -183,6 +184,11 @@ simtime_t gvt_operations(void) {
 		// crashes. This is a sanity check for this.
 		if(first_gvt_invocation) {
 			first_gvt_invocation = false;
+			timer_restart(gvt_timer);
+		}
+
+		if(you_shall_not_pass > 0) {
+			you_shall_not_pass--;
 			timer_restart(gvt_timer);
 		}
 

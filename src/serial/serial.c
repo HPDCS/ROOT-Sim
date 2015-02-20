@@ -8,7 +8,7 @@
 #include <core/core.h>
 #include <scheduler/scheduler.h>
 #include <core/timer.h>
-#include <mm/malloc.h>
+#include <mm/dymelor.h>
 #include <datatypes/calqueue.h>
 
 

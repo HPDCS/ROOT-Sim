@@ -30,10 +30,7 @@
 #include <scheduler/process.h>
 #include <core/core.h>
 #include <communication/communication.h>
-
-// TODO: serve solo per vedere la macro  HAVE_LINUX_KERNEL_MAP_MODULE, che poi verrà spostata in configure.ac
-#include <mm/modules/ktblmgr/ktblmgr.h>
-#include <arch/thread.h>
+#include <mm/dymelor.h>
 
 
 #ifdef HAVE_LINUX_KERNEL_MAP_MODULE
@@ -83,7 +80,7 @@ void rollback_control_message(unsigned int lid, simtime_t simtime) {
                 Send(&control_antimessage);
 
 		msg_prev = list_prev(msg);
-		list_delete_by_content(LPS[lid]->rendezvous_queue, msg);
+		list_delete_by_content(lid, LPS[lid]->rendezvous_queue, msg);
 		msg = msg_prev;
 	}
 }

@@ -44,8 +44,7 @@
 #include <scheduler/scheduler.h>
 #include <mm/state.h>
 #include <mm/dymelor.h>
-#include <mm/malloc.h>
-#include <core/backtrace.h> // Place this after malloc.h!
+#include <core/backtrace.h>
 #include <statistics/statistics.h>
 #include <lib/numerical.h>
 #include <serial/serial.h>

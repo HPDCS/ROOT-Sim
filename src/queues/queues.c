@@ -36,6 +36,8 @@
 #include <datatypes/list.h>
 #include <queues/queues.h>
 #include <mm/state.h>
+#include <mm/dymelor.h>
+#include <mm/allocator.h>
 #include <scheduler/scheduler.h>
 #include <communication/communication.h>
 #include <statistics/statistics.h>
@@ -150,10 +152,12 @@ msg_t *advance_to_next_event(unsigned int lid) {
 void insert_bottom_half(msg_t *msg) {
 
 	unsigned int lid = GidToLid(msg->receiver);
+	
+	insert_BH(lid, msg, sizeof(msg_t));
 
-	spin_lock(&LPS[lid]->lock);
-	(void)list_insert_tail(LPS[lid]->bottom_halves, msg);
-	spin_unlock(&LPS[lid]->lock);
+	//~ spin_lock(&LPS[lid]->lock);
+	//~ (void)list_insert_tail(msg->sender, LPS[lid]->bottom_halves, msg);
+	//~ spin_unlock(&LPS[lid]->lock);
 }
 
 
@@ -167,23 +171,26 @@ void process_bottom_halves(void) {
 	unsigned int lid_receiver;
 	msg_t *msg_to_process;
 	msg_t *matched_msg;
-	list(msg_t) processing;
+	//~ list(msg_t) processing;
 
 	for(i = 0; i < n_prc_per_thread; i++) {
 
-		spin_lock(&LPS_bound[i]->lock);
-		processing = LPS_bound[i]->bottom_halves;
-		LPS_bound[i]->bottom_halves = new_list(msg_t);
-		spin_unlock(&LPS_bound[i]->lock);
+		//~ spin_lock(&LPS_bound[i]->lock);
+		//~ processing = LPS_bound[i]->bottom_halves;
+		//~ LPS_bound[i]->bottom_halves = new_list(msg_t);
+		//~ spin_unlock(&LPS_bound[i]->lock);
 
-		while(!list_empty(processing)) {
-			msg_to_process = list_head(processing);
+		//~ while(!list_empty(processing)) {
+			//~ msg_to_process = list_head(processing);
+		
+		while((msg_to_process = (msg_t *)get_BH(LPS_bound[i]->lid)) != NULL) {
 
 			lid_receiver = msg_to_process->receiver;
 
-			if(!receive_control_msg(msg_to_process)) {
-				goto expunge_msg;
-			}
+			// TODO: reintegrare per ECS
+			//~ if(!receive_control_msg(msg_to_process)) {
+				//~ goto expunge_msg;
+			//~ }
 
 			switch (msg_to_process->message_kind) {
 
@@ -228,7 +235,9 @@ void process_bottom_halves(void) {
 						}
 
 						// Delete the matched message
-						list_delete_by_content(LPS[lid_receiver]->queue_in, matched_msg);
+						list_delete_by_content(matched_msg->sender, LPS[lid_receiver]->queue_in, matched_msg);
+						
+						list_deallocate_node_buffer(LPS_bound[i]->lid, msg_to_process);
 					}
 
 					break;
@@ -236,7 +245,7 @@ void process_bottom_halves(void) {
 				// It's a positive message
 				case positive:
 
-					msg_to_process = list_insert(LPS[lid_receiver]->queue_in, timestamp, msg_to_process);
+					list_place_by_content(lid_receiver, LPS[lid_receiver]->queue_in, timestamp, msg_to_process);
 
 					// Check if we've just inserted an out-of-order event
 					if(msg_to_process->timestamp < lvt(lid_receiver)) {
@@ -245,22 +254,23 @@ void process_bottom_halves(void) {
 					}
 					break;
 
+				// TODO: reintegrare per ECS
 				// It's a control message
-				case other:
+				//~ case other:
 					// Check if it is an anti control message
-					if(!anti_control_message(msg_to_process)) {
-						goto expunge_msg;
-					}
-					break;
+					//~ if(!anti_control_message(msg_to_process)) {
+						//~ goto expunge_msg;
+					//~ }
+					//~ break;
 
 				default:
 					rootsim_error(true, "Received a message which is neither positive nor negative. Aborting...\n");
 			}
 
-		    expunge_msg:
-			list_pop(processing);
+		    //~ expunge_msg:
+			//~ list_pop(msg_to_process->sender, processing);
 		}
-		rsfree(processing);
+		//~ rsfree(processing);
 	}
 }
 

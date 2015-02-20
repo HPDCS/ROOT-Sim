@@ -28,7 +28,7 @@
 #include <stdbool.h>
 #include <arch/thread.h>
 #include <core/core.h>
-#include <mm/malloc.h>
+#include <mm/dymelor.h>
 
 static tid_t os_tid;
 
