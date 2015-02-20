@@ -37,8 +37,6 @@
 #include <scheduler/process.h>
 #include <mm/dymelor.h>
 
-#include <arch/thread.h>
-
 /// This is the execution context of the simulation kernel
 __thread kernel_context_t kernel_context;
 
@@ -141,8 +139,6 @@ static void context_create_boot(void) {
 static void context_create_trampoline(int sig) {
 	(void)sig;
 	
-	printf("I'm thread %d\n", tid);
-
 	if(context_save(context_creat) == 0)
 		return;
 

@@ -37,12 +37,9 @@
 #include <statistics/statistics.h>
 #include <mm/dymelor.h>
 
-static bool first_gvt_invocation = true;
 
 // Defintion of GVT-reduction phases
 enum gvt_phases {phase_A, phase_send, phase_B, phase_aware, phase_end};
-
-static __thread int you_shall_not_pass = 1024;
 
 
 // Timer to know when we have to start GVT computation.
@@ -182,15 +179,6 @@ simtime_t gvt_operations(void) {
 		// before running INIT. This makes all the assumptions about the
 		// fact that bound is not null fail, and everything here inevitably
 		// crashes. This is a sanity check for this.
-		if(first_gvt_invocation) {
-			first_gvt_invocation = false;
-			timer_restart(gvt_timer);
-		}
-
-		if(you_shall_not_pass > 0) {
-			you_shall_not_pass--;
-			timer_restart(gvt_timer);
-		}
 
 		// Has enough time passed since the last GVT reduction?
 		if ( timer_value_milli(gvt_timer) > (int)rootsim_config.gvt_time_period &&
