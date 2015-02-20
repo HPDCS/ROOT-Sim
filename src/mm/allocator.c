@@ -24,6 +24,7 @@
 */
 
 
+#include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/mman.h>
@@ -35,6 +36,8 @@
 
 extern void *__real_malloc(size_t);
 extern void __real_free(void *);
+
+static int *numa_nodes;
 
 
 
@@ -75,6 +78,63 @@ void audit_map(unsigned int sobj){
 	return ;
 }
 
+static int query_numa_node(int id){
+        #define NUMA_INFO_FILE "./numa_info"
+        #define BUFF_SIZE 1024
+
+        FILE *numa_info;
+
+        char buff[BUFF_SIZE];
+        char temp[BUFF_SIZE];
+
+        int i;
+        int core_id;
+        char* p;
+
+        system("numactl --hardware | grep cpus > numa_info");
+
+        numa_info = fopen(NUMA_INFO_FILE,"r");
+
+        i = 0;
+        while( fgets(buff, BUFF_SIZE, numa_info)){
+                sprintf(temp,"node %i cpus:",i);
+
+                p = strtok(&buff[strlen(temp)]," ");
+
+                while(p){
+                        core_id = strtol(p,NULL, 10);
+                        if (core_id == id) 
+				return i;
+                        p = strtok(NULL," ");
+                }
+                i++;
+        }
+
+	fclose(numa_info);
+
+	unlink("numa_info");
+        #undef NUMA_INFO_FILE
+        #undef BUFF_SIZE
+}
+
+static int setup_numa_nodes(void) {
+
+	unsigned int i;
+
+	numa_nodes = rsalloc(sizeof(int) * n_cores);
+
+	for(i = 0; i < n_cores; i++) {
+		numa_nodes[i] = query_numa_node(i);
+	}
+
+}
+
+
+int get_numa_node(int core) {
+	return numa_nodes[core];
+}
+
+
 
 int allocator_init(unsigned int sobjs){
 	unsigned int i;
@@ -95,11 +155,13 @@ int allocator_init(unsigned int sobjs){
 		printf("INIT: sobj %d - base address is %p - active are %d - MDT size is %d\n",i,maps[i].base, maps[i].active, maps[i].size);
 	}
 	
-	set_daemon_maps(maps,moves);
+	set_daemon_maps(maps, moves);
 	init_move(sobjs);
 
 	set_BH_map(maps);
 	init_BH();
+
+	setup_numa_nodes();
 
 	return SUCCESS;
 

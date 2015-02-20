@@ -88,6 +88,7 @@ int unlock(int);
 int move_request(int , int );
 void set_BH_map(mem_map* );
 int init_BH(void);
+int get_numa_node(int);
 
 int insert_BH(int , void*, int );
 void* get_BH(int);
