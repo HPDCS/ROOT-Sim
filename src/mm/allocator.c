@@ -38,7 +38,7 @@ extern void __real_free(void *);
 
 
 
-#define AUDIT if(1)
+#define AUDIT if(0)
 
 mem_map maps[MAX_SOBJS];
 map_move moves[MAX_SOBJS];

@@ -65,7 +65,7 @@
 				// will fail, as DyMeLoR will not be able to handle them!
 
 #define NUM_AREAS (log2(MAX_CHUNK_SIZE) - log2(MIN_CHUNK_SIZE) + 1)			// Number of initial malloc_areas available (will be increased at runtime if needed)
-#define MAX_NUM_AREAS (NUM_AREAS * 2) 	// Maximum number of allocatable malloc_areas. If MAX_NUM_AREAS
+#define MAX_NUM_AREAS (NUM_AREAS * 4) 	// Maximum number of allocatable malloc_areas. If MAX_NUM_AREAS
 				// malloc_areas are filled at runtime, subsequent malloc() requests
 				// by the application level software will fail.
 #define MAX_LIMIT_NUM_AREAS 100

@@ -32,6 +32,7 @@
 #include <errno.h>
 #include <pthread.h>
 
+#include <core/core.h>
 #include <mm/allocator.h>
 #include <mm/mapmove.h>
 #include <mm/bh-manager.h>
@@ -64,6 +65,7 @@ int init_move(int sobjs){
 	int i;
 	int ret;
 	pthread_t daemon_tid;
+	unsigned long long mask;
 
         if( (sobjs <= 0)||(sobjs>MAX_SOBJS) ) return INVALID_SOBJS_COUNT; 
 
@@ -74,10 +76,13 @@ int init_move(int sobjs){
 		daemonmoves[i].target_node = 0;
         }
 
-	ret = pthread_create(&daemon_tid, NULL, background_work, NULL);	
+	for (i=0; i<n_cores; i++){
 
-	if( ret ) goto bad_init;
-        
+		mask = 0x1 << i;
+		ret = pthread_create(&daemon_tid, NULL, background_work, (void*)mask);	
+
+		if( ret ) goto bad_init;
+       	} 
         return SUCCESS;
 
 bad_init:
@@ -215,11 +220,11 @@ bad_unlock:
 	return FAILURE;
 }
 
-void *background_work(void *dummy) {
+void *background_work(void *me) {
 	int sobj;
 	int node;
 
-	(void)dummy;
+	//(void)dummy;
 
 	while(1){
 
