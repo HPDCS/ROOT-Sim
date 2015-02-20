@@ -37,6 +37,7 @@
 #include <scheduler/process.h>
 #include <mm/dymelor.h>
 
+#include <arch/thread.h>
 
 /// This is the execution context of the simulation kernel
 __thread kernel_context_t kernel_context;
@@ -58,7 +59,6 @@ static __thread volatile sig_atomic_t	context_called;
 static __thread LP_context_t		*context_creat;
 static __thread void			(*context_creat_func)(void *);
 static __thread void			*context_creat_arg;
-//~ static sigset_t			context_creat_sigs;
 
 
 /**
@@ -126,8 +126,6 @@ static void context_create_boot(void) {
 	void (*context_start_func)(void *);
 	void *context_start_arg;
 
-	//~ sigprocmask(SIG_SETMASK, &context_creat_sigs, NULL);
-
 	context_start_func = context_creat_func;
 	context_start_arg = context_creat_arg;
 
@@ -142,36 +140,22 @@ static void context_create_boot(void) {
 }
 
 
-
-
 /**
 * This function is executed within a manually-induced signal handler, which allows to create a new execution
 * context and set the LP stack. We save the context and then return, to leave the signal scope.
 * After the signal handler returns, the context_creat context is restored, so that the final bootstrap function
 * is actually executed.
-* For further details, refer to the paper:
-*
-* Ralf S. Engelschall
-* "Portable Multithreading: the Signal Stack Trick for User-Space Thread Creation"
-* Proceedings of the 2000 USENIX Annual Technical Conference
-* June 2000
-*
-* @author Ralf Engelschall
 */
 static void context_create_trampoline(int sig) {
-
 	(void)sig;
+	
+	printf("I'm thread %d\n", tid);
 
-	if(context_save(context_creat) == 0) {
-		//~ context_called = true;
+	if(context_save(context_creat) == 0)
 		return;
-	}
 
 	context_create_boot();
 }
-
-
-
 
 
 /**
@@ -187,17 +171,9 @@ static void context_create_trampoline(int sig) {
 * @param stack_size size of the memory area to be used as stack
 */
 void context_create(LP_context_t *context, void (*entry_point)(void *), void *args, void *stack, size_t stack_size) {
-
 	struct sigaction sa;
-	struct sigaction osa;
 	struct sigaltstack ss;
 	struct sigaltstack oss;
-	sigset_t osigs;
-	sigset_t sigs;
-
-	//~ sigemptyset(&sigs);
-	//~ sigaddset(&sigs, SIGUSR1);
-	//~ sigprocmask(SIG_BLOCK, &sigs, &osigs);
 
 	bzero((void *)&sa, sizeof(struct sigaction));
 	sa.sa_handler = context_create_trampoline;
@@ -214,23 +190,9 @@ void context_create(LP_context_t *context, void (*entry_point)(void *), void *ar
 	context_creat = context;
 	context_creat_func = entry_point;
 	context_creat_arg = args;
-	//~ context_creat_sigs = osigs;
 	context_called = false;
 	raise(SIGUSR1);
-	//~ sigfillset(&sigs);
-	//~ sigdelset(&sigs, SIGUSR1);
-	//~ while(!context_called) {
-		//~ sigsuspend(&sigs);
-	//~ }
-
-	//~ sigaltstack(NULL, &ss);
-	//~ ss.ss_flags = SS_DISABLE;
-	//~ sigaltstack(&ss, NULL);
-	//~ if(!(oss.ss_flags & SS_DISABLE)) {
-		sigaltstack(&oss, NULL);
-	//~ }
-	//~ sigaction(SIGUSR1, &osa, NULL);
-	//~ sigprocmask(SIG_SETMASK, &osigs, NULL);
+	sigaltstack(&oss, NULL);
 
 	context_switch(&context_caller, context);
 }
@@ -239,14 +201,9 @@ void context_create(LP_context_t *context, void (*entry_point)(void *), void *ar
 #elif defined(OS_WINDOWS) || defined(OS_CYGWIN)
 
 
-
-
-
 #if !defined(ARCH_X86) && !defined(ARCH_X86_64)
-#error Are you really running Cygwin on non-x86 architecture?! How can I handle this?
+#error Are you really running Cygwin on non-x86 architecture?!
 #endif
-
-
 
 
 void context_create(LP_context_t *context, void (*entry_point)(void *), void *args, void *stack, size_t stack_size) {
@@ -267,7 +224,4 @@ void context_create(LP_context_t *context, void (*entry_point)(void *), void *ar
 
 #endif /* OS */
 
-
 #endif /* ENABLE_ULT */
-
-
