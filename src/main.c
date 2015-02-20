@@ -89,7 +89,7 @@ static void *main_simulation_loop(void *arg) {
 	#ifdef HAVE_LINUX_KERNEL_MAP_MODULE
 	lp_alloc_thread_init();
 	#endif
-	
+
 	// Do the initial (local) LP binding, then execute INIT at all (local) LPs
 	initialize_worker_thread();
 	
@@ -144,6 +144,8 @@ static void *main_simulation_loop(void *arg) {
 * @return Exit code
 */
 int main(int argc, char **argv) {
+
+	set_affinity(0);
 
 	SystemInit(argc, argv);
 
