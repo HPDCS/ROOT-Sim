@@ -52,13 +52,13 @@ __thread kernel_context_t kernel_context;
 #include <sys/mman.h>
 
 
-static LP_context_t		context_caller;
-static volatile sig_atomic_t	context_called;
+static __thread LP_context_t		context_caller;
+static __thread volatile sig_atomic_t	context_called;
 
-static LP_context_t		*context_creat;
-static void			(*context_creat_func)(void *);
-static void			*context_creat_arg;
-static sigset_t			context_creat_sigs;
+static __thread LP_context_t		*context_creat;
+static __thread void			(*context_creat_func)(void *);
+static __thread void			*context_creat_arg;
+//~ static sigset_t			context_creat_sigs;
 
 
 /**
@@ -126,7 +126,7 @@ static void context_create_boot(void) {
 	void (*context_start_func)(void *);
 	void *context_start_arg;
 
-	sigprocmask(SIG_SETMASK, &context_creat_sigs, NULL);
+	//~ sigprocmask(SIG_SETMASK, &context_creat_sigs, NULL);
 
 	context_start_func = context_creat_func;
 	context_start_arg = context_creat_arg;
@@ -163,7 +163,7 @@ static void context_create_trampoline(int sig) {
 	(void)sig;
 
 	if(context_save(context_creat) == 0) {
-		context_called = true;
+		//~ context_called = true;
 		return;
 	}
 
@@ -180,20 +180,6 @@ static void context_create_trampoline(int sig) {
 * After the signal handler returns, the context_creat context is restored, so that the final bootstrap function
 * is actually executed.
 *
-* WARNING: the creation of a user-level thread relies on global variables: this procedure must be carried on
-* before spawning new kernel threads. We have explicitly avoided to add thread-level storage, because all LPs
-* are initialized at simulation startup.
-* If LPs can be dynamically created, this must be modified!
-*
-* For further details, refer to the paper:
-*
-* Ralf S. Engelschall
-* "Portable Multithreading: the Signal Stack Trick for User-Space Thread Creation"
-* Proceedings of the 2000 USENIX Annual Technical Conference
-* June 2000
-*
-* @author Ralf Engelschall
-*
 * @param context the variable where to store the execution context for the created user-level thread
 * @param entry_point the function which must be executed when the newly created thread is first activated
 * @param args pointer to arguments to be passed to the thread entry point
@@ -209,15 +195,16 @@ void context_create(LP_context_t *context, void (*entry_point)(void *), void *ar
 	sigset_t osigs;
 	sigset_t sigs;
 
-	sigemptyset(&sigs);
-	sigaddset(&sigs, SIGUSR1);
-	sigprocmask(SIG_BLOCK, &sigs, &osigs);
+	//~ sigemptyset(&sigs);
+	//~ sigaddset(&sigs, SIGUSR1);
+	//~ sigprocmask(SIG_BLOCK, &sigs, &osigs);
 
-	memset((void *)&sa, 0, sizeof(struct sigaction));
+	bzero((void *)&sa, sizeof(struct sigaction));
 	sa.sa_handler = context_create_trampoline;
 	sa.sa_flags = SA_ONSTACK;
-	sigemptyset(&sa.sa_mask);
-	sigaction(SIGUSR1, &sa, &osa);
+	sigfillset(&sa.sa_mask);
+	sigdelset(&sa.sa_mask, SIGUSR1);
+	sigaction(SIGUSR1, &sa, NULL);
 
 	ss.ss_sp = stack;
 	ss.ss_size = stack_size;
@@ -227,23 +214,23 @@ void context_create(LP_context_t *context, void (*entry_point)(void *), void *ar
 	context_creat = context;
 	context_creat_func = entry_point;
 	context_creat_arg = args;
-	context_creat_sigs = osigs;
+	//~ context_creat_sigs = osigs;
 	context_called = false;
-	kill(getpid(), SIGUSR1);
-	sigfillset(&sigs);
-	sigdelset(&sigs, SIGUSR1);
-	while(!context_called) {
-		sigsuspend(&sigs);
-	}
+	raise(SIGUSR1);
+	//~ sigfillset(&sigs);
+	//~ sigdelset(&sigs, SIGUSR1);
+	//~ while(!context_called) {
+		//~ sigsuspend(&sigs);
+	//~ }
 
-	sigaltstack(NULL, &ss);
-	ss.ss_flags = SS_DISABLE;
-	sigaltstack(&ss, NULL);
-	if(!(oss.ss_flags & SS_DISABLE)) {
+	//~ sigaltstack(NULL, &ss);
+	//~ ss.ss_flags = SS_DISABLE;
+	//~ sigaltstack(&ss, NULL);
+	//~ if(!(oss.ss_flags & SS_DISABLE)) {
 		sigaltstack(&oss, NULL);
-	}
-	sigaction(SIGUSR1, &osa, NULL);
-	sigprocmask(SIG_SETMASK, &osigs, NULL);
+	//~ }
+	//~ sigaction(SIGUSR1, &osa, NULL);
+	//~ sigprocmask(SIG_SETMASK, &osigs, NULL);
 
 	context_switch(&context_caller, context);
 }

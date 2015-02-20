@@ -1,4 +1,4 @@
-	/**
+/**
 *			Copyright (C) 2008-2015 HPDCS Group
 *			http://www.dis.uniroma1.it/~hpdcs
 *
@@ -324,7 +324,6 @@ static int parse_cmd_line(int argc, char **argv) {
 * @param argv array of parameters passed at command line
 */
 void SystemInit(int argc, char **argv) {
-	register unsigned int t;
 	register int w;
 
 	// Parse the argument passed at command line, to initialize the internal configuration

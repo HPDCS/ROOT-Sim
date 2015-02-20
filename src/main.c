@@ -102,9 +102,6 @@ static void *main_simulation_loop(void *arg) {
 		       "****************************\n");
 	}
 
-	// Worker Threads synchronization barrier: they all should start working together
-	thread_barrier(&all_thread_barrier);
-
 	while (!end_computing()) {
 
 		// Recompute the LPs-thread binding

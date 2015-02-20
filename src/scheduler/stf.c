@@ -15,7 +15,6 @@
 unsigned int smallest_timestamp_first(void) {
 
 	simtime_t min_timestamp = -1, evt_time = -1;
-	simtime_t min_bound = INFTY;
 	unsigned int next = IDLE_PROCESS;
 	register unsigned int i;
 

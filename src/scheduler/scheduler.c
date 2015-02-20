@@ -296,14 +296,19 @@ void initialize_worker_thread(void) {
 		LPS_bound[t]->state_log_forced = true;
 	}
 
+	// Worker Threads synchronization barrier: they all should start working together
+	thread_barrier(&all_thread_barrier);
+
 	if(master_thread() && master_kernel())
 		printf("done\n");
-	
 	
 	register unsigned int i;
 	for(i = 0; i < n_prc_per_thread; i++) {
 		schedule();
 	}
+	
+	// Worker Threads synchronization barrier: they all should start working together
+	thread_barrier(&all_thread_barrier);
 }
 
 
