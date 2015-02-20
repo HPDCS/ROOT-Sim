@@ -83,7 +83,7 @@ simtime_t next_event_timestamp(unsigned int id) {
 
 	simtime_t ret = -1.0;
 	msg_t *evt;
-
+	
 	// The bound can be NULL in the first execution or if it has gone back
 	if (LPS[id]->bound == NULL && !list_empty(LPS[id]->queue_in)) {
 		ret = list_head(LPS[id]->queue_in)->timestamp;

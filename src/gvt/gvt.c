@@ -37,6 +37,7 @@
 #include <statistics/statistics.h>
 #include <mm/dymelor.h>
 
+static bool first_gvt_invocation = true;
 
 // Defintion of GVT-reduction phases
 enum gvt_phases {phase_A, phase_send, phase_B, phase_aware, phase_end};
@@ -174,6 +175,17 @@ simtime_t gvt_operations(void) {
 	// This is different from the paper's pseudocode to reduce
 	// slightly the number of clock reads
 	if(GVT_flag == 0 && atomic_read(&counter_end) == 0) {
+		
+		
+		// When using ULT, creating stacks might require more time than
+		// the first gvt phase. In this case, we enter the GVT reduction
+		// before running INIT. This makes all the assumptions about the
+		// fact that bound is not null fail, and everything here inevitably
+		// crashes. This is a sanity check for this.
+		if(first_gvt_invocation) {
+			first_gvt_invocation = false;
+			timer_restart(gvt_timer);
+		}
 
 		if(you_shall_not_pass > 0) {
 			you_shall_not_pass--;

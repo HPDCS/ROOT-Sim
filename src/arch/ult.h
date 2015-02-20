@@ -49,11 +49,11 @@ typedef struct __execution_context_t kernel_context_t;
 
 
 /// Save machine context for userspace context switch. This is used only in initialization.
-#define context_save(context)  setjmp((context)->jb)
+#define context_save(context) setjmp((context)->jb)
 
 
 /// Restore machine context for userspace context switch. This is used only in inizialitaion.
-#define context_restore(context)  longjmp((context)->jb, 1)
+#define context_restore(context) longjmp((context)->jb, 1)
 
 
 /// Swicth machine context for userspace context switch. This is used to schedule a LP or return control to simulation kernel

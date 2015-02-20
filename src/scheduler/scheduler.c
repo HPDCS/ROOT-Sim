@@ -27,7 +27,9 @@
 #include <string.h>
 #include <stdbool.h>
 
+#include <datatypes/list.h>
 #include <core/core.h>
+#include <core/init.h>
 #include <core/timer.h>
 #include <arch/atomic.h>
 #include <arch/ult.h>
@@ -65,8 +67,6 @@ __thread msg_t *current_evt;
 /// This global variable tells the simulator what is the LP currently being scheduled on the current worker thread
 __thread void *current_state;
 
-static barrier_t INIT_barrier;
-
 
 /*
 * This function initializes the scheduler. In particular, it relies on MPI to broadcast to every simulation kernel process
@@ -91,17 +91,15 @@ void scheduler_init(void) {
 		}
 	}
 */
+
 	// Allocate LPS control blocks
 	LPS = (LP_state **)rsalloc(n_prc * sizeof(LP_state *));
 	for (i = 0; i < n_prc; i++) {
 		LPS[i] = (LP_state *)rsalloc(sizeof(LP_state));
-		memset(LPS[i], 'x', sizeof(LP_state));
 		bzero(LPS[i], sizeof(LP_state));
+		// That's the only sequentially executed place where we can set the lid
+		LPS[i]->lid = i;
 	}
-
-	// Initialize the INIT barrier
-	barrier_init(&INIT_barrier, n_cores);
-
 }
 
 
@@ -114,6 +112,7 @@ static void destroy_LPs(void) {
 		rsfree(LPS[i]->queue_out);
 		rsfree(LPS[i]->queue_states);
 		rsfree(LPS[i]->bottom_halves);
+		rsfree(LPS[i]->rendezvous_queue);
 
 		// Destroy stacks
 		#ifdef ENABLE_ULT
@@ -235,9 +234,6 @@ void initialize_LP(unsigned int lp) {
 	LPS[lp]->bottom_halves = new_list(lp, msg_t);
 	LPS[lp]->rendezvous_queue = new_list(lp, msg_t);
 
-	// Assign the local ID to the LP
-	LPS[lp]->lid = lp;
-
 	// Initialize the LP lock
 	spinlock_init(&LPS[lp]->lock);
 
@@ -259,7 +255,59 @@ void initialize_LP(unsigned int lp) {
 }
 
 
+void initialize_worker_thread(void) {
+	register unsigned int t;
+	
+	// Divide LPs among worker threads, for the first time here
+	rebind_LPs();
+	
+	if(master_thread() && master_kernel()) {
+		printf("Initializing LPs... ");
+		fflush(stdout);
+	}
+	
+	// Initialize the LP control block for each locally hosted LP
+	// and schedule the special INIT event
+	for (t = 0; t < n_prc_per_thread; t++) {
 
+		// Create user level thread for the current LP and initialize LP control block
+		initialize_LP(LPS_bound[t]->lid);
+
+		// Schedule an INIT event to the newly instantiated LP
+		msg_t init_event = {
+			sender: LidToGid(LPS_bound[t]->lid),
+			receiver: LidToGid(LPS_bound[t]->lid),
+			type: INIT,
+			timestamp: 0.0,
+			send_time: 0.0,
+			mark: generate_mark(LidToGid(LPS_bound[t]->lid)),
+			size: model_parameters.size,
+			message_kind: positive,
+		};
+
+		// Copy the relevant string pointers to the INIT event payload
+		if(model_parameters.size > 0) {
+			memcpy(init_event.event_content, model_parameters.arguments, model_parameters.size * sizeof(char *));
+		}
+
+		(void)list_insert_head(LPS_bound[t]->lid, LPS_bound[t]->queue_in, &init_event);
+		LPS_bound[t]->state_log_forced = true;
+	}
+
+	// Worker Threads synchronization barrier: they all should start working together
+	thread_barrier(&all_thread_barrier);
+
+	if(master_thread() && master_kernel())
+		printf("done\n");
+	
+	register unsigned int i;
+	for(i = 0; i < n_prc_per_thread; i++) {
+		schedule();
+	}
+	
+	// Worker Threads synchronization barrier: they all should start working together
+	thread_barrier(&all_thread_barrier);
+}
 
 
 
@@ -421,11 +469,6 @@ void schedule(void) {
 	// a critical condition and we abort.
 	if(event == NULL) {
 		rootsim_error(true, "Critical condition: LP %d seems to have events to be processed, but I cannot find them. Aborting...\n", lid);
-	}
-
-	// Manage the INIT barrier
-	if(event->type == INIT) {
-		thread_barrier(&INIT_barrier);
 	}
 
 	if(!process_control_msg(event)) {

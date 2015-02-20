@@ -42,7 +42,6 @@
 
 
 
-
 /**************************************
  * DyMeLoR definitions and structures *
  **************************************/
@@ -125,8 +124,7 @@
 
 
 /// This structure let DyMeLoR handle one malloc area (for serving given-size memory requests)
-typedef struct _malloc_area {
-	/// Tells whether the area is related to a recoverable part of the memory map or not
+struct _malloc_area {
 	bool is_recoverable;
 	size_t chunk_size;
 	int alloc_chunks;
@@ -142,13 +140,15 @@ typedef struct _malloc_area {
 	void *area;
 	int prev;
 	int next;
-} malloc_area;
+};
+
+typedef struct _malloc_area malloc_area;
+
 
 
 /// Definition of the memory map
-typedef struct _malloc_state {
-	/// Tells whether it is an incremental log or a full one (when used for logging)
-	bool is_incremental;
+struct _malloc_state {
+	bool is_incremental;		/// Tells if it is an incremental log or a full one (when used for logging)
 	size_t total_log_size;
 	size_t total_inc_size;
 	size_t bitmap_size;
@@ -159,7 +159,9 @@ typedef struct _malloc_state {
 	int dirty_areas;
 	simtime_t timestamp;
 	struct _malloc_area *areas;
-} malloc_state;
+};
+
+typedef struct _malloc_state malloc_state;
 
 
 
@@ -182,7 +184,7 @@ typedef struct _malloc_state {
 
 extern int incremental_granularity;
 extern int force_full[MAX_LPs];
-extern malloc_state **recoverable_state;
+extern malloc_state *m_state[MAX_LPs];
 extern double checkpoint_cost_per_byte;
 extern double recovery_cost_per_byte;
 extern unsigned long total_checkpoints;
@@ -238,6 +240,10 @@ extern inline void rsfree(void *);
 extern inline void *rsrealloc(void *, size_t);
 extern inline void *rscalloc(size_t, size_t);
 
+
+
+
+extern malloc_state **recoverable_state;
 
 // This is used to help ensure that the platform is not using malloc.
 #pragma GCC poison malloc free realloc calloc
