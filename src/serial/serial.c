@@ -137,8 +137,7 @@ void serial_simulation(void) {
 	        if (timer_value_milli(serial_gvt_timer) > (int)rootsim_config.gvt_time_period) {
 	                timer_restart(serial_gvt_timer);
 	                printf("TIME BARRIER: %f\n", current_lvt);
-	                statistics_post_other_data(STAT_GVT, 0.0);
-	                statistics_post_other_data(STAT_GVT_TIME, current_lvt);
+	                statistics_post_other_data(STAT_GVT, current_lvt);
 		}
 
 		rsfree(event);

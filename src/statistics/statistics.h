@@ -74,8 +74,6 @@
 /* Definition of Global Statistics Post Messages */
 #define STAT_SIM_START		1001
 #define STAT_GVT		1002
-#define STAT_GVT_TIME		1003
-
 
 
 enum stat_levels {STATS_GLOBAL, STATS_PERF, STATS_LP, STATS_ALL};
@@ -99,7 +97,8 @@ struct stat_t {
 		idle_cycles,
 		memory_usage,
 		gvt_computations,
-		gvt_time; // Used only in sequential simulation
+		gvt_time,
+		simtime_advancement;
 };
 
 extern void _mkdir(const char *path);

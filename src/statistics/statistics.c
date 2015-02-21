@@ -287,6 +287,7 @@ void statistics_stop(int exit_code) {
 		fprintf(f, "AVERAGE EVENT COST......... : %.3f us\n",		total_time / system_wide_stats.tot_events * 1000 * 1000);
 		fprintf(f, "\n");
 		fprintf(f, "LAST COMMITTED GVT ........ : %f\n",		system_wide_stats.gvt_time);
+		fprintf(f, "SIMULATION TIME SPEED...... : %.2f units per GVT\n",system_wide_stats.simtime_advancement);
 		fprintf(f, "AVERAGE MEMORY USAGE....... : %s\n",		format_size(system_wide_stats.memory_usage / system_wide_stats.gvt_computations));
 		fprintf(f, "PEAK MEMORY USAGE.......... : %s\n",		format_size(getPeakRSS()));
 
@@ -301,7 +302,7 @@ void statistics_stop(int exit_code) {
 
 		fflush(f);
 	
-	} else { // Parallel simulation
+	} else { /* Parallel simulation */
 			
 		// Stop the simulation timer immediately to avoid considering the statistics reduction time
 		if (master_kernel() && master_thread()) {
@@ -396,6 +397,7 @@ void statistics_stop(int exit_code) {
 		fprintf(f, "AVERAGE LOG SIZE........... : %s\n",		format_size(thread_stats[tid].ckpt_mem / thread_stats[tid].tot_ckpts));
 		fprintf(f, "IDLE CYCLES................ : %.0f\n",		thread_stats[tid].idle_cycles);
 		fprintf(f, "NUMBER OF GVT REDUCTIONS... : %.0f\n",		thread_stats[tid].gvt_computations);
+		fprintf(f, "SIMULATION TIME SPEED...... : %.2f units per GVT\n",thread_stats[tid].simtime_advancement);
 		fprintf(f, "AVERAGE MEMORY USAGE....... : %s\n",		format_size(thread_stats[tid].memory_usage / thread_stats[tid].gvt_computations));
 
 		if(exit_code == EXIT_FAILURE) {
@@ -432,6 +434,7 @@ void statistics_stop(int exit_code) {
 				system_wide_stats.event_time += thread_stats[i].event_time;
 				system_wide_stats.idle_cycles += thread_stats[i].idle_cycles;
 				system_wide_stats.memory_usage += thread_stats[i].memory_usage;
+				system_wide_stats.simtime_advancement += thread_stats[i].simtime_advancement;
 			}
 			// GVT computations are the same for all threads
 			system_wide_stats.gvt_computations += thread_stats[0].gvt_computations;
@@ -476,9 +479,10 @@ void statistics_stop(int exit_code) {
 			fprintf(f, "AVERAGE RECOVERY COST...... : %.3f us\n",		(system_wide_stats.tot_recoveries > 0 ? system_wide_stats.recovery_time / system_wide_stats.tot_recoveries : 0 ));
 			fprintf(f, "AVERAGE LOG SIZE........... : %s\n",		format_size(system_wide_stats.ckpt_mem / system_wide_stats.tot_ckpts));
 			fprintf(f, "\n");
-			fprintf(f, "LAST COMMITTED GVT ........ : %f\n",		get_last_gvt());
 			fprintf(f, "IDLE CYCLES................ : %.0f\n",		system_wide_stats.idle_cycles);
+			fprintf(f, "LAST COMMITTED GVT ........ : %f\n",		get_last_gvt());
 			fprintf(f, "NUMBER OF GVT REDUCTIONS... : %.0f\n",		system_wide_stats.gvt_computations);
+			fprintf(f, "SIMULATION TIME SPEED...... : %.2f units per GVT\n",system_wide_stats.simtime_advancement);
 			fprintf(f, "AVERAGE MEMORY USAGE....... : %s\n",		format_size(system_wide_stats.memory_usage / system_wide_stats.gvt_computations));
 			fprintf(f, "PEAK MEMORY USAGE.......... : %s\n",		format_size(getPeakRSS()));
 
@@ -507,7 +511,7 @@ void statistics_stop(int exit_code) {
 }
 
 
-static void statistics_flush_gvt(double gvt) {
+static inline void statistics_flush_gvt(double gvt) {
 
 	FILE *f;
 	register unsigned int i;
@@ -703,6 +707,7 @@ inline void statistics_post_lp_data(unsigned int lid, unsigned int type, double 
 
 inline void statistics_post_other_data(unsigned int type, double data) {
 	register unsigned int i;
+	double simtime_advancement;
 	
 	if(rootsim_config.serial) {
 		switch(type) {
@@ -714,9 +719,17 @@ inline void statistics_post_other_data(unsigned int type, double data) {
 			case STAT_GVT:
 				system_wide_stats.gvt_computations += 1.0;
 				system_wide_stats.memory_usage += (double)getCurrentRSS();
-				break;
-				
-			case STAT_GVT_TIME:
+
+				simtime_advancement = data - thread_stats[tid].gvt_time;
+				if(D_DIFFER_ZERO(system_wide_stats.simtime_advancement)) {
+					// Exponential moving average
+					thread_stats[tid].simtime_advancement = 
+						0.1 * simtime_advancement +
+						0.9 * system_wide_stats.simtime_advancement;
+				} else {
+					system_wide_stats.simtime_advancement = simtime_advancement;
+				}
+
 				system_wide_stats.gvt_time = data;
 				break;
 			
@@ -738,7 +751,22 @@ inline void statistics_post_other_data(unsigned int type, double data) {
 		case STAT_GVT:
 
 			statistics_flush_gvt(data);
+			
+			thread_stats[tid].memory_usage += (double)getCurrentRSS();
+			thread_stats[tid].gvt_computations += 1.0;
+			simtime_advancement = data - thread_stats[tid].gvt_time;
+			
+			if(D_DIFFER_ZERO(thread_stats[tid].simtime_advancement)) {
+				// Exponential moving average
+				thread_stats[tid].simtime_advancement = 
+					0.1 * simtime_advancement +
+					0.9 * thread_stats[tid].simtime_advancement;
+			} else {
+				thread_stats[tid].simtime_advancement = simtime_advancement;
+			}
 
+			thread_stats[tid].gvt_time = data;
+			
 			for(i = 0; i < n_prc_per_thread; i++) {
 				unsigned int lid = LPS_bound[i]->lid;
 
@@ -753,8 +781,6 @@ inline void statistics_post_other_data(unsigned int type, double data) {
 				lp_stats[lid].tot_recoveries += lp_stats_gvt[lid].tot_recoveries;
 				lp_stats[lid].recovery_time += lp_stats_gvt[lid].recovery_time;
 				lp_stats[lid].reprocessed_events += lp_stats_gvt[lid].reprocessed_events;
-				thread_stats[tid].memory_usage += (double)getCurrentRSS();
-				thread_stats[tid].gvt_computations += 1.0;
 
 				bzero(&lp_stats_gvt[LPS_bound[i]->lid], sizeof(struct stat_t));
 			}
