@@ -54,9 +54,6 @@
 /// Maintain LPs' simulation and execution states
 LP_state **LPS = NULL;
 
-/// Each KLT has a binding towards some LPs. This is the structure used to keep track of LPs currently being handled
-__thread LP_state **LPS_bound = NULL;
-
 /// This is used to keep track of how many LPs were bound to the current KLT
 __thread unsigned int n_prc_per_thread;
 

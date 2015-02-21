@@ -30,37 +30,26 @@
 #include <scheduler/process.h>
 #include <scheduler/binding.h>
 
+/// A guard to know whether this is the first invocation or not
+static __thread bool first_lp_binding = true;
 
-static __thread bool already_allocated = false;
+/** Each KLT has a binding towards some LPs. This is the structure used
+ *  to keep track of LPs currently being handled
+ */
+__thread LP_state **LPS_bound = NULL;
+
 
 
 /**
-* This function is used to create a temporary binding between LPs and KLT.
-* Whenever it is invoked, the binding is recreated, depending on the specified
-* policy. Currently, only a fixed binding is implemented, so calling again this
-* function deterministically regenerates the same binding.
+* Performs a (deterministic) block allocation between LPs and KLTs
 *
 * @author Alessandro Pellegrini
-* @author Roberto Vitali
 */
-void rebind_LPs(void) {
+static inline void LPs_block_binding(void) {
 	unsigned int i, j;
 	unsigned int buf1;
 	unsigned int offset;
 	unsigned int block_leftover;
-
-	// This is a guard because it's meaningless to recalculate a static
-	// LP allocation now.
-	if(already_allocated) {
-		return;
-	}
-
-	already_allocated = true;
-
-	if(LPS_bound == NULL) {
-		LPS_bound = rsalloc(sizeof(LP_state *) * n_prc);
-		bzero(LPS_bound, sizeof(LP_state *) * n_prc);
-	}
 
 	buf1 = (n_prc / n_cores);
 	block_leftover = n_prc - buf1 * n_cores;
@@ -87,5 +76,51 @@ void rebind_LPs(void) {
 		if (block_leftover == 0) {
 			buf1--;
 		}
+	}	
+}
+
+
+
+/**
+* Implements the knapsack load sharing policy in:
+* 
+* Roberto Vitali, Alessandro Pellegrini and Francesco Quaglia
+* A Load Sharing Architecture for Optimistic Simulations on Multi-Core Machines
+* In Proceedings of the 19th International Conference on High Performance Computing (HiPC)
+* Pune, India, IEEE Computer Society, December 2012.
+*
+* @author Alessandro Pellegrini
+* @author Roberto Vitali
+*/
+static inline void LP_knapsack(void) {
+	//~ LPS_bound[n_prc_per_thread++] = LPS[i];
+	//~ LPS[i]->worker_thread = tid;
+}
+
+
+/**
+* This function is used to create a temporary binding between LPs and KLT.
+* The first time this function is called, each worker thread sets up its data
+* structures, and the performs a (deterministic) block allocation. This is
+* because no runtime data is available at the time, so we "share" the load
+* as the number of LPs.
+* Then, successive invocations, will use the knapsack load sharing policy
+
+* @author Alessandro Pellegrini
+* @author Roberto Vitali
+*/
+void rebind_LPs(void) {
+
+	if(first_lp_binding) {
+		first_lp_binding = false;
+		
+		// Binding metadata are used in the platform to perform
+		// operations on LPs in isolation
+		LPS_bound = rsalloc(sizeof(LP_state *) * n_prc);
+		bzero(LPS_bound, sizeof(LP_state *) * n_prc);
+
+		LPs_block_binding();
+
+		return;
 	}
 }
