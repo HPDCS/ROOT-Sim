@@ -33,6 +33,7 @@
 
 #if defined(OS_LINUX) || defined(OS_CYGWIN)
 
+#include <sched.h>
 #include <unistd.h>
 #include <pthread.h>
 
@@ -48,6 +49,14 @@ typedef pthread_t tid_t;
 
 /// Spawn a new thread
 #define new_thread(entry, arg)	pthread_create(&os_tid, NULL, entry, arg)
+
+static inline void set_affinity(int core) {
+	cpu_set_t cpuset; 
+	CPU_ZERO(&cpuset);
+	CPU_SET(core, &cpuset);
+	// 0 is the current thread
+	sched_setaffinity(0, sizeof(cpuset), &cpuset);
+}
 
 
 #else /* OS_LINUX || OS_CYGWIN */

@@ -15,14 +15,11 @@
 unsigned int smallest_timestamp_first(void) {
 
 	simtime_t min_timestamp = -1, evt_time = -1;
-	simtime_t min_bound = INFTY;
 	unsigned int next = IDLE_PROCESS;
 	register unsigned int i;
 
 	// For each local process
 	for (i = 0; i < n_prc_per_thread; i++) {
-
-		min_bound = min(min_bound, (LPS_bound[i]->bound != NULL ? LPS_bound[i]->bound->timestamp : 0.0));
 
 		// Blocked LPs cannot be scheduled
 		if(is_blocked_state(LPS_bound[i]->state)) {
