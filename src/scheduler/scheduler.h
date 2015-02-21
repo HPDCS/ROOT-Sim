@@ -58,7 +58,7 @@ extern void schedule(void);
 extern void initialize_LP(unsigned int lp);
 extern void initialize_worker_thread(void);
 extern void activate_LP(unsigned int lp, simtime_t lvt, void *evt, void *state);
-extern void rebind_LPs(void);
+
 
 
 extern bool receive_control_msg(msg_t *);

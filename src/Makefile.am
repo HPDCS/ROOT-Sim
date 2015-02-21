@@ -22,9 +22,10 @@ librootsim_a_SOURCES =	main.c \
 			queues/queues.c \
 			core/init.c \
 			core/core.c \
+			scheduler/binding.c \
+			scheduler/control.c \
 			scheduler/stf.c \
 			scheduler/scheduler.c \
-			scheduler/control.c \
 			serial/serial.c \
 			statistics/statistics.c \
 			gvt/gvt.c \

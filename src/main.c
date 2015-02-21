@@ -37,6 +37,7 @@
 #include <statistics/statistics.h>
 #include <gvt/gvt.h>
 #include <gvt/ccgs.h>
+#include <scheduler/binding.h>
 #include <scheduler/scheduler.h>
 #include <scheduler/process.h>
 #include <mm/dymelor.h>
