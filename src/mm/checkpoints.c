@@ -436,7 +436,7 @@ void log_restore(int lid, state_t *state_queue_node) {
 *
 */
 void log_delete(void *ckpt){
-	if(log != NULL) {
+	if(ckpt != NULL) {
 		rsfree(ckpt);
 	}
 }
