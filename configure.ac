@@ -264,10 +264,6 @@ AC_MSG_RESULT([ok])
 
 # Generate Makefiles for all these subfolders
 #AC_OUTPUT
-AC_CONFIG_FILES([Makefile \
-		man/Makefile \
-		scripts/Makefile \
-		src/Makefile \
-	])
+AC_CONFIG_FILES([Makefile man/Makefile scripts/Makefile src/Makefile])
 AC_OUTPUT
 
