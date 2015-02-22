@@ -76,6 +76,12 @@
 #define STAT_GVT		1002
 
 
+/* Definition of Thread Statistics Get Messages */
+#define STAT_GET_SIMTIME_ADVANCEMENT	15001
+#define STAT_GET_EVENT_TIME_LP		15002
+
+
+
 enum stat_levels {STATS_GLOBAL, STATS_PERF, STATS_LP, STATS_ALL};
 
 
@@ -107,6 +113,7 @@ extern void statistics_fini(void);
 extern void statistics_stop(int exit_code);
 extern inline void statistics_post_lp_data(unsigned int lid, unsigned int type, double data);
 extern inline void statistics_post_other_data(unsigned int type, double data);
+extern double statistics_get_data(unsigned int type, double data);
 
 
 

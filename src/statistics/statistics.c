@@ -629,7 +629,7 @@ void statistics_fini(void) {
 }
 
 
-inline void statistics_post_lp_data(unsigned int lid, unsigned int type, double data) {
+void statistics_post_lp_data(unsigned int lid, unsigned int type, double data) {
 
 	if(rootsim_config.serial) {
 		
@@ -705,7 +705,7 @@ inline void statistics_post_lp_data(unsigned int lid, unsigned int type, double 
 }
 
 
-inline void statistics_post_other_data(unsigned int type, double data) {
+void statistics_post_other_data(unsigned int type, double data) {
 	register unsigned int i;
 	double simtime_advancement;
 	
@@ -791,3 +791,21 @@ inline void statistics_post_other_data(unsigned int type, double data) {
 	}
 }
 
+
+double statistics_get_data(unsigned int type, double data) {
+	double ret;
+
+	switch(type) {
+
+		case STAT_GET_SIMTIME_ADVANCEMENT:
+			ret = thread_stats[tid].simtime_advancement
+			break;
+			
+		case STAT_GET_EVENT_TIME_LP:
+			ret = event_time[(int)data].tot_events / lp_stats[(int)data].tot_events;
+			break;
+
+		default:
+			rootsim_error(true, "Wrong statistics get type: %d. Aborting...\n", type);
+	}
+}
