@@ -91,10 +91,10 @@ static void *main_simulation_loop(void *arg) {
 	#ifdef HAVE_LINUX_KERNEL_MAP_MODULE
 	lp_alloc_thread_init();
 	#endif
-	
+
 	// Do the initial (local) LP binding, then execute INIT at all (local) LPs
 	initialize_worker_thread();
-	
+
 	// Notify the statistics subsystem that we are now starting the actual simulation
 	if(master_thread()) {
 		statistics_post_other_data(STAT_SIM_START, 1.0);

@@ -148,7 +148,7 @@ static void context_create_boot(void) {
 */
 static void context_create_trampoline(int sig) {
 	(void)sig;
-	
+
 	printf("I'm thread %d\n", tid);
 
 	if(context_save(context_creat) == 0)

@@ -51,7 +51,7 @@ typedef pthread_t tid_t;
 #define new_thread(entry, arg)	pthread_create(&os_tid, NULL, entry, arg)
 
 static inline void set_affinity(int core) {
-	cpu_set_t cpuset; 
+	cpu_set_t cpuset;
 	CPU_ZERO(&cpuset);
 	CPU_SET(core, &cpuset);
 	// 0 is the current thread

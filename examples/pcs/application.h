@@ -101,7 +101,7 @@ typedef struct _lp_state_type{
 	double ta_change; // Average time after which a call is diverted to another cell
 
 	int channels_per_cell; // Total channels in this cell
-	int total_calls; 
+	int total_calls;
 
 	bool check_fading; // Is the model set up to periodically recompute the fading of all ongoing calls?
 	bool fading_recheck;

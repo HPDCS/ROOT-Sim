@@ -174,8 +174,8 @@ simtime_t gvt_operations(void) {
 	// This is different from the paper's pseudocode to reduce
 	// slightly the number of clock reads
 	if(GVT_flag == 0 && atomic_read(&counter_end) == 0) {
-		
-		
+
+
 		// When using ULT, creating stacks might require more time than
 		// the first gvt phase. In this case, we enter the GVT reduction
 		// before running INIT. This makes all the assumptions about the

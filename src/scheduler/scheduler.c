@@ -225,7 +225,7 @@ void initialize_LP(unsigned int lp) {
 
 	// Initially, every LP is ready
 	LPS[lp]->state = LP_STATE_READY;
-	
+
 	// There is no current state layout at the beginning
 	LPS[lp]->current_base_pointer = NULL;
 
@@ -259,15 +259,15 @@ void initialize_LP(unsigned int lp) {
 
 void initialize_worker_thread(void) {
 	register unsigned int t;
-	
+
 	// Divide LPs among worker threads, for the first time here
 	rebind_LPs();
-	
+
 	if(master_thread() && master_kernel()) {
 		printf("Initializing LPs... ");
 		fflush(stdout);
 	}
-	
+
 	// Initialize the LP control block for each locally hosted LP
 	// and schedule the special INIT event
 	for (t = 0; t < n_prc_per_thread; t++) {
@@ -301,12 +301,12 @@ void initialize_worker_thread(void) {
 
 	if(master_thread() && master_kernel())
 		printf("done\n");
-	
+
 	register unsigned int i;
 	for(i = 0; i < n_prc_per_thread; i++) {
 		schedule();
 	}
-	
+
 	// Worker Threads synchronization barrier: they all should start working together
 	thread_barrier(&all_thread_barrier);
 }
@@ -435,7 +435,7 @@ void schedule(void) {
 		resume_execution = true;
 	}
 	#endif
-	
+
 	// Schedule the LP user-level thread
 	LPS[lid]->state = LP_STATE_RUNNING;
 	activate_LP(lid, lvt(lid), event, state);

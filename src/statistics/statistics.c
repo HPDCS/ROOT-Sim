@@ -261,20 +261,20 @@ void statistics_stop(int exit_code) {
 
 
 	if(rootsim_config.serial) {
-		
+
 		// Stop timers
 		timer_start(simulation_finished);
 		total_time = timer_value_seconds(simulation_timer);
-		
+
 		sprintf(f_name, "%s/sequential_stats", rootsim_config.output_dir);
 		if ( (f = fopen(f_name, "w")) == NULL)  {
 			rootsim_error(true, "Cannot open %s\n", f_name);
 		}
-			
+
 		fprintf(f, "------------------------------------------------------------\n");
 		fprintf(f, "-------------------- SERIAL STATISTICS ---------------------\n");
 		fprintf(f, "------------------------------------------------------------\n\n");
-			
+
 		timer_tostring(simulation_timer, timer_string);
 		fprintf(f, "SIMULATION STARTED AT ..... : %s \n", 		timer_string);
 		timer_tostring(simulation_finished, timer_string);
@@ -301,9 +301,9 @@ void statistics_stop(int exit_code) {
 		}
 
 		fflush(f);
-	
+
 	} else { /* Parallel simulation */
-			
+
 		// Stop the simulation timer immediately to avoid considering the statistics reduction time
 		if (master_kernel() && master_thread()) {
 			timer_start(simulation_finished);
@@ -632,7 +632,7 @@ void statistics_fini(void) {
 void statistics_post_lp_data(unsigned int lid, unsigned int type, double data) {
 
 	if(rootsim_config.serial) {
-		
+
 		switch(type) {
 			case STAT_EVENT:
 				system_wide_stats.tot_events += 1.0;
@@ -641,11 +641,11 @@ void statistics_post_lp_data(unsigned int lid, unsigned int type, double data) {
 			case STAT_EVENT_TIME:
 				system_wide_stats.event_time += data;
 				break;
-				
+
 			default:
 				rootsim_error(true, "Wrong LP statistics post type: %d. Aborting...\n", type);
 		}
-		
+
 	} else {
 
 		switch(type) {
@@ -708,14 +708,14 @@ void statistics_post_lp_data(unsigned int lid, unsigned int type, double data) {
 void statistics_post_other_data(unsigned int type, double data) {
 	register unsigned int i;
 	double simtime_advancement;
-	
+
 	if(rootsim_config.serial) {
 		switch(type) {
 
 			case STAT_SIM_START:
 				statistics_start();
 				break;
-				
+
 			case STAT_GVT:
 				system_wide_stats.gvt_computations += 1.0;
 				system_wide_stats.memory_usage += (double)getCurrentRSS();
@@ -723,7 +723,7 @@ void statistics_post_other_data(unsigned int type, double data) {
 				simtime_advancement = data - thread_stats[tid].gvt_time;
 				if(D_DIFFER_ZERO(system_wide_stats.simtime_advancement)) {
 					// Exponential moving average
-					thread_stats[tid].simtime_advancement = 
+					thread_stats[tid].simtime_advancement =
 						0.1 * simtime_advancement +
 						0.9 * system_wide_stats.simtime_advancement;
 				} else {
@@ -732,11 +732,11 @@ void statistics_post_other_data(unsigned int type, double data) {
 
 				system_wide_stats.gvt_time = data;
 				break;
-			
+
 			default:
 				rootsim_error(true, "Wrong statistics post type: %d. Aborting...\n", type);
 		}
-			
+
 		return;
 	}
 
@@ -751,14 +751,14 @@ void statistics_post_other_data(unsigned int type, double data) {
 		case STAT_GVT:
 
 			statistics_flush_gvt(data);
-			
+
 			thread_stats[tid].memory_usage += (double)getCurrentRSS();
 			thread_stats[tid].gvt_computations += 1.0;
 			simtime_advancement = data - thread_stats[tid].gvt_time;
-			
+
 			if(D_DIFFER_ZERO(thread_stats[tid].simtime_advancement)) {
 				// Exponential moving average
-				thread_stats[tid].simtime_advancement = 
+				thread_stats[tid].simtime_advancement =
 					0.1 * simtime_advancement +
 					0.9 * thread_stats[tid].simtime_advancement;
 			} else {
@@ -766,7 +766,7 @@ void statistics_post_other_data(unsigned int type, double data) {
 			}
 
 			thread_stats[tid].gvt_time = data;
-			
+
 			for(i = 0; i < n_prc_per_thread; i++) {
 				unsigned int lid = LPS_bound[i]->lid;
 
@@ -800,7 +800,7 @@ double statistics_get_data(unsigned int type, double data) {
 		case STAT_GET_SIMTIME_ADVANCEMENT:
 			ret = thread_stats[tid].simtime_advancement;
 			break;
-			
+
 		case STAT_GET_EVENT_TIME_LP:
 			ret = lp_stats[(int)data].event_time / lp_stats[(int)data].tot_events;
 			break;
@@ -808,6 +808,6 @@ double statistics_get_data(unsigned int type, double data) {
 		default:
 			rootsim_error(true, "Wrong statistics get type: %d. Aborting...\n", type);
 	}
-	
+
 	return ret;
 }

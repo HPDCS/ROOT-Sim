@@ -210,7 +210,7 @@ char *__list_insert(void *li, unsigned int size, size_t key_position, void *data
 		l->tail = new_n;
 		goto insert_end;
 	}
-	
+
 //	printf("\nInserisco %f in %p\n", key, li);
 //	printf("prima: ");
 //	dump_l(l->head, key_position);
@@ -219,7 +219,7 @@ char *__list_insert(void *li, unsigned int size, size_t key_position, void *data
 	while(n != NULL && key < get_key(&n->data)) {
 		n = n->prev;
 	}
-		
+
 	// Insert correctly depending on the position
  	if(n == l->tail) { // tail
 		new_n->next = NULL;
@@ -237,10 +237,10 @@ char *__list_insert(void *li, unsigned int size, size_t key_position, void *data
 		n->next->prev = new_n;
 		n->next = new_n;
 	}
-	
+
 //	printf("dopo: ");
 //	dump_l(l->head, key_position);
-	
+
     insert_end:
 	l->size++;
 	assert(l->size == (size_before + 1));
