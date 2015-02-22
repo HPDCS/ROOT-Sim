@@ -798,14 +798,16 @@ double statistics_get_data(unsigned int type, double data) {
 	switch(type) {
 
 		case STAT_GET_SIMTIME_ADVANCEMENT:
-			ret = thread_stats[tid].simtime_advancement
+			ret = thread_stats[tid].simtime_advancement;
 			break;
 			
 		case STAT_GET_EVENT_TIME_LP:
-			ret = event_time[(int)data].tot_events / lp_stats[(int)data].tot_events;
+			ret = lp_stats[(int)data].event_time / lp_stats[(int)data].tot_events;
 			break;
 
 		default:
 			rootsim_error(true, "Wrong statistics get type: %d. Aborting...\n", type);
 	}
+	
+	return ret;
 }
