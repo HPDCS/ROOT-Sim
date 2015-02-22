@@ -21,14 +21,27 @@
 * @file binding.c
 * @brief Implements load sharing rules for LPs among worker threads
 * @author Alessandro Pellegrini
-* @author Roberto Vitali
 */
 
 #include <stdbool.h>
 #include <string.h>
+#include <stdlib.h>
 
+#include <core/core.h>
+#include <core/timer.h>
+#include <datatypes/list.h>
+#include <gvt/gvt.h>
 #include <scheduler/process.h>
 #include <scheduler/binding.h>
+#include <statistics/statistics.h>
+
+
+struct lp_cost_id {
+	unsigned int completion_time;
+	unsigned int id;
+};
+
+
 
 /// A guard to know whether this is the first invocation or not
 static __thread bool first_lp_binding = true;
@@ -37,6 +50,9 @@ static __thread bool first_lp_binding = true;
  *  to keep track of LPs currently being handled
  */
 __thread LP_state **LPS_bound = NULL;
+
+
+timer rebinding_timer;
 
 
 
@@ -76,25 +92,141 @@ static inline void LPs_block_binding(void) {
 		if (block_leftover == 0) {
 			buf1--;
 		}
-	}	
+	}
 }
+
+
+
+
+/**
+* Convenience function to compare two elements of struct lp_cost_id.
+* This is used for sorting the LP vector in LP_knapsack()
+*
+* @author Alessandro Pellegrini
+*
+* @param a Pointer to the first element
+* @param b Pointer to the second element
+*
+* @return The comparison between a and b
+*/
+static int compare_lp_cost(const void *a, const void *b) {
+	struct lp_cost_id *A = (struct lp_cost_id *)a;
+	struct lp_cost_id *B = (struct lp_cost_id *)b;
+
+	return ( A->completion_time - B->completion_time );
+}
+
 
 
 
 /**
 * Implements the knapsack load sharing policy in:
-* 
+*
 * Roberto Vitali, Alessandro Pellegrini and Francesco Quaglia
-* A Load Sharing Architecture for Optimistic Simulations on Multi-Core Machines
-* In Proceedings of the 19th International Conference on High Performance Computing (HiPC)
-* Pune, India, IEEE Computer Society, December 2012.
+* Towards Symmetric Multi-threaded Optimistic Simulation Kernels
+* 26th International Workshop on Principles of Advanced and Distributed Simulation (PADS)
+* pp. 211-220, Zhangjiajie, China, IEEE Computer Society, August 2012
 *
 * @author Alessandro Pellegrini
-* @author Roberto Vitali
 */
 static inline void LP_knapsack(void) {
+	register unsigned int i, j;
+	unsigned int reference_knapsack = 0;
+	double reference_lvt;
+	msg_t *current;
+	bool assigned;
+	double assignments[n_cores];
+
+	// This must become global
+	unsigned int new_LPS_bound[n_prc];
+
+	struct lp_cost_id lp_cost[n_prc];
+
+	if(!master_thread())
+		return;
+
+	// Estimate the value
+	reference_lvt = get_last_gvt() + statistics_get_data(STAT_GET_SIMTIME_ADVANCEMENT, 0.0);
+
+	// Estimate the costs
+	for(i = 0; i < n_prc; i++) {
+		lp_cost[i].completion_time = 0;
+		lp_cost[i].id = i;
+
+		current = list_head(LPS[i]->queue_in);
+		while(current != NULL && current->timestamp <= reference_lvt) {
+			lp_cost[i].completion_time++;
+			current = list_next(current);
+		}
+		lp_cost[i].completion_time *= statistics_get_data(STAT_GET_EVENT_TIME_LP, i);
+		reference_knapsack = max(reference_knapsack, lp_cost[i].completion_time);
+		printf("LP %d has %d estimated microseconds to process until LVT %f\n", i, lp_cost[i].completion_time, reference_lvt);
+	}
+
+	reference_knapsack++; // To deal with approximation
+
+	printf("max is %d\n", reference_knapsack);
+
+	// Sort the expected times
+	qsort(&lp_cost, n_prc, sizeof(struct lp_cost_id) , compare_lp_cost);
+
+	printf("Sorting is: ");
+	for(i = 0; i < n_prc; i++)
+		printf("%d ", lp_cost[i].id);
+	puts("");
+
+	// Very suboptimal approximation of knapsack
+	bzero(assignments, sizeof(double) * n_cores);
+	for(i = 0; i < n_prc; i++) {
+		assigned = false;
+
+		for(j = 0; j < n_cores; j++) {
+			// Simulate assignment
+			if(assignments[j] + lp_cost[i].completion_time <= reference_knapsack) {
+				assignments[j] += lp_cost[i].completion_time;
+				new_LPS_bound[i] = j;
+				printf("LP %d goes to thread %d\n", i, j);
+				assigned = true;
+				break;
+			}
+		}
+
+		if(assigned == false)
+			break;
+	}
+
+	// Check for leftovers
+	if(i < n_prc) {
+		printf("I have %d leftovers\n", n_prc - i);
+		j = 0;
+		for( ; i < n_prc; i++) {
+			new_LPS_bound[i] = j;
+			printf("Force assigning LP %d to thread %d\n", i, j);
+			j = (j + 1) % n_cores;
+		}
+	}
+	/*
+	unsigned int j = 0;
+	for(i = 0; i < n_prc; i++) {
+		new_LPS_bound[i] = j;
+		printf("LP %d goes to thread %d\n", i, j);
+		j = (j + 1) % n_cores;
+	}
+	*/
+	printf("NEW BINDING\n");
+	for(j = 0; j < n_cores; j++) {
+		printf("Thread %d: ", j);
+		for(i = 0; i < n_prc; i++) {
+			if(new_LPS_bound[i] == j)
+				printf("%d ", i);
+		}
+		printf("\n");
+	}
+
+
 	//~ LPS_bound[n_prc_per_thread++] = LPS[i];
 	//~ LPS[i]->worker_thread = tid;
+
 }
 
 
@@ -107,13 +239,12 @@ static inline void LP_knapsack(void) {
 * Then, successive invocations, will use the knapsack load sharing policy
 
 * @author Alessandro Pellegrini
-* @author Roberto Vitali
 */
 void rebind_LPs(void) {
 
 	if(first_lp_binding) {
 		first_lp_binding = false;
-		
+
 		// Binding metadata are used in the platform to perform
 		// operations on LPs in isolation
 		LPS_bound = rsalloc(sizeof(LP_state *) * n_prc);
@@ -121,6 +252,13 @@ void rebind_LPs(void) {
 
 		LPs_block_binding();
 
+		timer_start(rebinding_timer);
+
 		return;
+	}
+
+	if(master_thread() && timer_value_seconds(rebinding_timer) >= 2.0) {
+		timer_restart(rebinding_timer);
+		LP_knapsack();
 	}
 }
