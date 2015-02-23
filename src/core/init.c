@@ -330,7 +330,7 @@ void SystemInit(int argc, char **argv) {
 	if(w == -1) {
 		return;
 	}
-	
+
 	// Create a pointer to parameters which are needed by the user-level code
 	// Skip all the NULL args (if any)
 	// TODO: è ancora necessario questo? Era una patch per la shell che ora è stata eliminata

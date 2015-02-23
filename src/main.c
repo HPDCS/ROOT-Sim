@@ -37,6 +37,7 @@
 #include <statistics/statistics.h>
 #include <gvt/gvt.h>
 #include <gvt/ccgs.h>
+#include <scheduler/binding.h>
 #include <scheduler/scheduler.h>
 #include <scheduler/process.h>
 #include <mm/dymelor.h>
@@ -92,7 +93,7 @@ static void *main_simulation_loop(void *arg) {
 
 	// Do the initial (local) LP binding, then execute INIT at all (local) LPs
 	initialize_worker_thread();
-	
+
 	// Notify the statistics subsystem that we are now starting the actual simulation
 	if(master_thread()) {
 		statistics_post_other_data(STAT_SIM_START, 1.0);

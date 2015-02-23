@@ -138,7 +138,7 @@ static void context_create_boot(void) {
 */
 static void context_create_trampoline(int sig) {
 	(void)sig;
-	
+
 	if(context_save(context_creat) == 0)
 		return;
 

@@ -69,8 +69,8 @@ static void *__helper_create_thread(void *arg) {
 
 	// ...and make it globally unique
 	tid = (kid << (sizeof(unsigned int) * 8 / 2)) | local_tid;
-	
-	
+
+
 	// Set the affinity on a CPU core, for increased performance
 	set_affinity(local_tid);
 

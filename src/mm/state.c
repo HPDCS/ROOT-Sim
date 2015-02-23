@@ -191,11 +191,11 @@ void rollback(unsigned int lid) {
 		rootsim_error(false, "I'm asked to roll back LP %d's execution, but rollback_bound is not set. Ignoring...\n", LidToGid(lid));
 		return;
 	}
-	
+
 	statistics_post_lp_data(lid, STAT_ROLLBACK, 1.0);
 
 	last_correct_event = LPS[lid]->bound;
-	
+
 	// Send antimessages
 	send_antimessages(lid, last_correct_event->timestamp);
 

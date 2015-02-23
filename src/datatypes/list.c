@@ -214,12 +214,12 @@ char *__list_place(unsigned int lid, void *li, size_t key_position, struct roots
 		l->tail = new_n;
 		goto insert_end;
 	}
-	
+
 	n = l->tail;
 	while(n != NULL && key < get_key(&n->data)) {
 		n = n->prev;
 	}
-		
+
 	// Insert correctly depending on the position
  	if(n == l->tail) { // tail
 		new_n->next = NULL;
@@ -237,6 +237,7 @@ char *__list_place(unsigned int lid, void *li, size_t key_position, struct roots
 		n->next->prev = new_n;
 		n->next = new_n;
 	}
+
 
     insert_end:
 	l->size++;

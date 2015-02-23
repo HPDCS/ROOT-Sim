@@ -74,7 +74,11 @@
 /* Definition of Global Statistics Post Messages */
 #define STAT_SIM_START		1001
 #define STAT_GVT		1002
-#define STAT_GVT_TIME		1003
+
+
+/* Definition of Thread Statistics Get Messages */
+#define STAT_GET_SIMTIME_ADVANCEMENT	15001
+#define STAT_GET_EVENT_TIME_LP		15002
 
 
 
@@ -96,10 +100,12 @@ struct stat_t {
 		tot_recoveries,
 		recovery_time,
 		event_time,
+		exponential_event_time,
 		idle_cycles,
 		memory_usage,
 		gvt_computations,
-		gvt_time; // Used only in sequential simulation
+		gvt_time,
+		simtime_advancement;
 };
 
 extern void _mkdir(const char *path);
@@ -108,6 +114,7 @@ extern void statistics_fini(void);
 extern void statistics_stop(int exit_code);
 extern inline void statistics_post_lp_data(unsigned int lid, unsigned int type, double data);
 extern inline void statistics_post_other_data(unsigned int type, double data);
+extern double statistics_get_data(unsigned int type, double data);
 
 
 

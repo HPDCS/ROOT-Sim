@@ -18,9 +18,11 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file queues.c
-* @brief
+* @file scheduler.c
+* @brief Re-entrant scheduler for LPs on worker threads
 * @author Francesco Quaglia
+* @author Alessandro Pellegrini
+* @author Roberto Vitali
 */
 
 #include <stdlib.h>
@@ -34,6 +36,7 @@
 #include <arch/atomic.h>
 #include <arch/ult.h>
 #include <arch/thread.h>
+#include <scheduler/binding.h>
 #include <scheduler/process.h>
 #include <scheduler/scheduler.h>
 #include <scheduler/stf.h>
@@ -48,9 +51,6 @@
 
 /// Maintain LPs' simulation and execution states
 LP_state **LPS = NULL;
-
-/// Each KLT has a binding towards some LPs. This is the structure used to keep track of LPs currently being handled
-__thread LP_state **LPS_bound = NULL;
 
 /// This is used to keep track of how many LPs were bound to the current KLT
 __thread unsigned int n_prc_per_thread;
@@ -223,7 +223,7 @@ void initialize_LP(unsigned int lp) {
 
 	// Initially, every LP is ready
 	LPS[lp]->state = LP_STATE_READY;
-	
+
 	// There is no current state layout at the beginning
 	LPS[lp]->current_base_pointer = NULL;
 
@@ -257,15 +257,15 @@ void initialize_LP(unsigned int lp) {
 
 void initialize_worker_thread(void) {
 	register unsigned int t;
-	
+
 	// Divide LPs among worker threads, for the first time here
 	rebind_LPs();
-	
+
 	if(master_thread() && master_kernel()) {
 		printf("Initializing LPs... ");
 		fflush(stdout);
 	}
-	
+
 	// Initialize the LP control block for each locally hosted LP
 	// and schedule the special INIT event
 	for (t = 0; t < n_prc_per_thread; t++) {
@@ -299,12 +299,12 @@ void initialize_worker_thread(void) {
 
 	if(master_thread() && master_kernel())
 		printf("done\n");
-	
+
 	register unsigned int i;
 	for(i = 0; i < n_prc_per_thread; i++) {
 		schedule();
 	}
-	
+
 	// Worker Threads synchronization barrier: they all should start working together
 	thread_barrier(&all_thread_barrier);
 }
@@ -345,66 +345,6 @@ void activate_LP(unsigned int lp, simtime_t lvt, void *evt, void *state) {
 	current_lvt = -1.0;
 	current_evt = NULL;
 	current_state = NULL;
-}
-
-
-
-
-/**
-* This function is used to create a temporary binding between LPs and KLT.
-* Whenever it is invoked, the binding is recreated, depending on the specified
-* policy. Currently, only a fixed binding is implemented, so calling again this
-* function deterministically regenerates the same binding.
-*
-* @author Alessandro Pellegrini
-*/
-void rebind_LPs(void) {
-	unsigned int i, j;
-	unsigned int buf1;
-	unsigned int offset;
-	unsigned int block_leftover;
-
-	static __thread bool already_allocated = false;
-
-	// This is a guard because it's meaningless to recalculate a static
-	// LP allocation now.
-	if(already_allocated) {
-		return;
-	}
-
-	already_allocated = true;
-
-	if(LPS_bound == NULL) {
-		LPS_bound = rsalloc(sizeof(LP_state *) * n_prc);
-		bzero(LPS_bound, sizeof(LP_state *) * n_prc);
-	}
-
-	buf1 = (n_prc / n_cores);
-	block_leftover = n_prc - buf1 * n_cores;
-
-	if (block_leftover > 0) {
-		buf1++;
-	}
-
-	n_prc_per_thread = 0;
-	i = 0;
-	offset = 0;
-	while (i < n_prc) {
-		j = 0;
-		while (j < buf1) {
-			if(offset == tid) {
-				LPS_bound[n_prc_per_thread++] = LPS[i];
-				LPS[i]->worker_thread = tid;
-			}
-			i++;
-			j++;
-		}
-		offset++;
-		block_leftover--;
-		if (block_leftover == 0) {
-			buf1--;
-		}
-	}
 }
 
 
@@ -484,7 +424,7 @@ void schedule(void) {
 		resume_execution = true;
 	}
 	#endif
-	
+
 	// Schedule the LP user-level thread
 	LPS[lid]->state = LP_STATE_RUNNING;
 	activate_LP(lid, lvt(lid), event, state);
