@@ -37,7 +37,7 @@
 
 
 struct lp_cost_id {
-	unsigned int completion_time;
+	double workload_factor;
 	unsigned int id;
 };
 
@@ -113,7 +113,7 @@ static int compare_lp_cost(const void *a, const void *b) {
 	struct lp_cost_id *A = (struct lp_cost_id *)a;
 	struct lp_cost_id *B = (struct lp_cost_id *)b;
 
-	return ( A->completion_time - B->completion_time );
+	return ( B->workload_factor - A->workload_factor );
 }
 
 
@@ -123,17 +123,17 @@ static int compare_lp_cost(const void *a, const void *b) {
 * Implements the knapsack load sharing policy in:
 *
 * Roberto Vitali, Alessandro Pellegrini and Francesco Quaglia
-* Towards Symmetric Multi-threaded Optimistic Simulation Kernels
-* 26th International Workshop on Principles of Advanced and Distributed Simulation (PADS)
-* pp. 211-220, Zhangjiajie, China, IEEE Computer Society, August 2012
+* A Load Sharing Architecture for Optimistic Simulations on Multi-Core Machines
+* In Proceedings of the 19th International Conference on High Performance Computing (HiPC)
+* Pune, India, IEEE Computer Society, December 2012.
+*
 *
 * @author Alessandro Pellegrini
 */
 static inline void LP_knapsack(void) {
 	register unsigned int i, j;
-	unsigned int reference_knapsack = 0;
+	double reference_knapsack = 0;
 	double reference_lvt;
-	msg_t *current;
 	bool assigned;
 	double assignments[n_cores];
 
@@ -146,24 +146,19 @@ static inline void LP_knapsack(void) {
 		return;
 
 	// Estimate the value
-	reference_lvt = get_last_gvt() + statistics_get_data(STAT_GET_SIMTIME_ADVANCEMENT, 0.0);
+//	reference_lvt = get_last_gvt() + statistics_get_data(STAT_GET_SIMTIME_ADVANCEMENT, 0.0);
 
 	// Estimate the costs
 	for(i = 0; i < n_prc; i++) {
-		lp_cost[i].completion_time = 0;
 		lp_cost[i].id = i;
-
-		current = list_head(LPS[i]->queue_in);
-		while(current != NULL && current->timestamp <= reference_lvt) {
-			lp_cost[i].completion_time++;
-			current = list_next(current);
-		}
-		lp_cost[i].completion_time *= statistics_get_data(STAT_GET_EVENT_TIME_LP, i);
-		reference_knapsack = max(reference_knapsack, lp_cost[i].completion_time);
-		printf("LP %d has %d estimated microseconds to process until LVT %f\n", i, lp_cost[i].completion_time, reference_lvt);
+		lp_cost[i].workload_factor = list_sizeof(LPS[i]->queue_in);
+		lp_cost[i].workload_factor *= statistics_get_data(STAT_GET_EVENT_TIME_LP, i);
+		lp_cost[i].workload_factor /= ( list_tail(LPS[i]->queue_in)->timestamp - list_head(LPS[i]->queue_in)->timestamp );
+		reference_knapsack += lp_cost[i].workload_factor;
+		printf("LP %d has an estimated %f workload factor\n", i, lp_cost[i].workload_factor);
 	}
 
-	reference_knapsack++; // To deal with approximation
+	reference_knapsack /= n_cores;
 
 	printf("max is %d\n", reference_knapsack);
 
@@ -175,15 +170,24 @@ static inline void LP_knapsack(void) {
 		printf("%d ", lp_cost[i].id);
 	puts("");
 
-	// Very suboptimal approximation of knapsack
+	// At least one LP per thread
 	bzero(assignments, sizeof(double) * n_cores);
-	for(i = 0; i < n_prc; i++) {
+	j = 0;
+	for(i = 0; i < n_cores; i++) {
+		assignments[j] += lp_cost[i].workload_factor;
+		new_LPS_bound[i] = j;
+		j++;
+	}
+	
+
+	// Very suboptimal approximation of knapsack
+	for(; i < n_prc; i++) {
 		assigned = false;
 
 		for(j = 0; j < n_cores; j++) {
 			// Simulate assignment
-			if(assignments[j] + lp_cost[i].completion_time <= reference_knapsack) {
-				assignments[j] += lp_cost[i].completion_time;
+			if(assignments[j] + lp_cost[i].workload_factor <= reference_knapsack) {
+				assignments[j] += lp_cost[i].workload_factor;
 				new_LPS_bound[i] = j;
 				printf("LP %d goes to thread %d\n", i, j);
 				assigned = true;
@@ -205,14 +209,7 @@ static inline void LP_knapsack(void) {
 			j = (j + 1) % n_cores;
 		}
 	}
-	/*
-	unsigned int j = 0;
-	for(i = 0; i < n_prc; i++) {
-		new_LPS_bound[i] = j;
-		printf("LP %d goes to thread %d\n", i, j);
-		j = (j + 1) % n_cores;
-	}
-	*/
+	
 	printf("NEW BINDING\n");
 	for(j = 0; j < n_cores; j++) {
 		printf("Thread %d: ", j);
@@ -257,7 +254,7 @@ void rebind_LPs(void) {
 		return;
 	}
 
-	if(master_thread() && timer_value_seconds(rebinding_timer) >= 2.0) {
+	if(master_thread() && timer_value_seconds(rebinding_timer) >= 10.0) {
 		timer_restart(rebinding_timer);
 		LP_knapsack();
 	}
