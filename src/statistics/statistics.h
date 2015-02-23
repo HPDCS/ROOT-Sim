@@ -100,6 +100,7 @@ struct stat_t {
 		tot_recoveries,
 		recovery_time,
 		event_time,
+		exponential_event_time,
 		idle_cycles,
 		memory_usage,
 		gvt_computations,
