@@ -36,6 +36,9 @@
 #include <scheduler/binding.h>
 #include <statistics/statistics.h>
 
+#include <mm/allocator.h>
+#include <arch/thread.h>
+
 
 #define REBIND_INTERVAL 10.0
 
@@ -160,7 +163,7 @@ static inline void LP_knapsack(void) {
 	}
 	reference_knapsack /= n_cores;
 
-	printf("max is %d\n", reference_knapsack);
+	printf("max is %f\n", reference_knapsack);
 
 	// Sort the expected times
 	qsort(&lp_cost, n_prc, sizeof(struct lp_cost_id) , compare_lp_cost);
@@ -246,8 +249,12 @@ static void install_binding(void) {
 	for(i = 0; i < n_prc; i++) {
 		if(new_LPS_binding[i] == tid) {
 			LPS_bound[n_prc_per_thread++] = LPS[i];
-			// TODO: NUMA MIgration API here
-			LPS[i]->worker_thread = tid;
+
+			if(tid != LPS[i]->worker_thread) {
+				move_request(i, get_numa_node(running_core()));
+
+				LPS[i]->worker_thread = tid;
+			}
 		}
 	}
 }
