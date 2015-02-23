@@ -251,7 +251,10 @@ static void install_binding(void) {
 			LPS_bound[n_prc_per_thread++] = LPS[i];
 
 			if(tid != LPS[i]->worker_thread) {
+				
+				#ifdef HAVE_NUMA
 				move_request(i, get_numa_node(running_core()));
+				#endif
 
 				LPS[i]->worker_thread = tid;
 			}

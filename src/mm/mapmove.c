@@ -37,7 +37,10 @@
 #include <mm/mapmove.h>
 #include <mm/bh-manager.h>
 
-#define AUDIT if(1)
+
+#ifdef HAVE_NUMA
+
+#define AUDIT if(0)
 
 /* these are required for move_pages - we use max-sized static memory for latency optimization */
 char *pages[MAX_SEGMENT_SIZE];
@@ -112,6 +115,8 @@ void move_sobj(int sobj, unsigned numa_node){
 
         for(i=0;i<m_map->active;i++){
                 mdte = (mdt_entry*)m_map->base + i;
+                
+                AUDIT
                 printf("moving segment in mdt entry %d - content: addr is %p - num pages is %d\n",i,mdte->addr,mdte->numpages);
 
 		move_segment(mdte,numa_node);
@@ -146,6 +151,7 @@ void move_segment(mdt_entry *mdte, unsigned numa_node){
 
 //~ move_operation:
 	ret = numa_move_pages(0, pagecount, (void **)pages, nodes, status, MPOL_MF_MOVE);
+	AUDIT
 	printf("PAGE MOVE operation (page count is %d target node is %u) returned %d\n",pagecount,numa_node,ret);
 
 /*
@@ -188,35 +194,6 @@ void move_BH(int sobj, unsigned numa_node){
 
 }
 
-int lock(int sobj){
-
-        if( (sobj < 0)||(sobj>=handled_sobjs) ) goto bad_lock; 
-
-	pthread_spin_lock(&(daemonmoves[sobj].spinlock));
-
-	lastlocked = sobj;
-
-	return SUCCESS;
-
-bad_lock:
-
-	return FAILURE;
-}
-
-int unlock(int sobj){
-
-        if( (sobj < 0)||(sobj>=handled_sobjs) ) goto bad_unlock; 
-
-	if( sobj != lastlocked ) goto bad_unlock;
-
-	pthread_spin_unlock(&(daemonmoves[sobj].spinlock));
-
-	return SUCCESS;
-
-bad_unlock:
-
-	return FAILURE;
-}
 
 void *background_work(void *me) {
 	int sobj;
@@ -226,6 +203,7 @@ void *background_work(void *me) {
 	while(1){
 
 		sleep(SLEEP_PERIOD);
+		
 		AUDIT
 		printf("RS numa daemon wakeup\n");
 
@@ -269,3 +247,9 @@ int move_request(int sobj, int numa_node){
 
 	return SUCCESS;
 }
+
+
+
+#endif /* HAVE_NUMA */
+
+

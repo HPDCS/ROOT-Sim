@@ -23,6 +23,10 @@
 * @author Francesco Quaglia
 */
 
+#pragma once
+#ifndef _ALLOCATOR_H
+#define _ALLOCATOR_H
+
 #include <stdlib.h>
 #include <sys/mman.h>
 #include <pthread.h>
@@ -43,12 +47,12 @@ typedef struct _mem_map {
 	char* actual_bh_addresses[2];// these are the stable pointers seen for ottom half buffers' migration across numa nodes
 } mem_map; 
 
-typedef struct _mdt_entry{ //mdt stands for 'meta data table'
+typedef struct _mdt_entry { //mdt stands for 'meta data table'
 	char* addr;
 	int   numpages;
 } mdt_entry;
 
-typedef struct _map_move{
+typedef struct _map_move {
 	pthread_spinlock_t spinlock;
 	unsigned 	   target_node;
 	int      	   need_move;
@@ -79,16 +83,22 @@ void* allocate_segment(unsigned int, size_t);
 void audit(void);
 int release_mdt_entry(int);
 void audit_map(unsigned int);
-void move_sobj(int , unsigned );
-void move_segment(mdt_entry *, unsigned );
 void set_daemon_maps(mem_map *, map_move* );
 int init_move(int);
 int lock(int);
 int unlock(int);
-int move_request(int , int );
 void set_BH_map(mem_map* );
 int init_BH(void);
-int get_numa_node(int);
-
 int insert_BH(int , void*, int );
 void* get_BH(int);
+
+
+#ifdef HAVE_NUMA
+int get_numa_node(int);
+void move_sobj(int , unsigned );
+void move_segment(mdt_entry *, unsigned );
+int move_request(int , int );
+#endif
+
+
+#endif /* _ALLOCATOR_H */

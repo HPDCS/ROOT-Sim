@@ -74,10 +74,11 @@ void audit_map(unsigned int sobj){
 		mdte = (mdt_entry*)m_map->base + i;
 		printf("mdt entry %d is at address %p - content: addr is %p - num pages is %d\n",i,mdte,mdte->addr,mdte->numpages);
 	}
-
-	return ;
 }
 
+
+
+#ifdef HAVE_NUMA
 static int query_numa_node(int id){
         #define NUMA_INFO_FILE "./numa_info"
         #define BUFF_SIZE 1024
@@ -113,8 +114,10 @@ static int query_numa_node(int id){
 	fclose(numa_info);
 
 	unlink("numa_info");
-        #undef NUMA_INFO_FILE
-        #undef BUFF_SIZE
+       
+        return -1;
+	#undef NUMA_INFO_FILE
+	#undef BUFF_SIZE
 }
 
 static int setup_numa_nodes(void) {
@@ -134,70 +137,38 @@ int get_numa_node(int core) {
 	return numa_nodes[core];
 }
 
+int lock(int sobj){
 
+        if( (sobj < 0)||(sobj>=handled_sobjs) ) goto bad_lock; 
 
-int allocator_init(unsigned int sobjs){
-	unsigned int i;
-	char* addr;
+	pthread_spin_lock(&(daemonmoves[sobj].spinlock));
 
-	if( (sobjs > MAX_SOBJS) )
-		return INVALID_SOBJS_COUNT; 
-
-	handled_sobjs = sobjs;
-
-	for (i=0; i<sobjs; i++){
-		addr = allocate_mdt();
-		if (addr == NULL) goto bad_init;
-		maps[i].base = addr;
-		maps[i].active = 0;
-		maps[i].size = MDT_ENTRIES;
-		AUDIT
-		printf("INIT: sobj %d - base address is %p - active are %d - MDT size is %d\n",i,maps[i].base, maps[i].active, maps[i].size);
-	}
-	
-	set_daemon_maps(maps, moves);
-	init_move(sobjs);
-
-	set_BH_map(maps);
-	init_BH();
-
-	setup_numa_nodes();
+	lastlocked = sobj;
 
 	return SUCCESS;
 
-bad_init:
-	return INIT_ERROR; 
+bad_lock:
+
+	return FAILURE;
 }
 
-/*
-int init_BH(){
+int unlock(int sobj){
 
-	int i;
-	char* addr;
-	int sobjs;
+        if( (sobj < 0)||(sobj>=handled_sobjs) ) goto bad_unlock; 
 
-	if(handled_sobjs < 0) return INVALID_SOBJS_COUNT; 
+	if( sobj != lastlocked ) goto bad_unlock;
 
-	sobjs = handled_sobjs;
+	pthread_spin_unlock(&(daemonmoves[sobj].spinlock));
 
-	for (i=0; i<sobjs; i++){
-		addr = allocate_page();
-		if (addr == NULL) goto bad_init;
-		maps[i].live_bh = addr;
-		addr = allocate_page();
-		if (addr == NULL) goto bad_init;
-		maps[i].expired_bh = addr;
-	}
-	
 	return SUCCESS;
 
-bad_init:
-	return INIT_ERROR; 
+bad_unlock:
 
-
+	return FAILURE;
 }
-*/
-void* allocate_segment(unsigned int sobj, size_t size){
+#endif /* HAVE_NUMA */
+
+void* allocate_segment(unsigned int sobj, size_t size) {
 
 	mdt_entry* mdt;
 	char* segment;
@@ -206,7 +177,8 @@ void* allocate_segment(unsigned int sobj, size_t size){
 
 	if( ((int)sobj >= handled_sobjs) ) goto bad_allocate; 
 
-	if( size<=0) goto bad_allocate;
+	if(size <= 0)
+		goto bad_allocate;
 
 	numpages = (int)(size/(int)(PAGE_SIZE));
 
@@ -217,12 +189,14 @@ void* allocate_segment(unsigned int sobj, size_t size){
 
 	if(numpages > MAX_SEGMENT_SIZE) goto bad_allocate;
 
+	#ifdef HAVE_NUMA
 	ret = lock(sobj);
-	if(ret == FAILURE) goto bad_allocate;
+	if(ret == FAILURE)
+		goto bad_allocate;
+	#endif
 
 	mdt = get_new_mdt_entry(sobj);
 	if (mdt == NULL) {
-		unlock(sobj);
 		goto bad_allocate;
 	}
 
@@ -240,7 +214,6 @@ void* allocate_segment(unsigned int sobj, size_t size){
 
 	if (segment == MAP_FAILED) {
 		release_mdt_entry(sobj);
-		unlock(sobj);
 		goto bad_allocate;
 	}
 
@@ -250,11 +223,17 @@ void* allocate_segment(unsigned int sobj, size_t size){
 	AUDIT	
 	audit_map(sobj);
 
+	#ifdef HAVE_NUMA
 	unlock(sobj);
+	#endif
 
 	return segment;
 
 bad_allocate:
+	#ifdef HAVE_NUMA
+	unlock(sobj);
+	#endif
+	
 	return NULL;
 
 }
@@ -308,7 +287,7 @@ mdt_entry* get_new_mdt_entry(int sobj){
 
 	return mdte;
 	
-bad_new_mdt_entry:
+    bad_new_mdt_entry:
 	return NULL;
 }
 
@@ -327,25 +306,55 @@ int release_mdt_entry(int sobj){
 
 	return SUCCESS; 
 
-bad_mdt_release:
+    bad_mdt_release:
 
 	return MDT_RELEASE_FAILURE;
 }
 
+
 void *pool_get_memory(unsigned int lid, size_t size) {
-	//~ #ifndef NUMA
-	//~ (void)lid;
-	//~ return __real_malloc(size);
-	//~ #else
 	return allocate_segment(lid, size);
-	//~ #endif
 }
 
+
 void pool_release_memory(unsigned int lid, void *ptr) {
-	//~ #ifndef NUMA
-	//~ (void)lid;
-	//~ __real_free(ptr);
-	//~ #else
 	// TODO
-	//~ #endif
+}
+
+
+int allocator_init(unsigned int sobjs) {
+	unsigned int i;
+	char* addr;
+
+	if( (sobjs > MAX_SOBJS) )
+		return INVALID_SOBJS_COUNT; 
+
+	handled_sobjs = sobjs;
+
+	for (i=0; i<sobjs; i++){
+		addr = allocate_mdt();
+		if (addr == NULL) goto bad_init;
+		maps[i].base = addr;
+		maps[i].active = 0;
+		maps[i].size = MDT_ENTRIES;
+		AUDIT
+		printf("INIT: sobj %d - base address is %p - active are %d - MDT size is %d\n",i,maps[i].base, maps[i].active, maps[i].size);
+	}
+	
+#ifdef HAVE_NUMA
+	set_daemon_maps(maps, moves);
+	init_move(sobjs);
+#endif
+
+	set_BH_map(maps);
+	init_BH();
+
+#ifdef HAVE_NUMA
+	setup_numa_nodes();
+#endif
+
+	return SUCCESS;
+
+bad_init:
+	return INIT_ERROR; 
 }

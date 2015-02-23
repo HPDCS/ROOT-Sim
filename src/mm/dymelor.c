@@ -130,7 +130,7 @@ void malloc_state_init(bool recoverable, malloc_state *state) {
 
 	state->areas = (malloc_area*)rsalloc(state->max_num_areas * sizeof(malloc_area));
 	if(state->areas == NULL)
-		rootsim_error(true, "Unable to allocate memory at %s:%d", __FILE__, __LINE__);
+		rootsim_error(true, "Unable to allocate memory at %s:%d\n", __FILE__, __LINE__);
 
 	chunk_size = MIN_CHUNK_SIZE;
 	num_chunks = MIN_NUM_CHUNKS;
@@ -255,7 +255,7 @@ void *do_malloc(unsigned int lid, malloc_state *mem_pool, size_t size) {
 				/**
 				* @todo can we find a better way to handle the realloc failure?
 				*/
-				rootsim_error(false,  "DyMeLoR: cannot reallocate the block of malloc_area.");
+				rootsim_error(false,  "DyMeLoR: cannot reallocate the block of malloc_area.\n");
 
 				mem_pool->max_num_areas = mem_pool->max_num_areas >> 1;
 
@@ -290,7 +290,7 @@ void *do_malloc(unsigned int lid, malloc_state *mem_pool, size_t size) {
 		m_area->self_pointer = (malloc_area *)pool_get_memory(lid, area_size);
 
 		if(m_area->self_pointer == NULL){
-			rootsim_error(true, "DyMeLoR: error allocating space");
+			rootsim_error(true, "DyMeLoR: error allocating space\n");
 		}
 
 		m_area->dirty_chunks = 0;
@@ -410,8 +410,7 @@ void do_free(unsigned int lid, malloc_state *mem_pool, void *ptr) {
 			mem_pool->total_inc_size -= chunk_size;
 
 			if (m_area->dirty_chunks < 0) {
-				rootsim_error(false, "%s:%d: negative number of chunks", __FILE__, __LINE__);
-				abort();
+				rootsim_error(true, "%s:%d: negative number of chunks\n", __FILE__, __LINE__);
 			}
 		}
 
