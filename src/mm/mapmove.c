@@ -62,15 +62,14 @@ void set_daemon_maps(mem_map* argA, map_move* argB){
 
 int init_move(int sobjs){
 	
-	int i;
+	unsigned int i;
 	int ret;
 	pthread_t daemon_tid;
-	unsigned long long mask;
 
         if( (sobjs <= 0)||(sobjs>MAX_SOBJS) ) return INVALID_SOBJS_COUNT; 
 
 
-        for (i=0; i<sobjs; i++){
+        for (i = 0; i < sobjs; i++){
 		pthread_spin_init(&(daemonmoves[i].spinlock),0);
 		daemonmoves[i].need_move = 0;
 		daemonmoves[i].target_node = 0;
@@ -78,8 +77,7 @@ int init_move(int sobjs){
 
 	for (i=0; i<n_cores; i++){
 
-		mask = 0x1 << i;
-		ret = pthread_create(&daemon_tid, NULL, background_work, (void*)mask);	
+		ret = pthread_create(&daemon_tid, NULL, background_work, (void*)i);	
 
 		if( ret ) goto bad_init;
        	} 
@@ -224,7 +222,6 @@ void *background_work(void *me) {
 	int sobj;
 	int node;
 
-	//(void)dummy;
 
 	while(1){
 
@@ -233,7 +230,7 @@ void *background_work(void *me) {
 		printf("RS numa daemon wakeup\n");
 
 
-		for(sobj=0; sobj<handled_sobjs; sobj++){
+		for(sobj = (unsigned int)me; sobj < handled_sobjs; sobj = sobj + n_cores){
 
 			lock(sobj);
 			node = verify(sobj);
