@@ -28,8 +28,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/mman.h>
-#include <numaif.h>
 #include <errno.h>
+
+#ifdef HAVE_NUMA
+#include <numaif.h>
+#endif
+
 #include <mm/dymelor.h>
 #include <mm/allocator.h>
 

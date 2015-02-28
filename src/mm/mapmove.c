@@ -27,10 +27,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/mman.h>
-#include <numaif.h>
-#include <numa.h>
 #include <errno.h>
 #include <pthread.h>
+
+#ifdef HAVE_NUMA
+#include <numaif.h>
+#include <numa.h>
+#endif
+
 
 #include <core/core.h>
 #include <mm/allocator.h>

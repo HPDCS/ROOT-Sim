@@ -27,9 +27,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
-#include <numaif.h>
 #include <errno.h>
 #include <pthread.h>
+
+#ifdef HAVE_NUMA
+#include <numaif.h>
+#endif
 
 #include <mm/bh-manager.h>
 #include <mm/allocator.h>
