@@ -79,6 +79,25 @@ case "${host_cpu}" in
 esac
 
 
+# If our libtimestretch library is installed, then we can use Preemptive Time Warp
+AC_CHECK_LIB(timestretch, ts_start, [libtimestretch=yes], [libtimestretch=no])
+ac_preemption=no
+if test "x$libtimestretch" = "xyes"
+then
+        #
+        # We have found everything that we need, but the user can disable the subsystem
+        #
+
+	AC_ARG_ENABLE([preemptive],
+	AS_HELP_STRING([--disable-preemptive], [Disable Preemptive Time Warp)]))
+
+	AS_IF([test "x$enable_preemptive" != "xno"], [
+		AC_DEFINE([HAVE_PREEMPTION])
+		ac_preemption=yes
+	])
+fi
+
+
 # If we are on a NUMA system, try to use the NUMA subsystem
 AC_CHECK_LIB(numa, numa_num_possible_nodes, [numa_cv_libnuma=yes], [numa_cv_libnuma=no])
 AC_CHECK_HEADER(numa.h, [numa_cv_numa_h=yes], [numa_cv_numa_h=no])
@@ -93,11 +112,10 @@ then
 
 	AC_ARG_ENABLE([numa],
 	AS_HELP_STRING([--disable-numa], [Disable NUMA subsystem on NUMA machines (enabled by default)]))
-	ac_have_numa=yes
 
 	AS_IF([test "x$enable_numa" != "xno"], [
 		AC_DEFINE([HAVE_NUMA])
-		ac_have_numa=no
+		ac_have_numa=yes
 		CFLAGS="$CFLAGS -lnuma"
 	])
 fi
@@ -380,6 +398,23 @@ else
 	fi
 fi
 
+
+# Compose the message regarding Preemptive Time Warp
+if test "x$ac_preemption" = "x$yes"
+then
+	ac_preemption="Enabled"
+else
+	ac_preemption="Disabled"
+	if test "x$libtimestretch" = "xyes"
+	then
+		ac_preemption="${ac_preemption} by the user"
+	else
+		ac_preemption="${ac_preemption} (libtimestretch not found)"
+	fi
+fi
+
+
+
 cat<<EOF
 
 
@@ -390,6 +425,7 @@ Operating System.......... : ${host_os}
 Debugging Support......... : ${enable_debug}
 User-Level Threads........ : ${ac_enable_ult}
 NUMA Subsystem............ : ${numa_subsystem}
+LP Preemption Support..... : ${ac_preemption}
 
 
 EOF
