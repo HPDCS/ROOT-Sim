@@ -28,6 +28,7 @@ lt~obsolete.m4
 
 /missing
 /stamp-h?
+/ar-lib
 .deps/
 .dirstamp
 .libs/

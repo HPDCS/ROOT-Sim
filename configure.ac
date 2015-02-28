@@ -35,6 +35,7 @@ AC_PROG_MAKE_SET
 AC_PROG_MKDIR_P
 AC_PROG_CC_C_O
 AM_PROG_CC_C_O
+AM_PROG_AR
 LT_INIT
 
 
@@ -267,3 +268,64 @@ AC_MSG_RESULT([ok])
 AC_CONFIG_FILES([Makefile man/Makefile scripts/Makefile src/Makefile])
 AC_OUTPUT
 
+
+
+#----------------------------------------------------------------------------
+# Generate a summary of the configuration adopted on the current machine.
+# At this step, we give as well some information on how to enable/disable
+# autoconfigured stuff.
+#----------------------------------------------------------------------------
+
+# Compose the message regarding the CPU
+current_cpu="${host_cpu} (available supports: "
+if test "x$ac_have_as_rdtsc" = "xyes"
+then
+	current_cpu="${current_cpu}rdtcs "
+fi
+
+if test "x$ac_have_as_sse3" = "xyes"
+then
+	current_cpu="${current_cpu}SSE3 "
+fi
+
+if test "x$ac_have_as_ssse3" = "xyes"
+then
+	current_cpu="${current_cpu}SSSE3 "
+fi
+
+if test "x$ac_have_as_sse42" = "xyes"
+then
+	current_cpu="${current_cpu}SSE4.2 "
+fi
+current_cpu="${current_cpu})"
+
+
+# Compose the debugging message
+if test "x$enable_debug" = "xyes"
+then
+	enable_debug="Enabled"
+else
+	enable_debug="Disabled (use --enable-debug if wanted)"
+fi
+
+# Compose the ULT message
+if test "x$ac_enable_ult" = "xyes"
+then
+	ac_enable_ult="Enabled (use --disable-ult if not wanted)"
+else
+	ac_enable_ult="Disabled"
+fi
+
+
+cat<<EOF
+
+
+   * ROOT-Sim Configuration on Current Machine *
+
+CPU Architecture.......... : ${current_cpu}
+Operating System.......... : ${host_os}
+Debugging Support......... : ${enable_debug}
+User-Level Threads........ : ${ac_enable_ult}
+
+
+EOF
