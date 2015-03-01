@@ -25,6 +25,8 @@
 */
 
 
+#ifdef HAVE_PREEMPTION
+
 /**
  * This function is activated when control is transferred back from
  * kernel space, when an APIC timer interrupt is received. When this is
@@ -34,3 +36,7 @@
  */
 void preempt(void) {
 }
+
+
+#endif /* HAVE_PREEMPTION */
+

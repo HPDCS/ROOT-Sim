@@ -29,6 +29,8 @@
 .file "kernel_callback.S"
 .extern preempt
 
+#if defined(HAVE_PREEMPT) && ( defined(ARCH_X86) || defined(ARCH_X86_64) )
+
 .text
 .globl preempt_callback
 .type preempt_callback, @function
@@ -72,3 +74,5 @@ preempt_callback:
 	retq
 
 .size   preempt_callback, .-preempt_callback
+
+#endif /* defined(HAVE_PREEMPT) and ( defined(ARCH_X86) or defined(ARCH_X86_64) ) */
