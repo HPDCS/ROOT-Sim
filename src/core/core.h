@@ -90,13 +90,13 @@
 
 // XXX should be moved to a more librarish header
 /// Equality condition for floats
-#define F_EQUAL(a,b) (fabs((a) - (b)) < FLT_EPSILON)
+#define F_EQUAL(a,b) (fabsf((a) - (b)) < FLT_EPSILON)
 /// Equality to zero condition for floats
-#define F_EQUAL_ZERO(a) (fabs(a) < FLT_EPSILON)
+#define F_EQUAL_ZERO(a) (fabsf(a) < FLT_EPSILON)
 /// Difference condition for floats
-#define F_DIFFER(a,b) (fabs((a) - (b)) >= FLT_EPSILON)
+#define F_DIFFER(a,b) (fabsf((a) - (b)) >= FLT_EPSILON)
 /// Difference from zero condition for floats
-#define F_DIFFER_ZERO(a) (fabs(a) >= FLT_EPSILON)
+#define F_DIFFER_ZERO(a) (fabsf(a) >= FLT_EPSILON)
 
 
 /// Equality condition for doubles
