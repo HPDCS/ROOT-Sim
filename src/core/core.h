@@ -128,6 +128,10 @@
      _a < _b ? _a : _b; })
 
 
+/// Macro to "legitimately" pun a type
+#define UNION_CAST(x, destType) (((union {__typeof__(x) a; destType b;})x).b)
+
+
 // to avoid a circular inclusion, but I hate this! :(
 struct _state_t;
 

@@ -26,7 +26,58 @@
 */
 
 
+#include <core/core.h>
+#include <scheduler/scheduler.h>
+#include <mm/dymelor.h>
+
+
 #ifdef HAVE_PREEMPTION
+
+static simtime_t * volatile min_in_transit_lvt;
+
+
+void preempt_init(void) {
+	register unsigned int i;
+
+	min_in_transit_lvt = rsalloc(sizeof(simtime_t) * n_cores);
+	for(i = 0; i < n_cores; i++) {
+		min_in_transit_lvt[i] = INFTY;
+	}
+}
+
+
+void preempt_fini(void) {
+	rsfree(min_in_transit_lvt);
+}
+
+
+
+void reset_min_in_transit(unsigned int thread) {
+	simtime_t local_min;
+
+	local_min  = min_in_transit_lvt[thread];
+
+	// If the CAS (unlikely) fails, then some other thread has updated
+	// the min in transit. We do not retry the operation, as this
+	// case must be handled.
+	CAS((uint64_t *)&min_in_transit_lvt[thread], UNION_CAST(local_min, uint64_t), UNION_CAST(INFTY, uint64_t));
+}
+
+
+void update_min_in_transit(unsigned int thread, simtime_t lvt) {
+	simtime_t local_min;
+
+	do {
+		local_min = min_in_transit_lvt[thread];
+
+		if(lvt >= local_min) {
+			break;
+		}
+
+	// simtime_t is 64-bits wide, so we use 64-bits CAS
+	} while(!CAS((uint64_t *)&min_in_transit_lvt[thread], UNION_CAST(local_min, uint64_t), UNION_CAST(lvt, uint64_t)));
+}
+
 
 /**
  * This function is activated when control is transferred back from
@@ -36,8 +87,9 @@
  * in the case changes the control flow so as to activate it.
  */
 void preempt(void) {
+
+	// if min_in_transit_lvt < current_lvt
 }
 
 
 #endif /* HAVE_PREEMPTION */
-

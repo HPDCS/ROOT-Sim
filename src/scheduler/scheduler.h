@@ -68,6 +68,14 @@ extern void unblock_synchronized_objects(unsigned int);
 #endif
 
 
+#ifdef HAVE_PREEMPTION
+extern void preempt_init(void);
+extern void preempt_fini(void);
+extern void reset_min_in_transit(unsigned int);
+extern void update_min_in_transit(unsigned int, simtime_t);
+#endif
+
+
 extern __thread unsigned int current_lp;
 extern __thread simtime_t current_lvt;
 extern __thread msg_t *current_evt;

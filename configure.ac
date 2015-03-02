@@ -89,12 +89,12 @@ then
         # We have found everything that we need, but the user can disable the subsystem
         #
 
-	AC_ARG_ENABLE([preemptive],
-	AS_HELP_STRING([--disable-preemptive], [Disable Preemptive Time Warp)]))
+	AC_ARG_ENABLE([preemption],
+	AS_HELP_STRING([--disable-preemption], [Disable Preemptive Time Warp)]))
 
-	AS_IF([test "x$enable_preemptive" != "xno"], [
+	AS_IF([test "x$enable_preemption" != "xno"], [
 		AC_DEFINE([HAVE_PREEMPTION])
-		ac_preemption=yes
+		ac_have_preemption=yes
 	])
 fi
 
@@ -373,7 +373,7 @@ fi
 # Compose the message regarding the NUMA subsystem
 if test "x$ac_have_numa" = "xyes"
 then
-	numa_subsystem="Enabled (enabled by default on NUMA machines, use --disable-numa if not wanted"
+	numa_subsystem="Enabled (by default on NUMA machines, use --disable-numa if not wanted)"
 else
 	numa_subsystem="Disabled ("
 	if test "x$numa_cv_libnuma" = "xno"
@@ -401,9 +401,9 @@ fi
 
 
 # Compose the message regarding Preemptive Time Warp
-if test "x$ac_preemption" = "x$yes"
+if test "x$ac_have_preemption" = "xyes"
 then
-	ac_preemption="Enabled"
+	ac_preemption="Enabled (by default with libtimestretch, use --disable-preemption if not wanted)"
 else
 	ac_preemption="Disabled"
 	if test "x$libtimestretch" = "xyes"

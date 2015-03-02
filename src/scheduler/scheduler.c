@@ -100,6 +100,10 @@ void scheduler_init(void) {
 		// That's the only sequentially executed place where we can set the lid
 		LPS[i]->lid = i;
 	}
+
+	#ifdef HAVE_PREEMPTION
+	preempt_init();
+	#endif
 }
 
 
@@ -131,6 +135,10 @@ static void destroy_LPs(void) {
 */
 void scheduler_fini(void) {
 	register unsigned int i;
+
+	#ifdef HAVE_PREEMPTION
+	preempt_fini();
+	#endif
 
 	destroy_LPs();
 

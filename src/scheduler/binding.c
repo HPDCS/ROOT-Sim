@@ -176,7 +176,7 @@ static inline void LP_knapsack(void) {
 		new_LPS_binding[i] = j;
 		j++;
 	}
-	
+
 	// Very suboptimal approximation of knapsack
 	for(; i < n_prc; i++) {
 		assigned = false;
@@ -206,7 +206,7 @@ static inline void LP_knapsack(void) {
 			j = (j + 1) % n_cores;
 		}
 	}
-	
+
 	printf("NEW BINDING\n");
 	for(j = 0; j < n_cores; j++) {
 		printf("Thread %d: ", j);
@@ -251,7 +251,7 @@ static void install_binding(void) {
 			LPS_bound[n_prc_per_thread++] = LPS[i];
 
 			if(tid != LPS[i]->worker_thread) {
-				
+
 				#ifdef HAVE_NUMA
 				move_request(i, get_numa_node(running_core()));
 				#endif
@@ -316,6 +316,11 @@ void rebind_LPs(void) {
 	if(local_binding_acquire_phase < binding_acquire_phase) {
 		local_binding_acquire_phase = binding_acquire_phase;
 		install_binding();
+
+		#ifdef HAVE_PREEMPTION
+		reset_min_in_transit(tid);
+		#endif
+
 		if(thread_barrier(&all_thread_barrier)) {
 			atomic_set(&worker_thread_reduction, n_cores);
 		}
