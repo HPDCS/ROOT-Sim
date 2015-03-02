@@ -25,28 +25,44 @@
 * @date March, 2015
 */
 
+#ifdef HAVE_PREEMPTION
+
+#include <timestretch.h>
 
 #include <core/core.h>
 #include <scheduler/scheduler.h>
 #include <mm/dymelor.h>
 
 
-#ifdef HAVE_PREEMPTION
-
 static simtime_t * volatile min_in_transit_lvt;
 
 
 void preempt_init(void) {
 	register unsigned int i;
+	int ret;
+
+	if(rootsim_config.disable_preemption)
+		return;
 
 	min_in_transit_lvt = rsalloc(sizeof(simtime_t) * n_cores);
 	for(i = 0; i < n_cores; i++) {
 		min_in_transit_lvt[i] = INFTY;
 	}
+	
+	// Try to get control over libtimestretch device file
+	ret = ts_open();
+	if(ret == TS_OPEN_ERROR) {
+		rootsim_error(false, "libtimestretch unavailable: is the module mounted? Will run without preemption...\n");
+		rootsim_config.disable_preemption = true;
+	}
 }
 
 
 void preempt_fini(void) {
+
+	if(rootsim_config.disable_preemption)
+		return;
+
 	rsfree(min_in_transit_lvt);
 }
 
@@ -54,6 +70,9 @@ void preempt_fini(void) {
 
 void reset_min_in_transit(unsigned int thread) {
 	simtime_t local_min;
+
+	if(rootsim_config.disable_preemption)
+		return;
 
 	local_min  = min_in_transit_lvt[thread];
 
@@ -66,6 +85,9 @@ void reset_min_in_transit(unsigned int thread) {
 
 void update_min_in_transit(unsigned int thread, simtime_t lvt) {
 	simtime_t local_min;
+
+	if(rootsim_config.disable_preemption)
+		return;
 
 	do {
 		local_min = min_in_transit_lvt[thread];
@@ -87,6 +109,9 @@ void update_min_in_transit(unsigned int thread, simtime_t lvt) {
  * in the case changes the control flow so as to activate it.
  */
 void preempt(void) {
+	
+	if(rootsim_config.disable_preemption)
+		return;
 
 	// if min_in_transit_lvt < current_lvt
 }

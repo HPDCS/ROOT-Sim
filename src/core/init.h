@@ -33,6 +33,10 @@
 #define OPT_SEED		20
 #define OPT_SERIAL		21
 
+#ifdef HAVE_PREEMPTION
+#define OPT_PREEMPTION		22
+#endif
+
 // TODO: a vector of vector with text name of numerical options, which should be used for parsing options and for displaying names
 // static char *opt_opt[][] = { ... }
 
@@ -59,7 +63,13 @@ static char *opt_desc[] = {
 	"Verbose execution",
 	"Level of detail in the output statistics",
 	"Manually specify the initial random seed",
-	"Run a serial simulation (using Calendar Queues)"
+	"Run a serial simulation (using Calendar Queues)",
+
+#ifdef HAVE_PREEMPTION
+	"Disable Preemptive Time Warp",
+#endif
+
+	""
 };
 
 
@@ -86,6 +96,11 @@ static struct option long_options[] = {
 	{"seed",		required_argument,	0, OPT_SEED},
 	{"serial",		no_argument,		0, OPT_SERIAL},
 	{"sequential",		no_argument,		0, OPT_SERIAL},
+	
+#ifdef HAVE_PREEMPTION
+	{"no-preemption",	no_argument,		0, OPT_SERIAL},
+#endif
+
 	{0,			0,			0, 0}
 };
 
