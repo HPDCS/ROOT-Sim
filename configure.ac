@@ -9,7 +9,6 @@ AC_USE_SYSTEM_EXTENSIONS
 
 
 
-
 # Debugging symbols or not?
 CFLAGS="-O3 -lm"
 AC_ARG_ENABLE([debug],
@@ -35,6 +34,7 @@ AC_LANG([C])
 #----------------------------------------------------------------------------
 # Checks for programs.
 #----------------------------------------------------------------------------
+m4_pattern_allow([AM_PROG_AR])
 AC_PROG_CC([gcc])
 AC_PROG_MAKE_SET
 AC_PROG_MKDIR_P
