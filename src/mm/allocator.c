@@ -32,6 +32,7 @@
 
 #ifdef HAVE_NUMA
 #include <numaif.h>
+#include <mm/mapmove.h>
 #endif
 
 #include <mm/dymelor.h>
@@ -67,7 +68,7 @@ void audit_map(unsigned int sobj){
 	mdt_entry* mdte;
 	int i;
 		
-	if( (sobj>=handled_sobjs) ){
+	if( (sobj >= handled_sobjs) ){
 		printf("audit request on invalid sobj\n");
 		return ; 
 	}
@@ -124,7 +125,7 @@ static int query_numa_node(int id){
 	#undef BUFF_SIZE
 }
 
-static int setup_numa_nodes(void) {
+static void setup_numa_nodes(void) {
 
 	unsigned int i;
 
@@ -141,35 +142,6 @@ int get_numa_node(int core) {
 	return numa_nodes[core];
 }
 
-int lock(int sobj){
-
-        if( (sobj < 0)||(sobj>=handled_sobjs) ) goto bad_lock; 
-
-	pthread_spin_lock(&(daemonmoves[sobj].spinlock));
-
-	lastlocked = sobj;
-
-	return SUCCESS;
-
-bad_lock:
-
-	return FAILURE;
-}
-
-int unlock(int sobj){
-
-        if( (sobj < 0)||(sobj>=handled_sobjs) ) goto bad_unlock; 
-
-	if( sobj != lastlocked ) goto bad_unlock;
-
-	pthread_spin_unlock(&(daemonmoves[sobj].spinlock));
-
-	return SUCCESS;
-
-bad_unlock:
-
-	return FAILURE;
-}
 #endif /* HAVE_NUMA */
 
 void* allocate_segment(unsigned int sobj, size_t size) {
