@@ -24,6 +24,7 @@
 *	 received
 * @author Alessandro Pellegrini
 * @author Francesco Quaglia
+* @date March, 2015
 */
 
 .file "kernel_callback.S"
@@ -44,6 +45,8 @@ preempt_callback:
 	push %rdx
 	push %rdi
 	push %rsi
+
+#ifdef ARCH_X86_64
 	push %r8
 	push %r9
 	push %r10
@@ -52,9 +55,13 @@ preempt_callback:
 	push %r13
 	push %r14
 	push %r15
-	mov  0x10(%rbp), %rdi # TODO: in case of 32-bits execution, these
-	mov  0x8(%rbp), %rsi  # two lines can be commented out
+	mov  0x10(%rbp), %rdi
+	mov  0x8(%rbp), %rsi
+#endif
+
 	call preempt
+
+#ifdef ARCH_X86_64
 	pop %r15
 	pop %r14
 	pop %r13
@@ -63,6 +70,8 @@ preempt_callback:
 	pop %r10
 	pop %r9
 	pop %r8
+#endif
+
 	pop %rsi
 	pop %rdi
 	pop %rdx
@@ -70,7 +79,7 @@ preempt_callback:
 	pop %rbx
 	pop %rax
 	leaveq
-	add $0x10, %rsp
+	add $0x10, %rsp # Remove parameters put on stack by the Kernel module
 	retq
 
 .size   preempt_callback, .-preempt_callback
