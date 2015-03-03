@@ -30,7 +30,7 @@
 .file "kernel_callback.S"
 .extern preempt
 
-#if defined(HAVE_PREEMPT) && ( defined(ARCH_X86) || defined(ARCH_X86_64) )
+#if defined(HAVE_PREEMPTION) && ( defined(ARCH_X86) || defined(ARCH_X86_64) )
 
 .text
 .globl preempt_callback

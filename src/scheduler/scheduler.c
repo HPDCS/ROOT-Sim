@@ -112,11 +112,11 @@ static void destroy_LPs(void) {
 	register unsigned int i;
 
 	for(i = 0; i < n_prc; i++) {
-		rsfree(LPS[i]->queue_in);
-		rsfree(LPS[i]->queue_out);
-		rsfree(LPS[i]->queue_states);
-		rsfree(LPS[i]->bottom_halves);
-		rsfree(LPS[i]->rendezvous_queue);
+//		rsfree(LPS[i]->queue_in);
+//		rsfree(LPS[i]->queue_out);
+//		rsfree(LPS[i]->queue_states);
+//		rsfree(LPS[i]->bottom_halves);
+//		rsfree(LPS[i]->rendezvous_queue);
 
 		// Destroy stacks
 		#ifdef ENABLE_ULT
@@ -343,11 +343,21 @@ void activate_LP(unsigned int lp, simtime_t lvt, void *evt, void *state) {
 	current_evt = evt;
 	current_state = state;
 
+	#ifdef HAVE_PREEMPTION
+	if(!rootsim_config.disable_preemption)
+		enable_preemption();
+	#endif
+
 	#ifdef ENABLE_ULT
 	context_switch(&kernel_context, &LPS[lp]->context);
 	#else
 	LP_main_loop(NULL);
 	#endif
+
+	#ifdef HAVE_PREEMPTION
+        if(!rootsim_config.disable_preemption)
+                disable_preemption();
+        #endif
 
 	current_lp = IDLE_PROCESS;
 	current_lvt = -1.0;

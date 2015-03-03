@@ -67,7 +67,7 @@ void unrecoverable_fini(void) {
 	unsigned int i, j;
 	malloc_area *current_area;
 	
-	for(i = 0; i < n_prc; i++) {
+/*	for(i = 0; i < n_prc; i++) {
 		for (j = 0; j < (unsigned int)unrecoverable_state[i]->num_areas; j++) {
 			current_area = &(unrecoverable_state[i]->areas[j]);
 			if (current_area != NULL) {
@@ -80,6 +80,7 @@ void unrecoverable_fini(void) {
 		rsfree(unrecoverable_state[i]);
 	}
 	rsfree(unrecoverable_state);
+*/
 }
 
 

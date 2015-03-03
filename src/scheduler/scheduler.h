@@ -73,6 +73,8 @@ extern void preempt_init(void);
 extern void preempt_fini(void);
 extern void reset_min_in_transit(unsigned int);
 extern void update_min_in_transit(unsigned int, simtime_t);
+void enable_preemption(void);
+void disable_preemption(void);
 #endif
 
 

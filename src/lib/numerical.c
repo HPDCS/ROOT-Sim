@@ -101,8 +101,7 @@ int RandomRangeNonUniform(int x, int min, int max) {
 double Expent(double mean) {
 
 	if(mean < 0) {
-		fprintf(stderr, "Error: in call to Expent() passed a negative mean value\n");
-		abort();
+		rootsim_error(true, "Expent() has been passed a negative mean value\n");
 	}
 
 	return (-mean * log(1 - Random()));

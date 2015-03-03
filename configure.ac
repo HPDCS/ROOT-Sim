@@ -80,46 +80,6 @@ case "${host_cpu}" in
 esac
 
 
-# If our libtimestretch library is installed, then we can use Preemptive Time Warp
-AC_CHECK_LIB(timestretch, ts_start, [libtimestretch=yes], [libtimestretch=no])
-ac_preemption=no
-if test "x$libtimestretch" = "xyes"
-then
-        #
-        # We have found everything that we need, but the user can disable the subsystem
-        #
-
-	AC_ARG_ENABLE([preemption],
-	AS_HELP_STRING([--disable-preemption], [Disable Preemptive Time Warp)]))
-
-	AS_IF([test "x$enable_preemption" != "xno"], [
-		AC_DEFINE([HAVE_PREEMPTION])
-		ac_have_preemption=yes
-	])
-fi
-
-
-# If we are on a NUMA system, try to use the NUMA subsystem
-AC_CHECK_LIB(numa, numa_num_possible_nodes, [numa_cv_libnuma=yes], [numa_cv_libnuma=no])
-AC_CHECK_HEADER(numa.h, [numa_cv_numa_h=yes], [numa_cv_numa_h=no])
-AC_CHECK_PROG([numactl],[numactl],[yes],[no])
-ac_have_numa=no
-
-if test "x$numa_cv_libnuma" = "xyes" -a "x$numa_cv_numa_h" = "xyes" -a "x$numactl" = "xyes"
-then
-        #
-        # We have found everything that we need, but the user can disable the subsystem
-        #
-
-	AC_ARG_ENABLE([numa],
-	AS_HELP_STRING([--disable-numa], [Disable NUMA subsystem on NUMA machines (enabled by default)]))
-
-	AS_IF([test "x$enable_numa" != "xno"], [
-		AC_DEFINE([HAVE_NUMA])
-		ac_have_numa=yes
-		CFLAGS="$CFLAGS -lnuma"
-	])
-fi
 
 
 #----------------------------------------------------------------------------
@@ -280,6 +240,47 @@ AS_IF([test "x$enable_ult" != "xno"], [
 ])
 
 
+# If our libtimestretch library is installed, then we can use Preemptive Time Warp
+AC_CHECK_LIB(timestretch, ts_start, [libtimestretch=yes], [libtimestretch=no])
+ac_preemption=no
+if test "x$libtimestretch" = "xyes" -a "x$enable_ult" != "xno"
+then
+        #
+        # We have found everything that we need, but the user can disable the subsystem
+        #
+
+	AC_ARG_ENABLE([preemption],
+	AS_HELP_STRING([--disable-preemption], [Disable Preemptive Time Warp)]))
+
+	AS_IF([test "x$enable_preemption" != "xno"], [
+		AC_DEFINE([HAVE_PREEMPTION])
+		ac_have_preemption=yes
+		CFLAGS="$CFLAGS -ltimestretch"
+	])
+fi
+
+
+# If we are on a NUMA system, try to use the NUMA subsystem
+AC_CHECK_LIB(numa, numa_num_possible_nodes, [numa_cv_libnuma=yes], [numa_cv_libnuma=no])
+AC_CHECK_HEADER(numa.h, [numa_cv_numa_h=yes], [numa_cv_numa_h=no])
+AC_CHECK_PROG([numactl],[numactl],[yes],[no])
+ac_have_numa=no
+
+if test "x$numa_cv_libnuma" = "xyes" -a "x$numa_cv_numa_h" = "xyes" -a "x$numactl" = "xyes"
+then
+        #
+        # We have found everything that we need, but the user can disable the subsystem
+        #
+
+	AC_ARG_ENABLE([numa],
+	AS_HELP_STRING([--disable-numa], [Disable NUMA subsystem on NUMA machines (enabled by default)]))
+
+	AS_IF([test "x$enable_numa" != "xno"], [
+		AC_DEFINE([HAVE_NUMA])
+		ac_have_numa=yes
+		CFLAGS="$CFLAGS -lnuma"
+	])
+fi
 
 
 #----------------------------------------------------------------------------
@@ -406,11 +407,16 @@ then
 	ac_preemption="Enabled (by default with libtimestretch, use --disable-preemption if not wanted)"
 else
 	ac_preemption="Disabled"
-	if test "x$libtimestretch" = "xyes"
+	if test "x$enable_ult" = "xno"
 	then
-		ac_preemption="${ac_preemption} by the user"
+		ac_preemption="${ac_preemption} (User-Level Threads are necessary)"
 	else
-		ac_preemption="${ac_preemption} (libtimestretch not found)"
+		if test "x$libtimestretch" = "xyes" -a 
+		then
+			ac_preemption="${ac_preemption} by the user"
+		else
+			ac_preemption="${ac_preemption} (libtimestretch not found)"
+		fi
 	fi
 fi
 

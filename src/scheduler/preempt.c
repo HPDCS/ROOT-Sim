@@ -30,9 +30,12 @@
 #include <timestretch.h>
 
 #include <core/core.h>
+#include <scheduler/process.h>
 #include <scheduler/scheduler.h>
 #include <mm/dymelor.h>
 
+
+extern void preempt_callback(void);
 
 static simtime_t * volatile min_in_transit_lvt;
 
@@ -55,8 +58,11 @@ void preempt_init(void) {
 		rootsim_error(false, "libtimestretch unavailable: is the module mounted? Will run without preemption...\n");
 		rootsim_config.disable_preemption = true;
 	}
+
+//	enable_preemption();
 }
 
+static __thread int preempt_count = 0;
 
 void preempt_fini(void) {
 
@@ -64,6 +70,12 @@ void preempt_fini(void) {
 		return;
 
 	rsfree(min_in_transit_lvt);
+
+	printf("Total preemptions: %d\n", preempt_count);
+
+//	disable_preemption();
+
+	//ts_close();
 }
 
 
@@ -101,6 +113,8 @@ void update_min_in_transit(unsigned int thread, simtime_t lvt) {
 }
 
 
+
+
 /**
  * This function is activated when control is transferred back from
  * kernel space, when an APIC timer interrupt is received. When this is
@@ -108,12 +122,51 @@ void update_min_in_transit(unsigned int thread, simtime_t lvt) {
  * gained an increased priority over the currently executing one, and
  * in the case changes the control flow so as to activate it.
  */
-void preempt(void) {
+void preempt(long long a, long long b) {
+
+	(void)a;
+	(void)b;
 	
 	if(rootsim_config.disable_preemption)
 		return;
 
+
 	// if min_in_transit_lvt < current_lvt
+	// and in platform mode
+
+/*	if(current_lp != IDLE_PROCESS) {
+		if( (count++) % 100 == 0)
+			printf("Overtick interrupt from application mode\n");
+	}
+*/
+	if(current_lp != IDLE_PROCESS && min_in_transit_lvt[tid] < current_lvt) {
+		preempt_count++;
+		LPS[current_lp]->state = LP_STATE_READY_FOR_SYNCH; // Questo triggera la logica di ripartenza dell'LP di ECS, ma forse va cambiato nome...
+		context_switch(&LPS[current_lp]->context, &kernel_context);
+	}
+
+	
+}
+
+
+void enable_preemption(void) {
+
+	if(register_ts_thread() != TS_REGISTER_OK) {
+		rootsim_error(true, "%s:%d: Error activating high-frequency interrupts. Aborting...\n", __FILE__, __LINE__);
+	}
+
+	if(register_callback(preempt_callback) != TS_REGISTER_CALLBACK_OK) {
+		rootsim_error(true, "%s:%d: Error registering callback from kernel module. Aborting...\n", __FILE__, __LINE__);
+	}
+
+}
+
+
+void disable_preemption(void) {
+
+	if(deregister_ts_thread() != TS_DEREGISTER_OK) {
+		rootsim_error(true, "%s:%d: Error de-activating high-frequency interrupts. Aborting...\n", __FILE__, __LINE__);
+	}
 }
 
 
