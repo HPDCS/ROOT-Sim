@@ -240,7 +240,7 @@ void bt_sighandler(int sig, siginfo_t *info, void *opaque) {
 		printf("#%d %s] at %s", i-2, messages[i], get_file_line(extract_word_from_string(messages[i], '[', ']')));
 	}
 
-	exit(0);
+	simulation_shutdown(EXIT_FAILURE);
 }
 
 
