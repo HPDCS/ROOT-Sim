@@ -29,6 +29,7 @@
 
 #include <timestretch.h>
 
+#include <arch/atomic.h>
 #include <core/core.h>
 #include <scheduler/process.h>
 #include <scheduler/scheduler.h>
@@ -38,6 +39,8 @@
 extern void preempt_callback(void);
 
 static simtime_t * volatile min_in_transit_lvt;
+
+static atomic_t preempt_count;
 
 
 void preempt_init(void) {
@@ -59,10 +62,11 @@ void preempt_init(void) {
 		rootsim_config.disable_preemption = true;
 	}
 
+	atomic_set(&preempt_count, 0);
+
 //	enable_preemption();
 }
 
-static __thread int preempt_count = 0;
 
 void preempt_fini(void) {
 
@@ -71,7 +75,7 @@ void preempt_fini(void) {
 
 	rsfree(min_in_transit_lvt);
 
-	printf("Total preemptions: %d\n", preempt_count);
+	printf("Total preemptions: %d\n", atomic_read(&preempt_count));
 
 //	disable_preemption();
 
@@ -126,8 +130,8 @@ void preempt(void) {
 
 //	return;
 	
-//	if(rootsim_config.disable_preemption)
-//		return;
+	if(rootsim_config.disable_preemption)
+		return;
 
 
 	// if min_in_transit_lvt < current_lvt
@@ -138,14 +142,37 @@ void preempt(void) {
 			printf("Overtick interrupt from application mode\n");
 	}
 */
-/*	if(current_lp != IDLE_PROCESS && min_in_transit_lvt[tid] < current_lvt) {
-		preempt_count++;
+	if(current_lp != IDLE_PROCESS && min_in_transit_lvt[tid] < current_lvt) {
+
+		atomic_inc(&preempt_count);
+
 		LPS[current_lp]->state = LP_STATE_READY_FOR_SYNCH; // Questo triggera la logica di ripartenza dell'LP di ECS, ma forse va cambiato nome...
+
+		// Assembly module has placed a lot of stuff on the stack: put everything back
+		// TODO: this is quite nasty, find a cleaner way to do this...
+		__asm__ __volatile__("pop %r15;"
+			             "pop %r14;"
+			             "pop %r13;"
+			             "pop %r12;"
+			             "pop %r11;"
+			             "pop %r10;"
+			             "pop %r9;"
+			             "pop %r8;");
+
+
+		__asm__ __volatile__("pop %rsi;"
+			             "pop %rdi;"
+			             "pop %rdx;"
+			             "pop %rcx;"
+			             "pop %rbx;"
+			             "pop %rax;"
+			             "popfq;"
+			             "pop %rbp;");
+
 		context_switch(&LPS[current_lp]->context, &kernel_context);
 	}
-*/
 
-	preempt_count++;
+
 	
 }
 
