@@ -122,13 +122,12 @@ void update_min_in_transit(unsigned int thread, simtime_t lvt) {
  * gained an increased priority over the currently executing one, and
  * in the case changes the control flow so as to activate it.
  */
-void preempt(long long a, long long b) {
+void preempt(void) {
 
-	(void)a;
-	(void)b;
+//	return;
 	
-	if(rootsim_config.disable_preemption)
-		return;
+//	if(rootsim_config.disable_preemption)
+//		return;
 
 
 	// if min_in_transit_lvt < current_lvt
@@ -139,12 +138,14 @@ void preempt(long long a, long long b) {
 			printf("Overtick interrupt from application mode\n");
 	}
 */
-	if(current_lp != IDLE_PROCESS && min_in_transit_lvt[tid] < current_lvt) {
+/*	if(current_lp != IDLE_PROCESS && min_in_transit_lvt[tid] < current_lvt) {
 		preempt_count++;
 		LPS[current_lp]->state = LP_STATE_READY_FOR_SYNCH; // Questo triggera la logica di ripartenza dell'LP di ECS, ma forse va cambiato nome...
 		context_switch(&LPS[current_lp]->context, &kernel_context);
 	}
+*/
 
+	preempt_count++;
 	
 }
 
@@ -157,6 +158,10 @@ void enable_preemption(void) {
 
 	if(register_callback(preempt_callback) != TS_REGISTER_CALLBACK_OK) {
 		rootsim_error(true, "%s:%d: Error registering callback from kernel module. Aborting...\n", __FILE__, __LINE__);
+	}
+
+	if(ts_start(0) != TS_START_OK) {
+		rootsim_error(true, "%s:%d: Error...\n", __FILE__, __LINE__);
 	}
 
 }

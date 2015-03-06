@@ -283,6 +283,8 @@ void simulation_shutdown(int code) {
 			communication_fini();
 			base_fini();
 		}
+
+		thread_barrier(&all_thread_barrier);
 	}
 
 	exit(code);

@@ -27,8 +27,9 @@
 * @date March, 2015
 */
 
-.file "kernel_callback.S"
+.file "preempt_callback.S"
 .extern preempt
+.extern return_from_kernel
 
 #if defined(HAVE_PREEMPTION) && ( defined(ARCH_X86) || defined(ARCH_X86_64) )
 
@@ -38,7 +39,7 @@
 
 preempt_callback:
 	push %rbp
-	mov  %rsp, %rbp	
+	pushfq
 	push %rax
 	push %rbx
 	push %rcx
@@ -55,8 +56,6 @@ preempt_callback:
 	push %r13
 	push %r14
 	push %r15
-	mov  0x10(%rbp), %rdi
-	mov  0x8(%rbp), %rsi
 #endif
 
 	call preempt
@@ -78,8 +77,8 @@ preempt_callback:
 	pop %rcx
 	pop %rbx
 	pop %rax
-	leaveq
-	add $0x10, %rsp # Remove parameters put on stack by the Kernel module
+	popfq
+	pop %rbp
 	retq
 
 .size   preempt_callback, .-preempt_callback

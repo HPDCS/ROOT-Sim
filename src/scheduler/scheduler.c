@@ -315,6 +315,12 @@ void initialize_worker_thread(void) {
 
 	// Worker Threads synchronization barrier: they all should start working together
 	thread_barrier(&all_thread_barrier);
+
+        #ifdef HAVE_PREEMPTION
+        if(!rootsim_config.disable_preemption)
+                enable_preemption();
+        #endif
+
 }
 
 
@@ -343,10 +349,10 @@ void activate_LP(unsigned int lp, simtime_t lvt, void *evt, void *state) {
 	current_evt = evt;
 	current_state = state;
 
-	#ifdef HAVE_PREEMPTION
-	if(!rootsim_config.disable_preemption)
-		enable_preemption();
-	#endif
+//	#ifdef HAVE_PREEMPTION
+//	if(!rootsim_config.disable_preemption)
+//		enable_preemption();
+//	#endif
 
 	#ifdef ENABLE_ULT
 	context_switch(&kernel_context, &LPS[lp]->context);
@@ -354,10 +360,10 @@ void activate_LP(unsigned int lp, simtime_t lvt, void *evt, void *state) {
 	LP_main_loop(NULL);
 	#endif
 
-	#ifdef HAVE_PREEMPTION
-        if(!rootsim_config.disable_preemption)
-                disable_preemption();
-        #endif
+//	#ifdef HAVE_PREEMPTION
+//        if(!rootsim_config.disable_preemption)
+//                disable_preemption();
+//        #endif
 
 	current_lp = IDLE_PROCESS;
 	current_lvt = -1.0;
