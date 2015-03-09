@@ -2,8 +2,8 @@
 # delle strade da simulare. Il grafo viene gestito
 # come una serie di nodi intersezione e una serie di
 # archi che rappresentano le varie strade.
-# Lunghezza massima di una riga: 127 caratteri!
-# Lunghezza massima dei nomi: 31 caratteri!
+# Lunghezza massima di una riga: 127 caratteri
+# Lunghezza massima dei nomi: 31 caratteri
 
 
 # Una riga per ogni nodo di intersezione.
@@ -98,10 +98,8 @@ vicenza,	240,	0.5
 [ROUTES]
 
 #name				from		to		length
-
 RO-FI-roma-fiera.roma,		roma,		fiera.roma,	23
 RO-FI-fiera.roma-fiumicino	fiera.roma,	fiumicino,	5
-
 A1-milano-piacenza,		milano,		piacenza,	50
 A1-piacenza-parma,		piacenza,	parma,		60
 A1-parma-modena,		parma,		modena,		47
@@ -110,12 +108,10 @@ A1-firenze-orvieto,		firenze,	orvieto,	171
 A1-orvieto-roma,		firenze,	roma,		104
 A1-roma-caserta,		roma,		caserta,	179
 A1-caserta-napoli,		caserta,	napoli,		20
-
 A3-napoli-salerno,		napoli,		salerno,	54
 A3-salerno-cosenza,		salerno,	cosenza,	251
 A3-cosenza-catanzaro,		cosenza,	catanzaro,	67
 A3-catanzaro-reggio,		catanzaro,	reggio,		123
-
 A4-torino-vercelli,		torino,		vercelli,	72
 A4-vercelli-milano,		vercelli,	milano,		55
 A4-milano-brescia,		milano,		brescia,	95
@@ -126,35 +122,24 @@ A4-padova-venezia,		padova,		venezia,	29
 A4-venezia-portogruaro,		venezia,	portogruaro,	52
 A4-portrogruaro-udine, 		portogruaro,	udine,		38
 A4-udine-trieste,		udine,		trieste,	33
-
 A5-torino-aosta,		torino,		aosta,		100
 A5-aosta-m.bianco,		aosta,		m.bianco,	23
-
 A6-torino-savona,		torino,		savona,		126
-
 A7-milano-tortona,		milano,		tortona,	62
 A7-tortona-genova,		tortona,	genova,		67
-
 A8-varese-lainate,		varese,		lainate,	38
 A8-lainate-milano,		lainate,	milano,		12
-
 A9-chiasso-como,		chiasso,	como,		32
 A9-como-lainate,		como,		lainate,	18
-
 A10-genova-savona,		genova,		savona,		44
 A10-savona-ventimiglia,		savona,		ventimiglia,	108
-
 A11-firenze-pisa,		firenze,	pisa,		82
-
 A12-genova-laspezia,		genova,		laspezia,	94
 A12-laspezia-pisa,		laspezia,	pisa,		58
 A12-pisa-rosignano,		pisa,		rosignano,	58
-# TRATTO IN COSTRUZIONE
 A12-civitavecchia-fiera.roma,	civitavecchia,	fiera.roma,	65
-
 A13-bologna-ferrara,		bologna,	ferrara,	75
 A13-ferrara-padova,		ferrara,	padova,		42
-
 A14-modena-bologna,		modena,		bologna,	14
 A14-bologna-rimini,		bologna,	rimini,		113
 A14-rimini-ancona,		rimini,		ancona,		86
@@ -164,41 +149,27 @@ A14-pescara-foggia,		pescara,	foggia,		176
 A14-foggia-canosa,		foggia,		canosa,		56
 A14-canosa-bari,		canosa,		bari,		64
 A14-bari-taranto,		bari,		taranto,	69
-
 A15-parma-laspezia,		parma,		laspezia,	108
-
 A16-napoli-caserta,		napoli,		caserta,	16
 A16-caserta-canosa,		caserta,	canosa,		156
-
 A21-torino-alessandria,		torino,		alessandria,	65
 A21-alessandria-tortona,	alessandria,	tortona,	22
 A21-tortona-piacenza,		tortona,	piacenza,	78
 A21-piacenza-brescia,		piacenza,	brescia,	73
-
 A22-brennero-bolzano,		brennero,	bolzano,	77
 A22-bolzano-trento,		bolzano,	trento,		60
 A22-trento-verona,		bolzano,	verona,		69
 A22-verona-modena,		verona,		modena,		107
-
 A23-tarvisio-udine,		tarvisio,	udine,		120
-
 A24-roma-torano,		roma,		torano,		72
 A24-torano-l'aquila,		torano,		l'aquila,	29
 A24-l'aquila-teramo,		l'aquila,	teramo,		57
-
 A25-torano-pescara,		torano,		pescara,	114
-
 A26-genova-alessandria,		genova,		alessandria,	65
 A26-alessandria-vercelli,	alessandria,	vercelli,	63
 A26-vercelli-gravellona,	vercelli,	gravellona,	79
-
 A27-venezia-belluno,		venezia,	belluno,	82
-
 A28-portogruaro-conegliano,	portogruaro,	conegliano,	35
-
 A30-caserta-salerno,		caserta,	salerno,	55
-
 A31-vicenza-piovene,		vicenza,	piovene,	36
-
 A32-torino-bardonecchia,	torino,		bardonecchia,	73
-

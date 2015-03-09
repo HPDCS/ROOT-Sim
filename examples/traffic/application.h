@@ -69,12 +69,9 @@
 
 
 // EVENTI
-#define INIT		0
 #define ARRIVAL		10
 #define LEFT		11
-//#define INJECT		12
-//#define FREE_ROAD	20
-#define COLLECT_STAT	40
+#define KEEP_ALIVE	100
 
 
 // Traffic Factors
@@ -116,12 +113,11 @@ extern double Gaussian(double m, double s);
 // ------>
 
 
-// <------ Quando verrà portata alla nuova versione della piattaforma, possiamo usare evt diversi!
 typedef struct _event_content_type {
 	int	from;
 	int	injection;
 } event_content_type;
-// ------->
+
 
 
 
@@ -132,29 +128,17 @@ typedef struct _topology {
 
 
 
-/*typedef struct _car {
+typedef struct _car {
 	int		from;
 	simtime_t	arrival;
 	simtime_t	leave;
-	struct _car 	*prev;
 	struct _car 	*next;
 } car_t;
-*/
 
-typedef struct _stat {
-	int	lp;
-//	char	name[NAME_LENGTH];   // Questo array fa sbroccare (giustamente!) dymelor!
-	// TODO: aggiungere gli elementi che ci interessano per le statistiche!
-} stat;
 
 
 typedef struct _lp_state_type {
 	simtime_t	lvt;			// Elapsed simulation time
-//	unsigned int 	cars_passed;		// Cars passed in the segment so far
-//	double		pass_time;		// Total time spent by cars passing in the segment
-//	unsigned int	cars_joined;
-//	unsigned int	cars_left;
-//	unsigned int	accidents;
 	int		accident;
 	simtime_t	accident_end;
 	unsigned int	total_queue_slots;
@@ -163,10 +147,9 @@ typedef struct _lp_state_type {
 	double		segment_length;		// Length of this road segment. If set to 0, it's a junction
 	double		enter_prob;		// in realtà è una frequency!
 	double		leave_prob;
-//	stat		*statistics;
 	topology_t	*topology;		// Each node can have an arbitrary number of neighbours
 	unsigned int	queue_slots;
-//	car_t		*queue;			// Cars passing through the node are stored here
+	car_t		*queue;			// Cars passing through the node are stored here
 } lp_state_type;
 
 

@@ -224,6 +224,9 @@ size_t get_log_size(malloc_state *logged_state){
 *
 */
 void *__wrap_malloc(size_t size) {
+	if(rootsim_config.serial)
+		return rsalloc(size);
+
 	return do_malloc(current_lp, recoverable_state[current_lp], size);
 }
 
@@ -246,6 +249,9 @@ void *__wrap_malloc(size_t size) {
 *
 */
 void __wrap_free(void *ptr) {
+	if(rootsim_config.serial)
+		return rsfree(ptr);
+
 	do_free(current_lp, recoverable_state[current_lp], ptr);
 }
 

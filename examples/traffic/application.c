@@ -16,12 +16,7 @@
 * @date January 12, 2012
 */
 
-//#define DUMMY_LOAD
-#ifdef DUMMY_LOAD
-#define DUMMY_CYCLE	5000
-#endif
-
-
+#include <ROOT-Sim.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -32,45 +27,20 @@
 
 
 
-void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_type *event_content, size_t size, void * ptr) {
-
+void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_type *event_content, size_t size, lp_state_type *state) {
 	int i;
 	event_content_type new_event_content;
 	simtime_t timestamp = 0;
-	lp_state_type *state = (lp_state_type*)ptr;
 
-	// Store the new event's simulation time
-	if(event_type != INIT) {
-
-/*		if(now < state->lvt) {
-			printf("SEVERE ERROR: my LVT is %f, now is %f\n", state->lvt, now);
-		}
-*/
+	if(state != NULL) {
 		state->lvt = now;
 	}
-
-#ifdef DUMMY_LOAD
-	int dummy_x = 2;
-	int dummy_y = 3;
-	for (i = 0; i < DUMMY_CYCLE; i++) {
-		dummy_x *= dummy_y;
-		if (dummy_y > 0)
-			dummy_y -= dummy_x;
-		else
-			dummy_y -= dummy_x;
-
-		if (dummy_x > 1000)
-			dummy_x /= 10;
-		if (dummy_y > 1000)
-			dummy_y /= 10;
-	}
-#endif
 
 	switch(event_type) {
 
 		// This event initializes the simulation state for each LP and inject first events
 		case INIT:
-			state = (lp_state_type *)malloc(sizeof(lp_state_type));
+			state = malloc(sizeof(lp_state_type));
 			if(state == NULL){
 				fprintf(stderr, "ERROR: Unable to allocate simulation state!\n");
 				fflush(stderr);
@@ -78,12 +48,6 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 			}
 
 			SetState(state);
-
-			char **arguments = (char **)event_content;
-			int w;
-			for(w = 0; w < size; w += 2) {
-			//parse commandline parameters
-			}
 
 			// Initialize state
 			bzero(state, sizeof(lp_state_type));
@@ -99,44 +63,15 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 			}
 			state->total_queue_slots = state->queue_slots;
 
-
-			// LP 0 will collect statistics, prepare its simulation state for this
-/*			if(me == 0) {
-				state->statistics = malloc(sizeof(stat) * n_prc_tot);
-			}
-*/
 			// Set the number of cars in the current node at the beginning of the simulation
 			if(state->lp_type == JUNCTION) {
 				inject_new_cars(state, me);
 			}
-
-			// In order to allow simulation time to advance, we inject fake cars in every segment
-			// FIXME: this is a major issue in the simulator, cannot be solved at app level
-			if(state->lp_type == SEGMENT) {
-				state->enter_prob = JUNCTION_TRAVERSE_TIME; // that's a bad hack...
-				for(i = 0; i < 20; i++) {
-					inject_new_cars(state, me);
-				}
-			}
-/*			if(state->lp_type == SEGMENT) {
-				for(i = 0; i < state->topology->num_neighbours; i++) {
-					event_content_type new_evt;
-					timestamp = (simtime_t)(Expent(20.0));
-					if(timestamp < 0) {
-						fprintf(stderr, "(%d) primo evento ARRIVAL a %f\n", me, timestamp);
-						fflush(stderr);
-					}
-					new_evt.from = state->topology->neighbours[i];
-					ScheduleNewEvent(me, timestamp, ARRIVAL, &new_evt, sizeof(event_content_type));
-				}
-			}
-*/
-			// Print simulation information (once)
-			if(me == 0) {
-				// Anche la simulation time
-				// TODO
-			}
-
+			
+			// Schedule a keep alive event
+			timestamp = now + Expent(10);
+			ScheduleNewEvent(me, timestamp, KEEP_ALIVE, NULL, 0);
+			
 			break;
 
 
@@ -147,9 +82,6 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 			if(state->queue_slots == 0) {
 				break;
 			}
-
-//			state->cars_passed++;
-
 
 			// Check whether there is still an accident
 			check_accident_end(state, me);
@@ -176,19 +108,11 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 			if(event_content->injection && state->lp_type == JUNCTION) {
 				inject_new_cars(state, me);
 			}
-			// HACK
-/*			else if(state->lp_type == SEGMENT && event_content->injection) {
-				timestamp = now + (simtime_t)(Expent(10000));
-				new_event_content.from = me;
-				new_event_content.injection = 1;
-				ScheduleNewEvent(me, timestamp, ARRIVAL, &new_event_content, sizeof(event_content_type));
-			}
-*/
+
 			break;
 
 
 		case LEFT:
-
 			state->queue_slots++;
 			break;
 
@@ -229,10 +153,10 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 			break;
 */
 
-		case COLLECT_STAT:
-			// il campo from nell'evento dice dove salvare le statistiche
+		case KEEP_ALIVE:
+			timestamp = now + Expent(10);
+			ScheduleNewEvent(me, timestamp, KEEP_ALIVE, NULL, 0);
 			break;
-
 
       		default:
 			printf(" state simulation: error - inconsistent event (me = %d - event type = %d)\n",me,event_type);
@@ -242,19 +166,8 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 
 
 
-int OnGVT(unsigned int me, lp_state_type *snapshot) {
-
-/*	if(D_EQUAL(snapshot->lvt, 0)) {
-		printf("Lp %d (%s) a LVT 0!\n", gid, snapshot->name);
-		fflush(stdout);
-	}
-*/
-	// TODO: Aggregare le statistiche!!!
-
+bool OnGVT(unsigned int me, lp_state_type *snapshot) {
 	if (snapshot->lvt < EXECUTION_TIME)
-		return 0;
-	return 1;
+		return false;
+	return true;
 }
-
-
-

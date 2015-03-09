@@ -16,8 +16,10 @@
 * @date January 12, 2012
 */
 
+#include <ROOT-Sim.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "application.h"
 #include "normal_cdf.h"
