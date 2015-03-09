@@ -16,7 +16,7 @@
 # Global configuration variables
 ##############################################################################
 CC=@CC@
-CFLAGS=@CFLAGS@
+CFLAGS="@CFLAGS@"
 VERSION=@VERSION@
 ARCH=@ARCH@
 bindir=@bindir@
@@ -179,6 +179,8 @@ then
 echo "Instrumenting the application code..."
 hijacker -i APP.o -c "$$.xml" -o APP-instrumented.o
 check_term
+else
+cp APP.o APP-instrumented.o
 fi
 
 echo "Linking..."
