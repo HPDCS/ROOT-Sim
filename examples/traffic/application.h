@@ -123,7 +123,7 @@ typedef struct _event_content_type {
 
 typedef struct _topology {
 	int num_neighbours;
-	int *neighbours;
+	unsigned int *neighbours;
 } topology_t;
 
 
@@ -161,7 +161,8 @@ extern int enqueue_car(lp_state_type *state, simtime_t lvt, int from);
 extern void inject_new_cars(lp_state_type *state, int me);
 extern int check_car_leaving(lp_state_type *state, int from, int me);
 extern void forward_car(lp_state_type *state, int from, int me);
-extern void check_accident_end(lp_state_type *state, int me);
+extern void check_accident_end(lp_state_type *state);
+extern void cause_accident(lp_state_type *state, int me);
 
 
 

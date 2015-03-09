@@ -20,6 +20,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <strings.h>
 
 
 #include "application.h"
@@ -28,9 +29,8 @@
 
 
 void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_type *event_content, size_t size, lp_state_type *state) {
-	int i;
-	event_content_type new_event_content;
 	simtime_t timestamp = 0;
+	(void)size;
 
 	if(state != NULL) {
 		state->lvt = now;
@@ -84,7 +84,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 			}
 
 			// Check whether there is still an accident
-			check_accident_end(state, me);
+			check_accident_end(state);
 
 			if(!state->accident) {
 				cause_accident(state, me);
@@ -167,6 +167,8 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 
 
 bool OnGVT(unsigned int me, lp_state_type *snapshot) {
+	(void)me;
+	
 	if (snapshot->lvt < EXECUTION_TIME)
 		return false;
 	return true;

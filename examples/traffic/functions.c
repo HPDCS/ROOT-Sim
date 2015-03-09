@@ -108,7 +108,7 @@ void inject_new_cars(lp_state_type *state, int me) {
 }
 
 
-void check_accident_end(lp_state_type *state, int me) {
+void check_accident_end(lp_state_type *state) {
 
 	if(state->accident_end < state->lvt) {
 		state->accident = 0;

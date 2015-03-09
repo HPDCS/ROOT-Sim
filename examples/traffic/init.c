@@ -92,8 +92,7 @@ static void tokenize_intersection(char *line, lp_state_type *state) {
 }
 
 
-static void tokenize_route(char *line, lp_state_type *state, FILE *f, char *name, char from[NAME_LENGTH], char to[NAME_LENGTH]) {
-	int i;
+static void tokenize_route(char *line, lp_state_type *state, char *name, char from[NAME_LENGTH], char to[NAME_LENGTH]) {
 	char *token;
 	char *source = line;
 	int pass = 0;	// This is the tokenization pass
@@ -162,7 +161,7 @@ static bool parse_topology_line(unsigned int me, unsigned int *line_counter, cha
 			tokenize_intersection(line, sim_state);
 		} else {
 			sim_state->lp_type = SEGMENT;
-			tokenize_route(line, sim_state, f, sim_state->name, from, to);
+			tokenize_route(line, sim_state, sim_state->name, from, to);
 			
 			// A route has only 2 neighbours, one source and one destination
 			sim_state->topology = malloc(sizeof(topology_t));
@@ -212,7 +211,7 @@ static void connect_junction(lp_state_type *sim_state, FILE *f) {
 			continue;
 		
 		if(state == ROUTES_S) {
-			tokenize_route(line, sim_state, f, name, from, to);
+			tokenize_route(line, sim_state, name, from, to);
 			
 			if(strcmp(from, sim_state->name) == 0) {
 				num_neighbours++;
@@ -250,7 +249,7 @@ static void connect_junction(lp_state_type *sim_state, FILE *f) {
 				continue;
 			
 			if(state == ROUTES_S) {
-				tokenize_route(line, sim_state, f, name, from, to);
+				tokenize_route(line, sim_state, name, from, to);
 				
 				if(strcmp(from, sim_state->name) == 0) {
 					sim_state->topology->neighbours[i++] = find_lp_by_name(name, f);
