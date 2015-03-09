@@ -548,6 +548,10 @@ void statistics_init(void) {
 
 	// The whole reduction for the sequential simulation is simply done at the end
 	if(rootsim_config.serial) {
+		// Purge old output dir if present and create new one
+		_rmdir(rootsim_config.output_dir);
+		_mkdir(rootsim_config.output_dir);
+
 		return;
 	}
 
