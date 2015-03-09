@@ -24,9 +24,8 @@ libdir=@libdir@
 includedir=@includedir@
 datadir=@datadir@
 SCRIPT_LINES=@scriptlines@
-LD_DATA1_LINES=@lddata1lines@
-LD_DATA2_LINES=@lddata2lines@
-LD_FINAL_LINES=@ldfinallines@
+HIJACKER_CONF_LINES=@hijacker_conf_lines@
+HAVE_MIXED_SS=@have_mixed_ss@
 
 
 ##############################################################################
@@ -56,36 +55,19 @@ EOF
 ##############################################################################
 # Handle temporary files
 ##############################################################################
-generate_linker_scripts()
+extract_support_data()
 {
 START_LINES=$SCRIPT_LINES
 (( START_LINES += 1 ))
-tail -n +$START_LINES "$0" | head -n +$LD_DATA1_LINES > $$.ld-data1
-(( START_LINES += $LD_DATA1_LINES ))
-tail -n +$START_LINES "$0" | head -n +$LD_DATA2_LINES > $$.ld-data2
-(( START_LINES += $LD_DATA2_LINES ))
-tail -n +$START_LINES "$0" | head -n +$LD_FINAL_LINES > $$.ld-final
+tail -n +$START_LINES "$0" | head -n +$HIJACKER_CONF_LINES > $$.xml
+(( START_LINES += $HIJACKER_CONF_LINES ))
 }
 
 build_cleanup()
 {
-#rm $$.ld-data1
-#rm $$.ld-data2
-#rm $$.ld-final
+rm $$.xml
 rm *.o
 rm *.o.rs
-#rm branch-table
-#rm branch-table-light
-#rm offset-table-start-inc
-#unlink offset-table-start-full # :)
-#rm monitor-table
-#rm offset-table
-#rm offset-table-light
-#rm padding.c
-#rm padding-monitor.c
-#rm riferimenti
-#rm riferimenti-mon
-rm original
 echo "process done"
 }
 
@@ -160,7 +142,7 @@ fi
 # If partial compilation is invoked, simply call the compiler.
 # -c is actually included into CFLAGS
 if [[ $PARTIAL = 1 ]]; then
-	$CC $CFLAGS $SOURCES -DOnGVT=OnGVT_light -DProcessEvent=ProcessEvent_light -o $OUTNAME
+	$CC $CFLAGS $SOURCES -o $OUTNAME
 	exit 0
 fi
 
@@ -171,7 +153,7 @@ fi
 
 
 # Generate linker scripts
-#generate_linker_scripts
+extract_support_data
 
 
 ###
@@ -189,73 +171,18 @@ for f in $SOURCES; do
 done
 
 $LD -r ${OBJECTS//.o/.o.rs} -o APP.o
-cp APP.o APP-original.o
-cp APP.o original
 
-# Print some fancy text to let the user know we are actually doing something...
-#echo "Instrumenting the application code..."
+# Now instrument the code, if required
 
-###
-### Now instrument the code for the incremental version
-###
-#$bindir/hijacker_instrument APP.o $datadir/hijacker/monitor/ .
-#cp APP.o inserito-simbolo
-#$CC padding.c -c -o APP-padding.o
-#$LD -r APP.o APP-padding.o -o APP-padded.o
-#mv APP-padded.o APP.o
-#$bindir/hijacker_relocator APP.o riferimenti .warp
-#$bindir/hijacker_load_table monitor.o monitor-table .insn_table 0
-#$bindir/hijacker_load_table APP.o branch-table .warp `cat offset-table-start-inc`
-#$bindir/hijacker_load_table branch.o offset-table .offset_table 0
-#$LD -r branch.o brn.o -o branch-final.o
-#mv branch-final.o branch.o
-#$CC padding-monitor.c -c -o padding-monitor.o
-#$LD -r monitor.o padding-monitor.o -o monitor-padded.o
-#$bindir/hijacker_relocator monitor-padded.o riferimenti-mon .insn_table
-#$LD -r APP.o mon.o monitor-padded.o branch.o -o APP-incremental.o
-#check_term
-
-
-###
-### Now instrument the code for the non-incremental (light) version
-###
-#$bindir/hijacker_instrument_light APP-original.o $datadir/hijacker/monitor/ .
-#$CC padding.c -c -o padding.o
-#$LD -r APP-original.o padding.o -o APP.o
-#$bindir/hijacker_relocator APP.o riferimenti .warl
-#$bindir/hijacker_load_table APP.o branch-table-light .warl `cat offset-table-start-full`
-#$bindir/hijacker_load_table branch.o offset-table-light .offset_table_l 0
-#$LD -r branch.o brn.o -o branch-final.o
-#mv branch-final.o branch.o
-#$LD -r APP.o branch.o -o APP-non-incremental.o
-#check_term
-
-
-###
-### Now rename application callback's so that ROOT-Sim is able to call them.
-### Additionally, merge data segments so that we can access the same data
-### in both execution modes. Use generated linker scripts to this end.
-###
-#$bindir/hijacker_rename_functions APP-incremental.o _inc
-#$bindir/hijacker_rename_functions APP-non-incremental.o _light
-#$bindir/hijacker_rename_functions APP.o _light
-
-#$LD -r -T $$.ld-data1 APP-incremental.o -o APP-incremental-resectioned.o
-#$LD -r -T $$.ld-data2 APP-non-incremental.o -o APP-non-incremental-resectioned.o
-#$LD -r -z muldefs APP-incremental-resectioned.o APP-non-incremental-resectioned.o -o APP-final.o
-#check_term
-
-###
-### Ok, now we have mangled the application code. We now proceed to linking to
-### the ROOT-Sim library.
-### To have things working, we must follow through these exact steps:
-###   1. Link to the libwrapper subsystem: in this way we hijack calls to the C stdlib
-###   2. Link to dymelor: in this way, memory requests will be handled by DyMeLoR. Must keep all the function from the lib!
-###   3. Link to the output subsystem: this will handle *printf's and exit's. Note that dymelor'd printfs will be hijacked too!
-###   4. Link to the remaining ROOT-Sim library: this will produce the final executable
+if test "x${HAVE_MIXED_SS}" = "xyes"
+then
+echo "Instrumenting the application code..."
+hijacker -i APP.o -c "$$.xml" -o APP-instrumented.o
+check_term
+fi
 
 echo "Linking..."
-$LD -r -L $libdir --wrap strcpy --wrap strncpy --wrap strcat --wrap strncat --wrap memcpy --wrap memmove --wrap memset --wrap strdup --wrap strndup -o APP-lib-wrapped.o APP.o -lwrapperl
+$LD -r -L $libdir --wrap strcpy --wrap strncpy --wrap strcat --wrap strncat --wrap memcpy --wrap memmove --wrap memset --wrap strdup --wrap strndup -o APP-lib-wrapped.o APP-instrumented.o -lwrapperl
 $LD -r -L $libdir --wrap malloc --wrap free --wrap realloc --wrap calloc -o APP-dym-wrapped.o APP-lib-wrapped.o --whole-archive -ldymelor
 check_term
 #$CC -Xlinker --no-check-sections -Xlinker -T -Xlinker $$.ld-final -Xlinker --section-start -Xlinker .warp=$APPLICATION_START_POINT -Xlinker --section-start -Xlinker .warl=$APPLICATION_START_POINT_LIGHT  APP-dym-wrapped.o -lrootsim -lm -DGATHER_DATA -o $OUTNAME
@@ -268,4 +195,4 @@ build_cleanup
 
 exit 0
 
-# Raw linker scripts start here!
+# Raw support scripts start here!

@@ -4,7 +4,7 @@
 
 	<hijacker:Executable suffix="memtrack"> <!-- First code version -->
 		<hijacker:Instruction type="I_MEMWR">
-			<hijacker:AddCall where="before" function="reverse_generator" arguments="target" />
+			<hijacker:AddCall where="before" function="reverse_code_generator" arguments="target" />
 		</hijacker:Instruction>
 	</hijacker:Executable>
 

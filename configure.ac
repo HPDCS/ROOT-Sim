@@ -30,6 +30,7 @@ AC_LANG([C])
 #----------------------------------------------------------------------------
 # Checks for programs.
 #----------------------------------------------------------------------------
+m4_pattern_allow([AM_PROG_AR])
 AC_PROG_CC([gcc])
 AC_PROG_MAKE_SET
 AC_PROG_MKDIR_P
@@ -232,6 +233,22 @@ AS_IF([test "x$enable_ult" != "xno"], [
 
 
 
+# If hijacker is installed on this system, enable support for mixed state saving
+AC_CHECK_PROGS([HIJACKER], [hijacker])
+ac_have_mixed_ss=no
+if test "x$HIJACKER" = "xhijacker"
+then
+	AC_ARG_ENABLE([mixedss],
+	AS_HELP_STRING([--disable-mixedss], [Disable Mixed State Saving]))
+
+	# User can manually disable mixed state saving
+	AS_IF([test "x$enable_mixedss" != "xno"], [
+		AC_DEFINE([HAVE_MIXED_SS])
+		ac_have_mixed_ss=yes
+	])
+fi
+
+
 
 #----------------------------------------------------------------------------
 # Doxygen Documentation
@@ -256,10 +273,9 @@ AM_COND_IF([HAVE_DOXYGEN], [AC_CONFIG_FILES([doc/Makefile])])
 # of the linker scripts provided in the installation.
 #----------------------------------------------------------------------------
 AC_MSG_CHECKING([compiler and linker scripts sizes])
+AC_SUBST([cc_have_mixed_ss], [$ac_have_mixed_ss])
 AC_SUBST([cc_script_lines], [$(wc -l scripts/rootsim-cc.in | sed 's,\ .*,,g')])
-AC_SUBST([cc_lddata1_lines], [$(wc -l scripts/ld-data1 | sed 's,\ .*,,g')])
-AC_SUBST([cc_lddata2_lines], [$(wc -l scripts/ld-data2 | sed 's,\ .*,,g')])
-AC_SUBST([cc_ldfinal_lines], [$(wc -l scripts/ld-final | sed 's,\ .*,,g')])
+AC_SUBST([cc_hijacker_conf_lines], [$(wc -l scripts/hijacker-conf.xml | sed 's,\ .*,,g')])
 AC_MSG_RESULT([ok])
 
 
@@ -316,6 +332,19 @@ else
 	ac_enable_ult="Disabled"
 fi
 
+# Compose the Mixed State Saving message
+if test "x$ac_have_mixed_ss" = "xno"
+then
+	ac_mixed_ss="Disabled"
+	if test "x$HIJACKER" != "xhijacker"
+	then
+		ac_mixed_ss="${ac_mixed_ss} (hijacker not found on this system)"
+	else
+		ac_mixed_ss="${ac_mixed_ss} (disabled by the user)"
+	fi
+else
+	ac_mixed_ss="Enabled (use --disable-mixedss if not wanted)"
+fi
 
 cat<<EOF
 
@@ -326,6 +355,7 @@ CPU Architecture.......... : ${current_cpu}
 Operating System.......... : ${host_os}
 Debugging Support......... : ${enable_debug}
 User-Level Threads........ : ${ac_enable_ult}
+Mixed State Saving........ : ${ac_mixed_ss}
 
 
 EOF
