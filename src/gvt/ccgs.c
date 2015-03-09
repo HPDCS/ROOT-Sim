@@ -123,7 +123,7 @@ void ccgs_compute_snapshot(state_t *time_barrier_pointer[], simtime_t gvt) {
 */
 
 		// Call the application to check termination
-		lps_termination[lid] = OnGVT[lid](LidToGid(lid), LPS[lid]->current_base_pointer);
+		lps_termination[lid] = __OnGVT[lid](LidToGid(lid), LPS[lid]->current_base_pointer);
 		check_res &= lps_termination[lid];
 
 		// Early stop

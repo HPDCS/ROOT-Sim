@@ -152,7 +152,7 @@ void scheduler_fini(void) {
 * This is a LP main loop. It s the embodiment of the usrespace thread implementing the logic of the LP.
 * Whenever an event is to be scheduled, the corresponding metadata are set by the <schedule>() function,
 * which in turns calls <activate_LP>() to execute the actual context switch.
-* This ProcessEvent wrapper explicitly returns control to simulation kernel user thread when an event
+* This __ProcessEvent wrapper explicitly returns control to simulation kernel user thread when an event
 * processing is finished. In case the LP tries to access state data which is not belonging to its
 * simulation state, a SIGSEGV signal is raised and the LP might be descheduled if it is not safe
 * to perform the remote memory access. This is the only case where control is not returned to simulation
@@ -177,7 +177,7 @@ static void LP_main_loop(void *args) {
 		timer event_timer;
 		timer_start(event_timer);
 
-		ProcessEvent[current_lp](LidToGid(current_lp), current_evt->timestamp, current_evt->type, current_evt->event_content, current_evt->size, current_state);
+		__ProcessEvent[current_lp](LidToGid(current_lp), current_evt->timestamp, current_evt->type, current_evt->event_content, current_evt->size, current_state);
 
 		int delta_event_timer = timer_value_micro(event_timer);
 
@@ -268,7 +268,7 @@ void initialize_LP(unsigned int lp) {
 
 
 /**
-* This function is the application-level ProcessEvent() callback entry point.
+* This function is the application-level __ProcessEvent() callback entry point.
 * It allows to specify which lp must be scheduled, specifying its lvt, its event
 * to be executed and its simulation state.
 * This provides a general entry point to application-level code, to be used

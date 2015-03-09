@@ -1,11 +1,38 @@
+/**
+*                       Copyright (C) 2008-2015 HPDCS Group
+*                       http://www.dis.uniroma1.it/~hpdcs
+*
+*
+* This file is part of ROOT-Sim (ROme OpTimistic Simulator).
+*
+* ROOT-Sim is free software; you can redistribute it and/or modify it under the
+* terms of the GNU General Public License as published by the Free Software
+* Foundation; either version 3 of the License, or (at your option) any later
+* version.
+*
+* ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
+* WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+* A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+*
+* You should have received a copy of the GNU General Public License along with
+* ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
+* 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+*
+* @file reverse.c
+* @brief This module implements the runtime generation of undo events
+* @author Davide Cingolani
+*/
+
+
+#ifdef HAVE_MIXED_SS
+
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
 #include <sys/mman.h>
 #include <errno.h>
-
-#include "utils.h"
 
 
 #define REVERSE_WIN_SIZE 1024 * 1024 * 10	//! Defalut size of the reverse window which will contain the reverse code
@@ -228,7 +255,6 @@ static inline void create_reverse_instruction (uint64_t value, size_t size) {
 void dump_revwin () {
 	// print the heap in order to report reverse instrucionts
 	printf("=> Dump of the current reverse heap window [%d]:\n", last_era);
-	hexdump(window->pointer, ((window->address + window->size) - window->pointer));
 	printf("\n");
 }
 
@@ -343,3 +369,7 @@ inline void free_last_revwin () {
 	munmap(window->address, window->size);
 	history.era[history.last_free] = NULL;
 }
+
+#endif /* HAVE_MIXED_SS */
+
+

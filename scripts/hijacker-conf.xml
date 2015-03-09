@@ -7,7 +7,4 @@
 			<hijacker:AddCall where="before" function="reverse_code_generator" arguments="target" />
 		</hijacker:Instruction>
 	</hijacker:Executable>
-
-	<hijacker:Executable suffix="notrack"> <!-- Second code version -->
-	</hijacker:Executable>
 </hijacker:Rules>

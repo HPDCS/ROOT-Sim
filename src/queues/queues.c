@@ -103,7 +103,7 @@ simtime_t next_event_timestamp(unsigned int id) {
 /**
 * This function advances the pointer to the last correctly executed event (bound).
 * It is called right before the execution of it. This means that after this
-* call, before the actual call to ProcessEvent(), bound is pointing to a
+* call, before the actual call to __ProcessEvent(), bound is pointing to a
 * not-yet-executed event. This is the only case where this can happen.
 *
 * @author Alessandro Pellegrini
