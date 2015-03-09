@@ -66,7 +66,7 @@ static simtime_t compute_traverse_time(lp_state_type *state, double mean_speed) 
 	simtime_t traverse_time;
 
 	// Compute the traffic scaling factor
-	traffic = ((double)state->total_queue_slots - (double)state->queue_slots) / (double)state->total_queue_slots;
+	traffic = (double)state->queued_elements / (double)state->total_queue_slots;
 
 	// Compute the speed
 	speed = MIN_SPEED;
@@ -84,6 +84,54 @@ static simtime_t compute_traverse_time(lp_state_type *state, double mean_speed) 
 	traverse_time *= 3600.0;
 
 	return traverse_time;
+}
+
+
+void release_cars(lp_state_type *state) {
+	car_t *curr_car;
+	
+	curr_car = state->queue;
+	while(curr_car != NULL) {
+		curr_car->accident = false;
+		curr_car = curr_car->next;
+	}
+}
+
+simtime_t enqueue_car(int from, lp_state_type *state) {
+	car_t *new_car;
+	car_t *curr_car;
+	
+	// Create the car node
+	new_car = malloc(sizeof(car_t));
+	new_car->from = from;
+	new_car->arrival = state->lvt;
+	new_car->leave = state->lvt + compute_traverse_time(state, AVERAGE_SPEED);
+	new_car->next = NULL;
+	if(state->accident)
+		new_car->accident = true;
+	
+	state->queued_elements++;
+
+	if(state->queue == NULL) {
+		state->queue = new_car;
+		return new_car->leave;
+	}
+	
+	if(state->queue->leave < new_car->leave) {
+		new_car->next = state->queue;
+		state->queue = new_car;
+		return new_car->leave;
+	}
+	
+	// Insert the car in reverse time order
+	curr_car = state->queue;
+	while(curr_car->next != NULL && curr_car->next->leave > new_car->leave)
+		curr_car = curr_car->next;
+	
+	new_car->next = curr_car->next;
+	curr_car->next = new_car;
+	
+	return new_car->leave;
 }
 
 
@@ -108,14 +156,6 @@ void inject_new_cars(lp_state_type *state, int me) {
 }
 
 
-void check_accident_end(lp_state_type *state) {
-
-	if(state->accident_end < state->lvt) {
-		state->accident = 0;
-	}
-}
-
-
 
 void cause_accident(lp_state_type *state, int me) {
 	double min;
@@ -134,38 +174,40 @@ void cause_accident(lp_state_type *state, int me) {
 	// An accident happens depending on the number of cars.
 	// Accident probability is normal wrt the number of cars.
 	// Derive a discrete probability from a normal distribution
-	if(state->queue_slots == 0) {
+	if(state->queued_elements == 0) {
 		min = 0.0;
 		max = 0.5;
-	} else if(state->queue_slots == state->total_queue_slots) {
+	} else if(state->queued_elements == state->total_queue_slots) {
 		min = (double)state->total_queue_slots - 0.5;
 		max = (double)state->total_queue_slots;
 	} else {
-		min = (double)state->queue_slots - 0.5;
-		max = (double)state->queue_slots + 0.5;
+		min = (double)state->queued_elements - 0.5;
+		max = (double)state->queued_elements + 0.5;
 	}
 
 	// TODO come calcolare qui la varianza?!
 	mean = (double)state->total_queue_slots / 2.0; // When there are many cars but not that much, accidents are more likely to occur
-//	var = (double)state->total_queue_slots / 5.0; // This will give us smaller probabilities on average
-	var = 10.0;
+	var = RandomRange(0, 100);
 
-	prob = ACCIDENT_PROBABILITY * contourcdf(min, max, mean, var);
+	prob = contourcdf(min, max, mean, var);
+	prob *= (double)ACCIDENT_PROBABILITY;
 
 	// Toss a coin to check whether an accident occured or not
 	coin = Random();
-
+	
 	// If there is an accident, set the parameters accordingly and determine how long the accident will last
 	if(coin <= prob) {
 
-//		state->accidents++;
-		state->accident = 1;
+		state->accident = true;
 
 		// Compute when the road will be freed, according to the node's accident duration
-		duration = (simtime_t)(Gaussian(ACCIDENT_DURATION, ACCIDENT_SIGMA));
-		state->accident_end = state->lvt + duration;
+		do {
+			duration = (simtime_t)(Gaussian(ACCIDENT_DURATION, ACCIDENT_SIGMA));
+		} while(duration <= 0);
+		
+		ScheduleNewEvent(me, state->lvt + duration, FINISH_ACCIDENT, NULL, 0);
 
-		printf("(%d) Accident at node %s at time %f, until %f\n", me, state->name, state->lvt, state->accident_end);
+		printf("(%d) Accident at node %s at time %f, until %f\n", me, state->name, state->lvt, state->lvt + duration);
 	}
 }
 
@@ -203,62 +245,34 @@ int check_car_leaving(lp_state_type *state, int from, int me) {
 }
 
 
-void forward_car(lp_state_type *state, int from, int me) {
-	int dest;
-	event_content_type new_evt;
-
-	simtime_t timestamp = state->lvt;
-	simtime_t traverse_time;
-
-
-	// See if an accident is occurring [SPOSTATO IN APP.C]
-//	if(!state->accident) {
-//		cause_accident(state, me);
-//	}
-
-
-	// If there is an accident, sum up its remaining duration
-	if(state->accident) {
-		timestamp += state->accident_end - state->lvt;
+car_t *car_dequeue(lp_state_type *state, simtime_t now) {
+	car_t *curr_car, *curr_car_prev = NULL;
+	
+	curr_car = state->queue;
+	
+	while(curr_car != NULL && curr_car->leave - now > DBL_EPSILON) {
+		curr_car_prev = curr_car;
+		curr_car = curr_car->next;
 	}
-
-	// Compute how long will the car take to cross the LP, considering traffic as well
-	if(state->lp_type == SEGMENT) {
-		traverse_time = compute_traverse_time(state, AVERAGE_SPEED);
-	} else if(state->lp_type == JUNCTION) {
-	        traverse_time = (simtime_t)(Expent(JUNCTION_TRAVERSE_TIME));
+	
+	if(curr_car_prev == NULL) {
+		state->queue = curr_car->next;
+	} else {
+		curr_car_prev->next = curr_car->next;
 	}
-	timestamp += traverse_time;
-
-
-	// Select a destination LP. The destination LP cannot be the one which
-	// sent us the car, in order to preserve its direction.
-	// Destination is chosen UAR between the other neighbours
-	do {
-		dest = (int)(Random() * state->topology->num_neighbours);
-
-		// Sanity check on array's boundaries
-		if(dest == state->topology->num_neighbours) {
-			dest = state->topology->num_neighbours - 1;
-		}
-		dest = state->topology->neighbours[dest];
-	} while(dest == from);
-
-
-	if(D_EQUAL(timestamp, state->lvt)) {
-		printf("SEVERE ERROR!\n");
-		fflush(stdout);
-	}
-
-
-	// Schedule the car to the destination LP
-	new_evt.from = me;
-	new_evt.injection = 0;
-	ScheduleNewEvent(dest, timestamp, ARRIVAL, &new_evt, sizeof(event_content_type));
-
-	// Schedule me the notion that the car has left
-	ScheduleNewEvent(me, timestamp, LEFT, NULL, 0);
-
+	
+	state->queued_elements--;
+	
+	curr_car->next = NULL;
+	return curr_car;
 }
 
+
+car_t *car_dequeue_conditional(lp_state_type *state, simtime_t now) {
+	car_t *car = car_dequeue(state, now);
+	
+	if(car->accident == true)
+		return NULL;
+	return car;
+}
 

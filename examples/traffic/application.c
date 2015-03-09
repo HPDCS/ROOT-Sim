@@ -30,6 +30,8 @@
 
 void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_type *event_content, size_t size, lp_state_type *state) {
 	simtime_t timestamp = 0;
+	event_content_type new_event;
+	unsigned int receiver;
 	(void)size;
 
 	if(state != NULL) {
@@ -57,11 +59,10 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 
 			// Set the number of queuable cars in this node
 			if(state->lp_type == JUNCTION) {
-				state->queue_slots = CARS_PER_JUNCTION;
+				state->total_queue_slots = CARS_PER_JUNCTION;
 			} else if(state->lp_type == SEGMENT) {
-				state->queue_slots = (int)(state->segment_length * CARS_PER_UNIT_LENGTH);
+				state->total_queue_slots = (int)(state->segment_length * CARS_PER_UNIT_LENGTH);
 			}
-			state->total_queue_slots = state->queue_slots;
 
 			// Set the number of cars in the current node at the beginning of the simulation
 			if(state->lp_type == JUNCTION) {
@@ -77,30 +78,20 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 
 
 		case ARRIVAL:
+		
+			// A car has to leave, at a certain point!
+			if(check_car_leaving(state, event_content->from, me))
+				break;
 
 			// TODO check su queue_slots!
-			if(state->queue_slots == 0) {
+			if(state->queued_elements == state->total_queue_slots) {
 				break;
 			}
 
-			// Check whether there is still an accident
-			check_accident_end(state);
+			timestamp = enqueue_car(event_content->from, state);
 
 			if(!state->accident) {
 				cause_accident(state, me);
-			}
-
-			// See if the car is leaving the highway
-			if(!check_car_leaving(state, event_content->from, me)) {
-
-				state->queue_slots--;
-
-				// Send the car to another LP
-				forward_car(state, event_content->from, me);
-
-			} else {
-
-//				state->cars_left++;
 			}
 
 			// If the arrival is related to a new car entering the highway, schedule
@@ -108,50 +99,48 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 			if(event_content->injection && state->lp_type == JUNCTION) {
 				inject_new_cars(state, me);
 			}
+			
+			// Send a leave event
+			ScheduleNewEvent(me, timestamp, LEAVE, NULL, 0);
 
 			break;
 
 
-		case LEFT:
-			state->queue_slots++;
-			break;
-
-
-
-/*		case INJECT:
-
-			// Add the new car to the queue
-			if(enqueue_car(state, now, event_content->from) == 1) {
-				state->cars_joined++;
+		case LEAVE: {	
+			car_t *car;
+			
+			if(state->accident) {
+				car = car_dequeue(state, now);
 			} else {
-				state->cars_rejected++;
+				car = car_dequeue_conditional(state, now);
 			}
-
-			// Schedule the new car arrival event
-			if(state->lp_type == JUNCTION) {
-				inject_new_cars(state, me);
+			
+			if(car != NULL) {
+				new_event.from = me;
+				new_event.injection = false;
+				
+				if(state->topology->num_neighbours > 1) {
+					do {
+						receiver = RandomRange(0, state->topology->num_neighbours);
+						receiver = state->topology->neighbours[receiver];
+					} while(receiver == car->from);				
+				} else {
+					receiver = state->topology->neighbours[0];
+				}
+				
+				ScheduleNewEvent(me, car->leave, ARRIVAL, &new_event, sizeof(event_content_type));
 			}
-
-*/
-/*		case SEGMENT_FULL:
-
-			// Check if some cars leaved us
-			check_cars_leaving(state, me);
-
-			// When this event is received, the car must be reassigned in my queue
-			enqueue_car(state, now, me);
+			
+			free(car);
 			break;
-*/
+		}
+			
 
-
-/*		case FREE_ROAD:
-
-			// Restore normal traffic conditions
-			state->accident = 0;
-
-			check_cars_leaving(state, me);
+		case FINISH_ACCIDENT:
+			state->accident = false;
+			release_cars(state);
 			break;
-*/
+
 
 		case KEEP_ALIVE:
 			timestamp = now + Expent(10);
