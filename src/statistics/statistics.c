@@ -846,7 +846,6 @@ double statistics_get_data(unsigned int type, double data) {
 
 		case STAT_GET_EVENT_TIME_LP:
 			ret = lp_stats[(int)data].exponential_event_time;
-			printf("event average for %d: %f\n", (int)data, ret);
 			break;
 
 		default:

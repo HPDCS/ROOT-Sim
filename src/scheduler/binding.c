@@ -186,7 +186,6 @@ static inline void LP_knapsack(void) {
 			if(assignments[j] + lp_cost[i].workload_factor <= reference_knapsack) {
 				assignments[j] += lp_cost[i].workload_factor;
 				new_LPS_binding[i] = j;
-				printf("LP %d goes to thread %d\n", i, j);
 				assigned = true;
 				break;
 			}
@@ -198,11 +197,9 @@ static inline void LP_knapsack(void) {
 
 	// Check for leftovers
 	if(i < n_prc) {
-		printf("I have %d leftovers\n", n_prc - i);
 		j = 0;
 		for( ; i < n_prc; i++) {
 			new_LPS_binding[i] = j;
-			printf("Force assigning LP %d to thread %d\n", i, j);
 			j = (j + 1) % n_cores;
 		}
 	}
@@ -216,10 +213,6 @@ static inline void LP_knapsack(void) {
 		}
 		printf("\n");
 	}
-
-
-	//~ LPS_bound[n_prc_per_thread++] = LPS[i];
-	//~ LPS[i]->worker_thread = tid;
 
 }
 
@@ -235,7 +228,6 @@ static void post_local_reduction(void) {
 		lp_cost[lid].workload_factor = list_sizeof(LPS[lid]->queue_in);
 		lp_cost[lid].workload_factor *= statistics_get_data(STAT_GET_EVENT_TIME_LP, lid);
 		lp_cost[lid].workload_factor /= ( list_tail(LPS[lid]->queue_in)->timestamp - list_head(LPS[lid]->queue_in)->timestamp );
-		printf("LP %d has an estimated %f workload factor\n", lid, lp_cost[lid].workload_factor);
 	}
 }
 
