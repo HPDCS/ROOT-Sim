@@ -26,12 +26,14 @@
 #include "application.h"
 #include "init.h"
 
-
-
-void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_type *event_content, size_t size, lp_state_type *state) {
+void ProcessEvent(unsigned int me, simtime_t now, int event_type, void *event, size_t size, lp_state_type *state) {
 	simtime_t timestamp = 0;
 	event_content_type new_event;
-	unsigned int receiver;
+	int receiver;
+	car_t *car;
+	
+	event_content_type *event_content = (event_content_type *)event;
+	
 	(void)size;
 
 	if(state != NULL) {
@@ -78,21 +80,22 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 
 
 		case ARRIVAL:
+
+			if(!event_content->injection && check_car_leaving(state, event_content->from, me)) {
+				break;
+			}
 		
-			// A car has to leave, at a certain point!
-			if(check_car_leaving(state, event_content->from, me))
-				break;
+			if(state->queued_elements < state->total_queue_slots) {
 
-			// TODO check su queue_slots!
-			if(state->queued_elements == state->total_queue_slots) {
-				break;
+				car = enqueue_car(me, event_content->from, state);
+
+				// Send a leave event
+				ScheduleNewEvent(me, car->leave, LEAVE, &car->car_id, sizeof(unsigned long long));
+			} else {
+				printf("Object queue full\n");
 			}
 
-			timestamp = enqueue_car(event_content->from, state);
-
-			if(!state->accident) {
-				cause_accident(state, me);
-			}
+			//~cause_accident(state, me);
 
 			// If the arrival is related to a new car entering the highway, schedule
 			// the next car entering
@@ -100,40 +103,41 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 				inject_new_cars(state, me);
 			}
 			
-			// Send a leave event
-			ScheduleNewEvent(me, timestamp, LEAVE, NULL, 0);
-
 			break;
 
 
-		case LEAVE: {	
-			car_t *car;
+		case LEAVE: 
 			
-			if(state->accident) {
-				car = car_dequeue(state, now);
-			} else {
-				car = car_dequeue_conditional(state, now);
-			}
-			
+			//~if(!state->accident) {
+				car = car_dequeue(me, state, (unsigned long long *)event);
+			//~} else {
+				//~printf("This should not happen!\n");
+				//~car = car_dequeue_conditional(state, (unsigned long long *)event_content);
+			//~}
+					
 			if(car != NULL) {
 				new_event.from = me;
 				new_event.injection = false;
 				
 				if(state->topology->num_neighbours > 1) {
 					do {
-						receiver = RandomRange(0, state->topology->num_neighbours);
+						receiver = RandomRange(0, state->topology->num_neighbours - 1);
 						receiver = state->topology->neighbours[receiver];
 					} while(receiver == car->from);				
 				} else {
 					receiver = state->topology->neighbours[0];
 				}
 				
-				ScheduleNewEvent(me, car->leave, ARRIVAL, &new_event, sizeof(event_content_type));
+				ScheduleNewEvent(receiver, car->leave, ARRIVAL, &new_event, sizeof(event_content_type));
 				free(car);
-			} 
+			} else {
+				printf("car cannot be NULL\n");
+				//~timestamp = now + Expent(ACCIDENT_LEAVE_TIME);
+				//~update_car_leave(state, now, timestamp);
+				//~ScheduleNewEvent(me, timestamp, LEAVE, NULL, 0);
+			}
 			
 			break;
-		}
 			
 
 		case FINISH_ACCIDENT:
