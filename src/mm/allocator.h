@@ -23,7 +23,6 @@
 * @author Francesco Quaglia
 */
 
-#ifdef HAVE_PARALLEL_ALLOCATOR
 
 #pragma once
 #ifndef _ALLOCATOR_H
@@ -65,7 +64,7 @@ typedef struct _map_move {
 #define MDT_PAGES	40
 #define PAGE_SIZE (4*1<<10)
 #define MDT_ENTRIES ((MDT_PAGES * PAGE_SIZE) / sizeof(mdt_entry))
-#define MAX_SEGMENT_SIZE 2048 // this is expressed in number of pages
+#define MAX_SEGMENT_SIZE 4096 // this is expressed in number of pages
  
 #define MAX_SOBJS  	MAX_LPs
 
@@ -105,6 +104,4 @@ int move_request(int , int );
 
 #endif /* _ALLOCATOR_H */
 
-
-#endif /* HAVE_PARALLEL_ALLOCATOR */
 

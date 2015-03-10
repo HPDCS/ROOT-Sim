@@ -74,7 +74,7 @@ static char *opt_desc[] = {
 #endif
 
 #ifdef HAVE_PARALLEL_ALLOCATOR
-	"Disable Preemptive Time Warp",
+	"Disable parallel allocator",
 #endif
 
 	""

@@ -24,7 +24,6 @@
 */
 
 
-#ifdef HAVE_PARALLEL_ALLOCATOR
 
 #include <unistd.h>
 #include <stdio.h>
@@ -54,6 +53,23 @@ mem_map maps[MAX_SOBJS];
 map_move moves[MAX_SOBJS];
 int handled_sobjs = -1;
 
+
+char *allocate_pages(int num_pages) {
+	
+        char* page;
+
+        page = (char*)mmap((void*)NULL, num_pages * PAGE_SIZE, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, 0,0);
+
+	if (page == MAP_FAILED) {
+		goto bad_allocate_page;
+	}
+
+	return page;
+
+ bad_allocate_page:
+
+	return NULL;
+}
 
 
 void audit(void) {
@@ -216,22 +232,6 @@ bad_allocate:
 
 }
 
-char *allocate_pages(int num_pages) {
-	
-        char* page;
-
-        page = (char*)mmap((void*)NULL, num_pages * PAGE_SIZE, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, 0,0);
-
-	if (page == MAP_FAILED) {
-		goto bad_allocate_page;
-	}
-
-	return page;
-
- bad_allocate_page:
-
-	return NULL;
-}
 
 char* allocate_page(void) {
 	return allocate_pages(1);
@@ -336,6 +336,4 @@ int allocator_init(unsigned int sobjs) {
 bad_init:
 	return INIT_ERROR; 
 }
-
-#endif /* HAVE_PARALLEL_ALLOCATOR */
 

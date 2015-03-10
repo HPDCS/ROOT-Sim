@@ -73,7 +73,11 @@ void recoverable_fini(void) {
 			current_area = &(recoverable_state[i]->areas[j]);
 			if (current_area != NULL) {
 				if (current_area->self_pointer != NULL) {
+					#ifdef HAVE_PARALLEL_ALLOCATOR
 					pool_release_memory(i, current_area->self_pointer);
+					#else
+					rsfree(current_area->self_pointer);
+					#endif
 				}
 			}
 		}
@@ -375,7 +379,11 @@ void clean_buffers_on_gvt(unsigned int lid, simtime_t time_barrier){
 
 			if(m_area->self_pointer != NULL) {
 
+				#ifdef HAVE_PARALLEL_ALLOCATOR
 				pool_release_memory(lid, m_area->self_pointer);
+				#else
+				rsfree(m_area->self_pointer);
+				#endif
 
 				m_area->use_bitmap = NULL;
 				m_area->dirty_bitmap = NULL;
