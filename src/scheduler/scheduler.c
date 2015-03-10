@@ -436,9 +436,9 @@ void schedule(void) {
 	}
 
 	// Manage the INIT barrier
-	if(event->type == INIT) {
-		thread_barrier(&INIT_barrier);
-	}
+//	if(event->type == INIT) {
+//		thread_barrier(&INIT_barrier);
+//	}
 
 	if(!process_control_msg(event)) {
 		return;
