@@ -16,7 +16,7 @@
 * @date January 12, 2012
 */
 
-
+#define _POSIX_SOURCE // for strtok_r
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -28,6 +28,7 @@
 
 static int find_lp_by_name(char *name, FILE *f) {
 	char line[LINE_LENGTH];
+	char *saveptr;
 	int count = 0;
 
 	rewind(f);
@@ -46,7 +47,7 @@ static int find_lp_by_name(char *name, FILE *f) {
 		if(strcmp(line, INTERSECT_STR) == 0)
 			continue;
 		
-		if(strcmp(strtok(line, ", \t"), name) == 0) {
+		if(strcmp(strtok_r(line, ", \t", &saveptr), name) == 0) {
 			return count;
 		}
 		
@@ -62,9 +63,10 @@ static int find_lp_by_name(char *name, FILE *f) {
 static void tokenize_intersection(char *line, lp_state_type *state) {
 	char *token;
 	char *source = line;
+	char *saveptr;
 	int pass = 0;	// This is the tokenization pass
 
-	while((token = strtok(source, ", \t")) != NULL) { // space is there to make the parser ignore them
+	while((token = strtok_r(source, ", \t", &saveptr)) != NULL) { // space is there to make the parser ignore them
 
 		switch(pass) {
 
@@ -95,9 +97,10 @@ static void tokenize_intersection(char *line, lp_state_type *state) {
 static void tokenize_route(char *line, lp_state_type *state, char *name, char from[NAME_LENGTH], char to[NAME_LENGTH]) {
 	char *token;
 	char *source = line;
+	char *saveptr;
 	int pass = 0;	// This is the tokenization pass
 	
-	while((token = strtok(source, ", \t")) != NULL) { // space and newline are there to ignore them
+	while((token = strtok_r(source, ", \t", &saveptr)) != NULL) { // space and newline are there to ignore them
 
 		switch(pass) {
 
