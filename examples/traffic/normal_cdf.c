@@ -83,7 +83,7 @@ static double unitcdf(double x) {
 // equivalent one centered in 0, having  variance = 1
 double normcdf(double x, double mean, double var) {
 	assert(var >= 0);	/* check the function arguments */
-	if (var == 1)
+	if (var - 1 < DBL_EPSILON)
 		return unitcdf(x - mean);
 	return unitcdf((x - mean) / sqrt(var));
 }				/* normcdfP() */

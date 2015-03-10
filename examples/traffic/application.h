@@ -31,7 +31,7 @@
 
 // Execution time must be specified in seconds
 #ifndef EXECUTION_TIME
-	#define EXECUTION_TIME	(1 * WEEK)
+	#define EXECUTION_TIME	(3 * DAY)
 #endif
 
 
@@ -44,12 +44,12 @@
 // Unità di lunghezza in km
 // Due corsie
 #ifndef CARS_PER_UNIT_LENGTH
-	#define CARS_PER_UNIT_LENGTH	1500//400
+	#define CARS_PER_UNIT_LENGTH	400
 #endif
 
 // A junction has no actual length, yet cars can be queued in it
 #ifndef CARS_PER_JUNCTION
-	#define	CARS_PER_JUNCTION	5000//1000
+	#define	CARS_PER_JUNCTION	1000
 #endif
 
 // A junction has no actual length, yet cars take some time to pass in it
@@ -69,27 +69,14 @@
 
 
 // EVENTI
-#define INIT		0
 #define ARRIVAL		10
-#define LEFT		11
-//#define INJECT		12
-//#define FREE_ROAD	20
-#define COLLECT_STAT	40
+#define LEAVE		11
+#define FINISH_ACCIDENT 12
+#define KEEP_ALIVE	100
 
 
-// Traffic Factors
-//#define CAR_LAMBDA	1.0	// Defines frequency for a Poisson process. Generation of new cars at junctions
-//#define CAR_ENTER_NUM	10	// How many cars (on average) join the route from a junction
-//#define CAR_LEAVE_NUM	10	// How many cars (on average) leave the route from a junction
 
-//#define HIGH_LOAD_LEAVE		0.1
-//#define NORMAL_LOAD_LEAVE	1
-
-//#define HIGH_LOAD_ENTER		1.5
-//#define NORMAL_LOAD_ENTER	1
-
-
-#define ACCIDENT_PROBABILITY	0.015//0.01
+#define ACCIDENT_PROBABILITY	0.015
 
 
 // LP Type
@@ -116,57 +103,42 @@ extern double Gaussian(double m, double s);
 // ------>
 
 
-// <------ Quando verrà portata alla nuova versione della piattaforma, possiamo usare evt diversi!
 typedef struct _event_content_type {
 	int	from;
-	int	injection;
+	bool	injection; // Tells whether the car is entering the highway or not
 } event_content_type;
-// ------->
 
 
 
 typedef struct _topology {
 	int num_neighbours;
-	int *neighbours;
+	unsigned int *neighbours;
 } topology_t;
 
 
 
-/*typedef struct _car {
+typedef struct _car {
 	int		from;
 	simtime_t	arrival;
 	simtime_t	leave;
-	struct _car 	*prev;
+	bool		accident;
 	struct _car 	*next;
 } car_t;
-*/
 
-typedef struct _stat {
-	int	lp;
-//	char	name[NAME_LENGTH];   // Questo array fa sbroccare (giustamente!) dymelor!
-	// TODO: aggiungere gli elementi che ci interessano per le statistiche!
-} stat;
 
 
 typedef struct _lp_state_type {
 	simtime_t	lvt;			// Elapsed simulation time
-//	unsigned int 	cars_passed;		// Cars passed in the segment so far
-//	double		pass_time;		// Total time spent by cars passing in the segment
-//	unsigned int	cars_joined;
-//	unsigned int	cars_left;
-//	unsigned int	accidents;
 	int		accident;
-	simtime_t	accident_end;
 	unsigned int	total_queue_slots;
 	char		name[NAME_LENGTH];	// Name of the cell
 	int		lp_type;		// Is it a junction or a segment?
 	double		segment_length;		// Length of this road segment. If set to 0, it's a junction
 	double		enter_prob;		// in realtà è una frequency!
 	double		leave_prob;
-//	stat		*statistics;
 	topology_t	*topology;		// Each node can have an arbitrary number of neighbours
-	unsigned int	queue_slots;
-//	car_t		*queue;			// Cars passing through the node are stored here
+	unsigned int	queued_elements;
+	car_t		*queue;			// Cars passing through the node are stored here
 } lp_state_type;
 
 
@@ -174,12 +146,14 @@ typedef struct _lp_state_type {
 
 
 
-extern int enqueue_car(lp_state_type *state, simtime_t lvt, int from);
+extern simtime_t enqueue_car(int from, lp_state_type *state);
+extern car_t *car_dequeue(lp_state_type *state, simtime_t now);
+extern car_t *car_dequeue_conditional(lp_state_type *state, simtime_t now);
 extern void inject_new_cars(lp_state_type *state, int me);
 extern int check_car_leaving(lp_state_type *state, int from, int me);
-extern void forward_car(lp_state_type *state, int from, int me);
-extern void check_accident_end(lp_state_type *state, int me);
-
+extern void check_accident_end(lp_state_type *state);
+extern void cause_accident(lp_state_type *state, int me);
+extern void release_cars(lp_state_type *state);
 
 
 #endif /* _TRAFFIC_APPLICATION_H */

@@ -34,33 +34,8 @@
 #define INTERSECT_S	222
 #define ROUTES_S	333
 
-// In a segment line, which one is the length one? (first element is 1!!!!)
+// In a segment line, which one is the length one? (first element is 1!)
 #define LENGTH_ARG	4
-
-
-typedef struct _neighbour {
-	int 			lp;
-	struct _neighbour 	*next;
-} neighbour_t;
-
-
-typedef struct _lp {
-	char		name[NAME_LENGTH];
-	int		lp_type;
-	int		num_neighbours;
-	double		enter_prob;
-	double		leave_prob;
-	neighbour_t	*neighbours;
-} lp_t;
-
-
-typedef struct _simulation_objects {
-	int	curr_lp;
-	int	intersections;
-	double	road_per_lp;
-	lp_t	**LPs;
-} simulation_objects;
-
 
 extern void init_my_state(int me, lp_state_type *state);
 
