@@ -87,12 +87,20 @@ static simtime_t compute_traverse_time(lp_state_type *state, double mean_speed) 
 }
 
 
-void release_cars(lp_state_type *state) {
+void release_cars(unsigned int me, lp_state_type *state) {
 	car_t *curr_car;
+	simtime_t leave_time;
 	
 	curr_car = state->queue;
 	while(curr_car != NULL) {
-		curr_car->accident = false;
+		if(curr_car->accident == true) {
+			curr_car->accident = false;
+
+			leave_time = state->lvt + Expent(ACCIDENT_LEAVE_TIME);
+			curr_car->leave = leave_time;
+			ScheduleNewEvent(me, leave_time, LEAVE, NULL, 0);
+		}
+			
 		curr_car = curr_car->next;
 	}
 }

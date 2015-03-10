@@ -129,16 +129,16 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 				}
 				
 				ScheduleNewEvent(me, car->leave, ARRIVAL, &new_event, sizeof(event_content_type));
-			}
+				free(car);
+			} 
 			
-			free(car);
 			break;
 		}
 			
 
 		case FINISH_ACCIDENT:
 			state->accident = false;
-			release_cars(state);
+			release_cars(me, state);
 			break;
 
 

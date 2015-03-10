@@ -66,6 +66,7 @@
 // accidents parameters
 #define ACCIDENT_DURATION	3600	// one hour on average
 #define ACCIDENT_SIGMA		30
+#define ACCIDENT_LEAVE_TIME	20	// Exponential mean to compute the time increment to leave after an accident
 
 
 // EVENTI
@@ -153,7 +154,7 @@ extern void inject_new_cars(lp_state_type *state, int me);
 extern int check_car_leaving(lp_state_type *state, int from, int me);
 extern void check_accident_end(lp_state_type *state);
 extern void cause_accident(lp_state_type *state, int me);
-extern void release_cars(lp_state_type *state);
+extern void release_cars(unsigned int me, lp_state_type *state);
 
 
 #endif /* _TRAFFIC_APPLICATION_H */
