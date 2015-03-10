@@ -24,6 +24,8 @@
 */
 
 
+#ifdef HAVE_PARALLEL_ALLOCATOR
+
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -334,3 +336,6 @@ int allocator_init(unsigned int sobjs) {
 bad_init:
 	return INIT_ERROR; 
 }
+
+#endif /* HAVE_PARALLEL_ALLOCATOR */
+

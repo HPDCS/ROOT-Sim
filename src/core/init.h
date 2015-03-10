@@ -37,6 +37,10 @@
 #define OPT_PREEMPTION		22
 #endif
 
+#ifdef HAVE_PARALLEL_ALLOCATOR
+#define OPT_ALLOCATOR		23
+#endif
+
 // TODO: a vector of vector with text name of numerical options, which should be used for parsing options and for displaying names
 // static char *opt_opt[][] = { ... }
 
@@ -66,6 +70,10 @@ static char *opt_desc[] = {
 	"Run a serial simulation (using Calendar Queues)",
 
 #ifdef HAVE_PREEMPTION
+	"Disable Preemptive Time Warp",
+#endif
+
+#ifdef HAVE_PARALLEL_ALLOCATOR
 	"Disable Preemptive Time Warp",
 #endif
 
@@ -99,6 +107,10 @@ static struct option long_options[] = {
 	
 #ifdef HAVE_PREEMPTION
 	{"no-preemption",	no_argument,		0, OPT_PREEMPTION},
+#endif
+
+#ifdef HAVE_PARALLEL_ALLOCATOR
+	{"no-allocator",	no_argument,		0, OPT_ALLOCATOR},
 #endif
 
 	{0,			0,			0, 0}

@@ -122,6 +122,10 @@ static int parse_cmd_line(int argc, char **argv) {
 	rootsim_config.disable_preemption = false;
 	#endif
 
+	#ifdef HAVE_PARALLEL_ALLOCATOR
+	rootsim_config.disable_allocator = false;
+	#endif
+
 
 	// Parse command-line options
 	while(true) {
@@ -291,6 +295,12 @@ static int parse_cmd_line(int argc, char **argv) {
 			#ifdef HAVE_PREEMPTION
 			case OPT_PREEMPTION:
 				rootsim_config.disable_preemption = true;
+				break;
+			#endif
+
+			#ifdef HAVE_PARALLEL_ALLOCATOR
+			case OPT_ALLOCATOR:
+				rootsim_config.disable_allocator = true;
 				break;
 			#endif
 

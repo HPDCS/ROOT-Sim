@@ -260,13 +260,25 @@ then
 fi
 
 
+
+# Custom Parallel Allocator can be disabled, to fallback to standard malloc library
+AC_ARG_ENABLE([allocator],
+AS_HELP_STRING([--disable-allocator], [Disable Parallel Allocator (Enabled by default)]))
+
+AS_IF([test "x$enable_allocator" != "xno"], [
+        AC_DEFINE([HAVE_PARALLEL_ALLOCATOR])
+        ac_have_parallel_allocator=yes
+])
+
+
+
 # If we are on a NUMA system, try to use the NUMA subsystem
 AC_CHECK_LIB(numa, numa_num_possible_nodes, [numa_cv_libnuma=yes], [numa_cv_libnuma=no])
 AC_CHECK_HEADER(numa.h, [numa_cv_numa_h=yes], [numa_cv_numa_h=no])
 AC_CHECK_PROG([numactl],[numactl],[yes],[no])
 ac_have_numa=no
 
-if test "x$numa_cv_libnuma" = "xyes" -a "x$numa_cv_numa_h" = "xyes" -a "x$numactl" = "xyes"
+if test "x$numa_cv_libnuma" = "xyes" -a "x$numa_cv_numa_h" = "xyes" -a "x$numactl" = "xyes" -a "x$ac_have_parallel_allocator" = "xyes"
 then
         #
         # We have found everything that we need, but the user can disable the subsystem
@@ -281,6 +293,7 @@ then
 		CFLAGS="$CFLAGS -lnuma"
 	])
 fi
+
 
 
 #----------------------------------------------------------------------------
@@ -371,6 +384,15 @@ else
 fi
 
 
+# Compose the message regarding the Parallel Allocator
+if test "x$ac_have_parallel_allocator" = "xyes"
+then
+	ac_parallel_allocator="Enabled (By default, use --disable-parallel-allocator if not wanted)"
+else
+	ac_parallel_allocator="Disabled (manually excluded)"
+fi
+
+
 # Compose the message regarding the NUMA subsystem
 if test "x$ac_have_numa" = "xyes"
 then
@@ -398,6 +420,12 @@ else
 	then
 		numa_subsystem="Disabled (manually excluded)"
 	fi
+
+	if test "x$ac_have_parallel_allocator" != "xyes"
+	then
+		numa_subsystem="Disabled (Parallel Allocator is required)"
+
+	fi
 fi
 
 
@@ -411,7 +439,7 @@ else
 	then
 		ac_preemption="${ac_preemption} (User-Level Threads are necessary)"
 	else
-		if test "x$libtimestretch" = "xyes" -a 
+		if test "x$libtimestretch" = "xyes"
 		then
 			ac_preemption="${ac_preemption} by the user"
 		else
@@ -431,6 +459,7 @@ CPU Architecture.......... : ${current_cpu}
 Operating System.......... : ${host_os}
 Debugging Support......... : ${enable_debug}
 User-Level Threads........ : ${ac_enable_ult}
+Parallel Allocator........ : ${ac_parallel_allocator}
 NUMA Subsystem............ : ${numa_subsystem}
 LP Preemption Support..... : ${ac_preemption}
 

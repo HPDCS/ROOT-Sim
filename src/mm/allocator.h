@@ -23,6 +23,8 @@
 * @author Francesco Quaglia
 */
 
+#ifdef HAVE_PARALLEL_ALLOCATOR
+
 #pragma once
 #ifndef _ALLOCATOR_H
 #define _ALLOCATOR_H
@@ -102,3 +104,7 @@ int move_request(int , int );
 
 
 #endif /* _ALLOCATOR_H */
+
+
+#endif /* HAVE_PARALLEL_ALLOCATOR */
+

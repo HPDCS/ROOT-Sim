@@ -227,7 +227,14 @@ void *__wrap_malloc(size_t size) {
 	if(rootsim_config.serial)
 		return rsalloc(size);
 
+	#ifdef HAVE_PARALLEL_ALLOCATOR
+	if(rootsim_config.disable_allocator)
+		return rsalloc(size);
+
 	return do_malloc(current_lp, recoverable_state[current_lp], size);
+	#else
+	return rsalloc(size);
+	#endif
 }
 
 /**
@@ -249,10 +256,21 @@ void *__wrap_malloc(size_t size) {
 *
 */
 void __wrap_free(void *ptr) {
-	if(rootsim_config.serial)
-		return rsfree(ptr);
+	if(rootsim_config.serial) {
+		rsfree(ptr);
+		return;
+	}
+
+	#ifdef HAVE_PARALLEL_ALLOCATOR
+	if(rootsim_config.disable_allocator) {
+		rsfree(ptr);
+		return;
+	}
 
 	do_free(current_lp, recoverable_state[current_lp], ptr);
+	#else
+	rsfree(ptr);
+	#endif
 }
 
 
