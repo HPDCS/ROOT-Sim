@@ -30,6 +30,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, void *event, s
 	simtime_t timestamp = 0;
 	event_content_type new_event;
 	int receiver;
+	int i;
 	car_t *car;
 	
 	event_content_type *event_content = (event_content_type *)event;
@@ -39,7 +40,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, void *event, s
 	if(state != NULL) {
 		state->lvt = now;
 	}
-
+	
 	switch(event_type) {
 
 		// This event initializes the simulation state for each LP and inject first events
@@ -108,13 +109,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, void *event, s
 
 		case LEAVE: 
 			
-			//~if(!state->accident) {
-				car = car_dequeue(me, state, (unsigned long long *)event);
-			//~} else {
-				//~printf("This should not happen!\n");
-				//~car = car_dequeue_conditional(state, (unsigned long long *)event_content);
-			//~}
-					
+			car = car_dequeue(me, state, (unsigned long long *)event);
 			if(car != NULL) {
 				new_event.from = me;
 				new_event.injection = false;
@@ -131,10 +126,9 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, void *event, s
 				ScheduleNewEvent(receiver, car->leave, ARRIVAL, &new_event, sizeof(event_content_type));
 				free(car);
 			} else {
-				printf("car cannot be NULL\n");
-				//~timestamp = now + Expent(ACCIDENT_LEAVE_TIME);
-				//~update_car_leave(state, now, timestamp);
-				//~ScheduleNewEvent(me, timestamp, LEAVE, NULL, 0);
+				timestamp = now + Expent(ACCIDENT_LEAVE_TIME);
+				update_car_leave(state, *(unsigned long long *)event_content, timestamp);
+				ScheduleNewEvent(me, timestamp, LEAVE, (unsigned long long *)event_content, sizeof(unsigned long long));
 			}
 			
 			break;
@@ -147,6 +141,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, void *event, s
 
 
 		case KEEP_ALIVE:
+			determine_stop(state);
 			timestamp = now + Expent(10);
 			ScheduleNewEvent(me, timestamp, KEEP_ALIVE, NULL, 0);
 			break;
@@ -161,6 +156,9 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, void *event, s
 
 bool OnGVT(unsigned int me, lp_state_type *snapshot) {
 	(void)me;
+	
+	//~if(snapshot->accident)
+		//~printf("Node %s is in accident state\n", snapshot->name);
 	
 	if (snapshot->lvt < EXECUTION_TIME)
 		return false;

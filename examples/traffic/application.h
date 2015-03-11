@@ -75,9 +75,12 @@
 #define FINISH_ACCIDENT 12
 #define KEEP_ALIVE	100
 
+#define STOP_PROBABILITY	0.05
 
 
-#define ACCIDENT_PROBABILITY	0.015
+
+
+#define ACCIDENT_PROBABILITY	0.15
 
 
 // LP Type
@@ -123,6 +126,8 @@ typedef struct _car {
 	simtime_t	arrival;
 	simtime_t	leave;
 	bool		accident;
+	bool		stopped;
+	double		traveled;
 	unsigned long long		car_id;
 	struct _car 	*next;
 } car_t;
@@ -155,9 +160,10 @@ extern car_t *car_dequeue_conditional(lp_state_type *state, unsigned long long *
 extern void inject_new_cars(lp_state_type *state, int me);
 extern int check_car_leaving(lp_state_type *state, int from, int me);
 extern void check_accident_end(lp_state_type *state);
+extern void determine_stop(lp_state_type *state);
 extern void cause_accident(lp_state_type *state, int me);
 extern void release_cars(unsigned int me, lp_state_type *state);
-extern void update_car_leave(lp_state_type *state, simtime_t old, simtime_t new);
+extern void update_car_leave(lp_state_type *state, unsigned long long, simtime_t new);
 
 
 #endif /* _TRAFFIC_APPLICATION_H */
