@@ -26,6 +26,41 @@
 
 
 
+static car_t *reorder_queue(car_t *head, simtime_t now) {
+    car_t *curr;
+    car_t *prev;
+    for(bool didSwap = true; didSwap; ) {
+        didSwap = false;
+        prev = head;
+        for(curr = head; (curr != NULL && curr->next != NULL); curr = curr->next) {
+                if(curr->leave > curr->next->leave) {
+                        if (head == curr) {
+                            head = curr->next;      
+                            curr->next = head->next; 
+                            head->next = curr; 
+                            prev = head;
+                        } else {
+                            prev->next = curr->next;
+                            curr->next = prev->next->next;
+                            prev->next->next = curr;
+                        }
+                        didSwap = true;
+                } else if (head != curr) {
+                    prev = prev->next;
+                }
+        }
+    }
+
+
+    // Update the portion of traveled space
+	curr = head;
+	while(curr != NULL) {
+		curr->traveled = (curr->leave - curr->arrival) / curr->leave;
+		curr = curr->next;
+	}
+    return head;
+}
+
 
 static unsigned long long get_mark(unsigned int k1, unsigned int k2) {
 	return (unsigned long long)( ((k1 + k2) * (k1 + k2 + 1) / 2) + k2 );
@@ -118,7 +153,6 @@ car_t *enqueue_car(int me, int from, lp_state_type *state) {
 	new_car->from = from;
 	new_car->arrival = state->lvt;
 	new_car->leave = state->lvt + compute_traverse_time(state, AVERAGE_SPEED);
-	new_car->next = NULL;
 	new_car->car_id = get_mark(me, state->car_id++);
 	if(state->accident)
 		new_car->accident = true;
@@ -149,11 +183,13 @@ car_t *enqueue_car(int me, int from, lp_state_type *state) {
 	state->queue = new_car;
 	
 	//~printf("\n%d: Enqueueing %llu: ", me, new_car->car_id);
-	curr_car = state->queue;
-	while(curr_car != NULL) {
+//	curr_car = state->queue;
+//	while(curr_car != NULL) {
 		//~printf("%llu, ", curr_car->car_id);
-		curr_car = curr_car->next;
-	}
+//		curr_car = curr_car->next;
+//	}
+
+	state->queue = reorder_queue(state->queue, state->lvt);
 	
 	return new_car;
 }
@@ -197,6 +233,9 @@ void cause_accident(lp_state_type *state, int me) {
 	if(state->accident) {
 		return;
 	}
+
+	if(me > 60)
+		return;
 
 	// An accident happens depending on the number of cars.
 	// Accident probability is normal wrt the number of cars.
@@ -344,6 +383,7 @@ void determine_stop(lp_state_type *state) {
 		coin = Random();
 		if(coin < STOP_PROBABILITY) {
 			car->stopped = true;
+			car->traveled = (car->leave - car->arrival) / car->leave;
 		}
 		car = car->next;
 	}
@@ -360,4 +400,6 @@ void update_car_leave(lp_state_type *state, unsigned long long id, simtime_t new
 		}
 		curr_car = curr_car->next;
 	}
+
+	state->queue = reorder_queue(state->queue, state->lvt);
 }

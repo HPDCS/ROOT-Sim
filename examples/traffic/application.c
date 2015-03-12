@@ -96,7 +96,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, void *event, s
 				printf("Object queue full\n");
 			}
 
-			//~cause_accident(state, me);
+			cause_accident(state, me);
 
 			// If the arrival is related to a new car entering the highway, schedule
 			// the next car entering
