@@ -243,7 +243,7 @@ then
 
 	# User can manually disable mixed state saving
 	AS_IF([test "x$enable_mixedss" != "xno"], [
-		AC_DEFINE([HAVE_MIXED_SS])
+		AC_DEFINE([HAVE_INSTRUMENTED_CODE])
 		ac_have_mixed_ss=yes
 	])
 fi
