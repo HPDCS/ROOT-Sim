@@ -269,9 +269,9 @@ void dirty_mem(void *base, int size) {
 	(void)size;
 
 
-	return;
+//	return;
 
-#if 0
+#if 1
 //	unsigned long long current_cost;
 
 	// Sanity check on passed address
@@ -285,6 +285,8 @@ void dirty_mem(void *base, int size) {
 	    rootsim_config.snapshot == AUTONOMIC_FULL_SNAPSHOT)
 		add_counter++;
 */
+	printf("dirty_mem() called!\n");
+
 	int 	first_chunk,
 		last_chunk,
 		i,

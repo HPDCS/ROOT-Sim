@@ -7,4 +7,10 @@
 			<hijacker:AddCall where="before" function="reverse_code_generator" arguments="target" />
 		</hijacker:Instruction>
 	</hijacker:Executable>
+	
+	<hijacker:Executable suffix="incremental"> <!-- Incremental code version -->
+		<hijacker:Instruction type="I_MEMWR">
+			<hijacker:AddCall where="before" function="dirty_mem" arguments="" />
+		</hijacker:Instruction>
+	</hijacker:Executable>
 </hijacker:Rules>

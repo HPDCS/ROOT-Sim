@@ -234,13 +234,16 @@ void *log_incremental(int lid) {
 	malloc_area *m_area;
 	
 	// Timers for self-tuning of the simulation platform
-	DECLARE_TIMER(checkpoint_timer);
-	TIMER_START(checkpoint_timer);
+	//DECLARE_TIMER(checkpoint_timer);
+	//TIMER_START(checkpoint_timer);
+	timer checkpoint_timer;
+	timer_start(checkpoint_timer);
 
 	size = sizeof(malloc_state) + sizeof(seed_type) + m_state[lid]->dirty_areas * sizeof(malloc_area) + m_state[lid]->dirty_bitmap_size + m_state[lid]->total_inc_size;
 
 	// This code is in a malloc-wrapper package, so here call the real malloc
-	log = __real_malloc(size);
+//	log = __real_malloc(size);
+	log = rsalloc(size);
 	
 	if(log == NULL){
 		rootsim_error(true, "(%d) Unable to acquire memory for logging the current state (memory exhausted?)");
@@ -251,11 +254,11 @@ void *log_incremental(int lid) {
 	// Copy malloc_state into the log
 	memcpy(ptr, m_state[lid], sizeof(malloc_state));
 	ptr = (void*)((char*)ptr + sizeof(malloc_state));
-	((malloc_state*)log)->timestamp = time_value;
+	((malloc_state*)log)->timestamp = current_lvt;
 	((malloc_state*)log)->is_incremental = 1;
 
 	// Copy the per-LP Seed State (to make the numerical library rollbackable and PWD)
-	memcpy(ptr, &process_seed[lid], sizeof(seed_type));
+	memcpy(ptr, &LPS[lid]->seed, sizeof(seed_type));
 	ptr = (void *)((char *)ptr + sizeof(seed_type));
 
 
@@ -343,9 +346,10 @@ void *log_incremental(int lid) {
 	m_state[lid]->dirty_bitmap_size = 0;
 	m_state[lid]->total_inc_size = 0;
 
-	TIMER_VALUE_MICRO(checkpoint_time, checkpoint_timer);
-	checkpoint_cost_per_byte += checkpoint_time;
-	total_checkpoints++;
+	//TIMER_VALUE_MICRO(checkpoint_time, checkpoint_timer);
+	int checkpoint_time = timer_value_micro(checkpoint_timer);
+	//checkpoint_cost_per_byte += checkpoint_time;
+	//total_checkpoints++;
 
 	return log;
 }
@@ -578,7 +582,7 @@ void restore_full(int lid, void *ckpt) {
 * @param lid The logical process' local identifier
 * @param queue_node a pointer to the simulation state which must be restored in the logical process
 */
-void restore_incremental(int lid, queue_states_type *queue_node) {
+void restore_incremental(int lid, state_t *queue_node) {
 
 	void *ptr, *log;
 	int	i, j, k, bitmap_blocks, index, num_areas,
@@ -587,13 +591,14 @@ void restore_incremental(int lid, queue_states_type *queue_node) {
 	unsigned int *bitmap_pointer;
 	size_t chunk_size;
 	malloc_area *m_area, *curr_m_area;
-	queue_states_type *curr_node;
+	state_t *curr_node;
 	malloc_area *new_area;	
 	int siz;
 
-	
-	DECLARE_TIMER(recovery_timer);
-	TIMER_START(recovery_timer);
+	//DECLARE_TIMER(recovery_timer);
+	//TIMER_START(recovery_timer);
+	timer recovery_timer;
+	timer_start(recovery_timer);
 
 	original_num_areas = m_state[lid]->num_areas;
 
@@ -603,7 +608,7 @@ void restore_incremental(int lid, queue_states_type *queue_node) {
 	memcpy(m_state[lid], queue_node->log, sizeof(malloc_state));
 
 	// Restore the per-LP Seed State (to make the numerical library rollbackable and PWD)
-	memcpy(&process_seed[lid], (char *)queue_node->log + sizeof(malloc_state), sizeof(seed_type));
+	memcpy(&LPS[lid]->seed, (char *)queue_node->log + sizeof(malloc_state), sizeof(seed_type));
 
 	m_state[lid]->areas = new_area;
 
@@ -611,7 +616,7 @@ void restore_incremental(int lid, queue_states_type *queue_node) {
 	// max_areas: it's possible, scanning backwards, to find a greater number of active areas than the one
 	// in the state we're rolling back to. Hence, max_areas keeps the greater number of areas ever reached
 	// during the simulation
-        unsigned int **already_restored = (unsigned int **)__real_malloc(m_state[lid]->max_num_areas * sizeof(unsigned int *));
+        unsigned int **already_restored = rsalloc(m_state[lid]->max_num_areas * sizeof(unsigned int *));
 
 	for (i = 0; i < m_state[lid]->max_num_areas; i++)
 		already_restored[i] = NULL;
@@ -635,7 +640,7 @@ void restore_incremental(int lid, queue_states_type *queue_node) {
 		
 			// Get current malloc_area
 			curr_m_area = (malloc_area *)ptr;
-			m_area = (malloc_area *)&m_state[lid]->areas[curr_m_area->index];
+			m_area = (malloc_area *)&m_state[lid]->areas[curr_m_area->idx];
 
 			ptr = (void *)((char *)ptr + sizeof(malloc_area));
 			
@@ -649,11 +654,11 @@ void restore_incremental(int lid, queue_states_type *queue_node) {
 
 
 			// Check whether the malloc_area has not already been restored
-                        if(already_restored[curr_m_area->index] == NULL) {
+                        if(already_restored[curr_m_area->idx] == NULL) {
 
                                 // No chunks restored so far
-                                already_restored[curr_m_area->index] = __real_malloc(bitmap_blocks * BLOCK_SIZE);
-                                bzero(already_restored[curr_m_area->index], bitmap_blocks * BLOCK_SIZE);
+                                already_restored[curr_m_area->idx] = rsalloc(bitmap_blocks * BLOCK_SIZE);
+                                bzero(already_restored[curr_m_area->idx], bitmap_blocks * BLOCK_SIZE);
 
                                 // Restore m_area
                                 memcpy(m_area, curr_m_area, sizeof(malloc_area));
@@ -692,8 +697,8 @@ void restore_incremental(int lid, queue_states_type *queue_node) {
 					// At least one dirty chunk
 
 					// Generate a new bitmap, telling what chunks must be restored
-					xored_bitmap = already_restored[curr_m_area->index][j] | bitmap;
-					xored_bitmap = xored_bitmap ^ already_restored[curr_m_area->index][j]; 
+					xored_bitmap = already_restored[curr_m_area->idx][j] | bitmap;
+					xored_bitmap = xored_bitmap ^ already_restored[curr_m_area->idx][j]; 
 					
 					for(k = 0; k < NUM_CHUNKS_PER_BLOCK; k++){
 	
@@ -715,14 +720,14 @@ void restore_incremental(int lid, queue_states_type *queue_node) {
 					}
 					
 					// Save restored chunks
-					already_restored[curr_m_area->index][j] |= xored_bitmap;
+					already_restored[curr_m_area->idx][j] |= xored_bitmap;
 				}
 			}
 		}
 	
 		// Handle previous log
 	
-		curr_node = curr_node->succ;
+		curr_node = list_next(curr_node);
 		
 		if(curr_node == NULL) {
 			printf("PANIC!\n");
@@ -758,7 +763,7 @@ void restore_incremental(int lid, queue_states_type *queue_node) {
 		// Get current malloc_area
 		curr_m_area = (malloc_area *)ptr;
 
-		m_area = (malloc_area *)&m_state[lid]->areas[curr_m_area->index];
+		m_area = (malloc_area *)&m_state[lid]->areas[curr_m_area->idx];
 		ptr = (void *)((char *)ptr + sizeof(malloc_area));
 			
 		chunk_size = curr_m_area->chunk_size;
@@ -772,11 +777,11 @@ void restore_incremental(int lid, queue_states_type *queue_node) {
 
 
 		// Check whether the malloc_area has not already been restored
-		if(already_restored[curr_m_area->index] == NULL) {
+		if(already_restored[curr_m_area->idx] == NULL) {
 			
 			// No chunks restored so far
-			already_restored[curr_m_area->index] = __real_malloc(bitmap_blocks * BLOCK_SIZE);
-			bzero(already_restored[curr_m_area->index], bitmap_blocks * BLOCK_SIZE);
+			already_restored[curr_m_area->idx] = rsalloc(bitmap_blocks * BLOCK_SIZE);
+			bzero(already_restored[curr_m_area->idx], bitmap_blocks * BLOCK_SIZE);
 
 			// Restore m_area
 			memcpy(m_area, curr_m_area, sizeof(malloc_area));
@@ -822,7 +827,7 @@ void restore_incremental(int lid, queue_states_type *queue_node) {
 					}
 				} else {
 					// Generate a new bitmap, telling what chunks must be restored
-					xored_bitmap = ~already_restored[curr_m_area->index][j];
+					xored_bitmap = ~already_restored[curr_m_area->idx][j];
 
 					for(k = 0; k < NUM_CHUNKS_PER_BLOCK; k++){
 						
@@ -849,7 +854,7 @@ void restore_incremental(int lid, queue_states_type *queue_node) {
 				} else {
 					// At least one dirty chunk
 					// Generate a new bitmap, telling what chunks must be restored
-					xored_bitmap = ~already_restored[curr_m_area->index][j];
+					xored_bitmap = ~already_restored[curr_m_area->idx][j];
 	
 					for(k = 0; k < NUM_CHUNKS_PER_BLOCK; k++){
 	
@@ -916,7 +921,7 @@ void restore_incremental(int lid, queue_states_type *queue_node) {
 			m_area->state_changed = 0;
 			m_area->next_chunk = 0;
 			m_area->last_access = m_state[lid]->timestamp;
-			m_state[lid]->areas[m_area->prev].next = m_area->index;
+			m_state[lid]->areas[m_area->prev].next = m_area->idx;
 
 			RESET_LOG_MODE_BIT(m_area);
 			RESET_AREA_LOCK_BIT(m_area);
@@ -940,10 +945,10 @@ void restore_incremental(int lid, queue_states_type *queue_node) {
 	// Release data structures
 	for(i = 0; i < m_state[lid]->max_num_areas ; i++) {
 		if(already_restored[i] != NULL) {
-			__real_free(already_restored[i]);
+			rsfree(already_restored[i]);
 		}
 	}
-	__real_free(already_restored);
+	rsfree(already_restored);
 
 	m_state[lid]->timestamp = -1;
 	m_state[lid]->is_incremental = -1;
@@ -951,9 +956,10 @@ void restore_incremental(int lid, queue_states_type *queue_node) {
 	m_state[lid]->dirty_bitmap_size = 0;
 	m_state[lid]->total_inc_size = 0;
 
-	TIMER_VALUE_MICRO(recovery_time, recovery_timer);
-	recovery_cost_per_byte += recovery_time;
-	total_recoveries++;
+	//TIMER_VALUE_MICRO(recovery_time, recovery_timer);
+	int recovery_time = timer_value_micro(recovery_timer);
+//	recovery_cost_per_byte += recovery_time;
+//	total_recoveries++;
 	
 }
 
