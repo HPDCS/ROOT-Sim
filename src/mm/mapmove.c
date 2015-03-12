@@ -29,6 +29,7 @@
 #include <sys/mman.h>
 #include <errno.h>
 #include <pthread.h>
+#include <stdbool.h>
 
 #ifdef HAVE_NUMA
 #include <numaif.h>
@@ -36,6 +37,7 @@
 #endif
 
 
+#include <arch/atomic.h>
 #include <core/core.h>
 #include <mm/allocator.h>
 #include <mm/mapmove.h>
@@ -43,6 +45,9 @@
 
 
 #ifdef HAVE_NUMA
+
+//#define NUM_DAEMONS n_cores
+#define NUM_DAEMONS 32
 
 #define AUDIT if(0)
 
@@ -82,7 +87,7 @@ int init_move(int sobjs){
 		daemonmoves[i].target_node = 0;
         }
 
-	for (i=0; i<n_cores; i++){
+	for (i=0; i<NUM_DAEMONS; i++){
 
 		ret = pthread_create(&daemon_tid, NULL, background_work, (void*)i);	
 
@@ -207,7 +212,7 @@ void *background_work(void *me) {
 	while(1){
 
 		sleep(SLEEP_PERIOD);
-		
+
 		AUDIT
 		printf("RS numa daemon wakeup\n");
 
@@ -219,11 +224,11 @@ void *background_work(void *me) {
 			if(unlikelynew(node)) move_sobj(sobj,node);
 			unlock(sobj);
 
-	 	}	
+	 	}
 	}
-
 }
- int verify(int sobj){
+
+int verify(int sobj){
 
 	int node;
 
