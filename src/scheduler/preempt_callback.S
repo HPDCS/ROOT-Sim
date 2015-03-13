@@ -58,7 +58,17 @@ preempt_callback:
 	push %r15
 #endif
 
+	subq $16, %rsp
+	movsd %xmm0, (%rsp)
+	subq $16, %rsp
+	movsd %xmm1, (%rsp)
+
 	call preempt
+
+	movsd (%rsp), %xmm1
+	addq $16, %rsp
+	movsd (%rsp), %xmm0
+	addq $16, %rsp
 
 #ifdef ARCH_X86_64
 	pop %r15

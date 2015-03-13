@@ -40,7 +40,11 @@ extern void preempt_callback(void);
 
 static simtime_t * volatile min_in_transit_lvt;
 
-static atomic_t preempt_count;
+atomic_t preempt_count;
+atomic_t overtick_platform;
+atomic_t would_preempt;
+
+__thread volatile bool platform_mode = true;
 
 
 void preempt_init(void) {
@@ -117,6 +121,7 @@ void update_min_in_transit(unsigned int thread, simtime_t lvt) {
 }
 
 
+__thread bool rolling_back = false;
 
 
 /**
@@ -142,7 +147,22 @@ void preempt(void) {
 			printf("Overtick interrupt from application mode\n");
 	}
 */
-	if(current_lp != IDLE_PROCESS && min_in_transit_lvt[tid] < current_lvt) {
+
+
+//	atomic_inc(&preempt_count);
+
+	if(platform_mode || rolling_back) {
+//		atomic_inc(&overtick_platform);
+
+	} else if(min_in_transit_lvt[tid] < current_lvt) {
+//		atomic_inc(&would_preempt);
+		LPS[current_lp]->state = LP_STATE_SUSPENDED; // Questo triggera la logica di ripartenza dell'LP di ECS, ma forse va cambiato nome...
+		switch_to_platform_mode();
+		context_switch(&LPS[current_lp]->context, &kernel_context);
+	}
+	
+
+/*	if(!platform_mode && min_in_transit_lvt[tid] < current_lvt) {
 
 		atomic_inc(&preempt_count);
 
@@ -169,9 +189,8 @@ void preempt(void) {
 			             "popfq;"
 			             "pop %rbp;");
 
-		context_switch(&LPS[current_lp]->context, &kernel_context);
 	}
-
+*/
 
 	
 }
