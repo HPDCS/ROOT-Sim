@@ -9,7 +9,7 @@
 
 
 #define CHECK_FADING_TIME	10
-#define COMPLETE_CALLS		1000
+#define COMPLETE_CALLS		500
 #ifndef TA
 #define TA			0.6
 #endif
@@ -117,6 +117,7 @@ double generate_cross_path_gain(void);
 double generate_path_gain(void);
 void deallocation(unsigned int lp, lp_state_type *state, int channel, simtime_t);
 int allocation(lp_state_type *state);
+void fading_recheck(lp_state_type *pointer);
 
 
 extern int channels_per_cell;

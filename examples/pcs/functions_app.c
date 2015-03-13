@@ -104,6 +104,17 @@ void deallocation(unsigned int me, lp_state_type *pointer, int ch, simtime_t lvt
 	return;
 }
 
+void fading_recheck(lp_state_type *pointer) {
+	channel *ch;
+
+	ch = pointer->channels;
+
+        while(ch != NULL){
+        	ch->sir_data->fading = Expent(1.0);
+                ch = ch->prev;
+        }
+}
+
 int allocation(lp_state_type *pointer) {
 
 	int i;
