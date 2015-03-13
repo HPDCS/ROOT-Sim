@@ -2,15 +2,10 @@
 <hijacker:Rules xmlns:hijacker="http://www.dis.uniroma1.it/~hpdcs/">
 	<hijacker:Inject file="mixed-state-saving.c" />
 
-	<hijacker:Executable suffix="memtrack"> <!-- First code version -->
+	<!-- Incremental code version -->
+	<hijacker:Executable suffix="incremental"> 	
 		<hijacker:Instruction type="I_MEMWR">
-			<hijacker:AddCall where="before" function="reverse_code_generator" arguments="target" />
-		</hijacker:Instruction>
-	</hijacker:Executable>
-	
-	<hijacker:Executable suffix="incremental"> <!-- Incremental code version -->
-		<hijacker:Instruction type="I_MEMWR">
-			<hijacker:AddCall where="before" function="dirty_mem" arguments="" />
+			<hijacker:AddCall where="before" function="dirty_mem" arguments="target" />
 		</hijacker:Instruction>
 	</hijacker:Executable>
 </hijacker:Rules>

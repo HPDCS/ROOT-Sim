@@ -145,7 +145,7 @@ void base_init(void) {
 	for (i = 0; i < n_prc_tot; i++) {
 
 		if (rootsim_config.snapshot == FULL_SNAPSHOT) {
-			__OnGVT[i] = OnGVT;
+			__OnGVT[i] = OnGVT_incremental;
 			__ProcessEvent[i] = ProcessEvent_incremental;
 		}
 
