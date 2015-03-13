@@ -181,7 +181,9 @@ static void LP_main_loop(void *args) {
 		timer event_timer;
 		timer_start(event_timer);
 
+		switch_to_application_mode();
 		ProcessEvent[current_lp](LidToGid(current_lp), current_evt->timestamp, current_evt->type, current_evt->event_content, current_evt->size, current_state);
+		switch_to_platform_mode();
 
 		int delta_event_timer = timer_value_micro(event_timer);
 
@@ -400,6 +402,8 @@ void schedule(void) {
 			lid = smallest_timestamp_first();
 	}
 
+//	printf("Selected LP %d with state %d\n", lid, LPS[lid]->state);
+
 	// No logical process found with events to be processed
 	if (lid == IDLE_PROCESS) {
 		statistics_post_lp_data(lid, STAT_IDLE_CYCLES, 1.0);
@@ -410,19 +414,16 @@ void schedule(void) {
     	if(LPS[lid]->state == LP_STATE_ROLLBACK) {
 		rollback(lid);
 
-		// Discard any possible execution state related to a blocked execution
-		#ifdef ENABLE_ULT
-		memcpy(&LPS[lid]->context, &LPS[lid]->default_context, sizeof(LP_context_t));
-		#endif
-
 		LPS[lid]->state = LP_STATE_READY;
 		send_outgoing_msgs(lid);
 		return;
 	}
 
-	if(LPS[lid]->state != LP_STATE_READY_FOR_SYNCH) {
+
+	if(!is_blocked_state(LPS[lid]->state)) {
 		event = advance_to_next_event(lid);
 	} else {
+//		printf("Riavvio %d\n", lid);
 		event = LPS[lid]->bound;
 	}
 

@@ -38,6 +38,7 @@
 #include <communication/communication.h>
 #include <scheduler/stf.h>
 #include <arch/ult.h>
+#include <scheduler/process.h>
 
 
 /// This macro defines after how many idle cycles the simulation is stopped
@@ -83,5 +84,16 @@ extern __thread simtime_t current_lvt;
 extern __thread msg_t *current_evt;
 extern __thread void *current_state;
 extern __thread unsigned int n_prc_per_thread;
+
+
+
+extern __thread volatile bool platform_mode;
+#define switch_to_platform_mode() do {\
+				   if(LPS[current_lp]->state != LP_STATE_SILENT_EXEC) {\
+					platform_mode = true;\
+				   }\
+				  } while(0)
+
+#define switch_to_application_mode() platform_mode = false
 
 #endif

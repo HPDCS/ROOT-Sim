@@ -34,6 +34,7 @@
 #include <core/core.h>
 #include <mm/dymelor.h>
 #include <scheduler/process.h>
+#include <scheduler/scheduler.h>
 
 
 /// Recoverable memory state for LPs
@@ -228,10 +229,20 @@ size_t get_log_size(malloc_state *logged_state){
 *
 */
 void *__wrap_malloc(size_t size) {
-	if(rootsim_config.serial)
-		return rsalloc(size);
+	void *ptr;
 
-	return do_malloc(current_lp, recoverable_state[current_lp], size);
+	switch_to_platform_mode();
+
+	if(rootsim_config.serial) {
+		ptr = rsalloc(size);
+		goto out;
+	}
+
+	ptr = do_malloc(current_lp, recoverable_state[current_lp], size);
+
+    out:
+	switch_to_application_mode();
+	return ptr;
 }
 
 /**
@@ -253,12 +264,17 @@ void *__wrap_malloc(size_t size) {
 *
 */
 void __wrap_free(void *ptr) {
+	switch_to_platform_mode();
+
 	if(rootsim_config.serial) {
 		rsfree(ptr);
-		return;
+		goto out;
 	}
 
 	do_free(current_lp, recoverable_state[current_lp], ptr);
+
+    out:
+	switch_to_application_mode();
 }
 
 

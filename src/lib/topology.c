@@ -10,7 +10,10 @@ unsigned int FindReceiver(int topology) {
 
 	// receiver is not unsigned, because we exploit -1 as a border case in the bidring topology.
 	int receiver;
+	unsigned int ret;
  	double u;
+
+	switch_to_platform_mode();
 
 
  	// These must be unsigned. They are not checked for negative (wrong) values,
@@ -227,7 +230,10 @@ unsigned int FindReceiver(int topology) {
 			rootsim_error(true, "Wrong topology code specified: %d. Aborting...\n", topology);
 	}
 
-	return (unsigned int)receiver;
+	ret = (unsigned int)receiver;
+
+	switch_to_application_mode();
+	return ret;
 
 }
 

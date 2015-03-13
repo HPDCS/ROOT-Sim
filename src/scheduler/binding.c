@@ -289,6 +289,8 @@ void rebind_LPs(void) {
 		return;
 	}
 
+	return;
+
 	if(master_thread()) {
 		if(timer_value_seconds(rebinding_timer) >= REBIND_INTERVAL) {
 			timer_restart(rebinding_timer);

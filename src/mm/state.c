@@ -165,7 +165,7 @@ unsigned int silent_execution(unsigned int lid, void *state_buffer, msg_t *evt, 
 	return events;
 }
 
-
+extern __thread bool rolling_back;
 
 /**
 * This function rolls back the execution of a certain LP. The point where the
@@ -186,11 +186,19 @@ void rollback(unsigned int lid) {
 	msg_t *reprocess_from;
 	unsigned int reprocessed_events;
 
+
+	rolling_back = true;
+
 	// Sanity check
 	if(LPS[lid]->state != LP_STATE_ROLLBACK) {
 		rootsim_error(false, "I'm asked to roll back LP %d's execution, but rollback_bound is not set. Ignoring...\n", LidToGid(lid));
 		return;
 	}
+
+	// Discard any possible execution state related to a blocked execution
+	#ifdef ENABLE_ULT
+	memcpy(&LPS[lid]->context, &LPS[lid]->default_context, sizeof(LP_context_t));
+	#endif
 
 	statistics_post_lp_data(lid, STAT_ROLLBACK, 1.0);
 
@@ -224,6 +232,9 @@ void rollback(unsigned int lid) {
 
 	// Control messages must be rolled back as well
 	rollback_control_message(lid, last_correct_event->timestamp);
+
+
+	rolling_back = false;
 }
 
 
