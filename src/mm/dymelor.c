@@ -265,15 +265,15 @@ void dirty_mem(void *base, int size) {
 
 
 	// TODO: Quando reintegriamo l'incrementale questo qui deve ricomparire!
-	(void)base;
-	(void)size;
+	//(void)base;
+	//(void)size;
 
 
 //	return;
 
 #if 1
 //	unsigned long long current_cost;
-
+//
 	// Sanity check on passed address
 /*	if(base == NULL) {
 		rootsim_error(false, "Trying to access NULL. Memory interception aborted\n");
@@ -285,7 +285,7 @@ void dirty_mem(void *base, int size) {
 	    rootsim_config.snapshot == AUTONOMIC_FULL_SNAPSHOT)
 		add_counter++;
 */
-	printf("dirty_mem() called!\n");
+	printf("dirty_mem(<%#08llx>, %d bytes) called!\n", base, size);
 
 	int 	first_chunk,
 		last_chunk,

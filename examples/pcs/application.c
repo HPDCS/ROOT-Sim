@@ -34,12 +34,13 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 		state->lvt = now;
 		state->executed_events++;
 	}
-
-
+	
+//	printf("INIT=%d, START_CALL=%d, END_CALL=%d, HANDOFF_LEAVE=%d, HANDOFF_RECV=%d, FADING_RECHECK=%d\n", INIT, START_CALL, END_CALL, HANDOFF_LEAVE, HANDOFF_RECV, FADING_RECHECK);
+//	printf("Event type = %d (time %f)\n", event_type, now);
 	switch(event_type) {
 
 		case INIT:
-
+//			printf("INIT\n");
 			// Initialize the LP's state
 			state = (lp_state_type *)malloc(sizeof(lp_state_type));
 			if (state == NULL){
@@ -112,6 +113,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 
 		case START_CALL:
 
+//			printf("START_CALL\n");
 			state->arriving_calls++;
 
 			if (state->channel_counter == 0) {
@@ -190,6 +192,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 
 		case END_CALL:
 
+//			printf("END_CALL\n");
 			state->channel_counter++;
 			state->complete_calls++;
 			deallocation(me, state, event_content->channel, event_content, now);
@@ -198,6 +201,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 
 		case HANDOFF_LEAVE:
 
+//			printf("HANDOFF_LEAVE");
 			state->channel_counter++;
 			state->leaving_handoffs++;
 			deallocation(me, state, event_content->channel, event_content, now);
@@ -207,6 +211,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 			break;
 
         	case HANDOFF_RECV:
+//			printf("HANDOFF_RECV");
 			state->arriving_handoffs++;
 			state->arriving_calls++;
 
@@ -247,6 +252,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 		case FADING_RECHECK:
 
 
+//			printf("FADING_RECHECK");
 			if(state->check_fading)
 				state->check_fading = false;
 			else

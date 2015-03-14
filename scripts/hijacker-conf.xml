@@ -1,7 +1,5 @@
 <?xml version="1.0"?>
 <hijacker:Rules xmlns:hijacker="http://www.dis.uniroma1.it/~hpdcs/">
-	<hijacker:Inject file="mixed-state-saving.c" />
-
 	<!-- Incremental code version -->
 	<hijacker:Executable suffix="incremental"> 	
 		<hijacker:Instruction type="I_MEMWR">
