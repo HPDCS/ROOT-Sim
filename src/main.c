@@ -125,7 +125,11 @@ static void *main_simulation_loop(void *arg) {
 		// Only a master thread on master kernel prints the time barrier
 		if (master_kernel() && master_thread () && D_DIFFER(my_time_barrier, -1.0)) {
 			if (rootsim_config.verbose == VERBOSE_INFO || rootsim_config.verbose == VERBOSE_DEBUG) {
+				#ifdef HAVE_PREEMPTION
 				printf("TIME BARRIER %f - %d preemptions - %d in platform mode - %d would preempt\n", my_time_barrier, atomic_read(&preempt_count), atomic_read(&overtick_platform), atomic_read(&would_preempt));
+				#else
+				printf("TIME BARRIER %f\n", my_time_barrier);
+				#endif
 				fflush(stdout);
 			}
 		}

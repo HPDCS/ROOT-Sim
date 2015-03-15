@@ -187,8 +187,6 @@ void rollback(unsigned int lid) {
 	unsigned int reprocessed_events;
 
 
-	rolling_back = true;
-
 	// Sanity check
 	if(LPS[lid]->state != LP_STATE_ROLLBACK) {
 		rootsim_error(false, "I'm asked to roll back LP %d's execution, but rollback_bound is not set. Ignoring...\n", LidToGid(lid));
@@ -233,8 +231,6 @@ void rollback(unsigned int lid) {
 	// Control messages must be rolled back as well
 	rollback_control_message(lid, last_correct_event->timestamp);
 
-
-	rolling_back = false;
 }
 
 
