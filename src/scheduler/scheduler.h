@@ -86,7 +86,7 @@ extern __thread void *current_state;
 extern __thread unsigned int n_prc_per_thread;
 
 
-
+#ifdef HAVE_PREEMPTION
 extern __thread volatile bool platform_mode;
 #define switch_to_platform_mode() do {\
 				   if(LPS[current_lp]->state != LP_STATE_SILENT_EXEC) {\
@@ -95,5 +95,9 @@ extern __thread volatile bool platform_mode;
 				  } while(0)
 
 #define switch_to_application_mode() platform_mode = false
+#else
+#define switch_to_platform_mode() {}
+#define switch_to_application_mode() {}
+#endif
 
 #endif
