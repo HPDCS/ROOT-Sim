@@ -229,8 +229,6 @@ void rollback(unsigned int lid) {
 
 	// Control messages must be rolled back as well
 	rollback_control_message(lid, last_correct_event->timestamp);
-
-
 }
 
 

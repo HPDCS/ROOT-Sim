@@ -98,6 +98,6 @@ extern __thread volatile bool platform_mode;
 #else
 #define switch_to_platform_mode() {}
 #define switch_to_application_mode() {}
-#endif
+#endif /* HAVE_PREEMPTION */
 
 #endif
