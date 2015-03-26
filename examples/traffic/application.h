@@ -31,7 +31,7 @@
 
 // Execution time must be specified in seconds
 #ifndef EXECUTION_TIME
-	#define EXECUTION_TIME	(3 * DAY)
+	#define EXECUTION_TIME	(1 * WEEK)
 #endif
 
 
@@ -66,6 +66,7 @@
 // accidents parameters
 #define ACCIDENT_DURATION	3600	// one hour on average
 #define ACCIDENT_SIGMA		30
+#define ACCIDENT_LEAVE_TIME	20	// Exponential mean to compute the time increment to leave after an accident
 
 
 // EVENTI
@@ -74,9 +75,12 @@
 #define FINISH_ACCIDENT 12
 #define KEEP_ALIVE	100
 
+#define STOP_PROBABILITY	0.05
 
 
-#define ACCIDENT_PROBABILITY	0.015
+
+
+#define ACCIDENT_PROBABILITY	0.15
 
 
 // LP Type
@@ -122,6 +126,9 @@ typedef struct _car {
 	simtime_t	arrival;
 	simtime_t	leave;
 	bool		accident;
+	bool		stopped;
+	double		traveled;
+	unsigned long long		car_id;
 	struct _car 	*next;
 } car_t;
 
@@ -129,7 +136,7 @@ typedef struct _car {
 
 typedef struct _lp_state_type {
 	simtime_t	lvt;			// Elapsed simulation time
-	int		accident;
+	bool		accident;
 	unsigned int	total_queue_slots;
 	char		name[NAME_LENGTH];	// Name of the cell
 	int		lp_type;		// Is it a junction or a segment?
@@ -139,6 +146,7 @@ typedef struct _lp_state_type {
 	topology_t	*topology;		// Each node can have an arbitrary number of neighbours
 	unsigned int	queued_elements;
 	car_t		*queue;			// Cars passing through the node are stored here
+	unsigned long long 		car_id;
 } lp_state_type;
 
 
@@ -146,14 +154,16 @@ typedef struct _lp_state_type {
 
 
 
-extern simtime_t enqueue_car(int from, lp_state_type *state);
-extern car_t *car_dequeue(lp_state_type *state, simtime_t now);
-extern car_t *car_dequeue_conditional(lp_state_type *state, simtime_t now);
+extern car_t *enqueue_car(int me, int from, lp_state_type *state);
+extern car_t *car_dequeue(unsigned int me, lp_state_type *state, unsigned long long *);
+extern car_t *car_dequeue_conditional(lp_state_type *state, unsigned long long *);
 extern void inject_new_cars(lp_state_type *state, int me);
 extern int check_car_leaving(lp_state_type *state, int from, int me);
 extern void check_accident_end(lp_state_type *state);
+extern void determine_stop(lp_state_type *state);
 extern void cause_accident(lp_state_type *state, int me);
-extern void release_cars(lp_state_type *state);
+extern void release_cars(unsigned int me, lp_state_type *state);
+extern void update_car_leave(lp_state_type *state, unsigned long long, simtime_t new);
 
 
 #endif /* _TRAFFIC_APPLICATION_H */

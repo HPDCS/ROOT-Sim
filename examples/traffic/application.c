@@ -26,18 +26,21 @@
 #include "application.h"
 #include "init.h"
 
-
-
-void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_type *event_content, size_t size, lp_state_type *state) {
+void ProcessEvent(unsigned int me, simtime_t now, int event_type, void *event, size_t size, lp_state_type *state) {
 	simtime_t timestamp = 0;
 	event_content_type new_event;
-	unsigned int receiver;
+	int receiver;
+	int i;
+	car_t *car;
+	
+	event_content_type *event_content = (event_content_type *)event;
+	
 	(void)size;
 
 	if(state != NULL) {
 		state->lvt = now;
 	}
-
+	
 	switch(event_type) {
 
 		// This event initializes the simulation state for each LP and inject first events
@@ -78,21 +81,22 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 
 
 		case ARRIVAL:
+
+			if(!event_content->injection && check_car_leaving(state, event_content->from, me)) {
+				break;
+			}
 		
-			// A car has to leave, at a certain point!
-			if(check_car_leaving(state, event_content->from, me))
-				break;
+			if(state->queued_elements < state->total_queue_slots) {
 
-			// TODO check su queue_slots!
-			if(state->queued_elements == state->total_queue_slots) {
-				break;
+				car = enqueue_car(me, event_content->from, state);
+
+				// Send a leave event
+				ScheduleNewEvent(me, car->leave, LEAVE, &car->car_id, sizeof(unsigned long long));
+			} else {
+				printf("Object queue full\n");
 			}
 
-			timestamp = enqueue_car(event_content->from, state);
-
-			if(!state->accident) {
-				cause_accident(state, me);
-			}
+			cause_accident(state, me);
 
 			// If the arrival is related to a new car entering the highway, schedule
 			// the next car entering
@@ -100,49 +104,44 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 				inject_new_cars(state, me);
 			}
 			
-			// Send a leave event
-			ScheduleNewEvent(me, timestamp, LEAVE, NULL, 0);
-
 			break;
 
 
-		case LEAVE: {	
-			car_t *car;
+		case LEAVE: 
 			
-			if(state->accident) {
-				car = car_dequeue(state, now);
-			} else {
-				car = car_dequeue_conditional(state, now);
-			}
-			
+			car = car_dequeue(me, state, (unsigned long long *)event);
 			if(car != NULL) {
 				new_event.from = me;
 				new_event.injection = false;
 				
 				if(state->topology->num_neighbours > 1) {
 					do {
-						receiver = RandomRange(0, state->topology->num_neighbours);
+						receiver = RandomRange(0, state->topology->num_neighbours - 1);
 						receiver = state->topology->neighbours[receiver];
 					} while(receiver == car->from);				
 				} else {
 					receiver = state->topology->neighbours[0];
 				}
 				
-				ScheduleNewEvent(me, car->leave, ARRIVAL, &new_event, sizeof(event_content_type));
+				ScheduleNewEvent(receiver, car->leave, ARRIVAL, &new_event, sizeof(event_content_type));
+				free(car);
+			} else {
+				timestamp = now + Expent(ACCIDENT_LEAVE_TIME);
+				update_car_leave(state, *(unsigned long long *)event_content, timestamp);
+				ScheduleNewEvent(me, timestamp, LEAVE, (unsigned long long *)event_content, sizeof(unsigned long long));
 			}
 			
-			free(car);
 			break;
-		}
 			
 
 		case FINISH_ACCIDENT:
 			state->accident = false;
-			release_cars(state);
+			release_cars(me, state);
 			break;
 
 
 		case KEEP_ALIVE:
+			determine_stop(state);
 			timestamp = now + Expent(10);
 			ScheduleNewEvent(me, timestamp, KEEP_ALIVE, NULL, 0);
 			break;
@@ -157,6 +156,9 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 
 bool OnGVT(unsigned int me, lp_state_type *snapshot) {
 	(void)me;
+	
+	//~if(snapshot->accident)
+		//~printf("Node %s is in accident state\n", snapshot->name);
 	
 	if (snapshot->lvt < EXECUTION_TIME)
 		return false;

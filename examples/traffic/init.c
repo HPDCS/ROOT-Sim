@@ -303,7 +303,10 @@ void init_my_state(int me, lp_state_type *sim_state) {
 	fclose(f);
 	
 	printf("LP %d (%s) is a%s with ", me, sim_state->name, ( sim_state->lp_type == JUNCTION ? "n intersection" : " route" ));
-	printf("%d neighbours: ", sim_state->topology->num_neighbours);
+	if(sim_state->topology != NULL)
+		printf("%d neighbours: ", sim_state->topology->num_neighbours);
+	else
+		printf("0 neighbours\n");
 	for(i = 0; i < sim_state->topology->num_neighbours; i++) {
 		printf("%d, ", sim_state->topology->neighbours[i]);
 		if(sim_state->topology->neighbours[i] >= n_prc_tot)  {
