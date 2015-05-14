@@ -32,11 +32,13 @@ AC_LANG([C])
 #----------------------------------------------------------------------------
 # Checks for programs.
 #----------------------------------------------------------------------------
+m4_pattern_allow([AM_PROG_AR])
 AC_PROG_CC([gcc])
 AC_PROG_MAKE_SET
 AC_PROG_MKDIR_P
 AC_PROG_CC_C_O
 AM_PROG_CC_C_O
+AM_PROG_AR
 LT_INIT
 
 
