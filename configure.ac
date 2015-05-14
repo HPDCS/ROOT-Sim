@@ -10,7 +10,7 @@ AC_USE_SYSTEM_EXTENSIONS
 
 
 # Debugging symbols or not?
-CFLAGS="-O3 -lm"
+CFLAGS="-O3 -lm -U_FORTIFY_SOURCE"
 AC_ARG_ENABLE([debug],
     AS_HELP_STRING([--enable-debug], [Enable debugging of the platform]))
 
