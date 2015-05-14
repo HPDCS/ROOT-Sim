@@ -267,7 +267,7 @@ void lp_alloc_init(void) {
 
 		// Sanity check, specifically for systems with low amount of memory
 		if(addr == MAP_FAILED) {
-			rootsim_error(true, "Unable to preallocate memory for LP %d. Try to reduce the number of LPs or recompile ROOT-Sim disabling the advanced memory allocator. Aborting...\n");
+			rootsim_error(true, "Unable to preallocate memory for LP %d. Try to reduce the number of LPs or recompile ROOT-Sim disabling the advanced memory allocator. Aborting...\n", i/2);
 		}
 
 		// Access the memory in write mode to force the kernel to create the page table entries
