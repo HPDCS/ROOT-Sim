@@ -2,13 +2,12 @@ C_PREREQ([2.67])
 
 AC_INIT([ROOT-Sim],[1.0.0],[rootsim@googlegroups.com],[rootsim],[http://www.dis.uniroma1.it/~hpdcs/ROOT-Sim/])
 AC_CONFIG_SRCDIR([src])
-AM_INIT_AUTOMAKE([1.11 -Wall foreign subdir-objects])
-
-m4_ifndef([AM_SILENT_RULES], [m4_define([AM_SILENT_RULES],[])])
-AM_SILENT_RULES([yes]) # make --enable-silent-rules the default.
+AM_INIT_AUTOMAKE([-Wno-portability 1.10.1 -Wall foreign subdir-objects])
 
 AC_CONFIG_MACRO_DIR([m4])
 AC_USE_SYSTEM_EXTENSIONS
+
+m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 
 
 
@@ -232,20 +231,6 @@ AS_IF([test "x$enable_ult" != "xno"], [
   AC_DEFINE([ENABLE_ULT])
 ])
 
-
-
-
-#----------------------------------------------------------------------------
-# Doxygen Documentation
-#
-# If doxygen is installed on the box, generate a commodity Makefile in the
-# doc subfolder to generate the documentation. This must be called explicitly,
-# as it is separated from the main Makefile.
-#----------------------------------------------------------------------------
-AC_CHECK_PROGS([DOXYGEN], [doxygen])
-AM_CONDITIONAL([HAVE_DOXYGEN], [test -n "$DOXYGEN"])
-AM_COND_IF([HAVE_DOXYGEN], [AC_CONFIG_FILES([doc/doxy.conf])])
-AM_COND_IF([HAVE_DOXYGEN], [AC_CONFIG_FILES([doc/Makefile])])
 
 
 
