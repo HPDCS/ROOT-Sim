@@ -27,13 +27,16 @@
 #include <mpi.h>
 #include <stdio.h>
 
+#include <communication/mpi.h>
+#include <arch/thread.h>
+
 void mpi_init(void) {
 	int provided, claimed;
 	char s = 'M', r = '?';
 	MPI_Status Stat;
 
 	// MPI_THREAD_FUNNELED
-	MPI_Init_thread(0, 0, MPI_THREAD_SINGLE, &provided);
+	MPI_Init_thread(0, 0, MPI_THREAD_FUNNELED, &provided);
 
 	MPI_Query_thread( &claimed );
         printf( "Query thread level= %d  Init_thread level= %d\n", claimed, provided );
@@ -46,6 +49,9 @@ void mpi_init(void) {
 }
 
 void mpi_fini(void) {
-	MPI_Finalize();
+
+	if(master_thread()) {
+		MPI_Finalize();
+	}
 }
 
