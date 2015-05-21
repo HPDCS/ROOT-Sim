@@ -38,6 +38,7 @@
 #include <mm/malloc.h>
 #include <gvt/gvt.h>
 #include <mm/dymelor.h>
+#include <communication/mpi.h>
 
 
 /// Barrier for all worker threads
@@ -284,6 +285,8 @@ void simulation_shutdown(int code) {
 			communication_fini();
 			base_fini();
 		}
+
+		mpi_fini();
 	}
 
 	exit(code);

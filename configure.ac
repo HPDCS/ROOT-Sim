@@ -125,6 +125,49 @@ esac
 
 
 
+#----------------------------------------------------------------------------
+# MPI checks
+#----------------------------------------------------------------------------
+# Do we have a useable MPI setup on the primary and/or secondary targets?
+# On Linux, by default, assumes mpicc and -m32/-m64
+# Note: this is a kludge in that it assumes the specified mpicc 
+# understands -m32/-m64 regardless of what is specified using
+# --with-mpicc=.
+MPI_CC="mpicc"
+
+
+
+AC_ARG_WITH(mpicc,
+  [AS_HELP_STRING([--with-mpicc=ARG], [use ARG as MPI-2 Compliant compiler.])],
+   MPI_CC=$withval
+)
+AC_SUBST(MPI_CC)
+
+
+
+## See if MPI_CC works 
+AC_MSG_CHECKING([for an MPI2-compliant C compiler and mpi.h])
+saved_CC=$CC
+saved_CFLAGS=$CFLAGS
+CC=$MPI_CC
+AC_LINK_IFELSE([AC_LANG_PROGRAM([[
+#include <mpi.h>
+#include <stdio.h>
+]], [[
+  int ni, na, nd, comb;
+  int r = MPI_Init(NULL,NULL);
+  r |= MPI_Type_get_envelope( MPI_INT, &ni, &na, &nd, &comb );
+  r |= MPI_Finalize();
+  return r;
+]])], [
+AC_MSG_RESULT([yes, $MPI_CC])
+], [
+AC_MSG_RESULT([no])
+AC_MSG_ERROR([An MPI compliant compiler is required to build ROOT-Sim])
+])
+
+
+
 
 #----------------------------------------------------------------------------
 # Check if we can use the tick timer

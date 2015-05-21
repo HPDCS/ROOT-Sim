@@ -42,6 +42,7 @@
 #include <mm/dymelor.h>
 #include <mm/modules/ktblmgr/ktblmgr.h>
 #include <serial/serial.h>
+#include <communication/mpi.h>
 
 
 #define _INIT_FROM_MAIN
@@ -143,6 +144,8 @@ int main(int argc, char **argv) {
 	if(rootsim_config.serial) {
 		serial_simulation();
 	} else {
+
+		mpi_init();
 
 		// The number of locally required threads is now set. Detach them and then join the main simulation loop
 		if(!simulation_error()) {
