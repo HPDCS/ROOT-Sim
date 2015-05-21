@@ -105,7 +105,7 @@ fi
 ##############################################################################
 # The ROOT-Sim CC script begins here
 ##############################################################################
-CC="$CC -L $libdir -I $includedir"   # This is how we will call the compiler.
+CC="OMPI_CC=gcc $CC -L $libdir -I $includedir"   # This is how we will call the compiler.
 LD=ld
 PARTIAL=0
 OUTNAME=a.out
