@@ -98,6 +98,12 @@ void ParallelScheduleNewEvent(unsigned int gid_receiver, simtime_t timestamp, un
 		rootsim_error(true, "LP %d is trying to generate an event (type %d) to %d in the past! (Current LVT = %f, generated event's timestamp = %f) Aborting...\n", current_lp, event_type, gid_receiver, lvt(current_lp), timestamp);
 	}
 
+        // Check if the event type is mapped to an internal control message
+        if(event_type >= MIN_VALUE_CONTROL) {
+                rootsim_error(true, "LP %d is generating an event with type %d which is a reserved type. Switch event type to a value less than %d. Aborting...\n", current_lp, event_type, MIN_VALUE_CONTROL);
+        }
+
+
 	// Copy all the information into the event structure
 	bzero(&event, sizeof(msg_t));
 	event.sender = LidToGid(current_lp);
