@@ -75,7 +75,7 @@ enum _control_msgs {
 
 
 
-#define MAX_OUTGOING_MSG	50
+#define MAX_OUTGOING_MSG	20000
 
 
 /// This structure is used by the communication subsystem to handle outgoing messages
