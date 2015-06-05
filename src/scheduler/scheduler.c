@@ -244,6 +244,9 @@ void initialize_LP(unsigned int lp) {
 	// Initialize the LP lock
 	spinlock_init(&LPS[lp]->lock);
 
+	// No event has been processed so far
+	LPS[lp]->bound = NULL;
+
 	LPS[lp]->outgoing_buffer.min_in_transit = rsalloc(sizeof(simtime_t) * n_cores);
 	for(i = 0; i < n_cores; i++) {
 		LPS[lp]->outgoing_buffer.min_in_transit[i] = INFTY;
