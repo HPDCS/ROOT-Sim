@@ -11,6 +11,10 @@
 #include <mm/malloc.h>
 #include <datatypes/calqueue.h>
 
+#ifdef EXTRA_CHECKS
+#include <queues/xxhash.h>
+#endif
+
 
 static bool serial_simulation_complete = false;
 static void **serial_states;
@@ -95,16 +99,27 @@ void serial_simulation(void) {
 	msg_t *event;
 	unsigned int completed = 0;
 
+	#ifdef EXTRA_CHECKS
+        unsigned long long hash1, hash2;
+	hash1 = hash2 = 0;
+        #endif
+
 	timer_start(serial_gvt_timer);
 	
 	statistics_post_other_data(STAT_SIM_START, 0.0);
 	
 	while(!serial_simulation_complete) {
 
-				event = (msg_t *)calqueue_get();
+		event = (msg_t *)calqueue_get();
 		if(event == NULL) {
 			rootsim_error(true, "No events to process!\n");
 		}
+
+		#ifdef EXTRA_CHECKS
+		if(event->size > 0) {
+	                hash1 = XXH64(event->event_content, event->size, current_lp);
+		}
+                #endif
 
 		current_lp = event->receiver;
 		current_lvt = event->timestamp;
@@ -113,6 +128,17 @@ void serial_simulation(void) {
 
 		statistics_post_lp_data(current_lp, STAT_EVENT, 1.0);
 		statistics_post_lp_data(current_lp, STAT_EVENT_TIME, timer_value_seconds(serial_event_execution) );
+
+		#ifdef EXTRA_CHECKS
+		if(event->size > 0) {
+                	hash2 = XXH64(event->event_content, event->size, current_lp);
+		}
+
+                if(hash1 != hash2) {
+			printf("hash1 = %llu, hash2= %llu\n", hash1, hash2);
+                        rootsim_error(true, "Error, LP %d has modified the payload of event %d during its processing. Aborting...\n", current_lp, event->type);
+                }
+                #endif
 		
 		current_lp = IDLE_PROCESS;
 

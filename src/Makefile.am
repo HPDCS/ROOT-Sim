@@ -20,6 +20,7 @@ librootsim_a_SOURCES =	main.c \
 			datatypes/calqueue.c \
 			mm/state.c \
 			queues/queues.c \
+			queues/xxhash.c \
 			core/init.c \
 			core/core.c \
 			scheduler/stf.c \

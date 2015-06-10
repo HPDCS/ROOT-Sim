@@ -46,6 +46,9 @@
 
 #include <mm/modules/ktblmgr/ktblmgr.h>
 
+#ifdef EXTRA_CHECKS
+#include <queues/xxhash.h>
+#endif
 
 /// Maintain LPs' simulation and execution states
 LP_state **LPS = NULL;
@@ -163,6 +166,10 @@ void scheduler_fini(void) {
 * @param args arguments passed to the LP main loop. Currently, this is not used.
 */
 static void LP_main_loop(void *args) {
+	#ifdef EXTRA_CHECKS
+	unsigned long long hash1, hash2;
+	hash1 = hash2 = 0;
+	#endif
 
 	(void)args; // this is to make the compiler stop complaining about unused args
 
@@ -173,6 +180,12 @@ static void LP_main_loop(void *args) {
 
 	while(true) {
 
+		#ifdef EXTRA_CHECKS
+		if(current_evt->size > 0) {
+			hash1 = XXH64(current_evt->event_content, current_evt->size, current_lp);
+		}
+		#endif
+
 		// Process the event
 		timer event_timer;
 		timer_start(event_timer);
@@ -180,6 +193,16 @@ static void LP_main_loop(void *args) {
 		ProcessEvent[current_lp](LidToGid(current_lp), current_evt->timestamp, current_evt->type, current_evt->event_content, current_evt->size, current_state);
 
 		int delta_event_timer = timer_value_micro(event_timer);
+
+		#ifdef EXTRA_CHECKS
+		if(current_evt->size > 0) {
+			hash2 = XXH64(current_evt->event_content, current_evt->size, current_lp);
+		}
+
+		if(hash1 != hash2) {
+                        rootsim_error(true, "Error, LP %d has modified the payload of event %d during its processing. Aborting...\n", current_lp, current_evt->type);
+		}
+		#endif
 
 		statistics_post_lp_data(current_lp, STAT_EVENT, 1.0);
 		statistics_post_lp_data(current_lp, STAT_EVENT_TIME, delta_event_timer);
