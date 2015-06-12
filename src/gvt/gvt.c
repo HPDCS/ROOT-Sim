@@ -217,6 +217,11 @@ simtime_t gvt_operations(void) {
 			process_bottom_halves();
 
 			for(i = 0; i < n_prc_per_thread; i++) {
+				if(LPS_bound[i]->bound == NULL) {
+					local_min[tid] = 0.0;
+					break;
+				}
+
 				local_min[tid] = min(local_min[tid], LPS_bound[i]->bound->timestamp);
 			}
 			my_phase = phase_send;	// Entering phase send
@@ -237,6 +242,11 @@ simtime_t gvt_operations(void) {
 			process_bottom_halves();
 
 			for(i = 0; i < n_prc_per_thread; i++) {
+				if(LPS_bound[i]->bound == NULL) {
+					local_min[tid] = 0.0;
+					break;
+				}
+
 				local_min[tid] = min(local_min[tid], LPS_bound[i]->bound->timestamp);
 			}
 

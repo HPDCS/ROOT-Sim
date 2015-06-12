@@ -120,7 +120,7 @@ void ParallelScheduleNewEvent(unsigned int gid_receiver, simtime_t timestamp, un
 	}
 
 	if(event_size > MAX_EVENT_SIZE) {
-		rootsim_error(true, "Event size exceeds MAX_EVENT_SIZE: %d\n", event_size);
+		rootsim_error(true, "Event size (%d) exceeds MAX_EVENT_SIZE\n", event_size);
 	}
 
 	if (event_content != NULL) {

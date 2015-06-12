@@ -101,7 +101,6 @@ void scheduler_init(void) {
 	LPS = (LP_state **)rsalloc(n_prc * sizeof(LP_state *));
 	for (i = 0; i < n_prc; i++) {
 		LPS[i] = (LP_state *)rsalloc(sizeof(LP_state));
-		memset(LPS[i], 'x', sizeof(LP_state));
 		bzero(LPS[i], sizeof(LP_state));
 	}
 
