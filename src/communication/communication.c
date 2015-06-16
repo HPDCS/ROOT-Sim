@@ -321,9 +321,10 @@ int messages_checking(void) {
 */
 void insert_outgoing_msg(msg_t *msg) {
 
-	// Sanity check
-	if(LPS[current_lp]->outgoing_buffer.size == MAX_OUTGOING_MSG){
-		rootsim_error(true, "Outgoing message queue full! Too many events scheduled by one single event. Aborting...");
+	// If the model is generating many events at the same time, reallocate the outgoing buffer
+	if(LPS[current_lp]->outgoing_buffer.size == LPS[current_lp]->outgoing_buffer.max_size){
+		LPS[current_lp]->outgoing_buffer.max_size *= 2;
+		LPS[current_lp]->outgoing_buffer.outgoing_msgs = rsrealloc(LPS[current_lp]->outgoing_buffer.outgoing_msgs, sizeof(msg_t) * LPS[current_lp]->outgoing_buffer.max_size);
 	}
 
 	// Message structure was declared on stack in ScheduleNewEvent: make a copy!

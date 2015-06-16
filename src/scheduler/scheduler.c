@@ -102,6 +102,10 @@ void scheduler_init(void) {
 	for (i = 0; i < n_prc; i++) {
 		LPS[i] = (LP_state *)rsalloc(sizeof(LP_state));
 		bzero(LPS[i], sizeof(LP_state));
+
+		// Allocate memory for the outgoing buffer 
+		LPS[i]->outgoing_buffer.max_size = INIT_OUTGOING_MSG;
+		LPS[i]->outgoing_buffer.outgoing_msgs = rsalloc(sizeof(msg_t) * INIT_OUTGOING_MSG);
 	}
 
 	// Initialize the INIT barrier
