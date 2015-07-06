@@ -67,7 +67,7 @@ void unrecoverable_fini(void) {
 	unsigned int i, j;
 	malloc_area *current_area;
 	
-	for(i = 0; i < n_prc; i++) {
+/*	for(i = 0; i < n_prc; i++) {
 		for (j = 0; j < (unsigned int)unrecoverable_state[i]->num_areas; j++) {
 			current_area = &(unrecoverable_state[i]->areas[j]);
 			if (current_area != NULL) {
@@ -80,22 +80,42 @@ void unrecoverable_fini(void) {
 		rsfree(unrecoverable_state[i]);
 	}
 	rsfree(unrecoverable_state);
+*/
 }
 
 
 
 void *umalloc(unsigned int lid, size_t s) {
-	void *ptr;
-	ptr = do_malloc(lid, unrecoverable_state[lid], s);
-	if(ptr == NULL) {
-		abort();
-	}
-	return ptr;
+	if(rootsim_config.serial)
+		return rsalloc(s);
+
+	#ifdef HAVE_PARALLEL_ALLOCATOR
+	if(rootsim_config.disable_allocator)
+		return rsalloc(s);
+
+	return do_malloc(lid, unrecoverable_state[lid], s);
+	#else
+	return rsalloc(s);
+	#endif
 }
 
 
 void ufree(unsigned int lid, void *ptr) {
+	if(rootsim_config.serial) {
+		rsfree(ptr);
+		return;
+	}
+
+	#ifdef HAVE_PARALLEL_ALLOCATOR
+	if(rootsim_config.disable_allocator) {
+		rsfree(ptr);
+		return;
+	}
+
 	do_free(lid, unrecoverable_state[lid], ptr);
+	#else
+	rsfree(ptr);
+	#endif
 }
 
 

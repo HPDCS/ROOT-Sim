@@ -11,7 +11,6 @@ m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 
 
 
-
 # Debugging symbols or not?
 CFLAGS="-O3 -lm -U_FORTIFY_SOURCE"
 AC_ARG_ENABLE([debug],
@@ -54,6 +53,7 @@ AC_PROG_CC_C_O
 AM_PROG_CC_C_O
 m4_ifdef([AM_PROG_AR], [AM_PROG_AR])
 AM_PROG_AR
+AM_PROG_AS
 LT_INIT
 
 
@@ -92,28 +92,6 @@ case "${host_cpu}" in
 esac
 
 
-# If we are on a NUMA system, try to use the NUMA subsystem
-AC_CHECK_LIB(numa, numa_num_possible_nodes, [numa_cv_libnuma=yes], [numa_cv_libnuma=no])
-AC_CHECK_HEADER(numa.h, [numa_cv_numa_h=yes], [numa_cv_numa_h=no])
-AC_CHECK_PROG([numactl],[numactl],[yes],[no])
-ac_have_numa=no
-
-if test "x$numa_cv_libnuma" = "xyes" -a "x$numa_cv_numa_h" = "xyes" -a "x$numactl" = "xyes"
-then
-        #
-        # We have found everything that we need, but the user can disable the subsystem
-        #
-
-	AC_ARG_ENABLE([numa],
-	AS_HELP_STRING([--disable-numa], [Disable NUMA subsystem on NUMA machines (enabled by default)]))
-	ac_have_numa=yes
-
-	AS_IF([test "x$enable_numa" != "xno"], [
-		AC_DEFINE([HAVE_NUMA])
-		ac_have_numa=no
-		CFLAGS="$CFLAGS -lnuma"
-	])
-fi
 
 
 #----------------------------------------------------------------------------
@@ -274,6 +252,60 @@ AS_IF([test "x$enable_ult" != "xno"], [
 ])
 
 
+# If our libtimestretch library is installed, then we can use Preemptive Time Warp
+AC_CHECK_LIB(timestretch, ts_start, [libtimestretch=yes], [libtimestretch=no])
+ac_preemption=no
+if test "x$libtimestretch" = "xyes" -a "x$enable_ult" != "xno"
+then
+        #
+        # We have found everything that we need, but the user can disable the subsystem
+        #
+
+	AC_ARG_ENABLE([preemption],
+	AS_HELP_STRING([--disable-preemption], [Disable Preemptive Time Warp)]))
+
+	AS_IF([test "x$enable_preemption" != "xno"], [
+		AC_DEFINE([HAVE_PREEMPTION])
+		ac_have_preemption=yes
+		CFLAGS="$CFLAGS -ltimestretch"
+	])
+fi
+
+
+
+# Custom Parallel Allocator can be disabled, to fallback to standard malloc library
+AC_ARG_ENABLE([allocator],
+AS_HELP_STRING([--disable-allocator], [Disable Parallel Allocator (Enabled by default)]))
+
+AS_IF([test "x$enable_allocator" != "xno"], [
+        AC_DEFINE([HAVE_PARALLEL_ALLOCATOR])
+        ac_have_parallel_allocator=yes
+])
+
+
+
+# If we are on a NUMA system, try to use the NUMA subsystem
+AC_CHECK_LIB(numa, numa_num_possible_nodes, [numa_cv_libnuma=yes], [numa_cv_libnuma=no])
+AC_CHECK_HEADER(numa.h, [numa_cv_numa_h=yes], [numa_cv_numa_h=no])
+AC_CHECK_PROG([numactl],[numactl],[yes],[no])
+ac_have_numa=no
+
+if test "x$numa_cv_libnuma" = "xyes" -a "x$numa_cv_numa_h" = "xyes" -a "x$numactl" = "xyes" -a "x$ac_have_parallel_allocator" = "xyes"
+then
+        #
+        # We have found everything that we need, but the user can disable the subsystem
+        #
+
+	AC_ARG_ENABLE([numa],
+	AS_HELP_STRING([--disable-numa], [Disable NUMA subsystem on NUMA machines (enabled by default)]))
+
+	AS_IF([test "x$enable_numa" != "xno"], [
+		AC_DEFINE([HAVE_NUMA])
+		ac_have_numa=yes
+		CFLAGS="$CFLAGS -lnuma"
+	])
+fi
+
 
 
 #----------------------------------------------------------------------------
@@ -346,10 +378,19 @@ else
 fi
 
 
+# Compose the message regarding the Parallel Allocator
+if test "x$ac_have_parallel_allocator" = "xyes"
+then
+	ac_parallel_allocator="Enabled (By default, use --disable-parallel-allocator if not wanted)"
+else
+	ac_parallel_allocator="Disabled (manually excluded)"
+fi
+
+
 # Compose the message regarding the NUMA subsystem
 if test "x$ac_have_numa" = "xyes"
 then
-	numa_subsystem="Enabled (enabled by default on NUMA machines, use --disable-numa if not wanted"
+	numa_subsystem="Enabled (by default on NUMA machines, use --disable-numa if not wanted)"
 else
 	numa_subsystem="Disabled ("
 	if test "x$numa_cv_libnuma" = "xno"
@@ -373,7 +414,35 @@ else
 	then
 		numa_subsystem="Disabled (manually excluded)"
 	fi
+
+	if test "x$ac_have_parallel_allocator" != "xyes"
+	then
+		numa_subsystem="Disabled (Parallel Allocator is required)"
+
+	fi
 fi
+
+
+# Compose the message regarding Preemptive Time Warp
+if test "x$ac_have_preemption" = "xyes"
+then
+	ac_preemption="Enabled (by default with libtimestretch, use --disable-preemption if not wanted)"
+else
+	ac_preemption="Disabled"
+	if test "x$enable_ult" = "xno"
+	then
+		ac_preemption="${ac_preemption} (User-Level Threads are necessary)"
+	else
+		if test "x$libtimestretch" = "xyes"
+		then
+			ac_preemption="${ac_preemption} by the user"
+		else
+			ac_preemption="${ac_preemption} (libtimestretch not found)"
+		fi
+	fi
+fi
+
+
 
 cat<<EOF
 
@@ -384,7 +453,9 @@ CPU Architecture.......... : ${current_cpu}
 Operating System.......... : ${host_os}
 Debugging Support......... : ${enable_debug}
 User-Level Threads........ : ${ac_enable_ult}
+Parallel Allocator........ : ${ac_parallel_allocator}
 NUMA Subsystem............ : ${numa_subsystem}
+LP Preemption Support..... : ${ac_preemption}
 
 
 EOF

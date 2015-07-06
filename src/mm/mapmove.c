@@ -29,6 +29,7 @@
 #include <sys/mman.h>
 #include <errno.h>
 #include <pthread.h>
+#include <stdbool.h>
 
 #ifdef HAVE_NUMA
 #include <numaif.h>
@@ -36,6 +37,7 @@
 #endif
 
 
+#include <arch/atomic.h>
 #include <core/core.h>
 #include <mm/allocator.h>
 #include <mm/mapmove.h>
@@ -43,6 +45,9 @@
 
 
 #ifdef HAVE_NUMA
+
+//#define NUM_DAEMONS n_cores
+#define NUM_DAEMONS 32
 
 #define AUDIT if(0)
 
@@ -56,8 +61,8 @@ int   status[MAX_SEGMENT_SIZE];
 
 
 extern int handled_sobjs;
-mem_map* daemonmaps;
-map_move* daemonmoves;
+mem_map  *daemonmaps;
+map_move *daemonmoves;
 
 __thread int lastlocked;
 
@@ -69,7 +74,7 @@ void set_daemon_maps(mem_map* argA, map_move* argB){
 
 int init_move(int sobjs){
 	
-	unsigned int i;
+	unsigned long i;
 	int ret;
 	pthread_t daemon_tid;
 
@@ -82,7 +87,7 @@ int init_move(int sobjs){
 		daemonmoves[i].target_node = 0;
         }
 
-	for (i=0; i<n_cores; i++){
+	for (i=0; i<NUM_DAEMONS; i++){
 
 		ret = pthread_create(&daemon_tid, NULL, background_work, (void*)i);	
 
@@ -200,30 +205,30 @@ void move_BH(int sobj, unsigned numa_node){
 
 
 void *background_work(void *me) {
-	int sobj;
+	long long sobj;
 	int node;
 
 
 	while(1){
 
 		sleep(SLEEP_PERIOD);
-		
+
 		AUDIT
 		printf("RS numa daemon wakeup\n");
 
 
-		for(sobj = (unsigned int)me; sobj < handled_sobjs; sobj = sobj + n_cores){
+		for(sobj = (long long)me; sobj < handled_sobjs; sobj = sobj + n_cores){
 
 			lock(sobj);
 			node = verify(sobj);
 			if(unlikelynew(node)) move_sobj(sobj,node);
 			unlock(sobj);
 
-	 	}	
+	 	}
 	}
-
 }
- int verify(int sobj){
+
+int verify(int sobj){
 
 	int node;
 
@@ -250,6 +255,37 @@ int move_request(int sobj, int numa_node){
 	unlock(sobj);
 
 	return SUCCESS;
+}
+
+
+int lock(int sobj){
+
+        if( (sobj < 0)||(sobj>=handled_sobjs) ) goto bad_lock; 
+
+	pthread_spin_lock(&(daemonmoves[sobj].spinlock));
+
+	lastlocked = sobj;
+
+	return SUCCESS;
+
+bad_lock:
+
+	return FAILURE;
+}
+
+int unlock(int sobj){
+
+        if( (sobj < 0)||(sobj>=handled_sobjs) ) goto bad_unlock; 
+
+	if( sobj != lastlocked ) goto bad_unlock;
+
+	pthread_spin_unlock(&(daemonmoves[sobj].spinlock));
+
+	return SUCCESS;
+
+bad_unlock:
+
+	return FAILURE;
 }
 
 

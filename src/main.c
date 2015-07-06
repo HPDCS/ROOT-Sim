@@ -72,6 +72,11 @@ static bool end_computing(void) {
 	return false;
 }
 
+#ifdef HAVE_PREEMPTION
+extern atomic_t preempt_count;
+extern atomic_t overtick_platform;
+extern atomic_t would_preempt;
+#endif
 
 /**
 * This function implements the main simulation loop
@@ -79,6 +84,7 @@ static bool end_computing(void) {
 * @param arg This argument should be always set to NULL
 *
 * @author Francesco Quaglia
+* @author Alessandro Pellegrini
 */
 static void *main_simulation_loop(void *arg) __attribute__ ((noreturn));
 static void *main_simulation_loop(void *arg) {
@@ -120,7 +126,11 @@ static void *main_simulation_loop(void *arg) {
 		// Only a master thread on master kernel prints the time barrier
 		if (master_kernel() && master_thread () && D_DIFFER(my_time_barrier, -1.0)) {
 			if (rootsim_config.verbose == VERBOSE_INFO || rootsim_config.verbose == VERBOSE_DEBUG) {
+				#ifdef HAVE_PREEMPTION
+				printf("TIME BARRIER %f - %d preemptions - %d in platform mode - %d would preempt\n", my_time_barrier, atomic_read(&preempt_count), atomic_read(&overtick_platform), atomic_read(&would_preempt));
+				#else
 				printf("TIME BARRIER %f\n", my_time_barrier);
+				#endif
 				fflush(stdout);
 			}
 		}

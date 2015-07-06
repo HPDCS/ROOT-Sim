@@ -22,6 +22,16 @@
 #include <core/timer.h>
 
 
+#define GVT_BUFF_SIZE	2048
+
+struct _gvt_buffer {
+	unsigned int pos;
+	char buff[GVT_BUFF_SIZE];
+};
+
+
+/// This structure is used to buffer statistics gathered on GVT computation
+__thread struct _gvt_buffer gvt_buffer;
 
 /// This is a timer that start during the initialization of statistics subsystem and can be used to know the total simulation time
 timer simulation_timer;
@@ -237,6 +247,17 @@ static char *format_size(double size) {
 }
 
 
+static inline statistics_flush_gvt_buffer(void) {
+	FILE *f;
+
+	f = get_file(STAT_PER_THREAD, GVT_STAT);
+	fprintf(f, gvt_buffer.buff);
+	fflush(f);
+	gvt_buffer.pos = 0;
+	gvt_buffer.buff[0] = '\0';
+}
+
+
 /**
 * This function print in the output file all the statistics associated with the simulation
 *
@@ -309,6 +330,9 @@ void statistics_stop(int exit_code) {
 			timer_start(simulation_finished);
 			total_time = timer_value_seconds(simulation_timer);
 		}
+		
+		/* Finish flushing GVT statistics */
+		statistics_flush_gvt_buffer();
 
 		/* dump per-LP statistics if required. They are already reduced during the GVT phase */
 
@@ -519,12 +543,12 @@ void statistics_stop(int exit_code) {
 
 
 static inline void statistics_flush_gvt(double gvt) {
-
-	FILE *f;
 	register unsigned int i;
 	unsigned int committed = 0;
 	static __thread unsigned int cumulated = 0;
 	double exec_time;
+	char gvt_line[512];
+	int gvt_line_len;
 
 	// Dump on file only if required
 	if( rootsim_config.stats != STATS_ALL && rootsim_config.stats != STATS_PERF) {
@@ -539,11 +563,18 @@ static inline void statistics_flush_gvt(double gvt) {
 	}
 	cumulated += committed;
 
-	// If we are using a higher level of statistics, dump data on file
+	// If we are using a higher level of statistics, buffer data and eventually dump on file
 	if(rootsim_config.stats == STATS_PERF || rootsim_config.stats == STATS_LP || rootsim_config.stats ==  STATS_ALL) {
-		f = get_file(STAT_PER_THREAD, GVT_STAT);
-		fprintf(f, "%f\t%f\t%d\t%d\n", exec_time, gvt, committed, cumulated);
-		fflush(f);
+
+		snprintf(gvt_line, 512, "%f\t%f\t%d\t%d\n\0", exec_time, gvt, committed, cumulated);
+		gvt_line_len = strlen(gvt_line);
+
+		if(gvt_buffer.pos + gvt_line_len > GVT_BUFF_SIZE - 2) {
+			statistics_flush_gvt_buffer();
+		}
+
+		strcat(gvt_buffer.buff, gvt_line);
+		gvt_buffer.pos += gvt_line_len;
 	}
 }
 
@@ -821,7 +852,6 @@ double statistics_get_data(unsigned int type, double data) {
 
 		case STAT_GET_EVENT_TIME_LP:
 			ret = lp_stats[(int)data].exponential_event_time;
-			printf("event average for %d: %f\n", (int)data, ret);
 			break;
 
 		default:

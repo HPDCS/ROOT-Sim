@@ -24,6 +24,7 @@
 */
 
 
+
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -32,6 +33,7 @@
 
 #ifdef HAVE_NUMA
 #include <numaif.h>
+#include <mm/mapmove.h>
 #endif
 
 #include <mm/dymelor.h>
@@ -52,6 +54,23 @@ map_move moves[MAX_SOBJS];
 int handled_sobjs = -1;
 
 
+char *allocate_pages(int num_pages) {
+	
+        char* page;
+
+        page = (char*)mmap((void*)NULL, num_pages * PAGE_SIZE, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, 0,0);
+
+	if (page == MAP_FAILED) {
+		goto bad_allocate_page;
+	}
+
+	return page;
+
+ bad_allocate_page:
+
+	return NULL;
+}
+
 
 void audit(void) {
 
@@ -67,7 +86,7 @@ void audit_map(unsigned int sobj){
 	mdt_entry* mdte;
 	int i;
 		
-	if( (sobj>=handled_sobjs) ){
+	if( (sobj >= handled_sobjs) ){
 		printf("audit request on invalid sobj\n");
 		return ; 
 	}
@@ -124,7 +143,7 @@ static int query_numa_node(int id){
 	#undef BUFF_SIZE
 }
 
-static int setup_numa_nodes(void) {
+static void setup_numa_nodes(void) {
 
 	unsigned int i;
 
@@ -141,35 +160,6 @@ int get_numa_node(int core) {
 	return numa_nodes[core];
 }
 
-int lock(int sobj){
-
-        if( (sobj < 0)||(sobj>=handled_sobjs) ) goto bad_lock; 
-
-	pthread_spin_lock(&(daemonmoves[sobj].spinlock));
-
-	lastlocked = sobj;
-
-	return SUCCESS;
-
-bad_lock:
-
-	return FAILURE;
-}
-
-int unlock(int sobj){
-
-        if( (sobj < 0)||(sobj>=handled_sobjs) ) goto bad_unlock; 
-
-	if( sobj != lastlocked ) goto bad_unlock;
-
-	pthread_spin_unlock(&(daemonmoves[sobj].spinlock));
-
-	return SUCCESS;
-
-bad_unlock:
-
-	return FAILURE;
-}
 #endif /* HAVE_NUMA */
 
 void* allocate_segment(unsigned int sobj, size_t size) {
@@ -242,22 +232,6 @@ bad_allocate:
 
 }
 
-char *allocate_pages(int num_pages) {
-	
-        char* page;
-
-        page = (char*)mmap((void*)NULL, num_pages * PAGE_SIZE, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, 0,0);
-
-	if (page == MAP_FAILED) {
-		goto bad_allocate_page;
-	}
-
-	return page;
-
- bad_allocate_page:
-
-	return NULL;
-}
 
 char* allocate_page(void) {
 	return allocate_pages(1);
@@ -362,3 +336,4 @@ int allocator_init(unsigned int sobjs) {
 bad_init:
 	return INIT_ERROR; 
 }
+

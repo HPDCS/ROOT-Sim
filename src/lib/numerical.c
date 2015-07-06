@@ -38,21 +38,14 @@
 #include <mm/dymelor.h>
 #include <core/core.h>
 #include <scheduler/process.h>
+#include <scheduler/scheduler.h>
 #include <statistics/statistics.h> // To have _mkdir helper function
 
 
 static seed_type master_seed;
 
 
-/**
-* This function returns a number in between (0,1), according to a Uniform Distribution.
-* It is based on Multiply with Carry by George Marsaglia
-*
-* @author Alessandro Pellegrini
-* @return A random number, in between (0,1)
-* @date 05 sep 2013
-*/
-double Random(void) {
+static double do_random(void) {
 
 	uint32_t *seed1;
 	uint32_t *seed2;
@@ -71,6 +64,26 @@ double Random(void) {
 	// The magic number below is 1/(2^32 + 2).
     	// The result is strictly between 0 and 1.
 	return (((*seed1 << 16u) + (*seed1 >> 16u) + *seed2) + 1.0) * 2.328306435454494e-10;
+
+}
+
+
+/**
+* This function returns a number in between (0,1), according to a Uniform Distribution.
+* It is based on Multiply with Carry by George Marsaglia
+*
+* @author Alessandro Pellegrini
+* @return A random number, in between (0,1)
+* @date 05 sep 2013
+*/
+double Random(void) {
+	double ret;
+	switch_to_platform_mode();
+
+	ret = do_random();
+
+	switch_to_application_mode();
+	return ret;
 }
 
 
@@ -78,13 +91,25 @@ double Random(void) {
 
 
 int RandomRange(int min, int max) {
-	return (int)floor(Random() * (max - min + 1)) + min;
+	double ret;
+	switch_to_platform_mode();
+
+	ret = (int)floor(do_random() * (max - min + 1)) + min;
+
+	switch_to_application_mode();
+	return ret;
 }
 
 
 
 int RandomRangeNonUniform(int x, int min, int max) {
-      return (((RandomRange(0, x) | RandomRange(min, max))) % (max - min + 1)) + min;
+	double ret;
+	switch_to_platform_mode();
+
+	ret = (((RandomRange(0, x) | RandomRange(min, max))) % (max - min + 1)) + min;
+
+	switch_to_application_mode();
+	return ret;
 }
 
 
@@ -99,13 +124,17 @@ int RandomRangeNonUniform(int x, int min, int max) {
 * @date 3/16/2011
 */
 double Expent(double mean) {
+	double ret;
+	switch_to_platform_mode();
 
 	if(mean < 0) {
-		fprintf(stderr, "Error: in call to Expent() passed a negative mean value\n");
-		abort();
+		rootsim_error(true, "Expent() has been passed a negative mean value\n");
 	}
 
-	return (-mean * log(1 - Random()));
+	ret = (-mean * log(1 - do_random()));
+
+	switch_to_application_mode();
+	return ret;
 }
 
 

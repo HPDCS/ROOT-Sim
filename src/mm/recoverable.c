@@ -34,6 +34,7 @@
 #include <core/core.h>
 #include <mm/dymelor.h>
 #include <scheduler/process.h>
+#include <scheduler/scheduler.h>
 
 
 /// Recoverable memory state for LPs
@@ -73,7 +74,11 @@ void recoverable_fini(void) {
 			current_area = &(recoverable_state[i]->areas[j]);
 			if (current_area != NULL) {
 				if (current_area->self_pointer != NULL) {
+					#ifdef HAVE_PARALLEL_ALLOCATOR
 					pool_release_memory(i, current_area->self_pointer);
+					#else
+					rsfree(current_area->self_pointer);
+					#endif
 				}
 			}
 		}
@@ -224,7 +229,20 @@ size_t get_log_size(malloc_state *logged_state){
 *
 */
 void *__wrap_malloc(size_t size) {
-	return do_malloc(current_lp, recoverable_state[current_lp], size);
+	void *ptr;
+
+	switch_to_platform_mode();
+
+	if(rootsim_config.serial) {
+		ptr = rsalloc(size);
+		goto out;
+	}
+
+	ptr = do_malloc(current_lp, recoverable_state[current_lp], size);
+
+    out:
+	switch_to_application_mode();
+	return ptr;
 }
 
 /**
@@ -246,7 +264,17 @@ void *__wrap_malloc(size_t size) {
 *
 */
 void __wrap_free(void *ptr) {
+	switch_to_platform_mode();
+
+	if(rootsim_config.serial) {
+		rsfree(ptr);
+		goto out;
+	}
+
 	do_free(current_lp, recoverable_state[current_lp], ptr);
+
+    out:
+	switch_to_application_mode();
 }
 
 
@@ -351,7 +379,11 @@ void clean_buffers_on_gvt(unsigned int lid, simtime_t time_barrier){
 
 			if(m_area->self_pointer != NULL) {
 
+				#ifdef HAVE_PARALLEL_ALLOCATOR
 				pool_release_memory(lid, m_area->self_pointer);
+				#else
+				rsfree(m_area->self_pointer);
+				#endif
 
 				m_area->use_bitmap = NULL;
 				m_area->dirty_bitmap = NULL;

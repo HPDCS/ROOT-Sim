@@ -34,6 +34,7 @@
 #include <queues/queues.h>
 #include <communication/communication.h>
 #include <statistics/statistics.h>
+#include <scheduler/scheduler.h>
 #include <scheduler/process.h>
 #include <datatypes/list.h>
 #include <mm/dymelor.h>
@@ -82,6 +83,8 @@ void communication_fini(void) {
 void ParallelScheduleNewEvent(unsigned int gid_receiver, simtime_t timestamp, unsigned int event_type, void *event_content, unsigned int event_size) {
 	msg_t event;
 
+	switch_to_platform_mode();
+
 	// In Silent execution, we do not send again already sent messages
 	if(LPS[current_lp]->state == LP_STATE_SILENT_EXEC) {
 		return;
@@ -90,7 +93,7 @@ void ParallelScheduleNewEvent(unsigned int gid_receiver, simtime_t timestamp, un
 	// Check whether the destination LP is out of range
 	if(gid_receiver > n_prc_tot - 1) {	// It's unsigned, so no need to check whether it's < 0
 		rootsim_error(false, "Warning: the destination LP %d is out of range. The event has been ignored\n", gid_receiver);
-		return;
+		goto out;
 	}
 
 	// Check if the associated timestamp is negative
@@ -128,6 +131,9 @@ void ParallelScheduleNewEvent(unsigned int gid_receiver, simtime_t timestamp, un
 	}
 
 	insert_outgoing_msg(&event);
+
+    out:
+	switch_to_application_mode();
 }
 
 

@@ -24,11 +24,14 @@ unsigned int smallest_timestamp_first(void) {
 
 		// Blocked LPs cannot be scheduled
 		if(is_blocked_state(LPS_bound[i]->state)) {
-			continue;
-		}
 
-		// Compute the next event's timestamp. Translate the id from the local binding to the local ID
-		evt_time = next_event_timestamp(LPS_bound[i]->lid);
+			// Consider the suspended event as the next event
+			evt_time = LPS_bound[i]->bound->timestamp;
+		} else {
+
+			// Compute the next event's timestamp. Translate the id from the local binding to the local ID
+			evt_time = next_event_timestamp(LPS_bound[i]->lid);
+		}
 
 		if(evt_time > -1) {
 			if((D_EQUAL(min_timestamp, -1)) || ((min_timestamp > -1) && (evt_time < min_timestamp))) {

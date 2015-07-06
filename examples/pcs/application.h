@@ -9,7 +9,7 @@
 
 
 #define CHECK_FADING_TIME	10
-#define COMPLETE_CALLS		1000
+#define COMPLETE_CALLS		500
 #ifndef TA
 #define TA			0.6
 #endif

@@ -45,8 +45,6 @@
 
 
 
-
-
 /**
 * This function returns the timestamp of the last executed event
 *
@@ -96,7 +94,6 @@ simtime_t next_event_timestamp(unsigned int id) {
 	return ret;
 
 }
-
 
 
 /**
@@ -149,8 +146,11 @@ msg_t *advance_to_next_event(unsigned int lid) {
 void insert_bottom_half(msg_t *msg) {
 
 	unsigned int lid = GidToLid(msg->receiver);
-	
+
 	insert_BH(lid, msg, sizeof(msg_t));
+	#ifdef HAVE_PREEMPTION
+	update_min_in_transit(LPS[lid]->worker_thread, msg->timestamp);
+	#endif
 
 	//~ spin_lock(&LPS[lid]->lock);
 	//~ (void)list_insert_tail(msg->sender, LPS[lid]->bottom_halves, msg);
@@ -168,6 +168,7 @@ void process_bottom_halves(void) {
 	unsigned int lid_receiver;
 	msg_t *msg_to_process;
 	msg_t *matched_msg;
+
 	//~ list(msg_t) processing;
 
 	for(i = 0; i < n_prc_per_thread; i++) {
@@ -179,7 +180,7 @@ void process_bottom_halves(void) {
 
 		//~ while(!list_empty(processing)) {
 			//~ msg_to_process = list_head(processing);
-		
+
 		while((msg_to_process = (msg_t *)get_BH(LPS_bound[i]->lid)) != NULL) {
 
 			lid_receiver = msg_to_process->receiver;
@@ -233,7 +234,7 @@ void process_bottom_halves(void) {
 
 						// Delete the matched message
 						list_delete_by_content(matched_msg->sender, LPS[lid_receiver]->queue_in, matched_msg);
-						
+
 						list_deallocate_node_buffer(LPS_bound[i]->lid, msg_to_process);
 					}
 
@@ -269,6 +270,16 @@ void process_bottom_halves(void) {
 		}
 		//~ rsfree(processing);
 	}
+
+	// We have processed all in transit messages.
+	// Actually, during this operation, some new in transit messages could
+	// be placed by other threads. In this case, we loose their presence.
+	// This is not a correctness error. The only issue could be that the
+	// preemptive scheme will not detect this, and some events could
+	// be in fact executed out of error.
+	#ifdef HAVE_PREEMPTION
+	reset_min_in_transit(tid);
+	#endif
 }
 
 
@@ -280,7 +291,8 @@ void process_bottom_halves(void) {
 * The two naturals are the LP gid (which is unique in the system) and a non decreasing number
 * which gets incremented (on a per-LP basis) upon each function call.
 * It's fast to calculate the mark, it's not fast to invert it. Therefore, inversion is not
-* supported at all in the code.
+* supported at all in the simulator code (but an external utility is provided for debugging purposes,
+* which can be found in src/lp_mark_inverse.c)
 *
 * @author Alessandro Pellegrini
 *
@@ -291,6 +303,5 @@ unsigned long long generate_mark(unsigned int lid) {
 	unsigned long long k1 = (unsigned long long)LidToGid(lid);
 	unsigned long long k2 = LPS[lid]->mark++;
 
-	// TODO: change / with >> 1
 	return (unsigned long long)( ((k1 + k2) * (k1 + k2 + 1) / 2) + k2 );
 }

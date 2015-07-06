@@ -57,6 +57,7 @@ extern __thread unsigned int tid;
 /// Thread barrier definition
 typedef struct {
 	int num_threads;
+	volatile int reserved;
 	atomic_t c1;
 	atomic_t c2;
 	atomic_t barr;
@@ -66,12 +67,15 @@ typedef struct {
 #define thread_barrier_reset(b)		do { \
 						(atomic_set((&b->c1), (b)->num_threads)); \
 						(atomic_set((&b->c2), (b)->num_threads)); \
+						(b->reserved = 0); \
 						(atomic_set((&b->barr), -1)); \
 					} while (0)
 
 
 extern void barrier_init(barrier_t *b, int t);
 extern bool thread_barrier(barrier_t *b);
+bool reserve_barrier(barrier_t *b);
+void release_barrier(barrier_t *b);
 
 
 #endif /* __ROOTSIM_THREAD_H */

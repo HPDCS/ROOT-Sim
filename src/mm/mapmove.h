@@ -23,11 +23,13 @@
 * @author Francesco Quaglia
 */
 
-#ifdef HAVE_NUMA
-
 #pragma once
 #ifndef _MAPMOVE_H
 #define _MAPMOVE_H
+
+#ifdef HAVE_NUMA
+
+#include <stdbool.h>
 
 #define SLEEP_PERIOD 1 //this is defined in seconds
 #define NUMA_NODES   8 //numer of handled numa nodes
@@ -37,7 +39,9 @@
 void * background_work( void* );
 int verify( int );
 void move_BH(int , unsigned );
+bool is_moving(void);
+
+#endif /* HAVE_NUMA */
 
 #endif /* _MAPMOVE_H */
 
-#endif /* HAVE_NUMA */

@@ -176,7 +176,7 @@ static inline void LP_knapsack(void) {
 		new_LPS_binding[i] = j;
 		j++;
 	}
-	
+
 	// Very suboptimal approximation of knapsack
 	for(; i < n_prc; i++) {
 		assigned = false;
@@ -186,7 +186,6 @@ static inline void LP_knapsack(void) {
 			if(assignments[j] + lp_cost[i].workload_factor <= reference_knapsack) {
 				assignments[j] += lp_cost[i].workload_factor;
 				new_LPS_binding[i] = j;
-				printf("LP %d goes to thread %d\n", i, j);
 				assigned = true;
 				break;
 			}
@@ -198,15 +197,13 @@ static inline void LP_knapsack(void) {
 
 	// Check for leftovers
 	if(i < n_prc) {
-		printf("I have %d leftovers\n", n_prc - i);
 		j = 0;
 		for( ; i < n_prc; i++) {
 			new_LPS_binding[i] = j;
-			printf("Force assigning LP %d to thread %d\n", i, j);
 			j = (j + 1) % n_cores;
 		}
 	}
-	
+
 	printf("NEW BINDING\n");
 	for(j = 0; j < n_cores; j++) {
 		printf("Thread %d: ", j);
@@ -216,10 +213,6 @@ static inline void LP_knapsack(void) {
 		}
 		printf("\n");
 	}
-
-
-	//~ LPS_bound[n_prc_per_thread++] = LPS[i];
-	//~ LPS[i]->worker_thread = tid;
 
 }
 
@@ -235,7 +228,6 @@ static void post_local_reduction(void) {
 		lp_cost[lid].workload_factor = list_sizeof(LPS[lid]->queue_in);
 		lp_cost[lid].workload_factor *= statistics_get_data(STAT_GET_EVENT_TIME_LP, lid);
 		lp_cost[lid].workload_factor /= ( list_tail(LPS[lid]->queue_in)->timestamp - list_head(LPS[lid]->queue_in)->timestamp );
-		printf("LP %d has an estimated %f workload factor\n", lid, lp_cost[lid].workload_factor);
 	}
 }
 
@@ -251,7 +243,7 @@ static void install_binding(void) {
 			LPS_bound[n_prc_per_thread++] = LPS[i];
 
 			if(tid != LPS[i]->worker_thread) {
-				
+
 				#ifdef HAVE_NUMA
 				move_request(i, get_numa_node(running_core()));
 				#endif
@@ -297,6 +289,8 @@ void rebind_LPs(void) {
 		return;
 	}
 
+	return;
+
 	if(master_thread()) {
 		if(timer_value_seconds(rebinding_timer) >= REBIND_INTERVAL) {
 			timer_restart(rebinding_timer);
@@ -316,6 +310,11 @@ void rebind_LPs(void) {
 	if(local_binding_acquire_phase < binding_acquire_phase) {
 		local_binding_acquire_phase = binding_acquire_phase;
 		install_binding();
+
+		#ifdef HAVE_PREEMPTION
+		reset_min_in_transit(tid);
+		#endif
+
 		if(thread_barrier(&all_thread_barrier)) {
 			atomic_set(&worker_thread_reduction, n_cores);
 		}
