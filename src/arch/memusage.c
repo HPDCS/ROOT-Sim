@@ -27,6 +27,8 @@
 */
 
 
+#include <mm/dymelor.h>
+
 #include <arch/memusage.h>
 
 #if defined(_WIN32)

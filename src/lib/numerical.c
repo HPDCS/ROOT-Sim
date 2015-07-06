@@ -251,8 +251,7 @@ int Zipf(double skew, int limit) {
 * @return A sanitized seed
 * @date 6 Sep 2013
 */
-
-seed_type sanitize_seed(seed_type cur_seed) {
+static seed_type sanitize_seed(seed_type cur_seed) {
 
         uint32_t *seed1 = (uint32_t *)&(cur_seed);
         uint32_t *seed2 = (uint32_t *)((char *)&(cur_seed) + (sizeof(uint32_t)));
@@ -286,7 +285,7 @@ seed_type sanitize_seed(seed_type cur_seed) {
         temp = state_orig;
 
         // The following is equivalent to % 0x464FFFFF, without using modulo
-        // operation which may be expensive on embedded targets. For
+        // operation which may be expensive on some targets. For
         // uint32_t and this divisor, it may loop up to 3 times.
         while (temp >= UINT32_C(0x464FFFFF))
                 temp -= UINT32_C(0x464FFFFF);

@@ -69,9 +69,8 @@
 #define MAX_LPs		8192		// This is 2^20
 
 /// Maximum event size (in bytes)
-#define MAX_EVENT_SIZE	1120
-//#define MAX_EVENT_SIZE	(150 * sizeof(int))
-//#define MAX_EVENT_SIZE	1500
+#define MAX_EVENT_SIZE	128
+
 
 // XXX: this should be moved somewhere else...
 #define VERBOSE_INFO	1700
@@ -143,11 +142,9 @@ typedef struct _msg_t {
 	int   			type;
 	simtime_t		timestamp;
 	simtime_t		send_time;
-	// TODO: risistemare questa cosa degli antimessaggi
 	message_kind_t		message_kind;
 	unsigned long long	mark;	/// Unique identifier of the message, used for antimessages
 	unsigned long long	rendezvous_mark;	/// Unique identifier of the message, used for rendez-vous events
-//	struct _state_t 	*is_first_event_of;
 	// Application informations
 	char event_content[MAX_EVENT_SIZE];
 	int size;

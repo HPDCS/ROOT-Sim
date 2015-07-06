@@ -18,51 +18,26 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file os.h
-* @brief This header implements OS-dependent facilities
-* @author Alessandro Pellegrini
-* @date 16 Sept 2013
+* @file mapmove.h
+* @brief 
+* @author Francesco Quaglia
 */
 
-
+#ifdef HAVE_NUMA
 
 #pragma once
-#ifndef __OS_H
-#define __OS_H
+#ifndef _MAPMOVE_H
+#define _MAPMOVE_H
 
+#define SLEEP_PERIOD 1 //this is defined in seconds
+#define NUMA_NODES   8 //numer of handled numa nodes
 
-#if defined(OS_LINUX) || defined(OS_CYGWIN)
+#define unlikelynew(x)  (x!=-1)
 
-#include <sched.h>
-#include <unistd.h>
-#include <pthread.h>
+void * background_work( void* );
+int verify( int );
+void move_BH(int , unsigned );
 
+#endif /* _MAPMOVE_H */
 
-// Macros to get information about the hosting machine
-
-#define get_cores() (sysconf( _SC_NPROCESSORS_ONLN ))
-
-
-
-// How do we identify a thread?
-typedef pthread_t tid_t;
-
-/// Spawn a new thread
-#define new_thread(entry, arg)	pthread_create(&os_tid, NULL, entry, arg)
-
-static inline void set_affinity(int core) {
-	cpu_set_t cpuset;
-	CPU_ZERO(&cpuset);
-	CPU_SET(core, &cpuset);
-	// 0 is the current thread
-	sched_setaffinity(0, sizeof(cpuset), &cpuset);
-}
-
-
-#else /* OS_LINUX || OS_CYGWIN */
-#error Currently supporting only Linux...
-#endif
-
-
-#endif /* __OS_H */
-
+#endif /* HAVE_NUMA */

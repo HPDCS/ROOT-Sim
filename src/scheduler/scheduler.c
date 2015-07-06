@@ -18,25 +18,29 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file queues.c
-* @brief
+* @file scheduler.c
+* @brief Re-entrant scheduler for LPs on worker threads
 * @author Francesco Quaglia
+* @author Alessandro Pellegrini
+* @author Roberto Vitali
 */
 
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
 
+#include <datatypes/list.h>
 #include <core/core.h>
+#include <core/init.h>
 #include <core/timer.h>
 #include <arch/atomic.h>
 #include <arch/ult.h>
 #include <arch/thread.h>
+#include <scheduler/binding.h>
 #include <scheduler/process.h>
 #include <scheduler/scheduler.h>
 #include <scheduler/stf.h>
 #include <mm/state.h>
-#include <mm/malloc.h>
 #include <mm/dymelor.h>
 #include <statistics/statistics.h>
 #include <arch/thread.h>
@@ -44,17 +48,12 @@
 #include <gvt/gvt.h>
 #include <statistics/statistics.h>
 
-#include <mm/modules/ktblmgr/ktblmgr.h>
-
 #ifdef EXTRA_CHECKS
 #include <queues/xxhash.h>
 #endif
 
 /// Maintain LPs' simulation and execution states
 LP_state **LPS = NULL;
-
-/// Each KLT has a binding towards some LPs. This is the structure used to keep track of LPs currently being handled
-__thread LP_state **LPS_bound = NULL;
 
 /// This is used to keep track of how many LPs were bound to the current KLT
 __thread unsigned int n_prc_per_thread;
@@ -70,8 +69,6 @@ __thread msg_t *current_evt;
 
 /// This global variable tells the simulator what is the LP currently being scheduled on the current worker thread
 __thread void *current_state;
-
-static barrier_t INIT_barrier;
 
 
 /*
@@ -97,6 +94,7 @@ void scheduler_init(void) {
 		}
 	}
 */
+
 	// Allocate LPS control blocks
 	LPS = (LP_state **)rsalloc(n_prc * sizeof(LP_state *));
 	for (i = 0; i < n_prc; i++) {
@@ -106,11 +104,10 @@ void scheduler_init(void) {
 		// Allocate memory for the outgoing buffer 
 		LPS[i]->outgoing_buffer.max_size = INIT_OUTGOING_MSG;
 		LPS[i]->outgoing_buffer.outgoing_msgs = rsalloc(sizeof(msg_t) * INIT_OUTGOING_MSG);
+
+		// That's the only sequentially executed place where we can set the lid
+		LPS[i]->lid = i;
 	}
-
-	// Initialize the INIT barrier
-	barrier_init(&INIT_barrier, n_cores);
-
 }
 
 
@@ -123,10 +120,11 @@ static void destroy_LPs(void) {
 		rsfree(LPS[i]->queue_out);
 		rsfree(LPS[i]->queue_states);
 		rsfree(LPS[i]->bottom_halves);
+		rsfree(LPS[i]->rendezvous_queue);
 
 		// Destroy stacks
 		#ifdef ENABLE_ULT
-		lp_free(LPS[i]->stack);
+		rsfree(LPS[i]->stack);
 		#endif
 	}
 
@@ -253,19 +251,16 @@ void initialize_LP(unsigned int lp) {
 
 	// Initially, every LP is ready
 	LPS[lp]->state = LP_STATE_READY;
-	
+
 	// There is no current state layout at the beginning
 	LPS[lp]->current_base_pointer = NULL;
 
 	// Initialize the queues
-	LPS[lp]->queue_in = new_list(msg_t);
-	LPS[lp]->queue_out = new_list(msg_hdr_t);
-	LPS[lp]->queue_states = new_list(state_t);
-	LPS[lp]->bottom_halves = new_list(msg_t);
-	LPS[lp]->rendezvous_queue = new_list(msg_t);
-
-	// Assign the local ID to the LP
-	LPS[lp]->lid = lp;
+	LPS[lp]->queue_in = new_list(lp, msg_t);
+	LPS[lp]->queue_out = new_list(lp, msg_hdr_t);
+	LPS[lp]->queue_states = new_list(lp, state_t);
+	LPS[lp]->bottom_halves = new_list(lp, msg_t);
+	LPS[lp]->rendezvous_queue = new_list(lp, msg_t);
 
 	// Initialize the LP lock
 	spinlock_init(&LPS[lp]->lock);
@@ -291,8 +286,59 @@ void initialize_LP(unsigned int lp) {
 }
 
 
+void initialize_worker_thread(void) {
+	register unsigned int t;
 
+	// Divide LPs among worker threads, for the first time here
+	rebind_LPs();
 
+	if(master_thread() && master_kernel()) {
+		printf("Initializing LPs... ");
+		fflush(stdout);
+	}
+
+	// Initialize the LP control block for each locally hosted LP
+	// and schedule the special INIT event
+	for (t = 0; t < n_prc_per_thread; t++) {
+
+		// Create user level thread for the current LP and initialize LP control block
+		initialize_LP(LPS_bound[t]->lid);
+
+		// Schedule an INIT event to the newly instantiated LP
+		msg_t init_event = {
+			sender: LidToGid(LPS_bound[t]->lid),
+			receiver: LidToGid(LPS_bound[t]->lid),
+			type: INIT,
+			timestamp: 0.0,
+			send_time: 0.0,
+			mark: generate_mark(LidToGid(LPS_bound[t]->lid)),
+			size: model_parameters.size,
+			message_kind: positive,
+		};
+
+		// Copy the relevant string pointers to the INIT event payload
+		if(model_parameters.size > 0) {
+			memcpy(init_event.event_content, model_parameters.arguments, model_parameters.size * sizeof(char *));
+		}
+
+		(void)list_insert_head(LPS_bound[t]->lid, LPS_bound[t]->queue_in, &init_event);
+		LPS_bound[t]->state_log_forced = true;
+	}
+
+	// Worker Threads synchronization barrier: they all should start working together
+	thread_barrier(&all_thread_barrier);
+
+	if(master_thread() && master_kernel())
+		printf("done\n");
+
+	register unsigned int i;
+	for(i = 0; i < n_prc_per_thread; i++) {
+		schedule();
+	}
+
+	// Worker Threads synchronization barrier: they all should start working together
+	thread_barrier(&all_thread_barrier);
+}
 
 
 
@@ -320,84 +366,16 @@ void activate_LP(unsigned int lp, simtime_t lvt, void *evt, void *state) {
 	current_evt = evt;
 	current_state = state;
 
-	// Activate memory view for the current LP
-	lp_alloc_schedule();
-
 	#ifdef ENABLE_ULT
 	context_switch(&kernel_context, &LPS[lp]->context);
 	#else
 	LP_main_loop(NULL);
 	#endif
 
-	// Deactivate memory view for the current LP if no conflict has arisen
-	if(!is_blocked_state(LPS[lp]->state)) {
-		lp_alloc_deschedule();
-	}
-
 	current_lp = IDLE_PROCESS;
 	current_lvt = -1.0;
 	current_evt = NULL;
 	current_state = NULL;
-}
-
-
-
-
-/**
-* This function is used to create a temporary binding between LPs and KLT.
-* Whenever it is invoked, the binding is recreated, depending on the specified
-* policy. Currently, only a fixed binding is implemented, so calling again this
-* function deterministically regenerates the same binding.
-*
-* @author Alessandro Pellegrini
-*/
-void rebind_LPs(void) {
-	unsigned int i, j;
-	unsigned int buf1;
-	unsigned int offset;
-	unsigned int block_leftover;
-
-	static __thread bool already_allocated = false;
-
-	// This is a guard because it's meaningless to recalculate a static
-	// LP allocation now.
-	if(already_allocated) {
-		return;
-	}
-
-	already_allocated = true;
-
-	if(LPS_bound == NULL) {
-		LPS_bound = rsalloc(sizeof(LP_state *) * n_prc);
-		bzero(LPS_bound, sizeof(LP_state *) * n_prc);
-	}
-
-	buf1 = (n_prc / n_cores);
-	block_leftover = n_prc - buf1 * n_cores;
-
-	if (block_leftover > 0) {
-		buf1++;
-	}
-
-	n_prc_per_thread = 0;
-	i = 0;
-	offset = 0;
-	while (i < n_prc) {
-		j = 0;
-		while (j < buf1) {
-			if(offset == tid) {
-				LPS_bound[n_prc_per_thread++] = LPS[i];
-				LPS[i]->worker_thread = tid;
-			}
-			i++;
-			j++;
-		}
-		offset++;
-		block_leftover--;
-		if (block_leftover == 0) {
-			buf1--;
-		}
-	}
 }
 
 
@@ -464,11 +442,6 @@ void schedule(void) {
 		rootsim_error(true, "Critical condition: LP %d seems to have events to be processed, but I cannot find them. Aborting...\n", lid);
 	}
 
-	// Manage the INIT barrier
-//	if(event->type == INIT) {
-//		thread_barrier(&INIT_barrier);
-//	}
-
 	if(!process_control_msg(event)) {
 		return;
 	}
@@ -482,7 +455,7 @@ void schedule(void) {
 		resume_execution = true;
 	}
 	#endif
-	
+
 	// Schedule the LP user-level thread
 	LPS[lid]->state = LP_STATE_RUNNING;
 	activate_LP(lid, lvt(lid), event, state);

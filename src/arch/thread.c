@@ -28,7 +28,7 @@
 #include <stdbool.h>
 #include <arch/thread.h>
 #include <core/core.h>
-#include <mm/malloc.h>
+#include <mm/dymelor.h>
 
 static tid_t os_tid;
 
@@ -69,6 +69,10 @@ static void *__helper_create_thread(void *arg) {
 
 	// ...and make it globally unique
 	tid = (kid << (sizeof(unsigned int) * 8 / 2)) | local_tid;
+
+
+	// Set the affinity on a CPU core, for increased performance
+	set_affinity(local_tid);
 
 	// Now get into the real thread's entry point
 	real_arg->start_routine(real_arg->arg);

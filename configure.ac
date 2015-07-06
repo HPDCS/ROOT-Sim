@@ -18,9 +18,11 @@ AC_ARG_ENABLE([debug],
     AS_HELP_STRING([--enable-debug], [Enable debugging of the platform]))
 
 AS_IF([test "x$enable_debug" = "xyes"], [
-	CFLAGS="-g3 -pg -Wall -Wextra -O0 -Wswitch-enum -Wcast-align -Wpointer-arith -Wstrict-overflow=5 -Wstrict-prototypes -Winline -Wundef -Wnested-externs -Wshadow -Wunreachable-code -Wfloat-equal -Wredundant-decls -Wold-style-definition -std=c99 -fno-omit-frame-pointer -ffloat-store -fno-common -fstrict-aliasing -fgnu89-inline -rdynamic -lm"
+	CFLAGS="-g3 -Wall -Wextra -O0 -Wswitch-enum -Wcast-align -Wpointer-arith -Wstrict-overflow=5 -Wstrict-prototypes -Winline -Wundef -Wnested-externs -Wshadow -Wunreachable-code -Wfloat-equal -Wredundant-decls -Wold-style-definition -std=c99 -fno-omit-frame-pointer -ffloat-store -fno-common -fstrict-aliasing -fgnu89-inline -rdynamic -lm"
 ])
 
+AC_ARG_ENABLE([profile],
+    AS_HELP_STRING([--enable-profile], [Enable profiling the platform]))
 
 # Extra check flags
 AC_ARG_ENABLE(extra-checks,
@@ -31,6 +33,9 @@ AS_IF([test "x$enable_extra_checks" = "xyes"], [
 	AC_DEFINE([EXTRA_CHECKS])
 ])
 
+AS_IF([test "x$enable_profile" = "xyes"], [
+	CFLAGS="-pg $CFLAGS"
+])
 
 #----------------------------------------------------------------------------
 # Check for languages
@@ -48,6 +53,7 @@ AC_PROG_MKDIR_P
 AC_PROG_CC_C_O
 AM_PROG_CC_C_O
 m4_ifdef([AM_PROG_AR], [AM_PROG_AR])
+AM_PROG_AR
 LT_INIT
 
 
@@ -86,11 +92,33 @@ case "${host_cpu}" in
 esac
 
 
+# If we are on a NUMA system, try to use the NUMA subsystem
+AC_CHECK_LIB(numa, numa_num_possible_nodes, [numa_cv_libnuma=yes], [numa_cv_libnuma=no])
+AC_CHECK_HEADER(numa.h, [numa_cv_numa_h=yes], [numa_cv_numa_h=no])
+AC_CHECK_PROG([numactl],[numactl],[yes],[no])
+ac_have_numa=no
+
+if test "x$numa_cv_libnuma" = "xyes" -a "x$numa_cv_numa_h" = "xyes" -a "x$numactl" = "xyes"
+then
+        #
+        # We have found everything that we need, but the user can disable the subsystem
+        #
+
+	AC_ARG_ENABLE([numa],
+	AS_HELP_STRING([--disable-numa], [Disable NUMA subsystem on NUMA machines (enabled by default)]))
+	ac_have_numa=yes
+
+	AS_IF([test "x$enable_numa" != "xno"], [
+		AC_DEFINE([HAVE_NUMA])
+		ac_have_numa=no
+		CFLAGS="$CFLAGS -lnuma"
+	])
+fi
+
 
 #----------------------------------------------------------------------------
 # Checks for C header files and libraries
 #----------------------------------------------------------------------------
-AC_CHECK_LIB([m], [log], [true], AC_MSG_FAILURE([libm not found]))
 
 # Check for POSIX thread support
 AX_PTHREAD([], [AC_MSG_ERROR([PTHREAD support not found])])
@@ -153,6 +181,7 @@ AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[]], [[
 ]])], [
 AC_DEFINE([HAVE_RDTSC])
 AC_MSG_RESULT([yes])
+ac_have_as_rdtsc=yes
 ], [
 AC_MSG_RESULT([no])
 ])
@@ -175,8 +204,8 @@ AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[]], [[
 ]])], [
 AC_DEFINE([HAVE_SSE3])
 AC_MSG_RESULT([yes])
+ac_have_as_sse3=yes
 ], [
-ac_have_as_sse3=no
 AC_MSG_RESULT([no])
 ])
 
@@ -196,6 +225,7 @@ AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[]], [[
 ]])], [
 AC_DEFINE([HAVE_SSSE3])
 AC_MSG_RESULT([yes])
+ac_have_as_ssse3=yes
 ], [
 AC_MSG_RESULT([no])
 ])
@@ -220,10 +250,10 @@ AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[]], [[
 ]])], [
 AC_DEFINE([HAVE_SSE42])
 AC_MSG_RESULT([yes])
+ac_have_as_sse42=yes
 ], [
 AC_MSG_RESULT([no])
 ])
-
 
 
 #----------------------------------------------------------------------------
@@ -240,6 +270,7 @@ AC_ARG_ENABLE([ult],
 
 AS_IF([test "x$enable_ult" != "xno"], [
   AC_DEFINE([ENABLE_ULT])
+  ac_enable_ult=yes
 ])
 
 
@@ -266,3 +297,94 @@ AC_MSG_RESULT([ok])
 AC_CONFIG_FILES([Makefile man/Makefile scripts/Makefile src/Makefile])
 AC_OUTPUT
 
+
+
+#----------------------------------------------------------------------------
+# Generate a summary of the configuration adopted on the current machine.
+# At this step, we give as well some information on how to enable/disable
+# autoconfigured stuff.
+#----------------------------------------------------------------------------
+
+# Compose the message regarding the CPU
+current_cpu="${host_cpu} (available supports: "
+if test "x$ac_have_as_rdtsc" = "xyes"
+then
+	current_cpu="${current_cpu}rdtcs "
+fi
+
+if test "x$ac_have_as_sse3" = "xyes"
+then
+	current_cpu="${current_cpu}SSE3 "
+fi
+
+if test "x$ac_have_as_ssse3" = "xyes"
+then
+	current_cpu="${current_cpu}SSSE3 "
+fi
+
+if test "x$ac_have_as_sse42" = "xyes"
+then
+	current_cpu="${current_cpu}SSE4.2 "
+fi
+current_cpu="${current_cpu})"
+
+
+# Compose the debugging message
+if test "x$enable_debug" = "xyes"
+then
+	enable_debug="Enabled"
+else
+	enable_debug="Disabled (use --enable-debug if wanted)"
+fi
+
+# Compose the ULT message
+if test "x$ac_enable_ult" = "xyes"
+then
+	ac_enable_ult="Enabled (use --disable-ult if not wanted)"
+else
+	ac_enable_ult="Disabled"
+fi
+
+
+# Compose the message regarding the NUMA subsystem
+if test "x$ac_have_numa" = "xyes"
+then
+	numa_subsystem="Enabled (enabled by default on NUMA machines, use --disable-numa if not wanted"
+else
+	numa_subsystem="Disabled ("
+	if test "x$numa_cv_libnuma" = "xno"
+	then
+		numa_subsystem="${numa_subsystem}libnuma "
+	fi
+	
+	if test "x$numa_cv_numa_h" = "xno"
+	then
+		numa_subsystem="${numa_subsystem}numa.h "
+	fi
+	
+	if test "x$numactl" = "xno" 
+	then
+		numa_subsystem="${numa_subsystem}numactl "
+	fi
+	
+	numa_subsystem="${numa_subsystem}not found)"
+	
+	if test "x$numa_cv_libnuma" = "xyes" -a "x$numa_cv_numa_h" = "xyes" -a "x$numactl" = "xyes" 
+	then
+		numa_subsystem="Disabled (manually excluded)"
+	fi
+fi
+
+cat<<EOF
+
+
+   * ROOT-Sim Configuration on Current Machine *
+
+CPU Architecture.......... : ${current_cpu}
+Operating System.......... : ${host_os}
+Debugging Support......... : ${enable_debug}
+User-Level Threads........ : ${ac_enable_ult}
+NUMA Subsystem............ : ${numa_subsystem}
+
+
+EOF

@@ -107,7 +107,7 @@ void LogState(unsigned int lid) {
 		new_state.base_pointer = LPS[lid]->current_base_pointer;
 
 		// list_insert() makes a copy of the payload
-		(void)list_insert_tail(LPS[lid]->queue_states, &new_state);
+		(void)list_insert_tail(lid, LPS[lid]->queue_states, &new_state);
 
 	}
 }
@@ -191,11 +191,11 @@ void rollback(unsigned int lid) {
 		rootsim_error(false, "I'm asked to roll back LP %d's execution, but rollback_bound is not set. Ignoring...\n", LidToGid(lid));
 		return;
 	}
-	
+
 	statistics_post_lp_data(lid, STAT_ROLLBACK, 1.0);
 
 	last_correct_event = LPS[lid]->bound;
-	
+
 	// Send antimessages
 	send_antimessages(lid, last_correct_event->timestamp);
 
@@ -206,7 +206,7 @@ void rollback(unsigned int lid) {
 		restore_state = list_prev(restore_state);
 		log_delete(s->log);
 		s->last_event = (void *)0xDEADC0DE;
-		list_delete_by_content(LPS[lid]->queue_states, s);
+		list_delete_by_content(lid, LPS[lid]->queue_states, s);
 	}
 
 	// Restore the simulation state and correct the state base pointer

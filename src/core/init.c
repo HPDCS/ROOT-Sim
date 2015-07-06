@@ -44,8 +44,7 @@
 #include <scheduler/scheduler.h>
 #include <mm/state.h>
 #include <mm/dymelor.h>
-#include <mm/malloc.h>
-#include <core/backtrace.h> // Place this after malloc.h!
+#include <core/backtrace.h>
 #include <statistics/statistics.h>
 #include <lib/numerical.h>
 #include <serial/serial.h>
@@ -53,6 +52,9 @@
 
 /// This variable keeps the executable's name
 char *program_name;
+
+/// To let the parallel initialization access the user-level command line arguments
+struct app_arguments model_parameters;
 
 
 
@@ -325,14 +327,22 @@ static int parse_cmd_line(int argc, char **argv) {
 * @param argv array of parameters passed at command line
 */
 void SystemInit(int argc, char **argv) {
-	register unsigned int t;
-	int application_args;
+	register int w;
 
 	// Parse the argument passed at command line, to initialize the internal configuration
-	application_args = parse_cmd_line(argc, argv);
-	if(application_args == -1) {
+	w = parse_cmd_line(argc, argv);
+	if(w == -1) {
 		return;
 	}
+
+	// Create a pointer to parameters which are needed by the user-level code
+	// Skip all the NULL args (if any)
+	// TODO: è ancora necessario questo? Era una patch per la shell che ora è stata eliminata
+	while (argv[w] != NULL && (argv[w][0] == '\0' || argv[w][0] == ' ')) {
+		w++;
+	}
+	model_parameters.size = argc - w;
+	model_parameters.arguments = &argv[w];
 
 	// Initialize the backtrace handler if required
 	if(rootsim_config.backtrace && master_kernel() && master_thread()) {
@@ -346,7 +356,7 @@ void SystemInit(int argc, char **argv) {
 		numerical_init();
 		dymelor_init();
 		statistics_init();
-		serial_init(argc, argv, application_args);
+		serial_init(argc, model_parameters.arguments, model_parameters.size);
 		return;
 	} else {
 		SetState = ParallelSetState;
@@ -407,53 +417,8 @@ void SystemInit(int argc, char **argv) {
 	gvt_init();
 	numerical_init();
 
-	printf("Initializing LPs... ");
-	fflush(stdout);
-
-	// Initialize the LP control block for each locally hosted LP
-	// and schedule the special INIT event
-	for (t = 0; t < n_prc; t++) {
-
-		// Create user level thread for the current LP and initialize LP control block
-		initialize_LP(t);
-
-		// We must pass the application-level args to the LP in the INIT event.
-		// Skip all the NULL args (if any)
-		int w = application_args;
-		while (argv[w] != NULL && (argv[w][0] == '\0' || argv[w][0] == ' '))
-			w++;
-
-		// Schedule an INIT event to the newly instantiated LP
-		msg_t init_event = {
-			sender: LidToGid(t),
-			receiver: LidToGid(t),
-			type: INIT,
-			timestamp: 0.0,
-			send_time: 0.0,
-			mark: generate_mark(LidToGid(t)),
-			size: argc - w,
-			message_kind: positive,
-		};
-
-		// Copy the relevant string pointers to the INIT event payload
-		if((argc - w) > 0) {
-			memcpy(init_event.event_content, &argv[w], (argc - w) * sizeof(char *));
-		}
-
-		(void)list_insert_head(LPS[t]->queue_in, &init_event);
-		LPS[t]->state_log_forced = true;
-	}
-
-	printf("done\n");
-
+	// This call tells the simulation engine that the sequential initial simulation is complete
 	initialization_complete();
-
-	// Notify the statistics subsystem that we are now starting the actual simulation
-	statistics_post_other_data(STAT_SIM_START, 1.0);
-
-	printf("****************************\n"
-               "*    Simulation Started    *\n"
-               "****************************\n");
 }
 
 

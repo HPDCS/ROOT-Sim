@@ -37,10 +37,10 @@
 #include <statistics/statistics.h>
 #include <gvt/gvt.h>
 #include <gvt/ccgs.h>
+#include <scheduler/binding.h>
 #include <scheduler/scheduler.h>
 #include <scheduler/process.h>
 #include <mm/dymelor.h>
-#include <mm/modules/ktblmgr/ktblmgr.h>
 #include <serial/serial.h>
 
 
@@ -91,8 +91,16 @@ static void *main_simulation_loop(void *arg) {
 	lp_alloc_thread_init();
 	#endif
 
-	// Worker Threads synchronization barrier: they all should start working together
-	thread_barrier(&all_thread_barrier);
+	// Do the initial (local) LP binding, then execute INIT at all (local) LPs
+	initialize_worker_thread();
+
+	// Notify the statistics subsystem that we are now starting the actual simulation
+	if(master_thread()) {
+		statistics_post_other_data(STAT_SIM_START, 1.0);
+		printf("****************************\n"
+		       "*    Simulation Started    *\n"
+		       "****************************\n");
+	}
 
 	while (!end_computing()) {
 
@@ -137,6 +145,8 @@ static void *main_simulation_loop(void *arg) {
 * @return Exit code
 */
 int main(int argc, char **argv) {
+
+	set_affinity(0);
 
 	SystemInit(argc, argv);
 

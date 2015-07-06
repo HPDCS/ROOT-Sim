@@ -15,18 +15,17 @@
 ##############################################################################
 # Global configuration variables
 ##############################################################################
-CC=@CC@
-CFLAGS=@CFLAGS@
-VERSION=@VERSION@
-ARCH=@ARCH@
-bindir=@bindir@
-libdir=@libdir@
-includedir=@includedir@
-datadir=@datadir@
-SCRIPT_LINES=@scriptlines@
-LD_DATA1_LINES=@lddata1lines@
-LD_DATA2_LINES=@lddata2lines@
-LD_FINAL_LINES=@ldfinallines@
+CC="@CC@"
+CFLAGS="@CFLAGS@"
+VERSION="@VERSION@"
+bindir="@bindir@"
+libdir="@libdir@"
+includedir="@includedir@"
+datadir="@datadir@"
+SCRIPT_LINES="@scriptlines@"
+LD_DATA1_LINES="@lddata1lines@"
+LD_DATA2_LINES="@lddata2lines@"
+LD_FINAL_LINES="@ldfinallines@"
 
 
 ##############################################################################

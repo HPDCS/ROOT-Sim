@@ -26,18 +26,14 @@
 #include <stddef.h>
 #include <stdlib.h>
 
-#include <mm/malloc.h>
+#include <mm/dymelor.h>
 #include <core/core.h>
 
 
-// TODO: inserire anche un wrapper della calloc
-
-// This code is placed within DyMeLoR library, so we must explicitly call real malloc library!
-void *__real_malloc(size_t);
-void __real_free(void *);
-void *__real_realloc(void *, size_t);
-void *__real_calloc(size_t, size_t);
-
+extern void *__real_malloc(size_t);
+extern void __real_free(void *);
+extern void *__real_realloc(void *, size_t);
+extern void *__real_calloc(size_t, size_t);
 
 inline void *rsalloc(size_t size) {
 	void *mem_block = __real_malloc(size);
