@@ -376,9 +376,10 @@ void do_free(unsigned int lid, malloc_state *mem_pool, void *ptr) {
 		return;
 	}
 
-	if(ptr == NULL){
+	if(ptr == NULL) {
 		rootsim_error(false, "Invalid pointer during free\n");
 		return;
+	}
 
 	m_area = get_area(ptr);
 	if(m_area == NULL){
