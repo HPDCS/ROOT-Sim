@@ -22,6 +22,15 @@ AS_IF([test "x$enable_debug" = "xyes"], [
 ])
 
 
+# Extra check flags
+AC_ARG_ENABLE(extra-checks,
+AC_HELP_STRING([--enable-exrta-checks],
+[Enable extra checks on models (kills performance!)]),
+[enable_extra_checks=$enableval],[enable_extra_checks=no])
+AS_IF([test "x$enable_extra_checks" = "xyes"], [
+	AC_DEFINE([EXTRA_CHECKS])
+])
+
 
 #----------------------------------------------------------------------------
 # Check for languages

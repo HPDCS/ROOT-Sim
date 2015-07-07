@@ -54,13 +54,10 @@
 * @return The timestamp of the last executed event
 */
 simtime_t last_event_timestamp(unsigned int lid) {
-	simtime_t ret;
+	simtime_t ret = 0.0;
 
 	if (LPS[lid]->bound != NULL) {
 		ret = LPS[lid]->bound->timestamp;
-	} else {
-		// Ok, no bound: this means that the LP has not even executed INIT. We force the timestamp to 0!
-		ret = 0.0;
 	}
 
 	return ret;
@@ -90,7 +87,7 @@ simtime_t next_event_timestamp(unsigned int id) {
 		if(evt != NULL) {
 			ret = evt->timestamp;
 		} else {
-			ret = INFTY;
+			ret = -1;
 		}
 	}
 

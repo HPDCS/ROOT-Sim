@@ -75,13 +75,14 @@ enum _control_msgs {
 
 
 
-#define MAX_OUTGOING_MSG	50
+#define INIT_OUTGOING_MSG	10
 
 
 /// This structure is used by the communication subsystem to handle outgoing messages
 typedef struct _outgoing_t {
-	msg_t outgoing_msgs[MAX_OUTGOING_MSG];
+	msg_t *outgoing_msgs;
 	unsigned int size;
+	unsigned int max_size;
 	simtime_t *min_in_transit;
 } outgoing_t;
 

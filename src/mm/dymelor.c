@@ -723,14 +723,14 @@ void __wrap_free(void *ptr) {
 	}
 
 	if(ptr == NULL){
-		rootsim_error(false, "Invalid pointer during free");
+		rootsim_error(false, "Invalid pointer during free\n");
 		return;
 	}
 
 
 	m_area = get_area(ptr);
 	if(m_area == NULL){
-		rootsim_error(false, "Invalid pointer during free: malloc_area NULL");
+		rootsim_error(false, "Invalid pointer during free: malloc_area NULL\n");
 		return;
 	}
 

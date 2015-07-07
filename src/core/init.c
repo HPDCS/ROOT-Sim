@@ -144,6 +144,10 @@ static int parse_cmd_line(int argc, char **argv) {
 					rootsim_error(true, "Demanding %d cores, which are more than available (%d)\n", n_cores, get_cores());
 					return -1;
 				}
+				if(n_cores <= 0) {
+					rootsim_error(true, "Demanding a non-positive number of cores\n");
+					return -1;
+				}
 				break;
 
 			case OPT_OUTPUT_DIR:

@@ -69,8 +69,9 @@
 #define MAX_LPs		8192		// This is 2^20
 
 /// Maximum event size (in bytes)
-//#define MAX_EVENT_SIZE	128
-#define MAX_EVENT_SIZE	(110 * sizeof(int))
+#define MAX_EVENT_SIZE	1120
+//#define MAX_EVENT_SIZE	(150 * sizeof(int))
+//#define MAX_EVENT_SIZE	1500
 
 // XXX: this should be moved somewhere else...
 #define VERBOSE_INFO	1700

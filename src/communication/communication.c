@@ -98,6 +98,12 @@ void ParallelScheduleNewEvent(unsigned int gid_receiver, simtime_t timestamp, un
 		rootsim_error(true, "LP %d is trying to generate an event (type %d) to %d in the past! (Current LVT = %f, generated event's timestamp = %f) Aborting...\n", current_lp, event_type, gid_receiver, lvt(current_lp), timestamp);
 	}
 
+        // Check if the event type is mapped to an internal control message
+        if(event_type >= MIN_VALUE_CONTROL) {
+                rootsim_error(true, "LP %d is generating an event with type %d which is a reserved type. Switch event type to a value less than %d. Aborting...\n", current_lp, event_type, MIN_VALUE_CONTROL);
+        }
+
+
 	// Copy all the information into the event structure
 	bzero(&event, sizeof(msg_t));
 	event.sender = LidToGid(current_lp);
@@ -114,7 +120,7 @@ void ParallelScheduleNewEvent(unsigned int gid_receiver, simtime_t timestamp, un
 	}
 
 	if(event_size > MAX_EVENT_SIZE) {
-		rootsim_error(true, "Event size exceeds MAX_EVENT_SIZE: %d\n", event_size);
+		rootsim_error(true, "Event size (%d) exceeds MAX_EVENT_SIZE\n", event_size);
 	}
 
 	if (event_content != NULL) {
@@ -315,9 +321,10 @@ int messages_checking(void) {
 */
 void insert_outgoing_msg(msg_t *msg) {
 
-	// Sanity check
-	if(LPS[current_lp]->outgoing_buffer.size == MAX_OUTGOING_MSG){
-		rootsim_error(true, "Outgoing message queue full! Too many events scheduled by one single event. Aborting...");
+	// If the model is generating many events at the same time, reallocate the outgoing buffer
+	if(LPS[current_lp]->outgoing_buffer.size == LPS[current_lp]->outgoing_buffer.max_size){
+		LPS[current_lp]->outgoing_buffer.max_size *= 2;
+		LPS[current_lp]->outgoing_buffer.outgoing_msgs = rsrealloc(LPS[current_lp]->outgoing_buffer.outgoing_msgs, sizeof(msg_t) * LPS[current_lp]->outgoing_buffer.max_size);
 	}
 
 	// Message structure was declared on stack in ScheduleNewEvent: make a copy!

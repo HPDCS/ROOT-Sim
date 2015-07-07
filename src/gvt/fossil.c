@@ -102,7 +102,10 @@ simtime_t adopt_new_gvt(simtime_t new_gvt) {
 
 		time_barrier_pointer[i] = find_time_barrier(LPS_bound[i]->lid, new_gvt);
 
-		lp_time_barrier = time_barrier_pointer[i]->lvt;
+		if(time_barrier_pointer[i] == NULL)
+			lp_time_barrier = 0.0;
+		else
+			lp_time_barrier = time_barrier_pointer[i]->lvt;
 		if (lp_time_barrier > -1) {
 			local_time_barrier = min(local_time_barrier, lp_time_barrier);
 		}
@@ -115,6 +118,9 @@ simtime_t adopt_new_gvt(simtime_t new_gvt) {
 
 
 	for(i = 0; i < n_prc_per_thread; i++) {
+
+		if(time_barrier_pointer[i] == NULL)
+			continue;
 
 		// Execute the fossil collection
 		fossil_collection(LPS_bound[i]->lid, time_barrier_pointer[i]->lvt);
