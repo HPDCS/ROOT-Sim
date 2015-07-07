@@ -35,7 +35,6 @@
 #include <core/core.h>
 #include <scheduler/process.h>
 #include <statistics/statistics.h>
-#include <mm/malloc.h>
 #include <gvt/gvt.h>
 #include <mm/dymelor.h>
 
@@ -284,6 +283,8 @@ void simulation_shutdown(int code) {
 			communication_fini();
 			base_fini();
 		}
+
+		thread_barrier(&all_thread_barrier);
 	}
 
 	exit(code);

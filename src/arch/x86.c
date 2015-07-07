@@ -34,7 +34,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <arch/atomic.h>
-
+#include <mm/dymelor.h>
 
 /**
 * This function implements a compare-and-swap atomic operation on x86 for long long values
@@ -47,7 +47,7 @@
 *
 * @ret true if the CAS succeeded, false otherwise
 */
-inline bool CAS_x86(volatile unsigned long long *ptr, unsigned long long oldVal, unsigned long long newVal) {
+inline bool CAS_x86(volatile uint64_t *ptr, uint64_t oldVal, uint64_t newVal) {
 	unsigned long res = 0;
 
 	__asm__ __volatile__(
@@ -75,7 +75,7 @@ inline bool CAS_x86(volatile unsigned long long *ptr, unsigned long long oldVal,
 *
 * @ret true if the CAS succeeded, false otherwise
 */
-inline bool iCAS_x86(volatile unsigned int *ptr, unsigned int oldVal, unsigned int newVal) {
+inline bool iCAS_x86(volatile uint32_t *ptr, uint32_t oldVal, uint32_t newVal) {
 	unsigned long res = 0;
 
 	__asm__ __volatile__(

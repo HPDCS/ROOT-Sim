@@ -26,6 +26,7 @@
 
 #include <ROOT-Sim.h>
 #include <core/core.h>
+#include <mm/dymelor.h>
 
 /// This is used to retrieve a command line parameter within INIT event
 #define getPar(args, i) (((char **)args)[(i)])

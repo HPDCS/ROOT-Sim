@@ -23,9 +23,12 @@ librootsim_a_SOURCES =	main.c \
 			queues/xxhash.c \
 			core/init.c \
 			core/core.c \
+			scheduler/binding.c \
+			scheduler/control.c \
+			scheduler/preempt.c \
+			scheduler/preempt_callback.S \
 			scheduler/stf.c \
 			scheduler/scheduler.c \
-			scheduler/control.c \
 			serial/serial.c \
 			statistics/statistics.c \
 			gvt/gvt.c \
@@ -37,6 +40,10 @@ librootsim_a_SOURCES =	main.c \
 libwrapperl_a_SOURCES = lib-wrapper/wrapper.c
 
 libdymelor_a_SOURCES = 	mm/checkpoints.c \
+			mm/recoverable.c \
+			mm/unrecoverable.c \
+			mm/platform.c \
 			mm/dymelor.c \
-			mm/lp-alloc.c \
-			mm/malloc.c
+			mm/allocator.c \
+			mm/bh-manager.c \
+			mm/mapmove.c

@@ -28,8 +28,8 @@
 */
 
 #pragma once
-#ifndef _QUEUE_MGNT_H_
-#define _QUEUE_MGNT_H_
+#ifndef _QUEUES_H
+#define _QUEUES_H
 
 
 
@@ -38,10 +38,12 @@
 #define QUEUE_OUT	1
 
 
+extern inline simtime_t get_min_in_transit(void);
 extern simtime_t last_event_timestamp(unsigned int);
 extern simtime_t next_event_timestamp(unsigned int);
 extern msg_t *advance_to_next_event(unsigned int);
 extern void insert_bottom_half(msg_t *msg);
 extern void process_bottom_halves(void);
 extern unsigned long long generate_mark(unsigned int);
-#endif
+
+#endif /* _QUEUES_H */

@@ -33,6 +33,14 @@
 #define OPT_SEED		20
 #define OPT_SERIAL		21
 
+#ifdef HAVE_PREEMPTION
+#define OPT_PREEMPTION		22
+#endif
+
+#ifdef HAVE_PARALLEL_ALLOCATOR
+#define OPT_ALLOCATOR		23
+#endif
+
 // TODO: a vector of vector with text name of numerical options, which should be used for parsing options and for displaying names
 // static char *opt_opt[][] = { ... }
 
@@ -59,7 +67,17 @@ static char *opt_desc[] = {
 	"Verbose execution",
 	"Level of detail in the output statistics",
 	"Manually specify the initial random seed",
-	"Run a serial simulation (using Calendar Queues)"
+	"Run a serial simulation (using Calendar Queues)",
+
+#ifdef HAVE_PREEMPTION
+	"Disable Preemptive Time Warp",
+#endif
+
+#ifdef HAVE_PARALLEL_ALLOCATOR
+	"Disable parallel allocator",
+#endif
+
+	""
 };
 
 
@@ -86,6 +104,15 @@ static struct option long_options[] = {
 	{"seed",		required_argument,	0, OPT_SEED},
 	{"serial",		no_argument,		0, OPT_SERIAL},
 	{"sequential",		no_argument,		0, OPT_SERIAL},
+	
+#ifdef HAVE_PREEMPTION
+	{"no-preemption",	no_argument,		0, OPT_PREEMPTION},
+#endif
+
+#ifdef HAVE_PARALLEL_ALLOCATOR
+	{"no-allocator",	no_argument,		0, OPT_ALLOCATOR},
+#endif
+
 	{0,			0,			0, 0}
 };
 
@@ -94,5 +121,11 @@ static struct option long_options[] = {
 extern void SystemInit(int argc, char **argv);
 
 #endif
+
+struct app_arguments {
+	char **arguments;
+	int size;
+};
+extern struct app_arguments model_parameters;
 
 #endif /* _INIT_H */

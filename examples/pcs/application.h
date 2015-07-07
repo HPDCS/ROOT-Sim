@@ -9,9 +9,9 @@
 
 
 #define CHECK_FADING_TIME	10
-#define COMPLETE_CALLS		5000
+#define COMPLETE_CALLS		500
 #ifndef TA
-#define TA			1.2
+#define TA			0.6
 #endif
 #define TA_DURATION		120
 #define CHANNELS_PER_CELL	1000
@@ -101,7 +101,7 @@ typedef struct _lp_state_type{
 	double ta_change; // Average time after which a call is diverted to another cell
 
 	int channels_per_cell; // Total channels in this cell
-	int total_calls; 
+	int total_calls;
 
 	bool check_fading; // Is the model set up to periodically recompute the fading of all ongoing calls?
 	bool fading_recheck;
@@ -113,9 +113,9 @@ typedef struct _lp_state_type{
 
 
 double recompute_ta(double ref_ta, simtime_t now);
-double generate_cross_path_gain(lp_state_type *state);
-double generate_path_gain(lp_state_type *state);
-void deallocation(unsigned int lp, lp_state_type *state, int channel, event_content_type *, simtime_t);
+double generate_cross_path_gain(void);
+double generate_path_gain(void);
+void deallocation(unsigned int lp, lp_state_type *state, int channel, simtime_t);
 int allocation(lp_state_type *state);
 void fading_recheck(lp_state_type *pointer);
 

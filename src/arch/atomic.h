@@ -30,6 +30,7 @@
 #define __ROOTSIM__ATOMIC_H
 
 #include <stdbool.h>
+#include <stdint.h>
 
 
 
@@ -47,8 +48,8 @@ typedef struct { volatile unsigned int lock; } spinlock_t;
 
 
 
-inline bool CAS_x86(volatile unsigned long long *ptr, unsigned long long oldVal, unsigned long long newVal);
-inline bool iCAS_x86(volatile unsigned int *ptr, unsigned int oldVal, unsigned int newVal);
+inline bool CAS_x86(volatile uint64_t *ptr, uint64_t oldVal, uint64_t newVal);
+inline bool iCAS_x86(volatile uint32_t *ptr, uint32_t oldVal, uint32_t newVal);
 inline int atomic_test_and_set_x86(int *);
 inline int atomic_test_and_reset_x86(int *);
 inline void atomic_add_x86(atomic_t *, int);
