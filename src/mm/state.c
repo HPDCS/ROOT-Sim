@@ -37,9 +37,10 @@
 #include <datatypes/list.h>
 #include <scheduler/process.h>
 #include <scheduler/scheduler.h>
-#include <mm/state.h>
-#include <communication/communication.h>
 #include <mm/dymelor.h>
+#include <mm/state.h>
+#include <mm/globvars.h>
+#include <communication/communication.h>
 #include <statistics/statistics.h>
 
 
@@ -195,6 +196,8 @@ void rollback(unsigned int lid) {
 	statistics_post_lp_data(lid, STAT_ROLLBACK, 1.0);
 
 	last_correct_event = LPS[lid]->bound;
+
+	globvars_rollback(last_correct_event->timestamp);
 	
 	// Send antimessages
 	send_antimessages(lid, last_correct_event->timestamp);

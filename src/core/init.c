@@ -44,6 +44,7 @@
 #include <scheduler/scheduler.h>
 #include <mm/state.h>
 #include <mm/dymelor.h>
+#include <mm/globvars.h>
 #include <mm/malloc.h>
 #include <core/backtrace.h> // Place this after malloc.h!
 #include <statistics/statistics.h>
@@ -402,6 +403,7 @@ void SystemInit(int argc, char **argv) {
 	base_init();
 	statistics_init();
 	scheduler_init();
+	globvars_init();
 	communication_init();
 	dymelor_init();
 	gvt_init();

@@ -39,7 +39,7 @@ AC_LANG([C])
 
 
 #----------------------------------------------------------------------------
-# Checks for programs.
+# Check for programs.
 #----------------------------------------------------------------------------
 m4_pattern_allow([AM_PROG_AR])
 AC_PROG_CC([gcc])
@@ -49,6 +49,17 @@ AC_PROG_CC_C_O
 AM_PROG_CC_C_O
 m4_ifdef([AM_PROG_AR], [AM_PROG_AR])
 LT_INIT
+
+
+#----------------------------------------------------------------------------
+# Check for objdump. TODO: we need to flag the compilation of globvars!
+#----------------------------------------------------------------------------
+AC_CHECK_PROG(OBJDUMP, objdump, objdump)
+
+if test -z "$OBJDUMP"; then
+  AC_MSG_ERROR([Cannot find objdump in your path; please set the OBJDUMP environment variable!])
+fi
+
 
 
 

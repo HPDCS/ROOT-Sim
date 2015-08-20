@@ -30,6 +30,7 @@
 #include <gvt/gvt.h>
 #include <gvt/ccgs.h>
 #include <mm/state.h>
+#include <mm/globvars.h>
 #include <scheduler/process.h>
 #include <statistics/statistics.h>
 
@@ -74,6 +75,9 @@ void fossil_collection(unsigned int lid, simtime_t time_barrier) {
 	// Truncate the output queue
 	list_trunc_before(LPS[lid]->queue_out, send_time, last_kept_event->timestamp);
 
+	// If any global variable is used in the model, prune the multiversion list
+        // TODO: check se time_barrier è lo stesso dello stato sopra
+        globvars_on_gvt(time_barrier);
 }
 
 

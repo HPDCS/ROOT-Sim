@@ -262,6 +262,28 @@ check_term
 $CC $CFLAGS APP-dym-wrapped.o -lrootsim -lm -DGATHER_DATA -o $OUTNAME
 check_term
 
+# Generate meta information to handle global variables at runtime
+if test -e globvars; then
+        unlink globvars
+fi
+echo "Looking for global variables in the model"
+CMD="objdump -t APP.o 2>&1 | grep ' O ' | sed 's/.* //'"
+eval $CMD |
+        grep -v 'add_counter' | # Now skip internal vars which we don't want to version
+        grep -v 'sub_counter' |
+while read sym;  # This while removes extra spaces
+do
+        # $a has the symbol from the orignal object file. Now get it from the final executable
+        # to retrieve the correct address for runtime utilization
+        CMD2="objdump -t $OUTNAME 2>&1 | grep $sym | sed 's/ .*data *//g' | sed 's/ .*bss *//g'"
+        eval $CMD2 |
+        while read b;  # This while removes extra spaces
+        do
+                echo $b >> globvars
+        done
+done
+
+
 
 # Clean temporary files
 build_cleanup

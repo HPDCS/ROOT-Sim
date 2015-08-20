@@ -94,6 +94,17 @@
 			__value;\
 		       })
 
+/// This macro can be used to convert hexadecimal command line parameters to integers
+#define parseHex(s) ({\
+			long long __value;\
+			char *endptr;\
+			__value = strtol(s, &endptr, 16);\
+			if(!(*s != '\0' && *endptr == '\0')) {\
+				fprintf(stderr, "%s:%d: Invalid conversion value: %s\n", __FILE__, __LINE__, s);\
+			}\
+			__value;\
+		     })
+
 
 /// This defines the type with whom timestamps are represented
 typedef double simtime_t;
