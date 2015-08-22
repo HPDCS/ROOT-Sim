@@ -20,6 +20,9 @@ double	write_distribution,
 	tau;
 
 
+long long per_LP_vars[256];
+
+
 void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *event_content, unsigned int size, void *state) {
 
 	simtime_t timestamp;
@@ -217,10 +220,24 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 				j = i;
 			}
 			state_ptr->events++;
+
+//			#ifdef GLOBVARS
+//			if(state_ptr->events % 5) {
+//				read_global_variable(&per_LP_vars[me], now);
+//				write_global_variable(&per_LP_vars[me], now, (long long)(100 * Random()));
+//			}
+//			#endif
+
 			timestamp = now + (simtime_t)(Expent(TAU));
 			ScheduleNewEvent(me, timestamp, LOOP, NULL, 0);
-			if(Random() < 0.2)
+			if(Random() < 0.2) {
+				#ifdef GLOBVARS
+				write_global_variable(&per_LP_vars[FindReceiver(TOPOLOGY_MESH)], now, (long long)(100 * Random()));
+				read_global_variable(&per_LP_vars[me], now);
+				#else
 				ScheduleNewEvent(FindReceiver(TOPOLOGY_MESH), timestamp, LOOP, NULL, 0);
+				#endif
+			}
 			break;
 
 

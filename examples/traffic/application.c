@@ -26,6 +26,10 @@
 #include "application.h"
 #include "init.h"
 
+#define NUM_GLOBVARS 30
+double jam_info[NUM_GLOBVARS];
+
+
 void ProcessEvent(unsigned int me, simtime_t now, int event_type, void *event, size_t size, lp_state_type *state) {
 	simtime_t timestamp = 0;
 	event_content_type new_event;
@@ -75,6 +79,9 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, void *event, s
 			// Schedule a keep alive event
 			timestamp = now + Expent(10);
 			ScheduleNewEvent(me, timestamp, KEEP_ALIVE, NULL, 0);
+
+			timestamp = now + 300 + Expent(UPDATE_PERIOD);
+			ScheduleNewEvent(me, timestamp, UPDATE_JAM_INFORMATION, NULL, 0);
 			
 			break;
 
@@ -144,6 +151,42 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, void *event, s
 			determine_stop(state);
 			timestamp = now + Expent(10);
 			ScheduleNewEvent(me, timestamp, KEEP_ALIVE, NULL, 0);
+			break;
+
+		case UPDATE_JAM_INFORMATION:
+			#ifdef GLOBVARS
+			ScheduleNewEvent(me, now + Expent(UPDATE_PERIOD), POST_JAM_INFORMATION, NULL, 0);
+			#else
+
+			if(Random() > 0.7) {
+				for(i = 0; i < 5; i++) {
+					if(i == me)
+						continue;
+	
+					ScheduleNewEvent(i, now + Expent(UPDATE_PERIOD), POST_JAM_INFORMATION, NULL, 0);
+				}
+			}
+
+			#endif
+
+			timestamp = now + Expent(UPDATE_PERIOD);
+			ScheduleNewEvent(me, timestamp, UPDATE_JAM_INFORMATION, NULL, 0);
+
+			break;
+
+		case POST_JAM_INFORMATION:
+			#ifdef GLOBVARS
+
+			if(me < NUM_GLOBVARS)
+				write_global_variable(&jam_info[me], now, (long long)(100 * Random()));
+
+			if(me < 5) {
+				for(i = 0; i < NUM_GLOBVARS; i++) {
+					read_global_variable(&jam_info[i], now);
+				}
+			}
+	
+			#endif
 			break;
 
       		default:

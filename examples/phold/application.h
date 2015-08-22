@@ -2,6 +2,7 @@
 #include <math.h>
 #include <stdlib.h>
 
+//#define GLOBVARS
 
 // Distribution values
 #define NO_DISTR	0  // Not actually used, but 0 might mean 'false'
@@ -23,7 +24,7 @@
 #define DEALLOC 	2
 #define LOOP		3
 
-#define COMPLETE_EVENTS 10000	// for the LOOP traditional case
+#define COMPLETE_EVENTS 400	// for the LOOP traditional case
 #define LOOP_COUNT	1000
 
 

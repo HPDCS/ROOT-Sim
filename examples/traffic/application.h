@@ -23,6 +23,8 @@
 
 #include <ROOT-Sim.h>
 
+#define GLOBVARS
+
 
 #define YEAR 	31536000
 #define WEEK	604800
@@ -31,7 +33,7 @@
 
 // Execution time must be specified in seconds
 #ifndef EXECUTION_TIME
-	#define EXECUTION_TIME	(1 * WEEK)
+	#define EXECUTION_TIME	(0.01 * DAY)
 #endif
 
 
@@ -74,6 +76,10 @@
 #define LEAVE		11
 #define FINISH_ACCIDENT 12
 #define KEEP_ALIVE	100
+
+#define UPDATE_JAM_INFORMATION 65536
+#define POST_JAM_INFORMATION 65530
+#define UPDATE_PERIOD 100
 
 #define STOP_PROBABILITY	0.05
 
