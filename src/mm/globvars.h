@@ -43,10 +43,10 @@
 #include <core/core.h>
 
 /// Number of global variables allowed. Must be a power of 2.
-#define MAX_GLOBVAR_NUM		32
+#define MAX_GLOBVAR_NUM		1050
 
 /// Number of versions nodes available
-#define MAX_GLOBVAR_VER		100000
+#define MAX_GLOBVAR_VER		400000
 
 /// Number of events allowed to read on a variable version
 #define MAX_GLOBVAR_READ	10
@@ -109,7 +109,7 @@ typedef struct _matrix_order {
 
 /// Macro for composing the next pointer to avoid ABA problem and storing the marked bit
 #define aba_next(next)			((\
-					(((unsigned long long)generate_mark(current_lp)) << (sizeof(int) * 8))\
+					(((unsigned long long)generate_mark( (current_lp != IDLE_PROCESS ? current_lp : 0) )) << (sizeof(int) * 8))\
 					| (unsigned int)next \
 					) & ~((long long)1 << ((sizeof(long long) * 8 - 1))) \
 					)

@@ -281,7 +281,7 @@ static void register_global_variable(void *orig_addr, unsigned short int size) {
 
 	// Store the mapping between the variables
 	globvars->variables[slot].orig_addr = orig_addr;
-	globvars->variables[slot].size = size; // TODO: how to handle movsinstructions?
+	globvars->variables[slot].size = size; // TODO: how to handle movs instructions?
 
 	// Allocate and initialize a dummy version node which will act as a head forever
 	vers_slot = global_version_alloc();
@@ -357,16 +357,26 @@ void globvars_init(void) {
 
 		while(fgets(conf_line, 512, globvars_conf) != NULL) {
 			char *token;
-			void *addr;
+			unsigned char *addr;
 			unsigned short int size;
 
 			// Tokenize the string. Parameters are: addres size name. Name can be discarded here
 			token = strtok(conf_line, " ");
 			addr = (void *)parseHex(token);
 			token = strtok(NULL, " ");
-			size = (unsigned short int)parseInt(token);
-		
-			register_global_variable(addr, size);
+			size = (unsigned short int)parseHex(token);
+
+			if(size > 8) {
+				for(i = 0; i < size / 8; i++) {
+					register_global_variable(addr + i * 8, size);
+				}
+
+				if(size % 8 != 0) {
+					register_global_variable(addr + i * 8, size % 8);
+				}
+			} else {
+				register_global_variable(addr, size);
+			}
 		}
 
 		fclose(globvars_conf);
