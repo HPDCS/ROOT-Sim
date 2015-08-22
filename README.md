@@ -42,7 +42,9 @@ ROOT-Sim uses autotools to provide an installation workflow which is
 common for all supported platforms. This repository does not provide
 already-generated installation scripts (while released tarballs do),
 rather we provide the convenience `autogen.sh` script which should
-build everything on the target machine.
+build everything on the target machine. Using autotools, `autoconf`,
+`automake` and `libtoolize` are required to let `autogen.sh` generate
+the correct `configure` script.
 
 Briefly, the shell commands `./configure; make; make install` should
 configure, build, and install this package.

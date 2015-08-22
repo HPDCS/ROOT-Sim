@@ -83,8 +83,13 @@ static volatile unsigned int GVT_flag = 0;
 /** Keep track of the last computed gvt value. Its a per-thread variable
  * to avoid synchronization on it, but eventually all threads write here
  * the same exact value.
+ * The 'adopted_last_gvt' version is used to maintain the adopted gvt
+ * value in a temporary variable. It is then copied to last_gvt during
+ * the end phase, to avoid possible critical races when checking the
+ * termination upon reaching a certain simulation time value.
  */
 static __thread simtime_t last_gvt = 0.0;
+static __thread simtime_t adopted_last_gvt = 0.0;
 
 
 
@@ -217,6 +222,11 @@ simtime_t gvt_operations(void) {
 			process_bottom_halves();
 
 			for(i = 0; i < n_prc_per_thread; i++) {
+				if(LPS_bound[i]->bound == NULL) {
+					local_min[tid] = 0.0;
+					break;
+				}
+
 				local_min[tid] = min(local_min[tid], LPS_bound[i]->bound->timestamp);
 			}
 			my_phase = phase_send;	// Entering phase send
@@ -237,6 +247,11 @@ simtime_t gvt_operations(void) {
 			process_bottom_halves();
 
 			for(i = 0; i < n_prc_per_thread; i++) {
+				if(LPS_bound[i]->bound == NULL) {
+					local_min[tid] = 0.0;
+					break;
+				}
+
 				local_min[tid] = min(local_min[tid], LPS_bound[i]->bound->timestamp);
 			}
 
@@ -268,7 +283,7 @@ simtime_t gvt_operations(void) {
 			// thread. To check for termination based on simulation time,
 			// this variable must be explicitly inspected using
 			// get_last_gvt()
-			last_gvt = adopt_new_gvt(new_gvt);
+			adopted_last_gvt = adopt_new_gvt(new_gvt);
 
 			// Dump statistics
 			statistics_post_other_data(STAT_GVT, new_gvt);
@@ -288,6 +303,7 @@ simtime_t gvt_operations(void) {
 			my_phase = phase_A;
 			local_min[tid] = INFTY;
 			atomic_dec(&counter_end);
+			last_gvt = adopted_last_gvt;
 		}
 	}
 

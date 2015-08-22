@@ -121,13 +121,13 @@ typedef struct _LP_state {
 	/// Unique identifier within the LP
 	unsigned long long	mark;
 
+	/// Buffer used by KLTs for buffering outgoing messages during the execution of an event
+	outgoing_t outgoing_buffer;
+
 	#ifdef HAVE_LINUX_KERNEL_MAP_MODULE
 	unsigned int ECS_synch_table[MAX_CROSS_STATE_DEPENDENCIES];
 	unsigned int ECS_index;
 	#endif
-
-	/// Buffer used by KLTs for buffering outgoing messages during the execution of an event
-	outgoing_t outgoing_buffer;
 
 	unsigned long long	wait_on_rendezvous;
 	unsigned int		wait_on_object;

@@ -46,6 +46,9 @@
 
 #include <mm/modules/ktblmgr/ktblmgr.h>
 
+#ifdef EXTRA_CHECKS
+#include <queues/xxhash.h>
+#endif
 
 /// Maintain LPs' simulation and execution states
 LP_state **LPS = NULL;
@@ -98,8 +101,11 @@ void scheduler_init(void) {
 	LPS = (LP_state **)rsalloc(n_prc * sizeof(LP_state *));
 	for (i = 0; i < n_prc; i++) {
 		LPS[i] = (LP_state *)rsalloc(sizeof(LP_state));
-		memset(LPS[i], 'x', sizeof(LP_state));
 		bzero(LPS[i], sizeof(LP_state));
+
+		// Allocate memory for the outgoing buffer 
+		LPS[i]->outgoing_buffer.max_size = INIT_OUTGOING_MSG;
+		LPS[i]->outgoing_buffer.outgoing_msgs = rsalloc(sizeof(msg_t) * INIT_OUTGOING_MSG);
 	}
 
 	// Initialize the INIT barrier
@@ -163,6 +169,10 @@ void scheduler_fini(void) {
 * @param args arguments passed to the LP main loop. Currently, this is not used.
 */
 static void LP_main_loop(void *args) {
+	#ifdef EXTRA_CHECKS
+	unsigned long long hash1, hash2;
+	hash1 = hash2 = 0;
+	#endif
 
 	(void)args; // this is to make the compiler stop complaining about unused args
 
@@ -173,6 +183,12 @@ static void LP_main_loop(void *args) {
 
 	while(true) {
 
+		#ifdef EXTRA_CHECKS
+		if(current_evt->size > 0) {
+			hash1 = XXH64(current_evt->event_content, current_evt->size, current_lp);
+		}
+		#endif
+
 		// Process the event
 		timer event_timer;
 		timer_start(event_timer);
@@ -180,6 +196,16 @@ static void LP_main_loop(void *args) {
 		__ProcessEvent[current_lp](LidToGid(current_lp), current_evt->timestamp, current_evt->type, current_evt->event_content, current_evt->size, current_state);
 
 		int delta_event_timer = timer_value_micro(event_timer);
+
+		#ifdef EXTRA_CHECKS
+		if(current_evt->size > 0) {
+			hash2 = XXH64(current_evt->event_content, current_evt->size, current_lp);
+		}
+
+		if(hash1 != hash2) {
+                        rootsim_error(true, "Error, LP %d has modified the payload of event %d during its processing. Aborting...\n", current_lp, current_evt->type);
+		}
+		#endif
 
 		statistics_post_lp_data(current_lp, STAT_EVENT, 1.0);
 		statistics_post_lp_data(current_lp, STAT_EVENT_TIME, delta_event_timer);
@@ -243,6 +269,9 @@ void initialize_LP(unsigned int lp) {
 
 	// Initialize the LP lock
 	spinlock_init(&LPS[lp]->lock);
+
+	// No event has been processed so far
+	LPS[lp]->bound = NULL;
 
 	LPS[lp]->outgoing_buffer.min_in_transit = rsalloc(sizeof(simtime_t) * n_cores);
 	for(i = 0; i < n_cores; i++) {
@@ -436,9 +465,9 @@ void schedule(void) {
 	}
 
 	// Manage the INIT barrier
-	if(event->type == INIT) {
-		thread_barrier(&INIT_barrier);
-	}
+//	if(event->type == INIT) {
+//		thread_barrier(&INIT_barrier);
+//	}
 
 	if(!process_control_msg(event)) {
 		return;

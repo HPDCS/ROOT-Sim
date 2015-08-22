@@ -40,8 +40,6 @@ unsigned int smallest_timestamp_first(void) {
 		}
 	}
 
-//	update_bound(min_bound);
-
 	// Return the process to execute
 	if(D_EQUAL(min_timestamp, -1)) {
 		return IDLE_PROCESS;

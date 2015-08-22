@@ -117,6 +117,7 @@ double generate_cross_path_gain(lp_state_type *state);
 double generate_path_gain(lp_state_type *state);
 void deallocation(unsigned int lp, lp_state_type *state, int channel, event_content_type *, simtime_t);
 int allocation(lp_state_type *state);
+void fading_recheck(lp_state_type *pointer);
 
 
 extern int channels_per_cell;

@@ -2,16 +2,18 @@ C_PREREQ([2.67])
 
 AC_INIT([ROOT-Sim],[1.0.0],[rootsim@googlegroups.com],[rootsim],[http://www.dis.uniroma1.it/~hpdcs/ROOT-Sim/])
 AC_CONFIG_SRCDIR([src])
-AM_INIT_AUTOMAKE([1.11 -Wall foreign subdir-objects])
-AM_SILENT_RULES([yes])
+AM_INIT_AUTOMAKE([-Wno-portability 1.10.1 -Wall foreign subdir-objects])
+
 AC_CONFIG_MACRO_DIR([m4])
 AC_USE_SYSTEM_EXTENSIONS
+
+m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 
 
 
 
 # Debugging symbols or not?
-CFLAGS="-lm"
+CFLAGS="-O3 -lm -U_FORTIFY_SOURCE"
 AC_ARG_ENABLE([debug],
     AS_HELP_STRING([--enable-debug], [Enable debugging of the platform]))
 
@@ -19,6 +21,15 @@ AS_IF([test "x$enable_debug" = "xyes"], [
 	CFLAGS="-g3 -pg -Wall -Wextra -O0 -Wswitch-enum -Wcast-align -Wpointer-arith -Wstrict-overflow=5 -Wstrict-prototypes -Winline -Wundef -Wnested-externs -Wshadow -Wunreachable-code -Wfloat-equal -Wredundant-decls -Wold-style-definition -std=c99 -fno-omit-frame-pointer -ffloat-store -fno-common -fstrict-aliasing -fgnu89-inline -rdynamic -lm"
 ])
 
+
+# Extra check flags
+AC_ARG_ENABLE(extra-checks,
+AC_HELP_STRING([--enable-exrta-checks],
+[Enable extra checks on models (kills performance!)]),
+[enable_extra_checks=$enableval],[enable_extra_checks=no])
+AS_IF([test "x$enable_extra_checks" = "xyes"], [
+	AC_DEFINE([EXTRA_CHECKS])
+])
 
 
 #----------------------------------------------------------------------------
@@ -36,7 +47,7 @@ AC_PROG_MAKE_SET
 AC_PROG_MKDIR_P
 AC_PROG_CC_C_O
 AM_PROG_CC_C_O
-AM_PROG_AR
+m4_ifdef([AM_PROG_AR], [AM_PROG_AR])
 LT_INIT
 
 
@@ -247,20 +258,6 @@ then
 		ac_have_mixed_ss=yes
 	])
 fi
-
-
-
-#----------------------------------------------------------------------------
-# Doxygen Documentation
-#
-# If doxygen is installed on the box, generate a commodity Makefile in the
-# doc subfolder to generate the documentation. This must be called explicitly,
-# as it is separated from the main Makefile.
-#----------------------------------------------------------------------------
-AC_CHECK_PROGS([DOXYGEN], [doxygen])
-AM_CONDITIONAL([HAVE_DOXYGEN], [test -n "$DOXYGEN"])
-AM_COND_IF([HAVE_DOXYGEN], [AC_CONFIG_FILES([doc/doxy.conf])])
-AM_COND_IF([HAVE_DOXYGEN], [AC_CONFIG_FILES([doc/Makefile])])
 
 
 

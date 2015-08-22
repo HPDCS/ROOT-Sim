@@ -93,6 +93,9 @@ void ccgs_compute_snapshot(state_t *time_barrier_pointer[], simtime_t gvt) {
 			continue;
 		}
 
+		if(time_barrier_pointer[i] == NULL)
+			continue;
+
 		// TODO: realign LogState and RestoreState to be compliant with the execution in the committed portion
 
 		// Log the current state so that after we can restore it.
