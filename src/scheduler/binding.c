@@ -289,8 +289,7 @@ void rebind_LPs(void) {
 		return;
 	}
 
-	return;
-
+#ifdef HAVE_LP_REBINDING
 	if(master_thread()) {
 		if(timer_value_seconds(rebinding_timer) >= REBIND_INTERVAL) {
 			timer_restart(rebinding_timer);
@@ -319,6 +318,7 @@ void rebind_LPs(void) {
 			atomic_set(&worker_thread_reduction, n_cores);
 		}
 	}
+#endif
 }
 
 

@@ -273,6 +273,15 @@ fi
 
 
 
+# LP binding support
+AC_ARG_ENABLE([rebinding],
+AS_HELP_STRING([--disable-rebinding], [Disable LPs Rebinding (Enabled by default)]))
+
+AS_IF([test "x$enable_rebinding" != "xno"], [
+        AC_DEFINE([HAVE_LP_REBINDING])
+        ac_have_lp_rebinding=yes
+])
+
 # Custom Parallel Allocator can be disabled, to fallback to standard malloc library
 AC_ARG_ENABLE([allocator],
 AS_HELP_STRING([--disable-allocator], [Disable Parallel Allocator (Enabled by default)]))
@@ -387,6 +396,15 @@ else
 fi
 
 
+# Compose the message regarding LP rebinding
+if test "x$ac_have_lp_rebinding" = "xyes"
+then
+	ac_lp_rebinding="Enabled (By default, use --disable-rebinding if not wanted)"
+else
+	ac_lp_rebinding="Disabled (manually excluded)"
+fi
+
+
 # Compose the message regarding the NUMA subsystem
 if test "x$ac_have_numa" = "xyes"
 then
@@ -456,6 +474,7 @@ User-Level Threads........ : ${ac_enable_ult}
 Parallel Allocator........ : ${ac_parallel_allocator}
 NUMA Subsystem............ : ${numa_subsystem}
 LP Preemption Support..... : ${ac_preemption}
+LP Rebinding.............. : ${ac_lp_rebinding}
 
 
 EOF
