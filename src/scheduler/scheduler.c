@@ -48,6 +48,11 @@
 #include <gvt/gvt.h>
 #include <statistics/statistics.h>
 
+#ifdef HAVE_LINUX_KERNEL_MAP_MODULE
+#include <mm/modules/ktblmgr/ktblmgr.h>
+#endif
+
+
 #ifdef EXTRA_CHECKS
 #include <queues/xxhash.h>
 #endif
@@ -387,6 +392,11 @@ void activate_LP(unsigned int lp, simtime_t lvt, void *evt, void *state) {
 //		enable_preemption();
 //	#endif
 
+	#ifdef HAVE_LINUX_KERNEL_MAP_MODULE
+	// Activate memory view for the current LP
+	lp_alloc_schedule();
+	#endif
+
 	#ifdef ENABLE_ULT
 	context_switch(&kernel_context, &LPS[lp]->context);
 	#else
@@ -397,6 +407,13 @@ void activate_LP(unsigned int lp, simtime_t lvt, void *evt, void *state) {
 //        if(!rootsim_config.disable_preemption)
 //                disable_preemption();
 //        #endif
+
+	#ifdef HAVE_LINUX_KERNEL_MAP_MODULE
+	// Deactivate memory view for the current LP if no conflict has arisen
+	if(!is_blocked_state(LPS[lp]->state)) {
+		lp_alloc_deschedule();
+	}
+	#endif
 
 	current_lp = IDLE_PROCESS;
 	current_lvt = -1.0;
