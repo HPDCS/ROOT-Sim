@@ -55,6 +55,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
                 registerAirportToSector(me,now,airport_state);
                 ts = now + 10*Random();
                 ScheduleNewEvent(me,ts, START_DEPARTING_AIRCRAFT, NULL,0);
+		ScheduleNewEvent(me, now + Expent(KEEP_ALIVE_MEAN), KEEP_ALIVE, NULL, 0);
 
             }else{
                 sector_state = (sector_lp_state_type*)ptr;
@@ -166,23 +167,48 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
             ScheduleNewEvent(me, (simtime_t)now + 10*Random(), IDLE, NULL,0);
             break;
 
+	case KEEP_ALIVE:
+
+		#ifdef GLOBVARS
+		#else
+		for(i = 0; i < AIRPORT_NUMBER; i++) {
+            		ScheduleNewEvent(me, (simtime_t)now + 0.5*Random(), UPDATE_DELAYS, NULL,0);
+		}
+		#endif
+
+		ScheduleNewEvent(me, now + Expent(KEEP_ALIVE_MEAN), KEEP_ALIVE, NULL, 0);
+	    	break;
+
+	case UPDATE_DELAYS:
+		
+
+		break;
+
+	default:
+		abort();
+
     }
 }
 
 
 bool OnGVT(unsigned int me,void *snapshot) {
+
+
     if(me<AIRPORT_NUMBER){
         airport_lp_state_type *state  = (airport_lp_state_type*)snapshot;
-        if(state->number_of_incoming_aircraft == 0 && state->departures_scheduled == 0 && state->num_of_ack == AIRPORT_NUMBER){
+    if(state->lvt > TERMINATION_TIME)
+	return true;
+    return false;
+        if(state->number_of_incoming_aircraft == 0 && state->departures_scheduled == 0){ // && state->num_of_ack == AIRPORT_NUMBER){
             printf("Airport %i ok to end \n",me);
             if(me==0){
                 int k;
-                for (k=AIRPORT_NUMBER;k<(NUMBER_OF_SECTOR+AIRPORT_NUMBER);k++){
-                    ScheduleNewEvent(k,(simtime_t)(state->lvt + 10*Random()),ACK_ALL_SECTOR,NULL,0);
-                }
+//                for (k=AIRPORT_NUMBER;k<(NUMBER_OF_SECTOR+AIRPORT_NUMBER);k++){
+//                    ScheduleNewEvent(k,(simtime_t)(state->lvt + 10*Random()),ACK_ALL_SECTOR,NULL,0);
+//                }
             }
             fprintf(state->fp,"Airport %i....Shutting Down \n",me);
-            fclose(state->fp);
+//            fclose(state->fp);
             return true;
         }else{
             return false;
@@ -190,9 +216,12 @@ bool OnGVT(unsigned int me,void *snapshot) {
 
     }else{
         sector_lp_state_type *state = (sector_lp_state_type*)snapshot;
+    if(state->lvt > TERMINATION_TIME)
+	return true;
+    return false;
         if(state->t_flag == true){
              printf("Sector %i..ok to end\n",me);
-             fclose(state->fp);
+//             fclose(state->fp);
              return true;
         }else{
             return false;

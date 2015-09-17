@@ -163,10 +163,9 @@ static inline void LP_knapsack(void) {
 	}
 	reference_knapsack /= n_cores;
 
-	printf("max is %f\n", reference_knapsack);
-
 	// Sort the expected times
-	qsort(&lp_cost, n_prc, sizeof(struct lp_cost_id) , compare_lp_cost);
+	qsort(lp_cost, n_prc, sizeof(struct lp_cost_id) , compare_lp_cost);
+
 
 	// At least one LP per thread
 	bzero(assignments, sizeof(double) * n_cores);
@@ -289,8 +288,7 @@ void rebind_LPs(void) {
 		return;
 	}
 
-	return;
-
+#ifdef HAVE_LP_REBINDING
 	if(master_thread()) {
 		if(timer_value_seconds(rebinding_timer) >= REBIND_INTERVAL) {
 			timer_restart(rebinding_timer);
@@ -319,6 +317,7 @@ void rebind_LPs(void) {
 			atomic_set(&worker_thread_reduction, n_cores);
 		}
 	}
+#endif
 }
 
 
