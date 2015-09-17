@@ -131,7 +131,7 @@ void move_sobj(int sobj, unsigned numa_node){
 		move_segment(mdte,numa_node);
         }
 
-	move_BH(sobj,numa_node);
+//	move_BH(sobj,numa_node);
 
         return ;
 }

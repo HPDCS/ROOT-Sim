@@ -24,6 +24,7 @@
 */
 
 
+#define NEW_ALLOCATOR
 
 #include <unistd.h>
 #include <stdio.h>
@@ -45,6 +46,7 @@ extern void __real_free(void *);
 
 static int *numa_nodes;
 
+static spinlock_t segment_lock;
 
 
 #define AUDIT if(0)
@@ -169,6 +171,10 @@ void* allocate_segment(unsigned int sobj, size_t size) {
 	int numpages;
 	int ret;
 
+	#ifdef NEW_ALLOCATOR
+	static void *my_initial_address = (void *)(180L * 256L * 256L * 256L * PAGE_SIZE);
+	#endif
+
 	if( ((int)sobj >= handled_sobjs) ) goto bad_allocate; 
 
 	if(size <= 0)
@@ -201,7 +207,28 @@ void* allocate_segment(unsigned int sobj, size_t size) {
 	AUDIT
 	printf("allocate segment: request for %ld bytes - actual allocation is of %d pages\n",size,numpages);
 
-        segment = (char*)mmap((void*)NULL,PAGE_SIZE*numpages, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, 0,0);
+
+	#ifndef NEW_ALLOCATOR
+
+	segment = (char*)mmap((void*)NULL,PAGE_SIZE*numpages, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, 0,0);
+
+	#else
+
+
+	spin_lock(&segment_lock);
+
+	// Update my_initial_address, keeping it aligned to large pages
+	my_initial_address = (void *)((char *)my_initial_address - ( PAGE_SIZE * (int)( ceil((double)numpages / 256.0) * 256  )  ));
+
+        segment = (char*)mmap(my_initial_address, PAGE_SIZE*numpages, PROT_READ|PROT_WRITE, MAP_FIXED|MAP_PRIVATE|MAP_ANONYMOUS, 0,0);
+
+	spin_unlock(&segment_lock);
+
+	if(segment == MAP_FAILED)
+		abort();
+
+
+	#endif
 
 	AUDIT
 	printf("allocate segment: actual allocation is at address %p\n",segment);
@@ -330,6 +357,8 @@ int allocator_init(unsigned int sobjs) {
 #ifdef HAVE_NUMA
 	setup_numa_nodes();
 #endif
+
+	spinlock_init(&segment_lock);
 
 	return SUCCESS;
 
