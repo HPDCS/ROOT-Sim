@@ -27,14 +27,11 @@
 * @date November 15, 2013
 */
 
-// TODO: spostare in configure.ac
-//#define HAVE_LINUX_KERNEL_MAP_MODULE
-
-#ifdef HAVE_LINUX_KERNEL_MAP_MODULE
+#ifdef HAVE_CROSS_STATE
 
 #pragma once
-#ifndef __KERNEL_MEMORY_MAP_MODULE_H
-#define __KERNEL_MEMORY_MAP_MODULE_H
+#ifndef __CROSS_STATE_H
+#define __CROSS_STATE
 
 #include <linux/ioctl.h>
 
@@ -105,7 +102,7 @@ typedef struct _ioctl_info{
 #define PML4_PLUS_ONE(addr) (void *)((long long)(addr) + (1LL << 39))
 
 
-#endif /* __KERNEL_MEMORY_MAP_MODULE_H */
-#endif /* HAVE_LINUX_KERNEL_MAP_MODULE */
+#endif /* __CROSS_STATE_H */
+#endif /* HAVE_CROSS_STATE */
 
 

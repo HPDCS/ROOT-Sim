@@ -42,8 +42,11 @@
 #include <mm/dymelor.h>
 #include <scheduler/scheduler.h>
 #include <scheduler/process.h>
-#include <mm/modules/ktblmgr/ktblmgr.h>
 #include <arch/ult.h>
+
+#ifdef HAVE_CROSS_STATE
+#include <arch/linux/modules/ktblmgr/ktblmgr.h>
+#endif
 
 /// This variable keeps track of per-LP allocated (and assigned) memory regions
 static struct _lp_memory *lp_memory_regions;

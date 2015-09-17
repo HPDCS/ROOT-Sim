@@ -169,26 +169,17 @@ void process_bottom_halves(void) {
 	msg_t *msg_to_process;
 	msg_t *matched_msg;
 
-	//~ list(msg_t) processing;
-
 	for(i = 0; i < n_prc_per_thread; i++) {
-
-		//~ spin_lock(&LPS_bound[i]->lock);
-		//~ processing = LPS_bound[i]->bottom_halves;
-		//~ LPS_bound[i]->bottom_halves = new_list(msg_t);
-		//~ spin_unlock(&LPS_bound[i]->lock);
-
-		//~ while(!list_empty(processing)) {
-			//~ msg_to_process = list_head(processing);
 
 		while((msg_to_process = (msg_t *)get_BH(LPS_bound[i]->lid)) != NULL) {
 
 			lid_receiver = msg_to_process->receiver;
 
-			// TODO: reintegrare per ECS
-			//~ if(!receive_control_msg(msg_to_process)) {
-				//~ goto expunge_msg;
-			//~ }
+			// Handle control messages
+			if(!receive_control_msg(msg_to_process)) {
+				fprintf(stderr, "%s:%d: This message must be deleted but I still don't know how!\n", __FILE__, __LINE__);
+				abort();
+			}
 
 			switch (msg_to_process->message_kind) {
 
@@ -252,23 +243,19 @@ void process_bottom_halves(void) {
 					}
 					break;
 
-				// TODO: reintegrare per ECS
 				// It's a control message
-				//~ case other:
+				case other:
 					// Check if it is an anti control message
-					//~ if(!anti_control_message(msg_to_process)) {
-						//~ goto expunge_msg;
-					//~ }
-					//~ break;
+					if(!anti_control_message(msg_to_process)) {
+						fprintf(stderr, "%s:%d: This message must be deleted but I still don't know how!\n", __FILE__, __LINE__);
+						abort();
+					}
+					break;
 
 				default:
 					rootsim_error(true, "Received a message which is neither positive nor negative. Aborting...\n");
 			}
-
-		    //~ expunge_msg:
-			//~ list_pop(msg_to_process->sender, processing);
 		}
-		//~ rsfree(processing);
 	}
 
 	// We have processed all in transit messages.
@@ -276,7 +263,7 @@ void process_bottom_halves(void) {
 	// be placed by other threads. In this case, we loose their presence.
 	// This is not a correctness error. The only issue could be that the
 	// preemptive scheme will not detect this, and some events could
-	// be in fact executed out of error.
+	// be in fact executed out of order.
 	#ifdef HAVE_PREEMPTION
 	reset_min_in_transit(tid);
 	#endif

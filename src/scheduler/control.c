@@ -33,7 +33,7 @@
 #include <mm/dymelor.h>
 
 
-#ifdef HAVE_LINUX_KERNEL_MAP_MODULE
+#ifdef HAVE_CROSS_STATE
 void unblock_synchronized_objects(unsigned int lid) {
 	unsigned int i;
 	msg_t control_msg;
@@ -88,7 +88,7 @@ void rollback_control_message(unsigned int lid, simtime_t simtime) {
 // return false if the antimessage is recognized (and processed) as a control antimessage
 bool anti_control_message(msg_t * msg) {
 
-	#ifndef HAVE_LINUX_KERNEL_MAP_MODULE
+	#ifndef HAVE_CROSS_STATE
 	(void)msg;
 	#else
 	msg_t *old_rendezvous ;
@@ -145,7 +145,7 @@ bool receive_control_msg(msg_t *msg) {
 		return true;
 	}
 
-	#ifdef  HAVE_LINUX_KERNEL_MAP_MODULE
+	#ifdef  HAVE_CROSS_STATE
 	switch(msg->type) {
 
 		case RENDEZVOUS_START:
@@ -192,7 +192,7 @@ bool receive_control_msg(msg_t *msg) {
 // return true if must be passed to the LP
 bool process_control_msg(msg_t *msg) {
 
-	#ifdef HAVE_LINUX_KERNEL_MAP_MODULE
+	#ifdef HAVE_CROSS_STATE
 	msg_t control_msg;
 	#endif
 
@@ -201,7 +201,7 @@ bool process_control_msg(msg_t *msg) {
 		return true;
 	}
 
-	#ifdef HAVE_LINUX_KERNEL_MAP_MODULE
+	#ifdef HAVE_CROSS_STATE
 	switch(msg->type) {
 
 		case RENDEZVOUS_START:

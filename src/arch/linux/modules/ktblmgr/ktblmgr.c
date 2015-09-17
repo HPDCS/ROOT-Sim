@@ -26,9 +26,7 @@
 * @date November 15, 2013
 */
 
-#define HAVE_LINUX_KERNEL_MAP_MODULE
-
-#ifdef HAVE_LINUX_KERNEL_MAP_MODULE
+#ifdef HAVE_CROSS_STATE
 
 #define EXPORT_SYMTAB
 #include <linux/module.h>
@@ -1166,4 +1164,4 @@ static void rs_ktblmgr_cleanup(void) {
 
 }
 
-#endif	/* HAVE_LINUX_KERNEL_MAP_MODULE */
+#endif	/* HAVE_CROSS_STATE */

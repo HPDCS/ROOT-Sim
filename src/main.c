@@ -93,7 +93,7 @@ static void *main_simulation_loop(void *arg) {
 
 	simtime_t my_time_barrier = -1.0;
 
-	#ifdef HAVE_LINUX_KERNEL_MAP_MODULE
+	#ifdef HAVE_CROSS_STATE
 	lp_alloc_thread_init();
 	#endif
 

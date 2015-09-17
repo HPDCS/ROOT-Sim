@@ -125,7 +125,7 @@ typedef struct _LP_state {
 	/// Buffer used by KLTs for buffering outgoing messages during the execution of an event
 	outgoing_t outgoing_buffer;
 
-	#ifdef HAVE_LINUX_KERNEL_MAP_MODULE
+	#ifdef HAVE_CROSS_STATE
 	unsigned int ECS_synch_table[MAX_CROSS_STATE_DEPENDENCIES];
 	unsigned int ECS_index;
 	#endif

@@ -48,8 +48,8 @@
 #include <gvt/gvt.h>
 #include <statistics/statistics.h>
 
-#ifdef HAVE_LINUX_KERNEL_MAP_MODULE
-#include <mm/modules/ktblmgr/ktblmgr.h>
+#ifdef HAVE_CROSS_STATE
+#include <arch/linux/modules/ktblmgr/ktblmgr.h>
 #endif
 
 
@@ -288,7 +288,7 @@ void initialize_LP(unsigned int lp) {
 		LPS[lp]->outgoing_buffer.min_in_transit[i] = INFTY;
 	}
 
-	#ifdef HAVE_LINUX_KERNEL_MAP_MODULE
+	#ifdef HAVE_CROSS_STATE
 	// No read/write dependencies open so far for the LP. The current lp is always opened
 	LPS[lp]->ECS_index = 0;
 	LPS[lp]->ECS_synch_table[0] = lp;
@@ -392,7 +392,7 @@ void activate_LP(unsigned int lp, simtime_t lvt, void *evt, void *state) {
 //		enable_preemption();
 //	#endif
 
-	#ifdef HAVE_LINUX_KERNEL_MAP_MODULE
+	#ifdef HAVE_CROSS_STATE
 	// Activate memory view for the current LP
 	lp_alloc_schedule();
 	#endif
@@ -408,7 +408,7 @@ void activate_LP(unsigned int lp, simtime_t lvt, void *evt, void *state) {
 //                disable_preemption();
 //        #endif
 
-	#ifdef HAVE_LINUX_KERNEL_MAP_MODULE
+	#ifdef HAVE_CROSS_STATE
 	// Deactivate memory view for the current LP if no conflict has arisen
 	if(!is_blocked_state(LPS[lp]->state)) {
 		lp_alloc_deschedule();
@@ -435,7 +435,7 @@ void schedule(void) {
 	msg_t *event;
 	void *state;
 
-	#ifdef HAVE_LINUX_KERNEL_MAP_MODULE
+	#ifdef HAVE_CROSS_STATE
 	bool resume_execution = false;
 	#endif
 
@@ -490,7 +490,7 @@ void schedule(void) {
 
 	state = LPS[lid]->current_base_pointer;
 
-	#ifdef HAVE_LINUX_KERNEL_MAP_MODULE
+	#ifdef HAVE_CROSS_STATE
 	// In case we are resuming an interrupted execution, we keep track of this.
 	// If at the end of the scheduling the LP is not blocked, we can unblokc all the remote objects
 	if(LPS[lid]->state == LP_STATE_READY_FOR_SYNCH) {
@@ -506,7 +506,7 @@ void schedule(void) {
 		send_outgoing_msgs(lid);
 	}
 
-	#ifdef HAVE_LINUX_KERNEL_MAP_MODULE
+	#ifdef HAVE_CROSS_STATE
 	if(resume_execution && !is_blocked_state(LPS[lid]->state)) {
 		unblock_synchronized_objects(lid);
 		// This is to avoid domino effect when relying on rendezvous messages
