@@ -34,9 +34,10 @@
 #include <queues/queues.h>
 #include <communication/communication.h>
 #include <statistics/statistics.h>
+#include <scheduler/scheduler.h>
 #include <scheduler/process.h>
 #include <datatypes/list.h>
-
+#include <mm/dymelor.h>
 
 /// This is the function pointer to correctly set ScheduleNewEvent API version, depending if we're running serially or parallelly
 void (* ScheduleNewEvent)(unsigned int gid_receiver, simtime_t timestamp, unsigned int event_type, void *event_content, unsigned int event_size);
@@ -82,6 +83,8 @@ void communication_fini(void) {
 void ParallelScheduleNewEvent(unsigned int gid_receiver, simtime_t timestamp, unsigned int event_type, void *event_content, unsigned int event_size) {
 	msg_t event;
 
+	switch_to_platform_mode();
+
 	// In Silent execution, we do not send again already sent messages
 	if(LPS[current_lp]->state == LP_STATE_SILENT_EXEC) {
 		return;
@@ -90,7 +93,7 @@ void ParallelScheduleNewEvent(unsigned int gid_receiver, simtime_t timestamp, un
 	// Check whether the destination LP is out of range
 	if(gid_receiver > n_prc_tot - 1) {	// It's unsigned, so no need to check whether it's < 0
 		rootsim_error(false, "Warning: the destination LP %d is out of range. The event has been ignored\n", gid_receiver);
-		return;
+		goto out;
 	}
 
 	// Check if the associated timestamp is negative
@@ -128,6 +131,9 @@ void ParallelScheduleNewEvent(unsigned int gid_receiver, simtime_t timestamp, un
 	}
 
 	insert_outgoing_msg(&event);
+
+    out:
+	switch_to_application_mode();
 }
 
 
@@ -174,7 +180,7 @@ void send_antimessages(unsigned int lid, simtime_t after_simtime) {
 
 		// Remove the already sent antimessage from output queue
 		anti_msg_next = list_next(anti_msg);
-		list_delete_by_content(LPS[lid]->queue_out, anti_msg);
+		list_delete_by_content(lid, LPS[lid]->queue_out, anti_msg);
 		anti_msg = anti_msg_next;
 	}
 }
@@ -195,10 +201,10 @@ int comm_finalize(void) {
 	// Release as well memory used for remaining input/output queues
 	for(i = 0; i < n_prc; i++) {
 		while(!list_empty(LPS[i]->queue_in)) {
-			list_pop(LPS[i]->queue_in);
+			list_pop(i, LPS[i]->queue_in);
 		}
 		while(!list_empty(LPS[i]->queue_out)) {
-			list_pop(LPS[i]->queue_out);
+			list_pop(i, LPS[i]->queue_out);
 		}
 	}
 
@@ -354,7 +360,7 @@ void send_outgoing_msgs(unsigned int lid) {
 		msg_hdr.timestamp = msg->timestamp;
 		msg_hdr.send_time = msg->send_time;
 		msg_hdr.mark = msg->mark;
-		(void)list_insert(LPS[msg->sender]->queue_out, send_time, &msg_hdr);
+		(void)list_insert(msg->sender, LPS[msg->sender]->queue_out, send_time, &msg_hdr);
 	}
 
 	LPS[lid]->outgoing_buffer.size = 0;

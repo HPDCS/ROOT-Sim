@@ -54,11 +54,11 @@ inline bool ccgs_can_halt_simulation(void) {
 void ccgs_reduce_termination(void) {
 	register unsigned int i;
 	bool termination = true;
-		
+
 	for(i = 0; i < n_prc; i++) {
 		termination &= lps_termination[i];
 	}
-	
+
 	ccgs_completed_simulation = termination;
 }
 
@@ -100,7 +100,7 @@ void ccgs_compute_snapshot(state_t *time_barrier_pointer[], simtime_t gvt) {
 
 		// Log the current state so that after we can restore it.
 		current_lp = lid;
-		current_lvt = lvt(lid);		
+		current_lvt = lvt(lid);
 		temporary_log.log = log_state(lid);
 		temporary_log.state = LPS[lid]->state;
 		temporary_log.base_pointer = LPS[lid]->current_base_pointer;

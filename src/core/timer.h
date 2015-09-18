@@ -37,7 +37,7 @@ typedef struct timeval timer;
 
 #define timer_start(timer_name) gettimeofday(&timer_name, NULL)
 
-#define timer_restart(timer_name) gettimeofday(&timer_name, NULL)
+#define timer_restart(timer_name) timer_start(timer_name)
 
 #define timer_value_seconds(timer_name) ((double)timer_value_milli(timer_name) / 1000.0)
 

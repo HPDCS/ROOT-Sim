@@ -29,7 +29,7 @@
 static car_t *reorder_queue(car_t *head, simtime_t now) {
     car_t *curr;
     car_t *prev;
-bool didSwap = false;
+    bool didSwap = false;
     for(didSwap = true; didSwap; ) {
         didSwap = false;
         prev = head;

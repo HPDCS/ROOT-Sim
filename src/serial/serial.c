@@ -8,7 +8,7 @@
 #include <core/core.h>
 #include <scheduler/scheduler.h>
 #include <core/timer.h>
-#include <mm/malloc.h>
+#include <mm/dymelor.h>
 #include <datatypes/calqueue.h>
 
 #ifdef EXTRA_CHECKS
@@ -105,9 +105,9 @@ void serial_simulation(void) {
         #endif
 
 	timer_start(serial_gvt_timer);
-	
+
 	statistics_post_other_data(STAT_SIM_START, 0.0);
-	
+
 	while(!serial_simulation_complete) {
 
 		event = (msg_t *)calqueue_get();
@@ -163,8 +163,7 @@ void serial_simulation(void) {
 	        if (timer_value_milli(serial_gvt_timer) > (int)rootsim_config.gvt_time_period) {
 	                timer_restart(serial_gvt_timer);
 	                printf("TIME BARRIER: %f\n", current_lvt);
-	                statistics_post_other_data(STAT_GVT, 0.0);
-	                statistics_post_other_data(STAT_GVT_TIME, current_lvt);
+	                statistics_post_other_data(STAT_GVT, current_lvt);
 		}
 
 		rsfree(event);

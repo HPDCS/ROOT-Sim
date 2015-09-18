@@ -69,9 +69,8 @@
 #define MAX_LPs		8192		// This is 2^20
 
 /// Maximum event size (in bytes)
-#define MAX_EVENT_SIZE	1120
-//#define MAX_EVENT_SIZE	(150 * sizeof(int))
-//#define MAX_EVENT_SIZE	1500
+#define MAX_EVENT_SIZE	128
+
 
 // XXX: this should be moved somewhere else...
 #define VERBOSE_INFO	1700
@@ -91,13 +90,13 @@
 
 // XXX should be moved to a more librarish header
 /// Equality condition for floats
-#define F_EQUAL(a,b) (fabs((a) - (b)) < FLT_EPSILON)
+#define F_EQUAL(a,b) (fabsf((a) - (b)) < FLT_EPSILON)
 /// Equality to zero condition for floats
-#define F_EQUAL_ZERO(a) (fabs(a) < FLT_EPSILON)
+#define F_EQUAL_ZERO(a) (fabsf(a) < FLT_EPSILON)
 /// Difference condition for floats
-#define F_DIFFER(a,b) (fabs((a) - (b)) >= FLT_EPSILON)
+#define F_DIFFER(a,b) (fabsf((a) - (b)) >= FLT_EPSILON)
 /// Difference from zero condition for floats
-#define F_DIFFER_ZERO(a) (fabs(a) >= FLT_EPSILON)
+#define F_DIFFER_ZERO(a) (fabsf(a) >= FLT_EPSILON)
 
 
 /// Equality condition for doubles
@@ -129,11 +128,10 @@
      _a < _b ? _a : _b; })
 
 
-// to avoid a circular inclusion, but I hate this! :(
-struct _state_t;
+/// Macro to "legitimately" pun a type
+#define UNION_CAST(x, destType) (((union {__typeof__(x) a; destType b;})x).b)
 
 typedef enum {positive, negative, other} message_kind_t;
-
 
 /// Message Type definition
 typedef struct _msg_t {
@@ -143,11 +141,9 @@ typedef struct _msg_t {
 	int   			type;
 	simtime_t		timestamp;
 	simtime_t		send_time;
-	// TODO: risistemare questa cosa degli antimessaggi
 	message_kind_t		message_kind;
 	unsigned long long	mark;	/// Unique identifier of the message, used for antimessages
 	unsigned long long	rendezvous_mark;	/// Unique identifier of the message, used for rendez-vous events
-//	struct _state_t 	*is_first_event_of;
 	// Application informations
 	char event_content[MAX_EVENT_SIZE];
 	int size;
@@ -186,6 +182,14 @@ typedef struct _simulation_configuration {
 	enum stat_levels stats;		/// Produce performance statistic file (default STATS_ALL)
 	bool serial;			// If the simulation must be run serially
 	seed_type set_seed;		/// The master seed to be used in this run
+
+#ifdef HAVE_PREEMPTION
+	bool disable_preemption;	/// If compiled for preemptive Time Warp, it can be disabled at runtime
+#endif
+
+#ifdef HAVE_PARALLEL_ALLOCATOR
+	bool disable_allocator;
+#endif
 } simulation_configuration;
 
 

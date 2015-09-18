@@ -10,6 +10,10 @@
 #define _AVIONIC_APPLICATION_H
 #include <ROOT-Sim.h>
 
+
+#define TERMINATION_TIME 1000
+
+
 #define MAX_BUFFER         256
 #define MATRIX_DIMENSION   10
 #define NUMBER_OF_SECTOR   MATRIX_DIMENSION*MATRIX_DIMENSION
@@ -36,6 +40,11 @@
 #define FLYING 12
 #define ACK_ALL_SECTOR 13
 #define INFORM_COMPLETE 14
+
+#define KEEP_ALIVE 15
+#define KEEP_ALIVE_MEAN 1
+
+#define UPDATE_DELAYS 16
 
 /******************************************************/
 

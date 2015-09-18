@@ -18,22 +18,17 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file malloc.h
-* @brief This is the ROOT-Sim implementation of the malloc library (to come...)
+* @file binding.h
+* @brief Implements load sharing rules for LPs among worker threads
 * @author Alessandro Pellegrini
+* @author Roberto Vitali
 */
 
 
 #pragma once
-#ifndef _ROOTSIM_MALLOC_H
-#define _ROOTSIM_MALLOC_H
+#ifndef _BINDING_H
+#define _BINDING_H
 
-#include <stddef.h>
+extern void rebind_LPs(void);
 
-extern inline void *rsalloc(size_t);
-extern inline void rsfree(void *);
-extern inline void *rsrealloc(void *, size_t);
-extern inline void *rscalloc(size_t, size_t);
-
-#endif /* _ROOTSIM_MALLOC_H */
-
+#endif /* _BINDING_H */

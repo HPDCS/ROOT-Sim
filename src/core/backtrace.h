@@ -105,7 +105,7 @@ signal_def signal_data[] =
 	{ "SIGIO", SIGIO, "I/O now possible (4.2 BSD)" },
 	{ "SIGPOLL", SIGPOLL, "Pollable event occurred (System V)" },
 	{ "SIGPWR", SIGPWR, "Power failure restart (System V)" },
-	{ "SIGSYS", SIGSYS, "Bad system ca ll" },
+	{ "SIGSYS", SIGSYS, "Bad system call" },
 };
 
 
@@ -240,7 +240,7 @@ void bt_sighandler(int sig, siginfo_t *info, void *opaque) {
 		printf("#%d %s] at %s", i-2, messages[i], get_file_line(extract_word_from_string(messages[i], '[', ']')));
 	}
 
-	exit(0);
+	simulation_shutdown(EXIT_FAILURE);
 }
 
 

@@ -35,12 +35,12 @@
 #include <stdbool.h>
 
 #include <mm/state.h>
+#include <mm/dymelor.h>
 #include <datatypes/list.h>
 #include <scheduler/scheduler.h>
 #include <arch/ult.h>
 #include <arch/atomic.h>
 #include <lib/numerical.h>
-#include <mm/modules/ktblmgr/ktblmgr.h>
 #include <communication/communication.h>
 
 
@@ -51,7 +51,8 @@
 #define LP_STATE_RUNNING		0x00002
 #define LP_STATE_ROLLBACK		0x00004
 #define LP_STATE_SILENT_EXEC		0x00008
-#define LP_STATE_READY_FOR_SYNCH	0x00010
+#define LP_STATE_SUSPENDED		0x01010
+#define LP_STATE_READY_FOR_SYNCH	0x00011
 #define LP_STATE_WAIT_FOR_SYNCH		0x01001
 #define LP_STATE_WAIT_FOR_UNBLOCK	0x01002
 
@@ -96,7 +97,7 @@ typedef struct _LP_state {
 
 	/// If this variable is set, the next invocation to LogState() takes a new state log, independently of the checkpointing interval
 	bool		state_log_forced;
-	
+
 	/// The current state base pointer (updated by SetState())
 	void 		*current_base_pointer;
 
