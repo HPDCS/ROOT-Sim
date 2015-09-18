@@ -161,9 +161,9 @@ AC_SUBST(MPI_CC)
 
 
 ## See if MPI_CC works 
+ac_mpi_found=no
 AC_MSG_CHECKING([for an MPI2-compliant C compiler and mpi.h])
 saved_CC=$CC
-saved_CFLAGS=$CFLAGS
 CC=$MPI_CC
 AC_LINK_IFELSE([AC_LANG_PROGRAM([[
 #include <mpi.h>
@@ -176,10 +176,11 @@ AC_LINK_IFELSE([AC_LANG_PROGRAM([[
   return r;
 ]])], [
 AC_MSG_RESULT([yes, $MPI_CC])
+ac_mpi_found=yes
 ], [
 AC_MSG_RESULT([no])
-AC_MSG_ERROR([An MPI compliant compiler is required to build ROOT-Sim])
 ])
+CC=$saved_CC
 
 
 
@@ -282,6 +283,21 @@ AC_MSG_RESULT([no])
 #
 # From here on, we enable/disable compile time switches for the simulator
 #----------------------------------------------------------------------------
+
+
+# Disable MPI. This can be used only on a single parallel machine
+
+AC_ARG_ENABLE([mpi],
+    AS_HELP_STRING([--disable-mpi], [Disable User-Level Threads for LP scheduling]))
+
+AS_IF([test "x$enable_mpi" != "xno"], [
+  if test "x$ac_mpi_found" = "xyes"
+  then
+	AC_DEFINE([HAVE_MPI])
+	ac_have_mpi=yes
+	CC=$MPI_CC
+  fi
+])
 
 
 # Disable ULT. Everything is run in the same context, in the same stack
@@ -504,20 +520,39 @@ else
 fi
 
 
+# Compose the message regarding MPI
+if test "x$ac_have_mpi" = "xyes"
+then
+	ac_mpi="Enabled using ${CC} (by default, use --disable-mpi if not wanted, --with-mpicc=ARG to change compiler)"
+else
+	ac_mpi="Disabled"
+	if test "x$ac_mpi_found" = "xno"
+	then
+		ac_mpi="${ac_mpi} (couldn't find/use the '${MPI_CC}' MPI compiler)"
+	else
+		ac_mpi="${ac_mpi} (disabled by the user)"
+	fi
+fi
+
+
+
 
 cat<<EOF
 
 
    * ROOT-Sim Configuration on Current Machine *
 
-CPU Architecture.......... : ${current_cpu}
-Operating System.......... : ${host_os}
-Debugging Support......... : ${enable_debug}
-User-Level Threads........ : ${ac_enable_ult}
-Parallel Allocator........ : ${ac_parallel_allocator}
-NUMA Subsystem............ : ${numa_subsystem}
-LP Preemption Support..... : ${ac_preemption}
-LP Rebinding.............. : ${ac_lp_rebinding}
+CPU Architecture ......... : ${current_cpu}
+Operating System ......... : ${host_os}
+Debugging Support ........ : ${enable_debug}
+User-Level Threads ....... : ${ac_enable_ult}
+Parallel Allocator ....... : ${ac_parallel_allocator}
+NUMA Subsystem ........... : ${numa_subsystem}
+LP Preemption Support .... : ${ac_preemption}
+LP Rebinding ............. : ${ac_lp_rebinding}
+MPI Support .............. : ${ac_mpi}
 
+
+ROOT-Sim will be installed to: ${prefix}
 
 EOF
