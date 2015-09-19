@@ -17,13 +17,17 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 * 
-* @file ktblmgr.c 
-* @brief This is the main source for the Linux Kernel Module which implements
-*	per-kernel-thread different page table for supporting shared state.
+* @file cross_state_manager.c 
+* @brief This Linux kernel module implements a modification to the x86_64 page
+* 	 table management to support event cross state dependency tracking
+* 
 * @author Alessandro Pellegrini
 * @author Francesco Quaglia
 *
-* @date November 15, 2013
+* @date 
+*       November 15, 2013 - Initial version
+*       September 19, 2015 - Full restyle of the module, to use dynamic scheduler
+* 			     patching
 */
 
 #ifdef HAVE_CROSS_STATE
@@ -47,7 +51,7 @@
 #include <linux/uaccess.h>
 
 
-#include "ktblmgr.h"
+#include "cross_state_manager.h"
 
 //#define SIBLING_PGD 128
 #define AUXILIARY_FRAMES 256
@@ -73,13 +77,11 @@ module_exit(rs_ktblmgr_cleanup);
 
 
 /* MODULE VARIABLES */
-
 extern (*rootsim_pager)(struct task_struct *tsk); 
 extern void rootsim_load_cr3(ulong addr); 
 
 /// Device major number
 static int major;
-
 
 /// Device class being created
 static struct class *dev_cl = NULL;
@@ -106,7 +108,7 @@ int root_sim_processes[SIBLING_PGD]={[0 ... (SIBLING_PGD-1)] = -1};
 int currently_open[SIBLING_PGD][MAX_CROSS_STATE_DEPENDENCIES];
 int open_index[SIBLING_PGD]={[0 ... (SIBLING_PGD-1)] = -1};
 
-void**ancestor_pml4;
+void **ancestor_pml4;
 int restore_pml4;  /* starting entry of pml4 for release operations of shadow pdp tables */
 int restore_pml4_entries; /* entries of the pml4 involvrd in release operations of shadow pdp tables */
 int mapped_processes; /* number of processes (application objects) mapped onto the special segment */
@@ -114,17 +116,12 @@ int mapped_processes; /* number of processes (application objects) mapped onto t
 
 ulong callback;
 
-//atomic_t involved_threads;
-
 struct vm_area_struct* changed_mode_mmap;
 struct vm_operations_struct * original_vm_ops;
 struct vm_operations_struct auxiliary_vm_ops_table;
 struct vm_area_struct *target_vma;
-// int (*fault)(struct vm_area_struct *vma, struct vm_fault *vmf)
-// Specify sys device attributes
 
 int (*original_fault_handler)(struct vm_area_struct *vma, struct vm_fault *vmf);
-
 
 static DEVICE_ATTR(multimap, S_IRUSR|S_IRGRP|S_IROTH, NULL, NULL);
 
@@ -132,7 +129,7 @@ static DEVICE_ATTR(multimap, S_IRUSR|S_IRGRP|S_IROTH, NULL, NULL);
 struct file_operations fops = {
 	open:	rs_ktblmgr_open,
 	unlocked_ioctl:rs_ktblmgr_ioctl,
-	compat_ioctl:rs_ktblmgr_ioctl,// Nothing strange is passed, so 32 bits programs should work out of the box
+	compat_ioctl:rs_ktblmgr_ioctl, // Nothing strange is passed, so 32 bits programs should work out of the box. Never tested, yet.
 	release:rs_ktblmgr_release
 };
 
@@ -142,51 +139,43 @@ void (*flush_tlb_all_lookup)(void) = NULL;
 
 
 int root_sim_page_fault(struct pt_regs* regs, long error_code){
- 	void* target_address;
-	void ** my_pgd;
-	void ** my_pdp;
-	void** target_pdp_entry;
-	void** ancestor_pdp;
+ 	void *target_address;
+	void **my_pgd;
+	void **my_pdp;
+	void **target_pdp_entry;
+	void **ancestor_pdp;
 	ulong i;
-	void* cr3;
-	ulong* auxiliary_stack_pointer;
+	void *cr3;
+	ulong *auxiliary_stack_pointer;
 	ulong hitted_object;
 
 	if(current->mm == NULL) return 0;  /* this is a kernel thread - not a rootsim thread */
 
-	target_address = (void*)read_cr2();
+	target_address = (void *)read_cr2();
 
 
 	/* discriminate whether this is a classical fault or a root-sim proper fault */
 
-	for(i=0;i<SIBLING_PGD;i++){	
-		if ((root_sim_processes[i])==(current->pid)){	
-
-//			printk("Segfault on %p\n", target_address);
+	for(i=0;i<SIBLING_PGD;i++) {
+		if ((root_sim_processes[i])==(current->pid)) {
 
 			if((PML4(target_address)<restore_pml4) || (PML4(target_address))>=(restore_pml4+restore_pml4_entries)) return 0; /* a fault outside the root-sim object zone - it needs to be handeld by the traditional fault manager */
 
-//			printk("thread %d - root-sim fault handler activated for access to address %p (PML$ is %d - PDP is %d)\n",current->pid,target_address,(int)PML4(target_address),(int)PDP(target_address));
-			
-			//PATCH my_pgd =(void**) current->mm->pgd;
-			my_pgd =(void**) pgd_addr[i];
-			my_pdp =(void*) my_pgd[PML4(target_address)];
+			my_pgd =(void **)pgd_addr[i];
+			my_pdp =(void *)my_pgd[PML4(target_address)];
 			my_pdp = __va((ulong)my_pdp & 0xfffffffffffff000);
-			if((void*)my_pdp[PDP(target_address)] != NULL) return 0; /* faults at lower levels than PDP - need to be handled by traditional fault manager */
+			if((void *)my_pdp[PDP(target_address)] != NULL)
+				return 0; /* faults at lower levels than PDP - need to be handled by traditional fault manager */
 
-
-		//target_pdp_entry =(void*) my_pdp[PDP(target_address)];
-
-//#define ON_FAULT_OPEN
 #ifdef ON_FAULT_OPEN
-			ancestor_pdp =(void*) ancestor_pml4[PML4(target_address)];
+			ancestor_pdp =(void *) ancestor_pml4[PML4(target_address)];
 			ancestor_pdp = __va((ulong)ancestor_pdp & 0xfffffffffffff000);
 			my_pdp[PDP(target_address)] = ancestor_pdp[PDP(target_address)];
-//			printk("\tthread %d - root-sim is opening the access to the address %p (loading the mask %p into the page table)\n",current->pid,target_address, (void*)ancestor_pdp[PDP(target_address)]);
+//			printk("\tthread %d - root-sim is opening the access to the address %p (loading the mask %p into the page table)\n",current->pid,target_address, (void *)ancestor_pdp[PDP(target_address)]);
 
-			//PATCH cr3 = (void*)__pa(current->mm->pgd);
+			//PATCH cr3 = (void *)__pa(current->mm->pgd);
 			rootsim_load_cr3(pgd_addr[i]);
-		//	cr3 = (void*)__pa(pgd_addr[i]);
+		//	cr3 = (void *)__pa(pgd_addr[i]);
 		//	asm volatile("movq %%CR3, %%rax; andq $0x0fff,%%rax; movq %0, %%rbx; orq %%rbx,%%rax; movq %%rax,%%CR3"::"m" (cr3));
 /* to be improved with selective tlb invalidation */
 
@@ -202,11 +191,11 @@ int root_sim_page_fault(struct pt_regs* regs, long error_code){
 			auxiliary_stack_pointer = regs->sp;
 			auxiliary_stack_pointer--;
 			//printk("stack management information : reg->sp is %p - auxiliary sp is %p\n",regs->sp,auxiliary_stack_pointer);
-		        copy_to_user((void*)auxiliary_stack_pointer,(void*)&regs->ip,8);	
+		        copy_to_user((void *)auxiliary_stack_pointer,(void *)&regs->ip,8);	
 			auxiliary_stack_pointer--;
-		        copy_to_user((void*)auxiliary_stack_pointer,(void*)&hitted_object,8);	
+		        copy_to_user((void *)auxiliary_stack_pointer,(void *)&hitted_object,8);	
 			auxiliary_stack_pointer--;
-		        copy_to_user((void*)auxiliary_stack_pointer,(void*)&i,8);	
+		        copy_to_user((void *)auxiliary_stack_pointer,(void *)&i,8);	
 //			printk("stack management information : reg->sp is %p - auxiliary sp is %p - hitted objectr is %u - pgd descriptor is %u\n",regs->sp,auxiliary_stack_pointer,hitted_object,i);
 			regs->sp = auxiliary_stack_pointer;
 			regs->ip = callback;
@@ -221,7 +210,7 @@ int root_sim_page_fault(struct pt_regs* regs, long error_code){
 //		printk("root-sim fault at address %p (pml4 is %d - PDP is %d)\n",target_address,(int)PML4(target_address),(int)PDP(target_address));
 
 		
-		ancestor_pdp =(void*) ancestor_pml4[PML4(target_address)];
+		ancestor_pdp =(void *) ancestor_pml4[PML4(target_address)];
 		my_pdp[PDP(target_address)] = ancestor_pdp[PDP(target_address)]; /* access opened */
 	        return 1;	
 	}
@@ -261,9 +250,9 @@ int rs_ktblmgr_release(struct inode *inode, struct file *filp) {
       	int i,j;
 	int pml4, pdp;
 	int involved_pml4;
-	void** pgd_entry;
-	void** temp;
-	void* address;
+	void **pgd_entry;
+	void **temp;
+	void *address;
 
 //	printk("closing the special device file ktblmgr\n");
 
@@ -278,8 +267,7 @@ int rs_ktblmgr_release(struct inode *inode, struct file *filp) {
 		if(original_view[j]!=NULL){ /* need to recover memory used for PDPs that have not been deallocated */
 
 
-			// PATCH pgd_entry = (void**)current->mm->pgd;
-			pgd_entry = (void**)pgd_addr[i];
+			pgd_entry = (void **)pgd_addr[i];
 
 			for (i=0; i<involved_pml4; i++){
 			
@@ -288,8 +276,8 @@ int rs_ktblmgr_release(struct inode *inode, struct file *filp) {
 			
 				temp = pgd_entry[pml4];
 				
-				temp = (void*)((ulong) temp & 0xfffffffffffff000);	
-				address = (void*)__va(temp);
+				temp = (void *)((ulong) temp & 0xfffffffffffff000);	
+				address = (void *)__va(temp);
 				if(address!=NULL){
 					__free_pages(address, 0);
 				}
@@ -321,26 +309,26 @@ static long rs_ktblmgr_ioctl(struct file *filp, unsigned int cmd, unsigned long 
 
 	int ret = 0;
 	int i,j,z;
-	void ** my_pgd;
-	void ** my_pdp;
-	void** ancestor_pdp;
-	void* cr3;
-	void** pgd_entry;
-	void** source_pgd_entry;
-	void* pdp_entry;
-	void* pde_entry;
-	void* pte_entry;
-	void** temp;
-	void** temp1;
-	void** temp2;
+	void **my_pgd;
+	void **my_pdp;
+	void **ancestor_pdp;
+	void *cr3;
+	void **pgd_entry;
+	void **source_pgd_entry;
+	void *pdp_entry;
+	void *pde_entry;
+	void *pte_entry;
+	void **temp;
+	void **temp1;
+	void **temp2;
 	int descriptor;
 	struct vm_area_struct *mmap;
-	void* address;
+	void *address;
 	int pml4, pdp;
 	int involved_pml4;
-	void* source_pdp;
+	void *source_pdp;
 	int scheduled_object;
-	int* scheduled_objects;
+	int *scheduled_objects;
 	int scheduled_objects_count;
 	int object_to_close;
 	//ulong aux;
@@ -400,7 +388,7 @@ static long rs_ktblmgr_ioctl(struct file *filp, unsigned int cmd, unsigned long 
 
 	case IOCTL_SET_ANCESTOR_PGD:
 		//flush_cache_all();
-		ancestor_pml4 = (void**)current->mm->pgd;
+		ancestor_pml4 = (void **)current->mm->pgd;
 //		printk("ANCESTOR PML4 SET - ADDRESS IS %p\n",ancestor_pml4);
 		break;
 
@@ -454,17 +442,17 @@ back_to_pgd_release:
 			for(i=0;i<scheduled_objects_count;i++){
 
 			//scheduled_object = TODO COPY FROM USER;
-		        copy_from_user((void*)&scheduled_object,(void*)&scheduled_objects[i],sizeof(int));	
+		        copy_from_user((void *)&scheduled_object,(void *)&scheduled_objects[i],sizeof(int));	
 			open_index[descriptor]++;
 			currently_open[descriptor][open_index[descriptor]]=scheduled_object;
 			//loadCR3 with pgd[arg]
 			
 			pml4 = restore_pml4 + OBJECT_TO_PML4(scheduled_object);
-			my_pgd =(void**) pgd_addr[descriptor];
-			my_pdp =(void*) my_pgd[pml4];
+			my_pgd =(void **) pgd_addr[descriptor];
+			my_pdp =(void *) my_pgd[pml4];
 			my_pdp = __va((ulong)my_pdp & 0xfffffffffffff000);
 
-			ancestor_pdp =(void*) ancestor_pml4[pml4];
+			ancestor_pdp =(void *) ancestor_pml4[pml4];
 			ancestor_pdp = __va((ulong)ancestor_pdp & 0xfffffffffffff000);
 
 			/* actual opening of the PDP entry */
@@ -499,8 +487,8 @@ back_to_pgd_release:
 				pml4 = restore_pml4 + OBJECT_TO_PML4(object_to_close);
 //				printk("UNSCHEDULE: closing pml4 %d - object %d\n",pml4,object_to_close);
 	//			continue;
-				my_pgd =(void**) pgd_addr[descriptor];
-				my_pdp =(void*) my_pgd[pml4];
+				my_pgd =(void **)pgd_addr[descriptor];
+				my_pdp =(void *)my_pgd[pml4];
 				my_pdp = __va((ulong)my_pdp & 0xfffffffffffff000);
 
 
@@ -523,34 +511,18 @@ back_to_pgd_release:
 			//loadCR3 with pgd[arg]
 			root_sim_processes[arg] = current->pid;
 			rootsim_load_cr3(pgd_addr[arg]);
-	//		cr3 = (void*)__pa(pgd_addr[arg]);
-	//		asm volatile("movq %%CR3, %%rax; andq $0x0fff,%%rax; movq %0, %%rbx; orq %%rbx,%%rax; movq %%rax,%%CR3"::"m" (cr3));
-			//flush_tlb_all_lookup();
 			ret = 0;
 			break;
 
 
-			//atomic_inc(&involved_threads);
-			//current->mm->mm_count = involved_threads;
-//			atomic_dec(&(current->mm->mm_count)) ;
 			current->mm = mm_struct_addr[arg];
-		//	current->active_mm = mm_struct_addr[arg];
-			current->active_mm = original_view[arg];/* 30-1-2014 */
+			current->active_mm = original_view[arg]; /* 30-1-2014 */
 			atomic_inc(&original_view[arg]->mm_count); /* 30-1-2014 */
-//			atomic_inc(&involved_threads);
-//			original_view[arg]->mm_count = involved_threads;
-			//current->mm->pgd = (void*)__pa(pgd_addr[arg]);
-//			atomic_set(&(current->mm->mm_count),1) ;
-			current->mm->pgd = (void*)(pgd_addr[arg]);
+			current->mm->pgd = (void *)(pgd_addr[arg]);
 
-			//memcpy(mm_struct_addr[i], current->mm, sizeof(struct mm_struct));
-			//memcpy((void*)pgd_addr[i] ,(void*)(current->mm->pgd), 4096);
-			//original_view[arg] = NULL;
-			//descriptor = i;
-//			asm volatile("movq %%CR3, %%rax; movq %%rax,%%CR3":"=a" (cr3):"m" (current->mm->pgd));
-//			printk("mm->pgd is %p -- cr3 is %p -- PA(pgd) is %p",(void*)current->mm->pgd,(void*)cr3,(void*)__pa(current->mm->pgd));
+//			printk("mm->pgd is %p -- cr3 is %p -- PA(pgd) is %p",(void *)current->mm->pgd,(void *)cr3,(void *)__pa(current->mm->pgd));
 			flush_cache_all();
-			cr3 = (void*)__pa(current->mm->pgd);
+			cr3 = (void *)__pa(current->mm->pgd);
 			asm volatile("movq %%CR3, %%rax; andq $0x0fff,%%rax; movq %0, %%rbx; orq %%rbx,%%rax; movq %%rax,%%CR3"::"m" (cr3));
 			//flush_tlb_all_lookup();
 			ret = 0;
@@ -564,12 +536,12 @@ back_to_pgd_release:
 
 	case IOCTL_GET_INFO_PGD:
 //		printk("--------------------------------\n");	
-//		printk("mm is  %p --  mm->pgd is %p -- PA(pgd) is %p\n",(void*)current->mm,(void*)current->mm->pgd,(void*)__pa(current->mm->pgd));
+//		printk("mm is  %p --  mm->pgd is %p -- PA(pgd) is %p\n",(void *)current->mm,(void *)current->mm->pgd,(void *)__pa(current->mm->pgd));
 //		printk("PRINTING THE WHOLE PGD (non-NULL entries)\n");	
-		pgd_entry = (void**)current->mm->pgd;
+		pgd_entry = (void **)current->mm->pgd;
 		for(i=0;i<512;i++){
 			if (*(pgd_entry + i) != NULL){
-//				printk("\tentry \t%d \t- value \t%p\n",i,(void*)(*(pgd_entry+i)));	
+//				printk("\tentry \t%d \t- value \t%p\n",i,(void *)(*(pgd_entry+i)));	
 			//printk("\tentry \t%d \t- value \t%X\n",i,current->mm->pgd[i]);	
 			}
 		}	
@@ -581,10 +553,10 @@ back_to_pgd_release:
 //		printk("--------------------------------\n");	
 
 //		printk("PRINTING THE WHOLE VMAREA LIST\n");	
-	//	pgd_entry = (void**)current->mm->pgd;
+	//	pgd_entry = (void **)current->mm->pgd;
 		for(i=0;mmap;i++){
 			//if (*(pgd_entry + i) != NULL){
-//			printk("\t VMAREA entry \t%d - start = \t%p - end = \t%p - ops addr = \t%p\n",i,(void*)mmap->vm_start,(void*)mmap->vm_end,(void*)mmap->vm_ops);	
+//			printk("\t VMAREA entry \t%d - start = \t%p - end = \t%p - ops addr = \t%p\n",i,(void *)mmap->vm_start,(void *)mmap->vm_end,(void *)mmap->vm_ops);	
 			mmap = mmap->vm_next;
 			//printk("\tentry \t%d \t- value \t%X\n",i,current->mm->pgd[i]);	
 		//	}
@@ -620,7 +592,7 @@ back_to_pgd_release:
 			root_sim_processes[arg] = -1;
 			rootsim_load_cr3(current->mm->pgd);
 		}
-	//		cr3 = (void*)__pa(current->mm->pgd);
+	//		cr3 = (void *)__pa(current->mm->pgd);
 	//		asm volatile("movq %%CR3, %%rax; andq $0x0fff,%%rax; movq %0, %%rbx; orq %%rbx,%%rax; movq %%rax,%%CR3"::"m" (cr3));
 			//flush_tlb_all_lookup();
 			ret = 0;
@@ -650,14 +622,14 @@ back_to_pgd_release:
 
 /*
 			printk("LOGGING CURRENT PML4\n");
-			pgd_entry=(void*)current->mm->pgd;
+			pgd_entry=(void *)current->mm->pgd;
 			for (i=0;i<512;i++){
-				if((void*)pgd_entry[i]) printk("entry %i  is  %p\n",i,(void*)pgd_entry[i]);
+				if((void *)pgd_entry[i]) printk("entry %i  is  %p\n",i,(void *)pgd_entry[i]);
 			}
 			printk("LOGGING CURRENT PML4\n");
-			pgd_entry=(void*)current->mm->pgd;
+			pgd_entry=(void *)current->mm->pgd;
 			for (i=0;i<512;i++){
-				if((void*)pgd_entry[i]) printk("entry %i  is  %p\n",i,(void*)pgd_entry[i]);
+				if((void *)pgd_entry[i]) printk("entry %i  is  %p\n",i,(void *)pgd_entry[i]);
 			}
 */
 
@@ -670,7 +642,7 @@ back_to_pgd_release:
 //			current->active_mm = original_view[arg]; /* 30-1-2014 */
 			//atomic_inc(&(current->mm->mm_count));
 
-			cr3 = (void*)__pa(current->mm->pgd);
+			cr3 = (void *)__pa(current->mm->pgd);
 			asm volatile("movq %%CR3, %%rax; andq $0x0fff,%%rax; movq %0, %%rbx; orq %%rbx,%%rax; movq %%rax,%%CR3"::"m" (cr3));
 
 //			asm volatile("movq %%CR3, %%rax; andq $0x0fff,%%rax; movq %0, %%rbx; orq %%rbx,%%rax; movq %%rax,%%CR3"::"m" (current->mm->pgd):"rax","rbx");
@@ -678,7 +650,7 @@ back_to_pgd_release:
 			//flush_tlb_all_lookup();
 			//current->mm->pgd = pgd_addr[arg];
 			//memcpy(mm_struct_addr[i], current->mm, sizeof(struct mm_struct));
-			//memcpy((void*)pgd_addr[i] ,(void*)(current->mm->pgd), 4096);
+			//memcpy((void *)pgd_addr[i] ,(void *)(current->mm->pgd), 4096);
 			//original_view[arg] = NULL;
 			//descriptor = i;
 			ret = 0;
@@ -714,17 +686,17 @@ back_to_pgd_release:
 			
 		mmap = current->mm->mmap;
 //		printk("--------------------------------\n");	
-//		printk("FINDING VMAREA CONTAINIG ADDRESS %p FOR CHANGING ACCESS MODE\n",(void*)arg);
+//		printk("FINDING VMAREA CONTAINIG ADDRESS %p FOR CHANGING ACCESS MODE\n",(void *)arg);
 		//printk("PRINTING THE WHOLE VMAREA LIST\n");	
-		//pgd_entry = (void**)current->mm->pgd;
+		//pgd_entry = (void **)current->mm->pgd;
 		for(i=0;mmap;i++){
 			//if (*(pgd_entry + i) != NULL){
-			if (((void*)arg >= (void*)mmap->vm_start) && ((void*)(arg)<=(void*)mmap->vm_end)){
-//				printk("\tFOUND TARGET VMAREA entry \t%d - start = \t%p - end = \t%p\n",i,(void*)mmap->vm_start,(void*)mmap->vm_end);	
+			if (((void *)arg >= (void *)mmap->vm_start) && ((void *)(arg)<=(void *)mmap->vm_end)){
+//				printk("\tFOUND TARGET VMAREA entry \t%d - start = \t%p - end = \t%p\n",i,(void *)mmap->vm_start,(void *)mmap->vm_end);	
 				goto redirect;
 
 			}
-//			printk("\t VMAREA entry \t%d - start = \t%p - end = \t%p\n",i,(void*)mmap->vm_start,(void*)mmap->vm_end);	
+//			printk("\t VMAREA entry \t%d - start = \t%p - end = \t%p\n",i,(void *)mmap->vm_start,(void *)mmap->vm_end);	
 			mmap = mmap->vm_next;
 			//printk("\tentry \t%d \t- value \t%X\n",i,current->mm->pgd[i]);	
 		//	}
@@ -748,17 +720,17 @@ redirect:
 			
 		mmap = current->mm->mmap;
 //		printk("--------------------------------\n");	
-//		printk("FINDING VMAREA CONTAINIG ADDRESS %p\n",(void*)arg);
+//		printk("FINDING VMAREA CONTAINIG ADDRESS %p\n",(void *)arg);
 		//printk("PRINTING THE WHOLE VMAREA LIST\n");	
-		//pgd_entry = (void**)current->mm->pgd;
+		//pgd_entry = (void **)current->mm->pgd;
 		for(i=0;mmap && (i<128);i++){
 			//if (*(pgd_entry + i) != NULL){
-			if (((void*)arg >= (void*)mmap->vm_start) && ((void*)(arg)<=(void*)mmap->vm_end)){
-//				printk("\tFOUND TARGET VMAREA entry \t%d - start = \t%p - end = \t%p\n",i,(void*)mmap->vm_start,(void*)mmap->vm_end);	
+			if (((void *)arg >= (void *)mmap->vm_start) && ((void *)(arg)<=(void *)mmap->vm_end)){
+//				printk("\tFOUND TARGET VMAREA entry \t%d - start = \t%p - end = \t%p\n",i,(void *)mmap->vm_start,(void *)mmap->vm_end);	
 				goto secondlevel;
 
 			}
-//			printk("\t VMAREA entry \t%d - start = \t%p - end = \t%p\n",i,(void*)mmap->vm_start,(void*)mmap->vm_end);	
+//			printk("\t VMAREA entry \t%d - start = \t%p - end = \t%p\n",i,(void *)mmap->vm_start,(void *)mmap->vm_end);	
 			mmap = mmap->vm_next;
 			//printk("\tentry \t%d \t- value \t%X\n",i,current->mm->pgd[i]);	
 		//	}
@@ -771,25 +743,25 @@ redirect:
 		}
 
 secondlevel:
-		pgd_entry = (void*)current->mm->pgd;
+		pgd_entry = (void *)current->mm->pgd;
 	
-		address = (void*)mmap->vm_start;
+		address = (void *)mmap->vm_start;
 
-		for ( ; PML4(address) <= PML4((void*)mmap->vm_end) ; ){
+		for ( ; PML4(address) <= PML4((void *)mmap->vm_end) ; ){
 
-			pdp_entry = (void*)pgd_entry[(int)PML4(address)];
-			pdp_entry = (void*)((ulong) pdp_entry & 0xfffffffffffff000);
+			pdp_entry = (void *)pgd_entry[(int)PML4(address)];
+			pdp_entry = (void *)((ulong) pdp_entry & 0xfffffffffffff000);
 //			printk("\tPL4 TRACED ENTRY IS %d - value is %p - address is  %p\n",(int)PML4(address),pgd_entry[(int)PML4(address)],pdp_entry);
 			if(pdp_entry != NULL){
 				pdp_entry = __va(pdp_entry);
 		
-				temp = (void*)pdp_entry;
+				temp = (void *)pdp_entry;
 
 //					printk("\tPRINTING PDP (non-null entries) and the chain of PDE/PTE related entries\n");	
 				for(i=0;i<512;i++){
 				//	print_bits((unsigned long long)temp[i]);
 					if ((temp[i]) != NULL){
-//						printk("\t\tentry \t%d \t- value \t%p -- address is  %p\n",i,(void*)(temp[i]),(void*)((ulong) temp[i] & 0xfffffffffffff000));	
+//						printk("\t\tentry \t%d \t- value \t%p -- address is  %p\n",i,(void *)(temp[i]),(void *)((ulong) temp[i] & 0xfffffffffffff000));	
 
 					//internal loop om PDE entries
 				}
@@ -800,50 +772,50 @@ secondlevel:
 		}
 		break;
 
-		for ( ; PML4(address) <= PML4((void*)mmap->vm_end) ; ){
+		for ( ; PML4(address) <= PML4((void *)mmap->vm_end) ; ){
 
-			pdp_entry = (void*)pgd_entry[(int)PML4(address)];
-			pdp_entry = (void*)((ulong) pdp_entry & 0xfffffffffffff000);
+			pdp_entry = (void *)pgd_entry[(int)PML4(address)];
+			pdp_entry = (void *)((ulong) pdp_entry & 0xfffffffffffff000);
 //			printk("\tPL4 TRACED ENTRY IS %d - value is %p - address is  %p\n",(int)PML4(address),pgd_entry[(int)PML4(address)],pdp_entry);
-			//pdp_entry = (void*)GET_ADDRESS(pdp_entry);
+			//pdp_entry = (void *)GET_ADDRESS(pdp_entry);
 			//pdp_entry = pdp_entry >> 12; 
 			//pdp_entry = pdp_entry << 12; 
 			//printk("\tADDRES IN PL4 TRACED ENTRY IS %p\n",pdp_entry);
 			pdp_entry = __va(pdp_entry);
 		
-			temp = (void**)pdp_entry;
+			temp = (void **)pdp_entry;
 
 //			printk("\tPRINTING PDP (non-null entries) and the chain of PDE/PTE related entries\n");	
 			for(i=0;i<512;i++){
 			//	print_bits((unsigned long long)temp[i]);
 				if ((temp[i]) != NULL){
-//					printk("\t\tentry \t%d \t- value \t%p -- address is  %p\n",i,(void*)(temp[i]),(void*)((ulong) temp[i] & 0xfffffffffffff000));	
+//					printk("\t\tentry \t%d \t- value \t%p -- address is  %p\n",i,(void *)(temp[i]),(void *)((ulong) temp[i] & 0xfffffffffffff000));	
 
 					//internal loop om PDE entries
 				
-					pde_entry = (void*)((ulong) temp[i] & 0xfffffffffffff000);  
+					pde_entry = (void *)((ulong) temp[i] & 0xfffffffffffff000);  
 					//printk("\t\t\tADDRES IN PDE TRACED ENTRY IS %p\n",pde_entry);
 					pde_entry = __va(pde_entry);
-					temp1 = (void**)pde_entry;
+					temp1 = (void **)pde_entry;
 
 //					printk("\t\tPDE TRACED ENTRIES\n");
 
 					for(j=0;j<512;j++){
 						if ((temp1[j]) != NULL){
-//						printk("\t\t\tentry \t%d \t- value \t%p - address is  %p\n",j,(void*)(temp1[j]),(void*)((ulong) temp1[j] & 0xfffffffffffff000));	
+//						printk("\t\t\tentry \t%d \t- value \t%p - address is  %p\n",j,(void *)(temp1[j]),(void *)((ulong) temp1[j] & 0xfffffffffffff000));	
 						//printk("\t\t\tPDP TRACED ENTRY is %d\n",j);
 
 						//now tracing the PTE
 //						printk("\t\t\tPTE TRACED ENTRIES\n");
-						pte_entry = (void*)((ulong) temp1[j] & 0xfffffffffffff000);  
+						pte_entry = (void *)((ulong) temp1[j] & 0xfffffffffffff000);  
 						//printk("\t\t\t\tADDRES IN PTE TRACED ENTRY IS %p\n",pte_entry);
 						pte_entry = __va(pte_entry);
-						temp2 = (void**)pte_entry;
-				//		printk("\t\t\t\tentry \t%d \t- value \t%p - address is  %p\n",j,(void*)(temp1[j]),(ulong) temp1[j] & 0xfffffffffffff000);	
+						temp2 = (void **)pte_entry;
+				//		printk("\t\t\t\tentry \t%d \t- value \t%p - address is  %p\n",j,(void *)(temp1[j]),(ulong) temp1[j] & 0xfffffffffffff000);	
 
 						for(z=0;z<512;z++){
 							if ((temp2[z]) != NULL){
-//							printk("\t\t\t\tentry \t%d \t - value \t%p - address is %p\n",z,(void*)(temp2[z]),(void*)((ulong) temp2[z] & 0xfffffffffffff000));	
+//							printk("\t\t\t\tentry \t%d \t - value \t%p - address is %p\n",z,(void *)(temp2[z]),(void *)((ulong) temp2[z] & 0xfffffffffffff000));	
 							//printk("\t\t\tPDP TRACED ENTRY is %d\n",i);
 							} // end if temp2
 						}// end for z
@@ -881,8 +853,8 @@ bridging_from_get_pgd:
 			pml4 = restore_pml4; 
 			involved_pml4 = restore_pml4_entries;
 
-		// patch	pgd_entry = (void**)current->mm->pgd;
-			pgd_entry = (void**)pgd_addr[arg];
+		// patch	pgd_entry = (void **)current->mm->pgd;
+			pgd_entry = (void **)pgd_addr[arg];
 //		printk("CHANGE VIEW INVOLVING %u PROCESSES AND %d PML4 ENTRIES STARTING FROM ENTRY %d\n",mapped_processes,involved_pml4,pml4);
 
 	//		break;
@@ -897,9 +869,9 @@ bridging_from_get_pgd:
 				temp = pgd_entry[pml4];
 //				printk("changing this value %p\n",temp);
 				
-				temp = (void*)((ulong) temp & 0x0000000000000fff);	
-				address = (void*)__pa(address);
-				temp = (void*)((ulong)address | (ulong)temp);
+				temp = (void *)((ulong) temp & 0x0000000000000fff);	
+				address = (void *)__pa(address);
+				temp = (void *)((ulong)address | (ulong)temp);
 	//			temp1 = pgd_entry[pml4];
 				pgd_entry[pml4] = temp;
 	//			pgd_entry[pml4] = temp1;
@@ -909,7 +881,7 @@ bridging_from_get_pgd:
 			}
 			
 	//		rootsim_load_cr3(pgd_addr[arg]);
-			//cr3 = (void*)__pa(current->mm->pgd);
+			//cr3 = (void *)__pa(current->mm->pgd);
 			//asm volatile("movq %%CR3, %%rax; andq $0x0fff,%%rax; movq %0, %%rbx; orq %%rbx,%%rax; movq %%rax,%%CR3"::"m" (cr3)); /* flush the TLB - to be optimized with selective invalidation */
 
 		break;
@@ -924,8 +896,8 @@ bridging_from_pgd_release:
 			pml4 = restore_pml4; 
 			involved_pml4 = restore_pml4_entries;
 
-			// PATCH pgd_entry = (void**)current->mm->pgd;
-			pgd_entry = (void**)pgd_addr[arg];
+			// PATCH pgd_entry = (void **)current->mm->pgd;
+			pgd_entry = (void **)pgd_addr[arg];
 //		printk("RESTORE VIEW INVOLVING %u PROCESSES AND %d PML4 ENTRIES STARTING FROM ENTRY %d\n",mapped_processes,involved_pml4,pml4);
 
 	//		break;
@@ -941,13 +913,13 @@ bridging_from_pgd_release:
 //				printk("changing this value %p\n",temp);
 				
 // TO PATCH IMMEDIATELY
-				//temp = (void*)((ulong) temp & 0x0000000000000fff);	
-				temp = (void*)((ulong) temp & 0xfffffffffffff000);	
-				address = (void*)__va(temp);
+				//temp = (void *)((ulong) temp & 0x0000000000000fff);	
+				temp = (void *)((ulong) temp & 0xfffffffffffff000);	
+				address = (void *)__va(temp);
 				if(address!=NULL){
 					__free_pages(address, 0);
 				}
-				//temp = (void*)((ulong)address | (ulong)temp);
+				//temp = (void *)((ulong)address | (ulong)temp);
 				pgd_entry[pml4] = ancestor_pml4[pml4];
 
 				pml4++;
@@ -962,7 +934,7 @@ goto back_to_close;
 			
 
 	//		rootsim_load_cr3(pgd_addr[arg]);
-			//cr3 = (void*)__pa(current->mm->pgd);
+			//cr3 = (void *)__pa(current->mm->pgd);
 			//asm volatile("movq %%CR3, %%rax; andq $0x0fff,%%rax; movq %0, %%rbx; orq %%rbx,%%rax; movq %%rax,%%CR3"::"m" (cr3)); /* flush the TLB - to be optimized with selective invalidation */
 
 goto back_to_pgd_release;
@@ -993,7 +965,7 @@ goto back_to_pgd_release;
 
 void foo(struct task_struct *tsk) {
 	int i;
-	void* cr3;
+	void *cr3;
 
 	if(current->mm != NULL){
 		for(i=0;i<SIBLING_PGD;i++){	
@@ -1094,7 +1066,7 @@ static int rs_ktblmgr_init(void) {
 
 /*
 	for (i=0;i<AUXILIARY_FRAMES; i++) {
-		auxiliary_frames[i]=(void*)__get_free_pages(GFP_KERNEL,0);
+		auxiliary_frames[i]=(void *)__get_free_pages(GFP_KERNEL,0);
 		if(auxiliary_frames[i]==NULL){
 			for(j=0;j<i;j++) __free_pages(auxiliary_frames[j],0);
 			printk("cannot allocate auxiliary frames\n");
@@ -1145,7 +1117,7 @@ static void rs_ktblmgr_cleanup(void) {
 	unregister_chrdev(major, "rs_ktblmgr");
 
 	for (; managed_pgds > 0; managed_pgds--) {
-		__free_pages((void*)mm_struct_addr[managed_pgds-1],0);
+		__free_pages((void *)mm_struct_addr[managed_pgds-1],0);
 		kfree(mm_struct_addr[managed_pgds-1]);
 
 	}

@@ -125,6 +125,7 @@ case $host_os in
         # Do something specific for linux
         AC_MSG_RESULT([yes, ${host_os}])
         AC_DEFINE([OS_LINUX])
+        ac_on_linux=yes
 	;;
   cygwin*)
         # Do something specific for cygwin
@@ -316,6 +317,44 @@ then
 fi
 
 
+# Event Cross State dependency manager
+AC_ARG_ENABLE([ecs],
+AS_HELP_STRING([--disable-ecs], [Disable Event Cross-State Management (Enabled by default on linux)]))
+
+AS_IF([test "x$enable_ecs" != "xno"], [
+	if test "x$ac_on_linux" = "xyes"
+	then
+	        AC_DEFINE([HAVE_CROSS_STATE])
+		ac_have_cross_state=yes
+	fi	
+])
+
+
+
+#-----------------------------------------------------------
+# Preliminary checks for linux modules. These are run only
+# if we're compiling on a linux box
+#-----------------------------------------------------------
+ac_kernel_headers=no
+case $host_os in
+	linux*)
+		# Are kernel headers installed?
+		AC_CHECK_HEADERS([linux/ioctl.h],
+			[ac_kernel_headers=yes])
+			
+		if test "x$ac_kernel_headers" = "xyes"
+		then
+			# Configure kernel module paths
+			AC_SUBST([with_kernel], [`uname -r`])
+			AC_SUBST([with_kernel_mod], [/lib/modules/$with_kernel/extra])
+			AC_SUBST([KERNEL_SRC], [/lib/modules/$with_kernel/build])
+			AC_SUBST([KERNEL_MOD], [$with_kernel_mod])
+		fi
+		;;
+esac
+
+
+
 
 #----------------------------------------------------------------------------
 # Check scripts sizes.
@@ -335,7 +374,7 @@ AC_MSG_RESULT([ok])
 
 # Generate Makefiles for all these subfolders
 #AC_OUTPUT
-AC_CONFIG_FILES([Makefile man/Makefile scripts/Makefile src/Makefile])
+AC_CONFIG_FILES([Makefile man/Makefile scripts/Makefile src/Makefile src/arch/linux/modules/Makefile])
 AC_OUTPUT
 
 
@@ -461,20 +500,40 @@ else
 fi
 
 
+# Compose the message regarding ECS
+if test "x$ac_have_cross_state" = "xyes"
+then
+	ac_ecs="Enabled by default on linux (use --disable-ecs if not wanted)"
+else
+	ac_ecs="Disabled"
+	if test "x$ac_on_linux" = "xyes"
+	then
+		if test "x$ac_kernel_headers" = "xyes"
+		then
+			ac_ecs="${ac_ecs} by the user"
+		else
+			ac_ecs="${ac_ecs} (linux kernel headers not found)"
+		fi
+	else
+		ac_ecs="${ac_ecs} (requires linux)"
+	fi
+fi
+
 
 cat<<EOF
 
 
    * ROOT-Sim Configuration on Current Machine *
 
-CPU Architecture.......... : ${current_cpu}
-Operating System.......... : ${host_os}
-Debugging Support......... : ${enable_debug}
-User-Level Threads........ : ${ac_enable_ult}
-Parallel Allocator........ : ${ac_parallel_allocator}
-NUMA Subsystem............ : ${numa_subsystem}
-LP Preemption Support..... : ${ac_preemption}
-LP Rebinding.............. : ${ac_lp_rebinding}
+CPU Architecture.............. : ${current_cpu}
+Operating System.............. : ${host_os}
+Debugging Support............. : ${enable_debug}
+User-Level Threads............ : ${ac_enable_ult}
+Parallel Allocator............ : ${ac_parallel_allocator}
+NUMA Subsystem................ : ${numa_subsystem}
+LP Preemption Support......... : ${ac_preemption}
+LP Rebinding.................. : ${ac_lp_rebinding}
+Event Cross State Management.. : ${ac_ecs}
 
 
 EOF

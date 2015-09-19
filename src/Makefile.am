@@ -3,6 +3,8 @@ AM_CFLAGS = -I$(top_srcdir)/src
 AM_MAKEFLAGS = -s
 AUTOMAKE_OPTIONS = subdir-objects
 
+SUBDIRS = arch/linux/modules
+
 librootsim_include_HEADERS = ROOT-Sim.h
 librootsim_includedir = $(includedir)
 lib_LIBRARIES = librootsim.a libwrapperl.a libdymelor.a
