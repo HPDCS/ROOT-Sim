@@ -110,6 +110,20 @@ AC_SUBST([CFLAGS])
 AC_SUBST([CC])
 
 
+#----------------------------------------------------------------------------
+# Checks for doxygen, if asked to
+#----------------------------------------------------------------------------
+AC_ARG_WITH([doxygen],
+  [AS_HELP_STRING([--with-doxygen], [use doxygen to generate ROOT-Sim documentation.])],
+  [AC_CHECK_PROG([DOXYGEN], [doxygen], [doxygen])
+  case "$withval" in
+    yes) test -z "$DOXYGEN" && AC_MSG_ERROR([doxygen not found.]) ;;
+    no) DOXYGEN="" ;;
+    *)   AC_MSG_ERROR([Bad value ${withval} for --with-doxygen.]) ;;
+  esac])
+AM_CONDITIONAL([HAVE_DOXYGEN], [test -n "$DOXYGEN"])
+
+
 
 #----------------------------------------------------------------------------
 # Check for Operating System
@@ -395,7 +409,7 @@ AC_MSG_RESULT([ok])
 
 # Generate Makefiles for all these subfolders
 #AC_OUTPUT
-AC_CONFIG_FILES([Makefile man/Makefile scripts/Makefile src/Makefile])
+AC_CONFIG_FILES([Makefile doc/Makefile doc/doxy.conf man/Makefile scripts/Makefile src/Makefile])
 AC_OUTPUT
 
 
