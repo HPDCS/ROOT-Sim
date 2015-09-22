@@ -164,6 +164,7 @@ AC_SUBST(MPI_CC)
 ac_mpi_found=no
 AC_MSG_CHECKING([for an MPI2-compliant C compiler and mpi.h])
 saved_CC=$CC
+OMPI_CC=gcc
 CC=$MPI_CC
 AC_LINK_IFELSE([AC_LANG_PROGRAM([[
 #include <mpi.h>
