@@ -286,7 +286,10 @@ void simulation_shutdown(int code) {
 		}
 
 		thread_barrier(&all_thread_barrier);
+
+		#ifdef HAVE_MPI
 		mpi_fini();
+		#endif
 	}
 
 	exit(code);

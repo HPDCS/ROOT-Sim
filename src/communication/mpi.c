@@ -24,11 +24,13 @@
 * @author Alessandro Pellegrini
 * @date 21/05/2015
 */
-#include <mpi.h>
+#ifdef HAVE_MPI
 #include <stdio.h>
+#include <mpi.h>
 
 #include <communication/mpi.h>
 #include <arch/thread.h>
+
 
 void mpi_init(void) {
 	int provided, claimed;
@@ -55,3 +57,4 @@ void mpi_fini(void) {
 	}
 }
 
+#endif

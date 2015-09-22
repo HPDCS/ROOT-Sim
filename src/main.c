@@ -165,7 +165,9 @@ int main(int argc, char **argv) {
 		serial_simulation();
 	} else {
 
+		#ifdef HAVE_MPI
 		mpi_init();
+		#endif
 
 		// The number of locally required threads is now set. Detach them and then join the main simulation loop
 		if(!simulation_error()) {
