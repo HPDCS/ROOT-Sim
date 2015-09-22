@@ -390,7 +390,7 @@ fi
 # Compose the message regarding the Parallel Allocator
 if test "x$ac_have_parallel_allocator" = "xyes"
 then
-	ac_parallel_allocator="Enabled (By default, use --disable-parallel-allocator if not wanted)"
+	ac_parallel_allocator="Enabled (By default, use --disable-allocator if not wanted)"
 else
 	ac_parallel_allocator="Disabled (manually excluded)"
 fi
