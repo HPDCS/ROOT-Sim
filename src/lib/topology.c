@@ -166,11 +166,67 @@ unsigned int FindReceiver(int topology) {
 			// Convert back to linear coordinates
 			receiver = (ny * edge + nx);
 
+			break;
+			
+		case TOPOLOGY_TORUS:
+		
+			// Convert linear coords to square coords
+			edge = sqrt(n_prc_tot);
+			x = current_lp % edge;
+			y = current_lp / edge;
+
+			// Sanity check!
+			if(edge * edge != n_prc_tot) {
+				rootsim_error(true, "Square map wrongly specified!\n");
+				return 0;
+			}
+
+
+			// Very simple case!
+			if(n_prc_tot == 1) {
+				receiver = current_lp;
+				break;
+			}
+			
+			receiver = 4 * Random();
+			if(receiver == 4) {
+				receiver = 3;
+			}
+
+			switch(receiver) {
+				case N:
+					nx = x;
+					ny = y - 1;
+					break;
+				case S:
+					nx = x;
+					ny = y + 1;
+					break;
+				case E:
+					nx = x + 1;
+					ny = y;
+					break;
+				case W:
+					nx = x - 1;
+					ny = y;
+					break;
+				default:
+					rootsim_error(true, "Met an impossible condition at %s:%d. Aborting...\n", __FILE__, __LINE__);
+			}
+			
+			// Check for wrapping around
+			if(nx >= edge)
+				nx = nx % edge;
+			if(ny >= edge)
+				ny = ny % edge;
+			
+			// Convert back to linear coordinates
+			receiver = (ny * edge + nx);
+		
 			#undef N
 			#undef W
 			#undef S
 			#undef E
-
 			break;
 
 
