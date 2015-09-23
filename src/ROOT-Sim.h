@@ -113,6 +113,7 @@ extern unsigned int n_prc_tot;
 #define TOPOLOGY_STAR		1003
 #define TOPOLOGY_RING		1004
 #define TOPOLOGY_BIDRING	1005
+#define TOPOLOGY_TORUS		1006
 unsigned int FindReceiver(int topology);
 
 
