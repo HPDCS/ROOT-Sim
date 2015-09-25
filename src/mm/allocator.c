@@ -391,7 +391,7 @@ void *pool_get_memory(unsigned int lid, size_t size) {
 	//return allocate_segment(lid, size);
 
 	int displacement;
-	displacement = buddy_alloc(buddies[lid], size)
+	displacement = buddy_alloc(buddies[lid], size);
 	
 	if(displacement == -1)
 		return NULL;
