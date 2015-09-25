@@ -408,7 +408,7 @@ void pool_release_memory(unsigned int lid, void *ptr) {
 }
 
 
-int allocator_init(unsigned int sobjs) {
+bool allocator_init(unsigned int sobjs) {
 	unsigned int i;
 	char* addr;
 
@@ -444,12 +444,9 @@ int allocator_init(unsigned int sobjs) {
 #ifdef HAVE_NUMA
 	setup_numa_nodes();
 #endif
-
 	spinlock_init(&segment_lock);
-
-	return SUCCESS;
-
+	return true;
 bad_init:
-	return INIT_ERROR; 
+	return false; 
 }
 
