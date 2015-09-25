@@ -46,4 +46,4 @@ libdymelor_a_SOURCES = 	mm/checkpoints.c \
 			mm/dymelor.c \
 			mm/allocator.c \
 			mm/bh-manager.c \
-			mm/mapmove.c
+			mm/numa.c

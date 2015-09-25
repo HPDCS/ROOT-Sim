@@ -18,12 +18,14 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file bh-manager.h
+* @file bh.h
 * @brief 
 * @author Francesco Quaglia
 */
 
 #pragma once
+#ifndef _BH_H
+#define _BH_H
 
 #include <core/core.h>
 
@@ -34,3 +36,4 @@
 void *get_buffer(int, int);
 void switch_bh(int);
 
+#endif /* _BH_H */

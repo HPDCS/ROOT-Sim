@@ -18,7 +18,7 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file bh-manager.c
+* @file bh.c
 * @brief 
 * @author Francesco Quaglia
 */
@@ -34,7 +34,7 @@
 #include <numaif.h>
 #endif
 
-#include <mm/bh-manager.h>
+#include <mm/bh.h>
 #include <mm/allocator.h>
 #include <datatypes/list.h>
 

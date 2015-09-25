@@ -18,8 +18,8 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file mapmove.h
-* @brief 
+* @file numa.h
+* @brief This module implements all the NUMA-oriented facilities of ROOT-Sim
 * @author Francesco Quaglia
 */
 
@@ -36,10 +36,14 @@
 
 #define unlikelynew(x)  (x!=-1)
 
-void * background_work( void* );
-int verify( int );
-void move_BH(int , unsigned );
+void *background_work(void *);
+int verify(int);
+void move_BH(int, unsigned);
 bool is_moving(void);
+int get_numa_node(int);
+void move_sobj(int, unsigned);
+void move_segment(mdt_entry *, unsigned);
+int move_request(int , int);
 
 #endif /* HAVE_NUMA */
 
