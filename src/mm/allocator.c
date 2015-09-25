@@ -391,7 +391,7 @@ void *pool_get_memory(unsigned int lid, size_t size) {
 	//return allocate_segment(lid, size);
 
 	int displacement;
-	displacement = buddy_alloc(buddies[lid], size)
+	displacement = buddy_alloc(buddies[lid], size);
 	
 	if(displacement == -1)
 		return NULL;
@@ -423,7 +423,7 @@ int allocator_init(unsigned int sobjs) {
 
 	for (i=0; i < sobjs; i++){
 		buddies[i] = buddy_new(TOTAL_MEMORY / BUDDY_GRANULARITY);
-		mem_areas[i] = allocate_pages(TOTAL_MEMORY / PAGE_SIZE)
+		mem_areas[i] = allocate_pages(TOTAL_MEMORY / PAGE_SIZE);
 /*		addr = allocate_mdt();
 		if (addr == NULL) goto bad_init;
 		maps[i].base = addr;
