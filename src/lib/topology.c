@@ -1,47 +1,44 @@
 #include <ROOT-Sim.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdbool.h>
 #include <math.h>
 #include <scheduler/scheduler.h>
 #include <mm/dymelor.h>
 
+static bool first_call = true;
+static unsigned int edge; // Don't recompute every time the square root
 
 unsigned int FindReceiver(int topology) {
-
-	// receiver is not unsigned, because we exploit -1 as a border case in the bidring topology.
+	// receiver is not unsigned, because we exploit -1 as a corner case in the bidring topology.
 	int receiver;
 	unsigned int ret;
  	double u;
 
-	switch_to_platform_mode();
-
-
  	// These must be unsigned. They are not checked for negative (wrong) values,
  	// but they would overflow, and are caught by a different check.
- 	unsigned int edge;
- 	unsigned int x, y, nx, ny;
+	unsigned int x, y, nx, ny;
+
+	switch_to_platform_mode();
+
+	if(first_call) {
+		first_call = false;
+
+		edge = sqrt(n_prc_tot);
+		// Sanity check!
+		if(edge * edge != n_prc_tot) {
+			rootsim_error(true, "Hexagonal map wrongly specified!\n");
+			return 0;
+		}
+	}
 
 	switch(topology) {
 
 		case TOPOLOGY_HEXAGON:
 
-			#define NW	0
-			#define W	1
-			#define SW	2
-			#define SE	3
-			#define E	4
-			#define NE	5
-
 			// Convert linear coords to hexagonal coords
-			edge = sqrt(n_prc_tot);
 			x = current_lp % edge;
 			y = current_lp / edge;
-
-			// Sanity check!
-			if(edge * edge != n_prc_tot) {
-				rootsim_error(true, "Hexagonal map wrongly specified!\n");
-				return 0;
-			}
 
 			// Very simple case!
 			if(n_prc_tot == 1) {
@@ -50,37 +47,37 @@ unsigned int FindReceiver(int topology) {
 			}
 
 			// Select a random neighbour once, then move counter clockwise
-			receiver = 6 * Random();
+			receiver = 6 * Random() + 2;
 			bool invalid = false;
 
 			// Find a random neighbour
 			do {
 				if(invalid) {
-					receiver = (receiver + 1) % 6;
+					receiver = ((receiver + 1) % 8) + 2;
 				}
 
 				switch(receiver) {
-					case NW:
+					case DIRECTION_NW:
 						nx = (y % 2 == 0 ? x - 1 : x);
 						ny = y - 1;
 						break;
-					case NE:
+					case DIRECTION_NE:
 						nx = (y % 2 == 0 ? x : x + 1);
 						ny = y - 1;
 						break;
-					case SW:
+					case DIRECTION_SW:
 						nx = (y % 2 == 0 ? x - 1 : x);
 						ny = y + 1;
 						break;
-					case SE:
+					case DIRECTION_SE:
 						nx = (y % 2 == 0 ? x : x + 1);
 						ny = y + 1;
 						break;
-					case E:
+					case DIRECTION_E:
 						nx = x + 1;
 						ny = y;
 						break;
-					case W:
+					case DIRECTION_W:
 						nx = x - 1;
 						ny = y;
 						break;
@@ -96,34 +93,14 @@ unsigned int FindReceiver(int topology) {
 			// Convert back to linear coordinates
 			receiver = (ny * edge + nx);
 
-			#undef NE
-			#undef NW
-			#undef W
-			#undef SW
-			#undef SE
-			#undef E
-
 			break;
 
 
 		case TOPOLOGY_SQUARE:
 
-			#define N	0
-			#define W	1
-			#define S	2
-			#define E	3
-
 			// Convert linear coords to square coords
-			edge = sqrt(n_prc_tot);
 			x = current_lp % edge;
 			y = current_lp / edge;
-
-			// Sanity check!
-			if(edge * edge != n_prc_tot) {
-				rootsim_error(true, "Square map wrongly specified!\n");
-				return 0;
-			}
-
 
 			// Very simple case!
 			if(n_prc_tot == 1) {
@@ -140,19 +117,19 @@ unsigned int FindReceiver(int topology) {
 				}
 
 				switch(receiver) {
-					case N:
+					case DIRECTION_N:
 						nx = x;
 						ny = y - 1;
 						break;
-					case S:
+					case DIRECTION_S:
 						nx = x;
 						ny = y + 1;
 						break;
-					case E:
+					case DIRECTION_E:
 						nx = x + 1;
 						ny = y;
 						break;
-					case W:
+					case DIRECTION_W:
 						nx = x - 1;
 						ny = y;
 						break;
@@ -171,16 +148,8 @@ unsigned int FindReceiver(int topology) {
 		case TOPOLOGY_TORUS:
 		
 			// Convert linear coords to square coords
-			edge = sqrt(n_prc_tot);
 			x = current_lp % edge;
 			y = current_lp / edge;
-
-			// Sanity check!
-			if(edge * edge != n_prc_tot) {
-				rootsim_error(true, "Square map wrongly specified!\n");
-				return 0;
-			}
-
 
 			// Very simple case!
 			if(n_prc_tot == 1) {
@@ -194,19 +163,19 @@ unsigned int FindReceiver(int topology) {
 			}
 
 			switch(receiver) {
-				case N:
+				case DIRECTION_N:
 					nx = x;
 					ny = y - 1;
 					break;
-				case S:
+				case DIRECTION_S:
 					nx = x;
 					ny = y + 1;
 					break;
-				case E:
+				case DIRECTION_E:
 					nx = x + 1;
 					ny = y;
 					break;
-				case W:
+				case DIRECTION_W:
 					nx = x - 1;
 					ny = y;
 					break;
@@ -223,10 +192,6 @@ unsigned int FindReceiver(int topology) {
 			// Convert back to linear coordinates
 			receiver = (ny * edge + nx);
 		
-			#undef N
-			#undef W
-			#undef S
-			#undef E
 			break;
 
 
@@ -293,3 +258,194 @@ unsigned int FindReceiver(int topology) {
 
 }
 
+
+
+int GetReceiver(int topology, int direction) {
+	int receiver = -1;
+	unsigned int x, y, nx, ny;
+
+	switch_to_platform_mode();
+
+	if(first_call) {
+		first_call = false;
+
+		edge = sqrt(n_prc_tot);
+		// Sanity check!
+		if(edge * edge != n_prc_tot) {
+			rootsim_error(true, "Hexagonal map wrongly specified!\n");
+			return 0;
+		}
+	}
+
+	switch(topology) {
+
+		case TOPOLOGY_HEXAGON:
+
+			// Convert linear coords to hexagonal coords
+			x = current_lp % edge;
+			y = current_lp / edge;
+
+			// Very simple case!
+			if(n_prc_tot == 1) {
+				receiver = current_lp;
+				break;
+			}
+	
+			switch(direction) {
+				case DIRECTION_NW:
+					nx = (y % 2 == 0 ? x - 1 : x);
+					ny = y - 1;
+					break;
+				case DIRECTION_NE:
+					nx = (y % 2 == 0 ? x : x + 1);
+					ny = y - 1;
+					break;
+				case DIRECTION_SW:
+					nx = (y % 2 == 0 ? x - 1 : x);
+					ny = y + 1;
+					break;
+				case DIRECTION_SE:
+					nx = (y % 2 == 0 ? x : x + 1);
+					ny = y + 1;
+					break;
+				case DIRECTION_E:
+					nx = x + 1;
+					ny = y;
+					break;
+				case DIRECTION_W:
+					nx = x - 1;
+					ny = y;
+					break;
+				default:
+					goto out;
+			}
+			
+			if(nx >= edge || ny >= edge)
+				receiver = -1;
+			else
+				receiver = (ny * edge + nx);
+
+			break;
+
+
+		case TOPOLOGY_SQUARE:
+
+			// Convert linear coords to square coords
+			x = current_lp % edge;
+			y = current_lp / edge;
+
+			// Very simple case!
+			if(n_prc_tot == 1) {
+				receiver = current_lp;
+				break;
+			}
+
+			switch(direction) {
+				case DIRECTION_N:
+					nx = x;
+					ny = y - 1;
+					break;
+				case DIRECTION_S:
+					nx = x;
+					ny = y + 1;
+					break;
+				case DIRECTION_E:
+					nx = x + 1;
+					ny = y;
+					break;
+				case DIRECTION_W:
+					nx = x - 1;
+					ny = y;
+					break;
+				default:
+					goto out;
+			}
+
+			if(nx >= edge || ny >= edge)
+				receiver = -1;
+			else
+				receiver = (ny * edge + nx);
+
+			break;
+			
+		case TOPOLOGY_TORUS:
+			// Convert linear coords to square coords
+			x = current_lp % edge;
+			y = current_lp / edge;
+
+			// Very simple case!
+			if(n_prc_tot == 1) {
+				receiver = current_lp;
+				break;
+			}
+
+			switch(direction) {
+				case DIRECTION_N:
+					nx = x;
+					ny = y - 1;
+					break;
+				case DIRECTION_S:
+					nx = x;
+					ny = y + 1;
+					break;
+				case DIRECTION_E:
+					nx = x + 1;
+					ny = y;
+					break;
+				case DIRECTION_W:
+					nx = x - 1;
+					ny = y;
+					break;
+				default:
+					goto out;
+			}
+			
+			// Check for wrapping around
+			if(nx >= edge)
+				nx = nx % edge;
+			if(ny >= edge)
+				ny = ny % edge;
+			
+			// Convert back to linear coordinates
+			receiver = (ny * edge + nx);
+		
+			break;
+
+		case TOPOLOGY_BIDRING:
+
+			if(direction == DIRECTION_W)
+				receiver = current_lp - 1;
+			else if(direction == DIRECTION_E)
+				receiver = current_lp + 1;
+			else
+				goto out;
+
+   			if (receiver == -1) {
+				receiver = n_prc_tot - 1;
+			}
+			if ((unsigned int)receiver == n_prc_tot) {
+				receiver = 0;
+			}
+
+			break;
+
+
+		case TOPOLOGY_RING:
+
+			if(direction == DIRECTION_E)
+				receiver= current_lp + 1;
+			else
+				goto out;
+
+			if ((unsigned int)receiver == n_prc_tot) {
+				receiver = 0;
+			}
+
+			break;
+	}
+
+    out:
+	switch_to_application_mode();
+	return receiver;
+
+}
