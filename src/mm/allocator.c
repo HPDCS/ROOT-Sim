@@ -24,8 +24,6 @@
 */
 
 
-#define NEW_ALLOCATOR
-
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -34,30 +32,33 @@
 
 #include <mm/dymelor.h>
 #include <mm/allocator.h>
+#include <mm/bh.h>
 #include <mm/numa.h>
 
+
+#ifdef HAVE_PARALLEL_ALLOCATOR
 
 static spinlock_t segment_lock;
 
 //mem_map maps[MAX_LPs];
-int handled_sobjs = -1;
+//int handled_sobjs = -1;
 static struct _buddy **buddies;
 static void **mem_areas;
 
-static inline int left_child(int index) {
-    return ((index << 1) + 1); 
+static inline int left_child(int idx) {
+    return ((idx << 1) + 1); 
 }
 
-static inline int right_child(int index) {
-    return ((index << 1) + 2);
+static inline int right_child(int idx) {
+    return ((idx << 1) + 2);
 }
 
-static inline int parent(int index) {
-    return (((index+1)>>1) - 1);
+static inline int parent(int idx) {
+    return (((idx+1)>>1) - 1);
 }
 
-static inline bool is_power_of_2(int index) {
-    return !(index & (index - 1));
+static inline bool is_power_of_2(int idx) {
+    return !(idx & (idx - 1));
 }
 
 static inline unsigned next_power_of_2(unsigned size) {
@@ -107,17 +108,17 @@ static void buddy_destroy(struct _buddy *self) {
 
 /* choose the child with smaller longest value which is still larger
  * than *size* */
-static unsigned choose_better_child(struct _buddy *self, unsigned index, size_t size) {
+static unsigned choose_better_child(struct _buddy *self, unsigned idx, size_t size) {
     
     struct compound {
         size_t size;
-        unsigned index;
+        unsigned idx;
     } children[2];
     
-    children[0].index = left_child(index);
-    children[0].size = self->longest[children[0].index];
-    children[1].index = right_child(index);
-    children[1].size = self->longest[children[1].index];
+    children[0].idx = left_child(idx);
+    children[0].size = self->longest[children[0].idx];
+    children[1].idx = right_child(idx);
+    children[1].size = self->longest[children[1].idx];
 
     int min_idx = (children[0].size <= children[1].size) ? 0: 1;
 
@@ -125,7 +126,7 @@ static unsigned choose_better_child(struct _buddy *self, unsigned index, size_t 
         min_idx = 1 - min_idx;
     }
     
-    return children[min_idx].index;
+    return children[min_idx].idx;
 }
 
 /** allocate *size* from a buddy system *self* 
@@ -136,8 +137,8 @@ static int buddy_alloc(struct _buddy *self, size_t size) {
     }
     size = next_power_of_2(size);
 
-    unsigned index = 0;
-    if (self->longest[index] < size) {
+    unsigned idx = 0;
+    if (self->longest[idx] < size) {
         return -1;
     }
 
@@ -147,54 +148,54 @@ static int buddy_alloc(struct _buddy *self, size_t size) {
         /* choose the child with smaller longest value which is still larger
          * than *size* */
         /* TODO */
-        index = choose_better_child(self, index, size);
+        idx = choose_better_child(self, idx, size);
     }
 
     /* update the *longest* value back */
-    self->longest[index] = 0;
-    int offset = (index + 1)*node_size - self->size;
+    self->longest[idx] = 0;
+    int offset = (idx + 1)*node_size - self->size;
 
-    while (index) {
-        index = parent(index);
-        self->longest[index] = max(self->longest[left_child(index)], self->longest[right_child(index)]);
+    while (idx) {
+        idx = parent(idx);
+        self->longest[idx] = max(self->longest[left_child(idx)], self->longest[right_child(idx)]);
     }
 
     return offset;
 }
 
 static void buddy_free(struct _buddy *self, int offset) {
-    if (self == NULL || offset < 0 || offset > self->size) {
+    if (self == NULL || offset < 0 || offset > (int)self->size) {
         return;
     }
 
     size_t node_size;
-    unsigned index;
+    unsigned idx;
 
-    /* get the corresponding index from offset */
+    /* get the corresponding idx from offset */
     node_size = 1;
-    index = offset + self->size - 1;
+    idx = offset + self->size - 1;
 
-    for (; self->longest[index] != 0; index = parent(index)) {
+    for (; self->longest[idx] != 0; idx = parent(idx)) {
         node_size <<= 1;    /* node_size *= 2; */
 
-        if (index == 0) {
+        if (idx == 0) {
             break;
         }
     }
 
-    self->longest[index] = node_size;
+    self->longest[idx] = node_size;
 
-    while (index) {
-        index = parent(index);
+    while (idx) {
+        idx = parent(idx);
         node_size <<= 1;
 
-        size_t left_longest = self->longest[left_child(index)];
-        size_t right_longest = self->longest[right_child(index)];
+        size_t left_longest = self->longest[left_child(idx)];
+        size_t right_longest = self->longest[right_child(idx)];
 
         if (left_longest + right_longest == node_size) {
-            self->longest[index] = node_size;
+            self->longest[idx] = node_size;
         } else {
-            self->longest[index] = max(left_longest, right_longest);
+            self->longest[idx] = max(left_longest, right_longest);
         }
     }
 }
@@ -205,20 +206,6 @@ static void buddy_free(struct _buddy *self, int offset) {
 
 
 
-
-
-static char *allocate_pages(int num_pages) {
-	
-        char *page;
-
-        page = (char*)mmap((void*)NULL, num_pages * PAGE_SIZE, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, 0,0);
-
-	if (page == MAP_FAILED) {
-		page = NULL;
-	}
-
-	return page;
-}
 
 
 
@@ -408,20 +395,31 @@ void pool_release_memory(unsigned int lid, void *ptr) {
 }
 
 
-bool allocator_init(unsigned int sobjs) {
+void allocator_fini(void) {
 	unsigned int i;
-	char* addr;
+	for (i = 0; i < n_prc; i++) {
+		buddy_destroy(buddies[i]);
+		//free_pages(mem_areas[i]);
+	}
+	
+	rsfree(mem_areas);
+	rsfree(buddies);
+}
+
+bool allocator_init(void) {
+	unsigned int i;
+//	char* addr;
 
 //	if( (sobjs > MAX_LPs) )
 //		return INVALID_SOBJS_COUNT; 
 
-	handled_sobjs = sobjs;
+	//~handled_sobjs = sobjs;
 	
 	// These are a vector of pointers which are later initialized
-	buddies = rsalloc(sizeof(struct _buddy *) * sobjs);
-	mem_areas = rsalloc(sizeof(void *) * sobjs);
+	buddies = rsalloc(sizeof(struct _buddy *) * n_prc);
+	mem_areas = rsalloc(sizeof(void *) * n_prc);
 
-	for (i=0; i < sobjs; i++){
+	for (i = 0; i < n_prc; i++){
 		buddies[i] = buddy_new(TOTAL_MEMORY / BUDDY_GRANULARITY);
 		mem_areas[i] = allocate_pages(TOTAL_MEMORY / PAGE_SIZE);
 /*		addr = allocate_mdt();
@@ -435,18 +433,35 @@ bool allocator_init(unsigned int sobjs) {
 	
 #ifdef HAVE_NUMA
 	set_daemon_maps(maps, moves);
-	init_move(sobjs);
+	init_move();
 #endif
 
-	set_BH_map(maps);
-	init_BH();
+	//set_BH_map(maps);
+	if(!BH_init())
+		rootsim_error(true, "Unable to initialize bottom halves buffers\n");
 
 #ifdef HAVE_NUMA
 	setup_numa_nodes();
 #endif
 	spinlock_init(&segment_lock);
 	return true;
-bad_init:
-	return false; 
+}
+
+#endif /* HAVE_PARALLEL_ALLOCATOR */
+
+
+
+
+char *allocate_pages(int num_pages) {
+	
+        char *page;
+
+        page = (char*)mmap((void*)NULL, num_pages * PAGE_SIZE, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, 0,0);
+
+	if (page == MAP_FAILED) {
+		page = NULL;
+	}
+
+	return page;
 }
 

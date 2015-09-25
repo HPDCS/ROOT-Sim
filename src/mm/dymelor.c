@@ -38,7 +38,7 @@
 *
 */
 void dymelor_init(void) {
-	allocator_init(n_prc);
+	allocator_init();
 	recoverable_init();
 	unrecoverable_init();
 }
@@ -56,6 +56,7 @@ void dymelor_init(void) {
 void dymelor_fini(void){
 	recoverable_fini();
 	unrecoverable_fini();
+	allocator_fini();
 }
 
 
@@ -215,8 +216,11 @@ void *do_malloc(unsigned int lid, malloc_state *mem_pool, size_t size) {
 	int bitmap_blocks, num_chunks;
 	size_t area_size;
 	bool is_recoverable;
-
 	int j;
+	
+	#ifndef HAVE_PARALLEL_ALLOCATOR
+	(void)lid;
+	#endif
 
 	size = compute_size(size);
 

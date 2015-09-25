@@ -66,7 +66,7 @@ void set_daemon_maps(mem_map* argA, map_move* argB){
 }
 
 
-int init_move(int sobjs){
+int init_move(void){
 	
 	unsigned long i;
 	int ret;

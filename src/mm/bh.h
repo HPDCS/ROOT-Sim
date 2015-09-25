@@ -29,11 +29,25 @@
 
 #include <core/core.h>
 
+struct _bhmap {
+	char *live_bh;			// address of the live bottom half for the sobj
+	char *expired_bh;		// address of the expired bottom half
+	int   live_msgs;		// number of messages currently present inthe the live bottom half
+	int   live_offset;		// offset of the oldest undelivered msg from the expired pool
+	int   live_boundary;		// memory occupancy (in bytes) of live messages
+	int   expired_msgs;		// number of messages currently present in the live bottom half
+	int   expired_offset;		// offset of the oldest undelivered msg from the expired pool
+	int   expired_boundary;		// memory occupancy (in bytes) of live messages
+	char *actual_bh_addresses[2];	// these are the stable pointers seen for ottom half buffers' migration across numa nodes
+};
+
 #define MAX_MSG_SIZE sizeof(msg_t)
 #define BH_PAGES	2000
 #define BH_SIZE      	(BH_PAGES * PAGE_SIZE) //this is in bytes
 
-void *get_buffer(int, int);
-void switch_bh(int);
+extern bool BH_init(void);
+extern void BH_fini(void);
+extern int insert_BH(int sobj, void* msg, int size);
+extern void *get_BH(unsigned int sobj);
 
 #endif /* _BH_H */

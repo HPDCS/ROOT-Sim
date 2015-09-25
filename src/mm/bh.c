@@ -30,162 +30,188 @@
 #include <errno.h>
 #include <pthread.h>
 
-#ifdef HAVE_NUMA
-#include <numaif.h>
-#endif
-
+#include <arch/atomic.h>
 #include <mm/bh.h>
 #include <mm/allocator.h>
+#include <mm/dymelor.h>
 #include <datatypes/list.h>
 
 
-#define AUDIT if(0)
-
-mem_map *bhmaps;
+//mem_map *bh_maps;
 //char fictitious[MAX_MSG_SIZE];
 
-pthread_spinlock_t bh_write[MAX_SOBJS];
-pthread_spinlock_t bh_read[MAX_SOBJS];
+//pthread_spinlock_t bh_write[MAX_LPs];
+//pthread_spinlock_t bh_read[MAX_LPs];
 
-extern int handled_sobjs;
+//extern int handled_sobjs;
 
-void set_BH_map(mem_map *argA) {
-        bhmaps = argA;
+//void set_BH_map(mem_map *argA) {
+//        bh_maps = argA;
+//}
+
+
+static struct _bhmap *bh_maps;
+static spinlock_t *bh_write;
+static spinlock_t *bh_read;
+
+
+static void switch_bh(int sobj){
+
+	char *addr;
+
+	//atomic needed
+	bh_maps[sobj].expired_msgs = bh_maps[sobj].live_msgs;
+	bh_maps[sobj].expired_offset = bh_maps[sobj].live_offset;
+	bh_maps[sobj].expired_boundary = bh_maps[sobj].live_boundary;
+
+	bh_maps[sobj].live_msgs = 0;
+	bh_maps[sobj].live_offset = 0;
+	bh_maps[sobj].live_boundary = 0;
+
+	addr = bh_maps[sobj].expired_bh; 
+	bh_maps[sobj].expired_bh = bh_maps[sobj].live_bh;
+	bh_maps[sobj].live_bh = addr;
 }
 
-int init_BH(void) {
-        
-        int i;
-        char* addr;
-        int ret;
-        int sobjs;
 
-        if(handled_sobjs < 0) return INVALID_SOBJS_COUNT; 
-
-        sobjs = handled_sobjs;
+static void *get_buffer(int sobj, int size) {
+	return list_allocate_node_buffer(sobj, size);
+}
 
 
-        for (i=0; i<sobjs; i++){
-                bhmaps[i].live_msgs = 0;
-                bhmaps[i].live_boundary = 0;
-                bhmaps[i].expired_msgs = 0;
-                bhmaps[i].expired_offset = 0;
-                bhmaps[i].expired_boundary = 0;
-        }
-       
 
-        for (i=0; i<sobjs; i++){
-                addr = allocate_pages(BH_PAGES);
-                if (addr == NULL) goto bad_init;
-                bhmaps[i].live_bh = addr;
-		bhmaps[i].actual_bh_addresses[0] = addr;
-                addr = allocate_pages(BH_PAGES);
-                if (addr == NULL) goto bad_init;
-                bhmaps[i].expired_bh = addr;
-		bhmaps[i].actual_bh_addresses[1] = addr;
-        }
-
-        for (i=0; i<sobjs; i++){
-		pthread_spin_init(&bh_write[i],0);
-		pthread_spin_init(&bh_read[i],0);
+void BH_fini(void) {
+	unsigned int i;
+	
+	for (i = 0; i < n_prc; i++) {
+		// free_pages(bh_maps[i].actual_bh_addresses[0];
+		// free_pages(bh_maps[i].actual_bh_addresses[1];
 	}
 	
-        
-        return SUCCESS;
+	rsfree(bh_maps);
+	rsfree(bh_write);
+	rsfree(bh_read);
+}
 
-bad_init:
-        return INIT_ERROR; 
 
+bool BH_init(void) {
+        unsigned int i;
+        char *addr;
 
+        bh_maps = rsalloc(sizeof(struct _bhmap) * n_prc);
+        bh_write = rsalloc(sizeof(atomic_t) * n_prc);
+	bh_read = rsalloc(sizeof(atomic_t) * n_prc);
+
+        for (i = 0; i < n_prc; i++) {
+                bh_maps[i].live_msgs = 0;
+                bh_maps[i].live_boundary = 0;
+                bh_maps[i].expired_msgs = 0;
+                bh_maps[i].expired_offset = 0;
+                bh_maps[i].expired_boundary = 0;
+
+                addr = allocate_pages(BH_PAGES);
+                if (addr == NULL)
+			return false;
+			
+                bh_maps[i].live_bh = addr;
+		bh_maps[i].actual_bh_addresses[0] = addr;
+
+                addr = allocate_pages(BH_PAGES);
+                if (addr == NULL)
+			return false;
+			
+                bh_maps[i].expired_bh = addr;
+		bh_maps[i].actual_bh_addresses[1] = addr;
+
+		spinlock_init(&bh_write[i]);
+		spinlock_init(&bh_read[i]);
+	}
+
+        return true;
 }
 
 
 int insert_BH(int sobj, void* msg, int size) {
-
 	int tag;
 	int needed_store;
 	int residual_store;
 	int offset;
 
+	if( (size <= 0) || size > MAX_MSG_SIZE)
+		goto bad_insert;
 
-	if( (sobj<0) || sobj >= handled_sobjs) goto bad_insert;
+	if( msg == NULL )
+		goto bad_insert;
 
-	if( (size<=0) || size > MAX_MSG_SIZE) goto bad_insert;
+	spin_lock(&bh_write[sobj]);
 
-	if( msg == NULL ) goto bad_insert;
-
-
-	pthread_spin_lock(&bh_write[sobj]);
-
-	if(bhmaps[sobj].live_boundary >= BH_SIZE) {
-		pthread_spin_unlock(&bh_write[sobj]);
+	if(bh_maps[sobj].live_boundary >= BH_SIZE) {
+		spin_unlock(&bh_write[sobj]);
 		goto bad_insert;
 	}
 
 	tag = size;
 	needed_store = tag + sizeof(tag);
 
-	residual_store = BH_SIZE - bhmaps[sobj].live_boundary;
+	residual_store = BH_SIZE - bh_maps[sobj].live_boundary;
 	
 	if( residual_store < needed_store ){ 
-		pthread_spin_unlock(&bh_write[sobj]);
+		spin_unlock(&bh_write[sobj]);
 		goto bad_insert;
 	}
 
-	offset = bhmaps[sobj].live_boundary;
+	offset = bh_maps[sobj].live_boundary;
 
-	memcpy(bhmaps[sobj].live_bh + offset, &tag, sizeof(tag));
+	memcpy(bh_maps[sobj].live_bh + offset, &tag, sizeof(tag));
 
 	offset += sizeof(tag);
 
-	memcpy(bhmaps[sobj].live_bh + offset, msg, size);
+	memcpy(bh_maps[sobj].live_bh + offset, msg, size);
 
-	bhmaps[sobj].live_boundary += needed_store;
+	bh_maps[sobj].live_boundary += needed_store;
 
-	bhmaps[sobj].live_msgs += 1;
+	bh_maps[sobj].live_msgs += 1;
 
-	pthread_spin_unlock(&bh_write[sobj]);
+	spin_unlock(&bh_write[sobj]);
 	
-	return SUCCESS;
+	return true;
 
 bad_insert: 
+	// TODO: realloc here!
+	printf("BH insert failure - sobj %d\n", sobj);
 
-	//~ AUDIT
-	printf("BH insert failure - sobj %d\n",sobj);
-
-	return FAILURE;
-
+	return false;
 }
 
-void *get_BH(int sobj) {
+void *get_BH(unsigned int sobj) {
 
 	int msg_tag;
 	void *buff;
-	void *msg_addr;
+	char *msg_addr;
 	int msg_offset;
 	
 
-	if( (sobj < 0) || sobj >= handled_sobjs)
+	if(sobj >= n_prc)
 		goto no_msg;
 	
-	pthread_spin_lock(&bh_read[sobj]);
+	spin_lock(&bh_read[sobj]);
 
-	if(bhmaps[sobj].expired_msgs <= 0 ) {
+	if(bh_maps[sobj].expired_msgs <= 0 ) {
 	
-		pthread_spin_lock(&bh_write[sobj]);
+		spin_lock(&bh_write[sobj]);
 		switch_bh(sobj);
-		pthread_spin_unlock(&bh_write[sobj]);
+		spin_unlock(&bh_write[sobj]);
 
 	}
 
-	if(bhmaps[sobj].expired_msgs <= 0 ){
-		pthread_spin_unlock(&bh_read[sobj]);
+	if(bh_maps[sobj].expired_msgs <= 0 ){
+		spin_unlock(&bh_read[sobj]);
 		goto no_msg;
 	}
 
-	msg_offset = bhmaps[sobj].expired_offset;  
+	msg_offset = bh_maps[sobj].expired_offset;  
 
-	msg_addr = bhmaps[sobj].expired_bh + msg_offset;
+	msg_addr = bh_maps[sobj].expired_bh + msg_offset;
 
 	memcpy(&msg_tag, msg_addr, sizeof(msg_tag)); 
 
@@ -197,39 +223,14 @@ void *get_BH(int sobj) {
 
 	msg_addr += msg_tag;
 
-	bhmaps[sobj].expired_offset = (char*)msg_addr - bhmaps[sobj].expired_bh;
+	bh_maps[sobj].expired_offset = (char*)msg_addr - bh_maps[sobj].expired_bh;
 
-	bhmaps[sobj].expired_msgs -= 1;
+	bh_maps[sobj].expired_msgs -= 1;
 
-	pthread_spin_unlock(&bh_read[sobj]);
+	spin_unlock(&bh_read[sobj]);
 
 	return buff;
 
 no_msg:
 	return NULL;	
-}
-
-void switch_bh(int sobj){
-
-	char* addr;
-
-	//atomic needed
-	bhmaps[sobj].expired_msgs = bhmaps[sobj].live_msgs;
-	bhmaps[sobj].expired_offset = bhmaps[sobj].live_offset;
-	bhmaps[sobj].expired_boundary = bhmaps[sobj].live_boundary;
-
-	bhmaps[sobj].live_msgs = 0;
-	bhmaps[sobj].live_offset = 0;
-	bhmaps[sobj].live_boundary = 0;
-
-	addr = bhmaps[sobj].expired_bh; 
-	bhmaps[sobj].expired_bh = bhmaps[sobj].live_bh;
-	bhmaps[sobj].live_bh = addr;
-
-	return;
-
-}
-
-void *get_buffer(int sobj, int size) {
-	return list_allocate_node_buffer(sobj, size);
 }

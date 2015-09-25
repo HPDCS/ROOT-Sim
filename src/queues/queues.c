@@ -38,6 +38,7 @@
 #include <mm/state.h>
 #include <mm/dymelor.h>
 #include <mm/allocator.h>
+#include <mm/bh.h>
 #include <scheduler/scheduler.h>
 #include <communication/communication.h>
 #include <statistics/statistics.h>
@@ -243,7 +244,7 @@ void process_bottom_halves(void) {
 				// It's a positive message
 				case positive:
 
-					list_place_by_content(lid_receiver, LPS[lid_receiver]->queue_in, timestamp, msg_to_process);
+					(void)list_place_by_content(lid_receiver, LPS[lid_receiver]->queue_in, timestamp, msg_to_process);
 
 					// Check if we've just inserted an out-of-order event
 					if(msg_to_process->timestamp < lvt(lid_receiver)) {

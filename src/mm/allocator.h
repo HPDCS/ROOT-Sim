@@ -93,6 +93,10 @@ struct _buddy {
 #define MDT_RELEASE_FAILURE	-96
 */
 
+extern bool allocator_init(void);
+extern void allocator_fini(void);
+extern char *allocate_pages(int num_pages);
+
 #endif /* _ALLOCATOR_H */
 
 
