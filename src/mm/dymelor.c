@@ -163,19 +163,13 @@ void malloc_state_init(bool recoverable, malloc_state *state) {
 * @return The new size
 */
 static size_t compute_size(size_t size){
-
-	// TODO: cambiare in qualcosa del tipo:
-	// size = (size + sizeof(size_t) + (align_to - 1)) & ~ (align_to - 1);
-
 	// Account for the space needed to keep the pointer to the malloc area
 	size += sizeof(long long);
-
 	size_t size_new;
 
-	size_new = MIN_CHUNK_SIZE;
-
-	while(size_new < size)
-		size_new *= 2;
+	size_new = POWEROF2(size);
+	if(size_new < MIN_CHUNK_SIZE)
+		size_new = MIN_CHUNK_SIZE;
 
 	return size_new;
 }
