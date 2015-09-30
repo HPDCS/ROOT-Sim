@@ -61,17 +61,6 @@ static inline bool is_power_of_2(int idx) {
     return !(idx & (idx - 1));
 }
 
-static inline unsigned next_power_of_2(unsigned size) {
-    /* depend on the fact that size < 2^32 */
-    size -= 1;
-    size |= (size >> 1);
-    size |= (size >> 2);
-    size |= (size >> 4);
-    size |= (size >> 8);
-    size |= (size >> 16);
-    return size + 1;
-}
-
 /** allocate a new buddy structure 
  * @param num_of_fragments number of fragments of the memory to be managed 
  * @return pointer to the allocated buddy structure */
@@ -81,7 +70,7 @@ static struct _buddy *buddy_new(unsigned int num_of_fragments) {
 
     int i;
 
-    if (num_of_fragments < 1 || !is_power_of_2(num_of_fragments)) {
+    if (num_of_fragments < 1 || !IS_POWEROF2(num_of_fragments)) {
         return NULL;
     }
 
@@ -93,7 +82,7 @@ static struct _buddy *buddy_new(unsigned int num_of_fragments) {
     // initialize *longest* array for buddy structure
     int iter_end = num_of_fragments * 2 - 1;
     for (i = 0; i < iter_end; i++) {
-        if (is_power_of_2(i + 1)) {
+        if (IS_POWEROF2(i + 1)) {
             node_size >>= 1;
         }
         self->longest[i] = node_size;
@@ -135,7 +124,7 @@ static int buddy_alloc(struct _buddy *self, size_t size) {
     if (self == NULL || self->size < size) {
         return -1;
     }
-    size = next_power_of_2(size);
+    size = POWEROF2(size);
 
     unsigned idx = 0;
     if (self->longest[idx] < size) {
