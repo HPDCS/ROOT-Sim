@@ -70,7 +70,7 @@ static struct _buddy *buddy_new(unsigned int num_of_fragments) {
 
     int i;
 
-    if (num_of_fragments < 1 || !IS_POWEROF2(num_of_fragments)) {
+    if (num_of_fragments < 1 || !is_power_of_2(num_of_fragments)) {
         return NULL;
     }
 
@@ -82,7 +82,7 @@ static struct _buddy *buddy_new(unsigned int num_of_fragments) {
     // initialize *longest* array for buddy structure
     int iter_end = num_of_fragments * 2 - 1;
     for (i = 0; i < iter_end; i++) {
-        if (IS_POWEROF2(i + 1)) {
+        if (is_power_of_2(i + 1)) {
             node_size >>= 1;
         }
         self->longest[i] = node_size;
