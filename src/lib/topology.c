@@ -14,6 +14,7 @@ unsigned int FindReceiver(int topology) {
 	int receiver;
 	unsigned int ret;
  	double u;
+	bool invalid = false;
 
  	// These must be unsigned. They are not checked for negative (wrong) values,
  	// but they would overflow, and are caught by a different check.
@@ -22,14 +23,13 @@ unsigned int FindReceiver(int topology) {
 	switch_to_platform_mode();
 
 	if(first_call) {
-		first_call = false;
-
 		edge = sqrt(n_prc_tot);
 		// Sanity check!
 		if(edge * edge != n_prc_tot) {
 			rootsim_error(true, "Hexagonal map wrongly specified!\n");
 			return 0;
 		}
+		first_call = false;
 	}
 
 	switch(topology) {
@@ -48,12 +48,12 @@ unsigned int FindReceiver(int topology) {
 
 			// Select a random neighbour once, then move counter clockwise
 			receiver = 6 * Random() + 2;
-			bool invalid = false;
 
 			// Find a random neighbour
 			do {
 				if(invalid) {
-					receiver = ((receiver + 1) % 8) + 2;
+					receiver = ((receiver + 1) % 8);
+					receiver = (receiver == 0 ? 2 : receiver);
 				}
 
 				switch(receiver) {
