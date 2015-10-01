@@ -30,20 +30,20 @@
 #include <core/core.h>
 
 struct _bhmap {
-	char *live_bh;			// address of the live bottom half for the sobj
-	char *expired_bh;		// address of the expired bottom half
-	int   live_msgs;		// number of messages currently present inthe the live bottom half
-	int   live_offset;		// offset of the oldest undelivered msg from the expired pool
-	int   live_boundary;		// memory occupancy (in bytes) of live messages
-	int   expired_msgs;		// number of messages currently present in the live bottom half
-	int   expired_offset;		// offset of the oldest undelivered msg from the expired pool
-	int   expired_boundary;		// memory occupancy (in bytes) of live messages
-	char *actual_bh_addresses[2];	// these are the stable pointers seen for ottom half buffers' migration across numa nodes
+	char		*live_bh;		// address of the live bottom half for the sobj
+	char		*expired_bh;		// address of the expired bottom half
+	unsigned int	live_msgs;		// number of messages currently present inthe the live bottom half
+	unsigned int	live_offset;		// offset of the oldest undelivered msg from the expired pool
+	size_t		live_boundary;		// memory occupancy (in bytes) of live messages
+	unsigned int	expired_msgs;		// number of messages currently present in the live bottom half
+	unsigned int	expired_offset;		// offset of the oldest undelivered msg from the expired pool
+	unsigned int	expired_boundary;	// memory occupancy (in bytes) of live messages
+	char		*actual_bh_addresses[2];// these are the stable pointers used for bottom half buffers' migration across numa nodes
+	size_t		current_pages[2];	// The amount of pages allocated in the corresponding entry of the actual_bh_addessess vector
 };
 
 #define MAX_MSG_SIZE sizeof(msg_t)
-#define BH_PAGES	2000
-#define BH_SIZE      	(BH_PAGES * PAGE_SIZE) //this is in bytes
+#define INITIAL_BH_PAGES	10
 
 extern bool BH_init(void);
 extern void BH_fini(void);

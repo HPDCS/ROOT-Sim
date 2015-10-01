@@ -266,6 +266,10 @@ inline unsigned int spin_lock(spinlock_t *s) {
                 : "eax", "memory"
         );
 
+#if (!defined(NDEBUG)) && defined(HAVE_HELGRIND_H)
+	ANNOTATE_RWLOCK_ACQUIRED(&((s)->lock), 1);
+#endif
+
         return (unsigned int)count;
 }
 
@@ -284,6 +288,11 @@ inline void spin_lock_x86(spinlock_t *s) {
 		: "m" (s->lock)
 		: "eax", "memory"
 	);
+
+#if (!defined(NDEBUG)) && defined(HAVE_HELGRIND_H)
+	ANNOTATE_RWLOCK_ACQUIRED(&((s)->lock), 1);
+#endif
+
 }
 #endif
 
@@ -328,6 +337,11 @@ inline bool spin_trylock_x86(spinlock_t *s) {
 * @param s the spinlock to unlock
 */
 inline void spin_unlock_x86(spinlock_t *s) {
+
+
+#if (!defined(NDEBUG)) && defined(HAVE_HELGRIND_H)
+	ANNOTATE_RWLOCK_RELEASED(&((s)->lock), 1);
+#endif
 
 	__asm__ __volatile__(
 		"mov $0, %%eax\n\t"

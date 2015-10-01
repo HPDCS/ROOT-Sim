@@ -296,8 +296,6 @@ void *do_malloc(unsigned int lid, malloc_state *mem_pool, size_t size) {
 		}
 
 		m_area->dirty_chunks = 0;
-		bzero(m_area->self_pointer, area_size);
-		
 		*(unsigned long long *)(m_area->self_pointer) = (unsigned long long)m_area;
 
 		m_area->use_bitmap = (unsigned int *)((char *)m_area->self_pointer + sizeof(malloc_area *));

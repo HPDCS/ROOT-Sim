@@ -36,7 +36,7 @@
 #include <scheduler/binding.h>
 #include <statistics/statistics.h>
 
-#include <mm/allocator.h>
+#include <mm/numa.h>
 #include <arch/thread.h>
 
 
@@ -244,7 +244,7 @@ static void install_binding(void) {
 			if(tid != LPS[i]->worker_thread) {
 
 				#ifdef HAVE_NUMA
-				move_request(i, get_numa_node(running_core()));
+				numa_move_request(i, get_numa_node(running_core()));
 				#endif
 
 				LPS[i]->worker_thread = tid;

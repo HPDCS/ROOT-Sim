@@ -32,6 +32,10 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#if (!defined(NDEBUG)) && defined(HAVE_HELGRIND_H)
+#include <valgrind/helgrind.h>
+#endif
+
 
 
 //#define SPINLOCK_GIVES_COUNT
@@ -94,7 +98,13 @@ inline void spin_lock_x86(spinlock_t *s);
 #define atomic_set(v,i)		(((v)->count) = (i))
 
 /// Spinlock initialization
-#define spinlock_init(s)	((s)->lock = 0)
+#define plain_spinlock_init(s)	((s)->lock = 0)
+
+#if (!defined(NDEBUG)) && defined(HAVE_HELGRIND_H)
+#define spinlock_init(s)	(plain_spinlock_init(s); ANNOTATE_RWLOCK_CREATE(&((s)->lock)))
+#else
+#define spinlock_init(s)	plain_spinlock_init(s)
+#endif
 
 
 

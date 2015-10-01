@@ -38,12 +38,13 @@
 
 #ifdef HAVE_PARALLEL_ALLOCATOR
 
-static spinlock_t segment_lock;
-
-//mem_map maps[MAX_LPs];
-//int handled_sobjs = -1;
 static struct _buddy **buddies;
-static void **mem_areas;
+
+// This vector is accessed by the numa.c module to migrate pages
+#ifndef HAVE_NUMA
+static
+#endif
+void **mem_areas;
 
 static inline int left_child(int idx) {
     return ((idx << 1) + 1); 
@@ -210,7 +211,7 @@ void allocator_fini(void) {
 	unsigned int i;
 	for (i = 0; i < n_prc; i++) {
 		buddy_destroy(buddies[i]);
-		//free_pages(mem_areas[i]);
+		free_pages(mem_areas[i], TOTAL_MEMORY / PAGE_SIZE);
 	}
 	
 	rsfree(mem_areas);
@@ -236,18 +237,13 @@ bool allocator_init(void) {
 	printf("done\n");
 	
 #ifdef HAVE_NUMA
-	set_daemon_maps(maps, moves);
-	init_move();
+	numa_init();
 #endif
 
 	//set_BH_map(maps);
 	if(!BH_init())
 		rootsim_error(true, "Unable to initialize bottom halves buffers\n");
 
-#ifdef HAVE_NUMA
-	setup_numa_nodes();
-#endif
-	spinlock_init(&segment_lock);
 	return true;
 }
 
@@ -266,5 +262,13 @@ char *allocate_pages(int num_pages) {
 	}
 
 	return page;
+}
+
+void free_pages(void *ptr, size_t length) {
+	int ret;
+
+	ret = munmap(ptr, length);
+	if(ret < 0)
+		perror("free_pages(): unable to deallocate memory");
 }
 

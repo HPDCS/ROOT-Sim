@@ -36,14 +36,15 @@
 
 #define unlikelynew(x)  (x!=-1)
 
-void *background_work(void *);
+void numa_init(void);
+void numa_move_request(int, int);
+
+
 int verify(int);
-void move_BH(int, unsigned);
 bool is_moving(void);
 int get_numa_node(int);
 void move_sobj(int, unsigned);
-void move_segment(mdt_entry *, unsigned);
-int move_request(int , int);
+void move_segment(unsigned);
 
 #endif /* HAVE_NUMA */
 

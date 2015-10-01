@@ -99,6 +99,8 @@ esac
 #----------------------------------------------------------------------------
 # Checks for C header files and libraries
 #----------------------------------------------------------------------------
+AC_CHECK_HEADER([valgrind/helgrind.h], [AC_DEFINE([HAVE_HELGRIND_H])])
+
 
 # Check for POSIX thread support
 AX_PTHREAD([], [AC_MSG_ERROR([PTHREAD support not found])])
