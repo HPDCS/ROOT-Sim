@@ -56,7 +56,7 @@
 #define BLOCK_SIZE sizeof(unsigned int)
 
 
-#define MIN_CHUNK_SIZE 32	// Size (in bytes) of the smallest chunk provideable by DyMeLoR
+#define MIN_CHUNK_SIZE 128	// Size (in bytes) of the smallest chunk provideable by DyMeLoR
 #define MAX_CHUNK_SIZE 4194304	// Size (in bytes) of the biggest one. Notice that if this number
 				// is too large, performance (and memory usage) might be affected.
 				// If it is too small, large amount of memory requests by the
@@ -68,8 +68,8 @@
 				// malloc_areas are filled at runtime, subsequent malloc() requests
 				// by the application level software will fail.
 #define MAX_LIMIT_NUM_AREAS 100
-#define MIN_NUM_CHUNKS 4096	// Minimum number of chunks per malloc_area
-#define MAX_NUM_CHUNKS 4096	// Maximum number of chunks per malloc_area
+#define MIN_NUM_CHUNKS 2040	// Minimum number of chunks per malloc_area
+#define MAX_NUM_CHUNKS 4*MIN_NUM_CHUNKS	// Maximum number of chunks per malloc_area
 
 #define MAX_LOG_THRESHOLD 1.7	// Threshold to check if a malloc_area is underused TODO: retest
 #define MIN_LOG_THRESHOLD 1.7	// Threshold to check if a malloc_area is overused TODO: retest
@@ -122,7 +122,7 @@
 #define RESET_BIT_AT(B,K) ( B &= ~(MASK << K) )
 #define CHECK_BIT_AT(B,K) ( B & (MASK << K) )
 
-#define POWEROF2(x) (1UL <<(1 +(63 -__builtin_clzl((x) - 1))));
+#define POWEROF2(x) (1UL << (1 + (63 - __builtin_clzl((x) - 1))))
 #define IS_POWEROF2(x) ((x) != 0 && ((x) & ((x) - 1)) == 0)
 
 /// This structure let DyMeLoR handle one malloc area (for serving given-size memory requests)

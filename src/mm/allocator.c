@@ -54,11 +54,7 @@ static inline int right_child(int idx) {
 }
 
 static inline int parent(int idx) {
-    return (((idx+1)>>1) - 1);
-}
-
-static inline bool is_power_of_2(int idx) {
-    return !(idx & (idx - 1));
+    return (((idx + 1) >> 1) - 1);
 }
 
 /** allocate a new buddy structure 
@@ -70,7 +66,7 @@ static struct _buddy *buddy_new(unsigned int num_of_fragments) {
 
     int i;
 
-    if (num_of_fragments < 1 || !is_power_of_2(num_of_fragments)) {
+    if (num_of_fragments < 1 || !IS_POWEROF2(num_of_fragments)) {
         return NULL;
     }
 
@@ -82,7 +78,7 @@ static struct _buddy *buddy_new(unsigned int num_of_fragments) {
     // initialize *longest* array for buddy structure
     int iter_end = num_of_fragments * 2 - 1;
     for (i = 0; i < iter_end; i++) {
-        if (is_power_of_2(i + 1)) {
+        if (IS_POWEROF2(i + 1)) {
             node_size >>= 1;
         }
         self->longest[i] = node_size;
@@ -134,15 +130,12 @@ static int buddy_alloc(struct _buddy *self, size_t size) {
     /* search recursively for the child */
     unsigned node_size = 0;
     for (node_size = self->size; node_size != size; node_size >>= 1) {
-        /* choose the child with smaller longest value which is still larger
-         * than *size* */
-        /* TODO */
         idx = choose_better_child(self, idx, size);
     }
 
     /* update the *longest* value back */
     self->longest[idx] = 0;
-    int offset = (idx + 1)*node_size - self->size;
+    int offset = (idx + 1) * node_size - self->size;
 
     while (idx) {
         idx = parent(idx);
@@ -189,189 +182,18 @@ static void buddy_free(struct _buddy *self, int offset) {
     }
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-/*
-void* allocate_segment(unsigned int sobj, size_t size) {
-
-	mdt_entry* mdt;
-	char* segment;
-	int numpages;
-	int ret;
-
-	#ifdef NEW_ALLOCATOR
-	static void *my_initial_address = (void *)(180L * 256L * 256L * 256L * PAGE_SIZE);
-	#endif
-
-	if( ((int)sobj >= handled_sobjs) )
-		goto bad_allocate; 
-
-	if(size <= 0)
-		goto bad_allocate;
-
-	numpages = (int)(size / (int)(PAGE_SIZE));
-
-	if (size % PAGE_SIZE) numpages++;
-
-	AUDIT
-	printf("segment allocation - requested numpages is %d\n",numpages);
-
-	if(numpages > MAX_SEGMENT_SIZE)
-		goto bad_allocate;
-
-	#ifdef HAVE_NUMA
-	ret = lock(sobj);
-	if(ret == FAILURE)
-		goto bad_allocate;
-	#endif
-
-	mdt = get_new_mdt_entry(sobj);
-	if (mdt == NULL) {
-		goto bad_allocate;
-	}
-
-	AUDIT
-	printf("segment allocation - returned mdt is at address %p\n",mdt);
-
-
-	AUDIT
-	printf("allocate segment: request for %ld bytes - actual allocation is of %d pages\n",size,numpages);
-
-
-	#ifndef NEW_ALLOCATOR
-
-	segment = (char*)mmap((void*)NULL,PAGE_SIZE*numpages, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, 0,0);
-
-	#else
-
-
-	spin_lock(&segment_lock);
-
-	// Update my_initial_address, keeping it aligned to large pages
-	my_initial_address = (void *)((char *)my_initial_address - ( PAGE_SIZE * (int)( ceil((double)numpages / 256.0) * 256  )  ));
-
-        segment = (char*)mmap(my_initial_address, PAGE_SIZE*numpages, PROT_READ|PROT_WRITE, MAP_FIXED|MAP_PRIVATE|MAP_ANONYMOUS, 0,0);
-
-	spin_unlock(&segment_lock);
-
-	if(segment == MAP_FAILED)
-		abort();
-
-
-	#endif
-
-	AUDIT
-	printf("allocate segment: actual allocation is at address %p\n",segment);
-
-	if (segment == MAP_FAILED) {
-		release_mdt_entry(sobj);
-		goto bad_allocate;
-	}
-
-	mdt->addr = segment;
-	mdt->numpages = numpages;
-
-	AUDIT	
-	audit_map(sobj);
-
-	#ifdef HAVE_NUMA
-	unlock(sobj);
-	#endif
-
-	return segment;
-
-bad_allocate:
-	#ifdef HAVE_NUMA
-	unlock(sobj);
-	#endif
-	
-	return NULL;
-
-}
-*/
-/*
-char* allocate_page(void) {
-	return allocate_pages(1);
-}
-*/
-/*
-char* allocate_mdt(void) {
-
-        char* page;
-
-        page = allocate_pages(MDT_PAGES);
-
-	return page;
-}
-*/
-/*
-
-static mdt_entry *get_new_mdt_entry(int sobj){
-	
-	mem_map* m_map;
-	mdt_entry* mdte;
-		
-	if( (sobj < 0)||(sobj>=handled_sobjs) ) return NULL; 
-
-	m_map = &maps[sobj]; 
-
-	if (m_map->active >= m_map->size){
-		goto bad_new_mdt_entry;
-	}
-
-	m_map->active += 1;
-
-	mdte = (mdt_entry*)m_map->base + m_map->active - 1 ;
-
-	return mdte;
-	
-    bad_new_mdt_entry:
-	return NULL;
-}
-
-int release_mdt_entry(int sobj){
-	mem_map* m_map;
-		
-	if( (sobj < 0)||(sobj>=handled_sobjs) ) return MDT_RELEASE_FAILURE; 
-
-	m_map = &maps[sobj]; 
-
-	if (m_map->active <= 0){
-		goto bad_mdt_release;
-	}
-
-	m_map->active -= 1;
-
-	return SUCCESS; 
-
-    bad_mdt_release:
-
-	return MDT_RELEASE_FAILURE;
-}
-
-*/
-
-
 void *pool_get_memory(unsigned int lid, size_t size) {
-	//return allocate_segment(lid, size);
-
 	int displacement;
-	displacement = buddy_alloc(buddies[lid], size);
+	size_t fragments;
+
+	// Get a number of fragments to contain 'size' bytes
+	// The operation involves a fast positive integer round up
+	fragments = 1 + ((size - 1) / BUDDY_GRANULARITY);
+	displacement = buddy_alloc(buddies[lid], fragments) * BUDDY_GRANULARITY;
 	
 	if(displacement == -1)
 		return NULL;
-	
+
 	return (void *)((char *)mem_areas[lid] + displacement);
 }
 
@@ -397,28 +219,21 @@ void allocator_fini(void) {
 
 bool allocator_init(void) {
 	unsigned int i;
-//	char* addr;
-
-//	if( (sobjs > MAX_LPs) )
-//		return INVALID_SOBJS_COUNT; 
-
-	//~handled_sobjs = sobjs;
 	
 	// These are a vector of pointers which are later initialized
 	buddies = rsalloc(sizeof(struct _buddy *) * n_prc);
 	mem_areas = rsalloc(sizeof(void *) * n_prc);
 
+	printf("Initializing LP memory allocator... ");
+
 	for (i = 0; i < n_prc; i++){
 		buddies[i] = buddy_new(TOTAL_MEMORY / BUDDY_GRANULARITY);
 		mem_areas[i] = allocate_pages(TOTAL_MEMORY / PAGE_SIZE);
-/*		addr = allocate_mdt();
-		if (addr == NULL) goto bad_init;
-		maps[i].base = addr;
-		maps[i].active = 0;
-		maps[i].size = MDT_ENTRIES;
-		AUDIT
-		printf("INIT: sobj %d - base address is %p - active are %d - MDT size is %d\n",i,maps[i].base, maps[i].active, maps[i].size);
-*/	}
+		if(mem_areas[i] == NULL)
+			rootsim_error(true, "Unable to initialize memory for LP %d. Aborting...\n",i);
+	}
+
+	printf("done\n");
 	
 #ifdef HAVE_NUMA
 	set_daemon_maps(maps, moves);
@@ -437,7 +252,6 @@ bool allocator_init(void) {
 }
 
 #endif /* HAVE_PARALLEL_ALLOCATOR */
-
 
 
 

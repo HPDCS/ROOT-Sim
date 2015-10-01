@@ -72,8 +72,8 @@ struct _buddy {
 
 
 #define PAGE_SIZE (4*1<<10)
-#define TOTAL_MEMORY 262144 * PAGE_SIZE // This should be power of 2 multiplied by a page size. This is 1GB per LP.
-#define BUDDY_GRANULARITY 256	// This is the smallest chunk released by the buddy in bytes. TOTAL_MEMORY/BUDDY_GRANULARITY must be integer and a power of 2
+#define TOTAL_MEMORY 262144L * PAGE_SIZE // This should be power of 2 multiplied by a page size. This is 1GB per LP.
+#define BUDDY_GRANULARITY PAGE_SIZE	// This is the smallest chunk released by the buddy in bytes. TOTAL_MEMORY/BUDDY_GRANULARITY must be integer and a power of 2
 
 
 
