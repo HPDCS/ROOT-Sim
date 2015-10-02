@@ -1,3 +1,5 @@
+#include <ROOT-Sim.h>
+
 #include "region.h"
 #include "application.h"
 
@@ -55,7 +57,8 @@ void print_topology_map() {
 
 	// Sanity checks
 	if (edge * edge != number_of_regions) {
-		rootsim_error(true, "Topology map wrongly specified!\n");
+		fprintf(stderr, "Topology map wrongly specified!\n");
+		exit(EXIT_FAILURE);
 	}
 
 	printf("\n=================================================\n");
@@ -75,36 +78,36 @@ unsigned int opposite_direction_of(unsigned int direction) {
 	unsigned int opposite;
 
 	switch (direction) {
-	case N:
-		opposite = S;
-		break;
-	case E:
-		opposite = W;
-		break;
-	case S:
-		opposite = N;
-		break;
-	case W:
-		opposite = E;
-	default:
-		opposite = -1;
-		break;
+		case DIRECTION_N:
+			opposite = DIRECTION_S;
+			break;
+		case DIRECTION_E:
+			opposite = DIRECTION_W;
+			break;
+		case DIRECTION_S:
+			opposite = DIRECTION_N;
+			break;
+		case DIRECTION_W:
+			opposite = DIRECTION_E;
+		default:
+			opposite = -1;
+			break;
 	}
 
 	return opposite;
 }
 
-char *direction_name(unsigned int direction) {
+/*static char *direction_name(unsigned int direction) {
 
 	switch (direction) {
-	case N:
+	case DIRECTION_N:
 		return "N";
-	case E:
+	case DIRECTION_E:
 		return "E";
-	case S:
+	case DIRECTION_S:
 		return "S";
-	case W:
+	case DIRECTION_W:
 		return "W";
 	}
 	return "UNKNOWN";
-}
+}*/

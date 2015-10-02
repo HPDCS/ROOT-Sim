@@ -2,16 +2,8 @@
 #ifndef _TCAR_H
 #define _TCAR_H
 
-#include <ABM.h>
+#include <ROOT-Sim.h>
 #include <math.h>
-
-/* DISTRIBUZIONI TIMESTAMP */
-#define UNIFORME	0
-#define ESPONENZIALE 	1
-
-#define DISTRIBUZIONE ESPONENZIALE
-
-#define is_agent(me) (me >= num_cells)
 
 // Topology
 #define CELL_EDGES 4
@@ -50,10 +42,11 @@ typedef struct _event_content_type {
 } event_content_type;
 
 typedef struct _cell_state_type {
-	unsigned int *agents;
+	struct _agent_state_type *agents;
 	unsigned int present_agents;
 	unsigned char neighbours;	/// Neighbour cell for each edge
 	unsigned char obstacles;	/// Whether the specific edge has an obstacle
+	unsigned char *a_star_map;
 } cell_state_type;
 
 typedef struct _map_t {
@@ -62,18 +55,21 @@ typedef struct _map_t {
 } map_t;
 
 typedef struct _agent_state_type {
+	struct _agent_state_type *next;
 	unsigned int current_cell;	/// This is the current region where the agent actually is
-//      unsigned int current_direction;                 /// TODO: probably is no more used
 	unsigned int target_cell;	/// Region's id of the target the agent is pursuing
 	unsigned int direction;	/// TODO: probably is no more used
 	unsigned int met_robots;	/// Number of robots the agent met so far
 	unsigned int visited_cells;	/// Number of regions the agent visited so far
-	unsigned char *visit_map;	/// Bit map to traces visited cells
-	unsigned char *a_star_map;	/// Bit map to traces dinamyc A* algorithm research
+	unsigned char visit_map[];	/// Bit map to traces visited cells
 } agent_state_type;
 
 
+void *agent_init(void);
+void *region_init(unsigned int id);
+
 
 #define REGION_INTERACTION	1
+#define UPDATE_REGION		2
 
 #endif				/* _ANT_ROBOT_H */

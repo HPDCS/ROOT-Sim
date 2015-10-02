@@ -9,7 +9,7 @@
  * @param agent_a Pointer to the first agent's state
  * @param agent_b Pointer to the second agent's state
  */
-void map_diff_exchange(agent_state_type * agent_a, agent_state_type * agent_b) {
+void map_diff_exchange(cell_state_type *rstate, agent_state_type * agent_a, agent_state_type * agent_b) {
 	unsigned int index;
 	unsigned char *map_a;
 	unsigned char *map_b;
@@ -26,12 +26,12 @@ void map_diff_exchange(agent_state_type * agent_a, agent_state_type * agent_b) {
 		if (BITMAP_CHECK_BIT(map_a, index) && BITMAP_CHECK_BIT(map_b, index) == 0) {
 			BITMAP_SET_BIT(map_b, index);
 			agent_b->visited_cells++;
-			agent_b->target_cell = closest_frontier(agent_b, -1);
+			agent_b->target_cell = closest_frontier(agent_b, rstate, -1);
 		}
 		if (BITMAP_CHECK_BIT(map_a, index) == 0 && BITMAP_CHECK_BIT(map_b, index)) {
 			BITMAP_SET_BIT(map_a, index);
 			agent_a->visited_cells++;
-			agent_a->target_cell = closest_frontier(agent_a, -1);
+			agent_a->target_cell = closest_frontier(agent_a, rstate, -1);
 		}
 
 	}
@@ -80,7 +80,7 @@ void dump_agent_knowledge(agent_state_type * agent) {
 	printf("\tVisited %d regions\n", agent->visited_cells);
 }
 
-void dump_a_star_map(agent_state_type * agent) {
+static void dump_a_star_map(cell_state_type *rstate) {
 	int index;
 
 	for (index = 0; index < number_of_regions; index++) {
@@ -89,7 +89,7 @@ void dump_a_star_map(agent_state_type * agent) {
 	printf("\n");
 
 	for (index = 0; index < number_of_regions; index++) {
-		printf("%#3d ", BITMAP_CHECK_BIT(agent->a_star_map, index) >> (index % 8));
+		printf("%#3d ", BITMAP_CHECK_BIT(rstate->a_star_map, index) >> (index % 8));
 	}
 	printf("\n");
 }
