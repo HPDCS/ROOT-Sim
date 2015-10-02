@@ -113,7 +113,21 @@ extern unsigned int n_prc_tot;
 #define TOPOLOGY_STAR		1003
 #define TOPOLOGY_RING		1004
 #define TOPOLOGY_BIDRING	1005
+#define TOPOLOGY_TORUS		1006
 unsigned int FindReceiver(int topology);
+
+#define DIRECTION_N	0
+#define DIRECTION_S	1
+#define DIRECTION_E	2
+#define DIRECTION_W	3
+#define DIRECTION_NW	4
+#define DIRECTION_SW	5
+#define DIRECTION_SE	6
+#define DIRECTION_NE	7
+// Returns -1 is a movement is not possible according to the given topology
+int GetReceiver(int topology, int direction);
+
+
 
 
 

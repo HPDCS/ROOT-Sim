@@ -18,51 +18,19 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file os.h
-* @brief This header implements OS-dependent facilities
-* @author Alessandro Pellegrini
-* @date 16 Sept 2013
+* @file bh-manager.h
+* @brief 
+* @author Francesco Quaglia
 */
 
-
-
 #pragma once
-#ifndef __OS_H
-#define __OS_H
 
+#include <core/core.h>
 
-#if defined(OS_LINUX) || defined(OS_CYGWIN)
+#define MAX_MSG_SIZE sizeof(msg_t)
+#define BH_PAGES	2000
+#define BH_SIZE      	(BH_PAGES * PAGE_SIZE) //this is in bytes
 
-#include <sched.h>
-#include <unistd.h>
-#include <pthread.h>
-
-
-// Macros to get information about the hosting machine
-
-#define get_cores() (sysconf( _SC_NPROCESSORS_ONLN ))
-
-
-
-// How do we identify a thread?
-typedef pthread_t tid_t;
-
-/// Spawn a new thread
-#define new_thread(entry, arg)	pthread_create(&os_tid, NULL, entry, arg)
-
-static inline void set_affinity(int core) {
-	cpu_set_t cpuset;
-	CPU_ZERO(&cpuset);
-	CPU_SET(core, &cpuset);
-	// 0 is the current thread
-	sched_setaffinity(0, sizeof(cpuset), &cpuset);
-}
-
-
-#else /* OS_LINUX || OS_CYGWIN */
-#error Currently supporting only Linux...
-#endif
-
-
-#endif /* __OS_H */
+void *get_buffer(int, int);
+void switch_bh(int);
 
