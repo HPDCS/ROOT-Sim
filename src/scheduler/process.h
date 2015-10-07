@@ -133,6 +133,12 @@ typedef struct _LP_state {
 	unsigned long long	wait_on_rendezvous;
 	unsigned int		wait_on_object;
 
+	//TODO MN
+	#ifdef HAVE_GLP_SCH_MODULE
+	unsigned int current_group;
+	ECS_stat ** ECS_stat_table;
+	#endif
+
 } LP_state;
 
 

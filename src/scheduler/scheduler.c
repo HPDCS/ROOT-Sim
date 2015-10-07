@@ -75,6 +75,11 @@ __thread msg_t *current_evt;
 /// This global variable tells the simulator what is the LP currently being scheduled on the current worker thread
 __thread void *current_state;
 
+//TODO MN
+#ifdef HAVE_GLP_SCH_MODULE
+/// Maintain groups' state 
+GLP_state **GLPS = NULL;
+#endif
 
 /*
 * This function initializes the scheduler. In particular, it relies on MPI to broadcast to every simulation kernel process
@@ -112,7 +117,40 @@ void scheduler_init(void) {
 
 		// That's the only sequentially executed place where we can set the lid
 		LPS[i]->lid = i;
+	
+		//TODO MN
+		#ifdef HAVE_GLP_SCH_MODULE
+		// Allocate ECS_stat_table
+		LPS[i]->ECS_stat_table = (ECS_stat **)rsalloc(n_grp * sizeof(ECS_stat *));
+		int j = 0;
+		for (j = 0; j < n_prc; j++) {
+			LPS[i]->ECS_stat_table[j] = (ECS_stat *)rsalloc(sizeof(ECS_stat));
+			bzero(LPS[i]->ECS_stat_table[j], sizeof(ECS_stat));
+			
+			//NOTE: each entry of ECS_stat_table must be initialise otherwise it can figure 
+			//      out problem during the first access
+			LPS[i]->ECS_stat_table[j]->last_access = -1.0;
+			
+		}
+		#endif
 	}
+
+	//TODO MN
+	#ifdef HAVE_GLP_SCH_MODULE
+	// Allocate GLPS control blocks
+	GLPS = (GLP_state **)rsalloc(n_grp * sizeof(GLP_state *));
+	for (i = 0; i < n_grp; i++) {
+		GLPS[i] = (GLP_state *)rsalloc(sizeof(GLP_state));
+		bzero(GLPS[i], sizeof(GLP_state));
+
+		GLPS[i]->local_LPS = (LP_state **)rsalloc(n_prc * sizeof(LP_state *));
+		int j = 0;
+		for (j = 0; j < n_prc; j++) {
+			GLPS[i]->local_LPS[j] = (LP_state *)rsalloc(sizeof(LP_state));
+			bzero(GLPS[i]->local_LPS[j], sizeof(LP_state));
+		}
+	}
+	#endif
 
 	#ifdef HAVE_PREEMPTION
 	preempt_init();
@@ -298,6 +336,17 @@ void initialize_LP(unsigned int lp) {
 	#ifdef ENABLE_ULT
 	context_create(&LPS[lp]->context, LP_main_loop, NULL, LPS[lp]->stack, LP_STACK_SIZE);
 	#endif
+
+	//TODO MN
+	#ifdef HAVE_GLP_SCH_MODULE
+	//Initialise current group
+	LPS[lp]->current_group = lp;
+
+	//Initialise GROUPS
+	spinlock_init(&GLPS[lp]->lock);
+	GLPS[lp]->local_LPS[lp] = LPS[lp];
+	GLPS[lp]->tot_LP = 1;
+	#endif 
 }
 
 
@@ -410,7 +459,12 @@ void activate_LP(unsigned int lp, simtime_t lvt, void *evt, void *state) {
 
 	#ifdef HAVE_CROSS_STATE
 	// Deactivate memory view for the current LP if no conflict has arisen
-	if(!is_blocked_state(LPS[lp]->state)) {
+	if(!is_blocked_state(LPS[lp]->state)) {		
+		//TODO MN
+		#ifdef HAVE_GLP_SCH_MODULE
+		LP_change_group(GLPS, LPS[lp]);			
+		#endif
+
 		lp_alloc_deschedule();
 	}
 	#endif

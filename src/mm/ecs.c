@@ -78,6 +78,20 @@ static void ECS_stub(int ds, unsigned int hitted_object){
 		LPS[current_lp]->wait_on_rendezvous = current_evt->rendezvous_mark;
 	}
 
+	/*
+		//TODO MN
+		
+		//Manage counter to cross-state 
+		ECS_stat temp_update_access = LPS[current_lp]->ECS_stat_table[LPS[hitted_object]->current_group]
+		if( temp_update_access->last_access != -1.0 && current_lvt - temp_update_access->last_access < threshold_time)
+			temp_update_access->count_access++;
+		else
+			temp_update_access->count_access = 1;
+
+		temp_update_access->last_access = current_lvt;
+		//data structure that save the number of access and the last timestamp of the access
+	*/
+
 	// Diretcly place the control message in the target bottom half queue
 	bzero(&control_msg, sizeof(msg_t));
 	control_msg.sender = LidToGid(current_lp);

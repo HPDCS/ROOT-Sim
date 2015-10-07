@@ -60,6 +60,15 @@ static __thread bool first_lp_binding = true;
  */
 __thread LP_state **LPS_bound = NULL;
 
+/** TODO MN
+ *  Each KLT has a binding towards some GLP. This is the structure used 
+ *  to keep track of GLPs currently being handled
+ */
+#ifdef HAVE_GLP_SCH_MODULE
+double glp_cost[n_proc];
+static unsigned int *new_GLPS_binding;
+#endif
+
 static timer rebinding_timer;
 
 static unsigned int *new_LPS_binding;
@@ -112,9 +121,6 @@ static inline void LPs_block_binding(void) {
 	}
 }
 
-
-
-
 /**
 * Convenience function to compare two elements of struct lp_cost_id.
 * This is used for sorting the LP vector in LP_knapsack()
@@ -132,9 +138,6 @@ static int compare_lp_cost(const void *a, const void *b) {
 
 	return ( B->workload_factor - A->workload_factor );
 }
-
-
-
 
 /**
 * Implements the knapsack load sharing policy in:
@@ -253,6 +256,225 @@ static void install_binding(void) {
 	}
 }
 
+/* -------------------------------------------------------------------- */
+/* -------------------START MANAGE GROUP------------------------------- */
+/* -------------------------------------------------------------------- */
+
+/**
+//TODO MN
+* Performs a (deterministic) block allocation between GLPs LPs and KLTs
+*
+* @author Nazzareno Marziale
+* @author Francesco Nobilia
+*/
+static inline void GLPs_block_binding(void) {
+	unsigned int i, j, y, count;
+	unsigned int buf1;
+	unsigned int offset;
+	unsigned int block_leftover;
+
+	buf1 = (n_prc / n_cores);
+	block_leftover = n_prc - buf1 * n_cores;
+
+	if (block_leftover > 0) {
+		buf1++;
+	}
+
+	n_prc_per_thread = 0;
+	i = 0;
+	offset = 0;
+	while (i < n_prc) {
+		j = 0;
+		while (j < buf1) {
+			if(offset == tid) {
+				spin_lock(GLPS[i]->lock);
+				count = 0;
+				y=0;
+				while(count < GLPS[i]->tot_LP){
+					if(GLPS[i]->local_LP[y] != NULL){
+						LPS_bound[n_prc_per_thread++] = LPS[y];
+						LPS[y]->worker_thread = tid;
+						count++;
+					}
+					y++;
+				}
+				spin_unlock(GLPS[i]->lock);
+			}
+			i++;
+			j++;
+		}
+		offset++;
+		block_leftover--;
+		if (block_leftover == 0) {
+			buf1--;
+		}
+	}
+}
+
+/**
+//TODO MN
+* Convenience function to compute the workload of a GRP.
+* This is used for preparing the array that will be sorted in GLP_knapsack()
+*
+* @author Nazzareno Marziale
+* @author Francesco Nobilia
+*
+* @param int Group id
+*
+* @return The workload of group id
+*/
+static double compute_workload_GLP(int id) {
+	glp_cost[id] = 0;
+
+	GLP_state group = GLPS[id];
+	//Lock is required since there may be a WT that is updating the local_LP and the correlated tot_LP count
+	spin_lock(group->lock);
+
+	int count = 0;
+	int i=0;
+	while(count < group->tot_LP){
+		if(group->local_LP[i] != NULL){
+			glp_cost[id] += lp_cost[i]->workload_factor;
+			count++;
+		}
+		
+		i++;
+	}
+
+	spin_unlock(group->unlock);
+
+	return glp_cost[id];
+}
+
+/**
+//TODO MN
+* Convenience function to compare two elements of double.
+* This is used for sorting the GROUP vector in GLP_knapsack()
+*
+* @author Nazzareno Marziale
+* @author Francesco Nobilia
+*
+* @param a Pointer to the first element
+* @param b Pointer to the second element
+*
+* @return The comparison between a and b
+*/
+static int compare_glp_cost(const void *a, const void *b) {
+	return  (*(double*)b - *(double*)a) ;
+}
+
+/**
+//TODO MN
+* Implements the knapsack load sharing policy according to the LP case
+*
+* @author Nazzareno Marziale
+* @author Francesco Nobilia
+*/
+
+static inline void GLP_knapsack(void) {
+	register unsigned int i, j;
+	double reference_knapsack = 0;
+	double reference_lvt;
+	bool assigned;
+	double assignments[n_cores];
+
+	if(!master_thread())
+		return;
+
+	// Estimate the reference knapsack
+	for(i = 0; i < n_grp; i++) {
+		reference_knapsack += compute_workload_GLP(i);
+	}
+	reference_knapsack /= n_cores;
+
+	// Sort the expected times
+	qsort(glp_cost, n_grp, sizeof(struct double) , compare_glp_cost);
+
+
+	// At least one GLP per thread
+	bzero(assignments, sizeof(double) * n_cores);
+	j = 0;
+	for(i = 0; i < n_cores; i++) {
+		assignments[j] += glp_cost[i];
+		new_GLPS_binding[i] = j;
+		j++;
+	}
+
+	// Very suboptimal approximation of knapsack
+	for(; i < n_grp; i++) {
+		assigned = false;
+
+		for(j = 0; j < n_cores; j++) {
+			// Simulate assignment
+			if(assignments[j] + glp_cost[i] <= reference_knapsack) {
+				assignments[j] += glp_cost[i];
+				new_GLPS_binding[i] = j;
+				assigned = true;
+				break;
+			}
+		}
+
+		if(assigned == false)
+			break;
+	}
+
+	// Check for leftovers
+	if(i < n_grp) {
+		j = 0;
+		for( ; i < n_grp; i++) {
+			new_GLPS_binding[i] = j;
+			j = (j + 1) % n_cores;
+		}
+	}
+
+	//NOTE: Populating here the new_LPS_binging is not secure since there may be a WT that after the update of 
+	//      new_LPS_bingind moves a LP from one group towards another one
+	//      TODO in install_binding
+
+	printf("NEW BINDING\n");
+	for(j = 0; j < n_cores; j++) {
+		printf("Thread %d: ", j);
+		for(i = 0; i < n_prc; i++) {
+			if(new_GLPS_binding[i] == j)
+				printf("%d ", i);
+		}
+		printf("\n");
+	}
+
+}
+
+/** 
+//TODO MN
+* Populates the LPS_bound according the group concept
+*
+* @author Nazzareno Marziale
+* @author Francesco Nobilia
+*/
+static void install_GPLS_binding(void) {
+	unsigned int i;
+
+	bzero(LPS_bound, sizeof(LP_state *) * n_prc);
+	n_prc_per_thread = 0;
+
+	for(i = 0; i < n_prc; i++) {
+		if(new_GLPS_binding[LPS[i]->current_group] == tid)
+			LPS_bound[n_prc_per_thread++] = LPS[i];
+
+			if(tid != LPS[i]->worker_thread) {
+
+				#ifdef HAVE_NUMA
+				move_request(i, get_numa_node(running_core()));
+				#endif
+
+				LPS[i]->worker_thread = tid;
+			}
+		}
+	}
+}
+
+/* -------------------------------------------------------------------- */
+/* ---------------------END MANAGE GROUP------------------------------- */
+/* -------------------------------------------------------------------- */
 
 /**
 * This function is used to create a temporary binding between LPs and KLT.
@@ -274,12 +496,24 @@ void rebind_LPs(void) {
 		LPS_bound = rsalloc(sizeof(LP_state *) * n_prc);
 		bzero(LPS_bound, sizeof(LP_state *) * n_prc);
 
-		LPs_block_binding();
+		//TODO MN
+		// Without HAVE_LP_REBINDING but we want to use groups' module
+		#ifdef HAVE_GLP_SCH_MODULE
+			GLPs_block_binding();
+		#else	
+			LPs_block_binding();
+		#endif
 
 		timer_start(rebinding_timer);
 
 		if(master_thread()) {
-			new_LPS_binding = rsalloc(sizeof(int) * n_prc);
+			//TODO MN
+			#ifdef HAVE_GLP_SCH_MODULE
+				new_GLPS_binding = rsalloc(sizeof(int) * n_grp);
+			#else
+				new_LPS_binding = rsalloc(sizeof(int) * n_prc);
+			#endif
+
 			lp_cost = rsalloc(sizeof(struct lp_cost_id) * n_prc);
 
 			atomic_set(&worker_thread_reduction, n_cores);
@@ -307,12 +541,20 @@ void rebind_LPs(void) {
 
 	if(local_binding_acquire_phase < binding_acquire_phase) {
 		local_binding_acquire_phase = binding_acquire_phase;
-		install_binding();
+		
+		//TODO MN
+		#ifdef HAVE_GLP_SCH_MODULE
+			install_GLPS_binding();
+		#else
+			install_binding();
+		#endif
 
 		#ifdef HAVE_PREEMPTION
 		reset_min_in_transit(tid);
 		#endif
 
+		//ASK MN
+		// Tutti i thread arrivano qui e si sincronizzano prima di ripartire?
 		if(thread_barrier(&all_thread_barrier)) {
 			atomic_set(&worker_thread_reduction, n_cores);
 		}
