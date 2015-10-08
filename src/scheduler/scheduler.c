@@ -122,7 +122,7 @@ void scheduler_init(void) {
 		#ifdef HAVE_GLP_SCH_MODULE
 		// Allocate ECS_stat_table
 		LPS[i]->ECS_stat_table = (ECS_stat **)rsalloc(n_grp * sizeof(ECS_stat *));
-		int j = 0;
+		unsigned int j;
 		for (j = 0; j < n_prc; j++) {
 			LPS[i]->ECS_stat_table[j] = (ECS_stat *)rsalloc(sizeof(ECS_stat));
 			bzero(LPS[i]->ECS_stat_table[j], sizeof(ECS_stat));
@@ -144,12 +144,13 @@ void scheduler_init(void) {
 		bzero(GLPS[i], sizeof(GLP_state));
 
 		GLPS[i]->local_LPS = (LP_state **)rsalloc(n_prc * sizeof(LP_state *));
-		int j = 0;
+		unsigned int j;
 		for (j = 0; j < n_prc; j++) {
 			GLPS[i]->local_LPS[j] = (LP_state *)rsalloc(sizeof(LP_state));
 			bzero(GLPS[i]->local_LPS[j], sizeof(LP_state));
 		}
 	}
+	
 	#endif
 
 	#ifdef HAVE_PREEMPTION
@@ -459,12 +460,7 @@ void activate_LP(unsigned int lp, simtime_t lvt, void *evt, void *state) {
 
 	#ifdef HAVE_CROSS_STATE
 	// Deactivate memory view for the current LP if no conflict has arisen
-	if(!is_blocked_state(LPS[lp]->state)) {		
-		//TODO MN
-		#ifdef HAVE_GLP_SCH_MODULE
-		LP_change_group(GLPS, LPS[lp]);			
-		#endif
-
+	if(!is_blocked_state(LPS[lp]->state)) {	
 		lp_alloc_deschedule();
 	}
 	#endif

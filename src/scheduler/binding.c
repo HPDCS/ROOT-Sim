@@ -67,11 +67,14 @@ __thread LP_state **LPS_bound = NULL;
 #ifdef HAVE_GLP_SCH_MODULE
 double glp_cost[n_proc];
 static unsigned int *new_GLPS_binding;
+static GLP_state **new_GLPS;
+static unsigned int *new_group_LPS;
 #endif
 
 static timer rebinding_timer;
 
 static unsigned int *new_LPS_binding;
+
 
 static int binding_phase = 0;
 static __thread int local_binding_phase = 0;
@@ -326,7 +329,7 @@ static inline void GLPs_block_binding(void) {
 static double compute_workload_GLP(int id) {
 	glp_cost[id] = 0;
 
-	GLP_state group = GLPS[id];
+	GLP_state group = new_GLPS[id];
 	//Lock is required since there may be a WT that is updating the local_LP and the correlated tot_LP count
 	spin_lock(group->lock);
 
@@ -365,6 +368,20 @@ static int compare_glp_cost(const void *a, const void *b) {
 
 /**
 //TODO MN
+* Updates all groups configurations according to LPs' statistics
+*
+* @author Nazzareno Marziale
+* @author Francesco Nobilia
+*/
+static void update_clustering_groups(){
+	unsigned int i;
+	for(i=0; i<n_prc; i++){
+		new_group_LP[i] = LP_change_group(new_GLPS, LPS[i]);	
+	}
+}
+
+/**
+//TODO MN
 * Implements the knapsack load sharing policy according to the LP case
 *
 * @author Nazzareno Marziale
@@ -380,6 +397,9 @@ static inline void GLP_knapsack(void) {
 
 	if(!master_thread())
 		return;
+
+	// Clustering group
+	update_clustering_groups();
 
 	// Estimate the reference knapsack
 	for(i = 0; i < n_grp; i++) {
@@ -472,6 +492,28 @@ static void install_GPLS_binding(void) {
 	}
 }
 
+/** 
+//TODO MN
+* Copy the informations of new_GLPS into global GLPS
+*
+* @author Nazzareno Marziale
+* @author Francesco Nobilia
+*/
+static void switch_GLPS(){
+	unsigned int i;
+	for (i = 0; i < n_grp; i++) {
+		memcpy(GLPS[i]->local_LPS, new_GLPS[i]->local_LPS, n_prc * sizeof(LP_state *));
+		GLPS[i]->tot_LP = new_GLPS[i]->tot_LP;
+	}
+
+	for (i = 0; i < n_prc; i++)
+		LPS[i]->current_group = new_group_LPS[i];
+
+
+	//TODO MN
+	//	If there exist one LP that changes group, then we need to force checkpoint for storing the new group's image.
+}
+
 /* -------------------------------------------------------------------- */
 /* ---------------------END MANAGE GROUP------------------------------- */
 /* -------------------------------------------------------------------- */
@@ -509,7 +551,28 @@ void rebind_LPs(void) {
 		if(master_thread()) {
 			//TODO MN
 			#ifdef HAVE_GLP_SCH_MODULE
+				new_group_LPS = rsalloc(sizeof(int) * n_prc);
+
 				new_GLPS_binding = rsalloc(sizeof(int) * n_grp);
+
+				new_GLPS = (GLP_state **)rsalloc(n_grp * sizeof(GLP_state *));
+				unsigned int i;
+				for (i = 0; i < n_grp; i++) {
+					new_GLPS[i] = (GLP_state *)rsalloc(sizeof(GLP_state));
+					bzero(new_GLPS[i], sizeof(GLP_state));
+
+					new_GLPS[i]->local_LPS = (LP_state **)rsalloc(n_prc * sizeof(LP_state *));
+					unsigned int j;
+					for (j = 0; j < n_prc; j++) {
+						new_GLPS[i]->local_LPS[j] = (LP_state *)rsalloc(sizeof(LP_state));
+						bzero(new_GLPS[i]->local_LPS[j], sizeof(LP_state));
+					}
+
+					//Initialise GROUPS
+					spinlock_init(&new_GLPS[i]->lock);
+					new_GLPS[i]->local_LPS[lp] = LPS[lp];
+					new_GLPS[i]->tot_LP = 1;
+				}
 			#else
 				new_LPS_binding = rsalloc(sizeof(int) * n_prc);
 			#endif
@@ -528,7 +591,14 @@ void rebind_LPs(void) {
 			timer_restart(rebinding_timer);
 			binding_phase++;
 		} else if(atomic_read(&worker_thread_reduction) == 0) {
-			LP_knapsack();
+			
+			//TODO MN
+			#ifdef HAVE_GLP_SCH_MODULE
+				GLP_knapsack();
+			#else
+				LP_knapsack();
+			#endif
+
 			binding_acquire_phase++;
 		}
 	}
@@ -553,11 +623,19 @@ void rebind_LPs(void) {
 		reset_min_in_transit(tid);
 		#endif
 
-		//ASK MN
-		// Tutti i thread arrivano qui e si sincronizzano prima di ripartire?
 		if(thread_barrier(&all_thread_barrier)) {
 			atomic_set(&worker_thread_reduction, n_cores);
 		}
+
+		//TODO MN
+		#ifdef HAVE_GLP_SCH_MODULE
+		if(master_thread()) {
+			switch_GLPS();
+		}
+		thread_barrier(&all_thread_barrier))
+		
+		#endif
+
 	}
 #endif
 }
