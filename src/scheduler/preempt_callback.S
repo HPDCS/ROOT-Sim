@@ -29,7 +29,6 @@
 
 .file "preempt_callback.S"
 .extern preempt
-.extern return_from_kernel
 
 #if defined(HAVE_PREEMPTION) && ( defined(ARCH_X86) || defined(ARCH_X86_64) )
 
@@ -93,4 +92,4 @@ preempt_callback:
 
 .size   preempt_callback, .-preempt_callback
 
-#endif /* defined(HAVE_PREEMPT) and ( defined(ARCH_X86) or defined(ARCH_X86_64) ) */
+#endif /* defined(HAVE_PREEMPTION) and ( defined(ARCH_X86) or defined(ARCH_X86_64) ) */

@@ -67,6 +67,7 @@ int init_BH(void) {
 
         for (i=0; i<sobjs; i++){
                 bhmaps[i].live_msgs = 0;
+                bhmaps[i].live_offset = 0;
                 bhmaps[i].live_boundary = 0;
                 bhmaps[i].expired_msgs = 0;
                 bhmaps[i].expired_offset = 0;
@@ -117,7 +118,7 @@ int insert_BH(int sobj, void* msg, int size) {
 
 	pthread_spin_lock(&bh_write[sobj]);
 
-	if(bhmaps[sobj].live_boundary >= BH_SIZE) {
+	if(bhmaps[sobj].live_boundary > BH_SIZE) {
 		pthread_spin_unlock(&bh_write[sobj]);
 		goto bad_insert;
 	}

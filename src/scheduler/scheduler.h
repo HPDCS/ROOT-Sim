@@ -88,16 +88,25 @@ extern __thread unsigned int n_prc_per_thread;
 
 #ifdef HAVE_PREEMPTION
 extern __thread volatile bool platform_mode;
-#define switch_to_platform_mode() do {\
+extern __thread volatile bool rolling_back;
+
+  #define switch_to_platform_mode() do {\
 				   if(LPS[current_lp]->state != LP_STATE_SILENT_EXEC) {\
 					platform_mode = true;\
 				   }\
 				  } while(0)
 
-#define switch_to_application_mode() platform_mode = false
+  #define switch_to_application_mode() platform_mode = false
+  #define flag_rolling_back() rolling_back = true
+  #define unflag_rolling_back() rolling_back = false
+
 #else
-#define switch_to_platform_mode() {}
-#define switch_to_application_mode() {}
+
+  #define switch_to_platform_mode() {}
+  #define switch_to_application_mode() {}
+  #define flag_rolling_back() {}
+  #define unflag_rolling_back() {}
+
 #endif /* HAVE_PREEMPTION */
 
 #endif

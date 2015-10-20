@@ -33,6 +33,9 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 	}
 
 
+//	for(w = 0; w < 10000000; w++);
+
+
 	switch(event_type) {
 
 		case INIT:

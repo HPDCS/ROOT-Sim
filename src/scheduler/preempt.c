@@ -36,7 +36,7 @@
 #include <mm/dymelor.h>
 
 
-extern void preempt_callback(void);
+extern void preempt_callback(void); // This is defined in src/scheduler/preempt_callback.S
 
 static simtime_t * volatile min_in_transit_lvt;
 
@@ -45,6 +45,7 @@ atomic_t overtick_platform;
 atomic_t would_preempt;
 
 __thread volatile bool platform_mode = true;
+__thread volatile bool rolling_back = false;
 
 
 void preempt_init(void) {
@@ -64,11 +65,12 @@ void preempt_init(void) {
 	if(ret == TS_OPEN_ERROR) {
 		rootsim_error(false, "libtimestretch unavailable: is the module mounted? Will run without preemption...\n");
 		rootsim_config.disable_preemption = true;
+	} else {
+		printf("TS OPEN OK\n");
 	}
 
 	atomic_set(&preempt_count, 0);
 
-//	enable_preemption();
 }
 
 
@@ -80,12 +82,7 @@ void preempt_fini(void) {
 	rsfree(min_in_transit_lvt);
 
 	printf("Total preemptions: %d\n", atomic_read(&preempt_count));
-
-//	disable_preemption();
-
-	//ts_close();
 }
-
 
 
 void reset_min_in_transit(unsigned int thread) {
@@ -121,7 +118,6 @@ void update_min_in_transit(unsigned int thread, simtime_t lvt) {
 }
 
 
-__thread bool rolling_back = false;
 
 
 /**
@@ -133,8 +129,6 @@ __thread bool rolling_back = false;
  */
 void preempt(void) {
 
-//	return;
-	
 	if(rootsim_config.disable_preemption)
 		return;
 
@@ -142,72 +136,32 @@ void preempt(void) {
 	// if min_in_transit_lvt < current_lvt
 	// and in platform mode
 
-/*	if(current_lp != IDLE_PROCESS) {
-		if( (count++) % 100 == 0)
-			printf("Overtick interrupt from application mode\n");
-	}
-*/
-
-
-//	atomic_inc(&preempt_count);
+	atomic_inc(&preempt_count);
 
 	if(platform_mode || rolling_back) {
-//		atomic_inc(&overtick_platform);
+		atomic_inc(&overtick_platform);
 
 	} else if(min_in_transit_lvt[tid] < current_lvt) {
-//		atomic_inc(&would_preempt);
+		atomic_inc(&would_preempt);
 		LPS[current_lp]->state = LP_STATE_SUSPENDED; // Questo triggera la logica di ripartenza dell'LP di ECS, ma forse va cambiato nome...
 		switch_to_platform_mode();
 		context_switch(&LPS[current_lp]->context, &kernel_context);
 	}
 	
 
-/*	if(!platform_mode && min_in_transit_lvt[tid] < current_lvt) {
-
-		atomic_inc(&preempt_count);
-
-		LPS[current_lp]->state = LP_STATE_READY_FOR_SYNCH; // Questo triggera la logica di ripartenza dell'LP di ECS, ma forse va cambiato nome...
-
-		// Assembly module has placed a lot of stuff on the stack: put everything back
-		// TODO: this is quite nasty, find a cleaner way to do this...
-		__asm__ __volatile__("pop %r15;"
-			             "pop %r14;"
-			             "pop %r13;"
-			             "pop %r12;"
-			             "pop %r11;"
-			             "pop %r10;"
-			             "pop %r9;"
-			             "pop %r8;");
-
-
-		__asm__ __volatile__("pop %rsi;"
-			             "pop %rdi;"
-			             "pop %rdx;"
-			             "pop %rcx;"
-			             "pop %rbx;"
-			             "pop %rax;"
-			             "popfq;"
-			             "pop %rbp;");
-
-	}
-*/
-
 	
 }
 
 
 void enable_preemption(void) {
+	int ret;
 
-	if(register_ts_thread() != TS_REGISTER_OK) {
+	if((ret = register_ts_thread()) != TS_REGISTER_OK) {
 		rootsim_error(true, "%s:%d: Error activating high-frequency interrupts. Aborting...\n", __FILE__, __LINE__);
 	}
 
 	if(register_callback(preempt_callback) != TS_REGISTER_CALLBACK_OK) {
 		rootsim_error(true, "%s:%d: Error registering callback from kernel module. Aborting...\n", __FILE__, __LINE__);
-	}
-
-	if(ts_start(0) != TS_START_OK) {
-		rootsim_error(true, "%s:%d: Error...\n", __FILE__, __LINE__);
 	}
 
 }

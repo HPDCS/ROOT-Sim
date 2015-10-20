@@ -185,6 +185,8 @@ void rollback(unsigned int lid) {
 	msg_t *reprocess_from;
 	unsigned int reprocessed_events;
 
+	flag_rolling_back();
+
 
 	// Sanity check
 	if(LPS[lid]->state != LP_STATE_ROLLBACK) {
@@ -229,6 +231,8 @@ void rollback(unsigned int lid) {
 
 	// Control messages must be rolled back as well
 	rollback_control_message(lid, last_correct_event->timestamp);
+
+	unflag_rolling_back();
 }
 
 
