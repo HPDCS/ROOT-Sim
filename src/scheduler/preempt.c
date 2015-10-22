@@ -151,48 +151,17 @@ void preempt(void) {
 
 //	atomic_inc(&preempt_count);
 
-	if(platform_mode || rolling_back) {
-//		atomic_inc(&overtick_platform);
-
-	} else if(min_in_transit_lvt[tid] < current_lvt) {
-//		atomic_inc(&would_preempt);
-		LPS[current_lp]->state = LP_STATE_SUSPENDED; // Questo triggera la logica di ripartenza dell'LP di ECS, ma forse va cambiato nome...
-		switch_to_platform_mode();
-		context_switch(&LPS[current_lp]->context, &kernel_context);
+	if(!platform_mode && !rolling_back) {
+		if(min_in_transit_lvt[tid] < current_lvt) {
+			atomic_inc(&would_preempt);
+			LPS[current_lp]->state = LP_STATE_SUSPENDED; // Questo triggera la logica di ripartenza dell'LP di ECS, ma forse va cambiato nome...
+			switch_to_platform_mode();
+			context_switch(&LPS[current_lp]->context, &kernel_context);
+		}
+	} else {
+		atomic_inc(&overtick_platform);
 	}
-	
 
-/*	if(!platform_mode && min_in_transit_lvt[tid] < current_lvt) {
-
-		atomic_inc(&preempt_count);
-
-		LPS[current_lp]->state = LP_STATE_READY_FOR_SYNCH; // Questo triggera la logica di ripartenza dell'LP di ECS, ma forse va cambiato nome...
-
-		// Assembly module has placed a lot of stuff on the stack: put everything back
-		// TODO: this is quite nasty, find a cleaner way to do this...
-		__asm__ __volatile__("pop %r15;"
-			             "pop %r14;"
-			             "pop %r13;"
-			             "pop %r12;"
-			             "pop %r11;"
-			             "pop %r10;"
-			             "pop %r9;"
-			             "pop %r8;");
-
-
-		__asm__ __volatile__("pop %rsi;"
-			             "pop %rdi;"
-			             "pop %rdx;"
-			             "pop %rcx;"
-			             "pop %rbx;"
-			             "pop %rax;"
-			             "popfq;"
-			             "pop %rbp;");
-
-	}
-*/
-
-	
 }
 
 
