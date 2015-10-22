@@ -37,7 +37,8 @@ librootsim_a_SOURCES =	main.c \
 			communication/window.c \
 			communication/communication.c
 
-libwrapperl_a_SOURCES = lib-wrapper/wrapper.c
+libwrapperl_a_SOURCES = lib-wrapper/stdlib.c \
+			lib-wrapper/math.c
 
 libdymelor_a_SOURCES = 	mm/checkpoints.c \
 			mm/recoverable.c \
