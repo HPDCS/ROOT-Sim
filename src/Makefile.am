@@ -18,6 +18,7 @@ librootsim_a_SOURCES =	main.c \
 			datatypes/array.c \
 			datatypes/list.c \
 			datatypes/calqueue.c \
+			datatypes/slab.c \
 			mm/state.c \
 			mm/reverse.c \
 			queues/queues.c \
