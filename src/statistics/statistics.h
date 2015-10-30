@@ -57,18 +57,22 @@
 
 
 /* Definition of LP Statistics Post Messages */
-#define STAT_ANTIMESSAGE	1
-#define STAT_EVENT		2
-#define STAT_COMMITTED		3
-#define STAT_ROLLBACK		4
-#define STAT_CKPT		5
-#define STAT_CKPT_TIME		6
-#define STAT_CKPT_MEM		7
-#define STAT_RECOVERY		8
-#define STAT_RECOVERY_TIME	9
-#define STAT_EVENT_TIME		10
-#define STAT_IDLE_CYCLES	11
-#define STAT_SILENT		12
+#define STAT_ANTIMESSAGE		1
+#define STAT_EVENT			2
+#define STAT_COMMITTED			3
+#define STAT_ROLLBACK			4
+#define STAT_CKPT			5
+#define STAT_CKPT_TIME			6
+#define STAT_CKPT_MEM			7
+#define STAT_RECOVERY			8
+#define STAT_RECOVERY_TIME		9
+#define STAT_EVENT_TIME			10
+#define STAT_IDLE_CYCLES		11
+#define STAT_SILENT			12
+#define STAT_REVERSE_EXECUTE		13
+#define STAT_REVERSE_EXECUTE_TIME	14
+#define STAT_REVERSE_GENERATE		15
+#define STAT_REVERSE_GENERATE_TIME	16
 
 
 /* Definition of Global Statistics Post Messages */
@@ -101,6 +105,10 @@ struct stat_t {
 		recovery_time,
 		event_time,
 		exponential_event_time,
+		tot_reverse_exec,
+		reverse_exec_time,
+		tot_reverse_gen,
+		reverse_gen_time,
 		idle_cycles,
 		memory_usage,
 		gvt_computations,

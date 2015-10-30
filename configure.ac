@@ -54,6 +54,7 @@ AM_PROG_CC_C_O
 m4_ifdef([AM_PROG_AR], [AM_PROG_AR])
 AM_PROG_AR
 AM_PROG_AS
+AC_CHECK_PROGS([HIJACKER], [hijacker])
 LT_INIT
 
 
@@ -316,6 +317,21 @@ then
 fi
 
 
+# If requested, enable reverse computation
+if test "x$HIJACKER" = "xhijacker"
+then
+	AC_ARG_ENABLE([reverse],
+	AS_HELP_STRING([--enable-reverse], [Enable reverse computation]))
+
+	AS_IF([test "x$enable_reverse" = "xyes"], [
+	        AC_DEFINE([HAVE_REVERSE])
+	        ac_have_reverse=yes
+	])
+fi
+
+
+
+
 
 #----------------------------------------------------------------------------
 # Check scripts sizes.
@@ -461,6 +477,21 @@ else
 fi
 
 
+# Compose the message regarding reverse computing
+if test "x$ac_have_reverse" = "xyes"
+then
+	ac_reverse="Enabled"
+else
+	ac_reverse="Disabled"
+	if test "x$enable_reverse" = "xyes"
+	then
+		ac_reverse="${ac_reverse} (hijacker not found on the system)"
+	else
+		ac_reverse="${ac_reverse} (use --enable-reverse to activate)"
+	fi
+fi
+
+
 
 cat<<EOF
 
@@ -475,6 +506,7 @@ Parallel Allocator........ : ${ac_parallel_allocator}
 NUMA Subsystem............ : ${numa_subsystem}
 LP Preemption Support..... : ${ac_preemption}
 LP Rebinding.............. : ${ac_lp_rebinding}
+Reverse Computing......... : ${ac_reverse}
 
 
 EOF

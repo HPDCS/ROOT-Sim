@@ -41,6 +41,10 @@
 #define OPT_ALLOCATOR		23
 #endif
 
+#ifdef HAVE_REVERSE
+#define OPT_REVERSE		24
+#endif
+
 // TODO: a vector of vector with text name of numerical options, which should be used for parsing options and for displaying names
 // static char *opt_opt[][] = { ... }
 
@@ -77,6 +81,10 @@ static char *opt_desc[] = {
 	"Disable parallel allocator",
 #endif
 
+#ifdef HAVE_REVERSE
+	"Disable reverse computation",
+#endif
+
 	""
 };
 
@@ -111,6 +119,10 @@ static struct option long_options[] = {
 
 #ifdef HAVE_PARALLEL_ALLOCATOR
 	{"no-allocator",	no_argument,		0, OPT_ALLOCATOR},
+#endif
+
+#ifdef HAVE_REVERSE
+	{"no-reverse",		no_argument,		0, OPT_REVERSE},
 #endif
 
 	{0,			0,			0, 0}

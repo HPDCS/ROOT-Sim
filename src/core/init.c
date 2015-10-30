@@ -33,6 +33,7 @@
 #include <limits.h>
 
 #include <ROOT-Sim.h>
+#include <mm/dymelor.h>
 #include <arch/os.h>
 #include <arch/thread.h>
 #include <communication/communication.h>
@@ -42,8 +43,8 @@
 #include <gvt/gvt.h>
 #include <gvt/ccgs.h>
 #include <scheduler/scheduler.h>
+#include <mm/reverse.h>
 #include <mm/state.h>
-#include <mm/dymelor.h>
 #include <core/backtrace.h>
 #include <statistics/statistics.h>
 #include <lib/numerical.h>
@@ -124,6 +125,10 @@ static int parse_cmd_line(int argc, char **argv) {
 
 	#ifdef HAVE_PARALLEL_ALLOCATOR
 	rootsim_config.disable_allocator = false;
+	#endif
+
+	#ifdef HAVE_REVERSE
+	rootsim_config.disable_reverse = false;
 	#endif
 
 
@@ -308,6 +313,12 @@ static int parse_cmd_line(int argc, char **argv) {
 				break;
 			#endif
 
+			#ifdef HAVE_REVERSE
+			case OPT_REVERSE:
+				rootsim_config.disable_reverse = true;
+				break;
+			#endif
+
 			case -1:
 			case '?':
 			default:
@@ -437,7 +448,12 @@ void SystemInit(int argc, char **argv) {
 	gvt_init();
 	numerical_init();
 
-	// This call tells the simulation engine that the sequential initial simulation is complete
+	#ifdef HAVE_REVERSE
+	if(!rootsim_config.disable_reverse)
+		reverse_init();
+	#endif
+
+	// This call tells the simulation engine that the sequential isimulation initialization is complete
 	initialization_complete();
 }
 

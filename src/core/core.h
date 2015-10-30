@@ -190,6 +190,10 @@ typedef struct _simulation_configuration {
 #ifdef HAVE_PARALLEL_ALLOCATOR
 	bool disable_allocator;
 #endif
+
+#ifdef HAVE_REVERSE
+	bool disable_reverse;
+#endif
 } simulation_configuration;
 
 

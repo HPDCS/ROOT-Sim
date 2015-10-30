@@ -1,4 +1,4 @@
-//#ifdef HAVE_MIXED_SS
+#ifdef HAVE_REVERSE
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -7,12 +7,10 @@
 #include <sys/mman.h>
 #include <errno.h>
 
-#include <timer.h>
-
-#include "core.h"
-#include "reverse.h"
-#include "statistics.h"
-#include <dymelor.h>
+#include <mm/reverse.h>
+#include <mm/dymelor.h>
+#include <core/timer.h>
+#include <scheduler/scheduler.h>
 
 /**
  * This is the pointer to the mmap structure that handles all
@@ -79,7 +77,7 @@ static void reverse_chunk(const void *address, size_t size) {
 	// 	0x48, 0xc7, 0xc7, 0x00, 0x00, 0x00, 0x00,
 	// 	0xf3, 0x48, 0xa5
 	// };
-	unsigned char code[33] = {
+	unsigned char code[36] = {
 		0x48, 0xc7, 0xc1, 0x00, 0x00, 0x00, 0x00,							// mov 0x0,%rcx
 		0x48, 0xb8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,			// movabs 0x0,%rax
 		0x48, 0x89, 0xc6,													// mov %rax,%rsi
@@ -94,7 +92,7 @@ static void reverse_chunk(const void *address, size_t size) {
 //	unsigned char *movs = code + 21;
 
 	// Dumps the chunk content
-	memory = malloc(size);
+	memory = umalloc(current_lp, size);
 	if(memory == NULL) {
 		printf("Error reversing a memory chunk of %d bytes at %p\n", size, address);
 		abort();
@@ -426,7 +424,7 @@ void revwin_create(unsigned int tid) {
 	unsigned char code_closing[2] = {0x58, 0xc3};
 
 	// Set the current window as the one registred
-	win = malloc(sizeof(revwin));
+	win = rsalloc(sizeof(revwin));
 	if(win == NULL) {
 		perror("Failed to allocate reverse window descriptor\n");
 		abort();
@@ -437,7 +435,7 @@ void revwin_create(unsigned int tid) {
 	map->map[tid] = win;
 
 	// Initializes reverse window fields
-	size = map->revwin_size;
+	size = REVWIN_SIZE;
 	address = (void *)((char *)map->address + (size * tid));
 
 	win->size = size;
@@ -465,7 +463,7 @@ void revwin_create(unsigned int tid) {
 	// Allocate 1024 bytes for a limited memory which emulates
 	// the future stack of the execute_undo_event()'s stack
 	// TODO: da sistemare!!!!
-	win->estack = malloc(EMULATED_STACK_SIZE);
+	win->estack = umalloc(current_lp, EMULATED_STACK_SIZE);
 	if(win->estack == NULL) {
 		perror("Failed to allocate the emulated stack window\n");
 		abort();
@@ -504,7 +502,7 @@ void reverse_init(unsigned int num_threads, size_t revwin_size) {
 
 	// Allocates a number of reverse window descriptor for each thread
 	size_struct = sizeof(revwin_mmap) + (sizeof(void *) * num_threads);
-	map = malloc(size_struct);
+	map = rsalloc(size_struct);
 	if(map == NULL) {
 		perror("Error initializing the reverse memory management system\n");
 		abort();
@@ -512,7 +510,7 @@ void reverse_init(unsigned int num_threads, size_t revwin_size) {
 	memset(map, 0, size_struct);
 
 	if(revwin_size == 0)
-		revwin_size = REVERSE_WIN_SIZE;
+		revwin_size = REVWIN_SIZE;
 
 	// Initializes metadata and mmap the whole reverse area
 	map->size = revwin_size * num_threads;
@@ -672,7 +670,8 @@ void reverse_code_generator(const void *address, const size_t size) {
 	}
 
 	double elapsed = (double)timer_value_micro(t);
-	stat_post(tid, STAT_UNDO_GEN_TIME, elapsed);
+	stat_post_lp_data(current_lp, STAT_REVERSE_GENERATE, 1.0);
+	stat_post_lp_data(current_lp, STAT_REVERSE_GENERATE_TIME, elapsed);
 
 	//printf("[%d] :: Reverse MOV instruction generated to save value %lx\n", tid, *((unsigned long *)address));
 
@@ -730,7 +729,13 @@ void execute_undo_event(void) {
 	__asm__ volatile ("movq %0, %%rsp" : : "m" (win->orig_stack));
 
 	double elapsed = (double)timer_value_micro(reverse_block_timer);
-	stat_post(tid, STAT_UNDO_EXE_TIME, elapsed);
+
+
+	// FIXME: mi sa che qui current_lp non ècorrettamente impostato, perché viene impostato solo
+	// durante la forward execution
+	stat_post_lp_data(current_lp, STAT_REVERSE_EXECUTE, 1.0);
+	stat_post_lp_data(current_lp, STAT_REVERSE_EXECUTE_TIME, elapsed);
+
 	//undo_exe_time[tid] += elapsed;
 	//undo_exe_count++;
 	//reverse_execution_time += elapsed;
@@ -739,3 +744,7 @@ void execute_undo_event(void) {
 	// Reset the reverse window
 	//reset_window(w);
 }
+
+#endif /* HAVE_REVERSE */
+
+

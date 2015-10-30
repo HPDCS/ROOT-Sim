@@ -276,6 +276,7 @@ void simulation_shutdown(int code) {
 		}
 
 		if(master_thread()) {
+			reverse_fini();
 			statistics_fini();
 			dymelor_fini();
 			scheduler_fini();

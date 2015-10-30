@@ -1,12 +1,15 @@
-#ifndef __REVERSE__
-#define __REVERSE__
+#ifdef HAVE_REVERSE
+
+#pragma once
+#ifndef __REVERSE_H
+#define __REVERSE_H
 
 #include <sys/types.h>
 
-#include <dymelor.h>
+#include <mm/dymelor.h>
 
 
-#define REVERSE_WIN_SIZE 1024 * 4	//! Defalut size of the reverse window which will contain the reverse code
+#define REVWIN_SIZE 1024 * 4	//! Defalut size of the reverse window which will contain the reverse code
 #define HMAP_SIZE		32768		//! Default size ot the address hash map to handle colliding mov addresses
 
 #define HMAP_INDEX_MASK		0xffffffc0	//! Most significant 10 bits are used to index quad-word which contains address bit
@@ -46,7 +49,7 @@ typedef struct _cache_entry {
 
 typedef struct _prefix_head {
 	unsigned long long prefix;		//! Base address prefix of this cluster head
-	cache_entry cache[PAGE_SIZE];	//! List of registered addresses with current prefix
+	cache_entry cache[CLUSTER_SIZE];	//! List of registered addresses with current prefix
 	unsigned int count;				//! Number of total address in this cluster
 	double fragmentation;			//! Internal fragmentation of addresses in the cluster, i.e. how much they are sparse
 	unsigned int contiguous;		//! Maximum number of contiguous addresses registered
@@ -175,4 +178,6 @@ extern void execute_undo_event(void);
  */
 extern void print_cache_stats();
 
-#endif				//__REVERSE__
+#endif /* __REVERSE_H */
+#endif /* HAVE_REVERSE */
+

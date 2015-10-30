@@ -29,6 +29,7 @@
 #include <string.h>
 #include <stdbool.h>
 
+#include <mm/dymelor.h>
 #include <datatypes/list.h>
 #include <core/core.h>
 #include <core/init.h>
@@ -41,12 +42,12 @@
 #include <scheduler/scheduler.h>
 #include <scheduler/stf.h>
 #include <mm/state.h>
-#include <mm/dymelor.h>
 #include <statistics/statistics.h>
 #include <arch/thread.h>
 #include <communication/communication.h>
 #include <gvt/gvt.h>
 #include <statistics/statistics.h>
+#include <mm/reverse.h>
 
 #ifdef EXTRA_CHECKS
 #include <queues/xxhash.h>
@@ -199,11 +200,19 @@ static void LP_main_loop(void *args) {
 		timer event_timer;
 		timer_start(event_timer);
 
+		#ifdef HAVE_REVERSE
+		// TODO: cambiare la logica di reset
+		#endif
+
 		switch_to_application_mode();
 		ProcessEvent[current_lp](LidToGid(current_lp), current_evt->timestamp, current_evt->type, current_evt->event_content, current_evt->size, current_state);
 		switch_to_platform_mode();
 
 		int delta_event_timer = timer_value_micro(event_timer);
+
+		#ifdef HAVE_REVERSE
+		// TODO: link the revwin to the executed event
+		#endif
 
 		#ifdef EXTRA_CHECKS
 		if(current_evt->size > 0) {
@@ -335,6 +344,7 @@ void initialize_worker_thread(void) {
 		LPS_bound[t]->state_log_forced = true;
 	}
 
+	// TODO: is this double barrier really needed?
 	// Worker Threads synchronization barrier: they all should start working together
 	thread_barrier(&all_thread_barrier);
 
@@ -348,6 +358,10 @@ void initialize_worker_thread(void) {
 
 	// Worker Threads synchronization barrier: they all should start working together
 	thread_barrier(&all_thread_barrier);
+
+	#ifdef HAVE_REVERSE
+	revwin_create();
+	#endif
 
         #ifdef HAVE_PREEMPTION
         if(!rootsim_config.disable_preemption)
