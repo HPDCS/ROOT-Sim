@@ -42,7 +42,7 @@
 #include <arch/atomic.h>
 #include <lib/numerical.h>
 #include <communication/communication.h>
-
+#include <arch/linux/modules/cross_state_manager/cross_state_manager.h>
 
 #define LP_STACK_SIZE	4194304	// 4 MB
 

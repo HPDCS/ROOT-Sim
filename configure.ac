@@ -354,6 +354,33 @@ case $host_os in
 esac
 
 
+# Per-module checks. To be run only if we are on Linux and kernel headers are available
+if test "x$ac_kernel_headers" = "xyes"
+then
+
+	# Get finish_task_switch in the current kernel
+	AC_MSG_CHECKING([for finish_task_switch in the current kernel])
+	fts_line=$($GREP -n finish_task_switch /boot/System.map-$(uname -r) | $SED 's/:.*//')
+	finish_task_switch=$($SED "${fts_line}q;d" /boot/System.map-$(uname -r) | $SED 's/ .*//')
+	if test -z "$finish_task_switch"; then
+	        AC_MSG_ERROR([Address of finish_task_switch not found in kernel map])
+	fi
+	AC_MSG_RESULT([found at 0x$finish_task_switch])
+	AC_SUBST([FTS_ADDR], [0x$finish_task_switch])
+
+	# Get function after finish_task_switch in the current kernel
+	AC_MSG_CHECKING([the address of function next to finish_task_switch in the current kernel])
+	let fts_line=$fts_line+1
+	finish_task_switch_next=$($SED "${fts_line}q;d" /boot/System.map-$(uname -r) | $SED 's/ .*//')
+	if test -z "$finish_task_switch_next"; then
+	        AC_MSG_ERROR([Address of function aftr finish_task_switch not found in kernel map])
+	fi
+	AC_MSG_RESULT([found at 0x$finish_task_switch_next])
+	AC_SUBST([FTS_ADDR_NEXT], [0x$finish_task_switch_next])
+
+
+fi # closes the global Linux kernel headers availability check
+
 
 
 #----------------------------------------------------------------------------
@@ -374,7 +401,11 @@ AC_MSG_RESULT([ok])
 
 # Generate Makefiles for all these subfolders
 #AC_OUTPUT
-AC_CONFIG_FILES([Makefile man/Makefile scripts/Makefile src/Makefile src/arch/linux/modules/Makefile])
+AC_CONFIG_FILES([Makefile
+		 man/Makefile
+		 scripts/Makefile
+		 src/Makefile
+		 src/arch/linux/modules/Makefile])
 AC_OUTPUT
 
 

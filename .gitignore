@@ -42,3 +42,10 @@ outputs/
 
 doxy.conf
 doxyfile.stamp
+
+Module.symvers
+modules.order
+*.o.cmd
+*.ko.cmd
+*.mod.c
+.tmp_versions
