@@ -31,6 +31,7 @@
 #include <core/core.h>
 #include <communication/communication.h>
 #include <mm/dymelor.h>
+#include <datatypes/list.h>
 
 
 #ifdef HAVE_CROSS_STATE
@@ -205,7 +206,7 @@ bool process_control_msg(msg_t *msg) {
 	switch(msg->type) {
 
 		case RENDEZVOUS_START:
-			list_insert(LPS[msg->receiver]->rendezvous_queue, timestamp, msg);
+			list_insert(msg->receiver, LPS[msg->receiver]->rendezvous_queue, timestamp, msg);
 			// Place this into input queue
 			LPS[msg->receiver]->wait_on_rendezvous = msg->rendezvous_mark;
 

@@ -47,15 +47,8 @@
 #include <communication/communication.h>
 #include <gvt/gvt.h>
 #include <statistics/statistics.h>
-
-#ifdef HAVE_CROSS_STATE
-#include <arch/linux/modules/ktblmgr/ktblmgr.h>
-#endif
-
-
-#ifdef EXTRA_CHECKS
+#include <arch/linux/modules/cross_state_manager/cross_state_manager.h>
 #include <queues/xxhash.h>
-#endif
 
 /// Maintain LPs' simulation and execution states
 LP_state **LPS = NULL;
