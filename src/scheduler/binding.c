@@ -34,6 +34,7 @@
 #include <gvt/gvt.h>
 #include <scheduler/process.h>
 #include <scheduler/binding.h>
+//#include <scheduler/group.h>
 #include <statistics/statistics.h>
 
 #include <mm/allocator.h>
@@ -65,7 +66,7 @@ __thread LP_state **LPS_bound = NULL;
  *  to keep track of GLPs currently being handled
  */
 #ifdef HAVE_GLP_SCH_MODULE
-double glp_cost[n_proc];
+static double *glp_cost;
 static unsigned int *new_GLPS_binding;
 static GLP_state **new_GLPS;
 static unsigned int *new_group_LPS;
@@ -290,18 +291,18 @@ static inline void GLPs_block_binding(void) {
 		j = 0;
 		while (j < buf1) {
 			if(offset == tid) {
-				spin_lock(GLPS[i]->lock);
+				spin_lock_x86(&(GLPS[i]->lock));
 				count = 0;
 				y=0;
 				while(count < GLPS[i]->tot_LP){
-					if(GLPS[i]->local_LP[y] != NULL){
+					if(GLPS[i]->local_LPS[y] != NULL){
 						LPS_bound[n_prc_per_thread++] = LPS[y];
 						LPS[y]->worker_thread = tid;
 						count++;
 					}
 					y++;
 				}
-				spin_unlock(GLPS[i]->lock);
+				spin_unlock_x86(&(GLPS[i]->lock));
 			}
 			i++;
 			j++;
@@ -329,22 +330,22 @@ static inline void GLPs_block_binding(void) {
 static double compute_workload_GLP(int id) {
 	glp_cost[id] = 0;
 
-	GLP_state group = new_GLPS[id];
+	GLP_state *group = new_GLPS[id];
 	//Lock is required since there may be a WT that is updating the local_LP and the correlated tot_LP count
-	spin_lock(group->lock);
+	spin_lock_x86(&(group->lock));
 
 	int count = 0;
 	int i=0;
 	while(count < group->tot_LP){
-		if(group->local_LP[i] != NULL){
-			glp_cost[id] += lp_cost[i]->workload_factor;
+		if(group->local_LPS[i] != NULL){
+			glp_cost[id] += lp_cost[i].workload_factor;
 			count++;
 		}
 		
 		i++;
 	}
 
-	spin_unlock(group->unlock);
+	spin_unlock_x86(&(group->lock));
 
 	return glp_cost[id];
 }
@@ -368,6 +369,37 @@ static int compare_glp_cost(const void *a, const void *b) {
 
 /**
 //TODO MN
+**/
+int LP_change_group(GLP_state **GROUPS_global, LP_state *actual_lp){
+	ECS_stat *ECS_entry_temp;
+	unsigned int i;
+	unsigned int threshold_access = 100;
+
+	for(i=0 ; i<n_grp ; i++){
+		ECS_entry_temp = actual_lp->ECS_stat_table[i];
+		if(ECS_entry_temp->count_access > threshold_access){
+			
+			//Update old group
+			//spin_lock(GROUPS_global[actual_lp->current_group]->lock);
+			GROUPS_global[actual_lp->current_group]->local_LPS[actual_lp->lid] = NULL;
+			GROUPS_global[actual_lp->current_group]->tot_LP--;
+			//spin_unlock(GROUPS_global[actual_lp->current_group]->lock);
+					
+			//Update new group
+			//spin_lock(GROUPS_global[i]->lock);
+			GROUPS_global[i]->local_LPS[actual_lp->lid] = actual_lp;
+			GROUPS_global[i]->tot_LP++;
+			//spin_unlock(GROUPS_global[i]->lock);
+
+			return i;
+		}
+	}
+
+	return actual_lp->current_group;
+}
+
+/**
+//TODO MN
 * Updates all groups configurations according to LPs' statistics
 *
 * @author Nazzareno Marziale
@@ -376,7 +408,7 @@ static int compare_glp_cost(const void *a, const void *b) {
 static void update_clustering_groups(){
 	unsigned int i;
 	for(i=0; i<n_prc; i++){
-		new_group_LP[i] = LP_change_group(new_GLPS, LPS[i]);	
+		new_group_LPS[i] = LP_change_group(new_GLPS, LPS[i]);	
 	}
 }
 
@@ -408,7 +440,7 @@ static inline void GLP_knapsack(void) {
 	reference_knapsack /= n_cores;
 
 	// Sort the expected times
-	qsort(glp_cost, n_grp, sizeof(struct double) , compare_glp_cost);
+	qsort(glp_cost, n_grp, sizeof(double) , compare_glp_cost);
 
 
 	// At least one GLP per thread
@@ -477,7 +509,7 @@ static void install_GPLS_binding(void) {
 	n_prc_per_thread = 0;
 
 	for(i = 0; i < n_prc; i++) {
-		if(new_GLPS_binding[LPS[i]->current_group] == tid)
+		if(new_GLPS_binding[LPS[i]->current_group] == tid){
 			LPS_bound[n_prc_per_thread++] = LPS[i];
 
 			if(tid != LPS[i]->worker_thread) {
@@ -551,6 +583,7 @@ void rebind_LPs(void) {
 		if(master_thread()) {
 			//TODO MN
 			#ifdef HAVE_GLP_SCH_MODULE
+				glp_cost = rsalloc(sizeof(double)* n_prc);
 				new_group_LPS = rsalloc(sizeof(int) * n_prc);
 
 				new_GLPS_binding = rsalloc(sizeof(int) * n_grp);
@@ -570,7 +603,7 @@ void rebind_LPs(void) {
 
 					//Initialise GROUPS
 					spinlock_init(&new_GLPS[i]->lock);
-					new_GLPS[i]->local_LPS[lp] = LPS[lp];
+					new_GLPS[i]->local_LPS[i] = LPS[i];
 					new_GLPS[i]->tot_LP = 1;
 				}
 			#else
@@ -632,7 +665,7 @@ void rebind_LPs(void) {
 		if(master_thread()) {
 			switch_GLPS();
 		}
-		thread_barrier(&all_thread_barrier))
+		thread_barrier(&all_thread_barrier);
 		
 		#endif
 

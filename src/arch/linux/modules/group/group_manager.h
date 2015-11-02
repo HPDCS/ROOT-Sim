@@ -26,23 +26,6 @@
 * @date September 23, 2015
 */
 
-#include <arch/atomic.h>
-//#include <scheduler/process.h>
-
 #define HAVE_GLP_SCH_MODULE
 
-// This data structure defines the state of each group of LP
-typedef struct _GLP_state{
-	struct LP_state **local_LPS;	// Array that maintains all the LP managed by this group
-	int tot_LP;				// Total number of LP managed by this group
-	spinlock_t lock;		
-} GLP_state;
-
-// Define how many times a LP exhibits ECS toward another group 
-typedef struct _ECS_stat{
-	simtime_t last_access;	// Local virtual time at with the data-structure has been updated
-	int count_access;		
-} ECS_stat;
-
-
-extern GLP_state **GLPS;
+extern int (*LP_change_group)(GLP_state **GROUPS_global, LP_state actual_lp);

@@ -28,10 +28,7 @@
 
 #include <linux/module.h>	/* Needed by all modules */
 #include <linux/kernel.h>	/* Needed for KERN_INFO */
-#include <scheduler/group.h>
-
-/// Number of group of logical processes hosted by the current kernel instance
-unsigned int n_grp;
+#include "group_manager.h"
 
 
 /** 
@@ -48,8 +45,6 @@ unsigned int n_grp;
 * @return The group index
 */
 
-*/
-extern int (*LP_change_group)(GLP_state **GROUPS_global, LP_state actual_lp);
 int real_LP_change_group(GLP_state **GROUPS_global, LP_state actual_lp){
 	ECS_stat ECS_entry_temp;
 	unsigned int i;

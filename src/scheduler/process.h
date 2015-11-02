@@ -37,6 +37,7 @@
 #include <mm/state.h>
 #include <mm/dymelor.h>
 #include <datatypes/list.h>
+#include <scheduler/group.h>
 #include <scheduler/scheduler.h>
 #include <arch/ult.h>
 #include <arch/atomic.h>
