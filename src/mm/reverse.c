@@ -11,27 +11,31 @@
 #include <mm/dymelor.h>
 #include <core/timer.h>
 #include <scheduler/scheduler.h>
-
-/**
- * This is the pointer to the mmap structure that handles all
- * the revrese windows.
- */
-static revwin_mmap *map;
-
-//! Comodity pointer to the thread's local reverse window's descriptor
-//__thread revwin *current_win;
+#include <scheduler/process.h>
+#include <datatypes/slab.h>
 
 
 // Variables to hold the emulated stack window on the heap
 // used to reverse the event without affecting the actual stack;
 // This is needed since the reverse-MOVs could overwrite portions
 // of what was the function's stack in the past event processing.
+// Prevents that possible reverse instructions that affect the old stack
+// will stain the current one
+__thread char estack[REVWIN_STACK_SIZE];
+__thread void *orig_stack;
 
-//__thread revwin *current_win;
-__thread unsigned int revsed;
-
+// Internal software cache to keep track of the reversed instructions
 __thread cluster_cache cache;
+
+// Keeps track of the current reversing strategy
 __thread strategy_t strategy;
+
+
+// Handling of the reverse windows
+__thread struct slab_chain *slab_chain;
+
+
+
 
 /*
  * Adds the passed exeutable code to the reverse window
@@ -41,7 +45,7 @@ __thread strategy_t strategy;
  * @param bytes Pointer to the buffer to write
  * @param size Number of bytes to write
  */
-static void revwin_add_code(revwin *win, unsigned char *bytes, size_t size) {
+static void revwin_add_code(revwin_t *win, unsigned char *bytes, size_t size) {
 
 	// Since the structure is used as a stack, it is needed to create room for the instruction
 	win->top = (void *)((char *)win->top - size);
@@ -53,7 +57,6 @@ static void revwin_add_code(revwin *win, unsigned char *bytes, size_t size) {
 
 	// copy the instructions to the heap
 	memcpy(win->top, bytes, size);
-	revsed += size;
 
 	//printf("Added %ld bytes to the reverse window\n", size);
 }
@@ -67,9 +70,8 @@ static void revwin_add_code(revwin *win, unsigned char *bytes, size_t size) {
  * @param address The starting address from which to copy
  * @param size The number of bytes to reverse
  */
-static void reverse_chunk(const void *address, size_t size) {
-	unsigned long long addr;
-	void *memory;
+static void reverse_chunk(revwin_t *win, const void *address, size_t size) {
+	void *dump;
 
 	// unsigned char code[24] = {
 	// 	0x48, 0xc7, 0xc1, 0x00, 0x00, 0x00, 0x00,
@@ -89,19 +91,15 @@ static void reverse_chunk(const void *address, size_t size) {
 	unsigned char *mov_rcx = code;
 	unsigned char *mov_rsi = code + 7;
 	unsigned char *mov_rdi = code + 20;
-//	unsigned char *movs = code + 21;
 
 	// Dumps the chunk content
-	memory = umalloc(current_lp, size);
-	if(memory == NULL) {
+	dump = umalloc(current_lp, size);
+	if(dump == NULL) {
 		printf("Error reversing a memory chunk of %d bytes at %p\n", size, address);
 		abort();
 	}
-	memcpy(memory, address, size);
+	memcpy(dump, address, size);
 
-	// TODO: build the instructions
-	// REP until size has been reached
-	// MOVSQ
 
 	#ifdef REVERSE_SSE_SUPPORT
 	// TODO: support sse instructions
@@ -110,18 +108,16 @@ static void reverse_chunk(const void *address, size_t size) {
 	memcpy(mov_rcx+3, &size, 4);
 	
 	// Copy the first address
-	memcpy(mov_rsi+2, &memory, 8);
+	memcpy(mov_rsi+2, &dump, 8);
 
 	// Compute and copy the second part of the address
-	addr = memory;
-	addr = address + size;
-	memcpy(mov_rdi+2, &addr, 8);
+	memcpy(mov_rdi+2, &address, 8);
 	#endif
 
 	//printf("Chunk addresses reverse code generated\n");
 
 	// Now 'code' contains the right code to add in the reverse window
-	revwin_add_code(current_win, code, sizeof(code));
+	revwin_add_code(win, code, sizeof(code));
 }
 
 
@@ -134,7 +130,7 @@ static void reverse_chunk(const void *address, size_t size) {
  * @param address The starting address from which to copy
  * @param size The number of bytes to reverse
  */
-static void reverse_single(const void *address, size_t size) {
+static void reverse_single(revwin_t *win, const void *address, size_t size) {
 	unsigned long value, value_lower;
 	unsigned char *code;
 	unsigned short size_code;
@@ -174,7 +170,7 @@ static void reverse_single(const void *address, size_t size) {
 	//printf("Single address reverse code generated\n");
 
 	// Now 'code' contains the right code to add in the reverse window
-	revwin_add_code(current_win, code, size_code);
+	revwin_add_code(win, code, size_code);
 }
 
 
@@ -293,23 +289,27 @@ static bool check_dominance(void *address) {
 	// Computes the prefix within the head list
 	page_address = (unsigned long long)address & ADDRESS_PREFIX;
 
+	// TODO: la cache non è ordinata e richiede una ricerca lineare
 
-	// Search for the right cluster with prefix 'page_address'
+	// Search for the right cluster with the prefix 'page_address'
 	cluster = NULL;
 	for(i = 0; i < PREFIX_HEAD_SIZE; i++) {
 		if(cache.cluster[i].prefix == page_address) {
+			// The right cluster has been found
 			cluster = &cache.cluster[i];
 			break;
 		}
 	}
 
 	if(cluster == NULL) {
-		// Otherwinse, if there isn't, adds a new prefix
+		// Otherwinse, if no cluster has been found
+		// a new one must be addes with this prefix
 		for(i = 0; i < PREFIX_HEAD_SIZE; i++) {
 			if(cache.cluster[i].prefix == NULL)
 				break;
 		}
 
+		// Check whether the cache is full
 		if (i == PREFIX_HEAD_SIZE) {
 			printf("Cache full, no entry found\n");
 			// TODO: gestire diversamente questo caso!
@@ -323,7 +323,7 @@ static bool check_dominance(void *address) {
 		//printf("Added prefix %p at cluster %d\n", page_address, i);
 	}
 
-	// Computes the index within the cluster cache
+	// Computes the index within the cluster
 	address_idx = (unsigned long long)address & (CLUSTER_SIZE - 1);
 
 	// Once the pointer to the correct address cluster is found, if any,
@@ -335,12 +335,15 @@ static bool check_dominance(void *address) {
 		return true;
 	}
 
-	// Otherwise, if the pointer to the cluster entry is empty, this means that 'address'
+	// If the pointer to the cluster entry is empty, this means that 'address'
 	// has not been yet referenced and must be set for the first time at the indexed cell
 	entry->address = address;
 	entry->touches = 1;
 	cluster->count++;
 
+
+	// A new address which wasn't in cache has been touched and added
+	// therefore it is necessary to udpate the cluster's metadata
 
 	// Now, updates cluster's statistics
 	cluster->fragmentation = 0;
@@ -367,8 +370,9 @@ static bool check_dominance(void *address) {
 	cluster->fragmentation /= CLUSTER_SIZE;
 
 
-	// Check whether it is the case to switch reversing strategy
+	// Check whether to switch to another reversing strategy
 	// according to the internal fragemntation of addresses
+	// within the cache
 	choose_strategy();
 
 
@@ -416,31 +420,41 @@ static int compute_span(malloc_area *area) {
 }
 
 
-void revwin_create(unsigned int tid) {
-	void *address;
-	size_t size;
-	revwin *win;
+revwin_t *revwin_create(void) {
+	revwin_t *win;
 
 	unsigned char code_closing[2] = {0x58, 0xc3};
 
 	// Set the current window as the one registred
-	win = rsalloc(sizeof(revwin));
+/*	win = rsalloc(sizeof(revwin));
 	if(win == NULL) {
 		perror("Failed to allocate reverse window descriptor\n");
 		abort();
 	}
-	memset(win, 0, sizeof(revwin));
+	memset(win, 0, sizeof(revwin));*/
 
-	// Registers the reverse window in the global structure
-	map->map[tid] = win;
+	// Query the slab allocator to retrieve a new reverse window
+	// executable area. The address represents the base address of
+	// the revwin descriptor which contains the reverse code itself.
+	win = slab_alloc(slab_chain);
+	if(win == NULL) {
+		printf("Unable to allocate a new reverse window: SLAB failure\n");
+		abort();
+	}
+	memset(win, 0, REVWIN_SIZE);
 
-	// Initializes reverse window fields
-	size = REVWIN_SIZE;
-	address = (void *)((char *)map->address + (size * tid));
 
-	win->size = size;
-	win->base = address;
-	win->top = (void *)((char *)address + size - 1);
+	// Register the reverse window in the global structure
+	//map->map[tid] = win;
+
+	// Initialize reverse window's fields
+	//size = REVWIN_SIZE;
+	//address = (void *)((char *)map->address + (size * tid));
+
+	win->size = REVWIN_CODE_SIZE;
+	//win->base = (void *)((char *)win + sizeof(revwin));
+	win->base = win->code;
+	win->top = (void *)((char *)win->base + win->size - 1);
 
 	// Allocate a new slot in the reverse mapping, accorndigly to
 	// the number of yet allocated windows
@@ -463,45 +477,71 @@ void revwin_create(unsigned int tid) {
 	// Allocate 1024 bytes for a limited memory which emulates
 	// the future stack of the execute_undo_event()'s stack
 	// TODO: da sistemare!!!!
-	win->estack = umalloc(current_lp, EMULATED_STACK_SIZE);
+/*	win->estack = umalloc(current_lp, EMULATED_STACK_SIZE);
 	if(win->estack == NULL) {
 		perror("Failed to allocate the emulated stack window\n");
 		abort();
 	}
 	// The stack grows towards low addresses
-	win->estack += (EMULATED_STACK_SIZE - 1);
+	win->estack += (EMULATED_STACK_SIZE - 1);*/
 
 	printf("Reverse window of thread %d has been initialized :: base at %p top at %p, %ld bytes\n", tid, win->base, win->top, win->size);
+
+	return win;
 }
 
 
-
-void revwin_free(void) {
-	// TODO: implementare
+void revwin_free(revwin_t *win) {
+	slab_free(slab_chain, win);
 }
 
 
 /**
- * Initializes a the memory management of areas which contain the reverse windows.
- * Each reverse window is statically allocated once for the whole executions.
+ * Initializes a the reverse memory region of executables reverse windows. Each slot
+ * is managed by a slab allocator and represents a reverse window to be executed.
+ * Reverse widnows are bound to events by a pointer in their message descriptor.
  *
  * @author Davide Cingolani
  *
- * @param num_thread The number of the threads for which to allocate the structure
+ * @param revwin_size The size of the reverse window
  */
-void reverse_init(unsigned int num_threads, size_t revwin_size) {
+void reverse_init(size_t revwin_size) {
+
+	// Allocate the structure needed by the slab allocator
+	slab_chain = rsalloc(sizeof(struct slab_chain));
+	if(slab_chain == NULL) {
+		printf("Unable to allocate memory for the SLAB structure\n");
+		abort();
+	}
+
+	// In this step we should initialize the slab allocator in order
+	// to fast handle allocation and deallocation of reverse windows
+	// which will be created by each event indipendently.
+	slab_init(slab_chain, revwin_size);
+
+
+	// TODO: inizializzare anche cache e strategy!
+
+
+	// From now on, the slab allocator can be invoked to allocate
+	// a new item of the predefined size.
+
+	/*
 	size_t size_struct;
 	unsigned int lid;
 	void *address;
 	revwin *win;
-	
+	*/
+
+	/*
 	if(num_threads == 0) {
 		printf("Error initializing the reverse memory management system: number of threads cannot be zero\n");
 		abort();
 	}
 
 	// Allocates a number of reverse window descriptor for each thread
-	size_struct = sizeof(revwin_mmap) + (sizeof(void *) * num_threads);
+	//size_struct = sizeof(revwin_mmap) + (sizeof(void *) * num_threads);
+	
 	map = rsalloc(size_struct);
 	if(map == NULL) {
 		perror("Error initializing the reverse memory management system\n");
@@ -516,49 +556,19 @@ void reverse_init(unsigned int num_threads, size_t revwin_size) {
 	map->size = revwin_size * num_threads;
 	map->size_self = size_struct;
 	map->address = mmap(NULL, map->size, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-
-	/*//Initializes each thread's revwin
-	for(lid = 0; lid < num_threads; lid++) {
-		// win = malloc(sizeof(revwin));
-		// if(win == NULL) {
-		// 	perror("Failed to allocate reverse window descriptor\n");
-		// 	abort();
-		// }
-		// memset(win, 0, sizeof(revwin));
-
-		// map->map[lid] = win;
-
-		address = (void *)((char *)map->address + (revwin_size * lid));
-
-		// win->base = address;
-		// win->top = address + revwin_size - 1;
-		// win->size = revwin_size;
-		revwin_init(lid, address, revwin_size);
-	}*/
-
-	//printf("Reverse memory manager has been initialized: start address %p, end address = %p, size=%ld\n",
-	//	map->address, (void *)((char *)map->address+map->size), map->size);
+	*/
 }
 
 
 void reverse_fini(void) {
-	unsigned int lid;
-
-	munmap(map->address, map->size);
-
-	/*for(lid = 0; lid < n_cores; lid++) {
-		free(map->map[lid]);
-	}*/
+	// TODO: implementare
 }
 
 
 /*
  * Reset the reverse window intruction pointer
  */
-void revwin_reset(void) {
-	revwin *win;
-
-	win = current_win;
+void revwin_reset(revwin_t *win) {
 
 	if (win == NULL) {
 		printf("Error: null reverse window\n");
@@ -568,7 +578,6 @@ void revwin_reset(void) {
 	// Resets the instruction pointer to the first byte AFTER the colsing
 	// instruction at the base of the window
 	win->top = (void *)(((char *)win->base) + win->size - 3);
-	revsed = 0;
 
 	// Reset the cache
 	flush_cache();
@@ -618,12 +627,22 @@ void reverse_code_generator(const void *address, const size_t size) {
 	size_t chunk_size;
 	malloc_area *area;
 	bool dominant;
+	revwin_t *win;
 
 	
 	//printf("[%d] :: reverse_code_generator(%p, %ld) => %lx\n", tid, address, size, *((unsigned long *)address));
 
 	timer t;
 	timer_start(t);
+
+	// We have to retrieve the current event structure bound to this LP
+	// in order to bind this reverse window to it.
+	msg_t *event = LPS[current_lp]->bound;
+	win = event->revwin;
+	if(win == NULL) {
+		printf("No revwin has been defined for the event\n");
+		abort();
+	}
 
 	// In order to dump the whole chunk reverse, now we inquire
 	// dymelor to get the malloc_area struct which contains the
@@ -658,13 +677,13 @@ void reverse_code_generator(const void *address, const size_t size) {
 			// of the target memory chunk to reverse (not the malloc_area one)
 			chunk_address = (unsigned long long)address & ADDRESS_PREFIX;
 			chunk_size = CLUSTER_SIZE;
-			reverse_chunk(chunk_address, chunk_size);
+			reverse_chunk(win, chunk_address, chunk_size);
 			//cache.reverse_bytes += chunk_size;
 			break;
 
 		case STRATEGY_SINGLE:
 			// Reverse the single buffer access
-			reverse_single(address, size);
+			reverse_single(win, address, size);
 			//cache.reverse_bytes += size;
 			break;
 	}
@@ -695,7 +714,7 @@ void reverse_code_generator(const void *address, const size_t size) {
  */
 void execute_undo_event(void) {
 	unsigned char push = 0x50;
-	revwin *win = current_win;
+	revwin_t *win;
 	void *revcode;
 
 	timer reverse_block_timer;
@@ -705,18 +724,21 @@ void execute_undo_event(void) {
 	// Add the complementary push %rax instruction to the top
 	revwin_add_code(win, &push, sizeof(push));
 
+	// Retrieve the reverse window associeted to this event
+	win = LPS[current_lp]->bound->revwin;
+
 	// Temporary swaps the stack pointer to use
 	// the emulated one on the heap, instead
 
 	// TODO: move to define
 	// Save the original stack pointer into 'original_stack'
 	// and substitute $RSP the new emulated stack pointer
-	if (win->estack == NULL) {
+	if (estack == NULL) {
 		printf("[%d] :: Emulated stack NULL!\n", tid);
 		abort();
 	}
 	__asm__ volatile ("movq %%rsp, %0\n\t"
-					  "movq %1, %%rsp" : "=m" (win->orig_stack) : "m" (win->estack));
+					  "movq %1, %%rsp" : "=m" (orig_stack) : "m" (estack));
 
 
 	// Calls the reversing function
@@ -726,7 +748,7 @@ void execute_undo_event(void) {
 	printf("===> [%d] :: undo event executed\n", tid);
 
 	// Replace the original stack on the relative register
-	__asm__ volatile ("movq %0, %%rsp" : : "m" (win->orig_stack));
+	__asm__ volatile ("movq %0, %%rsp" : : "m" (orig_stack));
 
 	double elapsed = (double)timer_value_micro(reverse_block_timer);
 

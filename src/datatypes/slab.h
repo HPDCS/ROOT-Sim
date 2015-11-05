@@ -1,6 +1,8 @@
 /* ref: https://github.com/bbu/userland-slab-allocator */
 
 #pragma once
+#ifndef __SLAB_H
+#define __SLAB_H
 
 #include <stdint.h>
 #include <stddef.h>
@@ -25,3 +27,5 @@ void slab_init(struct slab_chain *, size_t);
 void *slab_alloc(struct slab_chain *);
 void slab_free(struct slab_chain *, const void *);
 void slab_destroy(const struct slab_chain *);
+
+#endif /* __SLAB_H */

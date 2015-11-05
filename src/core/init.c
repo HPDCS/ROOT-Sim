@@ -448,12 +448,12 @@ void SystemInit(int argc, char **argv) {
 	gvt_init();
 	numerical_init();
 
-	#ifdef HAVE_REVERSE
-	if(!rootsim_config.disable_reverse)
-		reverse_init();
-	#endif
+	// #ifdef HAVE_REVERSE
+	// if(!rootsim_config.disable_reverse)
+	// 	reverse_init();
+	// #endif
 
-	// This call tells the simulation engine that the sequential isimulation initialization is complete
+	// This call tells the simulation engine that the sequential simulation initialization is complete
 	initialization_complete();
 }
 

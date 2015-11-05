@@ -188,6 +188,7 @@ static void LP_main_loop(void *args) {
 	context_save(&LPS[current_lp]->default_context);
 	#endif
 
+
 	while(true) {
 
 		#ifdef EXTRA_CHECKS
@@ -202,6 +203,9 @@ static void LP_main_loop(void *args) {
 
 		#ifdef HAVE_REVERSE
 		// TODO: cambiare la logica di reset
+
+		// Create a new revwin to bind to the current event and bind it
+		current_evt->revwin = revwin_create();
 		#endif
 
 		switch_to_application_mode();
@@ -359,8 +363,11 @@ void initialize_worker_thread(void) {
 	// Worker Threads synchronization barrier: they all should start working together
 	thread_barrier(&all_thread_barrier);
 
+	// Here the init function will initialize a reverse memory region
+	// which is managed by a slab allocator.
 	#ifdef HAVE_REVERSE
-	revwin_create();
+	if(!rootsim_config.disable_reverse)
+		reverse_init(REVWIN_SIZE);
 	#endif
 
         #ifdef HAVE_PREEMPTION

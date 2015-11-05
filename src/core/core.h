@@ -41,6 +41,7 @@
 #include <lib/numerical.h>
 #include <arch/thread.h>
 #include <statistics/statistics.h>
+#include <mm/reverse.h>
 
 /// If set, ROOT-Sim will produce statistics on the execution
 #define PLATFORM_STATS
@@ -147,6 +148,12 @@ typedef struct _msg_t {
 	// Application informations
 	char event_content[MAX_EVENT_SIZE];
 	int size;
+
+#ifdef HAVE_REVERSE
+	// Reverse window
+	revwin_t *revwin;
+#endif
+
 } msg_t;
 
 
