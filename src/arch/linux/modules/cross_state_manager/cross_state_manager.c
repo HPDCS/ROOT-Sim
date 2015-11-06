@@ -30,8 +30,6 @@
 * 			     patching
 */
 
-#ifdef HAVE_CROSS_STATE
-
 #define EXPORT_SYMTAB
 #include <linux/module.h>
 #include <linux/kernel.h>
@@ -75,10 +73,19 @@ MODULE_DESCRIPTION("ROOT-Sim Multiple Page Table Kernel Module");
 module_init(rs_ktblmgr_init);
 module_exit(rs_ktblmgr_cleanup);
 
-
 /* MODULE VARIABLES */
-extern (*rootsim_pager)(struct task_struct *tsk); 
-extern void rootsim_load_cr3(ulong addr); 
+//extern (*rootsim_pager)(struct task_struct *tsk); 
+//extern void rootsim_load_cr3(ulong addr);
+
+static inline void rootsim_load_cr3(pgd_t *pgdir) {
+	__asm__ __volatile__ ("mov %0, %%cr3"
+			      :
+			      : "r" (__pa(pgdir)));
+}
+
+void (*rootsim_pager_hook)(void)=0x0;
+#define PERMISSION_MASK 0777 
+module_param(rootsim_pager_hook, ulong, PERMISSION_MASK); 
 
 /// Device major number
 static int major;
@@ -120,6 +127,7 @@ struct vm_area_struct* changed_mode_mmap;
 struct vm_operations_struct * original_vm_ops;
 struct vm_operations_struct auxiliary_vm_ops_table;
 struct vm_area_struct *target_vma;
+
 
 int (*original_fault_handler)(struct vm_area_struct *vma, struct vm_fault *vmf);
 
@@ -985,14 +993,15 @@ void foo(struct task_struct *tsk) {
 
 
 static int rs_ktblmgr_init(void) {
-
 	int ret;
 	int i;
 	//int j;
 	struct kprobe kp;
 
+	printk(KERN_ERR "Value of rootsim_pager_hook\n");
 
-	rootsim_pager = foo;
+
+//	rootsim_pager = foo;
 	//rootsim_pager(NULL);
 
 	mutex_init(&pgd_get_mutex);
@@ -1113,7 +1122,7 @@ static void rs_ktblmgr_cleanup(void) {
 //	class_unregister(dev_cl);
 //	class_destroy(dev_cl);
 
-	rootsim_pager = NULL;
+//	rootsim_pager = NULL;
 	unregister_chrdev(major, "rs_ktblmgr");
 
 	for (; managed_pgds > 0; managed_pgds--) {
@@ -1135,5 +1144,3 @@ static void rs_ktblmgr_cleanup(void) {
 
 
 }
-
-#endif	/* HAVE_CROSS_STATE */

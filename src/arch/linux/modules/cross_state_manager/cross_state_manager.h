@@ -27,8 +27,6 @@
 * @date November 15, 2013
 */
 
-#ifdef HAVE_CROSS_STATE
-
 #pragma once
 #ifndef __CROSS_STATE_H
 #define __CROSS_STATE
@@ -91,6 +89,4 @@ typedef struct _ioctl_info{
 
 
 #endif /* __CROSS_STATE_H */
-#endif /* HAVE_CROSS_STATE */
-
 
