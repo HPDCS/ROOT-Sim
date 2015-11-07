@@ -59,7 +59,6 @@ typedef struct _state_t {
 	short unsigned int state;
 } state_t;
 
-
 extern void ParallelSetState(void *new_state);
 extern void LogState(unsigned int);
 extern void RestoreState(unsigned int lid, state_t *restore_state);

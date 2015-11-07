@@ -197,16 +197,16 @@ static void LP_main_loop(void *args) {
 		}
 		#endif
 
-		// Process the event
-		timer event_timer;
-		timer_start(event_timer);
-
 		#ifdef HAVE_REVERSE
 		// TODO: cambiare la logica di reset
 
 		// Create a new revwin to bind to the current event and bind it
 		current_evt->revwin = revwin_create();
 		#endif
+
+		// Process the event
+		timer event_timer;
+		timer_start(event_timer);
 
 		switch_to_application_mode();
 		ProcessEvent[current_lp](LidToGid(current_lp), current_evt->timestamp, current_evt->type, current_evt->event_content, current_evt->size, current_state);

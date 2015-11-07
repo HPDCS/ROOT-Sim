@@ -58,6 +58,10 @@ void (*SetState)(void *new_state);
 void LogState(unsigned int lid) {
 
 	bool take_snapshot = false;
+
+	// This records whether a checkpoint was taken, so that we can link an event to the checkpoint
+	static bool checkpoint_just_taken = false;
+
 	state_t new_state; // If inserted, list API makes a copy of this
 
 	if(is_blocked_state(LPS[lid]->state)) {
@@ -106,8 +110,8 @@ void LogState(unsigned int lid) {
 		// We take as the buffer state the last one associated with a SetState() call, if any
 		new_state.base_pointer = LPS[lid]->current_base_pointer;
 
-		// list_insert() makes a copy of the payload
-		(void)list_insert_tail(lid, LPS[lid]->queue_states, &new_state);
+		// list_insert() makes a copy of the payload. We store the pointer to the state in the event as well
+		LPS[lid]->bound->checkpoint_of_event = list_insert_tail(lid, LPS[lid]->queue_states, &new_state);
 
 	}
 }
@@ -204,12 +208,18 @@ void rollback(unsigned int lid) {
 	// Send antimessages
 	send_antimessages(lid, last_correct_event->timestamp);
 
+	// Control messages must be rolled back as well
+	rollback_control_message(lid, last_correct_event->timestamp);
+
+	// TODO: switch here on coasting forward vs reverse
+
 	// Find the state to be restored, and prune the wrongly computed states
 	restore_state = list_tail(LPS[lid]->queue_states);
 	while (restore_state != NULL && restore_state->lvt > last_correct_event->timestamp) { // It's > rather than >= because we have already taken into account simultaneous events
 		s = restore_state;
 		restore_state = list_prev(restore_state);
 		log_delete(s->log);
+		s->last_event->checkpoint_of_event = NULL; // Cannot use anti-dangling here, because we explicitly check for NULL
 		s->last_event = (void *)0xDEADC0DE;
 		list_delete_by_content(lid, LPS[lid]->queue_states, s);
 	}
@@ -226,9 +236,6 @@ void rollback(unsigned int lid) {
 	}
 	reprocessed_events = silent_execution(lid, LPS[lid]->current_base_pointer, reprocess_from, list_next(last_correct_event));
 	statistics_post_lp_data(lid, STAT_SILENT, (double)reprocessed_events);
-
-	// Control messages must be rolled back as well
-	rollback_control_message(lid, last_correct_event->timestamp);
 }
 
 

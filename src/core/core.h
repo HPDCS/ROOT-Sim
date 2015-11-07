@@ -134,6 +134,8 @@
 
 typedef enum {positive, negative, other} message_kind_t;
 
+struct _state_t;
+
 /// Message Type definition
 typedef struct _msg_t {
 	// Kernel's information
@@ -145,6 +147,7 @@ typedef struct _msg_t {
 	message_kind_t		message_kind;
 	unsigned long long	mark;	/// Unique identifier of the message, used for antimessages
 	unsigned long long	rendezvous_mark;	/// Unique identifier of the message, used for rendez-vous events
+	struct _state_t		*checkpoint_of_event;  /// This is used to keep a pointer to the checkpoint taken after the execution of an event. It's NULL if no checkpoint was taken
 	// Application informations
 	char event_content[MAX_EVENT_SIZE];
 	int size;
@@ -155,6 +158,7 @@ typedef struct _msg_t {
 #endif
 
 } msg_t;
+
 
 
 /// Message envelope definition. This is used to handle the output queue and stores information needed to generate antimessages
