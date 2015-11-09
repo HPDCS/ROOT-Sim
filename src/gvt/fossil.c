@@ -52,7 +52,7 @@ static unsigned long long snapshot_cycles;
 */
 void fossil_collection(unsigned int lid, simtime_t time_barrier) {
 	state_t *state;
-	msg_t *last_kept_event;
+	msg_t *last_kept_event, *evt;
 	double committed_events;
 
 	time_barrier = 0.7 * time_barrier;
@@ -67,6 +67,16 @@ void fossil_collection(unsigned int lid, simtime_t time_barrier) {
 
 	// Determine queue pruning horizon
 	last_kept_event = list_head(LPS[lid]->queue_states)->last_event;
+
+	#ifdef HAVE_REVERSE
+	// Destroy reverse windows of events which will be pruned
+	evt = list_prev(last_kept_event);
+	while(evt != NULL) {
+		revwin_free(evt->revwin);
+		evt->revwin = NULL;
+		evt = list_prev(evt);
+	}
+	#endif
 
 	// Truncate the input queue, accounting for the event which is pointed by the lastly kept state
 	committed_events = (double)list_trunc_before(lid, LPS[lid]->queue_in, timestamp, last_kept_event->timestamp);
