@@ -27,6 +27,7 @@ cross_state_manager.ko: cross_state_manager/cross_state_manager.c
 	$(MAKE) -C $(KERNEL_SRC) M=$(abs_srcdir)/cross_state_manager/ CFLAGS="" EXTRA_FLAGS="$(FLAGS)"
 
 intercept.ko: intercept/intercept_page_fault.c intercept/my_page_fault.c
+	cp cross_state_manager/Module.symvers intercept/
 	$(MAKE) -C $(KERNEL_SRC) M=$(abs_srcdir)/intercept/ CFLAGS="" EXTRA_FLAGS="$(FLAGS)"
 
 schedule-hook.ko: schedule-hook/schedule-hook.c

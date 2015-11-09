@@ -997,6 +997,35 @@ static int rs_ktblmgr_init(void) {
 	int i;
 	//int j;
 	struct kprobe kp;
+	
+	 u32 cr0, cr2, cr3;
+    		__asm__ __volatile__ (
+        	"mov %%cr0, %%rax\n\t"
+	        "mov %%eax, %0\n\t"
+	        "mov %%cr2, %%rax\n\t"
+        	"mov %%eax, %1\n\t"
+	        "mov %%cr3, %%rax\n\t"
+        	"mov %%eax, %2\n\t"
+	 				   : "=m" (cr0), "=m" (cr2), "=m" (cr3)
+    					   : /* no input */
+    					   : "%rax"
+    		);
+                
+                printk(KERN_INFO "cr3 = 0x%8.8X\n", cr3);
+                rootsim_load_cr3(__va(cr3));
+                __asm__ __volatile__ (
+        	"mov %%cr0, %%rax\n\t"
+	        "mov %%eax, %0\n\t"
+	        "mov %%cr2, %%rax\n\t"
+        	"mov %%eax, %1\n\t"
+	        "mov %%cr3, %%rax\n\t"
+        	"mov %%eax, %2\n\t"
+	 				   : "=m" (cr0), "=m" (cr2), "=m" (cr3)
+    					   : /* no input */
+    					   : "%rax"
+    		);
+                
+                printk(KERN_INFO "cr3 = 0x%8.8X\n", cr3);
 
 	printk(KERN_ERR "Value of rootsim_pager_hook\n");
 
