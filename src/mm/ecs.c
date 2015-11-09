@@ -38,14 +38,14 @@
 
 
 #include <core/core.h>
-#include <mm/malloc.h>
+//#include <mm/malloc.h>
 #include <mm/dymelor.h>
 #include <scheduler/scheduler.h>
 #include <scheduler/process.h>
 #include <arch/ult.h>
 
 #ifdef HAVE_CROSS_STATE
-#include <arch/linux/modules/ktblmgr/ktblmgr.h>
+#include <arch/linux/modules/cross_state_manager/cross_state_manager.h>
 #endif
 
 /// This variable keeps track of per-LP allocated (and assigned) memory regions
@@ -112,7 +112,7 @@ static void ECS_stub(int ds, unsigned int hitted_object){
 	msg_hdr.timestamp = control_msg.timestamp;
 	msg_hdr.send_time = control_msg.send_time;
 	msg_hdr.mark = control_msg.mark;
-	(void)list_insert(LPS[current_lp]->queue_out, send_time, &msg_hdr);
+	(void)list_insert(current_lp, LPS[current_lp]->queue_out, send_time, &msg_hdr);
 
 
 	// Block the execution of this LP
@@ -191,7 +191,7 @@ static void rootsim_cross_state_dependency_handler(void) { // for now a simple p
 }
 
 
-
+/*
 void lp_alloc_init(void) {
 
 	unsigned int i;
@@ -233,11 +233,16 @@ void lp_alloc_fini(void) {
 	}
 
 	close(ioctl_fd); // closing (hence releasing) the special device file
-}
+}*/
 
 // inserire qui tutte le api di schedulazione/deschedulazione
 
 void lp_alloc_thread_init(void) {
+	ioctl_fd = open("/dev/ktblmgr", O_RDONLY);
+	if (ioctl_fd == -1) {
+		rootsim_error(true, "Error in opening special device file. ROOT-Sim is compiled for using the ktblmgr linux kernel module, which seems to be not loaded.");
+	}	
+	
 	/* required to manage the per-thread memory view */
 	pgd_ds = ioctl(ioctl_fd, IOCTL_GET_PGD);  //ioctl call
 	printf("rootsim thread: pgd descriptor is %d\n",pgd_ds);

@@ -403,6 +403,7 @@ static long rs_ktblmgr_ioctl(struct file *filp, unsigned int cmd, unsigned long 
 	case IOCTL_GET_PGD:
 		//flush_cache_all();
 		mutex_lock(&pgd_get_mutex);
+		printk(KERN_ERR "[IOCTL_GET_PGD] before enter in for");
 		for (i = 0; i < SIBLING_PGD; i++) {
 			if (original_view[i] == NULL) {
 				//memcpy(mm_struct_addr[i], current->mm, sizeof(struct mm_struct));
@@ -415,6 +416,7 @@ static long rs_ktblmgr_ioctl(struct file *filp, unsigned int cmd, unsigned long 
 				goto pgd_get_done;
 			}
 		}
+		printk(KERN_ERR "[IOCTL_GET_PGD] afterfor");
 		ret = -1;
 		pgd_get_done:
 		mutex_unlock(&pgd_get_mutex);
@@ -997,40 +999,8 @@ static int rs_ktblmgr_init(void) {
 	int i;
 	//int j;
 	struct kprobe kp;
-	
-	 u32 cr0, cr2, cr3;
-    		__asm__ __volatile__ (
-        	"mov %%cr0, %%rax\n\t"
-	        "mov %%eax, %0\n\t"
-	        "mov %%cr2, %%rax\n\t"
-        	"mov %%eax, %1\n\t"
-	        "mov %%cr3, %%rax\n\t"
-        	"mov %%eax, %2\n\t"
-	 				   : "=m" (cr0), "=m" (cr2), "=m" (cr3)
-    					   : /* no input */
-    					   : "%rax"
-    		);
-                
-                printk(KERN_INFO "cr3 = 0x%8.8X\n", cr3);
-                rootsim_load_cr3(__va(cr3));
-                __asm__ __volatile__ (
-        	"mov %%cr0, %%rax\n\t"
-	        "mov %%eax, %0\n\t"
-	        "mov %%cr2, %%rax\n\t"
-        	"mov %%eax, %1\n\t"
-	        "mov %%cr3, %%rax\n\t"
-        	"mov %%eax, %2\n\t"
-	 				   : "=m" (cr0), "=m" (cr2), "=m" (cr3)
-    					   : /* no input */
-    					   : "%rax"
-    		);
-                
-                printk(KERN_INFO "cr3 = 0x%8.8X\n", cr3);
 
-	printk(KERN_ERR "Value of rootsim_pager_hook\n");
-
-
-//	rootsim_pager = foo;
+	rootsim_pager_hook = foo;
 	//rootsim_pager(NULL);
 
 	mutex_init(&pgd_get_mutex);

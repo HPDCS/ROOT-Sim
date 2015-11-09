@@ -502,7 +502,7 @@ static inline void GLP_knapsack(void) {
 * @author Nazzareno Marziale
 * @author Francesco Nobilia
 */
-static void install_GPLS_binding(void) {
+static void install_GLPS_binding(void) {
 	unsigned int i;
 
 	bzero(LPS_bound, sizeof(LP_state *) * n_prc);

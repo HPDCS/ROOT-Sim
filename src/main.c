@@ -41,6 +41,7 @@
 #include <scheduler/scheduler.h>
 #include <scheduler/process.h>
 #include <mm/dymelor.h>
+#include <mm/ecs.h>
 #include <serial/serial.h>
 
 
