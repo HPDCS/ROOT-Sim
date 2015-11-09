@@ -198,10 +198,21 @@ static void LP_main_loop(void *args) {
 		#endif
 
 		#ifdef HAVE_REVERSE
-		// TODO: cambiare la logica di reset
+		if(!rootsim_config.disable_reverse) {
 
-		// Create a new revwin to bind to the current event and bind it
-		current_evt->revwin = revwin_create();
+			// TODO: change this check to account for the model
+			if(1) {
+				ProcessEvent[current_lp] = ProcessEvent_reverse;
+
+				// Create a new revwin to bind to the current event and bind it. A revwin could be possibly
+				// already allocated, in case an event was undone by a rollback operation. In that case we
+				// reset the revwin, rather than free'ing it, so a buffer could be already allocated.
+				if(current_evt->revwin != NULL)
+					current_evt->revwin = revwin_create();
+			} else {
+				ProcessEvent[current_lp] = ProcessEvent_light;
+			}
+		}
 		#endif
 
 		// Process the event
@@ -213,10 +224,6 @@ static void LP_main_loop(void *args) {
 		switch_to_platform_mode();
 
 		int delta_event_timer = timer_value_micro(event_timer);
-
-		#ifdef HAVE_REVERSE
-		// TODO: link the revwin to the executed event
-		#endif
 
 		#ifdef EXTRA_CHECKS
 		if(current_evt->size > 0) {
