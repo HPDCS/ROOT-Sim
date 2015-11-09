@@ -673,8 +673,8 @@ void reverse_code_generator(const void *address, const size_t size) {
 
 	// Gather statistics data
 	double elapsed = (double)timer_value_micro(t);
-	stat_post_lp_data(current_lp, STAT_REVERSE_GENERATE, 1.0);
-	stat_post_lp_data(current_lp, STAT_REVERSE_GENERATE_TIME, elapsed);
+	statistics_post_lp_data(current_lp, STAT_REVERSE_GENERATE, 1.0);
+	statistics_post_lp_data(current_lp, STAT_REVERSE_GENERATE_TIME, elapsed);
 
 	//printf("[%d] :: Reverse MOV instruction generated to save value %lx\n", tid, *((unsigned long *)address));
 
@@ -749,8 +749,8 @@ void execute_undo_event(unsigned int lid, revwin_t *win) {
 
 	// FIXME: mi sa che qui current_lp non ècorrettamente impostato, perché viene impostato solo
 	// durante la forward execution
-	stat_post_lp_data(lid, STAT_REVERSE_EXECUTE, 1.0);
-	stat_post_lp_data(lid, STAT_REVERSE_EXECUTE_TIME, elapsed);
+	statistics_post_lp_data(lid, STAT_REVERSE_EXECUTE, 1.0);
+	statistics_post_lp_data(lid, STAT_REVERSE_EXECUTE_TIME, elapsed);
 
 
 	// Check if the revwin is a chunk reversal, then
