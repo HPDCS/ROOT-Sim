@@ -59,9 +59,6 @@ void LogState(unsigned int lid) {
 
 	bool take_snapshot = false;
 
-	// This records whether a checkpoint was taken, so that we can link an event to the checkpoint
-	static bool checkpoint_just_taken = false;
-
 	state_t new_state; // If inserted, list API makes a copy of this
 
 	if(is_blocked_state(LPS[lid]->state)) {
@@ -172,10 +169,12 @@ unsigned int silent_execution(unsigned int lid, void *state_buffer, msg_t *evt, 
 
 /**
 * This function rolls back the execution of a certain LP. The point where the
-* execution is rolled back is identified by the event pointed by the rollback_bound
-* entry in the LP control block.
+* execution is rolled back is identified by the event pointed by the bound field
+* in the LP control block.
 * For a rollback operation to take place, that pointer must be set before calling
 * this function.
+* Upon the execution of a rollback, different algorithms are executed depending on
+* whether the reverse computing is active or not.
 *
 * @author Francesco Quaglia
 * @author Alessandro Pellegrini
@@ -188,6 +187,10 @@ void rollback(unsigned int lid) {
 	msg_t *last_correct_event;
 	msg_t *reprocess_from;
 	unsigned int reprocessed_events;
+
+	#ifdef HAVE_REVERSE
+	msg_t *event_with_log;
+	#endif
 
 
 	// Sanity check
@@ -212,6 +215,10 @@ void rollback(unsigned int lid) {
 	rollback_control_message(lid, last_correct_event->timestamp);
 
 	// TODO: switch here on coasting forward vs reverse
+	#ifdef HAVE_REVERSE
+	if(!rootsim_config.disable_reverse && last_correct_event->revwin != NULL)
+		goto reverse;
+	#endif
 
 	// Find the state to be restored, and prune the wrongly computed states
 	restore_state = list_tail(LPS[lid]->queue_states);
@@ -236,6 +243,54 @@ void rollback(unsigned int lid) {
 	}
 	reprocessed_events = silent_execution(lid, LPS[lid]->current_base_pointer, reprocess_from, list_next(last_correct_event));
 	statistics_post_lp_data(lid, STAT_SILENT, (double)reprocessed_events);
+
+#ifdef HAVE_REVERSE
+
+	goto out;
+
+    reverse:
+	event_with_log = last_correct_event;
+	while(event_with_log->checkpoint_of_event == NULL && event_with_log != NULL) {
+		event_with_log = list_next(event_with_log);
+	}
+	
+	// No state to restore. We're in the last section of the forward execution.
+	// We don't need to restore a state, we just undo the latest events
+	if(event_with_log == NULL) {
+		event_with_log = list_tail(LPS[lid]->queue_in);
+	} else {
+		// Restore the state and prune the state queue. We delete as well
+		// the state that we have restored because from that point we undo
+		// events, and thus the state will no longer be correct.
+		// There is the possibility that we don't undo any event if the last
+		// correct event is the one which is associated with the log which
+		// we restored (since we take checkpoints _after_ the execution of
+		// an event). Nevertheless, in this case, we just "lose" one correct
+		// checkpoint from the checkpoint queue, which is anyhow correct.
+		// Explicitly accounting for this case would be costly.
+		restore_state = event_with_log->checkpoint_of_event;
+		RestoreState(lid, restore_state);
+		s = list_next(restore_state);
+		while(s != NULL) {
+			log_delete(s->log);
+			s->last_event->checkpoint_of_event = NULL;
+			s->last_event = (void *)0xDEADC0DE;
+			list_delete_by_content(lid, LPS[lid]->queue_states, s);
+		}
+	}
+
+	// At this point: the state queue is pruned, and the correct state is restore.	
+	// We can thus start to undo events until we reach last_correct_event
+	while(event_with_log != last_correct_event) {
+		execute_undo_event(event_with_log->revwin);
+		revwin_reset(event_with_log->revwin);
+		event_with_log = list_prev(event_with_log);
+	}
+	
+
+    out:
+	return;
+#endif
 }
 
 
