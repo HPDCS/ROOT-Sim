@@ -141,7 +141,7 @@ extern revwin_t *revwin_create(void);
  *
  * @param window A pointer to a reverse window
  */
-extern void revwin_free(revwin_t *win);
+extern void revwin_free(unsigned int lid, revwin_t *win);
 
 
 /**
@@ -157,13 +157,13 @@ extern void revwin_reset(revwin_t *win);
  *
  * @param win Pointer to the reverse window descriptor
  */
-extern void execute_undo_event(revwin_t *win);
+extern void execute_undo_event(unsigned int lid, revwin_t *win);
 
 
 /**
  * Prints some statistics of the software cache
  */
-extern void print_cache_stats();
+extern void print_cache_stats(void);
 
 
 #endif /* __REVERSE_H */

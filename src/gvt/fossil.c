@@ -72,7 +72,7 @@ void fossil_collection(unsigned int lid, simtime_t time_barrier) {
 	// Destroy reverse windows of events which will be pruned
 	evt = list_prev(last_kept_event);
 	while(evt != NULL) {
-		revwin_free(evt->revwin);
+		revwin_free(evt->receiver, evt->revwin);
 		evt->revwin = NULL;
 		evt = list_prev(evt);
 	}

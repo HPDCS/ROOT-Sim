@@ -282,7 +282,7 @@ void rollback(unsigned int lid) {
 	// At this point: the state queue is pruned, and the correct state is restore.	
 	// We can thus start to undo events until we reach last_correct_event
 	while(event_with_log != last_correct_event) {
-		execute_undo_event(event_with_log->revwin);
+		execute_undo_event(event_with_log->receiver, event_with_log->revwin);
 		revwin_reset(event_with_log->revwin);
 		event_with_log = list_prev(event_with_log);
 	}

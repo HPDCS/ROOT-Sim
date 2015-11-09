@@ -493,7 +493,7 @@ revwin_t *revwin_create(void) {
 }
 
 
-void revwin_free(revwin_t *win) {
+void revwin_free(unsigned int lid, revwin_t *win) {
 
 	// Sanity check
 	if (win == NULL) {
@@ -502,7 +502,7 @@ void revwin_free(revwin_t *win) {
 
 	// Check whether the dump chunk area is not NULL
 	if (win->dump != NULL) {
-		ufree(win->dump);
+		ufree(lid, win->dump);
 	}
 
 	// Free the slab area
@@ -696,9 +696,8 @@ void reverse_code_generator(const void *address, const size_t size) {
  *
  * @param w Pointer to the actual window to execute
  */
-void execute_undo_event(revwin_t *win) {
+void execute_undo_event(unsigned int lid, revwin_t *win) {
 	unsigned char push = 0x50;
-	revwin_t *win;
 	void *revcode;
 
 
@@ -750,14 +749,14 @@ void execute_undo_event(revwin_t *win) {
 
 	// FIXME: mi sa che qui current_lp non ècorrettamente impostato, perché viene impostato solo
 	// durante la forward execution
-	stat_post_lp_data(current_lp, STAT_REVERSE_EXECUTE, 1.0);
-	stat_post_lp_data(current_lp, STAT_REVERSE_EXECUTE_TIME, elapsed);
+	stat_post_lp_data(lid, STAT_REVERSE_EXECUTE, 1.0);
+	stat_post_lp_data(lid, STAT_REVERSE_EXECUTE_TIME, elapsed);
 
 
 	// Check if the revwin is a chunk reversal, then
 	// we have to free also the dump memory area
 	if(win->dump != NULL) {
-		ufree(win->dump);
+		ufree(lid, win->dump);
 	}
 
 	// Reset the reverse window

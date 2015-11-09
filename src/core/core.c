@@ -276,7 +276,9 @@ void simulation_shutdown(int code) {
 		}
 
 		if(master_thread()) {
+			#ifdef HAVE_REVERSE
 			reverse_fini();
+			#endif
 			statistics_fini();
 			dymelor_fini();
 			scheduler_fini();
