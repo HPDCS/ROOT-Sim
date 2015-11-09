@@ -79,10 +79,10 @@ typedef struct _prefix_head {
  * in order to collect infomation about memory reversing for each
  * address cluster of the specified size.
  */
-typedef struct _cluster_cache {
+typedef struct _revwin_cache {
 	prefix_head cluster[PREFIX_HEAD_SIZE];
 	unsigned int count;
-} cluster_cache;
+} revwin_cache;
 
 
 
@@ -98,28 +98,6 @@ typedef struct _cluster_cache {
 	char code[];			//! Placeholder for the actual executable reverse code, i.e. from this point there is code
 } revwin_t;
 
-
-
-/**
- * Memory management layout of reverse windows
- */
-typedef struct _revwin_mmap {
-	size_t size_self;			//! The size of this structure
-	void *address;				//! The starting address of the reverse mapping area
-	size_t size;				//! The actual size allocated for the mmap allocated area
-	unsigned int revwin_count;	//! The number of the reverse windows actually allocated
-	revwin_t *map[];			//! Array of pointers to the revwin state for each thread
-} revwin_mmap;
-
-
-/**
- * Software cache to track reversed addresses
- */
- typedef struct _revwin_cache {
- 	size_t reversed_bytes;		//! The number of bytes that have been reversed so far
- 	double fragmentation;		//! The average percentage of reversing fragmentation within a malloc_area
-// 	malloc_area touched[1024];	//! Keep track of which malloc_areas' have been touched so far
- } revwin_cache;
 
 
 

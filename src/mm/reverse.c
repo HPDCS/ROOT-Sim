@@ -25,7 +25,7 @@ __thread char estack[REVWIN_STACK_SIZE];
 __thread void *orig_stack;
 
 // Internal software cache to keep track of the reversed instructions
-__thread cluster_cache cache;
+__thread revwin_cache cache;
 
 // Keeps track of the current reversing strategy
 __thread strategy_t strategy;
