@@ -86,9 +86,9 @@ typedef struct _stackwin {
 	void *base;				//! Pointer to the logic base of the window
 	unsigned int offset;	//! A random offset used to prevent cache lines to be alligned
 	size_t size;			//! The actual size of the reverse window executable portion
+	void *dump;				//! This is the pointer to the memory area where chunk reversal has been dumped
 	char code[];			//! Placeholder for the actual executable reverse code, i.e. from this point there is code
 } revwin_t;
-// TODO: cambiare nome alla struttura
 
 // typedef struct _revwin {
 // 	size_t size;		//! The actual size of the reverse window

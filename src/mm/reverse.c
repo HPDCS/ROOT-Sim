@@ -71,7 +71,7 @@ static void revwin_add_code(revwin_t *win, unsigned char *bytes, size_t size) {
  * @param size The number of bytes to reverse
  */
 static void reverse_chunk(revwin_t *win, const void *address, size_t size) {
-	void *dump;
+	//void *dump;
 
 	// unsigned char code[24] = {
 	// 	0x48, 0xc7, 0xc1, 0x00, 0x00, 0x00, 0x00,
@@ -92,13 +92,15 @@ static void reverse_chunk(revwin_t *win, const void *address, size_t size) {
 	unsigned char *mov_rsi = code + 7;
 	unsigned char *mov_rdi = code + 20;
 
-	// Dumps the chunk content
-	dump = umalloc(current_lp, size);
-	if(dump == NULL) {
+	// Dumps the chunk content, this memory region
+	// must be freed manually, if present, when necessary
+	// e.g. execute_undo_event, and revwin_free
+	win->dump = umalloc(current_lp, size);
+	if(win->dump == NULL) {
 		printf("Error reversing a memory chunk of %d bytes at %p\n", size, address);
 		abort();
 	}
-	memcpy(dump, address, size);
+	memcpy(win->dump, address, size);
 
 
 	#ifdef REVERSE_SSE_SUPPORT
@@ -108,7 +110,7 @@ static void reverse_chunk(revwin_t *win, const void *address, size_t size) {
 	memcpy(mov_rcx+3, &size, 4);
 	
 	// Copy the first address
-	memcpy(mov_rsi+2, &dump, 8);
+	memcpy(mov_rsi+2, &win->dump, 8);
 
 	// Compute and copy the second part of the address
 	memcpy(mov_rdi+2, &address, 8);
@@ -492,6 +494,13 @@ revwin_t *revwin_create(void) {
 
 
 void revwin_free(revwin_t *win) {
+
+	// Check whether the dump chunk area is not NULL
+	if (win->dump != NULL) {
+		ufree(win->dump);
+	}
+
+	// Free the slab area
 	slab_free(slab_chain, win);
 }
 
@@ -518,50 +527,15 @@ void reverse_init(size_t revwin_size) {
 	// to fast handle allocation and deallocation of reverse windows
 	// which will be created by each event indipendently.
 	slab_init(slab_chain, revwin_size);
-
-
-	// TODO: inizializzare anche cache e strategy!
-
-
-	// From now on, the slab allocator can be invoked to allocate
-	// a new item of the predefined size.
-
-	/*
-	size_t size_struct;
-	unsigned int lid;
-	void *address;
-	revwin *win;
-	*/
-
-	/*
-	if(num_threads == 0) {
-		printf("Error initializing the reverse memory management system: number of threads cannot be zero\n");
-		abort();
-	}
-
-	// Allocates a number of reverse window descriptor for each thread
-	//size_struct = sizeof(revwin_mmap) + (sizeof(void *) * num_threads);
-	
-	map = rsalloc(size_struct);
-	if(map == NULL) {
-		perror("Error initializing the reverse memory management system\n");
-		abort();
-	}
-	memset(map, 0, size_struct);
-
-	if(revwin_size == 0)
-		revwin_size = REVWIN_SIZE;
-
-	// Initializes metadata and mmap the whole reverse area
-	map->size = revwin_size * num_threads;
-	map->size_self = size_struct;
-	map->address = mmap(NULL, map->size, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-	*/
 }
 
 
 void reverse_fini(void) {
 	// TODO: implementare
+	// Free each revwin still allocated ?
+
+	// Destroy the SLAB allocator
+	slab_destroy(slab_chain);
 }
 
 
@@ -581,6 +555,8 @@ void revwin_reset(revwin_t *win) {
 
 	// Reset the cache
 	flush_cache();
+
+	// TODO: Should be reset also the chunk dump area, if present?
 }
 
 
@@ -621,7 +597,6 @@ void print_cache_stats() {
  * @param address The pointer to the memeory location which the MOV refers to
  * @param size The size of data will be written by MOV
  */
- // TODO: rinominare: update_undo_event
 void reverse_code_generator(const void *address, const size_t size) {
 	void *chunk_address;
 	size_t chunk_size;
@@ -659,11 +634,12 @@ void reverse_code_generator(const void *address, const size_t size) {
 
 	//cache[]
 
+	// Check whether the current address' update dominates over some other
+	// update on the same memory region. If so, we can return earlier.
 	dominant = check_dominance(address);
-
-	// Check whether 'address' is dominant or not, if this is the case
-	// does not generate any reversing instruction
 	if(dominant) {
+		// If the current address is dominated by some other update,
+		// then there is no need to generate any reversing instruction
 		return;
 	}
 
@@ -671,6 +647,7 @@ void reverse_code_generator(const void *address, const size_t size) {
 	// blocks = compute_span(area);
 	// printf("In malloc_area at %p, %d bytes have been reversed so far\n", area, blocks);
 
+	// Act accordingly to the currrent selected reversing strategy
 	switch (strategy.current){
 		case STRATEGY_CHUNK:
 			// Reverse the whole malloc_area chunk passing the pointer
@@ -688,6 +665,7 @@ void reverse_code_generator(const void *address, const size_t size) {
 			break;
 	}
 
+	// Gather statistics data
 	double elapsed = (double)timer_value_micro(t);
 	stat_post_lp_data(current_lp, STAT_REVERSE_GENERATE, 1.0);
 	stat_post_lp_data(current_lp, STAT_REVERSE_GENERATE_TIME, elapsed);
@@ -730,7 +708,6 @@ void execute_undo_event(void) {
 	// Temporary swaps the stack pointer to use
 	// the emulated one on the heap, instead
 
-	// TODO: move to define
 	// Save the original stack pointer into 'original_stack'
 	// and substitute $RSP the new emulated stack pointer
 	if (estack == NULL) {
@@ -739,6 +716,11 @@ void execute_undo_event(void) {
 	}
 	__asm__ volatile ("movq %%rsp, %0\n\t"
 					  "movq %1, %%rsp" : "=m" (orig_stack) : "m" (estack));
+
+	// TODO: move to define; this is not necessary, actually
+	// emulated stack prevents only that possible spurious
+	// stack-referencing instuctions could hurt the real stack
+	// by reversing old data referring to the old stack
 
 
 	// Calls the reversing function
@@ -758,10 +740,12 @@ void execute_undo_event(void) {
 	stat_post_lp_data(current_lp, STAT_REVERSE_EXECUTE, 1.0);
 	stat_post_lp_data(current_lp, STAT_REVERSE_EXECUTE_TIME, elapsed);
 
-	//undo_exe_time[tid] += elapsed;
-	//undo_exe_count++;
-	//reverse_execution_time += elapsed;
-	//reverse_block_executed++;
+
+	// Check if the revwin is a chunk reversal, then
+	// we have to free also the dump memory area
+	if(win->dump != NULL) {
+		ufree(win->dump);
+	}
 
 	// Reset the reverse window
 	//reset_window(w);

@@ -216,6 +216,7 @@ static void LP_main_loop(void *args) {
 
 		#ifdef HAVE_REVERSE
 		// TODO: link the revwin to the executed event
+		revwin_free(current_evt->revwin);
 		#endif
 
 		#ifdef EXTRA_CHECKS
