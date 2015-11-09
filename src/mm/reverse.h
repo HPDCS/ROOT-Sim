@@ -154,7 +154,7 @@ extern void revwin_reset(revwin_t *win);
  * Will execute an undo event
  *
  */
-extern void execute_undo_event(void);
+extern void execute_undo_event(revwin_t *win);
 
 
 /**

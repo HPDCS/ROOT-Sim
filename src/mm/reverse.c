@@ -554,7 +554,8 @@ void revwin_reset(revwin_t *win) {
 	win->top = (void *)(((char *)win->base) + win->size - 3);
 
 	// Reset the cache
-	flush_cache();
+	// TODO: quando resettare la cache??
+	// flush_cache();
 
 	// TODO: Should be reset also the chunk dump area, if present?
 }
@@ -690,7 +691,7 @@ void reverse_code_generator(const void *address, const size_t size) {
  *
  * @param w Pointer to the actual window to execute
  */
-void execute_undo_event(void) {
+void execute_undo_event(revwin_t *win) {
 	unsigned char push = 0x50;
 	revwin_t *win;
 	void *revcode;
@@ -703,7 +704,7 @@ void execute_undo_event(void) {
 	revwin_add_code(win, &push, sizeof(push));
 
 	// Retrieve the reverse window associeted to this event
-	win = LPS[current_lp]->bound->revwin;
+	//win = LPS[current_lp]->bound->revwin;
 
 	// Temporary swaps the stack pointer to use
 	// the emulated one on the heap, instead
