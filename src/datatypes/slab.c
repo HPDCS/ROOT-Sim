@@ -62,13 +62,10 @@ void slab_init(struct slab_chain *const sch, const size_t itemsize) {
 	sch->initial_slotmask = sch->empty_slotmask ^ SLOTS_FIRST;
 	sch->alignment_mask = ~(sch->slabsize - 1);
 	sch->partial = sch->empty = sch->full = NULL;
-
-	assert(slab_is_valid(sch));
 }
 
 void *slab_alloc(struct slab_chain *const sch) {
 	assert(sch != NULL);
-	assert(slab_is_valid(sch));
 
 	if (LIKELY(sch->partial != NULL)) {
 		/* found a partial slab, locate the first free slot */
@@ -164,7 +161,6 @@ void *slab_alloc(struct slab_chain *const sch) {
 
 void slab_free(struct slab_chain *const sch, const void *const addr) {
 	assert(sch != NULL);
-	assert(slab_is_valid(sch));
 	assert(addr != NULL);
 
 	struct slab_header *const slab = (void *)
@@ -259,7 +255,6 @@ void slab_free(struct slab_chain *const sch, const void *const addr) {
 
 void slab_destroy(const struct slab_chain *const sch) {
 	assert(sch != NULL);
-	assert(slab_is_valid(sch));
 
 	size_t i;
 
