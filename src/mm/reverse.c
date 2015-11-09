@@ -495,6 +495,11 @@ revwin_t *revwin_create(void) {
 
 void revwin_free(revwin_t *win) {
 
+	// Sanity check
+	if (win == NULL) {
+		return;
+	}
+
 	// Check whether the dump chunk area is not NULL
 	if (win->dump != NULL) {
 		ufree(win->dump);
@@ -544,9 +549,9 @@ void reverse_fini(void) {
  */
 void revwin_reset(revwin_t *win) {
 
+	// Sanity check
 	if (win == NULL) {
-		printf("Error: null reverse window\n");
-		abort();
+		return;
 	}
 
 	// Resets the instruction pointer to the first byte AFTER the colsing
@@ -696,9 +701,16 @@ void execute_undo_event(revwin_t *win) {
 	revwin_t *win;
 	void *revcode;
 
-	timer reverse_block_timer;
 
+	// Sanity check
+	if (win == NULL) {
+		return;
+	}
+
+	// Statistics
+	timer reverse_block_timer;
 	timer_start(reverse_block_timer);
+
 
 	// Add the complementary push %rax instruction to the top
 	revwin_add_code(win, &push, sizeof(push));

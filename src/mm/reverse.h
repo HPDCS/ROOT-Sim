@@ -146,6 +146,8 @@ extern void revwin_free(revwin_t *win);
 
 /**
  * Reset local reverse window
+ *
+ * @param win Pointer to the reverse window descriptor
  */
 extern void revwin_reset(revwin_t *win);
 
@@ -153,6 +155,7 @@ extern void revwin_reset(revwin_t *win);
 /**
  * Will execute an undo event
  *
+ * @param win Pointer to the reverse window descriptor
  */
 extern void execute_undo_event(revwin_t *win);
 
