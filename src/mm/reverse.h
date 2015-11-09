@@ -34,48 +34,56 @@
 #define STRATEGY_CHUNK 1
 
 
-
+/**
+ * Descriptor which keeps track of the current
+ * reversing strategy in use.
+ */
 typedef struct strategy_t {
 	int current;
 	int switches;
 } strategy_t;
 
 
+
+/**
+ * Descriptor of a single address cluster cache line. This entry tells
+ * which address it refers to and other possible interesting meta-data
+ * relative it for the reverse module.
+ */
 typedef struct _cache_entry {
 	unsigned long long address;		//! Actual address
 	unsigned int touches;			//! Number of times this address has been touched so far
 } cache_entry;
 
 
+/**
+ * A single cluster cache entry which handles a chunk of 'CLUSTER_SIZE'
+ * prefixed addresses. This descriptor is structured as a hash-indexed
+ * vector of cache entries, each one containing metad-ata relative to
+ * a single address.
+ * The prefix_head also keeps track of the internal fragmentation, used
+ * to choose the reversing strategy.
+ */
 typedef struct _prefix_head {
-	unsigned long long prefix;		//! Base address prefix of this cluster head
+	unsigned long long prefix;			//! Base address prefix of this cluster head
 	cache_entry cache[CLUSTER_SIZE];	//! List of registered addresses with current prefix
-	unsigned int count;				//! Number of total address in this cluster
-	double fragmentation;			//! Internal fragmentation of addresses in the cluster, i.e. how much they are sparse
-	unsigned int contiguous;		//! Maximum number of contiguous addresses registered
+	unsigned int count;					//! Number of total address in this cluster
+	double fragmentation;				//! Internal fragmentation of addresses in the cluster, i.e. how much they are sparse
+	unsigned int contiguous;			//! Maximum number of contiguous addresses registered
 } prefix_head;
 
 
 /**
- *
+ * Main descriptor of the cluster cache. This maintains the pointer
+ * to a linked list of clusters of addresses, i.e. the prefix_head,
+ * in order to collect infomation about memory reversing for each
+ * address cluster of the specified size.
  */
-typedef struct _cluster_cache {
+typedef struct _revwin_cache {
 	prefix_head cluster[PREFIX_HEAD_SIZE];
 	unsigned int count;
-} cluster_cache;
+} revwin_cache;
 
-
-// TODO: rimuovere
-/**
- * Emulated stack window descriptor
- */
-typedef struct _stackwin {
-	void *base;			//! Base of the stack
-	void *pointer;		//! Current top pointer
-	size_t size;		//! Size of the window
-	void *original_base;		//! Origninal base pointer of the real stack
-	void *original_pointer;		//! Original stack pointer of the real one
-} stackwin;
 
 
 /**
@@ -86,42 +94,10 @@ typedef struct _stackwin {
 	void *base;				//! Pointer to the logic base of the window
 	unsigned int offset;	//! A random offset used to prevent cache lines to be alligned
 	size_t size;			//! The actual size of the reverse window executable portion
+	void *dump;				//! This is the pointer to the memory area where chunk reversal has been dumped
 	char code[];			//! Placeholder for the actual executable reverse code, i.e. from this point there is code
 } revwin_t;
-// TODO: cambiare nome alla struttura
 
-// typedef struct _revwin {
-// 	size_t size;		//! The actual size of the reverse window
-// 	int flags;		//! Creation flags
-// 	int prot;		//! Protection flags
-// 	unsigned int offset;		//! A random offset used to prevent cache lines to be alligned
-// 	void *base;		//! Address to which it resides
-// 	void *top;		//! Pointer to the new actual next byte in the reverse window
-// 	void *estack;	//! Emulated stack window
-// 	void *orig_stack;	//! Orignal function's stack
-// } revwin;
-
-
-/**
- * Memory management layout of reverse windows
- */
-typedef struct _revwin_mmap {
-	size_t size_self;		//! The size of this structure
-	void *address;			//! The starting address of the reverse mapping area
-	size_t size;			//! The actual size allocated for the mmap allocated area
-	unsigned int revwin_count;	//! The number of the reverse windows actually allocated
-	revwin_t *map[];			//! Array of pointers to the revwin state for each thread
-} revwin_mmap;
-
-
-/**
- * Software cache to track reversed addresses
- */
- typedef struct _revwin_cache {
- 	size_t reversed_bytes;		//! The number of bytes that have been reversed so far
- 	double fragmentation;		//! The average percentage of reversing fragmentation within a malloc_area
-// 	malloc_area touched[1024];	//! Keep track of which malloc_areas' have been touched so far
- } revwin_cache;
 
 
 
@@ -170,6 +146,8 @@ extern void revwin_free(revwin_t *win);
 
 /**
  * Reset local reverse window
+ *
+ * @param win Pointer to the reverse window descriptor
  */
 extern void revwin_reset(revwin_t *win);
 
@@ -177,8 +155,9 @@ extern void revwin_reset(revwin_t *win);
 /**
  * Will execute an undo event
  *
+ * @param win Pointer to the reverse window descriptor
  */
-extern void execute_undo_event(void);
+extern void execute_undo_event(revwin_t *win);
 
 
 /**
