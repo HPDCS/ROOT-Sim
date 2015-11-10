@@ -202,15 +202,15 @@ static void LP_main_loop(void *args) {
 
 			// TODO: change this check to account for the model
 			if(1) {
-				ProcessEvent[current_lp] = ProcessEvent_reverse;
+				_ProcessEvent[current_lp] = ProcessEvent_reverse;
 
 				// Create a new revwin to bind to the current event and bind it. A revwin could be possibly
 				// already allocated, in case an event was undone by a rollback operation. In that case we
 				// reset the revwin, rather than free'ing it, so a buffer could be already allocated.
-				if(current_evt->revwin != NULL)
+				if(current_evt->revwin == NULL)
 					current_evt->revwin = revwin_create();
 			} else {
-				ProcessEvent[current_lp] = ProcessEvent_light;
+				_ProcessEvent[current_lp] = ProcessEvent;
 			}
 		}
 		#endif
@@ -220,7 +220,7 @@ static void LP_main_loop(void *args) {
 		timer_start(event_timer);
 
 		switch_to_application_mode();
-		ProcessEvent[current_lp](LidToGid(current_lp), current_evt->timestamp, current_evt->type, current_evt->event_content, current_evt->size, current_state);
+		_ProcessEvent[current_lp](LidToGid(current_lp), current_evt->timestamp, current_evt->type, current_evt->event_content, current_evt->size, current_state);
 		switch_to_platform_mode();
 
 		int delta_event_timer = timer_value_micro(event_timer);
@@ -355,6 +355,13 @@ void initialize_worker_thread(void) {
 		LPS_bound[t]->state_log_forced = true;
 	}
 
+	// Here the init function will initialize a reverse memory region
+	// which is managed by a slab allocator.
+	#ifdef HAVE_REVERSE
+	if(!rootsim_config.disable_reverse)
+		reverse_init(REVWIN_SIZE);
+	#endif
+
 	// TODO: is this double barrier really needed?
 	// Worker Threads synchronization barrier: they all should start working together
 	thread_barrier(&all_thread_barrier);
@@ -369,13 +376,6 @@ void initialize_worker_thread(void) {
 
 	// Worker Threads synchronization barrier: they all should start working together
 	thread_barrier(&all_thread_barrier);
-
-	// Here the init function will initialize a reverse memory region
-	// which is managed by a slab allocator.
-	#ifdef HAVE_REVERSE
-	if(!rootsim_config.disable_reverse)
-		reverse_init(REVWIN_SIZE);
-	#endif
 
         #ifdef HAVE_PREEMPTION
         if(!rootsim_config.disable_preemption)
