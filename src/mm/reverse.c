@@ -181,7 +181,7 @@ static void reverse_single(revwin_t *win, const void *address, size_t size) {
  *
  * @author Davide Cingolani
  */
-static void flush_cache() {
+static void flush_cache(void) {
 	int c, i;
 	prefix_head *cluster;
 
@@ -487,8 +487,6 @@ revwin_t *revwin_create(void) {
 	// The stack grows towards low addresses
 	win->estack += (EMULATED_STACK_SIZE - 1);*/
 
-	printf("Reverse window of thread %d has been initialized :: base at %p top at %p, %ld bytes\n", tid, win->base, win->top, win->size);
-
 	return win;
 }
 
@@ -551,6 +549,7 @@ void revwin_reset(revwin_t *win) {
 
 	// Sanity check
 	if (win == NULL) {
+		// We dont care about NULL revwin
 		return;
 	}
 
@@ -618,8 +617,7 @@ void reverse_code_generator(const void *address, const size_t size) {
 
 	// We have to retrieve the current event structure bound to this LP
 	// in order to bind this reverse window to it.
-	msg_t *event = LPS[current_lp]->bound;
-	win = event->revwin;
+	win = current_evt->revwin;
 	if(win == NULL) {
 		printf("No revwin has been defined for the event\n");
 		abort();
