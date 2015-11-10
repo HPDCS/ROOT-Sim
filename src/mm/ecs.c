@@ -238,6 +238,8 @@ void lp_alloc_fini(void) {
 // inserire qui tutte le api di schedulazione/deschedulazione
 
 void lp_alloc_thread_init(void) {
+	
+	
 	ioctl_fd = open("/dev/ktblmgr", O_RDONLY);
 	if (ioctl_fd == -1) {
 		rootsim_error(true, "Error in opening special device file. ROOT-Sim is compiled for using the ktblmgr linux kernel module, which seems to be not loaded.");

@@ -1014,6 +1014,7 @@ static int rs_ktblmgr_init(void) {
 		goto failed_chrdevreg;
 	}
 	printk("major for ktblmgr is %d\n",major);
+	
 	goto allocate;
 
 	// Create a class for the device
@@ -1031,7 +1032,7 @@ static int rs_ktblmgr_init(void) {
 		ret = PTR_ERR(device);
 		goto failed_devreg;
 	}
-
+	
 
 	// Create sysfs endpoints
 	// dev_attr_multimap comes from the DEVICE_ATTR(...) at the top of this module
