@@ -23,9 +23,7 @@ libdir="@libdir@"
 includedir="@includedir@"
 datadir="@datadir@"
 SCRIPT_LINES="@scriptlines@"
-LD_DATA1_LINES="@lddata1lines@"
-LD_DATA2_LINES="@lddata2lines@"
-LD_FINAL_LINES="@ldfinallines@"
+HIJACKER_CONF_LINES="@hijackerconflines@"
 
 
 ##############################################################################
@@ -59,11 +57,7 @@ generate_linker_scripts()
 {
 START_LINES=$SCRIPT_LINES
 (( START_LINES += 1 ))
-tail -n +$START_LINES "$0" | head -n +$LD_DATA1_LINES > $$.ld-data1
-(( START_LINES += $LD_DATA1_LINES ))
-tail -n +$START_LINES "$0" | head -n +$LD_DATA2_LINES > $$.ld-data2
-(( START_LINES += $LD_DATA2_LINES ))
-tail -n +$START_LINES "$0" | head -n +$LD_FINAL_LINES > $$.ld-final
+tail -n +$START_LINES "$0" | head -n +$HIJACKER_CONF_LINES > $$.conf-xml
 }
 
 build_cleanup()
@@ -85,6 +79,7 @@ rm *.o.rs
 #rm riferimenti
 #rm riferimenti-mon
 rm original
+rm $$.conf-xml
 echo "process done"
 }
 
@@ -159,7 +154,7 @@ fi
 # If partial compilation is invoked, simply call the compiler.
 # -c is actually included into CFLAGS
 if [[ $PARTIAL = 1 ]]; then
-	$CC $CFLAGS $SOURCES -DOnGVT=OnGVT_light -DProcessEvent=ProcessEvent_light -o $OUTNAME
+	$CC $CFLAGS $SOURCES -o $OUTNAME
 	exit 0
 fi
 
@@ -170,7 +165,7 @@ fi
 
 
 # Generate linker scripts
-#generate_linker_scripts
+generate_linker_scripts
 
 
 ###
@@ -182,7 +177,7 @@ for f in $SOURCES; do
 	if [ "${f: -2:2}" = ".o" ]; then
 		mv $f $f.rs
 	else
-		$CC $CFLAGS -c $f -DOnGVT=OnGVT_light -DProcessEvent=ProcessEvent_light -o ${f/.c/.o.rs}
+		$CC $CFLAGS -c $f -o ${f/.c/.o.rs}
 	fi
 	check_term
 done
@@ -253,14 +248,22 @@ cp APP.o original
 ###   3. Link to the output subsystem: this will handle *printf's and exit's. Note that dymelor'd printfs will be hijacked too!
 ###   4. Link to the remaining ROOT-Sim library: this will produce the final executable
 
+if $HAVE_REVERSE; then
+	echo "Instrumenting the application code..."
+	hijacker -i APP.o -c "$$.conf-xml" -o APP-instrumented.o
+	check_term
+else
+	cp APP.o APP-instrumented.o
+fi
+
+
 echo "Linking..."
-$LD -r -L $libdir --wrap strcpy --wrap strncpy --wrap strcat --wrap strncat --wrap memcpy --wrap memmove --wrap memset --wrap strdup --wrap strndup -o APP-lib-wrapped.o APP.o -lwrapperl
+$LD -r -L $libdir --wrap strcpy --wrap strncpy --wrap strcat --wrap strncat --wrap memcpy --wrap memmove --wrap memset --wrap strdup --wrap strndup -o APP-lib-wrapped.o APP-instrumented.o -lwrapperl
 $LD -r -L $libdir --wrap malloc --wrap free --wrap realloc --wrap calloc -o APP-dym-wrapped.o APP-lib-wrapped.o --whole-archive -ldymelor
 check_term
 #$CC -Xlinker --no-check-sections -Xlinker -T -Xlinker $$.ld-final -Xlinker --section-start -Xlinker .warp=$APPLICATION_START_POINT -Xlinker --section-start -Xlinker .warl=$APPLICATION_START_POINT_LIGHT  APP-dym-wrapped.o -lrootsim -lm -DGATHER_DATA -o $OUTNAME
 $CC APP-dym-wrapped.o -lrootsim $CFLAGS -lm -DGATHER_DATA -o $OUTNAME
 check_term
-
 
 # Clean temporary files
 build_cleanup

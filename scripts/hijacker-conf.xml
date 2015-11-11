@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<hijacker:Rules xmlns:hijacker="http://www.dis.uniroma1.it/~hpdcs/">
+	<hijacker:Inject file="mixed-state-saving.c" />
+
+	<hijacker:Executable suffix="reverse"> <!-- First code version -->
+		<hijacker:Instruction type="I_MEMWR">
+			<hijacker:AddCall where="before" function="reverse_code_generator" arguments="target" />
+		</hijacker:Instruction>
+	</hijacker:Executable>
+</hijacker:Rules>
