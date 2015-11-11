@@ -250,7 +250,7 @@ void rollback(unsigned int lid) {
 
     reverse:
 	event_with_log = last_correct_event;
-	while(event_with_log->checkpoint_of_event == NULL && event_with_log != NULL) {
+	while(event_with_log != NULL && event_with_log->checkpoint_of_event == NULL) {
 		event_with_log = list_next(event_with_log);
 	}
 	
