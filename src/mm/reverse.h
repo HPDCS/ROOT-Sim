@@ -20,6 +20,7 @@
 #define HMAP_OFFSET_MASK	0x3f	//! Least significant 6 bits are used to intercept address presence
 #define HMAP_OFF_MASK_SIZE	6
 
+#define PAGE_SIZE 4096
 
 //#define current_win map->map[tid]
 
@@ -95,6 +96,7 @@ typedef struct _revwin_cache {
 	unsigned int offset;	//! A random offset used to prevent cache lines to be alligned
 	size_t size;			//! The actual size of the reverse window executable portion
 	void *dump;				//! This is the pointer to the memory area where chunk reversal has been dumped
+	unsigned long long dummy;
 	char code[];			//! Placeholder for the actual executable reverse code, i.e. from this point there is code
 } revwin_t;
 
