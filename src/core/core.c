@@ -76,8 +76,8 @@ unsigned int *kernel_lid_to_gid[N_KER_MAX];
 simulation_configuration rootsim_config;
 
 // Function Pointers to access functions implemented at application level
-bool (**OnGVT)(int gid, void *snapshot);
-void (**ProcessEvent)(unsigned int me, simtime_t now, int event_type, void *event_content, unsigned int size, void *state);
+bool (**_OnGVT)(int gid, void *snapshot);
+void (**_ProcessEvent)(unsigned int me, simtime_t now, int event_type, void *event_content, unsigned int size, void *state);
 
 /// Flag to notify all workers that there was an error
 static bool sim_error = false;
@@ -133,8 +133,8 @@ void base_init(void) {
 	barrier_init(&all_thread_barrier, n_cores);
 
 	n_prc = 0;
-	ProcessEvent = rsalloc(sizeof(void *) * n_prc_tot);
-	OnGVT = rsalloc(sizeof(void *) * n_prc_tot);
+	_ProcessEvent = rsalloc(sizeof(void *) * n_prc_tot);
+	_OnGVT = rsalloc(sizeof(void *) * n_prc_tot);
 	to_lid = (unsigned int *)rsalloc(sizeof(unsigned int) * n_prc_tot);
 	to_gid = (unsigned int *)rsalloc(sizeof(unsigned int) * n_prc_tot);
 
@@ -144,8 +144,8 @@ void base_init(void) {
 	for (i = 0; i < n_prc_tot; i++) {
 
 		if (rootsim_config.snapshot == FULL_SNAPSHOT) {
-			OnGVT[i] = &OnGVT_light;
-			ProcessEvent[i] = &ProcessEvent_light;
+			_OnGVT[i] = &OnGVT;
+			_ProcessEvent[i] = &ProcessEvent;
 		}
 
 		if (GidToKernel(i) == kid) { // If the i-th logical process is hosted by this kernel
@@ -191,8 +191,8 @@ void base_fini(void){
 	}
 	rsfree(to_gid);
 	rsfree(to_lid);
-	rsfree(OnGVT);
-	rsfree(ProcessEvent);
+	rsfree(_OnGVT);
+	rsfree(_ProcessEvent);
 }
 
 

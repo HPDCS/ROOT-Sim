@@ -124,7 +124,7 @@ void serial_simulation(void) {
 		current_lp = event->receiver;
 		current_lvt = event->timestamp;
 		timer_start(serial_event_execution);
-		ProcessEvent_light(current_lp, current_lvt, event->type, event->event_content, event->size, serial_states[current_lp]);
+		ProcessEvent(current_lp, current_lvt, event->type, event->event_content, event->size, serial_states[current_lp]);
 
 		statistics_post_lp_data(current_lp, STAT_EVENT, 1.0);
 		statistics_post_lp_data(current_lp, STAT_EVENT_TIME, timer_value_seconds(serial_event_execution) );
@@ -145,7 +145,7 @@ void serial_simulation(void) {
 		// Termination detection can happen only after the state is initialized
 		if(serial_states[event->receiver] != NULL) {
 			// Should we terminate the simulation?
-			if(!serial_completed_simulation[event->receiver] && OnGVT_light(event->receiver, serial_states[event->receiver])) {
+			if(!serial_completed_simulation[event->receiver] && OnGVT(event->receiver, serial_states[event->receiver])) {
 				completed++;
 				serial_completed_simulation[event->receiver] = true;
 				if(completed == n_prc_tot) {

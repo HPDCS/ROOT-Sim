@@ -225,12 +225,12 @@ extern simulation_configuration rootsim_config;
 
 extern void ProcessEvent_reverse(unsigned int me, simtime_t now, int event_type, void *event_content, unsigned int size, void *state);
 bool OnGVT_reverse(int gid, void *snapshot);
-extern void ProcessEvent_light(unsigned int me, simtime_t now, int event_type, void *event_content, unsigned int size, void *state);
-bool OnGVT_light(int gid, void *snapshot);
+extern void ProcessEvent(unsigned int me, simtime_t now, int event_type, void *event_content, unsigned int size, void *state);
+bool OnGVT(int gid, void *snapshot);
 extern void ProcessEvent_inc(unsigned int me, simtime_t now, int event_type, void *event_content, unsigned int size, void *state);
 bool OnGVT_inc(int gid, void *snapshot);
-extern bool (**OnGVT)(int gid, void *snapshot);
-extern void (**ProcessEvent)(unsigned int me, simtime_t now, int event_type, void *event_content, unsigned int size, void *state);
+extern bool (**_OnGVT)(int gid, void *snapshot);
+extern void (**_ProcessEvent)(unsigned int me, simtime_t now, int event_type, void *event_content, unsigned int size, void *state);
 
 extern void base_init(void);
 extern void base_fini(void);
