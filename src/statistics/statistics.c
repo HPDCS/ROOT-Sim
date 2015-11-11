@@ -427,8 +427,8 @@ void statistics_stop(int exit_code) {
 		fprintf(f, "AVERAGE RECOVERY COST...... : %.2f us\n",		(thread_stats[tid].tot_recoveries > 0 ? thread_stats[tid].recovery_time / thread_stats[tid].tot_recoveries : 0));
 		fprintf(f, "AVERAGE LOG SIZE........... : %s\n",		format_size(thread_stats[tid].ckpt_mem / thread_stats[tid].tot_ckpts));
 		fprintf(f, "\n");
-		fprintf(f, "AVERAGE REVERSE GENERATION. : %.3f\n",		thread_stats[tid].reverse_gen_time / thread_stats[tid].tot_reverse_gen);
-		fprintf(f, "AVERAGE REVERSE EXECUTION.. : %.3f\n",		thread_stats[tid].reverse_exec_time / thread_stats[tid].tot_reverse_exec);
+		fprintf(f, "AVERAGE REVERSE GENERATION. : %.3f us\n",		thread_stats[tid].reverse_gen_time / thread_stats[tid].tot_reverse_gen);
+		fprintf(f, "AVERAGE REVERSE EXECUTION.. : %.3f us\n",		thread_stats[tid].reverse_exec_time / thread_stats[tid].tot_reverse_exec);
 		fprintf(f, "IDLE CYCLES................ : %.0f\n",		thread_stats[tid].idle_cycles);
 		fprintf(f, "NUMBER OF GVT REDUCTIONS... : %.0f\n",		thread_stats[tid].gvt_computations);
 		fprintf(f, "SIMULATION TIME SPEED...... : %.2f units per GVT\n",thread_stats[tid].simtime_advancement);
@@ -521,8 +521,8 @@ void statistics_stop(int exit_code) {
 			fprintf(f, "AVERAGE RECOVERY COST...... : %.3f us\n",		(system_wide_stats.tot_recoveries > 0 ? system_wide_stats.recovery_time / system_wide_stats.tot_recoveries : 0 ));
 			fprintf(f, "AVERAGE LOG SIZE........... : %s\n",		format_size(system_wide_stats.ckpt_mem / system_wide_stats.tot_ckpts));
 			fprintf(f, "\n");
-			fprintf(f, "AVERAGE REVERSE GENERATION. : %.3f\n",		system_wide_stats.reverse_gen_time / system_wide_stats.tot_reverse_gen);
-			fprintf(f, "AVERAGE REVERSE EXECUTION.. : %.3f\n",		system_wide_stats.reverse_exec_time / system_wide_stats.tot_reverse_exec);
+			fprintf(f, "AVERAGE REVERSE GENERATION. : %.3f us\n",		system_wide_stats.reverse_gen_time / system_wide_stats.tot_reverse_gen);
+			fprintf(f, "AVERAGE REVERSE EXECUTION.. : %.3f us\n",		system_wide_stats.reverse_exec_time / system_wide_stats.tot_reverse_exec);
 			fprintf(f, "\n");
 			fprintf(f, "IDLE CYCLES................ : %.0f\n",		system_wide_stats.idle_cycles);
 			fprintf(f, "LAST COMMITTED GVT ........ : %f\n",		get_last_gvt());
@@ -850,10 +850,10 @@ void statistics_post_other_data(unsigned int type, double data) {
 				lp_stats[lid].tot_events += lp_stats_gvt[lid].tot_events;
 				lp_stats[lid].event_time += lp_stats_gvt[lid].event_time;
 				lp_stats[lid].exponential_event_time = lp_stats_gvt[lid].exponential_event_time;
-				lp_stats[lid].tot_reverse_exec = lp_stats_gvt[lid].tot_reverse_exec;
-				lp_stats[lid].reverse_exec_time = lp_stats_gvt[lid].reverse_exec_time;
-				lp_stats[lid].tot_reverse_gen = lp_stats_gvt[lid].tot_reverse_gen;
-				lp_stats[lid].reverse_gen_time = lp_stats_gvt[lid].reverse_gen_time;
+				lp_stats[lid].tot_reverse_exec += lp_stats_gvt[lid].tot_reverse_exec;
+				lp_stats[lid].reverse_exec_time += lp_stats_gvt[lid].reverse_exec_time;
+				lp_stats[lid].tot_reverse_gen += lp_stats_gvt[lid].tot_reverse_gen;
+				lp_stats[lid].reverse_gen_time += lp_stats_gvt[lid].reverse_gen_time;
 				lp_stats[lid].committed_events += lp_stats_gvt[lid].committed_events;
 				lp_stats[lid].tot_rollbacks += lp_stats_gvt[lid].tot_rollbacks;
 				lp_stats[lid].tot_ckpts += lp_stats_gvt[lid].tot_ckpts;
