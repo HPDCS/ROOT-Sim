@@ -107,6 +107,9 @@ typedef struct _LP_state {
 	/// Pointer to the last correctly elaborated event
 	msg_t		*bound;
 
+	/// In case of a rollback operation, this points to the old bound
+	msg_t		*old_bound;
+
 	/// Output messages queue
 	list(msg_hdr_t)	queue_out;
 

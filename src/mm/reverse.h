@@ -159,7 +159,7 @@ extern void revwin_reset(revwin_t *win);
  *
  * @param win Pointer to the reverse window descriptor
  */
-extern void execute_undo_event(unsigned int lid, revwin_t *win);
+extern void execute_undo_event(unsigned int lid, revwin_t *win, void *event);
 
 
 /**

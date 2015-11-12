@@ -183,7 +183,7 @@ unsigned int silent_execution(unsigned int lid, void *state_buffer, msg_t *evt, 
 */
 void rollback(unsigned int lid) {
 
-	state_t *restore_state, *s;
+	state_t *restore_state, *s, *s1;
 	msg_t *last_correct_event;
 	msg_t *reprocess_from;
 	unsigned int reprocessed_events;
@@ -249,15 +249,17 @@ void rollback(unsigned int lid) {
 	goto out;
 
     reverse:
+    printf("Individuato last_correct_event: %f\n", last_correct_event->timestamp);
+    printf("Last restore state is: %f\n", list_tail(LPS[lid]->queue_states));
 	event_with_log = last_correct_event;
 	while(event_with_log != NULL && event_with_log->checkpoint_of_event == NULL) {
 		event_with_log = list_next(event_with_log);
 	}
-	
+
 	// No state to restore. We're in the last section of the forward execution.
 	// We don't need to restore a state, we just undo the latest events
 	if(event_with_log == NULL) {
-		event_with_log = list_tail(LPS[lid]->queue_in);
+		event_with_log = LPS[lid]->old_bound;
 	} else {
 		// Restore the state and prune the state queue. We delete as well
 		// the state that we have restored because from that point we undo
@@ -270,27 +272,32 @@ void rollback(unsigned int lid) {
 		// Explicitly accounting for this case would be costly.
 		restore_state = event_with_log->checkpoint_of_event;
 		RestoreState(lid, restore_state);
-		s = list_next(restore_state);
+		s = restore_state;
 		while(s != NULL) {
 			log_delete(s->log);
 			s->last_event->checkpoint_of_event = NULL;
 			s->last_event = (void *)0xDEADC0DE;
+			s1 = list_next(s);
 			list_delete_by_content(lid, LPS[lid]->queue_states, s);
+			s = s1;
 		}
 	}
+
+	printf("Individuato event_with_log: %f\n", event_with_log->timestamp);
 
 	// At this point: the state queue is pruned, and the correct state is restore.	
 	// We can thus start to undo events until we reach last_correct_event
 	while(event_with_log != last_correct_event) {
-		execute_undo_event(event_with_log->receiver, event_with_log->revwin);
+		execute_undo_event(event_with_log->receiver, event_with_log->revwin, event_with_log);
 		revwin_reset(event_with_log->revwin);
 		event_with_log = list_prev(event_with_log);
 	}
 	
 
     out:
-	return;
 #endif
+
+    LPS[lid]->old_bound = NULL;
 }
 
 

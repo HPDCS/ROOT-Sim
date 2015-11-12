@@ -281,6 +281,7 @@ void rebind_LPs(void) {
 		if(master_thread()) {
 			new_LPS_binding = rsalloc(sizeof(int) * n_prc);
 			lp_cost = rsalloc(sizeof(struct lp_cost_id) * n_prc);
+			memset(lp_cost, 0, sizeof(struct lp_cost_id) * n_prc);
 
 			atomic_set(&worker_thread_reduction, n_cores);
 		}

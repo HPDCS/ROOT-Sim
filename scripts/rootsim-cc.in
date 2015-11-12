@@ -248,7 +248,7 @@ cp APP.o original
 ###   3. Link to the output subsystem: this will handle *printf's and exit's. Note that dymelor'd printfs will be hijacked too!
 ###   4. Link to the remaining ROOT-Sim library: this will produce the final executable
 
-if $HAVE_REVERSE; then
+if test $HAVE_REVERSE="xyes"; then
 	echo "Instrumenting the application code..."
 	hijacker -i APP.o -c "$$.conf-xml" -o APP-instrumented.o
 	check_term

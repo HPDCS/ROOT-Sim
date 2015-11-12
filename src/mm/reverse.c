@@ -21,7 +21,7 @@
 // of what was the function's stack in the past event processing.
 // Prevents that possible reverse instructions that affect the old stack
 // will stain the current one
-__thread char estack[REVWIN_STACK_SIZE];
+__thread void *estack;
 __thread void *orig_stack;
 
 // Internal software cache to keep track of the reversed instructions
@@ -349,6 +349,7 @@ static bool check_dominance(void *address) {
 
 	// Now, updates cluster's statistics
 	cluster->fragmentation = 0;
+	counter = 0;
 
 	for(i = 0; i < CLUSTER_SIZE; i++) {
 		entry = &cluster->cache[i];
@@ -523,6 +524,20 @@ void reverse_init(size_t revwin_size) {
 	// to fast handle allocation and deallocation of reverse windows
 	// which will be created by each event indipendently.
 	slab_init(slab_chain, revwin_size);
+
+	// TODO: da eliminare!
+	// Allocate 1024 bytes for a limited memory which emulates
+	// the future stack of the execute_undo_event()'s stack
+	estack = umalloc(current_lp, REVWIN_STACK_SIZE);
+	if(estack == NULL) {
+		perror("Failed to allocate the emulated stack window\n");
+		abort();
+	}
+	// The stack grows towards low addresses
+	estack += (REVWIN_STACK_SIZE - 1);
+
+	// Reset the cluster cache
+	flush_cache();
 }
 
 
@@ -532,6 +547,13 @@ void reverse_fini(void) {
 
 	// Destroy the SLAB allocator
 	slab_destroy(slab_chain);
+
+	// Destroy the emulated stack, if any
+	/*
+	if(estack != NULL) {
+		ufree(current_lp, estack-REVWIN_STACK_SIZE);
+	}
+	*/
 }
 
 
@@ -546,7 +568,7 @@ void revwin_reset(revwin_t *win) {
 		return;
 	}
 
-	// Resets the instruction pointer to the first byte AFTER the colsing
+	// Resets the instruction pointer to the first byte AFTER the closing
 	// instruction at the base of the window (which counts 2 bytes)
 	win->top = (void *)(((char *)win->base) + win->size - 3);
 
@@ -554,7 +576,7 @@ void revwin_reset(revwin_t *win) {
 	// TODO: quando resettare la cache??
 	// flush_cache();
 
-	// TODO: Should be reset also the chunk dump area, if present?
+	// TODO: Should be reset also the chunk dumping area, if present?
 }
 
 
@@ -660,6 +682,9 @@ void reverse_code_generator(const void *address, const size_t size) {
 			break;
 	}
 
+	size_t revcode_size = ((win->base + win->size - 3) - win->top);
+	//printf("GEN :: [%p - %p] revcode size= %d\n", win, current_evt, revcode_size);
+
 	// Gather statistics data
 	double elapsed = (double)timer_value_micro(t);
 	statistics_post_lp_data(current_lp, STAT_REVERSE_GENERATE, 1.0);
@@ -685,9 +710,10 @@ void reverse_code_generator(const void *address, const size_t size) {
  *
  * @param w Pointer to the actual window to execute
  */
-void execute_undo_event(unsigned int lid, revwin_t *win) {
+void execute_undo_event(unsigned int lid, revwin_t *win, void *event) {
 	unsigned char push = 0x50;
 	void *revcode;
+	size_t revcode_size;
 
 
 	// Sanity check
@@ -696,6 +722,15 @@ void execute_undo_event(unsigned int lid, revwin_t *win) {
 		return;
 	}
 
+	revcode_size = ((win->base + win->size - 3) - win->top);
+	//printf("UNDO :: [%p - %p] revcode size= %d\n", win, event, revcode_size);
+	/*
+	if (revcode_size <= 0) {
+		printf("Empty reverse code\n");
+		return;
+	}
+	*/
+
 	// Statistics
 	timer reverse_block_timer;
 	timer_start(reverse_block_timer);
@@ -703,6 +738,19 @@ void execute_undo_event(unsigned int lid, revwin_t *win) {
 
 	// Add the complementary push %rax instruction to the top
 	revwin_add_code(win, &push, sizeof(push));
+
+	// Register the pointer to the reverse code function
+	revcode = win->top;
+
+	// Grant executable priviledges to the reverse window
+	// Note that the revwin is not necessarily aligned to
+	// the PAGE_SIZE since the SLAB has its own headers,
+	// thus should be secure to do the following realignment
+	int err = mprotect((void *)((unsigned long long)win & -PAGE_SIZE), REVWIN_SIZE, PROT_READ | PROT_WRITE | PROT_EXEC);
+	if (err != 0) {
+		printf("Unable to make executable revwin at %p: %s\n", win, strerror(errno));
+		abort();
+	}
 
 	// Temporary swaps the stack pointer to use
 	// the emulated one on the heap, instead
@@ -721,21 +769,8 @@ void execute_undo_event(unsigned int lid, revwin_t *win) {
 	// stack-referencing instuctions could hurt the real stack
 	// by reversing old data referring to the old stack
 
-	// Grant executable priviledges to the reverse window
-	// Note that the revwin is not necessarily aligned to
-	// the PAGE_SIZE since the SLAB has its own headers,
-	// thus should be secure to do the following realignment
-	int err = mprotect((void *)((unsigned long long)win & -PAGE_SIZE), REVWIN_SIZE, PROT_READ | PROT_WRITE | PROT_EXEC);
-	if(err != 0) {
-		printf("Unable to make executable revwin at %p: %s\n", win, strerror(errno));
-		abort();
-	}
-
 	// Calls the reversing function
-	revcode = win->top;
 	((void (*)(void))revcode) ();
-
-	printf("===> [%d] :: undo event executed\n", tid);
 
 	// Replace the original stack on the relative register
 	__asm__ volatile ("movq %0, %%rsp" : : "m" (orig_stack));
@@ -744,6 +779,8 @@ void execute_undo_event(unsigned int lid, revwin_t *win) {
 	statistics_post_lp_data(lid, STAT_REVERSE_EXECUTE, 1.0);
 	statistics_post_lp_data(lid, STAT_REVERSE_EXECUTE_TIME, elapsed);
 
+
+	printf("===> [%d] :: undo event executed (size = %d bytes)\n", tid, revcode_size);
 
 	// Check if the revwin is a chunk reversal, then
 	// we have to free also the dump memory area

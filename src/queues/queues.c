@@ -228,6 +228,7 @@ void process_bottom_halves(void) {
 
 						// If the matched message is in the past, we have to rollback
 						if(matched_msg->timestamp <= lvt(lid_receiver)) {
+							LPS[lid_receiver]->old_bound = LPS[lid_receiver]->bound;
 							LPS[lid_receiver]->bound = list_prev(matched_msg);
 							LPS[lid_receiver]->state = LP_STATE_ROLLBACK;
 						}
@@ -247,6 +248,7 @@ void process_bottom_halves(void) {
 
 					// Check if we've just inserted an out-of-order event
 					if(msg_to_process->timestamp < lvt(lid_receiver)) {
+						LPS[lid_receiver]->old_bound = LPS[lid_receiver]->bound;
 						LPS[lid_receiver]->bound = list_prev(msg_to_process);
 						LPS[lid_receiver]->state = LP_STATE_ROLLBACK;
 					}
