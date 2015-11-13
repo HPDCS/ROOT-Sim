@@ -60,6 +60,7 @@ static __thread bool first_lp_binding = true;
  */
 __thread LP_state **LPS_bound = NULL;
 
+#ifdef HAVE_LP_REBINDING
 static timer rebinding_timer;
 
 static unsigned int *new_LPS_binding;
@@ -71,7 +72,7 @@ static int binding_acquire_phase = 0;
 static __thread int local_binding_acquire_phase = 0;
 
 static atomic_t worker_thread_reduction;
-
+#endif
 
 /**
 * Performs a (deterministic) block allocation between LPs and KLTs
@@ -114,6 +115,7 @@ static inline void LPs_block_binding(void) {
 
 
 
+#ifdef HAVE_LP_REBINDING
 
 /**
 * Convenience function to compare two elements of struct lp_cost_id.
@@ -252,7 +254,7 @@ static void install_binding(void) {
 		}
 	}
 }
-
+#endif
 
 /**
 * This function is used to create a temporary binding between LPs and KLT.
@@ -276,6 +278,7 @@ void rebind_LPs(void) {
 
 		LPs_block_binding();
 
+#ifdef HAVE_LP_REBINDING
 		timer_start(rebinding_timer);
 
 		if(master_thread()) {
@@ -285,6 +288,7 @@ void rebind_LPs(void) {
 
 			atomic_set(&worker_thread_reduction, n_cores);
 		}
+#endif
 
 		return;
 	}
