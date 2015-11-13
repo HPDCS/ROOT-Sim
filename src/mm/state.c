@@ -141,9 +141,12 @@ unsigned int silent_execution(unsigned int lid, void *state_buffer, msg_t *evt, 
 	old_state = LPS[lid]->state;
 	LPS[lid]->state = LP_STATE_SILENT_EXEC;
 
-	// This is true
+	// This is true if the restored state was taken after the new bound
 	if(evt == final_evt)
 		goto out;
+
+	evt = list_next(evt);
+	final_evt = list_next(final_evt);
 
 	// Reprocess events. Outgoing messages are explicitly discarded, as this part of
 	// the simulation has been already executed at least once
@@ -182,7 +185,7 @@ void rollback(unsigned int lid) {
 
 	state_t *restore_state, *s;
 	msg_t *last_correct_event;
-	msg_t *reprocess_from;
+	msg_t *last_restored_event;
 	unsigned int reprocessed_events;
 
 	flag_rolling_back();
@@ -219,14 +222,8 @@ void rollback(unsigned int lid) {
 	// Restore the simulation state and correct the state base pointer
 	RestoreState(lid, restore_state);
 
-	// Coasting forward, updating the bound. The very first log (before INIT)
-	// has no last_event set
-	if(restore_state->last_event == NULL) {
-		reprocess_from = list_head(LPS[lid]->queue_in);
-	} else {
-		reprocess_from = list_next(restore_state->last_event);
-	}
-	reprocessed_events = silent_execution(lid, LPS[lid]->current_base_pointer, reprocess_from, list_next(last_correct_event));
+	last_restored_event = restore_state->last_event;
+	reprocessed_events = silent_execution(lid, LPS[lid]->current_base_pointer, last_restored_event, last_correct_event);
 	statistics_post_lp_data(lid, STAT_SILENT, (double)reprocessed_events);
 
 	// Control messages must be rolled back as well
