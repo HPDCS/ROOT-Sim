@@ -95,6 +95,11 @@ typedef struct _LP_state {
 	/// Counts how many events executed from the last checkpoint (to support PSS)
 	unsigned int	from_last_ckpt;
 
+#ifdef HAVE_REVERSE
+	/// Counter of how many events should be executed withouth creating a reverse window
+	unsigned int	events_in_coasting_forward;
+#endif
+
 	/// If this variable is set, the next invocation to LogState() takes a new state log, independently of the checkpointing interval
 	bool		state_log_forced;
 

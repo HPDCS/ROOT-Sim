@@ -201,7 +201,7 @@ static void LP_main_loop(void *args) {
 		if(!rootsim_config.disable_reverse) {
 
 			// TODO: change this check to account for the model
-			if(1) {
+			if(0 || LPS[current_lp]->from_last_ckpt >= LPS[current_lp]->events_in_coasting_forward) {
 				_ProcessEvent[current_lp] = ProcessEvent_reverse;
 
 				// Create a new revwin to bind to the current event and bind it. A revwin could be possibly
@@ -277,6 +277,11 @@ void initialize_LP(unsigned int lp) {
 	// execution. Otherwise, new calls to this function will (locally) update
 	// this.
 	set_checkpoint_period(lp, rootsim_config.ckpt_period);
+
+	#ifdef HAVE_REVERSE
+	// We must execute some events to decide how to execute, so just start with traditional execution
+	LPS[lp]->events_in_coasting_forward = rootsim_config.ckpt_period;
+	#endif
 
 
 	// Initially, every LP is ready

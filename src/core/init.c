@@ -400,6 +400,9 @@ void SystemInit(int argc, char **argv) {
 		 printf("****************************\n"
 			"*  ROOT-Sim Configuration  *\n"
 			"****************************\n"
+#ifndef NDEBUG
+			"Debugging Mode is ACTIVE\n"
+#endif
 			"Cores: %ld available, %d used\n"
 			"Number of Logical Processes: %u\n"
 			"Output Statistics Directory: %s\n"

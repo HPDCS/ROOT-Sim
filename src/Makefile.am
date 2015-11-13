@@ -36,6 +36,7 @@ librootsim_a_SOURCES =	main.c \
 			gvt/gvt.c \
 			gvt/fossil.c \
 			gvt/ccgs.c \
+			gvt/models.c \
 			communication/window.c \
 			communication/communication.c
 

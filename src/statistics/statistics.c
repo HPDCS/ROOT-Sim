@@ -880,12 +880,35 @@ double statistics_get_data(unsigned int type, double data) {
 
 	switch(type) {
 
+		/* Per thread statistics */
 		case STAT_GET_SIMTIME_ADVANCEMENT:
 			ret = thread_stats[tid].simtime_advancement;
 			break;
 
+		/* per LP statistics */
+		case STAT_GET_ROLLBACK_FREQ:
+			ret = lp_stats[(int)data].tot_rollbacks / lp_stats[(int)data].tot_events;
+			break;
+
 		case STAT_GET_EVENT_TIME_LP:
 			ret = lp_stats[(int)data].exponential_event_time;
+			break;
+
+		#ifdef HAVE_REVERSE
+		case STAT_GET_UNDO_EVENT_COST:
+			if(lp_stats[(int)data].tot_reverse_exec > 0)
+				ret = lp_stats[(int)data].reverse_exec_time / lp_stats[(int)data].tot_reverse_exec;
+			else
+				ret = 0; // This could create a bias which is nevertheless usefult to learn the cost
+			break;
+		#endif
+
+		case STAT_GET_FULL_CKPT_TIME:
+			ret = lp_stats[(int)data].ckpt_time / lp_stats[(int)data].tot_ckpts;
+			break;
+
+		case STAT_GET_FULL_RECOVERY_TIME:
+			ret = lp_stats[(int)data].recovery_time / lp_stats[(int)data].tot_recoveries;
 			break;
 
 		default:

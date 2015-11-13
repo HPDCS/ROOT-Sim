@@ -44,5 +44,8 @@ inline extern simtime_t get_last_gvt(void);
 /* API from fossil.c */
 extern simtime_t adopt_new_gvt(simtime_t);
 
+/* API from models.c */
+extern void gvt_recompute_models(void);
+
 
 #endif

@@ -82,9 +82,16 @@
 
 /* Definition of Thread Statistics Get Messages */
 #define STAT_GET_SIMTIME_ADVANCEMENT	15001
-#define STAT_GET_EVENT_TIME_LP		15002
 
+/* Definition of LP statistics get messages */
+#define STAT_GET_ROLLBACK_FREQ		16001
+#define STAT_GET_EVENT_TIME_LP		16002
+#define STAT_GET_FULL_CKPT_TIME		16004
+#define STAT_GET_FULL_RECOVERY_TIME	16005
 
+#ifdef HAVE_REVERSE
+#define STAT_GET_UNDO_EVENT_COST	16003
+#endif
 
 enum stat_levels {STATS_GLOBAL, STATS_PERF, STATS_LP, STATS_ALL};
 
@@ -105,10 +112,12 @@ struct stat_t {
 		recovery_time,
 		event_time,
 		exponential_event_time,
+#ifdef HAVE_REVERSE
 		tot_reverse_exec,
 		reverse_exec_time,
 		tot_reverse_gen,
 		reverse_gen_time,
+#endif
 		idle_cycles,
 		memory_usage,
 		gvt_computations,
