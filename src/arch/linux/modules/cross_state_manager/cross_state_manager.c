@@ -445,7 +445,6 @@ back_to_pgd_release:
 		//scheduled_object = ((ioctl_info*)arg)->id;
 		scheduled_objects_count = ((ioctl_info*)arg)->count;
 		scheduled_objects = ((ioctl_info*)arg)->objects;
-
 		//scheduled_object = ((ioctl_info*)arg)->id;
 		if (original_view[descriptor] != NULL) { //sanity check
 
@@ -885,6 +884,21 @@ bridging_from_get_pgd:
 	//			temp1 = pgd_entry[pml4];
 				pgd_entry[pml4] = temp;
 	//			pgd_entry[pml4] = temp1;
+				
+				//TODO MN
+				//Create second level
+				int j;
+				for(j=0;j<512;j++){
+					address_pde = (void *)__get_free_pages(GFP_KERNEL, 0); /* allocate and reset new PDE */
+                                	memset(address_pde,0,4096);
+
+                                	temp_pde = temp[j];
+
+                                	temp_pde = (void *)((ulong) temp_pde & 0x0000000000000fff);
+                                	address_pde = (void *)__pa(address_pde);
+                                	temp_pde = (void *)((ulong)address_pde | (ulong)temp_pde);
+                                	temp[j]=temp_pde;
+				}
 
 				pml4++;
 

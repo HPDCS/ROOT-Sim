@@ -492,7 +492,7 @@ void schedule(void) {
 			lid = smallest_timestamp_first();
 	}
 
-//	printf("Selected LP %d with state %d\n", lid, LPS[lid]->state);
+	printf("Selected LP %d with state %d\n", lid, LPS[lid]->state);
 
 	// No logical process found with events to be processed
 	if (lid == IDLE_PROCESS) {
@@ -543,6 +543,7 @@ void schedule(void) {
 	// Schedule the LP user-level thread
 	LPS[lid]->state = LP_STATE_RUNNING;
 	activate_LP(lid, lvt(lid), event, state);
+	
 	if(!is_blocked_state(LPS[lid]->state)) {
 		LPS[lid]->state = LP_STATE_READY;
 		send_outgoing_msgs(lid);

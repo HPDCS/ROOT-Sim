@@ -420,4 +420,8 @@ void clean_buffers_on_gvt(unsigned int lid, simtime_t time_barrier){
 	}
 }
 
+//TODO MN
+malloc_state *get_recoverable_state(int lid){
+	return recoverable_state[lid];
+}
 

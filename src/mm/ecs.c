@@ -272,16 +272,24 @@ void lp_alloc_thread_init(void) {
 
 
 void lp_alloc_schedule(void) {
+	
+malloc_state *m_state_rec;
+malloc_state *m_state_unrec;
 
 	ioctl_info sched_info;
 	
 	sched_info.ds = pgd_ds; // this is current
 	sched_info.count = LPS[current_lp]->ECS_index + 1; // it's a counter
 	sched_info.objects = LPS[current_lp]->ECS_synch_table; // pgd descriptor range from 0 to number threads - a subset of object ids 
+//TODO MN	
+m_state_rec = get_recoverable_state(current_lp);
+m_state_unrec = get_unrecoverable_state(current_lp);
+printf("Numero aree rec = %d\n",m_state_rec->num_areas);
+printf("Numero aree unrec = %d\n",m_state_unrec->num_areas);
+return;	
 
 	/* passing into LP mode - here for the pgd_ds-th LP */
 	ioctl(ioctl_fd,IOCTL_SCHEDULE_ON_PGD, &sched_info);
-
 }
 
 
