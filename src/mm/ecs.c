@@ -239,11 +239,30 @@ void lp_alloc_fini(void) {
 
 void lp_alloc_thread_init(void) {
 	
-	
-	ioctl_fd = open("/dev/ktblmgr", O_RDONLY);
-	if (ioctl_fd == -1) {
-		rootsim_error(true, "Error in opening special device file. ROOT-Sim is compiled for using the ktblmgr linux kernel module, which seems to be not loaded.");
-	}	
+	unsigned int i;
+        int ret;
+
+
+	//TODO MN
+
+        ioctl_fd = open("/dev/ktblmgr", O_RDONLY);
+        if (ioctl_fd == -1) {
+                rootsim_error(true, "Error in opening special device file. ROOT-Sim is compiled for using the ktblmgr linux kernel module, which seems to be not loaded.");
+        }
+
+        ret = ioctl(ioctl_fd, IOCTL_SET_ANCESTOR_PGD);  //ioctl call
+        printf("set ancestor returned %d\n",ret);
+
+        lp_memory_ioctl_info.ds = -1;
+        lp_memory_ioctl_info.mapped_processes = n_prc;
+
+        callback_function =  rootsim_cross_state_dependency_handler;
+        lp_memory_ioctl_info.callback = callback_function;
+
+
+        printf("indirizzo originale %p, passato %p\n",  rootsim_cross_state_dependency_handler,  lp_memory_ioctl_info.callback);
+
+        ret = ioctl(ioctl_fd, IOCTL_SET_VM_RANGE, &lp_memory_ioctl_info);
 	
 	/* required to manage the per-thread memory view */
 	pgd_ds = ioctl(ioctl_fd, IOCTL_GET_PGD);  //ioctl call

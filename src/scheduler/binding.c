@@ -107,6 +107,7 @@ static inline void LPs_block_binding(void) {
 	n_prc_per_thread = 0;
 	i = 0;
 	offset = 0;
+
 	while (i < n_prc) {
 		j = 0;
 		while (j < buf1) {
@@ -260,6 +261,7 @@ static void install_binding(void) {
 	}
 }
 
+#ifdef HAVE_GLP_SCH_MODULE
 /* -------------------------------------------------------------------- */
 /* -------------------START MANAGE GROUP------------------------------- */
 /* -------------------------------------------------------------------- */
@@ -549,6 +551,7 @@ static void switch_GLPS(){
 /* -------------------------------------------------------------------- */
 /* ---------------------END MANAGE GROUP------------------------------- */
 /* -------------------------------------------------------------------- */
+#endif
 
 /**
 * This function is used to create a temporary binding between LPs and KLT.
@@ -573,10 +576,14 @@ void rebind_LPs(void) {
 		//TODO MN
 		// Without HAVE_LP_REBINDING but we want to use groups' module
 		#ifdef HAVE_GLP_SCH_MODULE
+			printf("Rebind_LP_GROUP... ");
 			GLPs_block_binding();
+			printf("Done\n");
 		#else	
 			LPs_block_binding();
 		#endif
+
+return;
 
 		timer_start(rebinding_timer);
 

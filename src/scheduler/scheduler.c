@@ -349,7 +349,6 @@ void initialize_worker_thread(void) {
 
 	// Divide LPs among worker threads, for the first time here
 	rebind_LPs();
-
 	if(master_thread() && master_kernel()) {
 		printf("Initializing LPs... ");
 		fflush(stdout);
@@ -382,7 +381,6 @@ void initialize_worker_thread(void) {
 		(void)list_insert_head(LPS_bound[t]->lid, LPS_bound[t]->queue_in, &init_event);
 		LPS_bound[t]->state_log_forced = true;
 	}
-
 	// Worker Threads synchronization barrier: they all should start working together
 	thread_barrier(&all_thread_barrier);
 
@@ -393,6 +391,7 @@ void initialize_worker_thread(void) {
 	for(i = 0; i < n_prc_per_thread; i++) {
 		schedule();
 	}
+return;
 
 	// Worker Threads synchronization barrier: they all should start working together
 	thread_barrier(&all_thread_barrier);

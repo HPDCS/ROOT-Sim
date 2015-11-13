@@ -670,21 +670,21 @@ back_to_pgd_release:
 		break;
 
 	case IOCTL_SET_VM_RANGE:
-
+//TODO MN
 			flush_cache_all(); /* to make new range visible across multiple runs */
 			
 			mapped_processes = (((ioctl_info*)arg)->mapped_processes);
-			involved_pml4 = (((ioctl_info*)arg)->mapped_processes) >> 9; 
-			if ( (unsigned)((ioctl_info*)arg)->mapped_processes & 0x00000000000001ff ) involved_pml4++;
+			//involved_pml4 = (((ioctl_info*)arg)->mapped_processes) >> 9; 
+			//if ( (unsigned)((ioctl_info*)arg)->mapped_processes & 0x00000000000001ff ) involved_pml4++;
 
 			callback = ((ioctl_info*)arg)->callback;
 
 
 
-			pml4 = (int)PML4(((ioctl_info*)arg)->addr);
+			//pml4 = (int)PML4(((ioctl_info*)arg)->addr);
 			//printk("LOGGING CHANGE VIEW INVOLVING %u PROCESSES AND %d PML4 ENTRIES STARTING FROM ENTRY %d\n",((ioctl_info*)arg)->mapped_processes,involved_pml4,pml4);
-			restore_pml4 = pml4;
-			restore_pml4_entries = involved_pml4;
+		//	restore_pml4 = pml4;
+		//	restore_pml4_entries = involved_pml4;
 //			printk("LOGGING METADATA OF CHANGE VIEW INVOLVING %u PROCESSES AND %d PML4 ENTRIES STARTING FROM ENTRY %d\n",((ioctl_info*)arg)->mapped_processes,restore_pml4_entries,restore_pml4);
 
 
@@ -850,7 +850,7 @@ secondlevel:
 bridging_from_get_pgd:
 		arg = ret;
 	case IOCTL_CHANGE_VIEW:
-
+//TODO MN
 			flush_cache_all();
 			//involved_pml4 = (((ioctl_info*)arg)->mapped_processes) >> 9; 
 			//if ( (unsigned)((ioctl_info*)arg)->mapped_processes & 0x00000000000001ff ) involved_pml4++;
@@ -860,8 +860,8 @@ bridging_from_get_pgd:
 //			pml4 = PML4(((ioctl_info*)arg)->addr);
 
 			/* already logged by ancestro set */
-			pml4 = restore_pml4; 
-			involved_pml4 = restore_pml4_entries;
+	//		pml4 = restore_pml4; 
+	//		involved_pml4 = restore_pml4_entries;
 
 		// patch	pgd_entry = (void **)current->mm->pgd;
 			pgd_entry = (void **)pgd_addr[arg];
@@ -869,7 +869,7 @@ bridging_from_get_pgd:
 
 	//		break;
 
-			for (i=0; i<involved_pml4; i++){
+			for (i=0; i</*involved_pml4*/512; i++){
 			
 //			 	printk("\tPML4 ENTRY FOR CHANGE VIEW IS %d\n",pml4);
 

@@ -101,6 +101,7 @@ static void *main_simulation_loop(void *arg) {
 	// Do the initial (local) LP binding, then execute INIT at all (local) LPs
 	initialize_worker_thread();
 
+return;
 	// Notify the statistics subsystem that we are now starting the actual simulation
 	if(master_thread()) {
 		statistics_post_other_data(STAT_SIM_START, 1.0);
@@ -113,7 +114,7 @@ static void *main_simulation_loop(void *arg) {
 
 		// Recompute the LPs-thread binding
 		rebind_LPs();
-
+		
 		// Check whether we have new ingoing messages sent by remote instances
 		// and then process bottom halves
 //		messages_checking();

@@ -429,16 +429,25 @@ void SystemInit(int argc, char **argv) {
 	// Initialize ROOT-Sim subsystems.
 	// All init routines are executed serially (there is no notion of threads in there)
 	// and the order of invocation can matter!
+	
 	base_init();
+	printf("Done base init\n");
 	statistics_init();
+	printf("Done statistics init\n");
 	scheduler_init();
+	printf("Done scheduler init\n");
 	communication_init();
+	printf("Done communication init\n");
 	dymelor_init();
+	printf("Done dymelor init\n");
 	gvt_init();
+	printf("Done gvt init\n");
 	numerical_init();
+	printf("Done numerical init\n");
 
 	// This call tells the simulation engine that the sequential initial simulation is complete
 	initialization_complete();
+	printf("Init complete\n");
 }
 
 
