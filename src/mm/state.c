@@ -108,7 +108,11 @@ void LogState(unsigned int lid) {
 		new_state.base_pointer = LPS[lid]->current_base_pointer;
 
 		// list_insert() makes a copy of the payload. We store the pointer to the state in the event as well
+		//LPS[lid]->bound->checkpoint_of_event = (struct _state_t *)list_insert_tail(lid, LPS[lid]->queue_states, &new_state);
 		LPS[lid]->bound->checkpoint_of_event = list_insert_tail(lid, LPS[lid]->queue_states, &new_state);
+		//LPS[lid]->bound->checkpoint_of_event = (void*)list_insert_tail(lid, LPS[lid]->queue_states, &new_state);
+		//list_insert_tail(lid, LPS[lid]->queue_states, &new_state);
+		//LPS[lid]->bound->checkpoint_of_event = list_tail(LPS[lid]->queue_states);
 
 	}
 }
@@ -186,12 +190,14 @@ unsigned int silent_execution(unsigned int lid, void *state_buffer, msg_t *evt, 
 */
 void rollback(unsigned int lid) {
 
-	state_t *restore_state, *s, *s1;
+	state_t *restore_state, *s;
 	msg_t *last_correct_event;
 	msg_t *last_restored_event;
 	unsigned int reprocessed_events;
+	msg_t *temp; 
 
 	#ifdef HAVE_REVERSE
+	state_t *s1;
 	msg_t *event_with_log;
 	#endif
 
@@ -223,17 +229,26 @@ void rollback(unsigned int lid) {
 
 	#ifdef HAVE_REVERSE
 	// Switch between coasting forward and reverse scrubbing
-	if(!rootsim_config.disable_reverse && last_correct_event->revwin != NULL)
+	if(0 && !rootsim_config.disable_reverse && last_correct_event->revwin != NULL)
 		goto reverse;
 	#endif
-
+/*
+	printf("Rollback to %p (type: %d, lvt: %f) from %p (type: %d, lvt: %f)\n", last_correct_event, last_correct_event->type, last_correct_event->timestamp, LPS[lid]->old_bound, LPS[lid]->old_bound->type, LPS[lid]->old_bound->timestamp);
+	msg_t *dummy;
+	dummy = last_correct_event;
+	while(dummy != LPS[lid]->old_bound) {
+		printf("%p (type: %d, lvt: %f) -> revwin %p size: %d\n", dummy, dummy->type, dummy->timestamp, dummy->revwin, revwin_size(dummy->revwin));
+		dummy = list_next(dummy);
+	}
+*/
 	// Find the state to be restored, and prune the wrongly computed states
 	restore_state = list_tail(LPS[lid]->queue_states);
 	while (restore_state != NULL && restore_state->lvt > last_correct_event->timestamp) { // It's > rather than >= because we have already taken into account simultaneous events
 		s = restore_state;
 		restore_state = list_prev(restore_state);
 		log_delete(s->log);
-		s->last_event->checkpoint_of_event = NULL; // Cannot use anti-dangling here, because we explicitly check for NULL
+		if(s->last_event != 0xdeadaaaa)  // Per considerare gli eventi eliminati da antimessaggi
+			s->last_event->checkpoint_of_event = NULL; // Cannot use anti-dangling here, because we explicitly check for NULL 
 		s->last_event = (void *)0xDEADC0DE;
 		list_delete_by_content(lid, LPS[lid]->queue_states, s);
 	}
@@ -275,34 +290,58 @@ void rollback(unsigned int lid) {
 		// Explicitly accounting for this case would be costly.
 		restore_state = event_with_log->checkpoint_of_event;
 		RestoreState(lid, restore_state);
-		s = restore_state;
-		while(s != NULL) {
-			printf("@");
-			log_delete(s->log);
-			s->last_event->checkpoint_of_event = NULL;
-			s->last_event = (void *)0xDEADC0DE;
-			s1 = list_next(s);
-			list_delete_by_content(lid, LPS[lid]->queue_states, s);
-			s = s1;
-		}
-		printf("\n");
-	}
 
+		if(event_with_log != last_correct_event) {
+			s = restore_state;
+			while(s != NULL) {
+				printf("@");
+				log_delete(s->log);
+				s->last_event->checkpoint_of_event = NULL;
+				s->last_event = (void *)0xDEADC0DE;
+				s1 = list_next(s);
+				list_delete_by_content(lid, LPS[lid]->queue_states, s);
+				s = s1;
+			}
+			printf("\n");
+		}
+	}
+	
 	// At this point: the state queue is pruned, and the correct state is restored.	
 	// We can thus start to undo events until we reach last_correct_event
 	while(event_with_log != last_correct_event) {
+		printf("About to execute revwin at %p for event %d at %f\n", event_with_log->revwin, event_with_log->type, event_with_log->timestamp);
 		execute_undo_event(event_with_log->receiver, event_with_log->revwin, event_with_log);
-		revwin_reset(event_with_log->revwin);
+//		revwin_free(event_with_log->receiver, event_with_log->revwin);
+		event_with_log->revwin = NULL;
 		event_with_log = list_prev(event_with_log);
 	}
+
+	
 	
     out:
 #endif
+	printf("Lazy Cancellation-------------\n");
+	while(last_correct_event != LPS[lid]->old_bound) {
+		printf("\tlast_correct_event: %p (%d, %f) to %d ", last_correct_event, last_correct_event->type, last_correct_event->timestamp, last_correct_event->receiver);
+
+		temp = list_next(last_correct_event);
+
+		if(last_correct_event->marked_by_antimessage) {
+			printf("deleted");
+			list_delete_by_content(lid, LPS[lid]->queue_in, last_correct_event);
+		}
+		printf("\n");
+
+		last_correct_event = temp;
+	}
+	if(LPS[lid]->old_bound->marked_by_antimessage)
+		list_delete_by_content(lid, LPS[lid]->queue_in, LPS[lid]->old_bound);
+
 
 	// Control messages must be rolled back as well
 	rollback_control_message(lid, last_correct_event->timestamp);
 
-//	LPS[lid]->old_bound = NULL;
+	LPS[lid]->old_bound = NULL;
 }
 
 

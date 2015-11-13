@@ -145,6 +145,7 @@ typedef struct _msg_t {
 	simtime_t		timestamp;
 	simtime_t		send_time;
 	message_kind_t		message_kind;
+	bool			marked_by_antimessage;
 	unsigned long long	mark;	/// Unique identifier of the message, used for antimessages
 	unsigned long long	rendezvous_mark;	/// Unique identifier of the message, used for rendez-vous events
 	struct _state_t		*checkpoint_of_event;  /// This is used to keep a pointer to the checkpoint taken after the execution of an event. It's NULL if no checkpoint was taken

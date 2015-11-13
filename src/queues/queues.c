@@ -226,15 +226,42 @@ void process_bottom_halves(void) {
 						abort();
 					} else {
 
+						bool delete_antimessage = false;
+						msg_t *double_check;
+
 						// If the matched message is in the past, we have to rollback
 						if(matched_msg->timestamp <= lvt(lid_receiver)) {
-//							LPS[lid_receiver]->old_bound = LPS[lid_receiver]->bound;
+							if(LPS[lid_receiver]->old_bound == NULL)
+								LPS[lid_receiver]->old_bound = LPS[lid_receiver]->bound;
+
+							if(matched_msg->timestamp <= LPS[lid_receiver]->old_bound->timestamp) {
+								matched_msg->marked_by_antimessage = true;
+								double_check = list_next(LPS[lid_receiver]->old_bound);
+								while(double_check != NULL && double_check->timestamp == LPS[lid_receiver]->old_bound->timestamp) {
+									if(double_check == matched_msg) {
+										matched_msg->marked_by_antimessage = false;
+										delete_antimessage = true;
+										break;
+									}
+									double_check = list_next(double_check);
+								}
+
+							} else {
+								delete_antimessage = true;
+							}
+
 							LPS[lid_receiver]->bound = list_prev(matched_msg);
 							LPS[lid_receiver]->state = LP_STATE_ROLLBACK;
 						}
 
 						// Delete the matched message
-						list_delete_by_content(matched_msg->sender, LPS[lid_receiver]->queue_in, matched_msg);
+						if(matched_msg->checkpoint_of_event != NULL && matched_msg->checkpoint_of_event != 0xdeadb00f) {
+							matched_msg->checkpoint_of_event->last_event = 0xdeadaaaa;
+						}
+
+						if(delete_antimessage) {
+							list_delete_by_content(matched_msg->sender, LPS[lid_receiver]->queue_in, matched_msg);
+						}
 
 						list_deallocate_node_buffer(LPS_bound[i]->lid, msg_to_process);
 					}
@@ -248,7 +275,8 @@ void process_bottom_halves(void) {
 
 					// Check if we've just inserted an out-of-order event
 					if(msg_to_process->timestamp < lvt(lid_receiver)) {
-//						LPS[lid_receiver]->old_bound = LPS[lid_receiver]->bound;
+						if(LPS[lid_receiver]->old_bound == NULL)
+							LPS[lid_receiver]->old_bound = LPS[lid_receiver]->bound;
 						LPS[lid_receiver]->bound = list_prev(msg_to_process);
 						LPS[lid_receiver]->state = LP_STATE_ROLLBACK;
 					}
