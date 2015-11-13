@@ -201,7 +201,7 @@ static void LP_main_loop(void *args) {
 		if(!rootsim_config.disable_reverse) {
 
 			// TODO: change this check to account for the model
-			if(0 && LPS[current_lp]->from_last_ckpt >= LPS[current_lp]->events_in_coasting_forward) {
+			if(1 || LPS[current_lp]->from_last_ckpt >= LPS[current_lp]->events_in_coasting_forward) {
 				_ProcessEvent[current_lp] = ProcessEvent_reverse;
 
 				// Create a new revwin to bind to the current event and bind it. A revwin could be possibly
@@ -209,6 +209,8 @@ static void LP_main_loop(void *args) {
 				// reset the revwin, rather than free'ing it, so a buffer could be already allocated.
 				if(current_evt->revwin == NULL)
 					current_evt->revwin = revwin_create();
+				else
+					revwin_reset(current_evt->revwin);
 			} else {
 				_ProcessEvent[current_lp] = ProcessEvent;
 			}
@@ -219,11 +221,22 @@ static void LP_main_loop(void *args) {
 		timer event_timer;
 		timer_start(event_timer);
 
+		if(current_evt->marked_by_antimessage) {
+			printf("%p (%d, %f) --> marked\n", current_evt, current_evt->type, current_evt->timestamp);
+			fflush(stdout);
+		}
+
 		switch_to_application_mode();
 		_ProcessEvent[current_lp](LidToGid(current_lp), current_evt->timestamp, current_evt->type, current_evt->event_content, current_evt->size, current_state);
 		switch_to_platform_mode();
 
 		int delta_event_timer = timer_value_micro(event_timer);
+
+//		printf("Revwin after execution of %p (%d, %f): %p %d\n", current_evt, current_evt->type, current_evt->timestamp, current_evt->revwin, revwin_size(current_evt->revwin));
+
+#ifdef HAVE_REVERSE
+		revwin_flush_cache();
+#endif
 
 		#ifdef EXTRA_CHECKS
 		if(current_evt->size > 0) {

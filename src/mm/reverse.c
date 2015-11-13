@@ -58,7 +58,7 @@ static void revwin_add_code(revwin_t *win, unsigned char *bytes, size_t size) {
 	// copy the instructions to the heap
 	memcpy(win->top, bytes, size);
 
-	//printf("Added %ld bytes to the reverse window\n", size);
+//	printf("Added %ld bytes to the reverse window\n", size);
 }
 
 
@@ -181,7 +181,7 @@ static void reverse_single(revwin_t *win, const void *address, size_t size) {
  *
  * @author Davide Cingolani
  */
-static void flush_cache(void) {
+void revwin_flush_cache(void) {
 	int c, i;
 	prefix_head *cluster;
 
@@ -537,7 +537,7 @@ void reverse_init(size_t revwin_size) {
 	estack += (REVWIN_STACK_SIZE - 1);
 
 	// Reset the cluster cache
-	flush_cache();
+	revwin_flush_cache();
 }
 
 
@@ -703,6 +703,12 @@ void reverse_code_generator(const void *address, const size_t size) {
 }
 
 
+size_t revwin_size(revwin_t *win) {
+	if(win == NULL)
+		return 0;
+	return ((win->base + win->size - 3) - win->top);
+}
+
 /**
  * Executes the code actually present in the reverse window
  *
@@ -780,7 +786,7 @@ void execute_undo_event(unsigned int lid, revwin_t *win, void *event) {
 	statistics_post_lp_data(lid, STAT_REVERSE_EXECUTE_TIME, elapsed);
 
 
-	printf("===> [%d] :: undo event executed (size = %d bytes)\n", tid, revcode_size);
+	printf("===> [%d] :: undo event executed (size = %d bytes)\n", tid, revwin_size(win));
 
 	// Check if the revwin is a chunk reversal, then
 	// we have to free also the dump memory area

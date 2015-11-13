@@ -168,5 +168,12 @@ extern void execute_undo_event(unsigned int lid, revwin_t *win, void *event);
 extern void print_cache_stats(void);
 
 
+
+extern size_t revwin_size(revwin_t *win);
+
+
+extern void revwin_flush_cache(void);
+
+
 #endif /* __REVERSE_H */
 #endif /* HAVE_REVERSE */
