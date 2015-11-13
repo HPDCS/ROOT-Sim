@@ -250,6 +250,7 @@ void *do_malloc(unsigned int lid, malloc_state *mem_pool, size_t size) {
 
 			rootsim_error(true, "To reimplement\n");
 //			tmp = (malloc_area *)pool_realloc_memory(mem_pool->areas, mem_pool->max_num_areas * sizeof(malloc_area));
+			tmp = NULL;
 			if(tmp == NULL){
 
 				/**

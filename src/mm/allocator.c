@@ -32,19 +32,20 @@
 #include <sys/mman.h>
 #include <errno.h>
 
+#include <mm/dymelor.h>
+#include <mm/allocator.h>
+
 #ifdef HAVE_NUMA
 #include <numaif.h>
 #include <mm/mapmove.h>
-#endif
 
-#include <mm/dymelor.h>
-#include <mm/allocator.h>
+static int *numa_nodes;
+#endif
 
 
 extern void *__real_malloc(size_t);
 extern void __real_free(void *);
 
-static int *numa_nodes;
 
 static spinlock_t segment_lock;
 
@@ -88,7 +89,7 @@ void audit_map(unsigned int sobj){
 	mdt_entry* mdte;
 	int i;
 		
-	if( (sobj >= handled_sobjs) ){
+	if( (sobj >= (unsigned int)handled_sobjs) ){
 		printf("audit request on invalid sobj\n");
 		return ; 
 	}
@@ -169,7 +170,10 @@ void* allocate_segment(unsigned int sobj, size_t size) {
 	mdt_entry* mdt;
 	char* segment;
 	int numpages;
+
+#ifdef HAVE_NUMA
 	int ret;
+#endif
 
 	#ifdef NEW_ALLOCATOR
 	static void *my_initial_address = (void *)(180L * 256L * 256L * 256L * PAGE_SIZE);
@@ -323,6 +327,8 @@ void *pool_get_memory(unsigned int lid, size_t size) {
 
 
 void pool_release_memory(unsigned int lid, void *ptr) {
+	(void) lid;
+	(void) ptr;
 	// TODO
 }
 
