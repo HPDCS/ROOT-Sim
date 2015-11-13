@@ -201,7 +201,7 @@ static void LP_main_loop(void *args) {
 		if(!rootsim_config.disable_reverse) {
 
 			// TODO: change this check to account for the model
-			if(0 || LPS[current_lp]->from_last_ckpt >= LPS[current_lp]->events_in_coasting_forward) {
+			if(0 && LPS[current_lp]->from_last_ckpt >= LPS[current_lp]->events_in_coasting_forward) {
 				_ProcessEvent[current_lp] = ProcessEvent_reverse;
 
 				// Create a new revwin to bind to the current event and bind it. A revwin could be possibly

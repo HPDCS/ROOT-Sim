@@ -214,11 +214,15 @@ void rollback(unsigned int lid) {
 	// Send antimessages
 	send_antimessages(lid, last_correct_event->timestamp);
 
-	// Control messages must be rolled back as well
-	rollback_control_message(lid, last_correct_event->timestamp);
 
-	// TODO: switch here on coasting forward vs reverse
+	// Reset the ProcessEvent pointer for this event so that when we finish the
+	// rollback operation, we have restored the state to an initial condition
+	// TODO: we have as wll 
+	_ProcessEvent[lid] = ProcessEvent;
+
+
 	#ifdef HAVE_REVERSE
+	// Switch between coasting forward and reverse scrubbing
 	if(!rootsim_config.disable_reverse && last_correct_event->revwin != NULL)
 		goto reverse;
 	#endif
@@ -247,17 +251,19 @@ void rollback(unsigned int lid) {
 
     reverse:
     printf("Individuato last_correct_event: %f\n", last_correct_event->timestamp);
-    printf("Last restore state is: %f\n", list_tail(LPS[lid]->queue_states));
+    printf("Last restore state is: %f\n", list_tail(LPS[lid]->queue_states)->lvt);
 	event_with_log = last_correct_event;
-	while(event_with_log != NULL && event_with_log->checkpoint_of_event == NULL) {
+	while(event_with_log != LPS[lid]->old_bound && event_with_log->checkpoint_of_event == NULL) {
 		event_with_log = list_next(event_with_log);
+		if(event_with_log != NULL)
+			printf("%p (%f), ", event_with_log, event_with_log->timestamp);
 	}
+
+	printf("Individuato event_with_log: %f\n", event_with_log->timestamp);
 
 	// No state to restore. We're in the last section of the forward execution.
 	// We don't need to restore a state, we just undo the latest events
-	if(event_with_log == NULL) {
-		event_with_log = LPS[lid]->old_bound;
-	} else {
+	if(event_with_log != LPS[lid]->old_bound) {
 		// Restore the state and prune the state queue. We delete as well
 		// the state that we have restored because from that point we undo
 		// events, and thus the state will no longer be correct.
@@ -271,6 +277,7 @@ void rollback(unsigned int lid) {
 		RestoreState(lid, restore_state);
 		s = restore_state;
 		while(s != NULL) {
+			printf("@");
 			log_delete(s->log);
 			s->last_event->checkpoint_of_event = NULL;
 			s->last_event = (void *)0xDEADC0DE;
@@ -278,11 +285,10 @@ void rollback(unsigned int lid) {
 			list_delete_by_content(lid, LPS[lid]->queue_states, s);
 			s = s1;
 		}
+		printf("\n");
 	}
 
-	printf("Individuato event_with_log: %f\n", event_with_log->timestamp);
-
-	// At this point: the state queue is pruned, and the correct state is restore.	
+	// At this point: the state queue is pruned, and the correct state is restored.	
 	// We can thus start to undo events until we reach last_correct_event
 	while(event_with_log != last_correct_event) {
 		execute_undo_event(event_with_log->receiver, event_with_log->revwin, event_with_log);
@@ -290,11 +296,13 @@ void rollback(unsigned int lid) {
 		event_with_log = list_prev(event_with_log);
 	}
 	
-
     out:
 #endif
 
-    LPS[lid]->old_bound = NULL;
+	// Control messages must be rolled back as well
+	rollback_control_message(lid, last_correct_event->timestamp);
+
+//	LPS[lid]->old_bound = NULL;
 }
 
 

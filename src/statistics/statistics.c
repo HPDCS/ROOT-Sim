@@ -387,10 +387,12 @@ void statistics_stop(int exit_code) {
 			thread_stats[tid].tot_recoveries += lp_stats[lid].tot_recoveries;
 			thread_stats[tid].recovery_time += lp_stats[lid].recovery_time;
 			thread_stats[tid].event_time += lp_stats[lid].event_time;
+#ifdef HAVE_REVERSE
 			thread_stats[tid].tot_reverse_gen += lp_stats[lid].tot_reverse_gen;
 			thread_stats[tid].reverse_gen_time += lp_stats[lid].reverse_gen_time;
 			thread_stats[tid].tot_reverse_exec += lp_stats[lid].tot_reverse_exec;
 			thread_stats[tid].reverse_exec_time += lp_stats[lid].reverse_exec_time;
+#endif
 			thread_stats[tid].exponential_event_time += lp_stats[lid].exponential_event_time;
 			thread_stats[tid].idle_cycles += lp_stats[lid].idle_cycles;
 		}
@@ -426,9 +428,11 @@ void statistics_stop(int exit_code) {
 		fprintf(f, "AVERAGE CHECKPOINT COST.... : %.2f us\n",		thread_stats[tid].ckpt_time / thread_stats[tid].tot_ckpts);
 		fprintf(f, "AVERAGE RECOVERY COST...... : %.2f us\n",		(thread_stats[tid].tot_recoveries > 0 ? thread_stats[tid].recovery_time / thread_stats[tid].tot_recoveries : 0));
 		fprintf(f, "AVERAGE LOG SIZE........... : %s\n",		format_size(thread_stats[tid].ckpt_mem / thread_stats[tid].tot_ckpts));
+#ifdef HAVE_REVERSE
 		fprintf(f, "\n");
 		fprintf(f, "AVERAGE REVERSE GENERATION. : %.3f us\n",		thread_stats[tid].reverse_gen_time / thread_stats[tid].tot_reverse_gen);
 		fprintf(f, "AVERAGE REVERSE EXECUTION.. : %.3f us\n",		thread_stats[tid].reverse_exec_time / thread_stats[tid].tot_reverse_exec);
+#endif
 		fprintf(f, "IDLE CYCLES................ : %.0f\n",		thread_stats[tid].idle_cycles);
 		fprintf(f, "NUMBER OF GVT REDUCTIONS... : %.0f\n",		thread_stats[tid].gvt_computations);
 		fprintf(f, "SIMULATION TIME SPEED...... : %.2f units per GVT\n",thread_stats[tid].simtime_advancement);
@@ -467,10 +471,12 @@ void statistics_stop(int exit_code) {
 				system_wide_stats.recovery_time += thread_stats[i].recovery_time;
 				system_wide_stats.event_time += thread_stats[i].event_time;
 				system_wide_stats.exponential_event_time += thread_stats[i].exponential_event_time;
+#ifdef HAVE_REVERSE
 				system_wide_stats.tot_reverse_gen += thread_stats[i].tot_reverse_gen;
 				system_wide_stats.reverse_gen_time += thread_stats[i].reverse_gen_time;
 				system_wide_stats.tot_reverse_exec += thread_stats[i].tot_reverse_exec;
 				system_wide_stats.reverse_exec_time += thread_stats[i].reverse_exec_time;
+#endif
 				system_wide_stats.idle_cycles += thread_stats[i].idle_cycles;
 				system_wide_stats.memory_usage += thread_stats[i].memory_usage;
 				system_wide_stats.simtime_advancement += thread_stats[i].simtime_advancement;
@@ -520,9 +526,11 @@ void statistics_stop(int exit_code) {
 			fprintf(f, "AVERAGE CHECKPOINT COST.... : %.2f us\n",		system_wide_stats.ckpt_time / system_wide_stats.tot_ckpts);
 			fprintf(f, "AVERAGE RECOVERY COST...... : %.3f us\n",		(system_wide_stats.tot_recoveries > 0 ? system_wide_stats.recovery_time / system_wide_stats.tot_recoveries : 0 ));
 			fprintf(f, "AVERAGE LOG SIZE........... : %s\n",		format_size(system_wide_stats.ckpt_mem / system_wide_stats.tot_ckpts));
+#ifdef HAVE_REVERSE
 			fprintf(f, "\n");
 			fprintf(f, "AVERAGE REVERSE GENERATION. : %.3f us\n",		system_wide_stats.reverse_gen_time / system_wide_stats.tot_reverse_gen);
 			fprintf(f, "AVERAGE REVERSE EXECUTION.. : %.3f us\n",		system_wide_stats.reverse_exec_time / system_wide_stats.tot_reverse_exec);
+#endif
 			fprintf(f, "\n");
 			fprintf(f, "IDLE CYCLES................ : %.0f\n",		system_wide_stats.idle_cycles);
 			fprintf(f, "LAST COMMITTED GVT ........ : %f\n",		get_last_gvt());
@@ -721,6 +729,7 @@ void statistics_post_lp_data(unsigned int lid, unsigned int type, double data) {
 				lp_stats_gvt[lid].exponential_event_time = 0.1 * data + 0.9 * lp_stats_gvt[lid].exponential_event_time;
 				break;
 
+#ifdef HAVE_REVERSE
 			case STAT_REVERSE_EXECUTE:
 				lp_stats_gvt[lid].tot_reverse_exec += 1.0;
 				break;
@@ -736,6 +745,7 @@ void statistics_post_lp_data(unsigned int lid, unsigned int type, double data) {
 			case STAT_REVERSE_GENERATE_TIME:
 				lp_stats_gvt[lid].reverse_gen_time += data;
 				break;
+#endif
 
 			case STAT_COMMITTED:
 				lp_stats_gvt[lid].committed_events += data;
@@ -850,10 +860,12 @@ void statistics_post_other_data(unsigned int type, double data) {
 				lp_stats[lid].tot_events += lp_stats_gvt[lid].tot_events;
 				lp_stats[lid].event_time += lp_stats_gvt[lid].event_time;
 				lp_stats[lid].exponential_event_time = lp_stats_gvt[lid].exponential_event_time;
+#ifdef HAVE_REVERSE
 				lp_stats[lid].tot_reverse_exec += lp_stats_gvt[lid].tot_reverse_exec;
 				lp_stats[lid].reverse_exec_time += lp_stats_gvt[lid].reverse_exec_time;
 				lp_stats[lid].tot_reverse_gen += lp_stats_gvt[lid].tot_reverse_gen;
 				lp_stats[lid].reverse_gen_time += lp_stats_gvt[lid].reverse_gen_time;
+#endif
 				lp_stats[lid].committed_events += lp_stats_gvt[lid].committed_events;
 				lp_stats[lid].tot_rollbacks += lp_stats_gvt[lid].tot_rollbacks;
 				lp_stats[lid].tot_ckpts += lp_stats_gvt[lid].tot_ckpts;
