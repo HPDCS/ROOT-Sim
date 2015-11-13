@@ -1,19 +1,24 @@
 ACLOCAL_AMFLAGS = -I m4 
 AM_MAKEFLAGS = --no-print-directory
 
+# Check whether we have to enable using hijacker in rootsim-cc
+if USE_HIJACKER
+CALL_HIJACKER=1
+else
+CALL_HIJACKER=0
+endif
+
 SCRIPT_LINES=@cc_script_lines@
 HIJACKER_CONF_LINES=@cc_hijacker_conf_lines@
 
 
 # Install the compiler!
 
-
 .PHONY: rootsim-cc
 
 dist_bin_SCRIPTS = rootsim-cc
 CLEANFILES = $(dist_bin_SCRIPTS) 
-EXTRA_DIST = ld-data1 ld-data2 ld-final
-
+EXTRA_DIST = hijacker-conf.xml
 
 do_subst = $(SED)	-e 's,[@]bindir[@],$(bindir),g' \
 	   	  	-e 's,[@]libdir[@],$(libdir),g' \
@@ -25,7 +30,8 @@ do_subst = $(SED)	-e 's,[@]bindir[@],$(bindir),g' \
 			-e 's,[@]CFLAGS[@],$(CFLAGS),g' \
 			-e 's,[@]ARCH[@],$(ARCH),g' \
 			-e 's,[@]scriptlines[@],$(SCRIPT_LINES),g' \
-			-e 's,[@]hijackerconflines[@],$(HIJACKER_CONF_LINES),g'
+			-e 's,[@]hijackerconflines[@],$(HIJACKER_CONF_LINES),g' \
+			-e 's,[@]use_hijacker[@],$(CALL_HIJACKER),g'
 
 rootsim-cc: rootsim-cc.in
 	@echo "Building compiler..."

@@ -332,7 +332,6 @@ fi
 
 
 
-
 #----------------------------------------------------------------------------
 # Check scripts sizes.
 # The compiler script is dynamically built in order to create ad compile
@@ -345,6 +344,9 @@ AC_MSG_CHECKING([compiler and linker scripts sizes])
 AC_SUBST([cc_script_lines], [$(wc -l scripts/rootsim-cc.in | sed 's,\ .*,,g')])
 AC_SUBST([cc_hijacker_conf_lines], [$(wc -l scripts/hijacker-conf.xml | sed 's,\ .*,,g')])
 AC_MSG_RESULT([ok])
+
+# Additionally, test whether we have to call hijacker from rootsim-cc
+AM_CONDITIONAL([USE_HIJACKER], [test "x$enable_reverse" = "xyes"])
 
 
 # Generate Makefiles for all these subfolders
