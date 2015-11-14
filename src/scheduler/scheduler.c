@@ -493,6 +493,7 @@ void schedule(void) {
 
 		LPS[lid]->state = LP_STATE_READY;
 		send_outgoing_msgs(lid);
+		process_bottom_halves();
 		return;
 	}
 

@@ -22,7 +22,7 @@ void __wrap_abort(void) {
 #ifndef NDEBUG
 	int i;
 
-	printf("An abnormal condition has been met, and abort() has been called\n");
+	printf("Abnormal condition met, abort() has been called\n");
 	if(current_evt == NULL) {
 		printf("No event is currently being processed...\n");
 	} else {

@@ -166,6 +166,8 @@ void send_antimessages(unsigned int lid, simtime_t after_simtime) {
 
 	anti_msg = list_next(anti_msg);
 
+	printf("(%d) Sending antimessages----------\n", lid);
+
 	// Now send all antimessages
 	while(anti_msg != NULL) {
 		bzero(&msg, sizeof(msg_t));
@@ -175,6 +177,8 @@ void send_antimessages(unsigned int lid, simtime_t after_simtime) {
 		msg.send_time = anti_msg->send_time;
 		msg.mark = anti_msg->mark;
 		msg.message_kind = negative;
+
+		printf("\t%p (%d, %f) to %d\n", anti_msg, anti_msg->mark, anti_msg->timestamp, anti_msg->receiver);
 
 		Send(&msg);
 

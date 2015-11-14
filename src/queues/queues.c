@@ -226,7 +226,7 @@ void process_bottom_halves(void) {
 						abort();
 					} else {
 
-						bool delete_antimessage = false;
+						bool delete_antimessage = true;
 						msg_t *double_check;
 
 						// If the matched message is in the past, we have to rollback
@@ -234,7 +234,7 @@ void process_bottom_halves(void) {
 							if(LPS[lid_receiver]->old_bound == NULL)
 								LPS[lid_receiver]->old_bound = LPS[lid_receiver]->bound;
 
-							if(matched_msg->timestamp <= LPS[lid_receiver]->old_bound->timestamp) {
+/*							if(matched_msg->timestamp <= LPS[lid_receiver]->old_bound->timestamp) {
 								matched_msg->marked_by_antimessage = true;
 								double_check = list_next(LPS[lid_receiver]->old_bound);
 								while(double_check != NULL && double_check->timestamp == LPS[lid_receiver]->old_bound->timestamp) {
@@ -250,7 +250,7 @@ void process_bottom_halves(void) {
 								delete_antimessage = true;
 							}
 
-							LPS[lid_receiver]->bound = list_prev(matched_msg);
+*/							LPS[lid_receiver]->bound = list_prev(matched_msg);
 							LPS[lid_receiver]->state = LP_STATE_ROLLBACK;
 						}
 

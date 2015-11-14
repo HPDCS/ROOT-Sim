@@ -220,6 +220,9 @@ void rollback(unsigned int lid) {
 	// Send antimessages
 	send_antimessages(lid, last_correct_event->timestamp);
 
+	// Control messages must be rolled back as well
+	rollback_control_message(lid, last_correct_event->timestamp);
+
 
 	// Reset the ProcessEvent pointer for this event so that when we finish the
 	// rollback operation, we have restored the state to an initial condition
@@ -320,26 +323,27 @@ void rollback(unsigned int lid) {
 	
     out:
 #endif
-	printf("Lazy Cancellation-------------\n");
-	while(last_correct_event != LPS[lid]->old_bound) {
-		printf("\tlast_correct_event: %p (%d, %f) to %d ", last_correct_event, last_correct_event->type, last_correct_event->timestamp, last_correct_event->receiver);
+	printf("(%d) Lazy Cancellation-------------\n", lid);
+	printf("\told bound: %p (%d, %d, %f) to %d %s\n", LPS[lid]->old_bound, LPS[lid]->old_bound->mark, LPS[lid]->old_bound->type, LPS[lid]->old_bound->timestamp, LPS[lid]->old_bound->receiver, (LPS[lid]->old_bound->marked_by_antimessage ? "marked": ""));
+	while(last_correct_event != NULL && last_correct_event != LPS[lid]->old_bound) {
+		printf("\tlast_correct_event: %p (%d, %d, %f) to %d ", last_correct_event, last_correct_event->mark, last_correct_event->type, last_correct_event->timestamp, last_correct_event->receiver);
 
 		temp = list_next(last_correct_event);
 
 		if(last_correct_event->marked_by_antimessage) {
 			printf("deleted");
-			list_delete_by_content(lid, LPS[lid]->queue_in, last_correct_event);
+//			list_delete_by_content(lid, LPS[lid]->queue_in, last_correct_event);
 		}
 		printf("\n");
 
 		last_correct_event = temp;
 	}
-	if(LPS[lid]->old_bound->marked_by_antimessage)
+	if(LPS[lid]->old_bound->marked_by_antimessage) {
+		printf("Found old_bound marked, deleting...\n");
+		fflush(stdout);
 		list_delete_by_content(lid, LPS[lid]->queue_in, LPS[lid]->old_bound);
+	}
 
-
-	// Control messages must be rolled back as well
-	rollback_control_message(lid, last_correct_event->timestamp);
 
 	LPS[lid]->old_bound = NULL;
 }

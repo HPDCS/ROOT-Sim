@@ -71,11 +71,14 @@ void fossil_collection(unsigned int lid, simtime_t time_barrier) {
 	#ifdef HAVE_REVERSE
 	// Destroy reverse windows of events which will be pruned
 	evt = list_prev(last_kept_event);
+//	printf("******* PRUNING REVWINS ***********\n");
 	while(evt != NULL) {
+//		printf("evt: %p (%d, %f) - revwin: %p size %d\n", evt, evt->type, evt->timestamp, evt->revwin, revwin_size(evt->revwin));
 		revwin_free(evt->receiver, evt->revwin);
 		evt->revwin = NULL;
 		evt = list_prev(evt);
 	}
+//	printf("******* DONE ***********\n");
 	#endif
 
 	// Truncate the input queue, accounting for the event which is pointed by the lastly kept state
