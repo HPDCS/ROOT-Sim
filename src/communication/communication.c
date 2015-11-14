@@ -166,7 +166,7 @@ void send_antimessages(unsigned int lid, simtime_t after_simtime) {
 
 	anti_msg = list_next(anti_msg);
 
-	printf("(%d) Sending antimessages----------\n", lid);
+//	printf("(%d) Sending antimessages----------\n", lid);
 
 	// Now send all antimessages
 	while(anti_msg != NULL) {
@@ -178,7 +178,7 @@ void send_antimessages(unsigned int lid, simtime_t after_simtime) {
 		msg.mark = anti_msg->mark;
 		msg.message_kind = negative;
 
-		printf("\t%p (%d, %f) to %d\n", anti_msg, anti_msg->mark, anti_msg->timestamp, anti_msg->receiver);
+//		printf("\t%p (%llu, %f) to %d\n", anti_msg, anti_msg->mark, anti_msg->timestamp, anti_msg->receiver);
 
 		Send(&msg);
 
@@ -365,6 +365,8 @@ void send_outgoing_msgs(unsigned int lid) {
 		msg_hdr.send_time = msg->send_time;
 		msg_hdr.mark = msg->mark;
 		(void)list_insert(msg->sender, LPS[msg->sender]->queue_out, send_time, &msg_hdr);
+
+//		printf("Placed in queue event with mark %llu at time %f from %d to %d\n", msg_hdr.mark, msg_hdr.timestamp, msg_hdr.sender, msg_hdr.receiver);
 	}
 
 	LPS[lid]->outgoing_buffer.size = 0;

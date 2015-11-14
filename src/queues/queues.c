@@ -226,7 +226,9 @@ void process_bottom_halves(void) {
 						abort();
 					} else {
 
-						bool delete_antimessage = true;
+//						printf("mark of the antimessage is %llu, matched at %p\n", matched_msg->mark, matched_msg);
+
+						bool delete_antimessage = false;
 						msg_t *double_check;
 
 						// If the matched message is in the past, we have to rollback
@@ -234,11 +236,13 @@ void process_bottom_halves(void) {
 							if(LPS[lid_receiver]->old_bound == NULL)
 								LPS[lid_receiver]->old_bound = LPS[lid_receiver]->bound;
 
-/*							if(matched_msg->timestamp <= LPS[lid_receiver]->old_bound->timestamp) {
+							if(matched_msg->timestamp <= LPS[lid_receiver]->old_bound->timestamp) {
 								matched_msg->marked_by_antimessage = true;
+//								printf("\tmarking the message\n");
 								double_check = list_next(LPS[lid_receiver]->old_bound);
-								while(double_check != NULL && double_check->timestamp == LPS[lid_receiver]->old_bound->timestamp) {
+								while(double_check != NULL && double_check->timestamp >= LPS[lid_receiver]->old_bound->timestamp) {
 									if(double_check == matched_msg) {
+//										printf("\tno, deleting for double check\n");
 										matched_msg->marked_by_antimessage = false;
 										delete_antimessage = true;
 										break;
@@ -247,21 +251,34 @@ void process_bottom_halves(void) {
 								}
 
 							} else {
+//								printf("\tdeleting immediately 1\n");
 								delete_antimessage = true;
 							}
 
-*/							LPS[lid_receiver]->bound = list_prev(matched_msg);
+							LPS[lid_receiver]->bound = list_prev(matched_msg);
 							LPS[lid_receiver]->state = LP_STATE_ROLLBACK;
+	
+						} else {
+//							printf("\tdeleting immediately 2\n");
+							delete_antimessage = true;
 						}
 
+						if(matched_msg == LPS[lid_receiver]->old_bound) {
+//							printf("The matched message is the old bound, don't delete\n");
+							LPS[lid_receiver]->old_bound->marked_by_antimessage = true;
+							delete_antimessage = false;
+						}
+						
 						// Delete the matched message
-						if(matched_msg->checkpoint_of_event != NULL && matched_msg->checkpoint_of_event != 0xdeadb00f) {
-							matched_msg->checkpoint_of_event->last_event = 0xdeadaaaa;
+						if(matched_msg->checkpoint_of_event != NULL) {
+							matched_msg->checkpoint_of_event->last_event = NULL;
 						}
 
 						if(delete_antimessage) {
+//							printf("\tdo the delete\n");
 							list_delete_by_content(matched_msg->sender, LPS[lid_receiver]->queue_in, matched_msg);
 						}
+//						fflush(stdout);
 
 						list_deallocate_node_buffer(LPS_bound[i]->lid, msg_to_process);
 					}

@@ -11,7 +11,7 @@
 #define CHECK_FADING_TIME	10
 #define COMPLETE_CALLS		500
 #ifndef TA
-#define TA			0.6
+#define TA			1.2
 #endif
 #define TA_DURATION		120
 #define CHANNELS_PER_CELL	1000

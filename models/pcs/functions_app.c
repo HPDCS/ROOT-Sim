@@ -183,7 +183,6 @@ int allocation(lp_state_type *pointer) {
 	} else {
 		printf("Unable to allocate channel, but the counter says I have %d available channels\n", pointer->channel_counter);
 		abort();
-		fflush(stdout);
 	}
 
         return index;

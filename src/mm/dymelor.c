@@ -353,8 +353,11 @@ void *do_malloc(unsigned int lid, malloc_state *mem_pool, size_t size) {
 	m_area->alloc_chunks++;
 	find_next_free(m_area);
 
-	// TODO: togliere
+#ifndef NDEBUG
+	// This is a mark placed in the buffer, so that we can check whether somewhere we are not
+	// correctly using uninitialized memory
 	memset(ptr, 0xe8, size);
+#endif
 
 	// Keep track of the malloc_area which this chunk belongs to
 	*(unsigned long long *)ptr = (unsigned long long)m_area->self_pointer;

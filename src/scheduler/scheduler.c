@@ -222,7 +222,7 @@ static void LP_main_loop(void *args) {
 		timer_start(event_timer);
 
 		if(current_evt->marked_by_antimessage) {
-			printf("%p (%d, %f) --> marked\n", current_evt, current_evt->type, current_evt->timestamp);
+			printf("ERROR in SCHEDULER: %p (%d, %f) --> marked\n", current_evt, current_evt->type, current_evt->timestamp);
 			fflush(stdout);
 		}
 

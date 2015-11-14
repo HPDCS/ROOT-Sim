@@ -99,10 +99,10 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 			ScheduleNewEvent(me, timestamp, START_CALL, NULL, 0);
 
 			// If needed, start the first fading recheck
-//			if (state->fading_recheck) {
+			if (state->fading_recheck) {
 				timestamp = (simtime_t) (FADING_RECHECK_FREQUENCY * Random());
 				ScheduleNewEvent(me, timestamp, FADING_RECHECK, NULL, 0);
-//			}
+			}
 
 			break;
 
@@ -153,7 +153,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 
 				}
 
-				if(0 || new_event_content.call_term_time < handoff_time) {
+				if(new_event_content.call_term_time < handoff_time) {
 					ScheduleNewEvent(me, new_event_content.call_term_time, END_CALL, &new_event_content, sizeof(new_event_content));
 				} else {
 					new_event_content.cell = FindReceiver(TOPOLOGY_HEXAGON);
