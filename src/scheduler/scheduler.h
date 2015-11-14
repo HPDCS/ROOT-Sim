@@ -85,18 +85,31 @@ extern __thread msg_t *current_evt;
 extern __thread void *current_state;
 extern __thread unsigned int n_prc_per_thread;
 
+extern simtime_t * volatile min_in_transit_lvt;
+extern atomic_t need_resched;
+
+extern void resched(void);
 
 #ifdef HAVE_PREEMPTION
 extern __thread volatile bool platform_mode;
 extern __thread volatile bool rolling_back;
 
   #define switch_to_platform_mode() do {\
-				   if(LPS[current_lp]->state != LP_STATE_SILENT_EXEC) {\
-					platform_mode = true;\
-				   }\
+					if(LPS[current_lp]->state != LP_STATE_SILENT_EXEC) {\
+						platform_mode = true;\
+					}\
 				  } while(0)
 
-  #define switch_to_application_mode() platform_mode = false
+  #define switch_to_application_mode() do {\
+					if(LPS[current_lp]->state != LP_STATE_SILENT_EXEC) {\
+						platform_mode = false;\
+						if(min_in_transit_lvt[tid] < current_lvt){\
+							atomic_inc(&need_resched);\
+							resched();\
+						}\
+					}\
+				} while(0)
+
   #define flag_rolling_back() rolling_back = true
   #define unflag_rolling_back() rolling_back = false
 

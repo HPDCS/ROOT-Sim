@@ -436,7 +436,11 @@ void schedule(void) {
 		rollback(lid);
 
 		LPS[lid]->state = LP_STATE_READY;
-		send_outgoing_msgs(lid);
+//francesco - no need to send out this stuff, the executio is fictitious
+		//send_outgoing_msgs(lid);
+
+//francesco - this is required since the buf size is not in the context, so that it need to be refreshed each time we process something in coasting forward
+		 LPS[lid]->outgoing_buffer.size = 0;
 		return;
 	}
 

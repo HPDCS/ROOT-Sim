@@ -76,6 +76,8 @@ static bool end_computing(void) {
 extern atomic_t preempt_count;
 extern atomic_t overtick_platform;
 extern atomic_t would_preempt;
+extern atomic_t overtick_user;
+extern atomic_t need_resched;
 #endif
 
 /**
@@ -127,7 +129,7 @@ static void *main_simulation_loop(void *arg) {
 		if (master_kernel() && master_thread () && D_DIFFER(my_time_barrier, -1.0)) {
 			if (rootsim_config.verbose == VERBOSE_INFO || rootsim_config.verbose == VERBOSE_DEBUG) {
 				#ifdef HAVE_PREEMPTION
-				printf("TIME BARRIER %f - %d preemptions - %d in platform mode - %d would preempt\n", my_time_barrier, atomic_read(&preempt_count), atomic_read(&overtick_platform), atomic_read(&would_preempt));
+				printf("TIME BARRIER %f - %d preemptions - %d in platform mode - %d in user space mode - %d would preempt - %d need resched \n", my_time_barrier, atomic_read(&preempt_count), atomic_read(&overtick_platform), atomic_read(&overtick_user),atomic_read(&would_preempt),atomic_read(&need_resched));
 				#else
 				printf("TIME BARRIER %f\n", my_time_barrier);
 				#endif

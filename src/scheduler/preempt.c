@@ -25,6 +25,7 @@
 * @date March, 2015
 */
 
+
 #ifdef HAVE_PREEMPTION
 
 #include <timestretch.h>
@@ -35,14 +36,18 @@
 #include <scheduler/scheduler.h>
 #include <mm/dymelor.h>
 
+#define ACTUAL_PREEMPTION if(1)
 
 extern void preempt_callback(void); // This is defined in src/scheduler/preempt_callback.S
 
-static simtime_t * volatile min_in_transit_lvt;
+//static simtime_t * volatile min_in_transit_lvt;
+simtime_t * volatile min_in_transit_lvt;
 
 atomic_t preempt_count;
 atomic_t overtick_platform;
 atomic_t would_preempt;
+atomic_t overtick_user;
+atomic_t need_resched;
 
 __thread volatile bool platform_mode = true;
 __thread volatile bool rolling_back = false;
@@ -118,6 +123,16 @@ void update_min_in_transit(unsigned int thread, simtime_t lvt) {
 }
 
 
+void resched(void){
+
+ACTUAL_PREEMPTION{
+                        LPS[current_lp]->state = LP_STATE_SUSPENDED; // Questo triggera la logica di ripartenza dell'LP di ECS, ma forse va cambiato nome...
+                        switch_to_platform_mode();
+                        context_switch(&LPS[current_lp]->context, &kernel_context);
+                        }
+
+
+}
 
 
 /**
@@ -129,8 +144,8 @@ void update_min_in_transit(unsigned int thread, simtime_t lvt) {
  */
 void preempt(void) {
 
-	if(rootsim_config.disable_preemption)
-		return;
+//	if(rootsim_config.disable_preemption)
+//		return;
 
 
 	// if min_in_transit_lvt < current_lvt
@@ -138,12 +153,22 @@ void preempt(void) {
 
 	atomic_inc(&preempt_count);
 
+	if(rolling_back){
+		atomic_inc(&overtick_platform);
+		return;
+	}
+
 	if(!platform_mode && !rolling_back) {
+
+		atomic_inc(&overtick_user);
+
 		if(min_in_transit_lvt[tid] < current_lvt) {
 			atomic_inc(&would_preempt);
+		ACTUAL_PREEMPTION{
 			LPS[current_lp]->state = LP_STATE_SUSPENDED; // Questo triggera la logica di ripartenza dell'LP di ECS, ma forse va cambiato nome...
 			switch_to_platform_mode();
 			context_switch(&LPS[current_lp]->context, &kernel_context);
+			}
 		}
 	} else {
 		atomic_inc(&overtick_platform);

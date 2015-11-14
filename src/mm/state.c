@@ -145,6 +145,8 @@ unsigned int silent_execution(unsigned int lid, void *state_buffer, msg_t *evt, 
 	if(evt == final_evt)
 		goto out;
 
+	flag_rolling_back();
+
 	// Reprocess events. Outgoing messages are explicitly discarded, as this part of
 	// the simulation has been already executed at least once
 	while(evt != NULL && evt != final_evt) {

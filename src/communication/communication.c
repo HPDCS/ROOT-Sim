@@ -88,6 +88,7 @@ void ParallelScheduleNewEvent(unsigned int gid_receiver, simtime_t timestamp, un
 	// In Silent execution, we do not send again already sent messages
 	if(LPS[current_lp]->state == LP_STATE_SILENT_EXEC) {
 		return;
+		//goto out;
 	}
 
 	// Check whether the destination LP is out of range
