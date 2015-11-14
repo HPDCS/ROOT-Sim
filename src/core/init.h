@@ -72,18 +72,9 @@ static char *opt_desc[] = {
 	"Level of detail in the output statistics",
 	"Manually specify the initial random seed",
 	"Run a serial simulation (using Calendar Queues)",
-
-#ifdef HAVE_PREEMPTION
 	"Disable Preemptive Time Warp",
-#endif
-
-#ifdef HAVE_PARALLEL_ALLOCATOR
 	"Disable parallel allocator",
-#endif
-
-#ifdef HAVE_REVERSE
 	"Disable reverse computation",
-#endif
 
 	""
 };
