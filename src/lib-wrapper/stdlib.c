@@ -12,9 +12,54 @@ char *__real_strncat(char *, const char *, size_t);
 void *__real_memcpy(void *, const void *, size_t);
 void *__real_memmove(void *, const void *, size_t);
 void *__real_memset (void *, int, size_t);
+void __real_abort(void);
 
 
 // Actual wrappers
+
+void __wrap_abort(void) {
+
+#ifndef NDEBUG
+	int i;
+
+	printf("An abnormal condition has been met, and abort() has been called\n");
+	if(current_evt == NULL) {
+		printf("No event is currently being processed...\n");
+	} else {
+		printf("Event currently being processed:\n"
+				"\tsender: %u\n"
+				"\treceiver: %u\n"
+				"\ttype: %d\n"
+				"\ttimestamp: %f\n"
+				"\tsend_time: %f\n"
+				"\tmessage_kind: %d\n"
+				"\tmarked_by_antimessage: %d\n"
+				"\tmark: %llu\n"
+				"\trendezvous_mark: %llu\n"
+				"\tcheckpoint_of_event: %p\n"
+				"\tsize: %d\n",
+				current_evt->sender,
+				current_evt->receiver,
+				current_evt->type,
+				current_evt->timestamp,
+				current_evt->send_time,
+				current_evt->message_kind,
+				current_evt->marked_by_antimessage,
+				current_evt->mark,
+				current_evt->rendezvous_mark,
+				current_evt->checkpoint_of_event,
+				current_evt->size);
+		printf("Event content: ");
+		for(i = 0; i < current_evt->size; i++) {
+			printf("%02X ", (unsigned char)current_evt->event_content[i]);
+		}
+		printf("\n");
+		fflush(stdout);
+	}
+#endif
+	__real_abort();
+}
+
 char *__wrap_strcpy (char *s, const char *ct) {
 	dirty_mem(s, -1);
 	return __real_strcpy(s, ct);
