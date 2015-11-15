@@ -75,8 +75,10 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 
 			if(IsParameterPresent(event_content, "complete_calls"))
 				complete_calls = GetParameterInt(event_content, "complete_calls");
+			else
+				complete_calls = COMPLETE_CALLS;
 
-			state->fading_recheck = IsParameterPresent(event_content, "fading_recheck");
+			state->fading_recheck = false; //IsParameterPresent(event_content, "fading_recheck");
 			state->variable_ta = IsParameterPresent(event_content, "variable_ta");
 
 
@@ -268,9 +270,10 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 
 bool OnGVT(unsigned int me, lp_state_type *snapshot) {
 
-	if(me == 16) printf("me %d - complete calls are %d\n",me,snapshot->complete_calls);
 
-	if (snapshot->complete_calls < complete_calls)
+	if (snapshot->complete_calls < complete_calls) {
+		printf("me %d - complete calls are %d\n",me,snapshot->complete_calls);
 		return false;
+	}
 	return true;
 }

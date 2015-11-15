@@ -232,7 +232,7 @@ void rollback(unsigned int lid) {
 
 	#ifdef HAVE_REVERSE
 	// Switch between coasting forward and reverse scrubbing
-	if(0 && !rootsim_config.disable_reverse && last_correct_event->revwin != NULL)
+	if(!rootsim_config.disable_reverse && last_correct_event->revwin != NULL)
 		goto reverse;
 	#endif
 /*
@@ -268,8 +268,12 @@ void rollback(unsigned int lid) {
 	goto out;
 
     reverse:
-    printf("Individuato last_correct_event: %f\n", last_correct_event->timestamp);
-    printf("Last restore state is: %f\n", list_tail(LPS[lid]->queue_states)->lvt);
+
+#ifndef NDEBUG
+//    printf("Individuato last_correct_event: %f\n", last_correct_event->timestamp);
+//    printf("Last restore state is: %f\n", list_tail(LPS[lid]->queue_states)->lvt);
+#endif
+
 	event_with_log = last_correct_event;
 	while(event_with_log != LPS[lid]->old_bound && event_with_log->checkpoint_of_event == NULL) {
 		event_with_log = list_next(event_with_log);
@@ -277,7 +281,9 @@ void rollback(unsigned int lid) {
 			printf("%p (%f), ", event_with_log, event_with_log->timestamp);
 	}
 
-	printf("Individuato event_with_log: %f\n", event_with_log->timestamp);
+#ifndef NDEBUG
+//	printf("Individuato event_with_log: %f\n", event_with_log->timestamp);
+#endif
 
 	// No state to restore. We're in the last section of the forward execution.
 	// We don't need to restore a state, we just undo the latest events
@@ -299,7 +305,8 @@ void rollback(unsigned int lid) {
 			while(s != NULL) {
 				printf("@");
 				log_delete(s->log);
-				s->last_event->checkpoint_of_event = NULL;
+				if(s->last_event != NULL)
+					s->last_event->checkpoint_of_event = NULL;
 				s->last_event = (void *)0xDEADC0DE;
 				s1 = list_next(s);
 				list_delete_by_content(lid, LPS[lid]->queue_states, s);
@@ -323,6 +330,9 @@ void rollback(unsigned int lid) {
 	
     out:
 #endif
+
+
+
 //	printf("(%d) Lazy Cancellation-------------\n", lid);
 //	printf("\told bound: %p (%d, %d, %f) to %d %s\n", LPS[lid]->old_bound, LPS[lid]->old_bound->mark, LPS[lid]->old_bound->type, LPS[lid]->old_bound->timestamp, LPS[lid]->old_bound->receiver, (LPS[lid]->old_bound->marked_by_antimessage ? "marked": ""));
 	while(last_correct_event != NULL && last_correct_event != LPS[lid]->old_bound) {

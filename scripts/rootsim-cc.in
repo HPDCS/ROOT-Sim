@@ -16,7 +16,7 @@
 # Global configuration variables
 ##############################################################################
 CC="@CC@"
-CFLAGS="@CFLAGS@"
+CFLAGS="@CFLAGS@ -O0"
 VERSION="@VERSION@"
 bindir="@bindir@"
 libdir="@libdir@"

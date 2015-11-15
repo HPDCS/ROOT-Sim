@@ -241,7 +241,7 @@ static void choose_strategy() {
 	// Choose the strategy: if the current fragmentation
 	// is lower than a certain threshold it is reasonable
 	// to coalesce reversing instrucitons to one chunk
-	if(frag < REVERSE_THRESHOLD) {
+	if(0 && frag < REVERSE_THRESHOLD) {
 		if(strategy.current != STRATEGY_CHUNK)
 			printf("Strategy switch to Chunk\n");
 		
@@ -528,7 +528,8 @@ void reverse_init(size_t revwin_size) {
 	// TODO: da eliminare!
 	// Allocate 1024 bytes for a limited memory which emulates
 	// the future stack of the execute_undo_event()'s stack
-	estack = umalloc(current_lp, REVWIN_STACK_SIZE);
+	//estack = umalloc(current_lp, REVWIN_STACK_SIZE);
+	estack = rsalloc(REVWIN_STACK_SIZE);
 	if(estack == NULL) {
 		perror("Failed to allocate the emulated stack window\n");
 		abort();
@@ -617,6 +618,9 @@ void print_cache_stats() {
  * @param address The pointer to the memeory location which the MOV refers to
  * @param size The size of data will be written by MOV
  */
+
+#define SIMULATED_INCREMENTAL_CKPT if(0)
+
 void reverse_code_generator(const void *address, const size_t size) {
 	void *chunk_address;
 	size_t chunk_size;
@@ -624,6 +628,7 @@ void reverse_code_generator(const void *address, const size_t size) {
 	bool dominant;
 	revwin_t *win;
 
+	//SIMULATED_INCREMENTAL_CKPT return;
 	
 	// We have to retrieve the current event structure bound to this LP
 	// in order to bind this reverse window to it.
@@ -767,8 +772,10 @@ void execute_undo_event(unsigned int lid, revwin_t *win, void *event) {
 		printf("[%d] :: Emulated stack NULL!\n", tid);
 		abort();
 	}
-	__asm__ volatile ("movq %%rsp, %0\n\t"
-					  "movq %1, %%rsp" : "=m" (orig_stack) : "m" (estack));
+
+	// TODO: cambiare stack è inutile
+//	__asm__ volatile ("movq %%rsp, %0\n\t"
+//			  "movq %1, %%rsp" : "=m" (orig_stack) : "m" (estack) : "rsp");
 
 	// TODO: this is not necessary, actually
 	// emulated stack prevents only that possible spurious
@@ -779,7 +786,7 @@ void execute_undo_event(unsigned int lid, revwin_t *win, void *event) {
 	((void (*)(void))revcode) ();
 
 	// Replace the original stack on the relative register
-	__asm__ volatile ("movq %0, %%rsp" : : "m" (orig_stack));
+//	__asm__ volatile ("movq %0, %%rsp" : : "m" (orig_stack) : "rsp");
 
 	double elapsed = (double)timer_value_micro(reverse_block_timer);
 	statistics_post_lp_data(lid, STAT_REVERSE_EXECUTE, 1.0);

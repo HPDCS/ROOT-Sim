@@ -53,7 +53,7 @@ static unsigned long long snapshot_cycles;
 void fossil_collection(unsigned int lid, simtime_t time_barrier) {
 	state_t *state;
 	msg_t *last_kept_event, *evt;
-	double committed_events;
+	double committed_events = 0;
 
 	time_barrier = 0.7 * time_barrier;
 
@@ -66,27 +66,33 @@ void fossil_collection(unsigned int lid, simtime_t time_barrier) {
 	}
 
 	// Determine queue pruning horizon
+	if(list_head(LPS[lid]->queue_states) == NULL)
+		return;
 	last_kept_event = list_head(LPS[lid]->queue_states)->last_event;
 
 	#ifdef HAVE_REVERSE
 	// Destroy reverse windows of events which will be pruned
-	evt = list_prev(last_kept_event);
+	if(last_kept_event != NULL) {
+		evt = list_prev(last_kept_event);
 //	printf("******* PRUNING REVWINS ***********\n");
-	while(evt != NULL) {
+		while(evt != NULL) {
 //		printf("evt: %p (%d, %f) - revwin: %p size %d\n", evt, evt->type, evt->timestamp, evt->revwin, revwin_size(evt->revwin));
-		revwin_free(evt->receiver, evt->revwin);
-		evt->revwin = NULL;
-		evt = list_prev(evt);
+			revwin_free(evt->receiver, evt->revwin);
+			evt->revwin = NULL;
+			evt = list_prev(evt);
+		}
 	}
 //	printf("******* DONE ***********\n");
 	#endif
 
 	// Truncate the input queue, accounting for the event which is pointed by the lastly kept state
-	committed_events = (double)list_trunc_before(lid, LPS[lid]->queue_in, timestamp, last_kept_event->timestamp);
+	if(last_kept_event != NULL)
+		committed_events = (double)list_trunc_before(lid, LPS[lid]->queue_in, timestamp, last_kept_event->timestamp);
 	statistics_post_lp_data(lid, STAT_COMMITTED, committed_events);
 
 	// Truncate the output queue
-	list_trunc_before(lid, LPS[lid]->queue_out, send_time, last_kept_event->timestamp);
+	if(last_kept_event != NULL)
+		list_trunc_before(lid, LPS[lid]->queue_out, send_time, last_kept_event->timestamp);
 
 }
 

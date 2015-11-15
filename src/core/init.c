@@ -193,7 +193,7 @@ static int parse_cmd_line(int argc, char **argv) {
 					rootsim_error(false, "Some options are conflicting: Copy State Saving is selected, but I'm requested to set a checkpointing interval. Skipping the -p option.\n");
 				} else {
 					rootsim_config.checkpointing = PERIODIC_STATE_SAVING;
-					rootsim_config.ckpt_period = parseIntLimits(optarg, 1, 40);
+					rootsim_config.ckpt_period = parseIntLimits(optarg, 1, 101);
 					// This is a micro optimization that makes the LogState function to avoid checking the checkpointing interval and keeping track of the logs taken
 					if(rootsim_config.ckpt_period == 1) {
 						rootsim_config.checkpointing = COPY_STATE_SAVING;
