@@ -416,7 +416,6 @@ static long rs_ktblmgr_ioctl(struct file *filp, unsigned int cmd, unsigned long 
 				goto pgd_get_done;
 			}
 		}
-		printk(KERN_ERR "[IOCTL_GET_PGD] afterfor");
 		ret = -1;
 		pgd_get_done:
 		mutex_unlock(&pgd_get_mutex);
@@ -445,28 +444,65 @@ back_to_pgd_release:
 		//scheduled_object = ((ioctl_info*)arg)->id;
 		scheduled_objects_count = ((ioctl_info*)arg)->count;
 		scheduled_objects = ((ioctl_info*)arg)->objects;
+//TODO MN
+		void** sheduled_mmaps_pointers;
+		sheduled_mmaps_pointers = ((ioctl_info*)arg)->objects_mmap_pointers;
+		int* scheduled_mmaps_sizes;
+		scheduled_mmaps_sizes = ((ioctl_info*)arg)->objects_mmap_sizes;
+		int obj_mmap_count;
+		obj_mmap_count = ((ioctl_info*)arg)->objects_mmap_count;
+		int obj_mem_size;
+		
+
 		//scheduled_object = ((ioctl_info*)arg)->id;
 		if (original_view[descriptor] != NULL) { //sanity check
 
 			for(i=0;i<scheduled_objects_count;i++){
+				//scheduled_object = TODO COPY FROM USER;
+		        	copy_from_user((void *)&scheduled_object,(void *)&scheduled_objects[i],sizeof(int));	
+				open_index[descriptor]++;
+				currently_open[descriptor][open_index[descriptor]]=scheduled_object;
+				//loadCR3 with pgd[arg]
+			}	
 
-			//scheduled_object = TODO COPY FROM USER;
-		        copy_from_user((void *)&scheduled_object,(void *)&scheduled_objects[i],sizeof(int));	
-			open_index[descriptor]++;
-			currently_open[descriptor][open_index[descriptor]]=scheduled_object;
-			//loadCR3 with pgd[arg]
+			int index_mdt;
+			int pgd;
+    			int pud;
+    			int pmd;
+			for(index_mdt=0; index_mdt<obj_mmap_count; index_mdt++){
+		        	copy_from_user((void *)&obj_mem_size,(void *)&scheduled_mmaps_sizes[index_mdt],sizeof(int));
+				
+				 int involved_pde = (obj_mem_size) >> 9; 
+                       		 if ( (unsigned)(obj_mem_size) & 0x00000000000001ff ) involved_pde++;
+				
+				//Index of PML4	
+				pgd = pgd_index((unsigned long) sheduled_mmaps_pointers[index_mdt]);
+    				
+				//PML4 of current
+				my_pgd =(void **) pgd_addr[descriptor];
+				//Entry PML4
+				my_pdp =(void *) my_pgd[pgd];
+				//Clean control bit
+				my_pdp = __va((ulong)my_pdp & 0xfffffffffffff000);
+				
+				//Likewise for the original
+				ancestor_pdp =(void *) ancestor_pml4[pgd];
+				ancestor_pdp = __va((ulong)ancestor_pdp & 0xfffffffffffff000);
 			
-			pml4 = restore_pml4 + OBJECT_TO_PML4(scheduled_object);
-			my_pgd =(void **) pgd_addr[descriptor];
-			my_pdp =(void *) my_pgd[pml4];
-			my_pdp = __va((ulong)my_pdp & 0xfffffffffffff000);
-
-			ancestor_pdp =(void *) ancestor_pml4[pml4];
-			ancestor_pdp = __va((ulong)ancestor_pdp & 0xfffffffffffff000);
-
-			/* actual opening of the PDP entry */
-			my_pdp[OBJECT_TO_PDP(scheduled_object)] = ancestor_pdp[OBJECT_TO_PDP(scheduled_object)];
-			}// end for 
+				//Index of PTD		
+				pud = pud_index((unsigned long) sheduled_mmaps_pointers[index_mdt]);
+				
+				//Entry PDE
+				void** my_pde =(void *)my_pdp[pud]; 
+				void** ancestor_pde =(void *)ancestor_pdp[pud]; 
+				
+				//Update PDE address
+				int pde_index;
+    				pmd = pmd_index((unsigned long) sheduled_mmaps_pointers[index_mdt]);
+				for(pde_index = 0; pde_index<involved_pde; pde_index++){
+					my_pde[pmd+pde_index] = ancestor_pde[pmd+pde_index];
+				}
+			}
 
 			/* actual change of the view on memory */
 			root_sim_processes[descriptor] = current->pid;
@@ -869,38 +905,48 @@ bridging_from_get_pgd:
 	//		break;
 
 			for (i=0; i</*involved_pml4*/512; i++){
-			
-//			 	printk("\tPML4 ENTRY FOR CHANGE VIEW IS %d\n",pml4);
-
+				
+				//New page
 				address = (void *)__get_free_pages(GFP_KERNEL, 0); /* allocate and reset new PDP */
 				memset(address,0,4096);
-			
-				temp = pgd_entry[pml4];
-//				printk("changing this value %p\n",temp);
+				printk(KERN_ERR "New page address: %p\n",address);
 				
+				//PGD entry	
+				temp = pgd_entry[i];
+				
+				//Update control bit & address
 				temp = (void *)((ulong) temp & 0x0000000000000fff);	
+				printk(KERN_ERR "Control bit: %p\n",temp);
 				address = (void *)__pa(address);
 				temp = (void *)((ulong)address | (ulong)temp);
-	//			temp1 = pgd_entry[pml4];
-				pgd_entry[pml4] = temp;
-	//			pgd_entry[pml4] = temp1;
+				pgd_entry[i] = temp;
+				printk(KERN_ERR "New PGD entry address [PA]: %p\n",pgd_entry[i]);
 				
 				//TODO MN
 				//Create second level
 				int j;
+				void* temp_pde;
+				void** pmd_entry; 
+				pgd_entry[i]= (void *)(__va(pgd_entry[i]));
+				pmd_entry = (void **)(pgd_entry[i]);
+				printk(KERN_ERR "New PGD entry address [VA]: %p\n",pmd_entry);
+
 				for(j=0;j<512;j++){
-					address_pde = (void *)__get_free_pages(GFP_KERNEL, 0); /* allocate and reset new PDE */
-                                	memset(address_pde,0,4096);
-
-                                	temp_pde = temp[j];
-
+					//New page
+					address = (void *)__get_free_pages(GFP_KERNEL, 0); /* allocate and reset new PDE */
+                                	memset(address,0,4096);
+					
+					//PDPTE entry
+					printk(KERN_ERR "PDPTE base pointer: %p\n",pmd_entry);
+					temp_pde = pmd_entry[j];
+					printk(KERN_ERR "PDPTE entry: %p\n",temp_pde);
+					
+                                	//Update control bit & address
                                 	temp_pde = (void *)((ulong) temp_pde & 0x0000000000000fff);
-                                	address_pde = (void *)__pa(address_pde);
-                                	temp_pde = (void *)((ulong)address_pde | (ulong)temp_pde);
+                                	address = (void *)__pa(address);
+                                	temp_pde = (void *)((ulong)address | (ulong)temp_pde);
                                 	temp[j]=temp_pde;
 				}
-
-				pml4++;
 
 			}
 			

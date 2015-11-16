@@ -39,6 +39,7 @@
 
 #include <core/core.h>
 //#include <mm/malloc.h>
+#include <mm/allocator.h>
 #include <mm/dymelor.h>
 #include <scheduler/scheduler.h>
 #include <scheduler/process.h>
@@ -273,20 +274,34 @@ void lp_alloc_thread_init(void) {
 
 void lp_alloc_schedule(void) {
 	
-malloc_state *m_state_rec;
-malloc_state *m_state_unrec;
-
 	ioctl_info sched_info;
 	
 	sched_info.ds = pgd_ds; // this is current
 	sched_info.count = LPS[current_lp]->ECS_index + 1; // it's a counter
-	sched_info.objects = LPS[current_lp]->ECS_synch_table; // pgd descriptor range from 0 to number threads - a subset of object ids 
-//TODO MN	
-m_state_rec = get_recoverable_state(current_lp);
-m_state_unrec = get_unrecoverable_state(current_lp);
-printf("Numero aree rec = %d\n",m_state_rec->num_areas);
-printf("Numero aree unrec = %d\n",m_state_unrec->num_areas);
-return;	
+	sched_info.objects = LPS[current_lp]->ECS_synch_table; // pgd descriptor range from 0 to number threads - a subset of object ids 	
+
+	//TODO MN
+	sched_info.objects_mmap_count = 0;
+	int i;
+	mem_map* mmap;
+	for(i=0;i<sched_info.count;i++)	{
+		mmap =  get_m_map(sched_info.objects[i]);
+		sched_info.objects_mmap_count += mmap->active;	
+	}
+	
+	sched_info.objects_mmap_pointers = rsalloc(sizeof(void *) * sched_info.objects_mmap_count);	
+	sched_info.objects_mmap_sizes = rsalloc(sizeof(int) * sched_info.objects_mmap_count);
+	for(i=0;i<sched_info.count;i++) {
+                mmap = get_m_map(sched_info.objects[i]);
+		int j;
+		for(j=0; j<mmap->active; j++){
+			mdt_entry *mdte = (mdt_entry *)mmap->base+j;
+			sched_info.objects_mmap_pointers[i]=(void *)mdte->addr;
+			sched_info.objects_mmap_sizes[i]=mdte->numpages;
+		}
+        }
+	
+	//return;	
 
 	/* passing into LP mode - here for the pgd_ds-th LP */
 	ioctl(ioctl_fd,IOCTL_SCHEDULE_ON_PGD, &sched_info);
