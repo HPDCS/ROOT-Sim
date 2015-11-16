@@ -169,8 +169,4 @@ void *ucalloc(unsigned int lid, size_t nmemb, size_t size) {
 	return buffer;
 }
 
-//TODO MN
-malloc_state *get_unrecoverable_state(int lid){
-        return unrecoverable_state[lid];
-}
 

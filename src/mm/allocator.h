@@ -92,7 +92,7 @@ void set_BH_map(mem_map* );
 int init_BH(void);
 int insert_BH(int , void*, int );
 void* get_BH(int);
-
+void* get_m_map(int);
 
 #ifdef HAVE_NUMA
 int get_numa_node(int);
