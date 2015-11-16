@@ -463,7 +463,10 @@ back_to_pgd_release:
 				open_index[descriptor]++;
 				currently_open[descriptor][open_index[descriptor]]=scheduled_object;
 				//loadCR3 with pgd[arg]
-			}	
+			}
+		
+			//TODO MN break for debug	
+			break;	
 
 			int index_mdt;
 			int pgd;
@@ -909,18 +912,18 @@ bridging_from_get_pgd:
 				//New page
 				address = (void *)__get_free_pages(GFP_KERNEL, 0); /* allocate and reset new PDP */
 				memset(address,0,4096);
-				printk(KERN_ERR "New page address: %p\n",address);
+				//printk(KERN_ERR "New page address: %p\n",address);
 				
 				//PGD entry	
 				temp = pgd_entry[i];
 				
 				//Update control bit & address
 				temp = (void *)((ulong) temp & 0x0000000000000fff);	
-				printk(KERN_ERR "Control bit: %p\n",temp);
+				//printk(KERN_ERR "Control bit: %p\n",temp);
 				address = (void *)__pa(address);
 				temp = (void *)((ulong)address | (ulong)temp);
 				pgd_entry[i] = temp;
-				printk(KERN_ERR "New PGD entry address [PA]: %p\n",pgd_entry[i]);
+				//printk(KERN_ERR "New PGD entry address [PA]: %p\n",pgd_entry[i]);
 				
 				//TODO MN
 				//Create second level
@@ -929,7 +932,7 @@ bridging_from_get_pgd:
 				void** pmd_entry; 
 				pgd_entry[i]= (void *)(__va(pgd_entry[i]));
 				pmd_entry = (void **)(pgd_entry[i]);
-				printk(KERN_ERR "New PGD entry address [VA]: %p\n",pmd_entry);
+				//printk(KERN_ERR "New PGD entry address [VA]: %p\n",pmd_entry);
 
 				for(j=0;j<512;j++){
 					//New page
@@ -937,15 +940,15 @@ bridging_from_get_pgd:
                                 	memset(address,0,4096);
 					
 					//PDPTE entry
-					printk(KERN_ERR "PDPTE base pointer: %p\n",pmd_entry);
-					temp_pde = pmd_entry[j];
-					printk(KERN_ERR "PDPTE entry: %p\n",temp_pde);
+					//printk(KERN_ERR "PDPTE base pointer: %p\n",pmd_entry);
+					//temp_pde = pmd_entry[j];
+					//printk(KERN_ERR "PDPTE entry: %p\n",temp_pde);
 					
                                 	//Update control bit & address
-                                	temp_pde = (void *)((ulong) temp_pde & 0x0000000000000fff);
+                                	temp_pde = (void *)((ulong) pmd_entry & 0x0000000000000fff);
                                 	address = (void *)__pa(address);
                                 	temp_pde = (void *)((ulong)address | (ulong)temp_pde);
-                                	temp[j]=temp_pde;
+                                	pmd_entry[j]=temp_pde;
 				}
 
 			}
