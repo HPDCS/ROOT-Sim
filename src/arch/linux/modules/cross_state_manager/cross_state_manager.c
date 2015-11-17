@@ -465,8 +465,6 @@ back_to_pgd_release:
 				//loadCR3 with pgd[arg]
 			}
 		
-			//TODO MN break for debug	
-			break;	
 
 			int index_mdt;
 			int pgd;
@@ -477,6 +475,7 @@ back_to_pgd_release:
 				
 				 int involved_pde = (obj_mem_size) >> 9; 
                        		 if ( (unsigned)(obj_mem_size) & 0x00000000000001ff ) involved_pde++;
+				printk(KERN_ERR "involved_pde: %d\n",involved_pde);
 				
 				//Index of PML4	
 				pgd = pgd_index((unsigned long) sheduled_mmaps_pointers[index_mdt]);
@@ -485,27 +484,40 @@ back_to_pgd_release:
 				my_pgd =(void **) pgd_addr[descriptor];
 				//Entry PML4
 				my_pdp =(void *) my_pgd[pgd];
+	
+				printk(KERN_ERR "my_pdp: %p\n",my_pdp);
 				//Clean control bit
-				my_pdp = __va((ulong)my_pdp & 0xfffffffffffff000);
+				//my_pdp = __va((ulong)my_pdp & 0xfffffffffffff000);
 				
 				//Likewise for the original
 				ancestor_pdp =(void *) ancestor_pml4[pgd];
 				ancestor_pdp = __va((ulong)ancestor_pdp & 0xfffffffffffff000);
 			
+				printk(KERN_ERR "ancestor_pdp: %p\n",ancestor_pdp);
 				//Index of PTD		
 				pud = pud_index((unsigned long) sheduled_mmaps_pointers[index_mdt]);
 				
+				printk(KERN_ERR "Value of entry pud: %d\n",pud);
 				//Entry PDE
 				void** my_pde =(void *)my_pdp[pud]; 
+				printk(KERN_ERR "Value of entry my_pde: %p\n",my_pde);
 				void** ancestor_pde =(void *)ancestor_pdp[pud]; 
+				printk(KERN_ERR "Value of entry pde: ancestor_pde= %p & my_pde= %p\n",ancestor_pde,my_pde);
+				ancestor_pde = __va((ulong)ancestor_pde & 0xfffffffffffff000);
+				my_pde = __va((ulong)my_pde & 0xfffffffffffff000);
 				
 				//Update PDE address
 				int pde_index;
     				pmd = pmd_index((unsigned long) sheduled_mmaps_pointers[index_mdt]);
 				for(pde_index = 0; pde_index<involved_pde; pde_index++){
+					//printk(KERN_ERR "Value of entry my_pde[%d]: %p\n",pmd,my_pde[pmd+pde_index]);
+					printk(KERN_ERR "Value of entry ancestor_pde[%d]: %p\n",pmd,ancestor_pde[pmd+pde_index]);
 					my_pde[pmd+pde_index] = ancestor_pde[pmd+pde_index];
 				}
 			}
+			
+			//TODO MN DEBUG	
+			break;
 
 			/* actual change of the view on memory */
 			root_sim_processes[descriptor] = current->pid;
