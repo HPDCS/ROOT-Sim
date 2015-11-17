@@ -470,12 +470,16 @@ back_to_pgd_release:
 			int pgd;
     			int pud;
     			int pmd;
+			
+			printk(KERN_ERR "obj_mmap_count: %d\n",obj_mmap_count);
 			for(index_mdt=0; index_mdt<obj_mmap_count; index_mdt++){
+					
 		        	copy_from_user((void *)&obj_mem_size,(void *)&scheduled_mmaps_sizes[index_mdt],sizeof(int));
+				int involved_pde = (obj_mem_size) >> 9; 
+                       		if ( (unsigned)(obj_mem_size) & 0x00000000000001ff ) involved_pde++;
 				
-				 int involved_pde = (obj_mem_size) >> 9; 
-                       		 if ( (unsigned)(obj_mem_size) & 0x00000000000001ff ) involved_pde++;
-				printk(KERN_ERR "involved_pde: %d\n",involved_pde);
+				printk(KERN_ERR "index_mdt:%d \t obj_mem_size:%d \t  involved_pde:%d\n",index_mdt,obj_mem_size,involved_pde);
+				printk(KERN_ERR "sheduled_mmaps_pointers[%d]:%p\n",index_mdt,sheduled_mmaps_pointers[index_mdt]);	
 				
 				//Index of PML4	
 				pgd = pgd_index((unsigned long) sheduled_mmaps_pointers[index_mdt]);
@@ -484,16 +488,16 @@ back_to_pgd_release:
 				my_pgd =(void **) pgd_addr[descriptor];
 				//Entry PML4
 				my_pdp =(void *) my_pgd[pgd];
-	
 				printk(KERN_ERR "my_pdp: %p\n",my_pdp);
+				
 				//Clean control bit
 				//my_pdp = __va((ulong)my_pdp & 0xfffffffffffff000);
 				
 				//Likewise for the original
 				ancestor_pdp =(void *) ancestor_pml4[pgd];
 				ancestor_pdp = __va((ulong)ancestor_pdp & 0xfffffffffffff000);
-			
 				printk(KERN_ERR "ancestor_pdp: %p\n",ancestor_pdp);
+
 				//Index of PTD		
 				pud = pud_index((unsigned long) sheduled_mmaps_pointers[index_mdt]);
 				
@@ -503,6 +507,7 @@ back_to_pgd_release:
 				printk(KERN_ERR "Value of entry my_pde: %p\n",my_pde);
 				void** ancestor_pde =(void *)ancestor_pdp[pud]; 
 				printk(KERN_ERR "Value of entry pde: ancestor_pde= %p & my_pde= %p\n",ancestor_pde,my_pde);
+				
 				ancestor_pde = __va((ulong)ancestor_pde & 0xfffffffffffff000);
 				my_pde = __va((ulong)my_pde & 0xfffffffffffff000);
 				
@@ -928,43 +933,72 @@ bridging_from_get_pgd:
 				
 				//PGD entry	
 				temp = pgd_entry[i];
+				if(temp != NULL){	
+					//Update control bit & address
+					temp = (void *)((ulong) temp & 0x0000000000000fff);	
+					//printk(KERN_ERR "Control bit: %p\n",temp);
+					address = (void *)__pa(address);
+					temp = (void *)((ulong)address | (ulong)temp);
+					//printk(KERN_ERR "New PGD entry address [PA]: %p\n",pgd_entry[i]);
 				
-				//Update control bit & address
-				temp = (void *)((ulong) temp & 0x0000000000000fff);	
-				//printk(KERN_ERR "Control bit: %p\n",temp);
-				address = (void *)__pa(address);
-				temp = (void *)((ulong)address | (ulong)temp);
-				pgd_entry[i] = temp;
-				//printk(KERN_ERR "New PGD entry address [PA]: %p\n",pgd_entry[i]);
-				
-				//TODO MN
-				//Create second level
-				int j;
-				void* temp_pde;
-				void** pmd_entry; 
-				pgd_entry[i]= (void *)(__va(pgd_entry[i]));
-				pmd_entry = (void **)(pgd_entry[i]);
-				//printk(KERN_ERR "New PGD entry address [VA]: %p\n",pmd_entry);
+					//TODO MN
+					//Create second level
+					int j;
+					int first_j;
+					void* temp_pd;
+					void** pmd_entry;
+					void* addr_pdpt;
+					void** pdpt_entry;
+					void* temp_pgd_entry; 
+					temp_pgd_entry = (void *)((ulong) pgd_entry[i] & 0xfffffffffffff000);	
+					temp_pgd_entry = (void *)(__va(temp_pgd_entry));
+					pmd_entry = (void **)(temp_pgd_entry);
+					//printk(KERN_ERR "New PGD entry address [VA]: %p\n",pmd_entry);
+					
+					addr_pdpt = (void *)((ulong) temp & 0xfffffffffffff000);
+                                        addr_pdpt = (void *)(__va(addr_pdpt));
+					pdpt_entry = (void **)(addr_pdpt);
 
-				for(j=0;j<512;j++){
-					//New page
-					address = (void *)__get_free_pages(GFP_KERNEL, 0); /* allocate and reset new PDE */
-                                	memset(address,0,4096);
+					first_j = -1;
+					for(j=0;j<512;j++){
+						if(pmd_entry[j]!=NULL){
+							//New page
+							address = (void *)__get_free_pages(GFP_KERNEL, 0); /* allocate and reset new PDE */
+							memset(address,0,4096);
+							if(first_j == -1){
+                                                                printk(KERN_ERR "Value address new pd: %p\n",address);
+                                                                first_j=j;
+                                                        }
+
+						//PDPTE entry
+						//printk(KERN_ERR "PDPTE base pointer: %p\n",pmd_entry);
+						//temp_pde = pmd_entry[j];
+						//printk(KERN_ERR "PDPTE entry: %p\n",temp_pde);
 					
-					//PDPTE entry
-					//printk(KERN_ERR "PDPTE base pointer: %p\n",pmd_entry);
-					//temp_pde = pmd_entry[j];
-					//printk(KERN_ERR "PDPTE entry: %p\n",temp_pde);
+							//Update control bit & address
+							temp_pd = (void *)((ulong) pmd_entry[j] & 0x0000000000000fff);
+							address = (void *)__pa(address);
+							temp_pd = (void *)((ulong)address | (ulong)temp_pd);
+							pdpt_entry[j]=temp_pd;
+						}
+					}
+					pgd_entry[i] = temp;
+					/*
+                                        void** temp_pmd_entry;
+                                        temp_pgd_entry = (void *)((ulong) pgd_entry[i] & 0xfffffffffffff000);
+                                        temp_pgd_entry = (void *)(__va(temp_pgd_entry));
+                                        temp_pmd_entry = (void **)(temp_pgd_entry);
+					if(first_j != -1){
+						temp_pmd_entry[first_j] = (void *)((ulong) temp_pmd_entry[first_j] & 0xfffffffffffff000);
+						printk(KERN_ERR "Value temp_pmd_entry: %p\n",temp_pmd_entry[first_j]);
+					}
+					*/
 					
-                                	//Update control bit & address
-                                	temp_pde = (void *)((ulong) pmd_entry & 0x0000000000000fff);
-                                	address = (void *)__pa(address);
-                                	temp_pde = (void *)((ulong)address | (ulong)temp_pde);
-                                	pmd_entry[j]=temp_pde;
-				}
+				}	
 
 			}
 			
+			printk("Done");
 	//		rootsim_load_cr3(pgd_addr[arg]);
 			//cr3 = (void *)__pa(current->mm->pgd);
 			//asm volatile("movq %%CR3, %%rax; andq $0x0fff,%%rax; movq %0, %%rbx; orq %%rbx,%%rax; movq %%rax,%%CR3"::"m" (cr3)); /* flush the TLB - to be optimized with selective invalidation */

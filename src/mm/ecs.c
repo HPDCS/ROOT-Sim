@@ -284,6 +284,8 @@ void lp_alloc_schedule(void) {
 	sched_info.objects_mmap_count = 0;
 	int i;
 	mem_map* mmap;
+	
+	printf("Value of sched_info.count = %d\n",sched_info.count);	
 	for(i=0;i<sched_info.count;i++)	{
 		mmap =  get_m_map(sched_info.objects[i]);
 		sched_info.objects_mmap_count += mmap->active;	
@@ -296,8 +298,9 @@ void lp_alloc_schedule(void) {
 		int j;
 		for(j=0; j<mmap->active; j++){
 			mdt_entry *mdte = (mdt_entry *)mmap->base+j;
-			sched_info.objects_mmap_pointers[i]=(void *)mdte->addr;
-			sched_info.objects_mmap_sizes[i]=mdte->numpages;
+			sched_info.objects_mmap_pointers[j]=(void *)mdte->addr;
+			sched_info.objects_mmap_sizes[j]=mdte->numpages;
+			printf("Value of active: %d \t mdte->addr: %p \t mdte->numpages: %d\n ",j,mdte->addr,mdte->numpages);
 		}
         }
 	
