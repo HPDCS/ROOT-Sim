@@ -158,6 +158,11 @@ int root_sim_page_fault(struct pt_regs* regs, long error_code){
 	ulong hitted_object;
 
 	if(current->mm == NULL) return 0;  /* this is a kernel thread - not a rootsim thread */
+	
+//TODO MN
+	return 0;
+
+	printk(KERN_ERR "Enter in page_fault\n");
 
 	target_address = (void *)read_cr2();
 
@@ -255,47 +260,48 @@ int rs_ktblmgr_open(struct inode *inode, struct file *filp) {
 
 
 int rs_ktblmgr_release(struct inode *inode, struct file *filp) {
-      	int i,j;
-	int pml4, pdp;
-	int involved_pml4;
-	void **pgd_entry;
-	void **temp;
-	void *address;
-
-//	printk("closing the special device file ktblmgr\n");
-
-
-//	mutex_unlock(&rs_ktblmgr_mutex);
-
-	/* already logged by ancestor set */
-	pml4 = restore_pml4; 
-	involved_pml4 = restore_pml4_entries;
-
-	for (j=0;j<SIBLING_PGD;j++){
-		if(original_view[j]!=NULL){ /* need to recover memory used for PDPs that have not been deallocated */
-
-
-			pgd_entry = (void **)pgd_addr[i];
-
-			for (i=0; i<involved_pml4; i++){
+      	int s,i,j;
+	void** pgd_entry;
+       	void* pml4_entry;
+       	void** pdpt_entry;
+        void* temp;
+        void* temp_pdpt;
+	
+	for (s=0;s<SIBLING_PGD;s++){
+		if(original_view[s]!=NULL){ /* need to recover memory used for PDPs that have not been deallocated */
 			
-//			 	printk("\tPML4 ENTRY FOR CLOSE DEVICE IS %d\n",pml4);
+			pgd_entry = (void **)pgd_addr[s];
+	
+                        for (i=0; i<PTRS_PER_PGD; i++){ 
+                                pml4_entry = pgd_entry[i];
 
-			
-				temp = pgd_entry[pml4];
-				
-				temp = (void *)((ulong) temp & 0xfffffffffffff000);	
-				address = (void *)__va(temp);
-				if(address!=NULL){
-					__free_pages(address, 0);
-				}
-				pgd_entry[pml4] = ancestor_pml4[pml4];
+                                if(pml4_entry != NULL){
+                                        temp = (void *)((ulong) pml4_entry & 0xfffffffffffff000);
+                                        temp = (void *)(__va(temp));
+                                        pdpt_entry = (void **)temp;
 
-			}// end for i
-			original_view[j]=NULL;
+                                        for(j=0; j<PTRS_PER_PUD; j++){
+                                                if(pdpt_entry[j] != NULL){
+                                                       temp_pdpt = (void *)((ulong) pdpt_entry[j] & 0xfffffffffffff000);
+                                                       temp_pdpt = (void *)(__va(temp_pdpt));
+							
+							if(temp_pdpt!=NULL)
+								__free_pages(temp_pdpt,0);
+                                                }
+                                        }
+					
+					if(temp!=NULL)
+                                        	__free_pages(temp,0);
+                                }
+			}	
+                        
+			__free_pages(pgd_entry,0);
+
+			original_view[s]=NULL;
 		}// enf if != NULL
-	}// end for j
-
+	}// end for s
+	
+	printk("Done release");
 	return 0;
 }
 
@@ -397,7 +403,7 @@ static long rs_ktblmgr_ioctl(struct file *filp, unsigned int cmd, unsigned long 
 	case IOCTL_SET_ANCESTOR_PGD:
 		//flush_cache_all();
 		ancestor_pml4 = (void **)current->mm->pgd;
-//		printk("ANCESTOR PML4 SET - ADDRESS IS %p\n",ancestor_pml4);
+	//	printk("ANCESTOR PML4 SET - ADDRESS IS %p\n",ancestor_pml4);
 		break;
 
 	case IOCTL_GET_PGD:
@@ -907,98 +913,92 @@ bridging_from_get_pgd:
 	case IOCTL_CHANGE_VIEW:
 //TODO MN
 			flush_cache_all();
-			//involved_pml4 = (((ioctl_info*)arg)->mapped_processes) >> 9; 
-			//if ( (unsigned)((ioctl_info*)arg)->mapped_processes & 0x00000000000001ff ) involved_pml4++;
-
-
-
-//			pml4 = PML4(((ioctl_info*)arg)->addr);
-
-			/* already logged by ancestro set */
-	//		pml4 = restore_pml4; 
-	//		involved_pml4 = restore_pml4_entries;
-
-		// patch	pgd_entry = (void **)current->mm->pgd;
+						
 			pgd_entry = (void **)pgd_addr[arg];
-//		printk("CHANGE VIEW INVOLVING %u PROCESSES AND %d PML4 ENTRIES STARTING FROM ENTRY %d\n",mapped_processes,involved_pml4,pml4);
+		        
+			void** original_pdpt_entry;
+			void* pml4_entry;
+			void* address_pdpt;
+			void** new_pdpt_entry;
+			void* address_pd;
+			//void* temp;
+			for (i=0; i<PTRS_PER_PGD; i++){
+				//Current entry         
+				pml4_entry = pgd_entry[i];
 
-	//		break;
+				if(pml4_entry != NULL){
+					//New page PDPT
+					address_pdpt = (void *)__get_free_pages(GFP_KERNEL, 0);
+					memset(address_pdpt,0,4096);
 
-			for (i=0; i</*involved_pml4*/512; i++){
-				
-				//New page
-				address = (void *)__get_free_pages(GFP_KERNEL, 0); /* allocate and reset new PDP */
-				memset(address,0,4096);
-				//printk(KERN_ERR "New page address: %p\n",address);
-				
-				//PGD entry	
-				temp = pgd_entry[i];
-				if(temp != NULL){	
-					//Update control bit & address
-					temp = (void *)((ulong) temp & 0x0000000000000fff);	
-					//printk(KERN_ERR "Control bit: %p\n",temp);
-					address = (void *)__pa(address);
-					temp = (void *)((ulong)address | (ulong)temp);
-					//printk(KERN_ERR "New PGD entry address [PA]: %p\n",pgd_entry[i]);
-				
-					//TODO MN
-					//Create second level
+					//Control bits
+					pml4_entry = (void *)((ulong) pml4_entry & 0x0000000000000fff);
+
+					//Final value of PML4E
+					address_pdpt = (void *)__pa(address_pdpt);
+					pml4_entry = (void *)((ulong)address_pdpt | (ulong)pml4_entry);
+
+					//Pointer to Orinal PDPT
+					temp = (void *)((ulong) pgd_entry[i] & 0xfffffffffffff000);
+					temp = (void *)(__va(temp));
+					original_pdpt_entry = (void **)temp;
+
+					//Pointer to new PDPT                   
+					temp = (void *)((ulong) pml4_entry & 0xfffffffffffff000);
+					temp = (void *)(__va(temp));
+					new_pdpt_entry = (void **)temp;
+
 					int j;
-					int first_j;
-					void* temp_pd;
-					void** pmd_entry;
-					void* addr_pdpt;
-					void** pdpt_entry;
-					void* temp_pgd_entry; 
-					temp_pgd_entry = (void *)((ulong) pgd_entry[i] & 0xfffffffffffff000);	
-					temp_pgd_entry = (void *)(__va(temp_pgd_entry));
-					pmd_entry = (void **)(temp_pgd_entry);
-					//printk(KERN_ERR "New PGD entry address [VA]: %p\n",pmd_entry);
-					
-					addr_pdpt = (void *)((ulong) temp & 0xfffffffffffff000);
-                                        addr_pdpt = (void *)(__va(addr_pdpt));
-					pdpt_entry = (void **)(addr_pdpt);
+					void* address_pd;
+					void* pdpt_entry;
+					for(j=0; j<PTRS_PER_PUD; j++){
+						if(original_pdpt_entry[j] != NULL){
+							//Control bits
+							pdpt_entry = (void *)((ulong) original_pdpt_entry[j] & 0x0000000000000fff);
+							
+							/*if(!((ulong)pdpt_entry ^ 0x0000000000000061)){
+								printk(KERN_ERR "i:%d j:%d \t",i,j);
+								pdpt_entry = original_pdpt_entry[j];
+							}
+							else{*/
+								//New page PD
+								address_pd = (void *)__get_free_pages(GFP_KERNEL, 0);
+								memset(address_pd,0,4096);
 
-					first_j = -1;
-					for(j=0;j<512;j++){
-						if(pmd_entry[j]!=NULL){
-							//New page
-							address = (void *)__get_free_pages(GFP_KERNEL, 0); /* allocate and reset new PDE */
-							memset(address,0,4096);
-							if(first_j == -1){
-                                                                printk(KERN_ERR "Value address new pd: %p\n",address);
-                                                                first_j=j;
-                                                        }
+								//Final value of PDPTE
+								address_pd = (void *)__pa(address_pd);
+								pdpt_entry = (void *)((ulong)address_pd | (ulong)pdpt_entry);
 
-						//PDPTE entry
-						//printk(KERN_ERR "PDPTE base pointer: %p\n",pmd_entry);
-						//temp_pde = pmd_entry[j];
-						//printk(KERN_ERR "PDPTE entry: %p\n",temp_pde);
-					
-							//Update control bit & address
-							temp_pd = (void *)((ulong) pmd_entry[j] & 0x0000000000000fff);
-							address = (void *)__pa(address);
-							temp_pd = (void *)((ulong)address | (ulong)temp_pd);
-							pdpt_entry[j]=temp_pd;
+								void** new_pd_entry;
+								void** original_pd_entry;
+
+								//Pointer to new PD                  
+								temp = (void *)((ulong) pdpt_entry & 0xfffffffffffff000);
+								temp = (void *)(__va(temp));
+								new_pd_entry = (void **)temp;
+
+								//Pointer to Orinal PD
+								temp = (void *)((ulong) original_pdpt_entry[j] & 0xfffffffffffff000);
+								temp = (void *)(__va(temp));
+								original_pd_entry = (void **)temp;
+								int y;
+								/*for(y=0; y<PTRS_PER_PMD; y++)
+									if(original_pd_entry[y] != NULL)
+										new_pd_entry[y] = original_pd_entry[y];*/
+							//}
+
+							//Update new PDPTE                                      
+							new_pdpt_entry[j] = pdpt_entry;
 						}
 					}
-					pgd_entry[i] = temp;
-					/*
-                                        void** temp_pmd_entry;
-                                        temp_pgd_entry = (void *)((ulong) pgd_entry[i] & 0xfffffffffffff000);
-                                        temp_pgd_entry = (void *)(__va(temp_pgd_entry));
-                                        temp_pmd_entry = (void **)(temp_pgd_entry);
-					if(first_j != -1){
-						temp_pmd_entry[first_j] = (void *)((ulong) temp_pmd_entry[first_j] & 0xfffffffffffff000);
-						printk(KERN_ERR "Value temp_pmd_entry: %p\n",temp_pmd_entry[first_j]);
-					}
-					*/
-					
-				}	
 
+					//Update new PML4E
+					pgd_entry[i] = pml4_entry;
+				}
 			}
-			
-			printk("Done");
+
+		
+			printk("Done\n");
 	//		rootsim_load_cr3(pgd_addr[arg]);
 			//cr3 = (void *)__pa(current->mm->pgd);
 			//asm volatile("movq %%CR3, %%rax; andq $0x0fff,%%rax; movq %0, %%rbx; orq %%rbx,%%rax; movq %%rax,%%CR3"::"m" (cr3)); /* flush the TLB - to be optimized with selective invalidation */

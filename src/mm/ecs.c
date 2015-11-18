@@ -253,6 +253,7 @@ void lp_alloc_thread_init(void) {
 
         ret = ioctl(ioctl_fd, IOCTL_SET_ANCESTOR_PGD);  //ioctl call
         printf("set ancestor returned %d\n",ret);
+	fflush(stdout);
 
         lp_memory_ioctl_info.ds = -1;
         lp_memory_ioctl_info.mapped_processes = n_prc;
@@ -262,6 +263,7 @@ void lp_alloc_thread_init(void) {
 
 
         printf("indirizzo originale %p, passato %p\n",  rootsim_cross_state_dependency_handler,  lp_memory_ioctl_info.callback);
+	fflush(stdout);
 
         ret = ioctl(ioctl_fd, IOCTL_SET_VM_RANGE, &lp_memory_ioctl_info);
 	
