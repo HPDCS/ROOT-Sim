@@ -473,9 +473,12 @@ back_to_pgd_release:
 		
 
 			int index_mdt;
-			int pgd;
-    			int pud;
-    			int pmd;
+			int pml4e;
+    			int pdpte;
+    			int pde;
+			void** pml4_table;
+			void* pml4_entry;
+			void* address_pdpt;
 			
 			printk(KERN_ERR "obj_mmap_count: %d\n",obj_mmap_count);
 			for(index_mdt=0; index_mdt<obj_mmap_count; index_mdt++){
@@ -488,12 +491,86 @@ back_to_pgd_release:
 				printk(KERN_ERR "sheduled_mmaps_pointers[%d]:%p\n",index_mdt,sheduled_mmaps_pointers[index_mdt]);	
 				
 				//Index of PML4	
-				pgd = pgd_index((unsigned long) sheduled_mmaps_pointers[index_mdt]);
+				pml4e = pgd_index((unsigned long) sheduled_mmaps_pointers[index_mdt]);
     				
 				//PML4 of current
-				my_pgd =(void **) pgd_addr[descriptor];
+				pml4_table =(void **) pgd_addr[descriptor];
 				//Entry PML4
-				my_pdp =(void *) my_pgd[pgd];
+				pml4_entry =(void *) pml4_table[pml4e];
+				if(pml4_entry==NULL){//DA QUI
+					//New page PDPT
+                                        address_pdpt = (void *)__get_free_pages(GFP_KERNEL, 0);
+                                        memset(address_pdpt,0,4096);
+
+                                        //Control bits
+                                        pml4_entry = (void *)((ulong) pml4_entry & 0x0000000000000fff);
+
+                                        //Final value of PML4E
+                                        address_pdpt = (void *)__pa(address_pdpt);
+                                        pml4_entry = (void *)((ulong)address_pdpt | (ulong)pml4_entry);
+
+                                        //Pointer to Orinal PDPT
+                                        temp = (void *)((ulong) pgd_entry[i] & 0xfffffffffffff000);
+                                        temp = (void *)(__va(temp));
+                                        original_pdpt_entry = (void **)temp;
+
+                                        //Pointer to new PDPT                   
+                                        temp = (void *)((ulong) pml4_entry & 0xfffffffffffff000);
+                                        temp = (void *)(__va(temp));
+                                        new_pdpt_entry = (void **)temp;
+
+                                        int j;
+                                        void* address_pd;
+                                        void* pdpt_entry;
+                                        for(j=0; j<PTRS_PER_PUD; j++){
+                                                if(original_pdpt_entry[j] != NULL){
+                                                        //Control bits
+                                                        pdpt_entry = (void *)((ulong) original_pdpt_entry[j] & 0x0000000000000fff);
+
+                                                        /*if(!((ulong)pdpt_entry ^ 0x0000000000000061)){
+                                                                printk(KERN_ERR "i:%d j:%d \t",i,j);
+                                                                pdpt_entry = original_pdpt_entry[j];
+                                                        }
+                                                        else{*/
+                                                                //New page PD
+                                                                address_pd = (void *)__get_free_pages(GFP_KERNEL, 0);
+                                                                memset(address_pd,0,4096);
+
+                                                                //Final value of PDPTE
+                                                                address_pd = (void *)__pa(address_pd);
+                                                                pdpt_entry = (void *)((ulong)address_pd | (ulong)pdpt_entry);
+
+                                                                void** new_pd_entry;
+                                                                void** original_pd_entry;
+
+                                                                //Pointer to new PD                  
+                                                                temp = (void *)((ulong) pdpt_entry & 0xfffffffffffff000);
+                                                                temp = (void *)(__va(temp));
+                                                                new_pd_entry = (void **)temp;
+
+                                                                //Pointer to Orinal PD
+                                                                temp = (void *)((ulong) original_pdpt_entry[j] & 0xfffffffffffff000);
+                                                                temp = (void *)(__va(temp));
+                                                                original_pd_entry = (void **)temp;
+                                                                int y;
+                                                                /*for(y=0; y<PTRS_PER_PMD; y++)
+                                                                        if(original_pd_entry[y] != NULL)
+                                                                                new_pd_entry[y] = original_pd_entry[y];*/
+                                                        //}
+
+                                                        //Update new PDPTE                                      
+                                                        new_pdpt_entry[j] = pdpt_entry;
+                                                }
+                                        }
+
+                                        //Update new PML4E
+                                        pgd_entry[i] = pml4_entry;
+	
+				
+				}
+				else{
+				
+				}
 				printk(KERN_ERR "my_pdp: %p\n",my_pdp);
 				
 				//Clean control bit

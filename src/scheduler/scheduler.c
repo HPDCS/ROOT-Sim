@@ -391,7 +391,6 @@ void initialize_worker_thread(void) {
 	for(i = 0; i < n_prc_per_thread; i++) {
 		schedule();
 	}
-return;
 
 	// Worker Threads synchronization barrier: they all should start working together
 	thread_barrier(&all_thread_barrier);
