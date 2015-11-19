@@ -301,7 +301,7 @@ int rs_ktblmgr_release(struct inode *inode, struct file *filp) {
 		}// enf if != NULL
 	}// end for s
 	
-	printk("Done release");
+	printk("\t Done release\n");
 	return 0;
 }
 
@@ -470,142 +470,137 @@ back_to_pgd_release:
 				currently_open[descriptor][open_index[descriptor]]=scheduled_object;
 				//loadCR3 with pgd[arg]
 			}
-		
-
+			
 			int index_mdt;
-			int pml4e;
-    			int pdpte;
-    			int pde;
-			void** pml4_table;
-			void* pml4_entry;
-			void* address_pdpt;
+                        int pml4_index;
+                        int pdpt_index;
+                        int pd_index;
+                        void** pml4_table;
+                        void* pml4_entry;
+                        void* address_pdpt;
+                        void* temp;
+                        void** original_pml4;
+                        void** original_pdpt;
+                        void** pdpt_table;
+                        void* address_pd;
+                        void* pdpt_entry;
+                        void** pd_table;
+                        void** original_pd;
+
+                        printk(KERN_ERR "obj_mmap_count: %d\n",obj_mmap_count);
+                        for(index_mdt=0; index_mdt<obj_mmap_count; index_mdt++){
+
+                            copy_from_user((void *)&obj_mem_size,(void *)&scheduled_mmaps_sizes[index_mdt],sizeof(int));
+                            int involved_pde = (obj_mem_size) >> 9;
+                            if ( (unsigned)(obj_mem_size) & 0x00000000000001ff ) involved_pde++;
+
+                            printk(KERN_ERR "index_mdt:%d \t obj_mem_size:%d \t  involved_pde:%d\n",index_mdt,obj_mem_size,involved_pde);
+                            printk(KERN_ERR "sheduled_mmaps_pointers[%d]:%p\n",index_mdt,sheduled_mmaps_pointers[index_mdt]);
+
+                            //Index of PML4 
+                            pml4_index = pgd_index((unsigned long) sheduled_mmaps_pointers[index_mdt]);
+
+                            //PML4 of current
+                            pml4_table =(void **) pgd_addr[descriptor];
+
+                            //Original PML4
+                            original_pml4 = (void **) original_view[descriptor]->pgd;
+
+                            //Entry PML4
+                            pml4_entry =(void *) pml4_table[pml4_index];
+                            
+                            if(original_pml4[pml4_index]==NULL){
+                                    printk(KERN_ERR "[SCHEDULE_ON_PGD]: Rootsim error original_pml4[%d]=NULL\n",pml4_index);
+                                    break;
+                            }
+
+                            if(pml4_entry==NULL){//DA QUI
+
+                                //New page PDPT
+                                address_pdpt = (void *)__get_free_pages(GFP_KERNEL, 0);
+                                memset(address_pdpt,0,4096);
+
+                                //Control bits
+                                pml4_entry = (void *)((ulong) original_pml4[pml4_index] & 0x0000000000000fff);
+
+                                //Final value of PML4E
+                                address_pdpt = (void *)__pa(address_pdpt);
+                                pml4_entry = (void *)((ulong)address_pdpt | (ulong)pml4_entry);
+                                printk(KERN_ERR "NEW PAGE PML4");
+
+                            }
+
+                            //Pointer to Original PDPT
+                            temp = (void *)((ulong) original_pml4[pml4_index] & 0xfffffffffffff000);
+                            temp = (void *)(__va(temp));
+                            original_pdpt = (void **)temp;
+
+                            //Pointer to new PDPT                   
+                            temp = (void *)((ulong) pml4_entry & 0xfffffffffffff000);
+                            temp = (void *)(__va(temp));
+                            pdpt_table = (void **)temp;
+				
+                            printk(KERN_ERR "pdpt_table: %p\n",pdpt_table);
 			
-			printk(KERN_ERR "obj_mmap_count: %d\n",obj_mmap_count);
-			for(index_mdt=0; index_mdt<obj_mmap_count; index_mdt++){
-					
-		        	copy_from_user((void *)&obj_mem_size,(void *)&scheduled_mmaps_sizes[index_mdt],sizeof(int));
-				int involved_pde = (obj_mem_size) >> 9; 
-                       		if ( (unsigned)(obj_mem_size) & 0x00000000000001ff ) involved_pde++;
-				
-				printk(KERN_ERR "index_mdt:%d \t obj_mem_size:%d \t  involved_pde:%d\n",index_mdt,obj_mem_size,involved_pde);
-				printk(KERN_ERR "sheduled_mmaps_pointers[%d]:%p\n",index_mdt,sheduled_mmaps_pointers[index_mdt]);	
-				
-				//Index of PML4	
-				pml4e = pgd_index((unsigned long) sheduled_mmaps_pointers[index_mdt]);
-    				
-				//PML4 of current
-				pml4_table =(void **) pgd_addr[descriptor];
-				//Entry PML4
-				pml4_entry =(void *) pml4_table[pml4e];
-				if(pml4_entry==NULL){//DA QUI
-					//New page PDPT
-                                        address_pdpt = (void *)__get_free_pages(GFP_KERNEL, 0);
-                                        memset(address_pdpt,0,4096);
+                            pdpt_index = pud_index((unsigned long) sheduled_mmaps_pointers[index_mdt]);
 
-                                        //Control bits
-                                        pml4_entry = (void *)((ulong) pml4_entry & 0x0000000000000fff);
+                            if(original_pdpt[pdpt_index] == NULL){
+                                printk(KERN_ERR "[SCHEDULE_ON_PGD]: Rootsim error original_pdpt[%d]=NULL\n",pdpt_index);
+                                break;
+                            }
 
-                                        //Final value of PML4E
-                                        address_pdpt = (void *)__pa(address_pdpt);
-                                        pml4_entry = (void *)((ulong)address_pdpt | (ulong)pml4_entry);
+                            pdpt_entry = (void *)pdpt_table[pdpt_index];
+                            if(pdpt_entry == NULL ){
+                                //New page PD
+                                address_pd = (void *)__get_free_pages(GFP_KERNEL, 0);
+                                memset(address_pd,0,4096);
 
-                                        //Pointer to Orinal PDPT
-                                        temp = (void *)((ulong) pgd_entry[i] & 0xfffffffffffff000);
-                                        temp = (void *)(__va(temp));
-                                        original_pdpt_entry = (void **)temp;
+                                //Control bits
+                                pdpt_entry = (void *)((ulong) original_pdpt[pdpt_index] & 0x0000000000000fff);
 
-                                        //Pointer to new PDPT                   
-                                        temp = (void *)((ulong) pml4_entry & 0xfffffffffffff000);
-                                        temp = (void *)(__va(temp));
-                                        new_pdpt_entry = (void **)temp;
+                                //Final value of PDPTE
+                                address_pd = (void *)__pa(address_pd);
+                                pdpt_entry = (void *)((ulong)address_pd | (ulong)pdpt_entry);
+                                printk(KERN_ERR "NEW PAGE PDPTE");
+                            }
 
-                                        int j;
-                                        void* address_pd;
-                                        void* pdpt_entry;
-                                        for(j=0; j<PTRS_PER_PUD; j++){
-                                                if(original_pdpt_entry[j] != NULL){
-                                                        //Control bits
-                                                        pdpt_entry = (void *)((ulong) original_pdpt_entry[j] & 0x0000000000000fff);
+                            //Pointer to new PD                  
+                            temp = (void *)((ulong) pdpt_entry & 0xfffffffffffff000);
+                            temp = (void *)(__va(temp));
+                            pd_table = (void **)temp;
+                            printk(KERN_ERR "pd_table: %p\n",pd_table);
 
-                                                        /*if(!((ulong)pdpt_entry ^ 0x0000000000000061)){
-                                                                printk(KERN_ERR "i:%d j:%d \t",i,j);
-                                                                pdpt_entry = original_pdpt_entry[j];
-                                                        }
-                                                        else{*/
-                                                                //New page PD
-                                                                address_pd = (void *)__get_free_pages(GFP_KERNEL, 0);
-                                                                memset(address_pd,0,4096);
+                            //Pointer to Original PD
+                            temp = (void *)((ulong) original_pdpt[pdpt_index] & 0xfffffffffffff000);
+                            temp = (void *)(__va(temp));
+                            original_pd = (void **)temp;
+                            printk(KERN_ERR "original_pd: %p\n",original_pd);
 
-                                                                //Final value of PDPTE
-                                                                address_pd = (void *)__pa(address_pd);
-                                                                pdpt_entry = (void *)((ulong)address_pd | (ulong)pdpt_entry);
+                            pd_index = pmd_index((unsigned long) sheduled_mmaps_pointers[index_mdt]);
+                            printk(KERN_ERR "pd_index: %d \t involved_pde: %d\n",pd_index,involved_pde);
 
-                                                                void** new_pd_entry;
-                                                                void** original_pd_entry;
-
-                                                                //Pointer to new PD                  
-                                                                temp = (void *)((ulong) pdpt_entry & 0xfffffffffffff000);
-                                                                temp = (void *)(__va(temp));
-                                                                new_pd_entry = (void **)temp;
-
-                                                                //Pointer to Orinal PD
-                                                                temp = (void *)((ulong) original_pdpt_entry[j] & 0xfffffffffffff000);
-                                                                temp = (void *)(__va(temp));
-                                                                original_pd_entry = (void **)temp;
-                                                                int y;
-                                                                /*for(y=0; y<PTRS_PER_PMD; y++)
-                                                                        if(original_pd_entry[y] != NULL)
-                                                                                new_pd_entry[y] = original_pd_entry[y];*/
-                                                        //}
-
-                                                        //Update new PDPTE                                      
-                                                        new_pdpt_entry[j] = pdpt_entry;
-                                                }
-                                        }
-
-                                        //Update new PML4E
-                                        pgd_entry[i] = pml4_entry;
-	
-				
-				}
+                            printk(KERN_ERR "pml4_index: %d \t pdpt_index: %d \t pd_index: %d \n",pml4_index,pdpt_index,pd_index);
+                            for(;pd_index<pd_index+involved_pde; pd_index++){
+				if(original_pd[pd_index]!=NULL){ 
+                                    //Update new PDE
+				    printk(KERN_ERR "pd_entry: %p\n",original_pd[pd_index]); 
+                                    pd_table[pd_index]=original_pd[pd_index];
+                        	}
 				else{
-				
-				}
-				printk(KERN_ERR "my_pdp: %p\n",my_pdp);
-				
-				//Clean control bit
-				//my_pdp = __va((ulong)my_pdp & 0xfffffffffffff000);
-				
-				//Likewise for the original
-				ancestor_pdp =(void *) ancestor_pml4[pgd];
-				ancestor_pdp = __va((ulong)ancestor_pdp & 0xfffffffffffff000);
-				printk(KERN_ERR "ancestor_pdp: %p\n",ancestor_pdp);
+					printk(KERN_ERR "[SCHEDULE_ON_PGD]: Rootsim error original_pd[%d]=NULL\n",pd_index);
+                                	break;
+				}    
+			    }	
+                            
+                            //Update new PDPTE                                      
+                            pdpt_table[pdpt_index] = pdpt_entry;
 
-				//Index of PTD		
-				pud = pud_index((unsigned long) sheduled_mmaps_pointers[index_mdt]);
-				
-				printk(KERN_ERR "Value of entry pud: %d\n",pud);
-				//Entry PDE
-				void** my_pde =(void *)my_pdp[pud]; 
-				printk(KERN_ERR "Value of entry my_pde: %p\n",my_pde);
-				void** ancestor_pde =(void *)ancestor_pdp[pud]; 
-				printk(KERN_ERR "Value of entry pde: ancestor_pde= %p & my_pde= %p\n",ancestor_pde,my_pde);
-				
-				ancestor_pde = __va((ulong)ancestor_pde & 0xfffffffffffff000);
-				my_pde = __va((ulong)my_pde & 0xfffffffffffff000);
-				
-				//Update PDE address
-				int pde_index;
-    				pmd = pmd_index((unsigned long) sheduled_mmaps_pointers[index_mdt]);
-				for(pde_index = 0; pde_index<involved_pde; pde_index++){
-					//printk(KERN_ERR "Value of entry my_pde[%d]: %p\n",pmd,my_pde[pmd+pde_index]);
-					printk(KERN_ERR "Value of entry ancestor_pde[%d]: %p\n",pmd,ancestor_pde[pmd+pde_index]);
-					my_pde[pmd+pde_index] = ancestor_pde[pmd+pde_index];
-				}
-			}
-			
+                            //Update new PML4E
+                            pml4_table[pml4_index] = pml4_entry;
+                        }
+	
 			//TODO MN DEBUG	
-			break;
+			//break;
 
 			/* actual change of the view on memory */
 			root_sim_processes[descriptor] = current->pid;
@@ -624,7 +619,6 @@ back_to_pgd_release:
 
 		if ((original_view[descriptor] != NULL) && (current->mm->pgd != NULL)) { //sanity check
 
-			root_sim_processes[descriptor] = -1;
 			rootsim_load_cr3(current->mm->pgd);
 
 			for(i=open_index[descriptor];i>=0;i--){

@@ -232,6 +232,8 @@ void* allocate_segment(unsigned int sobj, size_t size) {
 
 	AUDIT
 	printf("allocate segment: actual allocation is at address %p\n",segment);
+	
+	printf("allocate segment: actual allocation is at address %p\n",segment);	
 
 	if (segment == MAP_FAILED) {
 		release_mdt_entry(sobj);

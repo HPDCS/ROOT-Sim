@@ -1,4 +1,6 @@
 #!/bin/sh
+sudo dmesg --clear
+
 cd src/arch/linux/modules/
 ./unload.sh
 
