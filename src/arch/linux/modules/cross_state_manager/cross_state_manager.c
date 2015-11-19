@@ -494,8 +494,8 @@ back_to_pgd_release:
                             int involved_pde = (obj_mem_size) >> 9;
                             if ( (unsigned)(obj_mem_size) & 0x00000000000001ff ) involved_pde++;
 
-                            printk(KERN_ERR "index_mdt:%d \t obj_mem_size:%d \t  involved_pde:%d\n",index_mdt,obj_mem_size,involved_pde);
-                            printk(KERN_ERR "sheduled_mmaps_pointers[%d]:%p\n",index_mdt,sheduled_mmaps_pointers[index_mdt]);
+                            //printk(KERN_ERR "index_mdt:%d \t obj_mem_size:%d \t  involved_pde:%d\n",index_mdt,obj_mem_size,involved_pde);
+                            //printk(KERN_ERR "sheduled_mmaps_pointers[%d]:%p\n",index_mdt,sheduled_mmaps_pointers[index_mdt]);
 
                             //Index of PML4 
                             pml4_index = pgd_index((unsigned long) sheduled_mmaps_pointers[index_mdt]);
@@ -526,7 +526,7 @@ back_to_pgd_release:
                                 //Final value of PML4E
                                 address_pdpt = (void *)__pa(address_pdpt);
                                 pml4_entry = (void *)((ulong)address_pdpt | (ulong)pml4_entry);
-                                printk(KERN_ERR "NEW PAGE PML4");
+                                //printk(KERN_ERR "NEW PAGE PML4");
 
                             }
 
@@ -540,7 +540,7 @@ back_to_pgd_release:
                             temp = (void *)(__va(temp));
                             pdpt_table = (void **)temp;
 				
-                            printk(KERN_ERR "pdpt_table: %p\n",pdpt_table);
+                            //printk(KERN_ERR "pdpt_table: %p\n",pdpt_table);
 			
                             pdpt_index = pud_index((unsigned long) sheduled_mmaps_pointers[index_mdt]);
 
@@ -561,33 +561,35 @@ back_to_pgd_release:
                                 //Final value of PDPTE
                                 address_pd = (void *)__pa(address_pd);
                                 pdpt_entry = (void *)((ulong)address_pd | (ulong)pdpt_entry);
-                                printk(KERN_ERR "NEW PAGE PDPTE");
+                                //printk(KERN_ERR "NEW PAGE PDPTE");
                             }
 
                             //Pointer to new PD                  
                             temp = (void *)((ulong) pdpt_entry & 0xfffffffffffff000);
                             temp = (void *)(__va(temp));
                             pd_table = (void **)temp;
-                            printk(KERN_ERR "pd_table: %p\n",pd_table);
+                            //printk(KERN_ERR "pd_table: %p\n",pd_table);
 
                             //Pointer to Original PD
                             temp = (void *)((ulong) original_pdpt[pdpt_index] & 0xfffffffffffff000);
                             temp = (void *)(__va(temp));
                             original_pd = (void **)temp;
-                            printk(KERN_ERR "original_pd: %p\n",original_pd);
+                            //printk(KERN_ERR "original_pd: %p\n",original_pd);
 
                             pd_index = pmd_index((unsigned long) sheduled_mmaps_pointers[index_mdt]);
                             printk(KERN_ERR "pd_index: %d \t involved_pde: %d\n",pd_index,involved_pde);
 
                             printk(KERN_ERR "pml4_index: %d \t pdpt_index: %d \t pd_index: %d \n",pml4_index,pdpt_index,pd_index);
-                            for(;pd_index<pd_index+involved_pde; pd_index++){
-				if(original_pd[pd_index]!=NULL){ 
+                            
+			    int count_pde;
+			    for(count_pde=0;count_pde<involved_pde; count_pde++){
+				if(original_pd[pd_index+count_pde]!=NULL){ 
                                     //Update new PDE
-				    printk(KERN_ERR "pd_entry: %p\n",original_pd[pd_index]); 
-                                    pd_table[pd_index]=original_pd[pd_index];
+				    printk(KERN_ERR "pd_entry: %p\n",original_pd[pd_index+count_pde]); 
+                                    pd_table[pd_index+count_pde]=original_pd[pd_index+count_pde];
                         	}
 				else{
-					printk(KERN_ERR "[SCHEDULE_ON_PGD]: Rootsim error original_pd[%d]=NULL\n",pd_index);
+					printk(KERN_ERR "[SCHEDULE_ON_PGD]: Rootsim error original_pd[%d]=NULL\n",pd_index+count_pde);
                                 	break;
 				}    
 			    }	
