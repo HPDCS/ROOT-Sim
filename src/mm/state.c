@@ -46,6 +46,7 @@
 /// Function pointer to switch between the parallel and serial version of SetState
 void (*SetState)(void *new_state);
 
+#define AUDIT if(1)
 
 /**
 * This function is used to create a state log to be added to the LP's log chain
@@ -194,11 +195,12 @@ void rollback(unsigned int lid) {
 	msg_t *last_correct_event;
 	msg_t *last_restored_event;
 	unsigned int reprocessed_events;
-	msg_t *temp; 
+	msg_t *temp;
 
 	#ifdef HAVE_REVERSE
 	state_t *s1;
 	msg_t *event_with_log;
+	revwin_t *current_revwin, *delete_revwin, *end_revwin;
 	#endif
 
 
@@ -229,21 +231,16 @@ void rollback(unsigned int lid) {
 	// TODO: we have as wll 
 	_ProcessEvent[lid] = ProcessEvent;
 
+	if( LPS[lid]->FCF == 1) goto FCF_path;
 
 	#ifdef HAVE_REVERSE
 	// Switch between coasting forward and reverse scrubbing
 	if(!rootsim_config.disable_reverse && last_correct_event->revwin != NULL)
 		goto reverse;
 	#endif
-/*
-	printf("Rollback to %p (type: %d, lvt: %f) from %p (type: %d, lvt: %f)\n", last_correct_event, last_correct_event->type, last_correct_event->timestamp, LPS[lid]->old_bound, LPS[lid]->old_bound->type, LPS[lid]->old_bound->timestamp);
-	msg_t *dummy;
-	dummy = last_correct_event;
-	while(dummy != LPS[lid]->old_bound) {
-		printf("%p (type: %d, lvt: %f) -> revwin %p size: %d\n", dummy, dummy->type, dummy->timestamp, dummy->revwin, revwin_size(dummy->revwin));
-		dummy = list_next(dummy);
-	}
-*/
+
+FCF_path:
+	LPS[lid]->FCF == 0; 
 	// Find the state to be restored, and prune the wrongly computed states
 	restore_state = list_tail(LPS[lid]->queue_states);
 	while (restore_state != NULL && restore_state->lvt > last_correct_event->timestamp) { // It's > rather than >= because we have already taken into account simultaneous events
@@ -269,21 +266,12 @@ void rollback(unsigned int lid) {
 
     reverse:
 
-#ifndef NDEBUG
-//    printf("Individuato last_correct_event: %f\n", last_correct_event->timestamp);
-//    printf("Last restore state is: %f\n", list_tail(LPS[lid]->queue_states)->lvt);
-#endif
-
 	event_with_log = last_correct_event;
 	while(event_with_log != LPS[lid]->old_bound && event_with_log->checkpoint_of_event == NULL) {
 		event_with_log = list_next(event_with_log);
 		if(event_with_log != NULL)
-			printf("%p (%f), ", event_with_log, event_with_log->timestamp);
+			AUDIT printf("%p (%f), ", event_with_log, event_with_log->timestamp);
 	}
-
-#ifndef NDEBUG
-//	printf("Individuato event_with_log: %f\n", event_with_log->timestamp);
-#endif
 
 	// No state to restore. We're in the last section of the forward execution.
 	// We don't need to restore a state, we just undo the latest events
@@ -303,7 +291,6 @@ void rollback(unsigned int lid) {
 		if(event_with_log != last_correct_event) {
 			s = restore_state;
 			while(s != NULL) {
-				printf("@");
 				log_delete(s->log);
 				if(s->last_event != NULL)
 					s->last_event->checkpoint_of_event = NULL;
@@ -312,49 +299,30 @@ void rollback(unsigned int lid) {
 				list_delete_by_content(lid, LPS[lid]->queue_states, s);
 				s = s1;
 			}
-			printf("\n");
 		}
 	}
+
+	// Navigate from the event list to the revwin list
+	current_revwin = event_with_log->revwin;
+	end_revwin = last_correct_event->revwin;
 	
 	// At this point: the state queue is pruned, and the correct state is restored.	
-	// We can thus start to undo events until we reach last_correct_event
-	while(event_with_log != last_correct_event) {
-		printf("About to execute revwin at %p for event %d at %f\n", event_with_log->revwin, event_with_log->type, event_with_log->timestamp);
-		execute_undo_event(event_with_log->receiver, event_with_log->revwin, event_with_log);
-//		revwin_free(event_with_log->receiver, event_with_log->revwin);
-		event_with_log->revwin = NULL;
-		event_with_log = list_prev(event_with_log);
+	// We can thus start to undo events until we reach the end_revwin (excluded)
+	while(current_revwin != end_revwin) {
+		AUDIT printf("About to execute revwin at %p\n", current_revwin);
+		execute_undo_event(lid,current_revwin);
+
+		delete_revwin = current_revwin;
+		current_revwin = delete_revwin->prev;
+		//current_revwin = list_prev(current_revwin);
+		//revwin_free(lid,delete_revwin);
+		revwin_reset(delete_revwin);
 	}
 
 	
 	
     out:
 #endif
-
-
-
-//	printf("(%d) Lazy Cancellation-------------\n", lid);
-//	printf("\told bound: %p (%d, %d, %f) to %d %s\n", LPS[lid]->old_bound, LPS[lid]->old_bound->mark, LPS[lid]->old_bound->type, LPS[lid]->old_bound->timestamp, LPS[lid]->old_bound->receiver, (LPS[lid]->old_bound->marked_by_antimessage ? "marked": ""));
-	while(last_correct_event != NULL && last_correct_event != LPS[lid]->old_bound) {
-//		printf("\tlast_correct_event: %p (%d, %d, %f) to %d ", last_correct_event, last_correct_event->mark, last_correct_event->type, last_correct_event->timestamp, last_correct_event->receiver);
-
-		temp = list_next(last_correct_event);
-
-		if(last_correct_event->marked_by_antimessage) {
-//			printf("deleted");
-			list_delete_by_content(lid, LPS[lid]->queue_in, last_correct_event);
-		}
-//		printf("\n");
-
-		last_correct_event = temp;
-	}
-	if(LPS[lid]->old_bound->marked_by_antimessage) {
-//		printf("Found old_bound marked, deleting...\n");
-//		fflush(stdout);
-		list_delete_by_content(lid, LPS[lid]->queue_in, LPS[lid]->old_bound);
-	}
-//	fflush(stdout);
-
 
 	LPS[lid]->old_bound = NULL;
 }
@@ -393,15 +361,6 @@ state_t *find_time_barrier(int lid, simtime_t simtime) {
 	if (barrier_state->lvt > simtime) {
 		rootsim_error(true, "Time barrier=%f, found for LP %d. Greater than gvt=%f! Aborting...\n", barrier_state->lvt, lid, simtime);
 	}
-
-/*
-	// TODO Search for the first full log before the gvt
-	while(true) {
-		if(is_incremental(current->log) == false)
-			break;
-	  	current = list_prev(current);
-	}
-*/
 
 	return barrier_state;
 }

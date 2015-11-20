@@ -81,6 +81,7 @@ void deallocation(unsigned int me, lp_state_type *pointer, int ch, simtime_t lvt
 			break;
 		c = c->prev;
 	}
+#if 0
 	if(c != NULL){
 		if(c == pointer->channels){
 			pointer->channels = c->prev;
@@ -93,7 +94,9 @@ void deallocation(unsigned int me, lp_state_type *pointer, int ch, simtime_t lvt
 			if(c->prev != NULL)
 				c->prev->next = c->next;
 		}
+#endif
 		RESET_CHANNEL(pointer, ch);
+#if 0
 		free(c->sir_data);
 
 		free(c);
@@ -102,6 +105,7 @@ void deallocation(unsigned int me, lp_state_type *pointer, int ch, simtime_t lvt
 		abort();
 	}
 	return;
+#endif
 }
 
 void fading_recheck(lp_state_type *pointer) {
@@ -134,7 +138,7 @@ int allocation(lp_state_type *pointer) {
 	if(index != -1){
 
 		SET_CHANNEL(pointer,index);
-
+#if 0
 		c = (channel*)malloc(sizeof(channel));
 		if(c == NULL){
 			printf("malloc error: unable to allocate channel!\n");
@@ -178,7 +182,7 @@ int allocation(lp_state_type *pointer) {
 			c->sir_data->power = ((SIR_AIM * summ) / (generate_path_gain() * c->sir_data->fading));
 			if (c->sir_data->power < MIN_POWER) c->sir_data->power = MIN_POWER;
 			if (c->sir_data->power > MAX_POWER) c->sir_data->power = MAX_POWER;
-		}
+#endif		}
 
 	} else {
 		printf("Unable to allocate channel, but the counter says I have %d available channels\n", pointer->channel_counter);

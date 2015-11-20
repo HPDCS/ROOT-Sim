@@ -721,7 +721,7 @@ size_t revwin_size(revwin_t *win) {
  *
  * @param w Pointer to the actual window to execute
  */
-void execute_undo_event(unsigned int lid, revwin_t *win, void *event) {
+void execute_undo_event(unsigned int lid, revwin_t *win) {
 	unsigned char push = 0x50;
 	void *revcode;
 	size_t revcode_size;
@@ -735,6 +735,7 @@ void execute_undo_event(unsigned int lid, revwin_t *win, void *event) {
 
 	revcode_size = ((win->base + win->size - 3) - win->top);
 	//printf("UNDO :: [%p - %p] revcode size= %d\n", win, event, revcode_size);
+	printf("UNDO :: [%p]  revcode size= %d\n", win, revcode_size);
 	/*
 	if (revcode_size <= 0) {
 		printf("Empty reverse code\n");
@@ -757,21 +758,21 @@ void execute_undo_event(unsigned int lid, revwin_t *win, void *event) {
 	// Note that the revwin is not necessarily aligned to
 	// the PAGE_SIZE since the SLAB has its own headers,
 	// thus should be secure to do the following realignment
-	int err = mprotect((void *)((unsigned long long)win & -PAGE_SIZE), REVWIN_SIZE, PROT_READ | PROT_WRITE | PROT_EXEC);
-	if (err != 0) {
-		printf("Unable to make executable revwin at %p: %s\n", win, strerror(errno));
-		abort();
-	}
+	//int err = mprotect((void *)((unsigned long long)win & -PAGE_SIZE), REVWIN_SIZE, PROT_READ | PROT_WRITE | PROT_EXEC);
+	//if (err != 0) {
+	//	printf("Unable to make executable revwin at %p: %s\n", win, strerror(errno));
+	//	abort();
+	//}
 
 	// Temporary swaps the stack pointer to use
 	// the emulated one on the heap, instead
 
 	// Save the original stack pointer into 'original_stack'
 	// and substitute $RSP the new emulated stack pointer
-	if (estack == NULL) {
-		printf("[%d] :: Emulated stack NULL!\n", tid);
-		abort();
-	}
+	//if (estack == NULL) {
+	//	printf("[%d] :: Emulated stack NULL!\n", tid);
+	//	abort();
+	//}
 
 	// TODO: cambiare stack è inutile
 //	__asm__ volatile ("movq %%rsp, %0\n\t"

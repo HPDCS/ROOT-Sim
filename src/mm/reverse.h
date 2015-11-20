@@ -11,7 +11,8 @@
 
 #define REVWIN_SIZE 1024 * 4	//! Defalut size of the reverse window which will contain the reverse code
 #define REVWIN_CODE_SIZE (REVWIN_SIZE - sizeof(revwin_t))
-#define REVWIN_STACK_SIZE 4*1024*1024*1024	//! Default size of the emultated reverse stack window on the heap space
+//#define REVWIN_STACK_SIZE 4*1024*1024*1024	//! Default size of the emultated reverse stack window on the heap space
+#define REVWIN_STACK_SIZE 1024	//! Default size of the emultated reverse stack window on the heap space
 #define REVWIN_RZONE_SIZE 100		//! Size of the red zone in the reverse window that will be skipped to prevent cache misses
 #define RANDOMIZE_REVWIN 0 			//! Activate the rendomization of the addresses used by revwin to prevent cache misses
 
@@ -91,12 +92,14 @@ typedef struct _revwin_cache {
  * Descriptor of a single reverse window
  */
  typedef struct _revwin_t {
+	
+	struct _revwin_t *prev;
 	void *top;				//! Pointer to the first instruction byte to be executed
 	void *base;				//! Pointer to the logic base of the window
 	unsigned int offset;	//! A random offset used to prevent cache lines to be alligned
 	size_t size;			//! The actual size of the reverse window executable portion
 	void *dump;				//! This is the pointer to the memory area where chunk reversal has been dumped
-	unsigned long long dummy;
+//	unsigned long long dummy;
 	char code[];			//! Placeholder for the actual executable reverse code, i.e. from this point there is code
 } revwin_t;
 
@@ -159,7 +162,7 @@ extern void revwin_reset(revwin_t *win);
  *
  * @param win Pointer to the reverse window descriptor
  */
-extern void execute_undo_event(unsigned int lid, revwin_t *win, void *event);
+extern void execute_undo_event(unsigned int lid, revwin_t *win);
 
 
 /**

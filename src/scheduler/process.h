@@ -98,6 +98,9 @@ typedef struct _LP_state {
 #ifdef HAVE_REVERSE
 	/// Counter of how many events should be executed withouth creating a reverse window
 	unsigned int	events_in_coasting_forward;
+
+	// This is the list of the reverse events which implement software reversibility
+	list(revwin_t)	reverse_events;
 #endif
 
 	/// If this variable is set, the next invocation to LogState() takes a new state log, independently of the checkpointing interval
@@ -140,6 +143,8 @@ typedef struct _LP_state {
 
 	unsigned long long	wait_on_rendezvous;
 	unsigned int		wait_on_object;
+
+	unsigned int		FCF;
 
 } LP_state;
 
