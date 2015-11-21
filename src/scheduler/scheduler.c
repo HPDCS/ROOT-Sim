@@ -350,7 +350,8 @@ void initialize_worker_thread(void) {
 	// Divide LPs among worker threads, for the first time here
 	rebind_LPs();
 	if(master_thread() && master_kernel()) {
-		printf("Initializing LPs... ");
+		//TODO MN DEBUG remove \n
+		printf("Initializing LPs... \n");
 		fflush(stdout);
 	}
 
@@ -373,7 +374,8 @@ void initialize_worker_thread(void) {
 			message_kind: positive,
 		};
 
-		// Copy the relevant string pointers to the INIT event payload
+		
+		//TODO MN DEBUG remove \n// Copy the relevant string pointers to the INIT event payload
 		if(model_parameters.size > 0) {
 			memcpy(init_event.event_content, model_parameters.arguments, model_parameters.size * sizeof(char *));
 		}
@@ -437,13 +439,18 @@ void activate_LP(unsigned int lp, simtime_t lvt, void *evt, void *state) {
 	// Activate memory view for the current LP
 	lp_alloc_schedule();
 	#endif
+	printf("END lp_alloc_schedule\n");
+	fflush(stdout);
 
 	#ifdef ENABLE_ULT
 	context_switch(&kernel_context, &LPS[lp]->context);
 	#else
 	LP_main_loop(NULL);
 	#endif
-
+	
+	printf("Context_switch done\n");
+	fflush(stdout);
+	
 //	#ifdef HAVE_PREEMPTION
 //        if(!rootsim_config.disable_preemption)
 //                disable_preemption();

@@ -300,6 +300,8 @@ void lp_alloc_schedule(void) {
 
 	/* passing into LP mode - here for the pgd_ds-th LP */
 	ioctl(ioctl_fd,IOCTL_SCHEDULE_ON_PGD, &sched_info);
+	printf("DONE IOCTL_SCHEDULE_ON_PGD\n");	
+	
 }
 
 

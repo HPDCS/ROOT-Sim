@@ -580,10 +580,11 @@ void rebind_LPs(void) {
 			GLPs_block_binding();
 			printf("Done\n");
 		#else	
+			printf("Rebind_LPs... ");
 			LPs_block_binding();
+			printf("Done\n");
 		#endif
 
-return;
 
 		timer_start(rebinding_timer);
 

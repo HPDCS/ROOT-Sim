@@ -193,11 +193,6 @@ int root_sim_page_fault(struct pt_regs* regs, long error_code){
 
 	if(current->mm == NULL) return 0;  /* this is a kernel thread - not a rootsim thread */
 	
-//TODO MN
-	return 0;
-
-	printk(KERN_ERR "Enter in page_fault\n");
-
 	target_address = (void *)read_cr2();
 
 
