@@ -437,8 +437,6 @@ void activate_LP(unsigned int lp, simtime_t lvt, void *evt, void *state) {
 	// Activate memory view for the current LP
 	lp_alloc_schedule();
 	#endif
-//TODO MN DEBUG
-return;
 
 	#ifdef ENABLE_ULT
 	context_switch(&kernel_context, &LPS[lp]->context);

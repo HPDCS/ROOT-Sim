@@ -45,9 +45,9 @@
 #include <scheduler/process.h>
 #include <arch/ult.h>
 
-#ifdef HAVE_CROSS_STATE
+//TODO MN
 #include <arch/linux/modules/cross_state_manager/cross_state_manager.h>
-#endif
+#include <mm/allocator_ecs.h>
 
 /// This variable keeps track of per-LP allocated (and assigned) memory regions
 static struct _lp_memory *lp_memory_regions;
@@ -285,25 +285,14 @@ void lp_alloc_schedule(void) {
 	//TODO MN
 	sched_info.objects_mmap_count = 0;
 	int i;
-	mem_map* mmap;
 	
 	printf("Value of sched_info.count = %d\n",sched_info.count);	
-	for(i=0;i<sched_info.count;i++)	{
-		mmap =  get_m_map(sched_info.objects[i]);
-		sched_info.objects_mmap_count += mmap->active;	
-	}
+	
+	sched_info.objects_mmap_count = sched_info.count;	
 	
 	sched_info.objects_mmap_pointers = rsalloc(sizeof(void *) * sched_info.objects_mmap_count);	
-	sched_info.objects_mmap_sizes = rsalloc(sizeof(int) * sched_info.objects_mmap_count);
 	for(i=0;i<sched_info.count;i++) {
-                mmap = get_m_map(sched_info.objects[i]);
-		int j;
-		for(j=0; j<mmap->active; j++){
-			mdt_entry *mdte = (mdt_entry *)mmap->base+j;
-			sched_info.objects_mmap_pointers[j]=(void *)mdte->addr;
-			sched_info.objects_mmap_sizes[j]=mdte->numpages;
-			printf("Value of active: %d \t mdte->addr: %p \t mdte->numpages: %d\n ",j,mdte->addr,mdte->numpages);
-		}
+                sched_info.objects_mmap_pointers[i]= get_base_pointer(sched_info.objects[i]);
         }
 	
 	//TODO MN this return is to debug.	

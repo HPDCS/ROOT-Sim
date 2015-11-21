@@ -39,6 +39,7 @@
 
 #include <mm/dymelor.h>
 #include <mm/allocator.h>
+#include <mm/allocator_ecs.h>
 
 
 extern void *__real_malloc(size_t);
@@ -164,7 +165,7 @@ int get_numa_node(int core) {
 
 #endif /* HAVE_NUMA */
 
-void* allocate_segment(unsigned int sobj, size_t size) {
+void* allocate_segment(unsigned int sobj, size_t size, bool is_recoverable) {
 
 	mdt_entry* mdt;
 	char* segment;
@@ -209,21 +210,30 @@ void* allocate_segment(unsigned int sobj, size_t size) {
 
 
 	#ifndef NEW_ALLOCATOR
-
-	segment = (char*)mmap((void*)NULL,PAGE_SIZE*numpages, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, 0,0);
+	//TODO MN
+	if(is_recoverable)
+		segment = (char*)get_memory_ecs(sobj,PAGE_SIZE*numpages);
+	else
+		segment = (char*)mmap((void*)NULL,PAGE_SIZE*numpages, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, 0,0);
 
 	#else
 
 
 	spin_lock(&segment_lock);
-
-	// Update my_initial_address, keeping it aligned to large pages
-	my_initial_address = (void *)((char *)my_initial_address - ( PAGE_SIZE * (int)( ceil((double)numpages / 256.0) * 256  )  ));
-
-        segment = (char*)mmap(my_initial_address, PAGE_SIZE*numpages, PROT_READ|PROT_WRITE, MAP_FIXED|MAP_PRIVATE|MAP_ANONYMOUS, 0,0);
-
+	
+	//TODO MN
+	if(is_recoverable){
+                segment = (char*) get_memory_ecs(sobj,PAGE_SIZE*numpages);
+		printf("Memory is_recoverable - value of segment: %p\n",segment);
+	}
+        else{
+		// Update my_initial_address, keeping it aligned to large pages
+		my_initial_address = (void *)((char *)my_initial_address - ( PAGE_SIZE * (int)( ceil((double)numpages / 256.0) * 256  )  ));
+		segment = (char*)mmap(my_initial_address, PAGE_SIZE*numpages, PROT_READ|PROT_WRITE, MAP_FIXED|MAP_PRIVATE|MAP_ANONYMOUS, 0,0);
+	}
+	
 	spin_unlock(&segment_lock);
-
+	
 	if(segment == MAP_FAILED)
 		abort();
 
@@ -233,8 +243,6 @@ void* allocate_segment(unsigned int sobj, size_t size) {
 	AUDIT
 	printf("allocate segment: actual allocation is at address %p\n",segment);
 	
-	printf("allocate segment: actual allocation is at address %p\n",segment);	
-
 	if (segment == MAP_FAILED) {
 		release_mdt_entry(sobj);
 		goto bad_allocate;
@@ -319,8 +327,8 @@ int release_mdt_entry(int sobj){
 }
 
 
-void *pool_get_memory(unsigned int lid, size_t size) {
-	return allocate_segment(lid, size);
+void *pool_get_memory(unsigned int lid, size_t size, bool is_recoverable) {
+	return allocate_segment(lid, size, is_recoverable);
 }
 
 
@@ -335,7 +343,12 @@ int allocator_init(unsigned int sobjs) {
 
 	if( (sobjs > MAX_SOBJS) )
 		return INVALID_SOBJS_COUNT; 
-
+	
+	if(allocator_ecs_init(sobjs)) {
+		printf("ERROR allocator_ecs_init\n");
+		return INIT_ERROR;
+	}
+	
 	handled_sobjs = sobjs;
 
 	for (i=0; i<sobjs; i++){

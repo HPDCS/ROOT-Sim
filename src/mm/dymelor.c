@@ -288,7 +288,8 @@ void *do_malloc(unsigned int lid, malloc_state *mem_pool, size_t size) {
 		area_size = sizeof(malloc_area *) + bitmap_blocks * BLOCK_SIZE * 2 + num_chunks * size;
 
 		#ifdef HAVE_PARALLEL_ALLOCATOR
-		m_area->self_pointer = (malloc_area *)pool_get_memory(lid, area_size);
+		//TODO MN insert is recoverable in pool_get_memory
+		m_area->self_pointer = (malloc_area *)pool_get_memory(lid, area_size, is_recoverable);
 		#else
 		m_area->self_pointer = rsalloc(area_size);
 		#endif

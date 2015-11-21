@@ -161,8 +161,8 @@ int main(int argc, char **argv) {
 	set_affinity(0);
 
 	SystemInit(argc, argv);
-
-	if(rootsim_config.serial) {
+	
+        if(rootsim_config.serial) {
 		serial_simulation();
 	} else {
 

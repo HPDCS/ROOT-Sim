@@ -141,6 +141,40 @@ struct file_operations fops = {
 	release:rs_ktblmgr_release
 };
 
+void print_pgd(void){
+	int index_pgd;
+	int index_pud;
+	int pgd_busy;
+	int pud_busy;
+	void** pgd_entry;
+	void** pud_entry;
+	void* temp;
+		
+	pgd_busy = 0;
+	pgd_entry = (void **)current->mm->pgd;
+                        
+	for (index_pgd=0; index_pgd<PTRS_PER_PGD; index_pgd++){
+		if(pgd_entry[index_pgd] != NULL){
+			printk(KERN_ERR "\t\t[PML4E]: %d\n",index_pgd);
+			pud_busy = 0;
+			
+			temp = (void *)((ulong) pgd_entry[index_pgd] & 0xfffffffffffff000);
+                        temp = (void *)(__va(temp));
+			pud_entry = (void **)temp;
+			
+			for (index_pud=0; index_pud<PTRS_PER_PUD; index_pud++){
+				if(pud_entry[index_pud] != NULL) pud_busy++;
+			}
+			
+			printk(KERN_ERR "\t\t\t\t[PDU_BUSY]: %d\n",pud_busy);
+                        printk(KERN_ERR "\t\t\t\t[PDU_FREE]: %d\n",PTRS_PER_PUD - pud_busy);
+                        pgd_busy++;
+
+		}
+	}
+	printk(KERN_ERR "[PML4E_BUSY]: %d\n",pgd_busy);
+        printk(KERN_ERR "[PML4E_FREE]: %d\n",PTRS_PER_PGD - pgd_busy);	
+}
 
 /// This is to access the actual flush_tlb_all using a kernel proble
 void (*flush_tlb_all_lookup)(void) = NULL;
@@ -279,7 +313,7 @@ int rs_ktblmgr_release(struct inode *inode, struct file *filp) {
                                         temp = (void *)((ulong) pml4_entry & 0xfffffffffffff000);
                                         temp = (void *)(__va(temp));
                                         pdpt_entry = (void **)temp;
-
+					/*
                                         for(j=0; j<PTRS_PER_PUD; j++){
                                                 if(pdpt_entry[j] != NULL){
                                                        temp_pdpt = (void *)((ulong) pdpt_entry[j] & 0xfffffffffffff000);
@@ -289,7 +323,7 @@ int rs_ktblmgr_release(struct inode *inode, struct file *filp) {
 								__free_pages(temp_pdpt,0);
                                                 }
                                         }
-					
+					*/
 					if(temp!=NULL)
                                         	__free_pages(temp,0);
                                 }
@@ -453,12 +487,8 @@ back_to_pgd_release:
 //TODO MN
 		void** sheduled_mmaps_pointers;
 		sheduled_mmaps_pointers = ((ioctl_info*)arg)->objects_mmap_pointers;
-		int* scheduled_mmaps_sizes;
-		scheduled_mmaps_sizes = ((ioctl_info*)arg)->objects_mmap_sizes;
 		int obj_mmap_count;
 		obj_mmap_count = ((ioctl_info*)arg)->objects_mmap_count;
-		int obj_mem_size;
-		
 
 		//scheduled_object = ((ioctl_info*)arg)->id;
 		if (original_view[descriptor] != NULL) { //sanity check
@@ -490,10 +520,6 @@ back_to_pgd_release:
                         printk(KERN_ERR "obj_mmap_count: %d\n",obj_mmap_count);
                         for(index_mdt=0; index_mdt<obj_mmap_count; index_mdt++){
 
-                            copy_from_user((void *)&obj_mem_size,(void *)&scheduled_mmaps_sizes[index_mdt],sizeof(int));
-                            int involved_pde = (obj_mem_size) >> 9;
-                            if ( (unsigned)(obj_mem_size) & 0x00000000000001ff ) involved_pde++;
-
                             //printk(KERN_ERR "index_mdt:%d \t obj_mem_size:%d \t  involved_pde:%d\n",index_mdt,obj_mem_size,involved_pde);
                             //printk(KERN_ERR "sheduled_mmaps_pointers[%d]:%p\n",index_mdt,sheduled_mmaps_pointers[index_mdt]);
 
@@ -509,6 +535,8 @@ back_to_pgd_release:
                             //Entry PML4
                             pml4_entry =(void *) pml4_table[pml4_index];
                             
+			    printk(KERN_ERR "current->mm->pgd: %p \t original_view: %p \t pgd_addr: %p\n",current->mm->pgd,original_view[descriptor]->pgd,pgd_addr[descriptor]);
+				
                             if(original_pml4[pml4_index]==NULL){
                                     printk(KERN_ERR "[SCHEDULE_ON_PGD]: Rootsim error original_pml4[%d]=NULL\n",pml4_index);
                                     break;
@@ -551,48 +579,8 @@ back_to_pgd_release:
 
                             pdpt_entry = (void *)pdpt_table[pdpt_index];
                             if(pdpt_entry == NULL ){
-                                //New page PD
-                                address_pd = (void *)__get_free_pages(GFP_KERNEL, 0);
-                                memset(address_pd,0,4096);
-
-                                //Control bits
-                                pdpt_entry = (void *)((ulong) original_pdpt[pdpt_index] & 0x0000000000000fff);
-
-                                //Final value of PDPTE
-                                address_pd = (void *)__pa(address_pd);
-                                pdpt_entry = (void *)((ulong)address_pd | (ulong)pdpt_entry);
-                                //printk(KERN_ERR "NEW PAGE PDPTE");
+				pdpt_entry = original_pdpt[pdpt_index];
                             }
-
-                            //Pointer to new PD                  
-                            temp = (void *)((ulong) pdpt_entry & 0xfffffffffffff000);
-                            temp = (void *)(__va(temp));
-                            pd_table = (void **)temp;
-                            //printk(KERN_ERR "pd_table: %p\n",pd_table);
-
-                            //Pointer to Original PD
-                            temp = (void *)((ulong) original_pdpt[pdpt_index] & 0xfffffffffffff000);
-                            temp = (void *)(__va(temp));
-                            original_pd = (void **)temp;
-                            //printk(KERN_ERR "original_pd: %p\n",original_pd);
-
-                            pd_index = pmd_index((unsigned long) sheduled_mmaps_pointers[index_mdt]);
-                            printk(KERN_ERR "pd_index: %d \t involved_pde: %d\n",pd_index,involved_pde);
-
-                            printk(KERN_ERR "pml4_index: %d \t pdpt_index: %d \t pd_index: %d \n",pml4_index,pdpt_index,pd_index);
-                            
-			    int count_pde;
-			    for(count_pde=0;count_pde<involved_pde; count_pde++){
-				if(original_pd[pd_index+count_pde]!=NULL){ 
-                                    //Update new PDE
-				    printk(KERN_ERR "pd_entry: %p\n",original_pd[pd_index+count_pde]); 
-                                    pd_table[pd_index+count_pde]=original_pd[pd_index+count_pde];
-                        	}
-				else{
-					printk(KERN_ERR "[SCHEDULE_ON_PGD]: Rootsim error original_pd[%d]=NULL\n",pd_index+count_pde);
-                                	break;
-				}    
-			    }	
                             
                             //Update new PDPTE                                      
                             pdpt_table[pdpt_index] = pdpt_entry;
@@ -602,7 +590,7 @@ back_to_pgd_release:
                         }
 	
 			//TODO MN DEBUG	
-			//break;
+			//	break;
 
 			/* actual change of the view on memory */
 			root_sim_processes[descriptor] = current->pid;
@@ -808,19 +796,8 @@ back_to_pgd_release:
 			flush_cache_all(); /* to make new range visible across multiple runs */
 			
 			mapped_processes = (((ioctl_info*)arg)->mapped_processes);
-			//involved_pml4 = (((ioctl_info*)arg)->mapped_processes) >> 9; 
-			//if ( (unsigned)((ioctl_info*)arg)->mapped_processes & 0x00000000000001ff ) involved_pml4++;
 
 			callback = ((ioctl_info*)arg)->callback;
-
-
-
-			//pml4 = (int)PML4(((ioctl_info*)arg)->addr);
-			//printk("LOGGING CHANGE VIEW INVOLVING %u PROCESSES AND %d PML4 ENTRIES STARTING FROM ENTRY %d\n",((ioctl_info*)arg)->mapped_processes,involved_pml4,pml4);
-		//	restore_pml4 = pml4;
-		//	restore_pml4_entries = involved_pml4;
-//			printk("LOGGING METADATA OF CHANGE VIEW INVOLVING %u PROCESSES AND %d PML4 ENTRIES STARTING FROM ENTRY %d\n",((ioctl_info*)arg)->mapped_processes,restore_pml4_entries,restore_pml4);
-
 
 			flush_cache_all(); /* to make new range visible across multiple runs */
 
@@ -986,8 +963,10 @@ bridging_from_get_pgd:
 	case IOCTL_CHANGE_VIEW:
 //TODO MN
 			flush_cache_all();
-						
+			/*			
 			pgd_entry = (void **)pgd_addr[arg];
+			
+			printk(KERN_ERR "pgd_entry: %p\n",pgd_addr[arg]);
 		        
 			void** original_pdpt_entry;
 			void* pml4_entry;
@@ -1029,11 +1008,11 @@ bridging_from_get_pgd:
 							//Control bits
 							pdpt_entry = (void *)((ulong) original_pdpt_entry[j] & 0x0000000000000fff);
 							
-							/*if(!((ulong)pdpt_entry ^ 0x0000000000000061)){
+							if(!((ulong)pdpt_entry ^ 0x0000000000000061)){
 								printk(KERN_ERR "i:%d j:%d \t",i,j);
 								pdpt_entry = original_pdpt_entry[j];
 							}
-							else{*/
+							else{
 								//New page PD
 								address_pd = (void *)__get_free_pages(GFP_KERNEL, 0);
 								memset(address_pd,0,4096);
@@ -1054,10 +1033,10 @@ bridging_from_get_pgd:
 								temp = (void *)((ulong) original_pdpt_entry[j] & 0xfffffffffffff000);
 								temp = (void *)(__va(temp));
 								original_pd_entry = (void **)temp;
-								int y;
-								/*for(y=0; y<PTRS_PER_PMD; y++)
+								
+								for(y=0; y<PTRS_PER_PMD; y++)
 									if(original_pd_entry[y] != NULL)
-										new_pd_entry[y] = original_pd_entry[y];*/
+										new_pd_entry[y] = original_pd_entry[y];
 							//}
 
 							//Update new PDPTE                                      
@@ -1070,13 +1049,30 @@ bridging_from_get_pgd:
 				}
 			}
 
-		
+			*/
 			printk("Done\n");
 	//		rootsim_load_cr3(pgd_addr[arg]);
 			//cr3 = (void *)__pa(current->mm->pgd);
 			//asm volatile("movq %%CR3, %%rax; andq $0x0fff,%%rax; movq %0, %%rbx; orq %%rbx,%%rax; movq %%rax,%%CR3"::"m" (cr3)); /* flush the TLB - to be optimized with selective invalidation */
 
 		break;
+	
+		case IOCTL_GET_FREE_PML4:
+			pgd_entry = (void **)current->mm->pgd;
+                        
+			for (i=0; i<PTRS_PER_PGD; i++){
+                                if(pgd_entry[i]==NULL){ return i;}
+			}
+
+			return -1;
+		break;
+	
+		case IOCTL_PGD_PRINT:
+			print_pgd();
+                        return 0;
+                break;
+
+
 
 bridging_from_pgd_release:
 

@@ -210,7 +210,7 @@ extern void unrecoverable_fini(void);
 extern void malloc_state_init(bool recoverable, malloc_state *state);
 extern void *do_malloc(unsigned int, malloc_state * mem_pool, size_t size);
 extern void do_free(unsigned int, malloc_state *mem_pool, void *ptr);
-extern void *pool_get_memory(unsigned int lid, size_t size);
+extern void *pool_get_memory(unsigned int lid, size_t size, bool);
 extern void pool_release_memory(unsigned int lid, void *ptr);
 
 // Checkpointing API

@@ -80,7 +80,7 @@ char *allocate_pages(int num_pages);
 char* allocate_page(void);
 mdt_entry* get_new_mdt_entry(int );
 int allocator_init(unsigned int);
-void* allocate_segment(unsigned int, size_t);
+void* allocate_segment(unsigned int, size_t, bool);
 void audit(void);
 int release_mdt_entry(int);
 void audit_map(unsigned int);
