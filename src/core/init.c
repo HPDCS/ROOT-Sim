@@ -435,8 +435,6 @@ void SystemInit(int argc, char **argv) {
 	scheduler_init();
 	communication_init();
 	dymelor_init();
-	printf("Done dymelor init\n");
-return;	
 	gvt_init();
 	numerical_init();
 

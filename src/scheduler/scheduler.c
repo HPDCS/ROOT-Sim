@@ -212,6 +212,7 @@ void scheduler_fini(void) {
 * @param args arguments passed to the LP main loop. Currently, this is not used.
 */
 static void LP_main_loop(void *args) {
+	
 	#ifdef EXTRA_CHECKS
 	unsigned long long hash1, hash2;
 	hash1 = hash2 = 0;
@@ -235,9 +236,13 @@ static void LP_main_loop(void *args) {
 		// Process the event
 		timer event_timer;
 		timer_start(event_timer);
-
+		
 		switch_to_application_mode();
+
+
 		ProcessEvent[current_lp](LidToGid(current_lp), current_evt->timestamp, current_evt->type, current_evt->event_content, current_evt->size, current_state);
+		
+	
 		switch_to_platform_mode();
 
 		int delta_event_timer = timer_value_micro(event_timer);
@@ -350,8 +355,7 @@ void initialize_worker_thread(void) {
 	// Divide LPs among worker threads, for the first time here
 	rebind_LPs();
 	if(master_thread() && master_kernel()) {
-		//TODO MN DEBUG remove \n
-		printf("Initializing LPs... \n");
+		printf("Initializing LPs... ");
 		fflush(stdout);
 	}
 
@@ -375,7 +379,7 @@ void initialize_worker_thread(void) {
 		};
 
 		
-		//TODO MN DEBUG remove \n// Copy the relevant string pointers to the INIT event payload
+		// Copy the relevant string pointers to the INIT event payload
 		if(model_parameters.size > 0) {
 			memcpy(init_event.event_content, model_parameters.arguments, model_parameters.size * sizeof(char *));
 		}
@@ -439,8 +443,6 @@ void activate_LP(unsigned int lp, simtime_t lvt, void *evt, void *state) {
 	// Activate memory view for the current LP
 	lp_alloc_schedule();
 	#endif
-	printf("END lp_alloc_schedule\n");
-	fflush(stdout);
 
 	#ifdef ENABLE_ULT
 	context_switch(&kernel_context, &LPS[lp]->context);
@@ -448,8 +450,6 @@ void activate_LP(unsigned int lp, simtime_t lvt, void *evt, void *state) {
 	LP_main_loop(NULL);
 	#endif
 	
-	printf("Context_switch done\n");
-	fflush(stdout);
 	
 //	#ifdef HAVE_PREEMPTION
 //        if(!rootsim_config.disable_preemption)
@@ -497,8 +497,6 @@ void schedule(void) {
 		default:
 			lid = smallest_timestamp_first();
 	}
-
-	printf("Selected LP %d with state %d\n", lid, LPS[lid]->state);
 
 	// No logical process found with events to be processed
 	if (lid == IDLE_PROCESS) {

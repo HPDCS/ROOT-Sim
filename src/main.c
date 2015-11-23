@@ -93,7 +93,7 @@ static void *main_simulation_loop(void *arg) {
 	(void)arg;
 
 	simtime_t my_time_barrier = -1.0;
-printf("Call alloc_thread_init()!\n");
+	
 	#ifdef HAVE_CROSS_STATE
 	lp_alloc_thread_init();
 	#endif

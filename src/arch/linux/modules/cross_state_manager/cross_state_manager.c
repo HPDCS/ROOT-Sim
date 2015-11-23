@@ -111,8 +111,9 @@ void * auxiliary_frames[AUXILIARY_FRAMES];
 
 int root_sim_processes[SIBLING_PGD]={[0 ... (SIBLING_PGD-1)] = -1};
 
+//TODO MN change currently_open from int to unsigned long
 //#define MAX_CROSS_STATE_DEPENDENCIES 1024
-int currently_open[SIBLING_PGD][MAX_CROSS_STATE_DEPENDENCIES];
+unsigned long currently_open[SIBLING_PGD][MAX_CROSS_STATE_DEPENDENCIES];
 int open_index[SIBLING_PGD]={[0 ... (SIBLING_PGD-1)] = -1};
 
 void **ancestor_pml4;
@@ -141,17 +142,18 @@ struct file_operations fops = {
 	release:rs_ktblmgr_release
 };
 
-void print_pgd(void){
+//TODO MN
+int dirty_pml4[512]={[0 ... (512-1)] = 0};;
+
+void print_pgd(void** pgd_entry){
 	int index_pgd;
 	int index_pud;
 	int pgd_busy;
 	int pud_busy;
-	void** pgd_entry;
 	void** pud_entry;
 	void* temp;
 		
 	pgd_busy = 0;
-	pgd_entry = (void **)current->mm->pgd;
                         
 	for (index_pgd=0; index_pgd<PTRS_PER_PGD; index_pgd++){
 		if(pgd_entry[index_pgd] != NULL){
@@ -194,23 +196,30 @@ int root_sim_page_fault(struct pt_regs* regs, long error_code){
 	if(current->mm == NULL) return 0;  /* this is a kernel thread - not a rootsim thread */
 	
 	target_address = (void *)read_cr2();
-
+	
+	//if(((ulong)target_address ^ 0xb3fffd00420)) printk(KERN_ERR "PAGE_FAULT current evt %p after xor: %llu\n",target_address,(ulong)target_address ^ 0xb3fffd00420);
 
 	/* discriminate whether this is a classical fault or a root-sim proper fault */
 
 	for(i=0;i<SIBLING_PGD;i++) {
 		if ((root_sim_processes[i])==(current->pid)) {
 
-			if((PML4(target_address)<restore_pml4) || (PML4(target_address))>=(restore_pml4+restore_pml4_entries)) return 0; /* a fault outside the root-sim object zone - it needs to be handeld by the traditional fault manager */
-
 			my_pgd =(void **)pgd_addr[i];
-			my_pdp =(void *)my_pgd[PML4(target_address)];
+                        my_pdp =(void *)my_pgd[PML4(target_address)];
+			
+			ancestor_pdp =(void *) ancestor_pml4[PML4(target_address)];
+
+			if(!dirty_pml4[PML4(target_address)]) {
+				return 0; /* a fault outside the root-sim object zone - it needs to be handeld by the traditional fault manager */
+			}
+
+			printk(KERN_ERR "Rootsim managment addr: %p entry_pml4: %d dirty_pml4:%d\n",target_address,PML4(target_address),dirty_pml4[PML4(target_address)]);
+			
 			my_pdp = __va((ulong)my_pdp & 0xfffffffffffff000);
 			if((void *)my_pdp[PDP(target_address)] != NULL)
 				return 0; /* faults at lower levels than PDP - need to be handled by traditional fault manager */
 
 #ifdef ON_FAULT_OPEN
-			ancestor_pdp =(void *) ancestor_pml4[PML4(target_address)];
 			ancestor_pdp = __va((ulong)ancestor_pdp & 0xfffffffffffff000);
 			my_pdp[PDP(target_address)] = ancestor_pdp[PDP(target_address)];
 //			printk("\tthread %d - root-sim is opening the access to the address %p (loading the mask %p into the page table)\n",current->pid,target_address, (void *)ancestor_pdp[PDP(target_address)]);
@@ -227,7 +236,12 @@ int root_sim_page_fault(struct pt_regs* regs, long error_code){
 			rs_ktblmgr_ioctl(NULL,IOCTL_UNSCHEDULE_ON_PGD,(int)i);
 
 #endif
-			hitted_object = (PML4(target_address) - restore_pml4)*512 + PDP(target_address) ;
+			int count_involved_pml4=-1;
+			int index_involved_pml4;
+			for(index_involved_pml4 = 0;index_involved_pml4 <= PML4(target_address);index_involved_pml4){
+				if(dirty_pml4[index_involved_pml4]) count_involved_pml4++;
+			}
+			hitted_object = count_involved_pml4*512 + PDP(target_address) ;
 			
 
 			auxiliary_stack_pointer = regs->sp;
@@ -373,11 +387,16 @@ static long rs_ktblmgr_ioctl(struct file *filp, unsigned int cmd, unsigned long 
 	int scheduled_object;
 	int *scheduled_objects;
 	int scheduled_objects_count;
-	int object_to_close;
+	unsigned long object_to_close;
 	//ulong aux;
 
 	char* aux;
 	char* aux1;
+
+
+	//TODO MN
+	void** pml4_table;
+        int pml4_index;
 
 	switch (cmd) {
 
@@ -438,11 +457,22 @@ static long rs_ktblmgr_ioctl(struct file *filp, unsigned int cmd, unsigned long 
 	case IOCTL_GET_PGD:
 		//flush_cache_all();
 		mutex_lock(&pgd_get_mutex);
-		printk(KERN_ERR "[IOCTL_GET_PGD] before enter in for");
 		for (i = 0; i < SIBLING_PGD; i++) {
 			if (original_view[i] == NULL) {
 				//memcpy(mm_struct_addr[i], current->mm, sizeof(struct mm_struct));
 				memcpy((void *)pgd_addr[i], (void *)(current->mm->pgd), 4096);
+				
+				//PML4 of current
+ 	                        pml4_table =(void **) pgd_addr[i];
+
+				for(pml4_index=0;pml4_index<PTRS_PER_PGD;pml4_index++){
+					if((pml4_table[pml4_index]!=NULL)&&(dirty_pml4[pml4_index])){
+                               //         	printk("PML4_index reset because LP memory: %d\n",pml4_index);
+                                        	pml4_table[pml4_index] = NULL;
+                                	}	
+                        	}
+	
+			
 				original_view[i] = current->mm;
 				descriptor = i;
 				ret = descriptor;
@@ -487,20 +517,9 @@ back_to_pgd_release:
 
 		//scheduled_object = ((ioctl_info*)arg)->id;
 		if (original_view[descriptor] != NULL) { //sanity check
-
-			for(i=0;i<scheduled_objects_count;i++){
-				//scheduled_object = TODO COPY FROM USER;
-		        	copy_from_user((void *)&scheduled_object,(void *)&scheduled_objects[i],sizeof(int));	
-				open_index[descriptor]++;
-				currently_open[descriptor][open_index[descriptor]]=scheduled_object;
-				//loadCR3 with pgd[arg]
-			}
-			
 			int index_mdt;
-                        int pml4_index;
                         int pdpt_index;
                         int pd_index;
-                        void** pml4_table;
                         void* pml4_entry;
                         void* address_pdpt;
                         void* temp;
@@ -511,13 +530,31 @@ back_to_pgd_release:
                         void* pdpt_entry;
                         void** pd_table;
                         void** original_pd;
+			
+			//PML4 of current
+                         pml4_table =(void **) pgd_addr[descriptor];
+				
+		//	printk(KERN_ERR "[SCHEDULE_ON_PGD] before enter in update hitted object\n");
+		//	print_pgd(pml4_table);			
 
-                        printk(KERN_ERR "obj_mmap_count: %d\n",obj_mmap_count);
+                        //Original PML4
+                        original_pml4 = (void **) original_view[descriptor]->pgd;
+			
+                        for(pml4_index=0;pml4_index<PTRS_PER_PGD;pml4_index++){
+				if((original_pml4[pml4_index]!=NULL)&&(pml4_table[pml4_index]==NULL)&&(!dirty_pml4[pml4_index])){
+		//			printk("PML4_index update because not in memory: %d\n",pml4_index);
+					pml4_table[pml4_index] = original_pml4[pml4_index];					
+				}
+			}
+
+		//	printk(KERN_ERR "obj_mmap_count: %d\n",obj_mmap_count);
+
                         for(index_mdt=0; index_mdt<obj_mmap_count; index_mdt++){
 
-                            //printk(KERN_ERR "index_mdt:%d \t obj_mem_size:%d \t  involved_pde:%d\n",index_mdt,obj_mem_size,involved_pde);
-                            //printk(KERN_ERR "sheduled_mmaps_pointers[%d]:%p\n",index_mdt,sheduled_mmaps_pointers[index_mdt]);
-
+			    //Update currently_open with address of hitted obecjt
+			    open_index[descriptor]++;
+                            currently_open[descriptor][open_index[descriptor]]=(unsigned long) sheduled_mmaps_pointers[index_mdt];
+                            
                             //Index of PML4 
                             pml4_index = pgd_index((unsigned long) sheduled_mmaps_pointers[index_mdt]);
 
@@ -529,8 +566,6 @@ back_to_pgd_release:
 
                             //Entry PML4
                             pml4_entry =(void *) pml4_table[pml4_index];
-                            
-			    printk(KERN_ERR "current->mm->pgd: %p \t original_view: %p \t pgd_addr: %p\n",current->mm->pgd,original_view[descriptor]->pgd,pgd_addr[descriptor]);
 				
                             if(original_pml4[pml4_index]==NULL){
                                     printk(KERN_ERR "[SCHEDULE_ON_PGD]: Rootsim error original_pml4[%d]=NULL\n",pml4_index);
@@ -590,6 +625,10 @@ back_to_pgd_release:
 			/* actual change of the view on memory */
 			root_sim_processes[descriptor] = current->pid;
 			rootsim_load_cr3(pgd_addr[descriptor]);
+			
+
+		//	printk(KERN_ERR "[SCHEDULE_ON_PGD] After update hitted object\n");
+		//	print_pgd(pml4_table);
 			ret = 0;
 		}else{
 			 ret = -1;
@@ -610,8 +649,8 @@ back_to_pgd_release:
 
 				object_to_close = currently_open[descriptor][i];
 	
-			
-				pml4 = restore_pml4 + OBJECT_TO_PML4(object_to_close);
+				
+				pml4 = pgd_index(object_to_close);
 //				printk("UNSCHEDULE: closing pml4 %d - object %d\n",pml4,object_to_close);
 	//			continue;
 				my_pgd =(void **)pgd_addr[descriptor];
@@ -621,7 +660,7 @@ back_to_pgd_release:
 
 				/* actual closure of the PDP entry */
 	
-				my_pdp[OBJECT_TO_PDP(object_to_close)] = NULL;
+				my_pdp[pud_index(object_to_close)] = NULL;
 			}
 			open_index[descriptor] = -1;
 			ret = 0;
@@ -1056,14 +1095,18 @@ bridging_from_get_pgd:
 			pgd_entry = (void **)current->mm->pgd;
                         
 			for (i=0; i<PTRS_PER_PGD; i++){
-                                if(pgd_entry[i]==NULL){ return i;}
+                                if(pgd_entry[i]==NULL){ 
+					dirty_pml4[i] = 1;
+					return i;
+					
+				}
 			}
 
 			return -1;
 		break;
 	
 		case IOCTL_PGD_PRINT:
-			print_pgd();
+			print_pgd((void**)current->mm->pgd);
                         return 0;
                 break;
 

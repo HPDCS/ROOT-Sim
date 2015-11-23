@@ -17,5 +17,5 @@ typedef struct _lp_mem_region{
 
 int allocator_ecs_init(unsigned int);
 void allocator_ecs_release(unsigned int);
-char* get_new_memory(unsigned int, size_t);
+char* get_memory_ecs(unsigned int, size_t);
 void* get_base_pointer(unsigned int);

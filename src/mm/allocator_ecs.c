@@ -19,7 +19,7 @@ void* get_base_pointer(unsigned int sobj){
 	return (void*) mem_region[sobj].base_pointer;
 }
 
-void* get_memory_ecs(unsigned int sobj, size_t size){
+char* get_memory_ecs(unsigned int sobj, size_t size){
 	lp_mem_region local_mem_region = mem_region[sobj];	
 
 	if((local_mem_region.brk + size) - local_mem_region.base_pointer > PER_LP_PREALLOCATED_MEMORY ){
@@ -46,7 +46,7 @@ int allocator_ecs_init(unsigned int sobjs) {
                 rootsim_error(true, "Error in opening special device file. ROOT-Sim is compiled for using the ktblmgr linux kernel module, which seems to be not loaded.");
         }
 
-	ioctl(ioctl_fd, IOCTL_PGD_PRINT);
+	//ioctl(ioctl_fd, IOCTL_PGD_PRINT);
 
 	if( (sobjs > MAX_LPs) )
                 return INVALID_SOBJS_COUNT_AECS;
@@ -76,7 +76,6 @@ int allocator_ecs_init(unsigned int sobjs) {
 			if(y % 2 == 0) {
 				//printf("y=%d\n",y);
 				mem_region[y/2].base_pointer = mem_region[y/2].brk = addr;
-				printf("Base pointer lp[%d]: %p\n",y,addr);
 			}
 				
 			allocation_counter++;
@@ -97,7 +96,7 @@ int allocator_ecs_init(unsigned int sobjs) {
 	}
 	
 	
-	ioctl(ioctl_fd, IOCTL_PGD_PRINT);
+	//ioctl(ioctl_fd, IOCTL_PGD_PRINT);
 	
 	return SUCCESS_AECS;
 }

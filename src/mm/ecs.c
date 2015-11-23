@@ -286,8 +286,6 @@ void lp_alloc_schedule(void) {
 	sched_info.objects_mmap_count = 0;
 	int i;
 	
-	printf("Value of sched_info.count = %d\n",sched_info.count);	
-	
 	sched_info.objects_mmap_count = sched_info.count;	
 	
 	sched_info.objects_mmap_pointers = rsalloc(sizeof(void *) * sched_info.objects_mmap_count);	
@@ -295,12 +293,8 @@ void lp_alloc_schedule(void) {
                 sched_info.objects_mmap_pointers[i]= get_base_pointer(sched_info.objects[i]);
         }
 	
-	//TODO MN this return is to debug.	
-	//return;	
-
 	/* passing into LP mode - here for the pgd_ds-th LP */
 	ioctl(ioctl_fd,IOCTL_SCHEDULE_ON_PGD, &sched_info);
-	printf("DONE IOCTL_SCHEDULE_ON_PGD\n");	
 	
 }
 
