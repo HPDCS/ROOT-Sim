@@ -76,9 +76,13 @@ void fossil_collection(unsigned int lid, simtime_t time_barrier) {
 		evt = list_prev(last_kept_event);
 //	printf("******* PRUNING REVWINS ***********\n");
 		while(evt != NULL) {
-//		printf("evt: %p (%d, %f) - revwin: %p size %d\n", evt, evt->type, evt->timestamp, evt->revwin, revwin_size(evt->revwin));
-			revwin_free(evt->receiver, evt->revwin);
-			evt->revwin = NULL;
+			if(evt->revwin != NULL){
+//				printf("evt: %p (%d, %f) - revwin: %p size %d\n", evt, evt->type, evt->timestamp, evt->revwin, revwin_size(evt->revwin));
+//
+//
+				// LEACK revwin_free(evt->receiver, evt->revwin);
+				evt->revwin = NULL;
+			}
 			evt = list_prev(evt);
 		}
 	}

@@ -121,11 +121,15 @@ static void destroy_LPs(void) {
 	register unsigned int i;
 
 	for(i = 0; i < n_prc; i++) {
-//		rsfree(LPS[i]->queue_in);
-//		rsfree(LPS[i]->queue_out);
-//		rsfree(LPS[i]->queue_states);
-//		rsfree(LPS[i]->bottom_halves);
-//		rsfree(LPS[i]->rendezvous_queue);
+		rsfree(LPS[i]->queue_in);
+		rsfree(LPS[i]->queue_out);
+		rsfree(LPS[i]->queue_states);
+		rsfree(LPS[i]->bottom_halves);
+		rsfree(LPS[i]->rendezvous_queue);
+
+#ifdef HAVE_REVERSE
+	//	rsfree(LPS[i]->reverse_windows);
+#endif
 
 		// Destroy stacks
 		#ifdef ENABLE_ULT
@@ -176,10 +180,14 @@ void scheduler_fini(void) {
 * @param args arguments passed to the LP main loop. Currently, this is not used.
 */
 static void LP_main_loop(void *args) {
+	int delta_event_timer;
+
 	#ifdef EXTRA_CHECKS
 	unsigned long long hash1, hash2;
 	hash1 = hash2 = 0;
 	#endif
+
+	msg_t * prev_event;
 
 	(void)args; // this is to make the compiler stop complaining about unused args
 
@@ -210,7 +218,18 @@ static void LP_main_loop(void *args) {
 				if(current_evt->revwin == NULL)
 					current_evt->revwin = revwin_create();
 				else
-					revwin_reset(current_evt->revwin);
+					revwin_reset(current_lp, current_evt->revwin);
+
+				prev_event = list_prev(current_evt);
+
+				if(prev_event){
+					current_evt->revwin->prev = prev_event->revwin; 
+				}
+				else{
+					current_evt->revwin->prev = NULL;
+				}
+
+
 			} else {
 				_ProcessEvent[current_lp] = ProcessEvent;
 			}
@@ -227,12 +246,12 @@ static void LP_main_loop(void *args) {
 		}
 
 		switch_to_application_mode();
+
 		_ProcessEvent[current_lp](LidToGid(current_lp), current_evt->timestamp, current_evt->type, current_evt->event_content, current_evt->size, current_state);
+
 		switch_to_platform_mode();
 
-		int delta_event_timer = timer_value_micro(event_timer);
-
-//		printf("Revwin after execution of %p (%d, %f): %p %d\n", current_evt, current_evt->type, current_evt->timestamp, current_evt->revwin, revwin_size(current_evt->revwin));
+		delta_event_timer = timer_value_micro(event_timer);
 
 #ifdef HAVE_REVERSE
 		revwin_flush_cache();
@@ -251,8 +270,8 @@ static void LP_main_loop(void *args) {
 		statistics_post_lp_data(current_lp, STAT_EVENT, 1.0);
 		statistics_post_lp_data(current_lp, STAT_EVENT_TIME, delta_event_timer);
 
-		// Give back control to the simulation kernel's user-level thread
 		#ifdef ENABLE_ULT
+		// Give back control to the simulation kernel's user-level thread
 		context_switch(&LPS[current_lp]->context, &kernel_context);
 		#else
 		return;
@@ -287,8 +306,7 @@ void initialize_LP(unsigned int lp) {
 
 	// Set the initial checkpointing period for this LP.
 	// If the checkpointing period is fixed, this will not change during the
-	// execution. Otherwise, new calls to this function will (locally) update
-	// this.
+	// execution. Otherwise, new calls to this function will (locally) update this.
 	set_checkpoint_period(lp, rootsim_config.ckpt_period);
 
 	#ifdef HAVE_REVERSE
@@ -309,6 +327,8 @@ void initialize_LP(unsigned int lp) {
 	LPS[lp]->queue_states = new_list(lp, state_t);
 	LPS[lp]->bottom_halves = new_list(lp, msg_t);
 	LPS[lp]->rendezvous_queue = new_list(lp, msg_t);
+	LPS[lp]->reverse_events = new_list(lp, revwin_t);
+	LPS[lp]->FCF = 0;
 
 	// Initialize the LP lock
 	spinlock_init(&LPS[lp]->lock);

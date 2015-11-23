@@ -2,6 +2,7 @@
 #include <string.h>
 #include <core/timer.h>
 #include <scheduler/scheduler.h>
+#include <statistics/statistics.h>
 #include <mm/dymelor.h>
 
 // Definitions to functions which will be wrapped by the linker
@@ -57,6 +58,7 @@ void __wrap_abort(void) {
 		fflush(stdout);
 	}
 #endif
+	statistics_stop(EXIT_FAILURE);
 	__real_abort();
 }
 
