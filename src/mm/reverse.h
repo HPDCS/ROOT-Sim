@@ -84,6 +84,7 @@ typedef struct _revwin_cache {
  * Descriptor of a single reverse window
  */
  typedef struct _revwin_t {
+	struct _revwin_t *prev;			//! Pointer to the previous reverse window
 	void *top;				//! Pointer to the first instruction byte to be executed
 	void *base;				//! Pointer to the logic base of the window
 	unsigned int offset;	//! A random offset used to prevent cache lines to be alligned
@@ -191,3 +192,4 @@ extern void revwin_flush_cache(void);
 
 #endif /* __REVERSE_H */
 #endif /* HAVE_REVERSE */
+

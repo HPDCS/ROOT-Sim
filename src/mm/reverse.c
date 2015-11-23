@@ -44,7 +44,7 @@ static void revwin_add_code(revwin_t *win, unsigned char *bytes, size_t size) {
 		exit(-ENOMEM);
 	}
 
-	// copy the instructions to the heap
+	// copy the instructions to the reverse window code area
 	memcpy(win->top, bytes, size);
 
 //	printf("Added %ld bytes to the reverse window\n", size);
@@ -114,43 +114,85 @@ static void reverse_chunk(revwin_t *win, const unsigned long long address, size_
  * @param size The number of bytes to reverse
  */
 static void reverse_single(revwin_t *win, const unsigned long long address, size_t size) {
-	unsigned long value, value_lower;
+	unsigned long long value, value_lower;
 	unsigned char *code;
 	unsigned short size_code;
 
-	unsigned char revcode_longword[17] = {
+	unsigned char revcode_byte[14] = {
 		0x48, 0xb8, 0xda, 0xd0, 0xda, 0xd0, 0x00, 0x00, 0x00, 0x00,			// movabs $0x0, %rax
-		0x48, 0xc7, 0x00, 0xd3, 0xb0, 0x00, 0x00,							// mov $0x0, (%rax)
+		0xc6, 0x00, 0xaa,													// movb $0x0, (%rax)
 	};
 
-	unsigned char revcode_quadword[25] = {
+	unsigned char revcode_word[15] = {
 		0x48, 0xb8, 0xda, 0xd0, 0xda, 0xd0, 0x00, 0x00, 0x00, 0x00,			// movabs $0x0, %rax
-		0x48, 0xc7, 0x00, 0xd3, 0xb0, 0x00, 0x00,							// mov $0x0, (%rax)
-		0x48, 0xc7, 0x40, 0x04, 0xb0, 0xd3, 0x00, 0x00 						// mov $0x0, 4(%rax)
+		0x66, 0xc7, 0x00, 0xaa, 0xaa,										// movw $0x0, (%rax)
+	};
+
+	unsigned char revcode_longword[16] = {
+		0x48, 0xb8, 0xda, 0xd0, 0xda, 0xd0, 0x00, 0x00, 0x00, 0x00,			// movabs $0x0, %rax
+		0xc7, 0x00, 0xaa, 0xaa, 0xaa, 0xaa,									// movl $0x0, (%rax)
+	};
+
+	unsigned char revcode_quadword[23] = {
+		0x48, 0xb8, 0xda, 0xd0, 0xda, 0xd0, 0x00, 0x00, 0x00, 0x00,			// movabs $0x0, %rax
+		0xc7, 0x00, 0xd3, 0xb0, 0x00, 0x00,									// movl $0x0, (%rax)
+		0xc7, 0x40, 0x04, 0xb0, 0xd3, 0x00, 0x00 							// movl $0x0, 4(%rax)
 	};
 
 	// Get the value pointed to by 'address'
 	memcpy(&value, (void *)address, 8);
 
+	switch(size) {
+		case 1:
+			// Byte
+			code = revcode_byte;
+			size_code = sizeof(revcode_byte);
+			memcpy(code+12, &value, 1);
+		break;
+
+		case 2:
+			// Word
+			code = revcode_word;
+			size_code = sizeof(revcode_word);
+			memcpy(code+13, &value, 2);
+		break;
+
+		case 4:
+			// Longword
+			code = revcode_longword;
+			size_code = sizeof(revcode_longword);
+			memcpy(code+12, &value, 4);
+		break;
+
+		case 8:
+			// Quadword
+			code = revcode_quadword;
+			size_code = sizeof(revcode_quadword);
+			value_lower = ((value >> 32) & 0x0FFFFFFFF);
+			memcpy(code+12, &value, 4);
+			memcpy(code+19, &value_lower, 4);
+		break;
+	}
+
 	// We must handle the case of a quadword with two subsequent MOVs
 	// properly embedding the upper and lower parts of values
-	if(size == 8) {
+/*	if(size == 8) {
 		code = revcode_quadword;
 		size_code = sizeof(revcode_quadword);
 		value_lower = ((value >> 32) &0x0FFFFFFFF);
-		memcpy(code+21, &value_lower, 4);
+		memcpy(code+19, &value_lower, 4);
 
 	} else {
 		code = revcode_longword;
 		size_code = sizeof(revcode_longword);
 	}
-
+*/
 	// Copy the destination address into the binary code
 	// of MOVABS (first 2 bytes are the opcode)
 	memcpy(code+2, &address, 8);
-	memcpy(code+13, &value, 4);
+//	memcpy(code+12, &value, 4);
 
-	//printf("Single address reverse code generated\n");
+	//printf("Single address reverse code generated (%d bytes)\n", size);
 
 	// Now 'code' contains the right code to add in the reverse window
 	revwin_add_code(win, code, size_code);
@@ -199,7 +241,7 @@ static void choose_strategy(void) {
 	}
 	frag /= cache.load;
 
-	printf("Frag=%f, avg_load=%f\n", frag, avg_load);
+//	printf("Frag=%f, avg_load=%f\n", frag, avg_load);
 
 	// TODO: introdurre un modello di costo più complesso
 
@@ -341,23 +383,29 @@ static bool check_dominance(unsigned long long address) {
 
 
 void revwin_flush_cache(void) {
+	memset(&cache, 0, sizeof(revwin_cache));
+}
+/*void revwin_flush_cache(void) {
 	int c, i;
 	prefix_head *cluster;
 
 	for(c = 0; c < PREFIX_HEAD_SIZE; c++) {
 		cluster = &cache.cluster[c];
 
-		cluster->prefix = 0;
-		cluster->load = 0;
+		memset(cluster, 0, sizeof(prefix_head));
+//		cluster->prefix = 0;
+//		cluster->load = 0;
+//		cluster->fragmentation = 0;
 
-		for(i = 0; i < CLUSTER_SIZE; i++) {
-			cluster->cache[i].address = 0;
-			cluster->cache[i].touches = 0;
-		}
+//		for(i = 0; i < CLUSTER_SIZE; i++) {
+//			memset(cluster->cache[i], 0, sizeof(cache_entry));
+//			cluster->cache[i].address = 0;
+//			cluster->cache[i].touches = 0;
+//		}
 	}
 
 	cache.load = 0;
-}
+}*/
 
 
 revwin_t *revwin_create(void) {
@@ -527,12 +575,6 @@ void reverse_code_generator(const unsigned long long address, const size_t size)
 
 	//SIMULATED_INCREMENTAL_CKPT return;
 
-	// 	long long i = 0;
-	// if((count++) % 1024 == 0) {
-	// 	printf("reverse_code_generator(%llx, %ld) %d\n", address, size, count);
-	// 	printf("%ld\n", i);
-	// }
-	
 	// We have to retrieve the current event structure bound to this LP
 	// in order to bind this reverse window to it.
 	win = current_evt->revwin;
@@ -547,7 +589,9 @@ void reverse_code_generator(const unsigned long long address, const size_t size)
 
 	// Check whether the current address' update dominates over some other
 	// update on the same memory region. If so, we can return earlier.
+	
 	dominant = check_dominance(address);
+//	dominant = false;
 	if(dominant) {
 		// If the current address is dominated by some other update,
 		// then there is no need to generate any reversing instruction
@@ -616,25 +660,8 @@ void execute_undo_event(unsigned int lid, revwin_t *win) {
 	// Register the pointer to the reverse code function
 	revcode = win->top;
 
-	// Grant executable priviledges to the reverse window
-	// Note that the revwin is not necessarily aligned to
-	// the PAGE_SIZE since the SLAB has its own headers,
-	// thus should be secure to do the following realignment
-	err = mprotect((void *)((unsigned long long)win & -PAGE_SIZE), REVWIN_SIZE, PROT_READ | PROT_WRITE | PROT_EXEC);
-	if (err != 0) {
-		printf("Unable to make executable revwin at %p: %s\n", win, strerror(errno));
-		abort();
-	}
-
 	// Calls the reversing function
 	((void (*)(void))revcode) ();
-
-	// Revoke executable priviledges to the reverse window
-	err = mprotect((void *)((unsigned long long)win & -PAGE_SIZE), REVWIN_SIZE, PROT_READ | PROT_WRITE);
-	if (err != 0) {
-		printf("Unable to make executable revwin at %p: %s\n", win, strerror(errno));
-		abort();
-	}
 
 
 	double elapsed = (double)timer_value_micro(reverse_block_timer);
@@ -656,4 +683,5 @@ void execute_undo_event(unsigned int lid, revwin_t *win) {
 }
 
 #endif /* HAVE_REVERSE */
+
 
