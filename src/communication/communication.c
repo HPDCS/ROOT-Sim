@@ -330,6 +330,9 @@ void insert_outgoing_msg(msg_t *msg) {
 	// If the model is generating many events at the same time, reallocate the outgoing buffer
 	if(LPS[current_lp]->outgoing_buffer.size == LPS[current_lp]->outgoing_buffer.max_size){
 		LPS[current_lp]->outgoing_buffer.max_size *= 2;
+		//TODO MN DEBUG
+		printf("RALLOC\n");
+		return;
 		LPS[current_lp]->outgoing_buffer.outgoing_msgs = rsrealloc(LPS[current_lp]->outgoing_buffer.outgoing_msgs, sizeof(msg_t) * LPS[current_lp]->outgoing_buffer.max_size);
 	}
 
