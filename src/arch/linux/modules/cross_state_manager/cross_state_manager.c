@@ -582,6 +582,15 @@ goto bridging_from_get_pgd;
 				printk(KERN_ERR "At the end of UNSCHEDULE \n");
 				print_pgd(pgd_addr[descriptor]);
 			}
+			my_pgd =(void **)pgd_addr[descriptor];
+			for(i=0;i<512;i++){
+				if(dirty_pml4[i]){
+                                	my_pdp =(void *)my_pgd[i];
+					my_pdp = (void *)((ulong) my_pdp & 0xfffffffffffff000);
+                                        my_pdp = (void *)(__va(my_pdp));
+					__free_pages(my_pdp,0);
+				}
+			}
 			open_index[descriptor] = -1;
 			ret = 0;
 		}else{
@@ -664,11 +673,10 @@ bridging_from_get_pgd:
 		break;
 	
 		case IOCTL_GET_FREE_PML4:
-			//pgd_entry = (void **)current->mm->pgd;
+			pgd_entry = (void **)current->mm->pgd;
                         
 			for (i=0; i<PTRS_PER_PGD; i++){
-                                //if(pgd_entry[i]==NULL){ 
-                                if(ancestor_pml4[i]==NULL){ 
+                                if(pgd_entry[i]==NULL){ 
 					dirty_pml4[i] = 1;
 					return i;
 					
@@ -679,8 +687,7 @@ bridging_from_get_pgd:
 		break;
 	
 		case IOCTL_PGD_PRINT:
-			//print_pgd((void**)current->mm->pgd);
-			print_pgd(ancestor_pml4);
+			print_pgd((void**)current->mm->pgd);
                         return 0;
                 break;
 

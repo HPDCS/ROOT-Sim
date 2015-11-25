@@ -122,6 +122,9 @@ static void *main_simulation_loop(void *arg) {
 		// Activate one LP and process one event. Send messages produced during the events' execution
 		schedule();
 
+//TODO MN DEBUG
+return;
+
 		my_time_barrier = gvt_operations();
 
 		// Only a master thread on master kernel prints the time barrier
