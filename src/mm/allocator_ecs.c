@@ -95,7 +95,7 @@ int allocator_ecs_init(unsigned int sobjs) {
 		
 	}
 	
-	
+	close(ioctl_fd);
 	//ioctl(ioctl_fd, IOCTL_PGD_PRINT);
 	
 	return SUCCESS_AECS;

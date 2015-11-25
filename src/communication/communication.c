@@ -338,7 +338,6 @@ void insert_outgoing_msg(msg_t *msg) {
 
  //TODO MN DEBUG
 printf("Value of msg %p\n",*msg);
-return;
 
 	// Message structure was declared on stack in ScheduleNewEvent: make a copy!
 	LPS[current_lp]->outgoing_buffer.outgoing_msgs[LPS[current_lp]->outgoing_buffer.size++] = *msg;

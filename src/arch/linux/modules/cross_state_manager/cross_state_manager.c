@@ -181,6 +181,7 @@ void print_pgd(void** pgd_entry){
 /// This is to access the actual flush_tlb_all using a kernel proble
 void (*flush_tlb_all_lookup)(void) = NULL;
 
+bool print_debug=false;
 
 int root_sim_page_fault(struct pt_regs* regs, long error_code){
  	void *target_address;
@@ -208,11 +209,14 @@ int root_sim_page_fault(struct pt_regs* regs, long error_code){
 			ancestor_pdp =(void *) ancestor_pml4[PML4(target_address)];
 
 			if(!dirty_pml4[PML4(target_address)]) {
-				return 0; /* a fault outside the root-sim object zone - it needs to be handeld by the traditional fault manager */
+				return 0; /* a fault outside the root-sim object zone - it needs to be handeld by the traditional fault manager */				
 			}
 
-			printk(KERN_ERR "Rootsim managment addr: %p entry_pml4: %d dirty_pml4:%d\n",target_address,PML4(target_address),dirty_pml4[PML4(target_address)]);
-			
+			if(!print_debug){
+				printk(KERN_ERR "addr: %p entry_pdp: %d dirty_pml4:%d\n",target_address,PDP(target_address),dirty_pml4[PML4(target_address)]);
+				print_debug = true;
+			}
+
 			my_pdp = __va((ulong)my_pdp & 0xfffffffffffff000);
 			if((void *)my_pdp[PDP(target_address)] != NULL)
 				return 0; /* faults at lower levels than PDP - need to be handled by traditional fault manager */
@@ -296,13 +300,13 @@ int rs_ktblmgr_release(struct inode *inode, struct file *filp) {
 			
 			pgd_entry = (void **)pgd_addr[s];
 	
-                        for (i=0; i<PTRS_PER_PGD; i++){ 
-                                pml4_entry = pgd_entry[i];
+                        //for (i=0; i<PTRS_PER_PGD; i++){ 
+                          //      pml4_entry = pgd_entry[i];
 
-                                if(pml4_entry != NULL){
-                                        temp = (void *)((ulong) pml4_entry & 0xfffffffffffff000);
-                                        temp = (void *)(__va(temp));
-                                        pdpt_entry = (void **)temp;
+                            //    if(pml4_entry != NULL){
+                              //          temp = (void *)((ulong) pml4_entry & 0xfffffffffffff000);
+                                //        temp = (void *)(__va(temp));
+                                  //      pdpt_entry = (void **)temp;
 					/*
                                         for(j=0; j<PTRS_PER_PUD; j++){
                                                 if(pdpt_entry[j] != NULL){
@@ -314,14 +318,16 @@ int rs_ktblmgr_release(struct inode *inode, struct file *filp) {
                                                 }
                                         }
 					*/
-					if(temp!=NULL)
-                                        	__free_pages(temp,0);
-                                }
-			}	
+				//	if(temp!=NULL)
+                                  //      	__free_pages(temp,0);
+                               // }
+		//	}	
                         
-			__free_pages(pgd_entry,0);
+		//	__free_pages(pgd_entry,0);
+			
+			
 
-			original_view[s]=NULL;
+		//	original_view[s]=NULL;
 		}// enf if != NULL
 	}// end for s
 	
@@ -529,8 +535,10 @@ goto bridging_from_get_pgd;
                             pdpt_entry = (void *)pdpt_table[pdpt_index];
                             if(pdpt_entry == NULL ){
 				pdpt_entry = original_pdpt[pdpt_index];
+                            	printk("Value of pdtp_index: %d\n",pdpt_index);
                             }
-                            
+                           
+				 
                             //Update new PDPTE                                      
                             pdpt_table[pdpt_index] = pdpt_entry;
 
@@ -543,8 +551,8 @@ goto bridging_from_get_pgd;
 			rootsim_load_cr3(pgd_addr[descriptor]);
 			
 
-		//	printk(KERN_ERR "[SCHEDULE_ON_PGD] After update hitted object\n");
-		//	print_pgd(pml4_table);
+			printk(KERN_ERR "[SCHEDULE_ON_PGD] After update hitted object\n");
+			print_pgd(pml4_table);
 			ret = 0;
 		}else{
 			 ret = -1;
@@ -560,7 +568,6 @@ goto bridging_from_get_pgd;
 
 		if ((original_view[descriptor] != NULL) && (current->mm->pgd != NULL)) { //sanity check
 			
-			printk(KERN_ERR "Original_view:%p Current:%p\n",original_view[descriptor]->pgd,current->mm->pgd);
 			rootsim_load_cr3(current->mm->pgd);
 
 			for(i=open_index[descriptor];i>=0;i--){
@@ -575,22 +582,25 @@ goto bridging_from_get_pgd;
 				my_pdp = __va((ulong)my_pdp & 0xfffffffffffff000);
 
 
-				/* actual closure of the PDP entry */
-	
 				my_pdp[pud_index(object_to_close)] = NULL;
 				
-				printk(KERN_ERR "At the end of UNSCHEDULE \n");
-				print_pgd(pgd_addr[descriptor]);
+				//printk(KERN_ERR "At the end of UNSCHEDULE \n");
+				//print_pgd(pgd_addr[descriptor]);
 			}
+
 			my_pgd =(void **)pgd_addr[descriptor];
-			for(i=0;i<512;i++){
+			for(i=0;i<PTRS_PER_PGD;i++){
 				if(dirty_pml4[i]){
                                 	my_pdp =(void *)my_pgd[i];
 					my_pdp = (void *)((ulong) my_pdp & 0xfffffffffffff000);
                                         my_pdp = (void *)(__va(my_pdp));
 					__free_pages(my_pdp,0);
+					my_pgd[i] = NULL;
 				}
 			}
+			
+			print_pgd(pgd_addr[descriptor]);
+			
 			open_index[descriptor] = -1;
 			ret = 0;
 		}else{
@@ -723,7 +733,7 @@ void foo(struct task_struct *tsk) {
 	//		if(current->mm != NULL){
 	//			rootsim_load_cr3(current->mm->pgd);
 				rootsim_load_cr3(pgd_addr[i]);
-				printk("FOO\n");
+//				printk("FOO\n");
 //				printk("flushing thread cr3 onto the original PML4\n");
 //				printk("flushing thread cr3 onto the sibling PML4\n");
 			}

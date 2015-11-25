@@ -293,7 +293,8 @@ void initialize_LP(unsigned int lp) {
 	#ifdef ENABLE_ULT
 	LPS[lp]->stack = get_ult_stack(lp, LP_STACK_SIZE);
 	#endif
-
+	
+	
 	// Set the initial checkpointing period for this LP.
 	// If the checkpointing period is fixed, this will not change during the
 	// execution. Otherwise, new calls to this function will (locally) update
@@ -438,9 +439,11 @@ void activate_LP(unsigned int lp, simtime_t lvt, void *evt, void *state) {
 //	if(!rootsim_config.disable_preemption)
 //		enable_preemption();
 //	#endif
-
+	
+	printf("Activate LP %d\n",lp);
 	#ifdef HAVE_CROSS_STATE
 	// Activate memory view for the current LP
+	printf("Schedule %d\n",lp);
 	lp_alloc_schedule();
 	#endif
 
@@ -459,6 +462,7 @@ void activate_LP(unsigned int lp, simtime_t lvt, void *evt, void *state) {
 	#ifdef HAVE_CROSS_STATE
 	// Deactivate memory view for the current LP if no conflict has arisen
 	if(!is_blocked_state(LPS[lp]->state)) {	
+		printf("Deschedule %d\n",lp);
 		lp_alloc_deschedule();
 	}
 	#endif
