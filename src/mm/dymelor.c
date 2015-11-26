@@ -56,6 +56,7 @@ void dymelor_init(void) {
 void dymelor_fini(void){
 	recoverable_fini();
 	unrecoverable_fini();
+	allocator_fini(n_prc);
 }
 
 

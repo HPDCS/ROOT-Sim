@@ -16,6 +16,6 @@ typedef struct _lp_mem_region{
 #define MDT_RELEASE_FAILURE_AECS     -96
 
 int allocator_ecs_init(unsigned int);
-void allocator_ecs_release(unsigned int);
+void allocator_ecs_fini(unsigned int);
 char* get_memory_ecs(unsigned int, size_t);
 void* get_base_pointer(unsigned int);

@@ -101,12 +101,12 @@ int allocator_ecs_init(unsigned int sobjs) {
 	return SUCCESS_AECS;
 }
 
-void allocator_ecs_release(unsigned int sobjs){
+void allocator_ecs_fini(unsigned int sobjs){
 	unsigned int i;
 	int return_value;
 	for(i=0;i<sobjs;i++){
 		return_value = munmap(mem_region[i].base_pointer,PER_LP_PREALLOCATED_MEMORY);
-		if(!return_value){	
+		if(return_value){	
 			printf("ERROR on release value:%d\n",return_value);
 			break;
 		}

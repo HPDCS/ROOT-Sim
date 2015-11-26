@@ -382,6 +382,10 @@ bad_init:
 }
 
 //TODO MN
+void allocator_fini(unsigned int sobjs) {
+	allocator_ecs_fini(sobj);
+}
+
 mem_map* get_m_map(int sobj){
         if( (sobj < 0)||(sobj>=handled_sobjs) ) return NULL;
 

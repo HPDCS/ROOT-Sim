@@ -181,8 +181,6 @@ void print_pgd(void** pgd_entry){
 /// This is to access the actual flush_tlb_all using a kernel proble
 void (*flush_tlb_all_lookup)(void) = NULL;
 
-bool print_debug=false;
-
 int root_sim_page_fault(struct pt_regs* regs, long error_code){
  	void *target_address;
 	void **my_pgd;
@@ -212,14 +210,12 @@ int root_sim_page_fault(struct pt_regs* regs, long error_code){
 				return 0; /* a fault outside the root-sim object zone - it needs to be handeld by the traditional fault manager */				
 			}
 
-			if(!print_debug){
-				printk(KERN_ERR "addr: %p entry_pdp: %d dirty_pml4:%d\n",target_address,PDP(target_address),dirty_pml4[PML4(target_address)]);
-				print_debug = true;
-			}
 
 			my_pdp = __va((ulong)my_pdp & 0xfffffffffffff000);
 			if((void *)my_pdp[PDP(target_address)] != NULL)
 				return 0; /* faults at lower levels than PDP - need to be handled by traditional fault manager */
+
+			printk(KERN_ERR "addr: %p entry_pdp: %d dirty_pml4:%d\n",target_address,PDP(target_address),dirty_pml4[PML4(target_address)]);
 
 #ifdef ON_FAULT_OPEN
 			ancestor_pdp = __va((ulong)ancestor_pdp & 0xfffffffffffff000);
@@ -298,7 +294,7 @@ int rs_ktblmgr_release(struct inode *inode, struct file *filp) {
 	for (s=0;s<SIBLING_PGD;s++){
 		if(original_view[s]!=NULL){ /* need to recover memory used for PDPs that have not been deallocated */
 			
-			pgd_entry = (void **)pgd_addr[s];
+			original_view[s]=NULL;
 	
                         //for (i=0; i<PTRS_PER_PGD; i++){ 
                           //      pml4_entry = pgd_entry[i];
