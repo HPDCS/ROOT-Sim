@@ -384,6 +384,7 @@ static long rs_ktblmgr_ioctl(struct file *filp, unsigned int cmd, unsigned long 
 	//TODO MN
 	void** pml4_table;
         int pml4_index;
+        void** original_pml4;
 
 	switch (cmd) {
 
@@ -428,7 +429,7 @@ goto bridging_from_get_pgd;
 		break;
 
 	case IOCTL_SCHEDULE_ON_PGD:	
-		printk("IOCTL_SCHEDULE_ON_PGD\n");
+	//	printk("IOCTL_SCHEDULE_ON_PGD\n");
 		//flush_cache_all();
 		descriptor = ((ioctl_info*)arg)->ds;
 		//scheduled_object = ((ioctl_info*)arg)->id;
@@ -448,7 +449,6 @@ goto bridging_from_get_pgd;
                         void* pml4_entry;
                         void* address_pdpt;
                         void* temp;
-                        void** original_pml4;
                         void** original_pdpt;
                         void** pdpt_table;
                         void* address_pd;
@@ -471,6 +471,13 @@ goto bridging_from_get_pgd;
 					pml4_table[pml4_index] = original_pml4[pml4_index];					
 				}
 			}
+
+                        for(pml4_index=0;pml4_index<PTRS_PER_PGD;pml4_index++){
+                                if(dirty_pml4[pml4_index]){
+                                       pml4_table[pml4_index]=NULL;
+                                }
+                        }
+
 
 		//	printk(KERN_ERR "obj_mmap_count: %d\n",obj_mmap_count);
 
@@ -535,7 +542,7 @@ goto bridging_from_get_pgd;
                             pdpt_entry = (void *)pdpt_table[pdpt_index];
                             if(pdpt_entry == NULL ){
 				pdpt_entry = original_pdpt[pdpt_index];
-                            	printk("Value of pdtp_index: %d\n",pdpt_index);
+                            	//printk("Value of pdtp_index: %d\n",pdpt_index);
                             }
                            
 				 
@@ -551,8 +558,8 @@ goto bridging_from_get_pgd;
 			rootsim_load_cr3(pgd_addr[descriptor]);
 			
 
-			printk(KERN_ERR "[SCHEDULE_ON_PGD] After update hitted object\n");
-			print_pgd(pml4_table);
+			//printk(KERN_ERR "[SCHEDULE_ON_PGD] After update hitted object\n");
+			//print_pgd(pml4_table);
 			ret = 0;
 		}else{
 			 ret = -1;
@@ -561,7 +568,7 @@ goto bridging_from_get_pgd;
 
 
 	case IOCTL_UNSCHEDULE_ON_PGD:	
-		printk("IOCTL_UNSCHEDULE_ON_PGD\n");
+	//	printk("IOCTL_UNSCHEDULE_ON_PGD\n");
 	
 		//flush_cache_all();
 		descriptor = arg;
@@ -569,7 +576,7 @@ goto bridging_from_get_pgd;
 		if ((original_view[descriptor] != NULL) && (current->mm->pgd != NULL)) { //sanity check
 			
 			rootsim_load_cr3(current->mm->pgd);
-
+			/*
 			for(i=open_index[descriptor];i>=0;i--){
 
 				object_to_close = currently_open[descriptor][i];
@@ -587,6 +594,9 @@ goto bridging_from_get_pgd;
 				//printk(KERN_ERR "At the end of UNSCHEDULE \n");
 				//print_pgd(pgd_addr[descriptor]);
 			}
+			*/
+			//Original PML4
+                        original_pml4 = (void **) original_view[descriptor]->pgd;
 
 			my_pgd =(void **)pgd_addr[descriptor];
 			for(i=0;i<PTRS_PER_PGD;i++){
@@ -595,11 +605,11 @@ goto bridging_from_get_pgd;
 					my_pdp = (void *)((ulong) my_pdp & 0xfffffffffffff000);
                                         my_pdp = (void *)(__va(my_pdp));
 					__free_pages(my_pdp,0);
-					my_pgd[i] = NULL;
+					my_pgd[i] = original_pml4[i];
 				}
 			}
 			
-			print_pgd(pgd_addr[descriptor]);
+			//print_pgd(pgd_addr[descriptor]);
 			
 			open_index[descriptor] = -1;
 			ret = 0;

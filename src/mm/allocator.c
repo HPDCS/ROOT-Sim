@@ -224,7 +224,7 @@ void* allocate_segment(unsigned int sobj, size_t size, bool is_recoverable) {
 	//TODO MN
 	if(is_recoverable){
                 segment = (char*) get_memory_ecs(sobj,PAGE_SIZE*numpages);
-		printf("Memory is_recoverable - value of segment: %p\n",segment);
+	//	printf("Memory is_recoverable - value of segment: %p\n",segment);
 	}
         else{
 		// Update my_initial_address, keeping it aligned to large pages

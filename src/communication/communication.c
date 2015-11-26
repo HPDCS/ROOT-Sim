@@ -336,9 +336,6 @@ void insert_outgoing_msg(msg_t *msg) {
 		LPS[current_lp]->outgoing_buffer.outgoing_msgs = rsrealloc(LPS[current_lp]->outgoing_buffer.outgoing_msgs, sizeof(msg_t) * LPS[current_lp]->outgoing_buffer.max_size);
 	}
 
- //TODO MN DEBUG
-printf("Value of msg %p\n",*msg);
-
 	// Message structure was declared on stack in ScheduleNewEvent: make a copy!
 	LPS[current_lp]->outgoing_buffer.outgoing_msgs[LPS[current_lp]->outgoing_buffer.size++] = *msg;
 
