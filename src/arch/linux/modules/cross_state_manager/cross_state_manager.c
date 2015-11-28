@@ -217,7 +217,9 @@ int root_sim_page_fault(struct pt_regs* regs, long error_code){
 
 			printk(KERN_ERR "addr: %p entry_pdp: %d dirty_pml4:%d\n",target_address,PDP(target_address),dirty_pml4[PML4(target_address)]);
 
+
 #ifdef ON_FAULT_OPEN
+
 			ancestor_pdp = __va((ulong)ancestor_pdp & 0xfffffffffffff000);
 			my_pdp[PDP(target_address)] = ancestor_pdp[PDP(target_address)];
 //			printk("\tthread %d - root-sim is opening the access to the address %p (loading the mask %p into the page table)\n",current->pid,target_address, (void *)ancestor_pdp[PDP(target_address)]);
@@ -236,7 +238,7 @@ int root_sim_page_fault(struct pt_regs* regs, long error_code){
 #endif
 			int count_involved_pml4=-1;
 			int index_involved_pml4;
-			for(index_involved_pml4 = 0;index_involved_pml4 <= PML4(target_address);index_involved_pml4){
+			for(index_involved_pml4 = 0;index_involved_pml4 <= PML4(target_address);index_involved_pml4++){
 				if(dirty_pml4[index_involved_pml4]) count_involved_pml4++;
 			}
 			hitted_object = count_involved_pml4*512 + PDP(target_address) ;

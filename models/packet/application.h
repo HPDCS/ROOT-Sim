@@ -6,11 +6,11 @@
 
 typedef struct event_content_t {
 	simtime_t sent_at;
-	void *pointer;
+	int* pointer;
 	unsigned int sender;
 } event_t;
 
 typedef struct lp_state_t{
 	int packet_count;
-	void *pointer;
+	int* pointer;
 } lp_state_t;

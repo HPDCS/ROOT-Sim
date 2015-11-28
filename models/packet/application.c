@@ -11,7 +11,8 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, event_t *c
 		case INIT: // must be ALWAYS implemented
 			state = (lp_state_t *)malloc(sizeof(lp_state_t));
 	 		state->packet_count = 0;
-			state->pointer = malloc(sizeof(int));
+			state->pointer = (int*) malloc(sizeof(int));
+			state->pointer[0] = 0;
 			SetState(state);
 			timestamp = (simtime_t)(20 * Random());
 			ScheduleNewEvent(me, timestamp, PACKET, NULL, 0);
@@ -19,9 +20,10 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, event_t *c
 
 		case PACKET: {
 			state->packet_count++;
-			if(content != NULL && content->sender == me){
-				//free(content->pointer);
-				//printf("Free memory lp=%d\n",me);
+			if(content != NULL && content->sender != me){
+				if(content->pointer!=NULL){
+					content->pointer[0]++;
+				}
 			}
 			new_event.sent_at = now;
 			new_event.pointer = state->pointer;
