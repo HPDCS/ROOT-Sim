@@ -290,6 +290,7 @@ void lp_alloc_schedule(void) {
 	sched_info.objects_mmap_pointers = rsalloc(sizeof(void *) * sched_info.objects_mmap_count);	
 	for(i=0;i<sched_info.count;i++) {
                 sched_info.objects_mmap_pointers[i]= get_base_pointer(sched_info.objects[i]);
+		//printf("Object: %d \n",sched_info.objects[i]);
         }
 	
 	/* passing into LP mode - here for the pgd_ds-th LP */
