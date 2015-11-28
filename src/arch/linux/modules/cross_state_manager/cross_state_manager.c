@@ -296,34 +296,20 @@ int rs_ktblmgr_release(struct inode *inode, struct file *filp) {
 			
 			original_view[s]=NULL;
 	
-                        //for (i=0; i<PTRS_PER_PGD; i++){ 
-                          //      pml4_entry = pgd_entry[i];
-
-                            //    if(pml4_entry != NULL){
-                              //          temp = (void *)((ulong) pml4_entry & 0xfffffffffffff000);
-                                //        temp = (void *)(__va(temp));
-                                  //      pdpt_entry = (void **)temp;
-					/*
-                                        for(j=0; j<PTRS_PER_PUD; j++){
-                                                if(pdpt_entry[j] != NULL){
-                                                       temp_pdpt = (void *)((ulong) pdpt_entry[j] & 0xfffffffffffff000);
-                                                       temp_pdpt = (void *)(__va(temp_pdpt));
-							
-							if(temp_pdpt!=NULL)
-								__free_pages(temp_pdpt,0);
-                                                }
-                                        }
-					*/
-				//	if(temp!=NULL)
-                                  //      	__free_pages(temp,0);
-                               // }
-		//	}	
+                        for (i=0; i<PTRS_PER_PGD; i++){ 
+                        	pml4_entry = pgd_entry[i];
+	                      	if(pml4_entry != NULL && dirty_pml4[i]){
+                                	temp = (void *)((ulong) pml4_entry & 0xfffffffffffff000);
+                                        temp = (void *)(__va(temp));
+                                        pdpt_entry = (void **)temp;
+					
+					if(temp!=NULL)
+                                        	__free_pages(temp,0);
+                                }
+			}	
                         
-		//	__free_pages(pgd_entry,0);
-			
-			
+			__free_pages(pgd_entry,0);
 
-		//	original_view[s]=NULL;
 		}// enf if != NULL
 	}// end for s
 	
@@ -462,13 +448,6 @@ goto bridging_from_get_pgd;
                         original_pml4 = (void **) original_view[descriptor]->pgd;
 			
                         for(pml4_index=0;pml4_index<PTRS_PER_PGD;pml4_index++){
-				if((original_pml4[pml4_index]!=NULL)&&(pml4_table[pml4_index]==NULL)&&(!dirty_pml4[pml4_index])){
-		//			printk("PML4_index update because not in memory: %d\n",pml4_index);
-					pml4_table[pml4_index] = original_pml4[pml4_index];					
-				}
-			}
-
-                        for(pml4_index=0;pml4_index<PTRS_PER_PGD;pml4_index++){
                                 if(dirty_pml4[pml4_index]){
                                        pml4_table[pml4_index]=NULL;
                                 }
@@ -570,9 +549,9 @@ goto bridging_from_get_pgd;
 		descriptor = arg;
 
 		if ((original_view[descriptor] != NULL) && (current->mm->pgd != NULL)) { //sanity check
-			
+			root_sim_processes[descriptor] = -1;	
 			rootsim_load_cr3(current->mm->pgd);
-			/*
+			
 			for(i=open_index[descriptor];i>=0;i--){
 
 				object_to_close = currently_open[descriptor][i];
@@ -590,23 +569,7 @@ goto bridging_from_get_pgd;
 				//printk(KERN_ERR "At the end of UNSCHEDULE \n");
 				//print_pgd(pgd_addr[descriptor]);
 			}
-			*/
-			//Original PML4
-                        original_pml4 = (void **) original_view[descriptor]->pgd;
 
-			my_pgd =(void **)pgd_addr[descriptor];
-			for(i=0;i<PTRS_PER_PGD;i++){
-				if(dirty_pml4[i]){
-                                	my_pdp =(void *)my_pgd[i];
-					my_pdp = (void *)((ulong) my_pdp & 0xfffffffffffff000);
-                                        my_pdp = (void *)(__va(my_pdp));
-					__free_pages(my_pdp,0);
-					my_pgd[i] = original_pml4[i];
-				}
-			}
-			
-			//print_pgd(pgd_addr[descriptor]);
-			
 			open_index[descriptor] = -1;
 			ret = 0;
 		}else{

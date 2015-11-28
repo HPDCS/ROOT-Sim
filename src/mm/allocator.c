@@ -383,7 +383,7 @@ bad_init:
 
 //TODO MN
 void allocator_fini(unsigned int sobjs) {
-	allocator_ecs_fini(sobj);
+	allocator_ecs_fini(sobjs);
 }
 
 mem_map* get_m_map(int sobj){
