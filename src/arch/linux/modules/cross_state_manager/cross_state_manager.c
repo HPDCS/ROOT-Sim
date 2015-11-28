@@ -294,7 +294,7 @@ int rs_ktblmgr_release(struct inode *inode, struct file *filp) {
 	for (s=0;s<SIBLING_PGD;s++){
 		if(original_view[s]!=NULL){ /* need to recover memory used for PDPs that have not been deallocated */
 			
-			original_view[s]=NULL;
+			pgd_entry = (void**) pgd_addr[s];
 	
                         for (i=0; i<PTRS_PER_PGD; i++){ 
                         	pml4_entry = pgd_entry[i];
@@ -306,9 +306,11 @@ int rs_ktblmgr_release(struct inode *inode, struct file *filp) {
 					if(temp!=NULL)
                                         	__free_pages(temp,0);
                                 }
-			}	
-                        
-			__free_pages(pgd_entry,0);
+			} 
+
+			if(pgd_entry!=NULL)
+				__free_pages(pgd_entry,0);
+			original_view[s]=NULL;
 
 		}// enf if != NULL
 	}// end for s
@@ -411,7 +413,7 @@ goto bridging_from_get_pgd;
 		break;
 
 	case IOCTL_SCHEDULE_ON_PGD:	
-	//	printk("IOCTL_SCHEDULE_ON_PGD\n");
+//		printk("IOCTL_SCHEDULE_ON_PGD\n");
 		//flush_cache_all();
 		descriptor = ((ioctl_info*)arg)->ds;
 		//scheduled_object = ((ioctl_info*)arg)->id;
@@ -446,17 +448,15 @@ goto bridging_from_get_pgd;
 
                         //Original PML4
                         original_pml4 = (void **) original_view[descriptor]->pgd;
-			
-                        for(pml4_index=0;pml4_index<PTRS_PER_PGD;pml4_index++){
-                                if(dirty_pml4[pml4_index]){
-                                       pml4_table[pml4_index]=NULL;
-                                }
-                        }
 
-
-		//	printk(KERN_ERR "obj_mmap_count: %d\n",obj_mmap_count);
-
-                        for(index_mdt=0; index_mdt<obj_mmap_count; index_mdt++){
+			for(pml4_index=0;pml4_index<PTRS_PER_PGD;pml4_index++){
+				if((original_pml4[pml4_index]!=NULL)&&(pml4_table[pml4_index]==NULL)&&(!dirty_pml4[pml4_index])){
+					printk("PML4_index update because not in memory: %d\n",pml4_index);
+					pml4_table[pml4_index] = original_pml4[pml4_index];					
+				}
+			}
+                        
+			for(index_mdt=0; index_mdt<obj_mmap_count; index_mdt++){
 
 			    //Update currently_open with address of hitted obecjt
 			    open_index[descriptor]++;
@@ -464,12 +464,6 @@ goto bridging_from_get_pgd;
                             
                             //Index of PML4 
                             pml4_index = pgd_index((unsigned long) sheduled_mmaps_pointers[index_mdt]);
-
-                            //PML4 of current
-                            pml4_table =(void **) pgd_addr[descriptor];
-
-                            //Original PML4
-                            original_pml4 = (void **) original_view[descriptor]->pgd;
 
                             //Entry PML4
                             pml4_entry =(void *) pml4_table[pml4_index];
@@ -491,7 +485,7 @@ goto bridging_from_get_pgd;
                                 //Final value of PML4E
                                 address_pdpt = (void *)__pa(address_pdpt);
                                 pml4_entry = (void *)((ulong)address_pdpt | (ulong)pml4_entry);
-                                //printk(KERN_ERR "NEW PAGE PML4");
+                      //          printk(KERN_ERR "NEW PAGE PML4");
 
                             }
 
@@ -505,7 +499,7 @@ goto bridging_from_get_pgd;
                             temp = (void *)(__va(temp));
                             pdpt_table = (void **)temp;
 				
-                            //printk(KERN_ERR "pdpt_table: %p\n",pdpt_table);
+                    //        printk(KERN_ERR "pdpt_table: %p\n",pdpt_table);
 			
                             pdpt_index = pud_index((unsigned long) sheduled_mmaps_pointers[index_mdt]);
 
@@ -517,7 +511,7 @@ goto bridging_from_get_pgd;
                             pdpt_entry = (void *)pdpt_table[pdpt_index];
                             if(pdpt_entry == NULL ){
 				pdpt_entry = original_pdpt[pdpt_index];
-                            	//printk("Value of pdtp_index: %d\n",pdpt_index);
+                  //          	printk("Value of pdtp_index: %d\n",pdpt_index);
                             }
                            
 				 
@@ -533,8 +527,8 @@ goto bridging_from_get_pgd;
 			rootsim_load_cr3(pgd_addr[descriptor]);
 			
 
-			//printk(KERN_ERR "[SCHEDULE_ON_PGD] After update hitted object\n");
-			//print_pgd(pml4_table);
+		//	printk(KERN_ERR "[SCHEDULE_ON_PGD] After update hitted object\n");
+		//	print_pgd(pml4_table);
 			ret = 0;
 		}else{
 			 ret = -1;

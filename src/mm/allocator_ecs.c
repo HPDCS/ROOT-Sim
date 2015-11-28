@@ -95,7 +95,6 @@ int allocator_ecs_init(unsigned int sobjs) {
 		
 	}
 	
-	close(ioctl_fd);
 	//ioctl(ioctl_fd, IOCTL_PGD_PRINT);
 	
 	return SUCCESS_AECS;
@@ -112,6 +111,7 @@ void allocator_ecs_fini(unsigned int sobjs){
 		}
 		mem_region[i].base_pointer = mem_region[i].brk = NULL;
 	}
+	close(ioctl_fd);
 
 }
 
