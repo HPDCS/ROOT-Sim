@@ -281,7 +281,6 @@ void lp_alloc_schedule(void) {
 	sched_info.ds = pgd_ds; // this is current
 	sched_info.count = LPS[current_lp]->ECS_index + 1; // it's a counter
 	sched_info.objects = LPS[current_lp]->ECS_synch_table; // pgd descriptor range from 0 to number threads - a subset of object ids 	
-
 	//TODO MN
 	sched_info.objects_mmap_count = 0;
 	int i;

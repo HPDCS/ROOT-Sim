@@ -355,9 +355,6 @@ static long rs_ktblmgr_ioctl(struct file *filp, unsigned int cmd, unsigned long 
 	int pml4, pdp;
 	int involved_pml4;
 	void *source_pdp;
-	int scheduled_object;
-	int *scheduled_objects;
-	int scheduled_objects_count;
 	unsigned long object_to_close;
 	//ulong aux;
 
@@ -374,18 +371,15 @@ static long rs_ktblmgr_ioctl(struct file *filp, unsigned int cmd, unsigned long 
 
 	case IOCTL_SET_ANCESTOR_PGD:
 		printk("IOCTL_SET_ANCESTOR_ANCESTOR\n");
-		//flush_cache_all();
 		ancestor_pml4 = (void **)current->mm->pgd;
 	//	printk("ANCESTOR PML4 SET - ADDRESS IS %p\n",ancestor_pml4);
 		break;
 
 	case IOCTL_GET_PGD:
 		printk("IOCTL_GET_PGD\n");
-		//flush_cache_all();
 		mutex_lock(&pgd_get_mutex);
 		for (i = 0; i < SIBLING_PGD; i++) {
 			if (original_view[i] == NULL) {
-				//memcpy(mm_struct_addr[i], current->mm, sizeof(struct mm_struct));
 				memcpy((void *)pgd_addr[i], (void *)(current->mm->pgd), 4096);
 				
 				//PML4 of current
@@ -401,8 +395,6 @@ static long rs_ktblmgr_ioctl(struct file *filp, unsigned int cmd, unsigned long 
 				original_view[i] = current->mm;
 				descriptor = i;
 				ret = descriptor;
-				//flush_cache_all();
-				//break;
 				goto pgd_get_done;
 			}
 		}
@@ -416,16 +408,12 @@ goto bridging_from_get_pgd;
 //		printk("IOCTL_SCHEDULE_ON_PGD\n");
 		//flush_cache_all();
 		descriptor = ((ioctl_info*)arg)->ds;
-		//scheduled_object = ((ioctl_info*)arg)->id;
-		scheduled_objects_count = ((ioctl_info*)arg)->count;
-		scheduled_objects = ((ioctl_info*)arg)->objects;
 //TODO MN
 		void** sheduled_mmaps_pointers;
 		sheduled_mmaps_pointers = ((ioctl_info*)arg)->objects_mmap_pointers;
 		int obj_mmap_count;
 		obj_mmap_count = ((ioctl_info*)arg)->objects_mmap_count;
 
-		//scheduled_object = ((ioctl_info*)arg)->id;
 		if (original_view[descriptor] != NULL) { //sanity check
 			int index_mdt;
                         int pdpt_index;
@@ -451,7 +439,7 @@ goto bridging_from_get_pgd;
 
 			for(pml4_index=0;pml4_index<PTRS_PER_PGD;pml4_index++){
 				if((original_pml4[pml4_index]!=NULL)&&(pml4_table[pml4_index]==NULL)&&(!dirty_pml4[pml4_index])){
-					printk("PML4_index update because not in memory: %d\n",pml4_index);
+					printk("PML4_index: %d, descriptor: %d\n",pml4_index,descriptor);
 					pml4_table[pml4_index] = original_pml4[pml4_index];					
 				}
 			}
