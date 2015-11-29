@@ -191,6 +191,8 @@ int root_sim_page_fault(struct pt_regs* regs, long error_code){
 	void *cr3;
 	ulong *auxiliary_stack_pointer;
 	ulong hitted_object;
+	int count_involved_pml4=-1;
+        int index_involved_pml4;
 
 	if(current->mm == NULL) return 0;  /* this is a kernel thread - not a rootsim thread */
 	
@@ -217,27 +219,16 @@ int root_sim_page_fault(struct pt_regs* regs, long error_code){
 
 			printk(KERN_ERR "addr: %p entry_pdp: %d dirty_pml4:%d\n",target_address,PDP(target_address),dirty_pml4[PML4(target_address)]);
 
-
 #ifdef ON_FAULT_OPEN
-
 			ancestor_pdp = __va((ulong)ancestor_pdp & 0xfffffffffffff000);
 			my_pdp[PDP(target_address)] = ancestor_pdp[PDP(target_address)];
-//			printk("\tthread %d - root-sim is opening the access to the address %p (loading the mask %p into the page table)\n",current->pid,target_address, (void *)ancestor_pdp[PDP(target_address)]);
-
-			//PATCH cr3 = (void *)__pa(current->mm->pgd);
 			rootsim_load_cr3(pgd_addr[i]);
-		//	cr3 = (void *)__pa(pgd_addr[i]);
-		//	asm volatile("movq %%CR3, %%rax; andq $0x0fff,%%rax; movq %0, %%rbx; orq %%rbx,%%rax; movq %%rax,%%CR3"::"m" (cr3));
-/* to be improved with selective tlb invalidation */
 
 			return 1;
-
 #else
 			rs_ktblmgr_ioctl(NULL,IOCTL_UNSCHEDULE_ON_PGD,(int)i);
-
 #endif
-			int count_involved_pml4=-1;
-			int index_involved_pml4;
+
 			for(index_involved_pml4 = 0;index_involved_pml4 <= PML4(target_address);index_involved_pml4++){
 				if(dirty_pml4[index_involved_pml4]) count_involved_pml4++;
 			}
@@ -286,12 +277,11 @@ int rs_ktblmgr_open(struct inode *inode, struct file *filp) {
 
 
 int rs_ktblmgr_release(struct inode *inode, struct file *filp) {
-      	int s,i,j;
+      	int s,i;
 	void** pgd_entry;
        	void* pml4_entry;
        	void** pdpt_entry;
         void* temp;
-        void* temp_pdpt;
 	
 	for (s=0;s<SIBLING_PGD;s++){
 		if(original_view[s]!=NULL){ /* need to recover memory used for PDPs that have not been deallocated */
@@ -337,12 +327,9 @@ static void print_bits(unsigned long long number) {
 
 static long rs_ktblmgr_ioctl(struct file *filp, unsigned int cmd, unsigned long arg) {
 
-	int ret = 0;
-	int i,j,z;
-	void **my_pgd;
+	/*void **my_pgd;
 	void **my_pdp;
 	void **ancestor_pdp;
-	void *cr3;
 	void **pgd_entry;
 	void **source_pgd_entry;
 	void *pdp_entry;
@@ -351,23 +338,36 @@ static long rs_ktblmgr_ioctl(struct file *filp, unsigned int cmd, unsigned long 
 	void **temp;
 	void **temp1;
 	void **temp2;
-	int descriptor;
-	struct vm_area_struct *mmap;
-	void *address;
 	int pml4, pdp;
 	int involved_pml4;
 	void *source_pdp;
-	unsigned long object_to_close;
 	//ulong aux;
 
 	char* aux;
-	char* aux1;
+	char* aux1;*/
 
 
 	//TODO MN
+	int ret = 0;
+	void *cr3;
+	int i;
 	void** pml4_table;
         int pml4_index;
         void** original_pml4;
+	int descriptor;
+	void** sheduled_mmaps_pointers;
+	int obj_mmap_count;
+	int index_mdt;
+        int pdpt_index;
+        void* pml4_entry;
+        void* address_pdpt;
+        void* temp;
+        void** original_pdpt;
+        void** pdpt_table;
+        void* pdpt_entry;
+	struct vm_area_struct *mmap;
+	unsigned long object_to_close;
+
 
 	switch (cmd) {
 
@@ -411,25 +411,10 @@ goto bridging_from_get_pgd;
 		//flush_cache_all();
 		descriptor = ((ioctl_info*)arg)->ds;
 //TODO MN
-		void** sheduled_mmaps_pointers;
 		sheduled_mmaps_pointers = ((ioctl_info*)arg)->objects_mmap_pointers;
-		int obj_mmap_count;
 		obj_mmap_count = ((ioctl_info*)arg)->objects_mmap_count;
 
 		if (original_view[descriptor] != NULL) { //sanity check
-			int index_mdt;
-                        int pdpt_index;
-                        int pd_index;
-                        void* pml4_entry;
-                        void* address_pdpt;
-                        void* temp;
-                        void** original_pdpt;
-                        void** pdpt_table;
-                        void* address_pd;
-                        void* pdpt_entry;
-                        void** pd_table;
-                        void** original_pd;
-			
 			//PML4 of current
                          pml4_table =(void **) pgd_addr[descriptor];
 				
@@ -540,15 +525,15 @@ goto bridging_from_get_pgd;
 
 				object_to_close = currently_open[descriptor][i];
 				
-				pml4 = pgd_index(object_to_close);
+				pml4_index = pgd_index(object_to_close);
 //				printk("UNSCHEDULE: closing pml4 %d - object %d\n",pml4,object_to_close);
 	//			continue;
-				my_pgd =(void **)pgd_addr[descriptor];
-				my_pdp =(void *)my_pgd[pml4];
-				my_pdp = __va((ulong)my_pdp & 0xfffffffffffff000);
+				pml4_table =(void **)pgd_addr[descriptor];
+				pdpt_table =(void *)pml4_table[pml4_index];
+				pdpt_table = __va((ulong)pdpt_table & 0xfffffffffffff000);
 
 
-				my_pdp[pud_index(object_to_close)] = NULL;
+				pdpt_table[pud_index(object_to_close)] = NULL;
 				
 				//printk(KERN_ERR "At the end of UNSCHEDULE \n");
 				//print_pgd(pgd_addr[descriptor]);
@@ -566,9 +551,9 @@ goto bridging_from_get_pgd;
 //		printk("--------------------------------\n");	
 //		printk("mm is  %p --  mm->pgd is %p -- PA(pgd) is %p\n",(void *)current->mm,(void *)current->mm->pgd,(void *)__pa(current->mm->pgd));
 //		printk("PRINTING THE WHOLE PGD (non-NULL entries)\n");	
-		pgd_entry = (void **)current->mm->pgd;
+		pml4_table = (void **)current->mm->pgd;
 		for(i=0;i<512;i++){
-			if (*(pgd_entry + i) != NULL){
+			if (*(pml4_table + i) != NULL){
 //				printk("\tentry \t%d \t- value \t%p\n",i,(void *)(*(pgd_entry+i)));	
 			//printk("\tentry \t%d \t- value \t%X\n",i,current->mm->pgd[i]);	
 			}
@@ -636,10 +621,10 @@ bridging_from_get_pgd:
 		break;
 	
 		case IOCTL_GET_FREE_PML4:
-			pgd_entry = (void **)current->mm->pgd;
+			original_pml4 = (void **)current->mm->pgd;
                         
 			for (i=0; i<PTRS_PER_PGD; i++){
-                                if(pgd_entry[i]==NULL){ 
+                                if(original_pml4[i]==NULL){ 
 					dirty_pml4[i] = 1;
 					return i;
 					
@@ -678,22 +663,14 @@ bridging_from_get_pgd:
 
 void foo(struct task_struct *tsk) {
 	int i;
-	void *cr3;
 
 	if(current->mm != NULL){
 		for(i=0;i<SIBLING_PGD;i++){	
 			if ((root_sim_processes[i])==(current->pid)){	
-	//		if(current->mm != NULL){
-	//			rootsim_load_cr3(current->mm->pgd);
 				rootsim_load_cr3(pgd_addr[i]);
-//				printk("FOO\n");
-//				printk("flushing thread cr3 onto the original PML4\n");
-//				printk("flushing thread cr3 onto the sibling PML4\n");
 			}
 		}
 	}
-	//printk("OK\n");
-	//rootsim_pager = NULL;
 }
 
 
@@ -701,11 +678,9 @@ void foo(struct task_struct *tsk) {
 static int rs_ktblmgr_init(void) {
 	int ret;
 	int i;
-	//int j;
 	struct kprobe kp;
 
 	rootsim_pager_hook = foo;
-	//rootsim_pager(NULL);
 
 	mutex_init(&pgd_get_mutex);
 
@@ -713,7 +688,6 @@ static int rs_ktblmgr_init(void) {
 	// Dynamically allocate a major for the device
 	major = register_chrdev(0, "rs_ktblmgr", &fops);
 	if (major < 0) {
-//		printk(KERN_ERR "rs_ktblmgr: failed to register device. Error %d\n", major);
 		ret = major;
 		goto failed_chrdevreg;
 	}
