@@ -298,8 +298,8 @@ static inline void GLPs_block_binding(void) {
 				y=0;
 				while(count < GLPS[i]->tot_LP){
 					if(GLPS[i]->local_LPS[y] != NULL){
-						LPS_bound[n_prc_per_thread++] = LPS[y];
-						LPS[y]->worker_thread = tid;
+						LPS_bound[n_prc_per_thread++] = LPS[i];
+						LPS[i]->worker_thread = tid;
 						count++;
 					}
 					y++;
@@ -457,7 +457,6 @@ static inline void GLP_knapsack(void) {
 	// Very suboptimal approximation of knapsack
 	for(; i < n_grp; i++) {
 		assigned = false;
-
 		for(j = 0; j < n_cores; j++) {
 			// Simulate assignment
 			if(assignments[j] + glp_cost[i] <= reference_knapsack) {
@@ -579,6 +578,8 @@ void rebind_LPs(void) {
 			printf("Rebind_LP_GROUP... ");
 			GLPs_block_binding();
 			printf("Done\n");
+			
+			int j=0;
 		#else	
 			LPs_block_binding();
 		#endif
@@ -633,6 +634,7 @@ void rebind_LPs(void) {
 			
 			//TODO MN
 			#ifdef HAVE_GLP_SCH_MODULE
+				printf("GLP_knapsack\n");
 				GLP_knapsack();
 			#else
 				LP_knapsack();

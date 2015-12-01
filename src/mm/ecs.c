@@ -140,13 +140,27 @@ static void ECS_stub(int ds, unsigned int hitted_object){
 
 }
 
+void print_rsp(void){
+	unsigned long rsp;
+	
+	__asm__ __volatile__ (
+		"mov %%rsp, %%rax\n\t"
+       		"mov %%eax, %0\n\t"
+    		: "=m" (rsp)
+    		: /* no input */
+    		: "%rax"
+    	);
+
+    	printf("RSP = %p\n", rsp);
+	fflush(stdout);
+}
 
 static void rootsim_cross_state_dependency_handler(void) { // for now a simple printf of the cross-state dependency involved LP
-
+	
 	unsigned long __id = -1;
 	void *__addr  = NULL;
+	void *__current_rsp  = NULL;
 	unsigned long __pgd_ds = -1;
-
 
 	__asm__ __volatile__("push %rax");
 	__asm__ __volatile__("push %rbx");
@@ -165,9 +179,15 @@ static void rootsim_cross_state_dependency_handler(void) { // for now a simple p
 	//__asm__ __volatile__("movq 0x10(%%rbp), %%rax; movq %%rax, %0" : "=m"(addr) : );
 	//__asm__ __volatile__("movq 0x8(%%rbp), %%rax; movq %%rax, %0" : "=m"(id) : );
 
+
+        __asm__ __volatile__ ("movq $0xa0, %%rbp"::);	printf("Update RBP\n");fflush(stdout);
+
 	__asm__ __volatile__("movq 0x18(%%rbp), %%rax; movq %%rax, %0" : "=m"(__addr) : );
+printf("1\n");fflush(stdout);
 	__asm__ __volatile__("movq 0x10(%%rbp), %%rax; movq %%rax, %0" : "=m"(__id) : );
+printf("2\n");fflush(stdout);
 	__asm__ __volatile__("movq 0x8(%%rbp), %%rax; movq %%rax, %0" : "=m"(__pgd_ds) : );
+printf("3\n");fflush(stdout);
 
 	printf("rootsim callback received by the kernel need to sync, pointer passed is %p - hitted object is %u - pdg is %u\n", __addr, __id, __pgd_ds);
 	ECS_stub((int)__pgd_ds,(unsigned int)__id);

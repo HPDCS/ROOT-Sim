@@ -29,7 +29,7 @@
 #include <arch/atomic.h>
 //#include <scheduler/process.h>
 
-//#define HAVE_GLP_SCH_MODULE
+#define HAVE_GLP_SCH_MODULE
 
 // This data structure defines the state of each group of LP
 typedef struct _GLP_state{

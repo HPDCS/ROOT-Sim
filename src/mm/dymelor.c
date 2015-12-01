@@ -296,6 +296,8 @@ void *do_malloc(unsigned int lid, malloc_state *mem_pool, size_t size) {
 		#endif
 
 		if(m_area->self_pointer == NULL){
+			printf("Is recoverable: ");
+			printf(is_recoverable ? "true\n" : "false\n");
 			rootsim_error(true, "DyMeLoR: error allocating space\n");
 		}
 

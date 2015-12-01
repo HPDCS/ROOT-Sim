@@ -50,7 +50,7 @@ static int *numa_nodes;
 static spinlock_t segment_lock;
 
 
-#define AUDIT if(0)
+#define AUDIT if(1)
 
 mem_map maps[MAX_SOBJS];
 map_move moves[MAX_SOBJS];
@@ -261,6 +261,7 @@ void* allocate_segment(unsigned int sobj, size_t size, bool is_recoverable) {
 	return segment;
 
 bad_allocate:
+	printf("Bad allocation\n");
 	#ifdef HAVE_NUMA
 	unlock(sobj);
 	#endif

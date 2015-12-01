@@ -142,9 +142,19 @@ void scheduler_init(void) {
 			GLPS[i]->local_LPS[j] = (LP_state *)rsalloc(sizeof(LP_state));
 			bzero(GLPS[i]->local_LPS[j], sizeof(LP_state));
 		}
+
+	        //Initialise current group
+	        LPS[i]->current_group = i;
+
+        	//Initialise GROUPS
+	        spinlock_init(&GLPS[i]->lock);
+        	GLPS[i]->local_LPS[i] = LPS[i];
+	        GLPS[i]->tot_LP = 1;
+
 	}
+        
+        #endif
 	
-	#endif
 
 	#ifdef HAVE_PREEMPTION
 	preempt_init();
@@ -337,16 +347,6 @@ void initialize_LP(unsigned int lp) {
 	context_create(&LPS[lp]->context, LP_main_loop, NULL, LPS[lp]->stack, LP_STACK_SIZE);
 	#endif
 
-	//TODO MN
-	#ifdef HAVE_GLP_SCH_MODULE
-	//Initialise current group
-	LPS[lp]->current_group = lp;
-
-	//Initialise GROUPS
-	spinlock_init(&GLPS[lp]->lock);
-	GLPS[lp]->local_LPS[lp] = LPS[lp];
-	GLPS[lp]->tot_LP = 1;
-	#endif 
 }
 
 

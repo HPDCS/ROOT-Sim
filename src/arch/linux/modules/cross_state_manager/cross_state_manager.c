@@ -182,7 +182,10 @@ void print_pgd(void** pgd_entry){
 void (*flush_tlb_all_lookup)(void) = NULL;
 
 int root_sim_page_fault(struct pt_regs* regs, long error_code){
- 	void *target_address;
+ 	
+	//printk("INIT Root_sim_page_fault stack: %p\n",regs->sp);
+
+	void *target_address;
 	void **my_pgd;
 	void **my_pdp;
 	void **target_pdp_entry;
@@ -236,17 +239,23 @@ int root_sim_page_fault(struct pt_regs* regs, long error_code){
 			
 
 			auxiliary_stack_pointer = regs->sp;
+			//printk("Auxiliary stack: %p\n",auxiliary_stack_pointer);
 			auxiliary_stack_pointer--;
-			//printk("stack management information : reg->sp is %p - auxiliary sp is %p\n",regs->sp,auxiliary_stack_pointer);
 		        copy_to_user((void *)auxiliary_stack_pointer,(void *)&regs->ip,8);	
+			printk("Added IP[%p]: %p\n",regs->ip,auxiliary_stack_pointer);
 			auxiliary_stack_pointer--;
 		        copy_to_user((void *)auxiliary_stack_pointer,(void *)&hitted_object,8);	
+			printk("Added hitted_object[%d]: %p\n",hitted_object,auxiliary_stack_pointer);
 			auxiliary_stack_pointer--;
 		        copy_to_user((void *)auxiliary_stack_pointer,(void *)&i,8);	
-//			printk("stack management information : reg->sp is %p - auxiliary sp is %p - hitted objectr is %u - pgd descriptor is %u\n",regs->sp,auxiliary_stack_pointer,hitted_object,i);
+			printk("Added current LP[%d]: %p\n",i,auxiliary_stack_pointer);
+			
+			printk("IP: %p \t hitted_object: %d \t LP %d\n",regs->ip,hitted_object,i)
+;
 			regs->sp = auxiliary_stack_pointer;
 			regs->ip = callback;
-
+			
+			printk("ROOT-SIm_page_fault stack: %p\n",regs->sp);
 
 			return 1;
 		}
