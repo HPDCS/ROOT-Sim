@@ -242,20 +242,20 @@ int root_sim_page_fault(struct pt_regs* regs, long error_code){
 			//printk("Auxiliary stack: %p\n",auxiliary_stack_pointer);
 			auxiliary_stack_pointer--;
 		        copy_to_user((void *)auxiliary_stack_pointer,(void *)&regs->ip,8);	
-			printk("Added IP[%p]: %p\n",regs->ip,auxiliary_stack_pointer);
+			//printk("Added IP[%p]: %p\n",regs->ip,auxiliary_stack_pointer);
 			auxiliary_stack_pointer--;
 		        copy_to_user((void *)auxiliary_stack_pointer,(void *)&hitted_object,8);	
-			printk("Added hitted_object[%d]: %p\n",hitted_object,auxiliary_stack_pointer);
+			//printk("Added hitted_object[%d]: %p\n",hitted_object,auxiliary_stack_pointer);
 			auxiliary_stack_pointer--;
 		        copy_to_user((void *)auxiliary_stack_pointer,(void *)&i,8);	
-			printk("Added current LP[%d]: %p\n",i,auxiliary_stack_pointer);
+			//printk("Added current LP[%d]: %p\n",i,auxiliary_stack_pointer);
 			
 			printk("IP: %p \t hitted_object: %d \t LP %d\n",regs->ip,hitted_object,i)
 ;
 			regs->sp = auxiliary_stack_pointer;
 			regs->ip = callback;
 			
-			printk("ROOT-SIm_page_fault stack: %p\n",regs->sp);
+			//printk("ROOT-SIm_page_fault stack: %p\n",regs->sp);
 
 			return 1;
 		}

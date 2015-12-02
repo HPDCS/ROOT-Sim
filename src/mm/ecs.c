@@ -79,19 +79,19 @@ static void ECS_stub(int ds, unsigned int hitted_object){
 		LPS[current_lp]->wait_on_rendezvous = current_evt->rendezvous_mark;
 	}
 
-	/*
-		//TODO MN
-		
-		//Manage counter to cross-state 
-		ECS_stat temp_update_access = LPS[current_lp]->ECS_stat_table[LPS[hitted_object]->current_group]
-		if( temp_update_access->last_access != -1.0 && current_lvt - temp_update_access->last_access < threshold_time)
-			temp_update_access->count_access++;
-		else
-			temp_update_access->count_access = 1;
+	//TODO MN
+	
+	#ifdef HAVE_GLP_SCH_MODULE	
+	//Manage counter to cross-state 
+	ECS_stat* temp_update_access = LPS[current_lp]->ECS_stat_table[LPS[hitted_object]->current_group];
+	if( (temp_update_access->last_access != -1.0) && ((current_lvt - temp_update_access->last_access) < THRESHOLD_TIME_ECS) )
+		temp_update_access->count_access++;
+	else
+		temp_update_access->count_access = 1;
 
-		temp_update_access->last_access = current_lvt;
-		//data structure that save the number of access and the last timestamp of the access
-	*/
+	temp_update_access->last_access = current_lvt;
+	//data structure that save the number of access and the last timestamp of the access
+	#endif
 
 	// Diretcly place the control message in the target bottom half queue
 	bzero(&control_msg, sizeof(msg_t));
@@ -104,7 +104,8 @@ static void ECS_stub(int ds, unsigned int hitted_object){
 	control_msg.rendezvous_mark = current_evt->rendezvous_mark;
 	control_msg.mark = generate_mark(current_lp);
 
-	printf("Nello stub lp %d manda a %d START con mark %llu\n", current_lp, hitted_object, control_msg.mark);
+	printf("ECS_stub lp %d sends to  %d START with  mark %llu\n", current_lp, hitted_object, control_msg.mark);
+	fflush(stdout);
 
 	// This message must be stored in the output queue as well, in case this LP rollbacks
 	bzero(&msg_hdr, sizeof(msg_hdr_t));
@@ -123,7 +124,10 @@ static void ECS_stub(int ds, unsigned int hitted_object){
 	// Store which LP we are waiting for synchronization. Upon reschedule, it is open immediately
 	LPS[current_lp]->ECS_index++;
 	LPS[current_lp]->ECS_synch_table[LPS[current_lp]->ECS_index] = hitted_object;
-
+	
+	printf("send control mesg \n");
+	fflush(stdout);
+		
 	Send(&control_msg);
 
 	// TODO: QUESTA RIGA E' COMMENTATA SOLTANTO PER UNO DEI TEST!!
@@ -179,15 +183,16 @@ static void rootsim_cross_state_dependency_handler(void) { // for now a simple p
 	//__asm__ __volatile__("movq 0x10(%%rbp), %%rax; movq %%rax, %0" : "=m"(addr) : );
 	//__asm__ __volatile__("movq 0x8(%%rbp), %%rax; movq %%rax, %0" : "=m"(id) : );
 
+	__asm__ __volatile__("movq %%rbp, %%rcx" :: );
+	__asm__ __volatile__("movq %%rsp, %%rbp" :: );
+	//__asm__ __volatile__("movq %%rsp, %%rbp; movq %%rbp, %0" : "=m"(__addr) : );
+	//printf("Valueo of rbp: %p\n",__addr); fflush(stdout);
 
-        __asm__ __volatile__ ("movq $0xa0, %%rbp"::);	printf("Update RBP\n");fflush(stdout);
+	__asm__ __volatile__("movq 0xb8(%%rbp), %%rax; movq %%rax, %0" : "=m"(__addr) : );
+	__asm__ __volatile__("movq 0xb0(%%rbp), %%rax; movq %%rax, %0" : "=m"(__id) : );
+	__asm__ __volatile__("movq 0xa8(%%rbp), %%rax; movq %%rax, %0" : "=m"(__pgd_ds) : );
 
-	__asm__ __volatile__("movq 0x18(%%rbp), %%rax; movq %%rax, %0" : "=m"(__addr) : );
-printf("1\n");fflush(stdout);
-	__asm__ __volatile__("movq 0x10(%%rbp), %%rax; movq %%rax, %0" : "=m"(__id) : );
-printf("2\n");fflush(stdout);
-	__asm__ __volatile__("movq 0x8(%%rbp), %%rax; movq %%rax, %0" : "=m"(__pgd_ds) : );
-printf("3\n");fflush(stdout);
+	__asm__ __volatile__("movq %%rcx, %%rbp" :: );
 
 	printf("rootsim callback received by the kernel need to sync, pointer passed is %p - hitted object is %u - pdg is %u\n", __addr, __id, __pgd_ds);
 	ECS_stub((int)__pgd_ds,(unsigned int)__id);

@@ -50,7 +50,7 @@ static int *numa_nodes;
 static spinlock_t segment_lock;
 
 
-#define AUDIT if(1)
+#define AUDIT if(0)
 
 mem_map maps[MAX_SOBJS];
 map_move moves[MAX_SOBJS];

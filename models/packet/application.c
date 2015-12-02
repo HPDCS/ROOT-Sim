@@ -20,11 +20,11 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, event_t *c
 
 		case PACKET: {
 			state->packet_count++;
-			/*if(content != NULL && content->sender != me){
+			if(content != NULL && content->sender != me){
 				if(content->pointer!=NULL){
 					content->pointer[0]++;
 				}
-			}*/
+			}
 			new_event.sent_at = now;
 			new_event.pointer = state->pointer;
 			new_event.sender = me;
