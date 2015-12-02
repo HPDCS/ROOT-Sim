@@ -91,6 +91,9 @@ static void ECS_stub(int ds, unsigned int hitted_object){
 
 	temp_update_access->last_access = current_lvt;
 	//data structure that save the number of access and the last timestamp of the access
+	
+	printf("LP:%d --> last_access:%f | count_access:%d \n",current_lp,temp_update_access->last_access,temp_update_access->count_access);
+	
 	#endif
 
 	// Diretcly place the control message in the target bottom half queue

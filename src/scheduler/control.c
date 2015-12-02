@@ -223,15 +223,15 @@ bool process_control_msg(msg_t *msg) {
 			control_msg.rendezvous_mark = msg->rendezvous_mark;
 			Send(&control_msg);
 			break;
-
-/*		case RENDEZVOUS_ACK:
+//TODO MN DEBUG case RENDEZVOUS_ACK and UNBLOCK  was noted
+		case RENDEZVOUS_ACK:
 			LPS[msg->receiver]->state = LP_STATE_READY_FOR_SYNCH;
 			return true;
-*/
-/*		case RENDEZVOUS_UNBLOCK:
+		
+		case RENDEZVOUS_UNBLOCK:
 			LPS[msg->receiver]->state = LP_STATE_READY;
 			break;
-*/
+
 		default:
 			rootsim_error(true, "Trying to handle a control message which is meaningless at schedule time: %d\n", msg->type);
 

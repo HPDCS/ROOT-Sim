@@ -178,7 +178,9 @@ void process_bottom_halves(void) {
 			// Handle control messages
 			if(!receive_control_msg(msg_to_process)) {
 				fprintf(stderr, "%s:%d: This message must be deleted but I still don't know how!\n", __FILE__, __LINE__);
-				abort();
+				
+				//TODO MN abort was not noted
+				//abort();
 			}
 
 			switch (msg_to_process->message_kind) {
