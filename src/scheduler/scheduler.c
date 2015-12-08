@@ -248,7 +248,8 @@ static void LP_main_loop(void *args) {
 		timer_start(event_timer);
 		
 		switch_to_application_mode();
-
+		
+		printf("Timestamp: %f\n",current_evt->timestamp);
 
 		ProcessEvent[current_lp](LidToGid(current_lp), current_evt->timestamp, current_evt->type, current_evt->event_content, current_evt->size, current_state);
 		
