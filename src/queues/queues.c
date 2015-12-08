@@ -177,10 +177,12 @@ void process_bottom_halves(void) {
 
 			// Handle control messages
 			if(!receive_control_msg(msg_to_process)) {
-				fprintf(stderr, "%s:%d: This message must be deleted but I still don't know how!\n", __FILE__, __LINE__);
+				//fprintf(stderr, "%s:%d: This message must be deleted but I still don't know how!\n", __FILE__, __LINE__);
 				
-				//TODO MN abort was not noted
+				//TODO MN DEBUG  abort was not noted
 				//abort();
+				list_deallocate_node_buffer(lid_receiver, msg_to_process);
+				continue;
 			}
 
 			switch (msg_to_process->message_kind) {
@@ -249,8 +251,10 @@ void process_bottom_halves(void) {
 				case other:
 					// Check if it is an anti control message
 					if(!anti_control_message(msg_to_process)) {
-						fprintf(stderr, "%s:%d: This message must be deleted but I still don't know how!\n", __FILE__, __LINE__);
-						abort();
+						//fprintf(stderr, "%s:%d: This message must be deleted but I still don't know how!\n", __FILE__, __LINE__);
+						//abort();
+						list_deallocate_node_buffer(lid_receiver, msg_to_process);
+						continue;
 					}
 					break;
 

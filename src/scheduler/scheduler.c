@@ -502,6 +502,8 @@ void schedule(void) {
 			lid = smallest_timestamp_first();
 	}
 
+	printf("Selected LP %d with state %#08x\n", lid, LPS[lid]->state);
+
 	// No logical process found with events to be processed
 	if (lid == IDLE_PROCESS) {
 		statistics_post_lp_data(lid, STAT_IDLE_CYCLES, 1.0);

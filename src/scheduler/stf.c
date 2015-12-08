@@ -22,6 +22,11 @@ unsigned int smallest_timestamp_first(void) {
 	// For each local process
 	for (i = 0; i < n_prc_per_thread; i++) {
 
+		// If waiting for synch, don't take into account the LP
+		if(LPS_bound[i]->state == LP_STATE_WAIT_FOR_SYNCH) {
+			continue;
+		}
+
 		// Blocked LPs cannot be scheduled
 		if(is_blocked_state(LPS_bound[i]->state)) {
 
