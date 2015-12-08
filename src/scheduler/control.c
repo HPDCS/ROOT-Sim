@@ -142,7 +142,12 @@ bool reprocess_control_msg(msg_t *msg) {
 // return true if the event must not be filtered here
 bool receive_control_msg(msg_t *msg) {
 	
-//	printf("Message receive type: %d\n",msg->type);
+	switch(msg->type){	
+		case 1: printf("%d receive from %d PACKET\n",msg->receiver,msg->sender); break;
+		case RENDEZVOUS_START:	printf("%d receive from %d START\n",msg->receiver,msg->sender); break;
+		case RENDEZVOUS_ACK:	printf("%d receive from %d ACK\n",msg->receiver,msg->sender); break;
+		case RENDEZVOUS_UNBLOCK:	printf("%d receive from %d UNBLOCK\n",msg->receiver,msg->sender); break;
+	}	
 			
 	if(msg->type < MIN_VALUE_CONTROL || msg->type > MAX_VALUE_CONTROL) {
 		return true;

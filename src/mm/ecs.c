@@ -74,6 +74,7 @@ static void ECS_stub(int ds, unsigned int hitted_object){
 	// do whatever you want, but you need to reopen access to the objects you cross-depend on before returning
 
 	// Generate a Rendez-Vous Mark
+	// if it is presente already another synchronization event we do not need to generate another mark
 	if(LPS[current_lp]->wait_on_rendezvous == 0) {
 		current_evt->rendezvous_mark = generate_mark(current_lp);
 		LPS[current_lp]->wait_on_rendezvous = current_evt->rendezvous_mark;
@@ -128,9 +129,6 @@ static void ECS_stub(int ds, unsigned int hitted_object){
 	LPS[current_lp]->ECS_index++;
 	LPS[current_lp]->ECS_synch_table[LPS[current_lp]->ECS_index] = hitted_object;
 	
-	printf("send control mesg \n");
-	fflush(stdout);
-		
 	Send(&control_msg);
 
 	// TODO: QUESTA RIGA E' COMMENTATA SOLTANTO PER UNO DEI TEST!!

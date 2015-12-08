@@ -440,7 +440,7 @@ void activate_LP(unsigned int lp, simtime_t lvt, void *evt, void *state) {
 //		enable_preemption();
 //	#endif
 	
-//	printf("Activate LP %d\n",lp);
+	printf(" LP %d current_evt->timestap:%f\n",lp,current_evt->timestamp);
 	#ifdef HAVE_CROSS_STATE
 	// Activate memory view for the current LP
 //	printf("Schedule %d\n",lp);
@@ -502,7 +502,7 @@ void schedule(void) {
 			lid = smallest_timestamp_first();
 	}
 
-	printf("Selected LP %d with state %#08x\n", lid, LPS[lid]->state);
+	printf("\t Selected LP %d with state %#08x\n", lid, LPS[lid]->state);
 
 	// No logical process found with events to be processed
 	if (lid == IDLE_PROCESS) {
@@ -519,8 +519,8 @@ void schedule(void) {
 		return;
 	}
 
-
-	if(!is_blocked_state(LPS[lid]->state)) {
+	
+	if(!is_blocked_state(LPS[lid]->state) && LPS[lid]->state != LP_STATE_READY_FOR_SYNCH) {
 		event = advance_to_next_event(lid);
 	} else {
 //		printf("Riavvio %d\n", lid);
@@ -549,7 +549,9 @@ void schedule(void) {
 		resume_execution = true;
 	}
 	#endif
-
+	
+	printf("\t \t LP %d with lvt:%f executes message %d at timestamp %f\n",lid,lvt(lid),event->mark,event->timestamp);
+	
 	// Schedule the LP user-level thread
 	LPS[lid]->state = LP_STATE_RUNNING;
 	activate_LP(lid, lvt(lid), event, state);

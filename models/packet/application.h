@@ -2,7 +2,7 @@
 
 #define PACKET 1 // Event definition
 #define DELAY 120
-#define PACKETS 100 // Termination condition
+#define PACKETS 5 // Termination condition
 
 typedef struct event_content_t {
 	simtime_t sent_at;

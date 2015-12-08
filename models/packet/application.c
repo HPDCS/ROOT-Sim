@@ -31,6 +31,11 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, event_t *c
 			//int recv = FindReceiver(TOPOLOGY_MESH);
 			int recv = 0;
 			timestamp = now + Expent(DELAY);
+	
+			if(content != NULL && content->pointer!=NULL)
+				printf("[%d]\n",content->pointer[0]);
+
+			printf("\t \t Send event with timestamp:%f now:%f\n",timestamp,now);
 			ScheduleNewEvent(recv, timestamp, PACKET, &new_event, sizeof(new_event));
 		}
 	}

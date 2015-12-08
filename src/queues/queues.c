@@ -124,6 +124,8 @@ msg_t *advance_to_next_event(unsigned int lid) {
 		}
 	}
 
+	printf("\t \t LP:%d bound->timestamp: %f type:%d sender:%d\n",lid,LPS[lid]->bound->timestamp,LPS[lid]->bound->type,LPS[lid]->bound->sender);
+
 	return LPS[lid]->bound;
 }
 

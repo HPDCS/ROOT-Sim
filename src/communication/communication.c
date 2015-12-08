@@ -120,6 +120,8 @@ void ParallelScheduleNewEvent(unsigned int gid_receiver, simtime_t timestamp, un
 
 	if(event.type == RENDEZVOUS_START) {
 		event.rendezvous_mark = current_evt->rendezvous_mark;
+		printf("RENDEZVOUS_START mark=%d\n",event.rendezvous_mark);
+		fflush(stdout);
 	}
 
 	if(event_size > MAX_EVENT_SIZE) {
@@ -134,6 +136,8 @@ void ParallelScheduleNewEvent(unsigned int gid_receiver, simtime_t timestamp, un
 
     out:
 	switch_to_application_mode();
+
+	printf("--------------- SEND new event LP-sender:%d LP-receiver:%d type:%d\n",LidToGid(current_lp),gid_receiver,event.type);
 }
 
 

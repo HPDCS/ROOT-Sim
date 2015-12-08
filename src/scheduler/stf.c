@@ -23,13 +23,12 @@ unsigned int smallest_timestamp_first(void) {
 	for (i = 0; i < n_prc_per_thread; i++) {
 
 		// If waiting for synch, don't take into account the LP
-		if(LPS_bound[i]->state == LP_STATE_WAIT_FOR_SYNCH) {
+		if(LPS_bound[i]->state == LP_STATE_WAIT_FOR_SYNCH ||LPS_bound[i]->state == LP_STATE_WAIT_FOR_UNBLOCK) {
 			continue;
 		}
 
 		// Blocked LPs cannot be scheduled
 		if(is_blocked_state(LPS_bound[i]->state)) {
-
 			// Consider the suspended event as the next event
 			evt_time = LPS_bound[i]->bound->timestamp;
 		} else {
