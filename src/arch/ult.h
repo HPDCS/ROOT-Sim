@@ -32,28 +32,23 @@
 
 #ifdef ENABLE_ULT
 
-
-
 #if defined(OS_LINUX)
 
-#include <setjmp.h>
+#pragma GCC poison setjmp longjmp
 
-/// This structure is used to maintain execution context for LPs' userspace threads
-struct __execution_context_t {
-	jmp_buf jb;
-};
+#include <arch/linux/jmp.h>
 
-typedef struct __execution_context_t LP_context_t;
-typedef struct __execution_context_t kernel_context_t;
+typedef exec_context_t LP_context_t;
+typedef exec_context_t kernel_context_t;
 
 
 
 /// Save machine context for userspace context switch. This is used only in initialization.
-#define context_save(context) setjmp((context)->jb)
+#define context_save(context) set_jmp(context)
 
 
 /// Restore machine context for userspace context switch. This is used only in inizialitaion.
-#define context_restore(context) longjmp((context)->jb, 1)
+#define context_restore(context) long_jmp(context, 1)
 
 
 /// Swicth machine context for userspace context switch. This is used to schedule a LP or return control to simulation kernel
@@ -102,9 +97,7 @@ typedef struct __execution_context_t kernel_context_t;
 #define context_save(context) {}
 #define context_restore(context) {}
 
-
 #endif /* OS */
-
 
 // These are the APIs that, independently of the underlying arch, must be exposed by this module
 extern void context_create(LP_context_t *context, void (*entry_point)(void *), void *args, void *stack, size_t stack_size);
