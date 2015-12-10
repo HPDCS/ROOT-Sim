@@ -53,8 +53,8 @@ typedef exec_context_t kernel_context_t;
 
 /// Swicth machine context for userspace context switch. This is used to schedule a LP or return control to simulation kernel
 #define context_switch(context_old, context_new) \
-	if(setjmp((context_old)->jb) == 0) \
-		longjmp((context_new)->jb, 1)
+	if(set_jmp(context_old) == 0) \
+		long_jmp(context_new, context_new->rax)
 
 
 // Allocate ULT stack (in LP memory)
