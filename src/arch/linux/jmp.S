@@ -38,60 +38,49 @@
 set_jmp:
 	pushfq			# save flags
 	pushq %rax 		# save rax, it will point to the context
-	pushq %rdx		# save rbd, it will be used as the source
+	pushq %r11		# save r11, it will be used as the source
 	movq 32(%rsp), %rax 	# rax points to the context
-	movq 16(%rsp), %rdx 	# rdx keeps the 'old' rax
-	movq %rdx, (%rax)	# rax is the first field of the context
-	movq 8(%rsp), %rdx 	# rdx keeps the 'old' rdx
-	movq %rdx, 8(%rax)	# rdx is the second field of the context
+	movq 8(%rsp), %r11 	# r11 keeps the 'old' rax
+	movq %r11, (%rax)	# rax is the first field of the context
+	movq %rdx, 8(%rax)
 	movq %rcx, 16(%rax)
 	movq %rbx, 24(%rax)
 	movq %rsp, 32(%rax)
-	addq $24, 32(%rax)	# saved rsp must point to return address
+	addq $16, 32(%rax)	# saved rsp must point one quadword above the old return address
 	movq %rbp, 40(%rax)
 	movq %rsi, 48(%rax)
 	movq %rdi, 56(%rax)
 	movq %r8, 64(%rax)
 	movq %r9, 72(%rax)
 	movq %r10, 80(%rax)
-	movq %r11, 88(%rax)
+	movq 16(%rsp), %r11 	# r11 keeps the 'old' r11
+	movq %r11, 88(%rax)	# r11 is the 12-th field of the context
 	movq %r12, 96(%rax)
 	movq %r13, 104(%rax)
 	movq %r14, 112(%rax)
 	movq %r15, 120(%rax)
-	movq (%rsp), %rdx
+	movq 16(%rsp), %rdx
 	movq %rdx, 136(%rax)	# (%rsp) is flags
+	
+	movq 24(%rsp), %r11	# Save the original return address
+	movq %r11, 128(%rax)
 
-	movq %rax, %rdi 	# this is the context
-	call set_jmp_other
+	# Now save other registers. fxsave wants memory aligned to 16 byte.
+	# The context structure is aligned to 16 bytes. We have 18 8-byte
+	# registers, so the next address is exactly the 'others' buffer.
+	fxsave 144(%rax)
 	
 	addq $24, %rsp
 	xorq %rax, %rax		# return 0 because the context is being created
-	
-	# Must save the RIP value at this point!
-	call .save_rip
-    .do_save:
-	movq (%rsp), %rdx
-	movq %rdx, 128(%rax)
-	addq $8, %rsp
-	jmp .saved
-    .save_rip:
-	jmp .do_save	# This instruction must be skipped by long_jmp
-    .saved:
 	ret
 	
 .size   set_jmp, .-set_jmp
 
 
-# This is the displacement to be applied by long_jmp to the saved RIP value
-.equ return_displacement, .saved-.save_rip
-
-# TODO: RAX is a problem here, as it has a twofold nature!
-
 .globl long_jmp
 .type long_jmp, @function	
 long_jmp:
-	movq 24(%rsp), %rax	# rax points to the context
+	movq 8(%rsp), %rax	# rax points to the context
 	
 	movq 8(%rax), %rdx	# rdx is the second field of the context
 	movq 16(%rax), %rcx 
@@ -102,32 +91,32 @@ long_jmp:
 	movq 56(%rax), %rdi
 	movq 64(%rax), %r8
 	movq 72(%rax), %r9
-	movq 80(%rax), %r10
-	movq 88(%rax), %r11
+	# r10 and r11 will be restored after using them as temporary values later
 	movq 96(%rax), %r12
 	movq 104(%rax), %r13
 	movq 112(%rax), %r14
 	movq 120(%rax), %r15
 	pushq 136(%rax)		# this is flags
 	popfq
-	
+
 	movq %rax, %rdi 	# this is the context
 	call long_jmp_other
+
+	movq 128(%rax), %r10	# This is the old return address
+	movq 24(%rax), %r11	# r11 is the old rsp
+	movq %r10, 8(%r11)	# restore the old return address
+
+	movq 16(%rsp), %r10	# Put on the old stack the desired return value
+	movq %r10, (%r11)
 	
-	movq 16(%rsp), %rax	# set up desired return value
+	movq 80(%rax), %r10	# Finish to restore GP registers
+	movq 88(%rax), %r11
+	
+	# Restore other registers
+	fxrstor 144(%rax)
+	
 	movq 32(%rax), %rsp	# (possibly) change stack
-	
-	# By construction, the stack pointer points to the return address
-	# of the corresponding set_jmp.
-	# Stored RIP in the context buffer points to .save_rip label
-	# in the same function call. We should set the return value of
-	# this function (caveat: no return point exists at this point
-	# as we have restored rsp!) to the next instruction in the same
-	# function, applying a positive displacement to RIP
-	
-	push 128(%rax)		# This is the original RIP value
-	addq $return_displacement, (%rsp) # Displace RIP
-	
+	popq %rax		# Set the desired return value
 	ret			# do the long jump
 	
 .size   long_jmp, .-long_jmp

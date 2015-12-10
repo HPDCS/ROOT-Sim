@@ -32,8 +32,8 @@ typedef struct __exec_context_t {
 	unsigned char others[512] __attribute__((aligned(16))); // fxsave wants 16-byte aligned memory
 } exec_context_t;
 
-extern __attribute__((regparm(0))) int set_jmp(exec_context_t *env);
-extern __attribute__((regparm(0))) void long_jmp(exec_context_t *env, int val);
+extern __attribute__((regparm(0))) long long set_jmp(exec_context_t *env);
+extern __attribute__((regparm(0))) __attribute__ ((noreturn)) void long_jmp(exec_context_t *env, long long val);
 
 extern void set_jmp_other(exec_context_t *env);
 extern void long_jmp_other(exec_context_t *env);
