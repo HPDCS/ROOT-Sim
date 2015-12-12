@@ -1,3 +1,4 @@
+
 /**
 *			Copyright (C) 2008-2015 HPDCS Group
 *			http://www.dis.uniroma1.it/~hpdcs
@@ -25,21 +26,19 @@
 */
 
 .file "jmp.S"
-.extern set_jmp_other
-.extern long_jmp_other
-
 
 #if defined(ARCH_X86_64)
 
 .text
 
-.globl set_jmp
-.type set_jmp, @function
-set_jmp:
+.align 4
+.globl _set_jmp
+.type _set_jmp, @function
+_set_jmp:
 	pushfq			# save flags
 	pushq %rax 		# save rax, it will point to the context
 	pushq %r11		# save r11, it will be used as the source
-	movq 32(%rsp), %rax 	# rax points to the context
+	movq %rdi, %rax 	# rax points to the context
 	movq 8(%rsp), %r11 	# r11 keeps the 'old' rax
 	movq %r11, (%rax)	# rax is the first field of the context
 	movq %rdx, 8(%rax)
@@ -49,7 +48,8 @@ set_jmp:
 	addq $16, 32(%rax)	# saved rsp must point one quadword above the old return address
 	movq %rbp, 40(%rax)
 	movq %rsi, 48(%rax)
-	movq %rdi, 56(%rax)
+	movq 32(%rsp), %r11	# old 'rdi' was pushed by the surrounding macro
+	movq %r11, 56(%rax)
 	movq %r8, 64(%rax)
 	movq %r9, 72(%rax)
 	movq %r10, 80(%rax)
@@ -74,13 +74,27 @@ set_jmp:
 	xorq %rax, %rax		# return 0 because the context is being created
 	ret
 	
-.size   set_jmp, .-set_jmp
+.size   _set_jmp, .-_set_jmp
 
 
-.globl long_jmp
-.type long_jmp, @function	
-long_jmp:
-	movq 8(%rsp), %rax	# rax points to the context
+# This long_jmp version does not restore RAX. In fact, the common usage is to
+# call longjmp(context, val); and RAX is set to val. This function respects this,
+# so that if RAX should be restored as well, it is possible to call
+# long_jmp(context, context->rax);
+
+
+.align 4
+.globl _long_jmp
+.type _long_jmp, @function	
+_long_jmp:
+	movq %rdi, %rax		# rax points to the context
+
+	movq 128(%rax), %r10	# This is the old return address
+	movq 32(%rax), %r11	# r11 is the old rsp
+	movq %r10, 8(%r11)	# restore the old return address
+
+	movq 16(%rsp), %r10	# Put on the old stack the desired return value
+	movq %rsi, (%r11)
 	
 	movq 8(%rax), %rdx	# rdx is the second field of the context
 	movq 16(%rax), %rcx 
@@ -91,7 +105,8 @@ long_jmp:
 	movq 56(%rax), %rdi
 	movq 64(%rax), %r8
 	movq 72(%rax), %r9
-	# r10 and r11 will be restored after using them as temporary values later
+	movq 80(%rax), %r10	# Finish to restore GP registers
+	movq 88(%rax), %r11
 	movq 96(%rax), %r12
 	movq 104(%rax), %r13
 	movq 112(%rax), %r14
@@ -99,19 +114,6 @@ long_jmp:
 	pushq 136(%rax)		# this is flags
 	popfq
 
-	movq %rax, %rdi 	# this is the context
-	call long_jmp_other
-
-	movq 128(%rax), %r10	# This is the old return address
-	movq 24(%rax), %r11	# r11 is the old rsp
-	movq %r10, 8(%r11)	# restore the old return address
-
-	movq 16(%rsp), %r10	# Put on the old stack the desired return value
-	movq %r10, (%r11)
-	
-	movq 80(%rax), %r10	# Finish to restore GP registers
-	movq 88(%rax), %r11
-	
 	# Restore other registers
 	fxrstor 144(%rax)
 	
@@ -119,6 +121,6 @@ long_jmp:
 	popq %rax		# Set the desired return value
 	ret			# do the long jump
 	
-.size   long_jmp, .-long_jmp
+.size   _long_jmp, .-_long_jmp
 
 #endif

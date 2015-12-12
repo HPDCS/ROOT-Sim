@@ -15,7 +15,6 @@ typedef struct __exec_context_t {
 	unsigned long long rbp;
 	unsigned long long rsi;
 	unsigned long long rdi;
-#ifdef ARCH_X86_64
 	unsigned long long r8;
 	unsigned long long r9;
 	unsigned long long r10;
@@ -24,7 +23,6 @@ typedef struct __exec_context_t {
 	unsigned long long r13;
 	unsigned long long r14;
 	unsigned long long r15;
-#endif
 	unsigned long long rip;
 	unsigned long long flags;
 	
@@ -32,10 +30,17 @@ typedef struct __exec_context_t {
 	unsigned char others[512] __attribute__((aligned(16))); // fxsave wants 16-byte aligned memory
 } exec_context_t;
 
-extern __attribute__((regparm(0))) long long set_jmp(exec_context_t *env);
-extern __attribute__((regparm(0))) __attribute__ ((noreturn)) void long_jmp(exec_context_t *env, long long val);
+long long _set_jmp(exec_context_t *env);
+__attribute__ ((__noreturn__)) void _long_jmp(exec_context_t *env, long long val);
 
-extern void set_jmp_other(exec_context_t *env);
-extern void long_jmp_other(exec_context_t *env);
+#define set_jmp(env) 		({\
+					int _set_ret;\
+					__asm__ __volatile__ ("pushq %rdi"); \
+					_set_ret = _set_jmp(env); \
+					__asm__ __volatile__ ("add $8, %rsp"); \
+					_set_ret;\
+				})
+
+#define long_jmp(env, val)	_long_jmp(env, val)
 
 #endif /* _JMP_H */
