@@ -15,6 +15,7 @@ librootsim_a_SOURCES =	main.c \
 			arch/thread.c \
 			arch/ult.c \
 			arch/x86.c \
+			arch/linux/jmp.S \
 			datatypes/array.c \
 			datatypes/list.c \
 			datatypes/calqueue.c \
