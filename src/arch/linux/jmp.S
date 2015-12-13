@@ -31,6 +31,23 @@
 
 .text
 
+# Stack organization of this function after the first three push:
+#
+#    _______________
+#    |     R11     |
+#    |-------------|
+#    |     RAX     |
+#    |-------------| <-- Saved RSP points here
+#    |    FLAGS    |
+#    |-------------|
+#    |  Ret. Addr. |
+#    |-------------|
+#    |   Old RDI   | <-- This is pushed by wrapping macro
+#    |-------------|
+#
+# Arguments to this function:
+#  - RDI: pointer to the CPU context where to store the current (before call) context
+
 .align 4
 .globl _set_jmp
 .type _set_jmp, @function
@@ -81,6 +98,16 @@ _set_jmp:
 # call longjmp(context, val); and RAX is set to val. This function respects this,
 # so that if RAX should be restored as well, it is possible to call
 # long_jmp(context, context->rax);
+#
+# Arguments to this function:
+#  - RDI: pointer to the CPU context to restore
+#  - RSI: return value of this function call
+#
+# The return address at the end of the function does not return control to the
+# caller, rather to the instruction immediately after the set_jmp call.
+#
+# The organization of this long_jmp implementation works as well if the stack of
+# the caller and the stack of the destination of the long jump are different.
 
 
 .align 4
