@@ -111,11 +111,12 @@ void *get_ult_stack(unsigned int lid, size_t size) {
 *
 * @author Ralf Engelschall
 */
+static void context_create_boot(void) __attribute__ ((noreturn));
 static void context_create_boot(void) {
 
 	void (*context_start_func)(void *);
 	void *context_start_arg;
-
+	
 	context_start_func = context_creat_func;
 	context_start_arg = context_creat_arg;
 
@@ -181,8 +182,10 @@ void context_create(LP_context_t *context, void (*entry_point)(void *), void *ar
 	context_called = false;
 	raise(SIGUSR1);
 	sigaltstack(&oss, NULL);
-
-	context_switch(&context_caller, context);
+	
+	printf("Before cs\n");
+	context_switch_create(&context_caller, context);
+	printf("After cs\n");
 }
 
 
@@ -213,3 +216,4 @@ void context_create(LP_context_t *context, void (*entry_point)(void *), void *ar
 #endif /* OS */
 
 #endif /* ENABLE_ULT */
+

@@ -299,7 +299,7 @@ static void LP_main_loop(void *args) {
  */
 void initialize_LP(unsigned int lp) {
 	unsigned int i;
-
+	
 	// Allocate LP stack
 	#ifdef ENABLE_ULT
 	LPS[lp]->stack = get_ult_stack(lp, LP_STACK_SIZE);
@@ -343,11 +343,12 @@ void initialize_LP(unsigned int lp) {
 	LPS[lp]->ECS_synch_table[0] = lp;
 	#endif
 
+printf("Before context_create\n");
 	// Create user thread
 	#ifdef ENABLE_ULT
 	context_create(&LPS[lp]->context, LP_main_loop, NULL, LPS[lp]->stack, LP_STACK_SIZE);
 	#endif
-
+printf("After context_create\n");
 }
 
 
@@ -367,7 +368,7 @@ void initialize_worker_thread(void) {
 
 		// Create user level thread for the current LP and initialize LP control block
 		initialize_LP(LPS_bound[t]->lid);
-
+		
 		// Schedule an INIT event to the newly instantiated LP
 		msg_t init_event = {
 			sender: LidToGid(LPS_bound[t]->lid),
@@ -491,7 +492,7 @@ void schedule(void) {
 	#ifdef HAVE_CROSS_STATE
 	bool resume_execution = false;
 	#endif
-
+	
 	// Find next LP to be executed, depending on the chosen scheduler
 	switch (rootsim_config.scheduler) {
 
@@ -502,9 +503,11 @@ void schedule(void) {
 		default:
 			lid = smallest_timestamp_first();
 	}
-
-	printf("\t Selected LP %d with state %#08x\n", lid, LPS[lid]->state);
-
+	if(lid != IDLE_PROCESS){
+		printf("\t Selected LP %d with state %#08x\n", lid, LPS[lid]->state);
+		fflush(stdout);
+	}
+	
 	// No logical process found with events to be processed
 	if (lid == IDLE_PROCESS) {
 		statistics_post_lp_data(lid, STAT_IDLE_CYCLES, 1.0);

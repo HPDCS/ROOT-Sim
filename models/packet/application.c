@@ -29,8 +29,11 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, event_t *c
 			new_event.pointer = state->pointer;
 			new_event.sender = me;
 			//int recv = FindReceiver(TOPOLOGY_MESH);
-			int recv = 0;
+			int recv = 1;
 			timestamp = now + Expent(DELAY);
+			if(me==1 && (((int)timestamp) % 2)==0){
+				recv = 0; 
+			}
 	
 			if(content != NULL && content->pointer!=NULL)
 				printf("[%d]\n",content->pointer[0]);

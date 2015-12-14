@@ -18,7 +18,7 @@ unsigned int smallest_timestamp_first(void) {
 	simtime_t min_timestamp = -1, evt_time = -1;
 	unsigned int next = IDLE_PROCESS;
 	register unsigned int i;
-
+	
 	// For each local process
 	for (i = 0; i < n_prc_per_thread; i++) {
 

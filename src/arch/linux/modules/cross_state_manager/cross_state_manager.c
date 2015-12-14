@@ -250,7 +250,7 @@ int root_sim_page_fault(struct pt_regs* regs, long error_code){
 		        copy_to_user((void *)auxiliary_stack_pointer,(void *)&i,8);	
 			//printk("Added current LP[%d]: %p\n",i,auxiliary_stack_pointer);
 			
-			printk("IP: %p \t hitted_object: %d \t LP %d\n",regs->ip,hitted_object,i)
+			printk("IP: %p \t hitted_object: %d \t WT %d\n",regs->ip,hitted_object,i)
 ;
 			regs->sp = auxiliary_stack_pointer;
 			regs->ip = callback;
