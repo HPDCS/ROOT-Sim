@@ -20,11 +20,11 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, event_t *c
 
 		case PACKET: {
 			state->packet_count++;
-			if(content != NULL && content->sender != me){
+			/*if(content != NULL && content->sender != me){
 				if(content->pointer!=NULL){
 					content->pointer[0]++;
 				}
-			}
+			}*/
 			new_event.sent_at = now;
 			new_event.pointer = state->pointer;
 			new_event.sender = me;
@@ -35,8 +35,8 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, event_t *c
 				recv = 0; 
 			}
 	
-			if(content != NULL && content->pointer!=NULL)
-				printf("[%d]\n",content->pointer[0]);
+			/*if(content != NULL && content->pointer!=NULL)
+				printf("[%d]\n",content->pointer[0]);*/
 
 			printf("\t \t Send event with timestamp:%f now:%f\n",timestamp,now);
 			ScheduleNewEvent(recv, timestamp, PACKET, &new_event, sizeof(new_event));

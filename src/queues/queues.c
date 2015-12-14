@@ -225,6 +225,7 @@ void process_bottom_halves(void) {
 
 						// If the matched message is in the past, we have to rollback
 						if(matched_msg->timestamp <= lvt(lid_receiver)) {
+							//TODO MN if timestamp is lesser then GTV+deltaT we have to ROLLBACK all  LPs of the GROUP and we have to find a "good" message for each of them. This behaviour is safe since all LPs of our interested group are under the controll of the same thread due to the previous binding and therefore they will never be scheduled cuncurrently. A good message is the message with the maximum timestamp lesser then timestamp. Check if other groupmates have or not to rollback according to their lvt
 							LPS[lid_receiver]->bound = list_prev(matched_msg);
 							LPS[lid_receiver]->state = LP_STATE_ROLLBACK;
 						}
