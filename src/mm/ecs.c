@@ -49,6 +49,10 @@
 #include <arch/linux/modules/cross_state_manager/cross_state_manager.h>
 #include <mm/allocator_ecs.h>
 
+#ifdef HAVE_GLP_SCH_MODULE
+#include <gvt/gvt.h>
+#endif
+
 /// This variable keeps track of per-LP allocated (and assigned) memory regions
 static struct _lp_memory *lp_memory_regions;
 
@@ -217,51 +221,6 @@ static void rootsim_cross_state_dependency_handler(void) { // for now a simple p
 //	__asm__ __volatile__("addq $0x50 , %rsp ; popq %rbx ; popq %rbp; addq $0x10 , %rsp ; retq"); // BUONA SENZA PRINTF
 }
 
-
-/*
-void lp_alloc_init(void) {
-
-	unsigned int i;
-	int ret;
-
-	ioctl_fd = open("/dev/ktblmgr", O_RDONLY);
-	if (ioctl_fd == -1) {
-		rootsim_error(true, "Error in opening special device file. ROOT-Sim is compiled for using the ktblmgr linux kernel module, which seems to be not loaded.");
-	}
-
-	ret = ioctl(ioctl_fd, IOCTL_SET_ANCESTOR_PGD);  //ioctl call
-	printf("set ancestor returned %d\n",ret);
-
-	lp_memory_ioctl_info.ds = -1;
-	lp_memory_ioctl_info.addr = LP_PREALLOCATION_INITIAL_ADDRESS;
-	lp_memory_ioctl_info.mapped_processes = n_prc;
-
-	callback_function =  rootsim_cross_state_dependency_handler;
-	lp_memory_ioctl_info.callback = callback_function;
-
-
-	printf("indirizzo originale %p, passato %p\n",  rootsim_cross_state_dependency_handler,  lp_memory_ioctl_info.callback);
-
-	ret = ioctl(ioctl_fd, IOCTL_SET_VM_RANGE, &lp_memory_ioctl_info);
-}
-
-
-void lp_alloc_fini(void) {
-
-	unsigned int i;
-
-	unsigned int num_mmap = n_prc * 2;
-	size_t size = PER_LP_PREALLOCATED_MEMORY / 2;
-	char *addr = LP_PREALLOCATION_INITIAL_ADDRESS;
-
-	for(i = 0; i < num_mmap; i++) {
-		munmap(addr, size);
-		addr += size;
-	}
-
-	close(ioctl_fd); // closing (hence releasing) the special device file
-}*/
-
 // inserire qui tutte le api di schedulazione/deschedulazione
 
 void lp_alloc_thread_init(void) {
@@ -302,23 +261,35 @@ void lp_alloc_thread_init(void) {
 
 void lp_alloc_schedule(void) {
 	
+	int i;
 	ioctl_info sched_info;
-	
+	LP_state **list;	
+
 	sched_info.ds = pgd_ds; // this is current
 	sched_info.count = LPS[current_lp]->ECS_index + 1; // it's a counter
-	sched_info.objects = LPS[current_lp]->ECS_synch_table; // pgd descriptor range from 0 to number threads - a subset of object ids 	
-	//TODO MN open group memory view only if lvt < GVT+deltaT
 	
+	//TODO MN open group memory view only if lvt < GVT+deltaT	
+	#ifdef HAVE_GLP_SCH_MODULE
+	if(virify_time_group(lvt(current_lp))){
+		list = GLPS[LPS[current_lp]->current_group]->local_LPS;
+        	for(i=0; i<n_prc; i++){
+                	if(i!=current_lp && list[i]!=NULL){
+				sched_info.count++;
+        			LPS[current_lp]->ECS_synch_table[sched_info.count] = i;
+			}
+		}
+	}
+	#endif	
+	
+	sched_info.objects = LPS[current_lp]->ECS_synch_table; // pgd descriptor range from 0 to number threads - a subset of object ids 	
 	//TODO MN
 	sched_info.objects_mmap_count = 0;
-	int i;
 	
 	sched_info.objects_mmap_count = sched_info.count;	
 	
 	sched_info.objects_mmap_pointers = rsalloc(sizeof(void *) * sched_info.objects_mmap_count);	
 	for(i=0;i<sched_info.count;i++) {
                 sched_info.objects_mmap_pointers[i]= get_base_pointer(sched_info.objects[i]);
-		//printf("Object: %d \n",sched_info.objects[i]);
         }
 	
 	/* passing into LP mode - here for the pgd_ds-th LP */

@@ -152,10 +152,8 @@ void scheduler_init(void) {
 	        GLPS[i]->tot_LP = 1;
 
 	}
-        
         #endif
 	
-
 	#ifdef HAVE_PREEMPTION
 	preempt_init();
 	#endif
