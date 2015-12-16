@@ -113,7 +113,12 @@ bool anti_control_message(msg_t * msg) {
 	                	LPS[lid_receiver]->bound = list_prev(LPS[lid_receiver]->bound);
 	        	}
 	                LPS[lid_receiver]->state = LP_STATE_ROLLBACK;
- //TODO MN if timestamp is lesser then GTV+deltaT we have to ROLLBACK all  LPs of the GROUP and we have to find a "good" message for each of them. This behaviour is safe since all LPs of our interested group are under the controll of the same thread due to the previous binding and therefore they will never be scheduled cuncurrently. A good message is the message with the maximum timestamp lesser then timestamp. Check if other groupmates have or not to rollback according to their lvt
+			
+			#ifdef HAVE_GLP_SCH_MODULE
+                        if(virify_time_group(old_rendezvous->timestamp)){
+                       		rollback_group(old_rendezvous->timestamp,lid_receiver);
+                        }
+                       	#endif
 		}
 		old_rendezvous->rendezvous_mark = 0;
 

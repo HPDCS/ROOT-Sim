@@ -47,3 +47,6 @@ typedef struct _ECS_stat{
 } ECS_stat;
 
 extern GLP_state **GLPS;
+
+extern void rollback_group(simtime_t, unsigned int);
+

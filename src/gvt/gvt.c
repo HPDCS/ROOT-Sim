@@ -104,6 +104,8 @@ static simtime_t *local_min;
 
 
 
+/// Variable to update the time for current group
+static __thread simtime_t last_time_group = -1.0;
 
 
 
@@ -298,9 +300,21 @@ simtime_t gvt_operations(void) {
 			local_min[tid] = INFTY;
 			atomic_dec(&counter_end);
 			last_gvt = adopted_last_gvt;
+			#ifdef HAVE_GLP_SCH_MODULE
+			last_time_group = last_gvt + DELTA_GROUP;
+			#endif
 		}
 	}
 
 	return -1.0;
 }
+
+//TODO MN
+#ifdef HAVE_GLP_SCH_MODULE
+bool virify_time_group(simtime_t timestamp){
+	return (timestamp < last_time_group);
+}
+#endif
+
+
 

@@ -45,4 +45,10 @@ inline extern simtime_t get_last_gvt(void);
 extern simtime_t adopt_new_gvt(simtime_t);
 
 
+#ifdef HAVE_GLP_SCH_MODULE
+/*TODO MN method to retrive the boundary of groups */
+extern bool virify_time_group(simtime_t);
+#define DELTA_GROUP 500.0
+#endif
+
 #endif

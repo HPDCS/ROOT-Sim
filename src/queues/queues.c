@@ -43,7 +43,9 @@
 #include <statistics/statistics.h>
 #include <gvt/gvt.h>
 
-
+#ifdef HAVE_GLP_SCH_MODULE
+#include <scheduler/group.h>
+#endif
 
 /**
 * This function returns the timestamp of the last executed event
@@ -179,10 +181,6 @@ void process_bottom_halves(void) {
 
 			// Handle control messages
 			if(!receive_control_msg(msg_to_process)) {
-				//fprintf(stderr, "%s:%d: This message must be deleted but I still don't know how!\n", __FILE__, __LINE__);
-				
-				//TODO MN DEBUG  abort was not noted
-				//abort();
 				list_deallocate_node_buffer(lid_receiver, msg_to_process);
 				continue;
 			}
@@ -225,7 +223,12 @@ void process_bottom_halves(void) {
 
 						// If the matched message is in the past, we have to rollback
 						if(matched_msg->timestamp <= lvt(lid_receiver)) {
-							//TODO MN if timestamp is lesser then GTV+deltaT we have to ROLLBACK all  LPs of the GROUP and we have to find a "good" message for each of them. This behaviour is safe since all LPs of our interested group are under the controll of the same thread due to the previous binding and therefore they will never be scheduled cuncurrently. A good message is the message with the maximum timestamp lesser then timestamp. Check if other groupmates have or not to rollback according to their lvt
+							#ifdef HAVE_GLP_SCH_MODULE
+							if(virify_time_group(matched_msg->timestamp)){
+								rollback_group(matched_msg->timestamp,lid_receiver);
+							}
+							#endif
+
 							LPS[lid_receiver]->bound = list_prev(matched_msg);
 							LPS[lid_receiver]->state = LP_STATE_ROLLBACK;
 						}
@@ -245,6 +248,13 @@ void process_bottom_halves(void) {
 
 					// Check if we've just inserted an out-of-order event
 					if(msg_to_process->timestamp < lvt(lid_receiver)) {
+						
+						#ifdef HAVE_GLP_SCH_MODULE
+                                               	if(virify_time_group(matched_msg->timestamp)){
+                                                	rollback_group(matched_msg->timestamp,lid_receiver);
+                                                }
+                                                #endif
+
 						LPS[lid_receiver]->bound = list_prev(msg_to_process);
 						LPS[lid_receiver]->state = LP_STATE_ROLLBACK;
 					}
@@ -254,8 +264,6 @@ void process_bottom_halves(void) {
 				case other:
 					// Check if it is an anti control message
 					if(!anti_control_message(msg_to_process)) {
-						//fprintf(stderr, "%s:%d: This message must be deleted but I still don't know how!\n", __FILE__, __LINE__);
-						//abort();
 						list_deallocate_node_buffer(lid_receiver, msg_to_process);
 						continue;
 					}
