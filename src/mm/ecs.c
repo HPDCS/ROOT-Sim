@@ -70,12 +70,12 @@ static __thread int pgd_ds;
 extern void rootsim_cross_state_dependency_handler(void);
 
 
-void ECS(int ds, unsigned int hitted_object){
+void ECS(long long ds, unsigned long long hitted_object){
 	ioctl_info sched_info;
 	msg_t control_msg;
 	msg_hdr_t msg_hdr;
 
-	printf("ECS synch started on pgd %d - start wait for hitted object num %d by %d\n", ds, hitted_object, current_lp);
+	printf("ECS synch started on pgd %ld - start wait for hitted object num %lu by %d\n", ds, hitted_object, current_lp);
 	fflush(stdout);
 
 	// do whatever you want, but you need to reopen access to the objects you cross-depend on before returning
