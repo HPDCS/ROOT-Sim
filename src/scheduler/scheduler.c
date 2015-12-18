@@ -68,6 +68,11 @@ __thread msg_t *current_evt;
 /// This global variable tells the simulator what is the LP currently being scheduled on the current worker thread
 __thread void *current_state;
 
+//TODO MN
+#ifdef HAVE_GLP_SCH_MODULE
+/// Maintain groups' state 
+GLP_state **GLPS = NULL;
+#endif
 
 /*
 * This function initializes the scheduler. In particular, it relies on MPI to broadcast to every simulation kernel process
@@ -105,8 +110,50 @@ void scheduler_init(void) {
 
 		// That's the only sequentially executed place where we can set the lid
 		LPS[i]->lid = i;
+	
+		//TODO MN
+		#ifdef HAVE_GLP_SCH_MODULE
+		// Allocate ECS_stat_table
+		LPS[i]->ECS_stat_table = (ECS_stat **)rsalloc(n_grp * sizeof(ECS_stat *));
+		unsigned int j;
+		for (j = 0; j < n_prc; j++) {
+			LPS[i]->ECS_stat_table[j] = (ECS_stat *)rsalloc(sizeof(ECS_stat));
+			bzero(LPS[i]->ECS_stat_table[j], sizeof(ECS_stat));
+			
+			//NOTE: each entry of ECS_stat_table must be initialise otherwise it can figure 
+			//      out problem during the first access
+			LPS[i]->ECS_stat_table[j]->last_access = -1.0;
+			
+		}
+		#endif
 	}
 
+	//TODO MN
+	#ifdef HAVE_GLP_SCH_MODULE
+	// Allocate GLPS control blocks
+	GLPS = (GLP_state **)rsalloc(n_grp * sizeof(GLP_state *));
+	for (i = 0; i < n_grp; i++) {
+		GLPS[i] = (GLP_state *)rsalloc(sizeof(GLP_state));
+		bzero(GLPS[i], sizeof(GLP_state));
+
+		GLPS[i]->local_LPS = (LP_state **)rsalloc(n_prc * sizeof(LP_state *));
+		unsigned int j;
+		for (j = 0; j < n_prc; j++) {
+			GLPS[i]->local_LPS[j] = (LP_state *)rsalloc(sizeof(LP_state));
+			bzero(GLPS[i]->local_LPS[j], sizeof(LP_state));
+		}
+
+	        //Initialise current group
+	        LPS[i]->current_group = i;
+
+        	//Initialise GROUPS
+	        spinlock_init(&GLPS[i]->lock);
+        	GLPS[i]->local_LPS[i] = LPS[i];
+	        GLPS[i]->tot_LP = 1;
+
+	}
+        #endif
+	
 	#ifdef HAVE_PREEMPTION
 	preempt_init();
 	#endif
@@ -173,6 +220,7 @@ void scheduler_fini(void) {
 * @param args arguments passed to the LP main loop. Currently, this is not used.
 */
 static void LP_main_loop(void *args) {
+	
 	#ifdef EXTRA_CHECKS
 	unsigned long long hash1, hash2;
 	hash1 = hash2 = 0;
@@ -196,9 +244,14 @@ static void LP_main_loop(void *args) {
 		// Process the event
 		timer event_timer;
 		timer_start(event_timer);
-
+		
 		switch_to_application_mode();
+		
+		printf("Timestamp: %f\n",current_evt->timestamp);
+
 		ProcessEvent[current_lp](LidToGid(current_lp), current_evt->timestamp, current_evt->type, current_evt->event_content, current_evt->size, current_state);
+		
+	
 		switch_to_platform_mode();
 
 		int delta_event_timer = timer_value_micro(event_timer);
@@ -244,12 +297,13 @@ static void LP_main_loop(void *args) {
  */
 void initialize_LP(unsigned int lp) {
 	unsigned int i;
-
+	
 	// Allocate LP stack
 	#ifdef ENABLE_ULT
 	LPS[lp]->stack = get_ult_stack(lp, LP_STACK_SIZE);
 	#endif
-
+	
+	
 	// Set the initial checkpointing period for this LP.
 	// If the checkpointing period is fixed, this will not change during the
 	// execution. Otherwise, new calls to this function will (locally) update
@@ -287,10 +341,12 @@ void initialize_LP(unsigned int lp) {
 	LPS[lp]->ECS_synch_table[0] = lp;
 	#endif
 
+printf("Before context_create\n");
 	// Create user thread
 	#ifdef ENABLE_ULT
 	context_create(&LPS[lp]->context, LP_main_loop, NULL, LPS[lp]->stack, LP_STACK_SIZE);
 	#endif
+printf("After context_create\n");
 }
 
 
@@ -299,7 +355,6 @@ void initialize_worker_thread(void) {
 
 	// Divide LPs among worker threads, for the first time here
 	rebind_LPs();
-
 	if(master_thread() && master_kernel()) {
 		printf("Initializing LPs... ");
 		fflush(stdout);
@@ -311,7 +366,7 @@ void initialize_worker_thread(void) {
 
 		// Create user level thread for the current LP and initialize LP control block
 		initialize_LP(LPS_bound[t]->lid);
-
+		
 		// Schedule an INIT event to the newly instantiated LP
 		msg_t init_event = {
 			sender: LidToGid(LPS_bound[t]->lid),
@@ -324,6 +379,7 @@ void initialize_worker_thread(void) {
 			message_kind: positive,
 		};
 
+		
 		// Copy the relevant string pointers to the INIT event payload
 		if(model_parameters.size > 0) {
 			memcpy(init_event.event_content, model_parameters.arguments, model_parameters.size * sizeof(char *));
@@ -332,7 +388,6 @@ void initialize_worker_thread(void) {
 		(void)list_insert_head(LPS_bound[t]->lid, LPS_bound[t]->queue_in, &init_event);
 		LPS_bound[t]->state_log_forced = true;
 	}
-
 	// Worker Threads synchronization barrier: they all should start working together
 	thread_barrier(&all_thread_barrier);
 
@@ -384,9 +439,11 @@ void activate_LP(unsigned int lp, simtime_t lvt, void *evt, void *state) {
 //	if(!rootsim_config.disable_preemption)
 //		enable_preemption();
 //	#endif
-
+	
+	printf(" LP %d current_evt->timestap:%f\n",lp,current_evt->timestamp);
 	#ifdef HAVE_CROSS_STATE
 	// Activate memory view for the current LP
+//	printf("Schedule %d\n",lp);
 	lp_alloc_schedule();
 	#endif
 
@@ -395,7 +452,8 @@ void activate_LP(unsigned int lp, simtime_t lvt, void *evt, void *state) {
 	#else
 	LP_main_loop(NULL);
 	#endif
-
+	
+	
 //	#ifdef HAVE_PREEMPTION
 //        if(!rootsim_config.disable_preemption)
 //                disable_preemption();
@@ -403,7 +461,8 @@ void activate_LP(unsigned int lp, simtime_t lvt, void *evt, void *state) {
 
 	#ifdef HAVE_CROSS_STATE
 	// Deactivate memory view for the current LP if no conflict has arisen
-	if(!is_blocked_state(LPS[lp]->state)) {
+	if(!is_blocked_state(LPS[lp]->state)) {	
+//		printf("Deschedule %d\n",lp);
 		lp_alloc_deschedule();
 	}
 	#endif
@@ -431,7 +490,7 @@ void schedule(void) {
 	#ifdef HAVE_CROSS_STATE
 	bool resume_execution = false;
 	#endif
-
+	
 	// Find next LP to be executed, depending on the chosen scheduler
 	switch (rootsim_config.scheduler) {
 
@@ -442,9 +501,11 @@ void schedule(void) {
 		default:
 			lid = smallest_timestamp_first();
 	}
-
-//	printf("Selected LP %d with state %d\n", lid, LPS[lid]->state);
-
+	if(lid != IDLE_PROCESS){
+		printf("\t Selected LP %d with state %#08x\n", lid, LPS[lid]->state);
+		fflush(stdout);
+	}
+	
 	// No logical process found with events to be processed
 	if (lid == IDLE_PROCESS) {
 		statistics_post_lp_data(lid, STAT_IDLE_CYCLES, 1.0);
@@ -460,8 +521,8 @@ void schedule(void) {
 		return;
 	}
 
-
-	if(!is_blocked_state(LPS[lid]->state)) {
+	
+	if(!is_blocked_state(LPS[lid]->state) && LPS[lid]->state != LP_STATE_READY_FOR_SYNCH) {
 		event = advance_to_next_event(lid);
 	} else {
 //		printf("Riavvio %d\n", lid);
@@ -490,10 +551,13 @@ void schedule(void) {
 		resume_execution = true;
 	}
 	#endif
-
+	
+	printf("\t \t LP %d with lvt:%f executes message %d at timestamp %f\n",lid,lvt(lid),event->mark,event->timestamp);
+	
 	// Schedule the LP user-level thread
 	LPS[lid]->state = LP_STATE_RUNNING;
 	activate_LP(lid, lvt(lid), event, state);
+	
 	if(!is_blocked_state(LPS[lid]->state)) {
 		LPS[lid]->state = LP_STATE_READY;
 		send_outgoing_msgs(lid);

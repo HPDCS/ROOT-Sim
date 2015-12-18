@@ -113,6 +113,12 @@ bool anti_control_message(msg_t * msg) {
 	                	LPS[lid_receiver]->bound = list_prev(LPS[lid_receiver]->bound);
 	        	}
 	                LPS[lid_receiver]->state = LP_STATE_ROLLBACK;
+			
+			#ifdef HAVE_GLP_SCH_MODULE
+                        if(virify_time_group(old_rendezvous->timestamp)){
+                       		rollback_group(old_rendezvous->timestamp,lid_receiver);
+                        }
+                       	#endif
 		}
 		old_rendezvous->rendezvous_mark = 0;
 
@@ -141,7 +147,14 @@ bool reprocess_control_msg(msg_t *msg) {
 
 // return true if the event must not be filtered here
 bool receive_control_msg(msg_t *msg) {
-
+	
+	switch(msg->type){	
+		case 1: printf("%d receive from %d PACKET\n",msg->receiver,msg->sender); break;
+		case RENDEZVOUS_START:	printf("%d receive from %d START\n",msg->receiver,msg->sender); break;
+		case RENDEZVOUS_ACK:	printf("%d receive from %d ACK\n",msg->receiver,msg->sender); break;
+		case RENDEZVOUS_UNBLOCK:	printf("%d receive from %d UNBLOCK\n",msg->receiver,msg->sender); break;
+	}	
+			
 	if(msg->type < MIN_VALUE_CONTROL || msg->type > MAX_VALUE_CONTROL) {
 		return true;
 	}
@@ -221,15 +234,15 @@ bool process_control_msg(msg_t *msg) {
 			control_msg.rendezvous_mark = msg->rendezvous_mark;
 			Send(&control_msg);
 			break;
-
-/*		case RENDEZVOUS_ACK:
+//TODO MN DEBUG case RENDEZVOUS_ACK and UNBLOCK  was noted
+		/*case RENDEZVOUS_ACK:
 			LPS[msg->receiver]->state = LP_STATE_READY_FOR_SYNCH;
 			return true;
-*/
-/*		case RENDEZVOUS_UNBLOCK:
+		
+		case RENDEZVOUS_UNBLOCK:
 			LPS[msg->receiver]->state = LP_STATE_READY;
-			break;
-*/
+			break;*/
+
 		default:
 			rootsim_error(true, "Trying to handle a control message which is meaningless at schedule time: %d\n", msg->type);
 

@@ -37,6 +37,7 @@
 #include <mm/state.h>
 #include <mm/dymelor.h>
 #include <datatypes/list.h>
+#include <scheduler/group.h>
 #include <scheduler/scheduler.h>
 #include <arch/ult.h>
 #include <arch/atomic.h>
@@ -52,7 +53,7 @@
 #define LP_STATE_ROLLBACK		0x00004
 #define LP_STATE_SILENT_EXEC		0x00008
 #define LP_STATE_SUSPENDED		0x01010
-#define LP_STATE_READY_FOR_SYNCH	0x00011
+#define LP_STATE_READY_FOR_SYNCH	0x00011	
 #define LP_STATE_WAIT_FOR_SYNCH		0x01001
 #define LP_STATE_WAIT_FOR_UNBLOCK	0x01002
 
@@ -62,16 +63,6 @@
 
 
 typedef struct _LP_state {
-
-	/// Local ID of the thread (used to translate from bound LPs to local id)
-	unsigned int 	lid;
-
-	/// Logical Process lock, used to serialize accesses to concurrent data structures
-	spinlock_t	lock;
-
-	/// Seed to generate pseudo-random values
-	seed_type	seed;
-
 #ifdef ENABLE_ULT
 	/// LP execution state
 	LP_context_t	context;
@@ -82,6 +73,16 @@ typedef struct _LP_state {
 	/// Process' stack
 	void 		*stack;
 #endif /* ENABLE_ULT */
+
+	/// Local ID of the thread (used to translate from bound LPs to local id)
+	unsigned int 	lid;
+
+	/// Logical Process lock, used to serialize accesses to concurrent data structures
+	spinlock_t	lock;
+
+	/// Seed to generate pseudo-random values
+	seed_type	seed;
+
 
 	/// ID of the worker thread towards which the LP is bound
 	unsigned int	worker_thread;
@@ -132,6 +133,12 @@ typedef struct _LP_state {
 
 	unsigned long long	wait_on_rendezvous;
 	unsigned int		wait_on_object;
+
+	//TODO MN
+	#ifdef HAVE_GLP_SCH_MODULE
+	unsigned int current_group;
+	ECS_stat ** ECS_stat_table;
+	#endif
 
 } LP_state;
 

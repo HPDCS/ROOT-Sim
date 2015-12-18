@@ -17,10 +17,13 @@ librootsim_a_SOURCES =	main.c \
 			arch/thread.c \
 			arch/ult.c \
 			arch/x86.c \
+			arch/linux/jmp.S \
 			datatypes/array.c \
 			datatypes/list.c \
 			datatypes/calqueue.c \
 			mm/state.c \
+			mm/ecs.c \
+			mm/ecs_callback.S \
 			queues/queues.c \
 			queues/xxhash.c \
 			core/init.c \
@@ -47,5 +50,6 @@ libdymelor_a_SOURCES = 	mm/checkpoints.c \
 			mm/platform.c \
 			mm/dymelor.c \
 			mm/allocator.c \
+			mm/allocator_ecs.c \
 			mm/bh-manager.c \
 			mm/mapmove.c

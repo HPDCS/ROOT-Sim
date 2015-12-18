@@ -27,8 +27,6 @@
 * @date November 15, 2013
 */
 
-#ifdef HAVE_CROSS_STATE
-
 #pragma once
 #ifndef __CROSS_STATE_H
 #define __CROSS_STATE
@@ -50,6 +48,10 @@ typedef struct _ioctl_info{
 	unsigned int *objects;
 	unsigned mapped_processes;
 	ulong callback;
+//TODO MN	
+	void** objects_mmap_pointers;
+        int* objects_mmap_sizes;
+        int objects_mmap_count;
 } ioctl_info;
 
 
@@ -76,6 +78,8 @@ typedef struct _ioctl_info{
 #define IOCTL_RESTORE_VIEW _IOW(CROSS_STATE_IOCTL_MAGIC, 19 , int) 
 #define IOCTL_SCHEDULE_ON_PGD _IOW(CROSS_STATE_IOCTL_MAGIC, 21 , ioctl_info *) 
 #define IOCTL_UNSCHEDULE_ON_PGD _IOW(CROSS_STATE_IOCTL_MAGIC, 22 , int) 
+#define IOCTL_GET_FREE_PML4 _IO(CROSS_STATE_IOCTL_MAGIC, 23) 
+#define IOCTL_PGD_PRINT _IO(CROSS_STATE_IOCTL_MAGIC, 24) 
 
 
 // Macros to access subportions of an address
@@ -91,6 +95,4 @@ typedef struct _ioctl_info{
 
 
 #endif /* __CROSS_STATE_H */
-#endif /* HAVE_CROSS_STATE */
-
 

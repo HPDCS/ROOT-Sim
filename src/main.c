@@ -41,6 +41,7 @@
 #include <scheduler/scheduler.h>
 #include <scheduler/process.h>
 #include <mm/dymelor.h>
+#include <mm/ecs.h>
 #include <serial/serial.h>
 
 
@@ -92,14 +93,14 @@ static void *main_simulation_loop(void *arg) {
 	(void)arg;
 
 	simtime_t my_time_barrier = -1.0;
-
+	
 	#ifdef HAVE_CROSS_STATE
 	lp_alloc_thread_init();
 	#endif
 
 	// Do the initial (local) LP binding, then execute INIT at all (local) LPs
 	initialize_worker_thread();
-
+	
 	// Notify the statistics subsystem that we are now starting the actual simulation
 	if(master_thread()) {
 		statistics_post_other_data(STAT_SIM_START, 1.0);
@@ -112,7 +113,7 @@ static void *main_simulation_loop(void *arg) {
 
 		// Recompute the LPs-thread binding
 		rebind_LPs();
-
+		
 		// Check whether we have new ingoing messages sent by remote instances
 		// and then process bottom halves
 //		messages_checking();
@@ -159,8 +160,8 @@ int main(int argc, char **argv) {
 	set_affinity(0);
 
 	SystemInit(argc, argv);
-
-	if(rootsim_config.serial) {
+	
+        if(rootsim_config.serial) {
 		serial_simulation();
 	} else {
 

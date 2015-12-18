@@ -32,34 +32,32 @@
 
 #ifdef ENABLE_ULT
 
-
-
 #if defined(OS_LINUX)
 
-#include <setjmp.h>
+#pragma GCC poison setjmp longjmp
 
-/// This structure is used to maintain execution context for LPs' userspace threads
-struct __execution_context_t {
-	jmp_buf jb;
-};
+#include <arch/linux/jmp.h>
 
-typedef struct __execution_context_t LP_context_t;
-typedef struct __execution_context_t kernel_context_t;
-
-
+typedef exec_context_t LP_context_t;
+typedef exec_context_t kernel_context_t;
 
 /// Save machine context for userspace context switch. This is used only in initialization.
-#define context_save(context) setjmp((context)->jb)
+#define context_save(context) set_jmp(context)
 
 
 /// Restore machine context for userspace context switch. This is used only in inizialitaion.
-#define context_restore(context) longjmp((context)->jb, 1)
+#define context_restore(context) long_jmp(context, 1)
 
 
 /// Swicth machine context for userspace context switch. This is used to schedule a LP or return control to simulation kernel
 #define context_switch(context_old, context_new) \
-	if(setjmp((context_old)->jb) == 0) \
-		longjmp((context_new)->jb, 1)
+	if(set_jmp(context_old) == 0) \
+		long_jmp(context_new, (context_new)->rax)
+
+/// Swicth machine context for userspace context switch. This is used to schedule a LP or return control to simulation kernel
+#define context_switch_create(context_old, context_new) \
+	if(set_jmp(context_old) == 0) \
+		long_jmp(context_new, 1)
 
 
 // Allocate ULT stack (in LP memory)
@@ -102,9 +100,7 @@ typedef struct __execution_context_t kernel_context_t;
 #define context_save(context) {}
 #define context_restore(context) {}
 
-
 #endif /* OS */
-
 
 // These are the APIs that, independently of the underlying arch, must be exposed by this module
 extern void context_create(LP_context_t *context, void (*entry_point)(void *), void *args, void *stack, size_t stack_size);
@@ -115,5 +111,6 @@ extern __thread kernel_context_t kernel_context;
 #endif /* #define __ULT_H */
 
 #endif /* ENABLE_ULT */
+
 
 

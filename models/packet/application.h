@@ -2,12 +2,15 @@
 
 #define PACKET 1 // Event definition
 #define DELAY 120
-#define PACKETS 100000 // Termination condition
+#define PACKETS 5 // Termination condition
 
 typedef struct event_content_t {
 	simtime_t sent_at;
+	int* pointer;
+	unsigned int sender;
 } event_t;
 
 typedef struct lp_state_t{
 	int packet_count;
+	int* pointer;
 } lp_state_t;

@@ -80,7 +80,8 @@ char *allocate_pages(int num_pages);
 char* allocate_page(void);
 mdt_entry* get_new_mdt_entry(int );
 int allocator_init(unsigned int);
-void* allocate_segment(unsigned int, size_t);
+void allocator_fini(unsigned int);
+void* allocate_segment(unsigned int, size_t, bool);
 void audit(void);
 int release_mdt_entry(int);
 void audit_map(unsigned int);
@@ -92,7 +93,7 @@ void set_BH_map(mem_map* );
 int init_BH(void);
 int insert_BH(int , void*, int );
 void* get_BH(int);
-
+mem_map* get_m_map(int);
 
 #ifdef HAVE_NUMA
 int get_numa_node(int);

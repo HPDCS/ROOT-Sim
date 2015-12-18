@@ -38,14 +38,19 @@
 
 
 #include <core/core.h>
-#include <mm/malloc.h>
+//#include <mm/malloc.h>
+#include <mm/allocator.h>
 #include <mm/dymelor.h>
 #include <scheduler/scheduler.h>
 #include <scheduler/process.h>
 #include <arch/ult.h>
 
-#ifdef HAVE_CROSS_STATE
-#include <arch/linux/modules/ktblmgr/ktblmgr.h>
+//TODO MN
+#include <arch/linux/modules/cross_state_manager/cross_state_manager.h>
+#include <mm/allocator_ecs.h>
+
+#ifdef HAVE_GLP_SCH_MODULE
+#include <gvt/gvt.h>
 #endif
 
 /// This variable keeps track of per-LP allocated (and assigned) memory regions
@@ -61,8 +66,11 @@ static int ioctl_fd;
 /// Per Worker-Thread Memory View
 static __thread int pgd_ds;
 
+// Declared in ecsstub.S
+extern void rootsim_cross_state_dependency_handler(void);
 
-static void ECS_stub(int ds, unsigned int hitted_object){
+
+void ECS(int ds, unsigned int hitted_object){
 	ioctl_info sched_info;
 	msg_t control_msg;
 	msg_hdr_t msg_hdr;
@@ -73,10 +81,28 @@ static void ECS_stub(int ds, unsigned int hitted_object){
 	// do whatever you want, but you need to reopen access to the objects you cross-depend on before returning
 
 	// Generate a Rendez-Vous Mark
+	// if it is presente already another synchronization event we do not need to generate another mark
 	if(LPS[current_lp]->wait_on_rendezvous == 0) {
 		current_evt->rendezvous_mark = generate_mark(current_lp);
 		LPS[current_lp]->wait_on_rendezvous = current_evt->rendezvous_mark;
 	}
+
+	//TODO MN
+	
+	#ifdef HAVE_GLP_SCH_MODULE	
+	//Manage counter to cross-state 
+	ECS_stat* temp_update_access = LPS[current_lp]->ECS_stat_table[LPS[hitted_object]->current_group];
+	if( (temp_update_access->last_access != -1.0) && ((current_lvt - temp_update_access->last_access) < THRESHOLD_TIME_ECS) )
+		temp_update_access->count_access++;
+	else
+		temp_update_access->count_access = 1;
+
+	temp_update_access->last_access = current_lvt;
+	//data structure that save the number of access and the last timestamp of the access
+	
+	printf("LP:%d --> last_access:%f | count_access:%d \n",current_lp,temp_update_access->last_access,temp_update_access->count_access);
+	
+	#endif
 
 	// Diretcly place the control message in the target bottom half queue
 	bzero(&control_msg, sizeof(msg_t));
@@ -89,7 +115,8 @@ static void ECS_stub(int ds, unsigned int hitted_object){
 	control_msg.rendezvous_mark = current_evt->rendezvous_mark;
 	control_msg.mark = generate_mark(current_lp);
 
-	printf("Nello stub lp %d manda a %d START con mark %llu\n", current_lp, hitted_object, control_msg.mark);
+	printf("ECS_stub lp %d sends to  %d START with  mark %llu\n", current_lp, hitted_object, control_msg.mark);
+	fflush(stdout);
 
 	// This message must be stored in the output queue as well, in case this LP rollbacks
 	bzero(&msg_hdr, sizeof(msg_hdr_t));
@@ -98,7 +125,7 @@ static void ECS_stub(int ds, unsigned int hitted_object){
 	msg_hdr.timestamp = control_msg.timestamp;
 	msg_hdr.send_time = control_msg.send_time;
 	msg_hdr.mark = control_msg.mark;
-	(void)list_insert(LPS[current_lp]->queue_out, send_time, &msg_hdr);
+	(void)list_insert(current_lp, LPS[current_lp]->queue_out, send_time, &msg_hdr);
 
 
 	// Block the execution of this LP
@@ -108,13 +135,15 @@ static void ECS_stub(int ds, unsigned int hitted_object){
 	// Store which LP we are waiting for synchronization. Upon reschedule, it is open immediately
 	LPS[current_lp]->ECS_index++;
 	LPS[current_lp]->ECS_synch_table[LPS[current_lp]->ECS_index] = hitted_object;
-
+	
 	Send(&control_msg);
 
 	// TODO: QUESTA RIGA E' COMMENTATA SOLTANTO PER UNO DEI TEST!!
 	// Give back control to the simulation kernel's user-level thread
-	context_switch(&LPS[current_lp]->context, &kernel_context);
+//	context_switch(&LPS[current_lp]->context, &kernel_context);
+	long_jmp(&kernel_context, kernel_context.rax);
 //	lp_alloc_schedule();
+//	
 
 
 //	sched_info.ds = ds;
@@ -125,13 +154,28 @@ static void ECS_stub(int ds, unsigned int hitted_object){
 
 }
 
+void print_rsp(void){
+	unsigned long rsp;
+	
+	__asm__ __volatile__ (
+		"mov %%rsp, %%rax\n\t"
+       		"mov %%eax, %0\n\t"
+    		: "=m" (rsp)
+    		: /* no input */
+    		: "%rax"
+    	);
 
+    	printf("RSP = %p\n", rsp);
+	fflush(stdout);
+}
+
+/*
 static void rootsim_cross_state_dependency_handler(void) { // for now a simple printf of the cross-state dependency involved LP
-
+	
 	unsigned long __id = -1;
 	void *__addr  = NULL;
+	void *__current_rsp  = NULL;
 	unsigned long __pgd_ds = -1;
-
 
 	__asm__ __volatile__("push %rax");
 	__asm__ __volatile__("push %rbx");
@@ -150,9 +194,16 @@ static void rootsim_cross_state_dependency_handler(void) { // for now a simple p
 	//__asm__ __volatile__("movq 0x10(%%rbp), %%rax; movq %%rax, %0" : "=m"(addr) : );
 	//__asm__ __volatile__("movq 0x8(%%rbp), %%rax; movq %%rax, %0" : "=m"(id) : );
 
-	__asm__ __volatile__("movq 0x18(%%rbp), %%rax; movq %%rax, %0" : "=m"(__addr) : );
-	__asm__ __volatile__("movq 0x10(%%rbp), %%rax; movq %%rax, %0" : "=m"(__id) : );
-	__asm__ __volatile__("movq 0x8(%%rbp), %%rax; movq %%rax, %0" : "=m"(__pgd_ds) : );
+	__asm__ __volatile__("movq %%rbp, %%rcx" :: );
+	__asm__ __volatile__("movq %%rsp, %%rbp" :: );
+	//__asm__ __volatile__("movq %%rsp, %%rbp; movq %%rbp, %0" : "=m"(__addr) : );
+	//printf("Valueo of rbp: %p\n",__addr); fflush(stdout);
+
+	__asm__ __volatile__("movq 0xb8(%%rbp), %%rax; movq %%rax, %0" : "=m"(__addr) : );
+	__asm__ __volatile__("movq 0xb0(%%rbp), %%rax; movq %%rax, %0" : "=m"(__id) : );
+	__asm__ __volatile__("movq 0xa8(%%rbp), %%rax; movq %%rax, %0" : "=m"(__pgd_ds) : );
+
+	__asm__ __volatile__("movq %%rcx, %%rbp" :: );
 
 	printf("rootsim callback received by the kernel need to sync, pointer passed is %p - hitted object is %u - pdg is %u\n", __addr, __id, __pgd_ds);
 	ECS_stub((int)__pgd_ds,(unsigned int)__id);
@@ -175,55 +226,38 @@ static void rootsim_cross_state_dependency_handler(void) { // for now a simple p
 	__asm__ __volatile__("addq $0x28 , %rsp ; popq %rbx ; popq %rbp; addq $0x10 , %rsp ; retq"); // BUONA CON LA PRINTF
 //	__asm__ __volatile__("addq $0x50 , %rsp ; popq %rbx ; popq %rbp; addq $0x10 , %rsp ; retq"); // BUONA SENZA PRINTF
 }
-
-
-
-void lp_alloc_init(void) {
-
-	unsigned int i;
-	int ret;
-
-	ioctl_fd = open("/dev/ktblmgr", O_RDONLY);
-	if (ioctl_fd == -1) {
-		rootsim_error(true, "Error in opening special device file. ROOT-Sim is compiled for using the ktblmgr linux kernel module, which seems to be not loaded.");
-	}
-
-	ret = ioctl(ioctl_fd, IOCTL_SET_ANCESTOR_PGD);  //ioctl call
-	printf("set ancestor returned %d\n",ret);
-
-	lp_memory_ioctl_info.ds = -1;
-	lp_memory_ioctl_info.addr = LP_PREALLOCATION_INITIAL_ADDRESS;
-	lp_memory_ioctl_info.mapped_processes = n_prc;
-
-	callback_function =  rootsim_cross_state_dependency_handler;
-	lp_memory_ioctl_info.callback = callback_function;
-
-
-	printf("indirizzo originale %p, passato %p\n",  rootsim_cross_state_dependency_handler,  lp_memory_ioctl_info.callback);
-
-	ret = ioctl(ioctl_fd, IOCTL_SET_VM_RANGE, &lp_memory_ioctl_info);
-}
-
-
-void lp_alloc_fini(void) {
-
-	unsigned int i;
-
-	unsigned int num_mmap = n_prc * 2;
-	size_t size = PER_LP_PREALLOCATED_MEMORY / 2;
-	char *addr = LP_PREALLOCATION_INITIAL_ADDRESS;
-
-	for(i = 0; i < num_mmap; i++) {
-		munmap(addr, size);
-		addr += size;
-	}
-
-	close(ioctl_fd); // closing (hence releasing) the special device file
-}
-
+*/
 // inserire qui tutte le api di schedulazione/deschedulazione
 
 void lp_alloc_thread_init(void) {
+	
+	unsigned int i;
+        int ret;
+
+
+	//TODO MN
+
+        ioctl_fd = open("/dev/ktblmgr", O_RDONLY);
+        if (ioctl_fd == -1) {
+                rootsim_error(true, "Error in opening special device file. ROOT-Sim is compiled for using the ktblmgr linux kernel module, which seems to be not loaded.");
+        }
+
+        ret = ioctl(ioctl_fd, IOCTL_SET_ANCESTOR_PGD);  //ioctl call
+        printf("set ancestor returned %d\n",ret);
+	fflush(stdout);
+
+        lp_memory_ioctl_info.ds = -1;
+        lp_memory_ioctl_info.mapped_processes = n_prc;
+
+        callback_function =  rootsim_cross_state_dependency_handler;
+        lp_memory_ioctl_info.callback = callback_function;
+
+
+        printf("indirizzo originale %p, passato %p\n",  rootsim_cross_state_dependency_handler,  lp_memory_ioctl_info.callback);
+	fflush(stdout);
+
+        ret = ioctl(ioctl_fd, IOCTL_SET_VM_RANGE, &lp_memory_ioctl_info);
+	
 	/* required to manage the per-thread memory view */
 	pgd_ds = ioctl(ioctl_fd, IOCTL_GET_PGD);  //ioctl call
 	printf("rootsim thread: pgd descriptor is %d\n",pgd_ds);
@@ -232,16 +266,41 @@ void lp_alloc_thread_init(void) {
 
 
 void lp_alloc_schedule(void) {
-
-	ioctl_info sched_info;
 	
+	int i;
+	ioctl_info sched_info;
+	LP_state **list;	
+
 	sched_info.ds = pgd_ds; // this is current
 	sched_info.count = LPS[current_lp]->ECS_index + 1; // it's a counter
-	sched_info.objects = LPS[current_lp]->ECS_synch_table; // pgd descriptor range from 0 to number threads - a subset of object ids 
-
+	
+	//TODO MN open group memory view only if lvt < GVT+deltaT	
+	#ifdef HAVE_GLP_SCH_MODULE
+	if(virify_time_group(lvt(current_lp))){
+		list = GLPS[LPS[current_lp]->current_group]->local_LPS;
+        	for(i=0; i<n_prc; i++){
+                	if(i!=current_lp && list[i]!=NULL){
+				sched_info.count++;
+        			LPS[current_lp]->ECS_synch_table[sched_info.count] = i;
+			}
+		}
+	}
+	#endif	
+	
+	sched_info.objects = LPS[current_lp]->ECS_synch_table; // pgd descriptor range from 0 to number threads - a subset of object ids 	
+	//TODO MN
+	sched_info.objects_mmap_count = 0;
+	
+	sched_info.objects_mmap_count = sched_info.count;	
+	
+	sched_info.objects_mmap_pointers = rsalloc(sizeof(void *) * sched_info.objects_mmap_count);	
+	for(i=0;i<sched_info.count;i++) {
+                sched_info.objects_mmap_pointers[i]= get_base_pointer(sched_info.objects[i]);
+        }
+	
 	/* passing into LP mode - here for the pgd_ds-th LP */
 	ioctl(ioctl_fd,IOCTL_SCHEDULE_ON_PGD, &sched_info);
-
+	
 }
 
 

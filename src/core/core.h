@@ -201,6 +201,7 @@ extern unsigned int	kid,		/* Kernel ID for the local kernel */
 			n_ker,		/* Total number of kernel instances */
 			n_cores,	/* Total number of cores required for simulation */
 			n_prc,		/* Number of LPs hosted by the current kernel instance */
+			n_grp,		/* Number of groups of LPs hosted by the current kernel instance */
 			*kernel;
 
 

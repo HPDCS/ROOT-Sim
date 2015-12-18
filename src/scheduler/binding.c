@@ -34,6 +34,7 @@
 #include <gvt/gvt.h>
 #include <scheduler/process.h>
 #include <scheduler/binding.h>
+//#include <scheduler/group.h>
 #include <statistics/statistics.h>
 
 #include <mm/allocator.h>
@@ -60,9 +61,21 @@ static __thread bool first_lp_binding = true;
  */
 __thread LP_state **LPS_bound = NULL;
 
+/** TODO MN
+ *  Each KLT has a binding towards some GLP. This is the structure used 
+ *  to keep track of GLPs currently being handled
+ */
+#ifdef HAVE_GLP_SCH_MODULE
+static double *glp_cost;
+static unsigned int *new_GLPS_binding;
+static GLP_state **new_GLPS;
+static unsigned int *new_group_LPS;
+#endif
+
 static timer rebinding_timer;
 
 static unsigned int *new_LPS_binding;
+
 
 static int binding_phase = 0;
 static __thread int local_binding_phase = 0;
@@ -94,6 +107,7 @@ static inline void LPs_block_binding(void) {
 	n_prc_per_thread = 0;
 	i = 0;
 	offset = 0;
+
 	while (i < n_prc) {
 		j = 0;
 		while (j < buf1) {
@@ -112,9 +126,6 @@ static inline void LPs_block_binding(void) {
 	}
 }
 
-
-
-
 /**
 * Convenience function to compare two elements of struct lp_cost_id.
 * This is used for sorting the LP vector in LP_knapsack()
@@ -132,9 +143,6 @@ static int compare_lp_cost(const void *a, const void *b) {
 
 	return ( B->workload_factor - A->workload_factor );
 }
-
-
-
 
 /**
 * Implements the knapsack load sharing policy in:
@@ -253,6 +261,297 @@ static void install_binding(void) {
 	}
 }
 
+#ifdef HAVE_GLP_SCH_MODULE
+/* -------------------------------------------------------------------- */
+/* -------------------START MANAGE GROUP------------------------------- */
+/* -------------------------------------------------------------------- */
+
+/**
+//TODO MN
+* Performs a (deterministic) block allocation between GLPs LPs and KLTs
+*
+* @author Nazzareno Marziale
+* @author Francesco Nobilia
+*/
+static inline void GLPs_block_binding(void) {
+	unsigned int i, j, y, count;
+	unsigned int buf1;
+	unsigned int offset;
+	unsigned int block_leftover;
+
+	buf1 = (n_prc / n_cores);
+	block_leftover = n_prc - buf1 * n_cores;
+
+	if (block_leftover > 0) {
+		buf1++;
+	}
+
+	n_prc_per_thread = 0;
+	i = 0;
+	offset = 0;
+	while (i < n_prc) {
+		j = 0;
+		while (j < buf1) {
+			if(offset == tid) {
+				spin_lock_x86(&(GLPS[i]->lock));
+				count = 0;
+				y=0;
+				while(count < GLPS[i]->tot_LP){
+					if(GLPS[i]->local_LPS[y] != NULL){
+						LPS_bound[n_prc_per_thread++] = LPS[i];
+						LPS[i]->worker_thread = tid;
+						count++;
+					}
+					y++;
+				}
+				spin_unlock_x86(&(GLPS[i]->lock));
+			}
+			i++;
+			j++;
+		}
+		offset++;
+		block_leftover--;
+		if (block_leftover == 0) {
+			buf1--;
+		}
+	}
+}
+
+/**
+//TODO MN
+* Convenience function to compute the workload of a GRP.
+* This is used for preparing the array that will be sorted in GLP_knapsack()
+*
+* @author Nazzareno Marziale
+* @author Francesco Nobilia
+*
+* @param int Group id
+*
+* @return The workload of group id
+*/
+static double compute_workload_GLP(int id) {
+	glp_cost[id] = 0;
+
+	GLP_state *group = new_GLPS[id];
+	//Lock is required since there may be a WT that is updating the local_LP and the correlated tot_LP count
+	spin_lock_x86(&(group->lock));
+
+	int count = 0;
+	int i=0;
+	while(count < group->tot_LP){
+		if(group->local_LPS[i] != NULL){
+			glp_cost[id] += lp_cost[i].workload_factor;
+			count++;
+		}
+		
+		i++;
+	}
+
+	spin_unlock_x86(&(group->lock));
+
+	return glp_cost[id];
+}
+
+/**
+//TODO MN
+* Convenience function to compare two elements of double.
+* This is used for sorting the GROUP vector in GLP_knapsack()
+*
+* @author Nazzareno Marziale
+* @author Francesco Nobilia
+*
+* @param a Pointer to the first element
+* @param b Pointer to the second element
+*
+* @return The comparison between a and b
+*/
+static int compare_glp_cost(const void *a, const void *b) {
+	return  (*(double*)b - *(double*)a) ;
+}
+
+/**
+//TODO MN
+**/
+int LP_change_group(GLP_state **GROUPS_global, LP_state *actual_lp){
+	ECS_stat *ECS_entry_temp;
+	unsigned int i;
+	unsigned int threshold_access = 100;
+
+	for(i=0 ; i<n_grp ; i++){
+		ECS_entry_temp = actual_lp->ECS_stat_table[i];
+		if(ECS_entry_temp->count_access > threshold_access){
+			
+			//Update old group
+			//spin_lock(GROUPS_global[actual_lp->current_group]->lock);
+			GROUPS_global[actual_lp->current_group]->local_LPS[actual_lp->lid] = NULL;
+			GROUPS_global[actual_lp->current_group]->tot_LP--;
+			//spin_unlock(GROUPS_global[actual_lp->current_group]->lock);
+					
+			//Update new group
+			//spin_lock(GROUPS_global[i]->lock);
+			GROUPS_global[i]->local_LPS[actual_lp->lid] = actual_lp;
+			GROUPS_global[i]->tot_LP++;
+			//spin_unlock(GROUPS_global[i]->lock);
+
+			return i;
+		}
+	}
+
+	return actual_lp->current_group;
+}
+
+/**
+//TODO MN
+* Updates all groups configurations according to LPs' statistics
+*
+* @author Nazzareno Marziale
+* @author Francesco Nobilia
+*/
+static void update_clustering_groups(){
+	unsigned int i;
+	for(i=0; i<n_prc; i++){
+		new_group_LPS[i] = LP_change_group(new_GLPS, LPS[i]);	
+	}
+}
+
+/**
+//TODO MN
+* Implements the knapsack load sharing policy according to the LP case
+*
+* @author Nazzareno Marziale
+* @author Francesco Nobilia
+*/
+
+static inline void GLP_knapsack(void) {
+	register unsigned int i, j;
+	double reference_knapsack = 0;
+	double reference_lvt;
+	bool assigned;
+	double assignments[n_cores];
+
+	if(!master_thread())
+		return;
+
+	// Clustering group
+	//TODO MN only if LastGVT > GVT + deltaT 
+	update_clustering_groups();
+
+	// Estimate the reference knapsack
+	for(i = 0; i < n_grp; i++) {
+		reference_knapsack += compute_workload_GLP(i);
+	}
+	reference_knapsack /= n_cores;
+
+	// Sort the expected times
+	qsort(glp_cost, n_grp, sizeof(double) , compare_glp_cost);
+
+
+	// At least one GLP per thread
+	bzero(assignments, sizeof(double) * n_cores);
+	j = 0;
+	for(i = 0; i < n_cores; i++) {
+		assignments[j] += glp_cost[i];
+		new_GLPS_binding[i] = j;
+		j++;
+	}
+
+	// Very suboptimal approximation of knapsack
+	for(; i < n_grp; i++) {
+		assigned = false;
+		for(j = 0; j < n_cores; j++) {
+			// Simulate assignment
+			if(assignments[j] + glp_cost[i] <= reference_knapsack) {
+				assignments[j] += glp_cost[i];
+				new_GLPS_binding[i] = j;
+				assigned = true;
+				break;
+			}
+		}
+
+		if(assigned == false)
+			break;
+	}
+
+	// Check for leftovers
+	if(i < n_grp) {
+		j = 0;
+		for( ; i < n_grp; i++) {
+			new_GLPS_binding[i] = j;
+			j = (j + 1) % n_cores;
+		}
+	}
+
+	//NOTE: Populating here the new_LPS_binging is not secure since there may be a WT that after the update of 
+	//      new_LPS_bingind moves a LP from one group towards another one
+	//      TODO in install_binding
+
+	printf("NEW BINDING\n");
+	for(j = 0; j < n_cores; j++) {
+		printf("Thread %d: ", j);
+		for(i = 0; i < n_prc; i++) {
+			if(new_GLPS_binding[i] == j)
+				printf("%d ", i);
+		}
+		printf("\n");
+	}
+
+}
+
+/** 
+//TODO MN
+* Populates the LPS_bound according the group concept
+*
+* @author Nazzareno Marziale
+* @author Francesco Nobilia
+*/
+static void install_GLPS_binding(void) {
+	unsigned int i;
+
+	bzero(LPS_bound, sizeof(LP_state *) * n_prc);
+	n_prc_per_thread = 0;
+
+	for(i = 0; i < n_prc; i++) {
+		if(new_GLPS_binding[LPS[i]->current_group] == tid){
+			LPS_bound[n_prc_per_thread++] = LPS[i];
+
+			if(tid != LPS[i]->worker_thread) {
+
+				#ifdef HAVE_NUMA
+				move_request(i, get_numa_node(running_core()));
+				#endif
+
+				LPS[i]->worker_thread = tid;
+			}
+		}
+	}
+}
+
+/** 
+//TODO MN
+* Copy the informations of new_GLPS into global GLPS
+*
+* @author Nazzareno Marziale
+* @author Francesco Nobilia
+*/
+static void switch_GLPS(){
+	unsigned int i;
+	for (i = 0; i < n_grp; i++) {
+		memcpy(GLPS[i]->local_LPS, new_GLPS[i]->local_LPS, n_prc * sizeof(LP_state *));
+		GLPS[i]->tot_LP = new_GLPS[i]->tot_LP;
+	}
+
+	for (i = 0; i < n_prc; i++)
+		LPS[i]->current_group = new_group_LPS[i];
+
+
+	//TODO MN
+	//	If there exist one LP that changes group, then we need to force checkpoint for storing the new group's image.
+}
+
+/* -------------------------------------------------------------------- */
+/* ---------------------END MANAGE GROUP------------------------------- */
+/* -------------------------------------------------------------------- */
+#endif
 
 /**
 * This function is used to create a temporary binding between LPs and KLT.
@@ -274,12 +573,51 @@ void rebind_LPs(void) {
 		LPS_bound = rsalloc(sizeof(LP_state *) * n_prc);
 		bzero(LPS_bound, sizeof(LP_state *) * n_prc);
 
-		LPs_block_binding();
+		//TODO MN
+		// Without HAVE_LP_REBINDING but we want to use groups' module
+		#ifdef HAVE_GLP_SCH_MODULE
+			printf("Rebind_LP_GROUP... ");
+			GLPs_block_binding();
+			printf("Done\n");
+			
+			int j=0;
+		#else	
+			LPs_block_binding();
+		#endif
+
 
 		timer_start(rebinding_timer);
 
 		if(master_thread()) {
-			new_LPS_binding = rsalloc(sizeof(int) * n_prc);
+			//TODO MN
+			#ifdef HAVE_GLP_SCH_MODULE
+				glp_cost = rsalloc(sizeof(double)* n_prc);
+				new_group_LPS = rsalloc(sizeof(int) * n_prc);
+
+				new_GLPS_binding = rsalloc(sizeof(int) * n_grp);
+
+				new_GLPS = (GLP_state **)rsalloc(n_grp * sizeof(GLP_state *));
+				unsigned int i;
+				for (i = 0; i < n_grp; i++) {
+					new_GLPS[i] = (GLP_state *)rsalloc(sizeof(GLP_state));
+					bzero(new_GLPS[i], sizeof(GLP_state));
+
+					new_GLPS[i]->local_LPS = (LP_state **)rsalloc(n_prc * sizeof(LP_state *));
+					unsigned int j;
+					for (j = 0; j < n_prc; j++) {
+						new_GLPS[i]->local_LPS[j] = (LP_state *)rsalloc(sizeof(LP_state));
+						bzero(new_GLPS[i]->local_LPS[j], sizeof(LP_state));
+					}
+
+					//Initialise GROUPS
+					spinlock_init(&new_GLPS[i]->lock);
+					new_GLPS[i]->local_LPS[i] = LPS[i];
+					new_GLPS[i]->tot_LP = 1;
+				}
+			#else
+				new_LPS_binding = rsalloc(sizeof(int) * n_prc);
+			#endif
+
 			lp_cost = rsalloc(sizeof(struct lp_cost_id) * n_prc);
 
 			atomic_set(&worker_thread_reduction, n_cores);
@@ -294,7 +632,15 @@ void rebind_LPs(void) {
 			timer_restart(rebinding_timer);
 			binding_phase++;
 		} else if(atomic_read(&worker_thread_reduction) == 0) {
-			LP_knapsack();
+			
+			//TODO MN
+			#ifdef HAVE_GLP_SCH_MODULE
+				printf("GLP_knapsack\n");
+				GLP_knapsack();
+			#else
+				LP_knapsack();
+			#endif
+
 			binding_acquire_phase++;
 		}
 	}
@@ -307,7 +653,13 @@ void rebind_LPs(void) {
 
 	if(local_binding_acquire_phase < binding_acquire_phase) {
 		local_binding_acquire_phase = binding_acquire_phase;
-		install_binding();
+		
+		//TODO MN
+		#ifdef HAVE_GLP_SCH_MODULE
+			install_GLPS_binding();
+		#else
+			install_binding();
+		#endif
 
 		#ifdef HAVE_PREEMPTION
 		reset_min_in_transit(tid);
@@ -316,6 +668,16 @@ void rebind_LPs(void) {
 		if(thread_barrier(&all_thread_barrier)) {
 			atomic_set(&worker_thread_reduction, n_cores);
 		}
+
+		//TODO MN
+		#ifdef HAVE_GLP_SCH_MODULE
+		if(master_thread()) {
+			switch_GLPS();
+		}
+		thread_barrier(&all_thread_barrier);
+		
+		#endif
+
 	}
 #endif
 }
