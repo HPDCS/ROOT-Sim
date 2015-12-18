@@ -70,7 +70,7 @@ _set_jmp:
 	movq %r8, 64(%rax)
 	movq %r9, 72(%rax)
 	movq %r10, 80(%rax)
-	movq 16(%rsp), %r11 	# r11 keeps the 'old' r11
+	movq (%rsp), %r11 	# r11 keeps the 'old' r11
 	movq %r11, 88(%rax)	# r11 is the 12-th field of the context
 	movq %r12, 96(%rax)
 	movq %r13, 104(%rax)
@@ -120,8 +120,7 @@ _long_jmp:
 	movq 32(%rax), %r11	# r11 is the old rsp
 	movq %r10, 8(%r11)	# restore the old return address
 
-	movq 16(%rsp), %r10	# Put on the old stack the desired return value
-	movq %rsi, (%r11)
+	movq %rsi, (%r11)	# Put on the old stack the desired return value
 	
 	movq 8(%rax), %rdx	# rdx is the second field of the context
 	movq 16(%rax), %rcx 
