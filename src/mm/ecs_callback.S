@@ -65,7 +65,7 @@ rootsim_cross_state_dependency_handler:
 	pushq %rdi
 
 	# Access to context field of LPS[current_lp]
-	movl %fs:0xfffffffffffff264, %edi
+	movl %fs:current_lp@tpoff, %edi
 	movq LPS(%rip), %rsi
 	leaq (%rsi, %rdi, 8), %rdi
 	movq (%rdi), %rdi
