@@ -63,16 +63,6 @@
 
 
 typedef struct _LP_state {
-
-	/// Local ID of the thread (used to translate from bound LPs to local id)
-	unsigned int 	lid;
-
-	/// Logical Process lock, used to serialize accesses to concurrent data structures
-	spinlock_t	lock;
-
-	/// Seed to generate pseudo-random values
-	seed_type	seed;
-
 #ifdef ENABLE_ULT
 	/// LP execution state
 	LP_context_t	context;
@@ -83,6 +73,16 @@ typedef struct _LP_state {
 	/// Process' stack
 	void 		*stack;
 #endif /* ENABLE_ULT */
+
+	/// Local ID of the thread (used to translate from bound LPs to local id)
+	unsigned int 	lid;
+
+	/// Logical Process lock, used to serialize accesses to concurrent data structures
+	spinlock_t	lock;
+
+	/// Seed to generate pseudo-random values
+	seed_type	seed;
+
 
 	/// ID of the worker thread towards which the LP is bound
 	unsigned int	worker_thread;

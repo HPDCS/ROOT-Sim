@@ -70,7 +70,7 @@ _set_jmp:
 	movq %r8, 64(%rax)
 	movq %r9, 72(%rax)
 	movq %r10, 80(%rax)
-	movq %rsp, %r11 	# r11 keeps the 'old' r11
+	movq (%rsp), %r11 	# r11 keeps the 'old' r11
 	movq %r11, 88(%rax)	# r11 is the 12-th field of the context
 	movq %r12, 96(%rax)
 	movq %r13, 104(%rax)

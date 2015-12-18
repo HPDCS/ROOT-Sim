@@ -23,6 +23,7 @@ librootsim_a_SOURCES =	main.c \
 			datatypes/calqueue.c \
 			mm/state.c \
 			mm/ecs.c \
+			mm/ecs_callback.S \
 			queues/queues.c \
 			queues/xxhash.c \
 			core/init.c \

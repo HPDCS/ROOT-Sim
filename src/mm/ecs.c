@@ -66,8 +66,11 @@ static int ioctl_fd;
 /// Per Worker-Thread Memory View
 static __thread int pgd_ds;
 
+// Declared in ecsstub.S
+extern void rootsim_cross_state_dependency_handler(void);
 
-static void ECS_stub(int ds, unsigned int hitted_object){
+
+void ECS(int ds, unsigned int hitted_object){
 	ioctl_info sched_info;
 	msg_t control_msg;
 	msg_hdr_t msg_hdr;
@@ -137,8 +140,10 @@ static void ECS_stub(int ds, unsigned int hitted_object){
 
 	// TODO: QUESTA RIGA E' COMMENTATA SOLTANTO PER UNO DEI TEST!!
 	// Give back control to the simulation kernel's user-level thread
-	context_switch(&LPS[current_lp]->context, &kernel_context);
+//	context_switch(&LPS[current_lp]->context, &kernel_context);
+	long_jmp(&kernel_context, kernel_context.rax);
 //	lp_alloc_schedule();
+//	
 
 
 //	sched_info.ds = ds;
@@ -164,6 +169,7 @@ void print_rsp(void){
 	fflush(stdout);
 }
 
+/*
 static void rootsim_cross_state_dependency_handler(void) { // for now a simple printf of the cross-state dependency involved LP
 	
 	unsigned long __id = -1;
@@ -220,7 +226,7 @@ static void rootsim_cross_state_dependency_handler(void) { // for now a simple p
 	__asm__ __volatile__("addq $0x28 , %rsp ; popq %rbx ; popq %rbp; addq $0x10 , %rsp ; retq"); // BUONA CON LA PRINTF
 //	__asm__ __volatile__("addq $0x50 , %rsp ; popq %rbx ; popq %rbp; addq $0x10 , %rsp ; retq"); // BUONA SENZA PRINTF
 }
-
+*/
 // inserire qui tutte le api di schedulazione/deschedulazione
 
 void lp_alloc_thread_init(void) {
