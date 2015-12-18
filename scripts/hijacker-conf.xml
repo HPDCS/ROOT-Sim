@@ -3,7 +3,7 @@
 	<hijacker:Inject file="mixed-state-saving.c" />
 
 	<hijacker:Executable suffix="reverse"> <!-- First code version -->
-		<hijacker:Instruction type="I_MEMWR">
+		<hijacker:Instruction type="I_MEMWR" skip="I_STACK">
 			<hijacker:AddCall where="before" function="reverse_code_generator" arguments="target" />
 		</hijacker:Instruction>
 	</hijacker:Executable>

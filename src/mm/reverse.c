@@ -132,6 +132,8 @@ static void reverse_chunk(revwin_t *win, const void *address, size_t size) {
  * @param address The starting address from which to copy
  * @param size The number of bytes to reverse
  */
+
+
 static void reverse_single(revwin_t *win, const void *address, size_t size) {
 	unsigned long value, value_lower;
 	unsigned char *code;
@@ -153,7 +155,7 @@ static void reverse_single(revwin_t *win, const void *address, size_t size) {
 
 	// We must handle the case of a quadword with two subsequent MOVs
 	// properly embedding the upper and lower parts of values
-	if(size == 8) {
+	if(0 && size == 8) {
 		code = revcode_quadword;
 		size_code = sizeof(revcode_quadword);
 		value_lower = ((value >> 32) &0x0FFFFFFFF);
@@ -628,6 +630,8 @@ void reverse_code_generator(const void *address, const size_t size) {
 	bool dominant;
 	revwin_t *win;
 
+	//printf("address is %p - size is %d\n",address,size);
+
 	//SIMULATED_INCREMENTAL_CKPT return;
 	
 	// We have to retrieve the current event structure bound to this LP
@@ -658,18 +662,29 @@ void reverse_code_generator(const void *address, const size_t size) {
 
 	// Check whether the current address' update dominates over some other
 	// update on the same memory region. If so, we can return earlier.
+	//
+	
+	
+
+
+	/*
 	dominant = check_dominance(address);
 	if(dominant) {
 		// If the current address is dominated by some other update,
 		// then there is no need to generate any reversing instruction
 		return;
 	}
+*/
+
 
 	// int blocks;
 	// blocks = compute_span(area);
 	// printf("In malloc_area at %p, %d bytes have been reversed so far\n", area, blocks);
 
 	// Act accordingly to the currrent selected reversing strategy
+	//
+	//
+/*	
 	switch (strategy.current){
 		case STRATEGY_CHUNK:
 			// Reverse the whole malloc_area chunk passing the pointer
@@ -686,7 +701,9 @@ void reverse_code_generator(const void *address, const size_t size) {
 			//cache.reverse_bytes += size;
 			break;
 	}
+	*/
 
+	reverse_single(win, address, size);
 	size_t revcode_size = ((win->base + win->size - 3) - win->top);
 	//printf("GEN :: [%p - %p] revcode size= %d\n", win, current_evt, revcode_size);
 
@@ -735,7 +752,7 @@ void execute_undo_event(unsigned int lid, revwin_t *win) {
 
 	revcode_size = ((win->base + win->size - 3) - win->top);
 	//printf("UNDO :: [%p - %p] revcode size= %d\n", win, event, revcode_size);
-	printf("UNDO :: [%p]  revcode size= %d\n", win, revcode_size);
+	//printf("UNDO :: [%p]  revcode size= %d\n", win, revcode_size);
 	/*
 	if (revcode_size <= 0) {
 		printf("Empty reverse code\n");
@@ -794,7 +811,7 @@ void execute_undo_event(unsigned int lid, revwin_t *win) {
 	statistics_post_lp_data(lid, STAT_REVERSE_EXECUTE_TIME, elapsed);
 
 
-	printf("===> [%d] :: undo event executed (size = %d bytes)\n", tid, revwin_size(win));
+	//printf("===> [%d] :: undo event executed (size = %d bytes)\n", tid, revwin_size(win));
 
 	// Check if the revwin is a chunk reversal, then
 	// we have to free also the dump memory area

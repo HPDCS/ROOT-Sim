@@ -9,7 +9,8 @@
 //#include <mm/dymelor.h>
 
 
-#define REVWIN_SIZE 1024 * 4	//! Defalut size of the reverse window which will contain the reverse code
+//#define REVWIN_SIZE 1024 * 4	//! Defalut size of the reverse window which will contain the reverse code
+#define REVWIN_SIZE 1024 * 8	//! Defalut size of the reverse window which will contain the reverse code
 #define REVWIN_CODE_SIZE (REVWIN_SIZE - sizeof(revwin_t))
 //#define REVWIN_STACK_SIZE 4*1024*1024*1024	//! Default size of the emultated reverse stack window on the heap space
 #define REVWIN_STACK_SIZE 1024	//! Default size of the emultated reverse stack window on the heap space

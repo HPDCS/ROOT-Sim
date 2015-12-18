@@ -62,7 +62,7 @@ static int recompute_reverse_events(unsigned int lid) {
 			
     out:
 #ifndef NDEBUG
-	printf("LP %d: Fr = %f de = %f db = %f dl = %f dr = %f chi = %f val = %f\n", lid, Fr, de, db, dl, dr, chi, value);
+	//printf("LP %d: Fr = %f de = %f db = %f dl = %f dr = %f chi = %f val = %f\n", lid, Fr, de, db, dl, dr, chi, value);
 #endif
 	return (int)value;
 }

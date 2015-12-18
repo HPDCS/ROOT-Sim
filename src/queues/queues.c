@@ -79,10 +79,11 @@ simtime_t next_event_timestamp(unsigned int id) {
 	simtime_t ret = -1.0;
 	msg_t *evt;
 
+	/*
 #ifdef HAVE_REVERSE
     retry:
 #endif
-
+*/
 	// The bound can be NULL in the first execution or if it has gone back
 	if (LPS[id]->bound == NULL && !list_empty(LPS[id]->queue_in)) {
 		evt = list_head(LPS[id]->queue_in);
@@ -96,6 +97,8 @@ simtime_t next_event_timestamp(unsigned int id) {
 		}
 	}
 
+	/*
+
 #ifdef HAVE_REVERSE
 	// we could potentially select for execution an event which was subject to a lazy cancellation.
 	// In this case, we delete it here and retry again the extraction of the next event.
@@ -105,6 +108,7 @@ simtime_t next_event_timestamp(unsigned int id) {
 		goto retry;
 	}
 #endif
+*/
 
 	return ret;
 
@@ -245,13 +249,18 @@ void process_bottom_halves(void) {
 	
 						} 
 
+						// HERE WE SLIDE ALONG THE ORIGINL PATH
 #ifdef HAVE_REVERSE
 						// In case we support reverse execution, an event pointing to a log could be a candidate
 						// to navigate to the reverse windows list. In this case, therefore, we cannot immediately
 						// delete the event from the queue. Rather, we flag it for later deletion.
 						// The deletion will happen within the next_event_timestamp() function, when
 						// the event is being selected for execution.
-						if(0 || matched_msg->checkpoint_of_event != NULL) {
+						//
+						/*
+						 
+						 if(0 || matched_msg->checkpoint_of_event != NULL) {
+
 							matched_msg->checkpoint_of_event->last_event = NULL;
 							matched_msg->marked_by_antimessage = true;
 						} else {
@@ -260,12 +269,25 @@ void process_bottom_halves(void) {
 								LPS[lid_receiver]->FCF = 1;
 
 							}	
-							list_delete_by_content(matched_msg->sender, LPS[lid_receiver]->queue_in, matched_msg);
-						}
+							*/
+							// BUG BUG we need lid_receiver as first param
+							//list_delete_by_content(matched_msg->sender, LPS[lid_receiver]->queue_in, matched_msg);
+					 	if (matched_msg->checkpoint_of_event != NULL) {
+							matched_msg->checkpoint_of_event->last_event = NULL;
+						}	
+							list_delete_by_content(lid_receiver, LPS[lid_receiver]->queue_in, matched_msg);
+					//	}
 #else
 						// When we're not supporting the reverse execution, we can immediately delete
 						// the event matched by an antimessage.
-						list_delete_by_content(matched_msg->sender, LPS[lid_receiver]->queue_in, matched_msg);
+						// BIG BUG we need receiver not sender as first param
+						//list_delete_by_content(matched_msg->sender, LPS[lid_receiver]->queue_in, matched_msg);
+						//
+					 	if (matched_msg->checkpoint_of_event != NULL) {
+							matchd_msg->checkpoint_of_event->last_event = NULL;
+						}	
+							
+						list_delete_by_content(lid_receiver, LPS[lid_receiver]->queue_in, matched_msg);
 #endif
 
 						list_deallocate_node_buffer(LPS_bound[i]->lid, msg_to_process);

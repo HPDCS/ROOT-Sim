@@ -50,12 +50,16 @@ static unsigned long long snapshot_cycles;
 * @param lid The logical process' local identifier
 * @param time_barrier The current barrier
 */
+
+#define CUSTOM_CYCLES 2
+
 void fossil_collection(unsigned int lid, simtime_t time_barrier) {
 	state_t *state;
 	msg_t *last_kept_event, *evt;
 	double committed_events = 0;
 
-	time_barrier = 0.7 * time_barrier;
+	//time_barrier = 0.7 * time_barrier;
+	time_barrier = 0.99 * time_barrier;
 
 	// State list must be handled differently, as nodes point to malloc'd
 	// nodes. We therefore manually scan the list and free the memory.
@@ -73,12 +77,20 @@ void fossil_collection(unsigned int lid, simtime_t time_barrier) {
 	#ifdef HAVE_REVERSE
 	// Destroy reverse windows of events which will be pruned
 	if(last_kept_event != NULL) {
+		last_kept_event->revwin = NULL;
+
 		evt = list_prev(last_kept_event);
 //	printf("******* PRUNING REVWINS ***********\n");
 		while(evt != NULL) {
-//		printf("evt: %p (%d, %f) - revwin: %p size %d\n", evt, evt->type, evt->timestamp, evt->revwin, revwin_size(evt->revwin));
-			revwin_free(evt->receiver, evt->revwin);
-			evt->revwin = NULL;
+			if(evt->revwin != NULL){
+//				printf("evt: %p (%d, %f) - revwin: %p size %d\n", evt, evt->type, evt->timestamp, evt->revwin, revwin_size(evt->revwin));
+//
+//
+				// LEACK 
+				//revwin_free(evt->receiver, evt->revwin);
+				revwin_free(lid, evt->revwin);
+				evt->revwin = NULL;
+			}
 			evt = list_prev(evt);
 		}
 	}
@@ -115,7 +127,8 @@ simtime_t adopt_new_gvt(simtime_t new_gvt) {
 
 	// Snapshot should be recomputed only periodically
 	snapshot_cycles++;
-	compute_snapshot = ((snapshot_cycles % rootsim_config.gvt_snapshot_cycles) == 0);
+	//compute_snapshot = ((snapshot_cycles % rootsim_config.gvt_snapshot_cycles) == 0);
+	compute_snapshot = ((snapshot_cycles % CUSTOM_CYCLES) == 0);
 
 	// Precompute the time barrier for each process
 	for (i = 0; i < n_prc_per_thread; i++) {

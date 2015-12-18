@@ -43,10 +43,13 @@
 #include <statistics/statistics.h>
 
 
+#define FORCE_FCF_COUNTER 20
+
 /// Function pointer to switch between the parallel and serial version of SetState
 void (*SetState)(void *new_state);
 
-#define AUDIT if(1)
+#define AUDIT if(0)
+#define AUDIT1 if(0)
 
 /**
 * This function is used to create a state log to be added to the LP's log chain
@@ -114,6 +117,9 @@ void LogState(unsigned int lid) {
 		//LPS[lid]->bound->checkpoint_of_event = (void*)list_insert_tail(lid, LPS[lid]->queue_states, &new_state);
 		//list_insert_tail(lid, LPS[lid]->queue_states, &new_state);
 		//LPS[lid]->bound->checkpoint_of_event = list_tail(LPS[lid]->queue_states);
+
+		//this is for mixed model
+	 	LPS[lid]->last_correct_log_time = LPS[lid]->bound->timestamp;
 
 	}
 }
@@ -196,6 +202,7 @@ void rollback(unsigned int lid) {
 	msg_t *last_restored_event;
 	unsigned int reprocessed_events;
 	msg_t *temp;
+	int bound_counter = 0;
 
 	#ifdef HAVE_REVERSE
 	state_t *s1;
@@ -219,6 +226,7 @@ void rollback(unsigned int lid) {
 
 	last_correct_event = LPS[lid]->bound;
 
+
 	// Send antimessages
 	send_antimessages(lid, last_correct_event->timestamp);
 
@@ -231,16 +239,100 @@ void rollback(unsigned int lid) {
 	// TODO: we have as wll 
 	_ProcessEvent[lid] = ProcessEvent;
 
-	if( LPS[lid]->FCF == 1) goto FCF_path;
+	AUDIT printf("rollback of %d at time %f\n",lid,LPS[lid]->bound->timestamp);
 
-	#ifdef HAVE_REVERSE
+	//if (LPS[lid]->current_revwin == NULL) goto FCF_path;
+
+	//goto reverse; //this is for heuristic mixed
+	goto FCF_path;
+	//goto FULL_reverse;
+	//here nothing specified leads to MIXED_path based on model 
+	
+
+MIXED_path:
+
+
+	if(last_correct_event->timestamp <= LPS[lid]->last_correct_log_time){
+		goto FCF_path;
+	}
+
+	if(last_correct_event->revwin == NULL || LPS[lid]->current_revwin == NULL){
+		goto FCF_path;
+	}
+	
+	if(last_correct_event->timestamp > LPS[lid]->last_correct_log_time){
+		goto for_mixed_restore;
+	}
+
+	goto out;
+
+FULL_reverse:
+	//prune the state queue
+	LPS[lid]->FCF = 0; 
+	// Find the state to be restored, and prune the wrongly computed states
+	restore_state = list_tail(LPS[lid]->queue_states);
+	while (restore_state != NULL && restore_state->lvt > last_correct_event->timestamp) { // It's > rather than >= because we have already taken into account simultaneous events
+		s = restore_state;
+		restore_state = list_prev(restore_state);
+		log_delete(s->log);
+		if(s->last_event != NULL)  // Per considerare gli eventi eliminati da antimessaggi
+			s->last_event->checkpoint_of_event = NULL; // Cannot use anti-dangling here, because we explicitly check for NULL 
+		s->last_event = (void *)0xDEADC0DE;
+		list_delete_by_content(lid, LPS[lid]->queue_states, s);
+	}
+	
+	//this is for mixed model
+	if(restore_state == NULL) {
+		printf("panic on log queue\n");
+		exit(-1);
+	}
+	else{
+		LPS[lid]->last_correct_log_time = restore_state->lvt;
+	}
+
+for_mixed_restore:
+
+	// Navigate from the event list to the revwin list
+	current_revwin = LPS[lid]->current_revwin;
+	end_revwin = last_correct_event->revwin;
+	
+	// At this point: the state queue is pruned, and the correct state is restored.	
+	// We can thus start to undo events until we reach the end_revwin (excluded)
+	while(current_revwin != end_revwin) {
+		AUDIT1 printf("before revwin: lid %d - executed events = %d - channel counter %d - arriving calls %d - complete calls %d\n",lid, *(int*)(LPS[lid]->current_base_pointer),*(1+(int*)(LPS[lid]->current_base_pointer)),*(2+(int*)(LPS[lid]->current_base_pointer)),*(3+(int*)(LPS[lid]->current_base_pointer)));
+		AUDIT printf("About to execute revwin at %p for lid %d\n", current_revwin,lid);
+
+		execute_undo_event(lid,current_revwin);
+
+		AUDIT printf("Executed revwin at %p for lid %d\n", current_revwin,lid);
+		AUDIT1 printf("after revwin: lid %d - executed events = %d - channel counter %d - arriving calls %d - complete calls %d\n",lid, *(int*)(LPS[lid]->current_base_pointer),*(1+(int*)(LPS[lid]->current_base_pointer)),*(2+(int*)(LPS[lid]->current_base_pointer)),*(3+(int*)(LPS[lid]->current_base_pointer)));
+
+		delete_revwin = current_revwin;
+		current_revwin = delete_revwin->prev;
+		//current_revwin = list_prev(current_revwin);
+		//revwin_free(lid,delete_revwin);
+		//revwin_reset(lid,delete_revwin);
+		revwin_reset(delete_revwin);
+	}
+
+	LPS[lid]->current_revwin = NULL;
+
+	goto out;
+
+
+	//goto FCF_path;
+
+	//if( LPS[lid]->FCF == 1) goto FCF_path;
+
+	//#ifdef HAVE_REVERSE
 	// Switch between coasting forward and reverse scrubbing
-	if(!rootsim_config.disable_reverse && last_correct_event->revwin != NULL)
+	//if(!rootsim_config.disable_reverse && last_correct_event->revwin != NULL)
+	//	goto reverse;
 		goto reverse;
-	#endif
+	//#endif
 
 FCF_path:
-	LPS[lid]->FCF == 0; 
+	LPS[lid]->FCF = 0; 
 	// Find the state to be restored, and prune the wrongly computed states
 	restore_state = list_tail(LPS[lid]->queue_states);
 	while (restore_state != NULL && restore_state->lvt > last_correct_event->timestamp) { // It's > rather than >= because we have already taken into account simultaneous events
@@ -256,6 +348,15 @@ FCF_path:
 	// Restore the simulation state and correct the state base pointer
 	RestoreState(lid, restore_state);
 
+	//this is for mixed model
+	if(restore_state == NULL) {
+		printf("panic on log queue\n");
+		exit(-1);
+	}
+	else{
+		LPS[lid]->last_correct_log_time = restore_state->lvt;
+	}
+
 	last_restored_event = restore_state->last_event;
 	reprocessed_events = silent_execution(lid, LPS[lid]->current_base_pointer, last_restored_event, last_correct_event);
 	statistics_post_lp_data(lid, STAT_SILENT, (double)reprocessed_events);
@@ -267,15 +368,30 @@ FCF_path:
     reverse:
 
 	event_with_log = last_correct_event;
-	while(event_with_log != LPS[lid]->old_bound && event_with_log->checkpoint_of_event == NULL) {
+	bound_counter = 0;
+
+	//while(event_with_log != LPS[lid]->old_bound && event_with_log->checkpoint_of_event == NULL) {
+	while(event_with_log && event_with_log->checkpoint_of_event == NULL) {
+
+		//if(event_with_log != NULL)
+			AUDIT printf("%p (%f) - ckpt of event is %p\n", event_with_log, event_with_log->timestamp,event_with_log->checkpoint_of_event);
+
 		event_with_log = list_next(event_with_log);
-		if(event_with_log != NULL)
-			AUDIT printf("%p (%f), ", event_with_log, event_with_log->timestamp);
+		bound_counter++;
+		if (bound_counter > FORCE_FCF_COUNTER){
+		//	printf("rollback %d - bound counter reached - sliding to FCF\n",lid); 
+		       	goto FCF_path;
+		}
 	}
 
+	if(event_with_log == NULL){
+		printf("falling back to FCF\n");
+	       	goto FCF_path;
+	}
+	else{
 	// No state to restore. We're in the last section of the forward execution.
 	// We don't need to restore a state, we just undo the latest events
-	if(event_with_log != LPS[lid]->old_bound) {
+	//if(event_with_log != LPS[lid]->old_bound) {
 		// Restore the state and prune the state queue. We delete as well
 		// the state that we have restored because from that point we undo
 		// events, and thus the state will no longer be correct.
@@ -288,6 +404,34 @@ FCF_path:
 		restore_state = event_with_log->checkpoint_of_event;
 		RestoreState(lid, restore_state);
 
+		s = restore_state;
+		if(event_with_log == last_correct_event) s = list_next(s);//original for reverse
+		//
+		//new stuff for model
+		/*
+		if(event_with_log == last_correct_event){
+			       
+			LPS[lid]->last_correct_log_time = s->lvt;
+			s = list_next(s);//original for reverse
+		}
+		else{
+			LPS[lid]->last_correct_log_time = list_prev(s)->lvt;
+
+		}
+		*/
+		//new stuff upt to here
+
+		while(s != NULL) {
+			log_delete(s->log);
+			if(s->last_event != NULL)
+					s->last_event->checkpoint_of_event = NULL;
+			s->last_event = (void *)0xDEADC0DE;
+			s1 = list_next(s);
+			list_delete_by_content(lid, LPS[lid]->queue_states, s);
+			s = s1;
+		}
+
+		/*
 		if(event_with_log != last_correct_event) {
 			s = restore_state;
 			while(s != NULL) {
@@ -300,6 +444,7 @@ FCF_path:
 				s = s1;
 			}
 		}
+		*/
 	}
 
 	// Navigate from the event list to the revwin list
@@ -309,13 +454,19 @@ FCF_path:
 	// At this point: the state queue is pruned, and the correct state is restored.	
 	// We can thus start to undo events until we reach the end_revwin (excluded)
 	while(current_revwin != end_revwin) {
-		AUDIT printf("About to execute revwin at %p\n", current_revwin);
+		AUDIT1 printf("before revwin: lid %d - executed events = %d - channel counter %d - arriving calls %d - complete calls %d\n",lid, *(int*)(LPS[lid]->current_base_pointer),*(1+(int*)(LPS[lid]->current_base_pointer)),*(2+(int*)(LPS[lid]->current_base_pointer)),*(3+(int*)(LPS[lid]->current_base_pointer)));
+		AUDIT printf("About to execute revwin at %p for lid %d\n", current_revwin,lid);
+
 		execute_undo_event(lid,current_revwin);
+
+		AUDIT printf("Executed revwin at %p for lid %d\n", current_revwin,lid);
+		AUDIT1 printf("after revwin: lid %d - executed events = %d - channel counter %d - arriving calls %d - complete calls %d\n",lid, *(int*)(LPS[lid]->current_base_pointer),*(1+(int*)(LPS[lid]->current_base_pointer)),*(2+(int*)(LPS[lid]->current_base_pointer)),*(3+(int*)(LPS[lid]->current_base_pointer)));
 
 		delete_revwin = current_revwin;
 		current_revwin = delete_revwin->prev;
 		//current_revwin = list_prev(current_revwin);
 		//revwin_free(lid,delete_revwin);
+		//revwin_reset(lid,delete_revwin);
 		revwin_reset(delete_revwin);
 	}
 

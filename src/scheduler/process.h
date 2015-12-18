@@ -145,6 +145,8 @@ typedef struct _LP_state {
 	unsigned int		wait_on_object;
 
 	unsigned int		FCF;
+	revwin_t		*current_revwin;
+	simtime_t		last_correct_log_time;
 
 } LP_state;
 

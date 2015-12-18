@@ -210,7 +210,15 @@ static void LP_main_loop(void *args) {
 
 			// TODO: change this check to account for the model
 			if(1 || LPS[current_lp]->from_last_ckpt >= LPS[current_lp]->events_in_coasting_forward) {
-				_ProcessEvent[current_lp] = ProcessEvent_reverse;
+			
+		
+			//if(LPS[current_lp]->from_last_ckpt >= 3 * (LPS[current_lp]->ckpt_period / 4)) {
+			//if(LPS[current_lp]->from_last_ckpt >=  (LPS[current_lp]->ckpt_period / 4)) {
+			//if(LPS[current_lp]->from_last_ckpt >= (0.66 * LPS[current_lp]->ckpt_period )) {
+			//if(LPS[current_lp]->from_last_ckpt >= (0.25 * LPS[current_lp]->ckpt_period )) {
+			//	printf("from last is %d - period is %d - barrier is %d\n",(LPS[current_lp]->from_last_ckpt),LPS[current_lp]->ckpt_period, 3*( LPS[current_lp]->ckpt_period/4) );
+			//	_ProcessEvent[current_lp] = ProcessEvent_reverse;//this is for FULL REVERSE or REVERSE
+				_ProcessEvent[current_lp] = ProcessEvent;//this is for the FCF_path
 
 				// Create a new revwin to bind to the current event and bind it. A revwin could be possibly
 				// already allocated, in case an event was undone by a rollback operation. In that case we
@@ -218,6 +226,7 @@ static void LP_main_loop(void *args) {
 				if(current_evt->revwin == NULL)
 					current_evt->revwin = revwin_create();
 				else
+					//revwin_reset(current_lp,current_evt->revwin);
 					revwin_reset(current_evt->revwin);
 
 				prev_event = list_prev(current_evt);
@@ -229,9 +238,14 @@ static void LP_main_loop(void *args) {
 					current_evt->revwin->prev = NULL;
 				}
 
+				LPS[current_lp]->current_revwin = current_evt->revwin;
 
 			} else {
 				_ProcessEvent[current_lp] = ProcessEvent;
+
+				// this stuff below s for mixed model
+				current_evt->revwin = NULL; 
+				LPS[current_lp]->current_revwin = NULL;
 			}
 		}
 		#endif
@@ -329,6 +343,7 @@ void initialize_LP(unsigned int lp) {
 	LPS[lp]->rendezvous_queue = new_list(lp, msg_t);
 	LPS[lp]->reverse_events = new_list(lp, revwin_t);
 	LPS[lp]->FCF = 0;
+	LPS[lp]->current_revwin = NULL;
 
 	// Initialize the LP lock
 	spinlock_init(&LPS[lp]->lock);

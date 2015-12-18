@@ -49,9 +49,11 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 			bzero(state, sizeof(lp_state_type));
 			state->channel_counter = CHANNELS_PER_CELL;
 
+			/*
 			// Read runtime parameters
 			if(IsParameterPresent(event_content, "pcs_statistics"))
 				pcs_statistics = true;
+				*/
 
 			if(IsParameterPresent(event_content, "ta"))
 				state->ref_ta = state->ta = GetParameterDouble(event_content, "ta");
@@ -80,7 +82,6 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 
 			state->fading_recheck = false; //IsParameterPresent(event_content, "fading_recheck");
 			state->variable_ta = IsParameterPresent(event_content, "variable_ta");
-
 
 			// Show current configuration, only once
 			if(me == 0) {
@@ -155,7 +156,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 
 				}
 
-				if(new_event_content.call_term_time < handoff_time) {
+				if( new_event_content.call_term_time < handoff_time) {
 					ScheduleNewEvent(me, new_event_content.call_term_time, END_CALL, &new_event_content, sizeof(new_event_content));
 				} else {
 					new_event_content.cell = FindReceiver(TOPOLOGY_HEXAGON);
