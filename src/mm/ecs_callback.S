@@ -34,6 +34,27 @@
 .globl rootsim_cross_state_dependency_handler
 .type rootsim_cross_state_dependency_handler, @function
 
+# This function is called by the kernel upon a page fault.
+# This is the organization of the stack after the various push:
+#
+#    _______________________
+#    |        RDI          |
+#    |---------------------|
+#    |        RSI          |
+#    |---------------------|
+#    |        RAX          |
+#    |---------------------|
+#    |       FLAGS         |
+#    |---------------------|
+#    |  WORKER THREAD ID   |  -> Placed by kernel module
+#    |---------------------|
+#    |      TARGET LP      |  -> Placed by kernel module
+#    |---------------------|
+#    |   RETURN ADDRESS    |  -> Placed by kernel module
+#    |---------------------|
+#
+# This function accepts no arguments
+
 rootsim_cross_state_dependency_handler:
 	pushfq
 
