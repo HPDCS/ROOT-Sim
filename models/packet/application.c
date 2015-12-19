@@ -28,17 +28,19 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, event_t *c
 			new_event.sent_at = now;
 			new_event.pointer = state->pointer;
 			new_event.sender = me;
+			
 			//int recv = FindReceiver(TOPOLOGY_MESH);
-			int recv = 1;
+		
 			timestamp = now + Expent(DELAY);
-			if(me==1 && (((int)timestamp) % 2)==0){
+	
+			int recv = 1;
+			if(me==1){
 				recv = 0; 
 			}
 	
-			if(content != NULL && content->pointer!=NULL && me==0)
-				printf("[%d]\n",content->pointer[0]);
+/*			if(content != NULL && content->pointer!=NULL)
+				printf("[%d]\n",content->pointer[0]);*/
 
-			printf("\t \t Send event with timestamp:%f now:%f\n",timestamp,now);
 			ScheduleNewEvent(recv, timestamp, PACKET, &new_event, sizeof(new_event));
 		}
 	}

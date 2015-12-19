@@ -137,7 +137,7 @@ void ParallelScheduleNewEvent(unsigned int gid_receiver, simtime_t timestamp, un
     out:
 	switch_to_application_mode();
 
-	printf("--------------- SEND new event LP-sender:%d LP-receiver:%d type:%d\n",LidToGid(current_lp),gid_receiver,event.type);
+	//printf("--------------- SEND new event LP-sender:%d LP-receiver:%d type:%d\n",LidToGid(current_lp),gid_receiver,event.type);
 }
 
 

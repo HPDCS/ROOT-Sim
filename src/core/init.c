@@ -440,7 +440,6 @@ void SystemInit(int argc, char **argv) {
 
 	// This call tells the simulation engine that the sequential initial simulation is complete
 	initialization_complete();
-	printf("Init complete\n");
 }
 
 

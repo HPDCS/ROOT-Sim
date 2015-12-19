@@ -247,8 +247,7 @@ static void LP_main_loop(void *args) {
 		
 		switch_to_application_mode();
 		
-		printf("Timestamp: %f\n",current_evt->timestamp);
-		fflush(stdout);
+//		printf("Timestamp: %f\n",current_evt->timestamp);
 		
 		ProcessEvent[current_lp](LidToGid(current_lp), current_evt->timestamp, current_evt->type, current_evt->event_content, current_evt->size, current_state);
 		
@@ -342,12 +341,10 @@ void initialize_LP(unsigned int lp) {
 	LPS[lp]->ECS_synch_table[0] = lp;
 	#endif
 
-printf("Before context_create\n");
 	// Create user thread
 	#ifdef ENABLE_ULT
 	context_create(&LPS[lp]->context, LP_main_loop, NULL, LPS[lp]->stack, LP_STACK_SIZE);
 	#endif
-printf("After context_create\n");
 }
 
 
@@ -441,13 +438,14 @@ void activate_LP(unsigned int lp, simtime_t lvt, void *evt, void *state) {
 //		enable_preemption();
 //	#endif
 	
-	printf(" LP %d current_evt->timestap:%f\n",lp,current_evt->timestamp);
+//	printf(" LP %d current_evt->timestap:%f\n",lp,current_evt->timestamp);
 	#ifdef HAVE_CROSS_STATE
 	// Activate memory view for the current LP
 	lp_alloc_schedule();
 	#endif
 
-	printf("Schedule %d\n",lp);
+	//printf("Schedule %d\n",lp);
+	printf(".");
 	#ifdef ENABLE_ULT
 	context_switch(&kernel_context, &LPS[lp]->context);
 	#else
@@ -474,6 +472,24 @@ void activate_LP(unsigned int lp, simtime_t lvt, void *evt, void *state) {
 	current_state = NULL;
 }
 
+
+
+bool check_rendevouz_request(unsigned int lid){
+	msg_t *temp_mess;	
+
+	if(LPS[lid]->state != LP_STATE_WAIT_FOR_SYNCH)
+		return false;
+	
+	
+	if(LPS[lid]->bound != NULL && list_next(LPS[lid]->bound) != NULL){
+		temp_mess = list_next(LPS[lid]->bound);
+		printf("\t \t Randezvous_mark: %lu LPS[%d]->wait_on_rendezvous:%lu\n",temp_mess->rendezvous_mark, lid,LPS[lid]->wait_on_rendezvous);
+		return temp_mess->type == RENDEZVOUS_START && LPS[lid]->wait_on_rendezvous > temp_mess->rendezvous_mark;
+	}
+	
+	return false;
+	
+}
 
 
 /**
@@ -503,8 +519,7 @@ void schedule(void) {
 			lid = smallest_timestamp_first();
 	}
 	if(lid != IDLE_PROCESS){
-		printf("\t Selected LP %d with state %#08x\n", lid, LPS[lid]->state);
-		fflush(stdout);
+//		printf("\t Selected LP %d with state %#08x\n", lid, LPS[lid]->state);
 	}
 	
 	// No logical process found with events to be processed
@@ -523,9 +538,11 @@ void schedule(void) {
 	}
 
 	
-	if(!is_blocked_state(LPS[lid]->state) && LPS[lid]->state != LP_STATE_READY_FOR_SYNCH) {
+	if( (!is_blocked_state(LPS[lid]->state) && LPS[lid]->state != LP_STATE_READY_FOR_SYNCH) || check_rendevouz_request(lid) ) {
+//	if(!is_blocked_state(LPS[lid]->state) && LPS[lid]->state != LP_STATE_READY_FOR_SYNCH){
 		event = advance_to_next_event(lid);
-	} else {
+	}
+	else {
 //		printf("Riavvio %d\n", lid);
 		event = LPS[lid]->bound;
 	}
@@ -553,7 +570,7 @@ void schedule(void) {
 	}
 	#endif
 	
-	printf("\t \t LP %d with lvt:%f executes message %d at timestamp %f\n",lid,lvt(lid),event->mark,event->timestamp);
+//	printf("\t \t LP %d with lvt:%f executes message %d at timestamp %f\n",lid,lvt(lid),event->mark,event->timestamp);
 	
 	// Schedule the LP user-level thread
 	LPS[lid]->state = LP_STATE_RUNNING;
@@ -567,6 +584,7 @@ void schedule(void) {
 	#ifdef HAVE_CROSS_STATE
 	if(resume_execution && !is_blocked_state(LPS[lid]->state)) {
 		unblock_synchronized_objects(lid);
+
 		// This is to avoid domino effect when relying on rendezvous messages
 		force_LP_checkpoint(lid);
 	}
