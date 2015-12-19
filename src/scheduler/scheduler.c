@@ -248,7 +248,8 @@ static void LP_main_loop(void *args) {
 		switch_to_application_mode();
 		
 		printf("Timestamp: %f\n",current_evt->timestamp);
-
+		fflush(stdout);
+		
 		ProcessEvent[current_lp](LidToGid(current_lp), current_evt->timestamp, current_evt->type, current_evt->event_content, current_evt->size, current_state);
 		
 	
@@ -443,10 +444,10 @@ void activate_LP(unsigned int lp, simtime_t lvt, void *evt, void *state) {
 	printf(" LP %d current_evt->timestap:%f\n",lp,current_evt->timestamp);
 	#ifdef HAVE_CROSS_STATE
 	// Activate memory view for the current LP
-//	printf("Schedule %d\n",lp);
 	lp_alloc_schedule();
 	#endif
 
+	printf("Schedule %d\n",lp);
 	#ifdef ENABLE_ULT
 	context_switch(&kernel_context, &LPS[lp]->context);
 	#else

@@ -176,12 +176,15 @@ void process_bottom_halves(void) {
 	for(i = 0; i < n_prc_per_thread; i++) {
 
 		while((msg_to_process = (msg_t *)get_BH(LPS_bound[i]->lid)) != NULL) {
+			printf("msg_to_process tim:%f\n",msg_to_process->timestamp);
 
 			lid_receiver = msg_to_process->receiver;
 
 			// Handle control messages
 			if(!receive_control_msg(msg_to_process)) {
+				printf("BEFORE DEAL\n");
 				list_deallocate_node_buffer(lid_receiver, msg_to_process);
+				printf("AFTER DEAL\n");
 				continue;
 			}
 

@@ -87,7 +87,7 @@ rootsim_cross_state_dependency_handler:
 
 	popfq
 	
-	addq $24, %rsp
+	addq $16, %rsp
 	ret
 
 .size   rootsim_cross_state_dependency_handler, .-rootsim_cross_state_dependency_handler
