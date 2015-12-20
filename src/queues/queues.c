@@ -43,9 +43,6 @@
 #include <statistics/statistics.h>
 #include <gvt/gvt.h>
 
-#ifdef HAVE_GLP_SCH_MODULE
-#include <scheduler/group.h>
-#endif
 
 /**
 * This function returns the timestamp of the last executed event
@@ -309,3 +306,17 @@ unsigned long long generate_mark(unsigned int lid) {
 
 	return (unsigned long long)( ((k1 + k2) * (k1 + k2 + 1) / 2) + k2 );
 }
+
+
+
+//TODO MN
+//Giving a timestamp and lid of LP; it has to return the message with the maximum timestamp lesser than timestamp
+msg_t *list_get_node_timestamp(simtime_t timestamp, unsigned int lid){
+	msg_t *prev = LPS[lid]->bound;
+	while(list_prev(prev)!=NULL){
+		if(prev->timestamp < timestamp)
+			break;
+		prev = list_prev(prev);
+	}
+	return prev;
+}	

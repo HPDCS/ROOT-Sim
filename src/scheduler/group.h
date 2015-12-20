@@ -29,9 +29,10 @@
 #include <arch/atomic.h>
 //#include <scheduler/process.h>
 
-//#define HAVE_GLP_SCH_MODULE
+#define HAVE_GLP_SCH_MODULE
 #define THRESHOLD_TIME_ECS 200
 #define THRESHOLD_ACCESS_ECS 10
+#define DELTA_GROUP 1000.0
 
 // This data structure defines the state of each group of LP
 typedef struct _GLP_state{

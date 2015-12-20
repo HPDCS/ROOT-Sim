@@ -369,35 +369,85 @@ static int compare_glp_cost(const void *a, const void *b) {
 	return  (*(double*)b - *(double*)a) ;
 }
 
+
+
+
 /**
 //TODO MN
 **/
-int LP_change_group(GLP_state **GROUPS_global, LP_state *actual_lp){
-	ECS_stat *ECS_entry_temp;
-	unsigned int i;
-	unsigned int threshold_access = 100;
-
-	for(i=0 ; i<n_grp ; i++){
-		ECS_entry_temp = actual_lp->ECS_stat_table[i];
-		if(ECS_entry_temp->count_access > threshold_access){
-			
-			//Update old group
-			//spin_lock(GROUPS_global[actual_lp->current_group]->lock);
-			GROUPS_global[actual_lp->current_group]->local_LPS[actual_lp->lid] = NULL;
-			GROUPS_global[actual_lp->current_group]->tot_LP--;
-			//spin_unlock(GROUPS_global[actual_lp->current_group]->lock);
+int LP_change_group(GLP_state **GROUPS_global, unsigned int actual_lp,unsigned int **statistics){
+	unsigned int group_index = statistics[actual_lp][1];
+		
+	if(LPS[actual_lp]->current_group != group_index){
+		
+		//Update old group
+		//spin_lock(GROUPS_global[actual_lp->current_group]->lock);
+		GROUPS_global[LPS[actual_lp]->current_group]->local_LPS[actual_lp] = NULL;
+		GROUPS_global[LPS[actual_lp]->current_group]->tot_LP--;
+		//spin_unlock(GROUPS_global[actual_lp->current_group]->lock);
 					
-			//Update new group
-			//spin_lock(GROUPS_global[i]->lock);
-			GROUPS_global[i]->local_LPS[actual_lp->lid] = actual_lp;
-			GROUPS_global[i]->tot_LP++;
-			//spin_unlock(GROUPS_global[i]->lock);
-
-			return i;
-		}
+		//Update new group
+		//spin_lock(GROUPS_global[i]->lock);
+		GROUPS_global[group_index]->local_LPS[actual_lp] = LPS[actual_lp];
+		GROUPS_global[group_index]->tot_LP++;
+		//spin_unlock(GROUPS_global[i]->lock);
 	}
 
-	return actual_lp->current_group;
+	return group_index;
+}
+
+/**
+//TODO MN
+* Updates all groups configurations according to LPs' statistics
+*
+* @author Nazzareno Marziale
+* @author Francesco Nobilia
+*/
+static void analise_static_group(unsigned int **statistics){
+	unsigned int temp_max_access = -1, i=0, j=0;
+	ECS_stat *ECS_entry_temp;	
+	ECS_stat **actual_lp_table;	
+
+	for(i=0 ; i<n_prc ; i++){
+		statistics[i][0] = -1;
+		statistics[i][1] = -1;
+		actual_lp_table = LPS[i]->ECS_stat_table;
+		for(j=0; j<n_prc;j++){
+                	ECS_entry_temp = actual_lp_table[j];
+                	if(ECS_entry_temp->count_access > THRESHOLD_ACCESS_ECS  && ECS_entry_temp->count_access > temp_max_access){
+				statistics[i][0] = j;
+				temp_max_access =  ECS_entry_temp->count_access;
+			}	
+		}		
+	}
+}
+
+/**
+//TODO MN
+* Updates all groups configurations according to LPs' statistics
+*
+* @author Nazzareno Marziale
+* @author Francesco Nobilia
+*/
+static unsigned int clustering_groups(unsigned int **statistics, unsigned int lid, unsigned int group){
+	if(statistics[lid][1] != -1)
+		return statistics[lid][1];
+	
+	if(group != -1)
+                statistics[lid][1] = group;
+	else
+		statistics[lid][1] = lid;
+		
+	if(statistics[lid][0] != -1){
+		statistics[lid][1] = clustering_groups(statistics,statistics[lid][0],statistics[lid][1]);
+	}
+	
+	if(lid != n_prc && group == -1)
+		clustering_groups(statistics,lid+1,-1);
+	
+	return statistics[lid][1];
+		
+	
 }
 
 /**
@@ -409,8 +459,16 @@ int LP_change_group(GLP_state **GROUPS_global, LP_state *actual_lp){
 */
 static void update_clustering_groups(){
 	unsigned int i;
+	unsigned int statistics[n_prc][2];
+	
+	//Create a graph thanks to ECS statistics
+	analise_static_group(statistics);
+
+	//Recursive function that update the clustering info
+	clustering_groups(statistics,0,-1);
+	
 	for(i=0; i<n_prc; i++){
-		new_group_LPS[i] = LP_change_group(new_GLPS, LPS[i]);	
+		new_group_LPS[i] = LP_change_group(new_GLPS, i, statistics);
 	}
 }
 

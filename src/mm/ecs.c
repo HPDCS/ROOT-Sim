@@ -172,6 +172,17 @@ void lp_alloc_thread_init(void) {
 	pgd_ds = ioctl(ioctl_fd, IOCTL_GET_PGD);  //ioctl call
 }
 
+bool present_ECS_table(unsigned int lid){
+	unsigned int i;
+	unsigned int *table = LPS[current_lp]->ECS_synch_table;
+
+	for(i=0;i<(LPS[current_lp]->ECS_index + 1);i++){
+		if(table[i] == lid)	return true;
+	}
+
+	return false;
+}
+
 
 void lp_alloc_schedule(void) {
 	
@@ -187,11 +198,12 @@ void lp_alloc_schedule(void) {
 	if(virify_time_group(lvt(current_lp))){
 		list = GLPS[LPS[current_lp]->current_group]->local_LPS;
         	for(i=0; i<n_prc; i++){
-                	if(i!=current_lp && list[i]!=NULL){
+                	if(i!=current_lp && list[i]!=NULL && !present_ECS_table(i)){
 				sched_info.count++;
         			LPS[current_lp]->ECS_synch_table[sched_info.count] = i;
 			}
 		}
+		printf("GROUP EXECUTION\n");
 	}
 	#endif	
 	
@@ -205,7 +217,7 @@ void lp_alloc_schedule(void) {
 	for(i=0;i<sched_info.count;i++) {
                 sched_info.objects_mmap_pointers[i]= get_base_pointer(sched_info.objects[i]);
         }
-	
+
 	/* passing into LP mode - here for the pgd_ds-th LP */
 	ioctl(ioctl_fd,IOCTL_SCHEDULE_ON_PGD, &sched_info);
 	

@@ -445,7 +445,10 @@ void activate_LP(unsigned int lp, simtime_t lvt, void *evt, void *state) {
 	#endif
 
 	//printf("Schedule %d\n",lp);
-	printf(".");
+	//printf("LP[%d] state: %lu\n",lp,LPS[lp]->state);
+	if(is_blocked_state(LPS[lp]->state))
+		rootsim_error(true, "Critical condition: LP[%d] has a wrong state -> %lu. Aborting...\n", lp,LPS[lp]->state);
+
 	#ifdef ENABLE_ULT
 	context_switch(&kernel_context, &LPS[lp]->context);
 	#else
@@ -518,9 +521,6 @@ void schedule(void) {
 		default:
 			lid = smallest_timestamp_first();
 	}
-	if(lid != IDLE_PROCESS){
-//		printf("\t Selected LP %d with state %#08x\n", lid, LPS[lid]->state);
-	}
 	
 	// No logical process found with events to be processed
 	if (lid == IDLE_PROCESS) {
@@ -538,12 +538,11 @@ void schedule(void) {
 	}
 
 	
-	if( (!is_blocked_state(LPS[lid]->state) && LPS[lid]->state != LP_STATE_READY_FOR_SYNCH) || check_rendevouz_request(lid) ) {
-//	if(!is_blocked_state(LPS[lid]->state) && LPS[lid]->state != LP_STATE_READY_FOR_SYNCH){
+//	if( (!is_blocked_state(LPS[lid]->state) && LPS[lid]->state != LP_STATE_READY_FOR_SYNCH) || check_rendevouz_request(lid) ) {
+	if(!is_blocked_state(LPS[lid]->state) && LPS[lid]->state != LP_STATE_READY_FOR_SYNCH){
 		event = advance_to_next_event(lid);
 	}
 	else {
-//		printf("Riavvio %d\n", lid);
 		event = LPS[lid]->bound;
 	}
 
@@ -570,8 +569,6 @@ void schedule(void) {
 	}
 	#endif
 	
-//	printf("\t \t LP %d with lvt:%f executes message %d at timestamp %f\n",lid,lvt(lid),event->mark,event->timestamp);
-	
 	// Schedule the LP user-level thread
 	LPS[lid]->state = LP_STATE_RUNNING;
 	activate_LP(lid, lvt(lid), event, state);
@@ -580,6 +577,7 @@ void schedule(void) {
 		LPS[lid]->state = LP_STATE_READY;
 		send_outgoing_msgs(lid);
 	}
+
 
 	#ifdef HAVE_CROSS_STATE
 	if(resume_execution && !is_blocked_state(LPS[lid]->state)) {

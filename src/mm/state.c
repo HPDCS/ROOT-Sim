@@ -117,6 +117,7 @@ void RestoreState(unsigned int lid, state_t *restore_state) {
 	log_restore(lid, restore_state);
 	LPS[lid]->current_base_pointer = restore_state->base_pointer;
 	LPS[lid]->state = restore_state->state;
+	LPS[lid]->ECS_index = 0;
 }
 
 
@@ -158,7 +159,8 @@ unsigned int silent_execution(unsigned int lid, void *state_buffer, msg_t *evt, 
 		}
 
 		events++;
-
+		
+//		printf("[%d] Old_state: %lu\n",lid,old_state);
 		activate_LP(lid, evt->timestamp, evt, state_buffer);
 		evt = list_next(evt);
 	}
