@@ -483,6 +483,7 @@ bool check_rendevouz_request(unsigned int lid){
 	if(LPS[lid]->state != LP_STATE_WAIT_FOR_SYNCH)
 		return false;
 	
+	printf("CHECK LP: %d\n",lid);
 	
 	if(LPS[lid]->bound != NULL && list_next(LPS[lid]->bound) != NULL){
 		temp_mess = list_next(LPS[lid]->bound);
@@ -538,15 +539,18 @@ void schedule(void) {
 	}
 
 	
-//	if( (!is_blocked_state(LPS[lid]->state) && LPS[lid]->state != LP_STATE_READY_FOR_SYNCH) || check_rendevouz_request(lid) ) {
-	if(!is_blocked_state(LPS[lid]->state) && LPS[lid]->state != LP_STATE_READY_FOR_SYNCH){
+	if( (!is_blocked_state(LPS[lid]->state) && LPS[lid]->state != LP_STATE_READY_FOR_SYNCH) || check_rendevouz_request(lid) ) {
+//	if(!is_blocked_state(LPS[lid]->state) && LPS[lid]->state != LP_STATE_READY_FOR_SYNCH){
 		event = advance_to_next_event(lid);
 	}
 	else {
 		event = LPS[lid]->bound;
 	}
 
-
+if(lid != event->sender){	
+	printf("LP[%d] from %d \t \t type:%d  mark:%d timestamp:%f\n",lid,event->sender,event->type,event->mark,event->timestamp);
+	fflush(stdout);
+}
 	// Sanity check: if we get here, it means that lid is a LP which has
 	// at least one event to be executed. If advance_to_next_event() returns
 	// NULL, it means that lid has no events to be executed. This is

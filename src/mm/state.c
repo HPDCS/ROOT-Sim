@@ -196,6 +196,7 @@ void rollback(unsigned int lid) {
 		rootsim_error(false, "I'm asked to roll back LP %d's execution, but rollback_bound is not set. Ignoring...\n", LidToGid(lid));
 		return;
 	}
+	
 
 	// Discard any possible execution state related to a blocked execution
 	#ifdef ENABLE_ULT
@@ -228,6 +229,8 @@ void rollback(unsigned int lid) {
 
 	// Control messages must be rolled back as well
 	rollback_control_message(lid, last_correct_event->timestamp);
+
+	printf("LP[%d] rollback at time:%f\n",lid,last_correct_event->timestamp);
 }
 
 

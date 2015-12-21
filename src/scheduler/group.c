@@ -1,4 +1,5 @@
 #include <scheduler/process.h>
+#ifdef HAVE_GLP_SCH_MODULE
 //TODO MN
 void rollback_group(simtime_t timestamp, unsigned int receiver){
 	
@@ -17,3 +18,4 @@ void rollback_group(simtime_t timestamp, unsigned int receiver){
 	}
 
 }
+#endif

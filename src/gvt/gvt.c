@@ -105,8 +105,8 @@ static simtime_t *local_min;
 
 
 /// Variable to update the time for current group
-static __thread simtime_t last_time_group = -1.0;
-
+static simtime_t last_time_group = -1.0;
+static bool updated_group = true;
 
 
 /**
@@ -301,7 +301,8 @@ simtime_t gvt_operations(void) {
 			atomic_dec(&counter_end);
 			last_gvt = adopted_last_gvt;
 			#ifdef HAVE_GLP_SCH_MODULE
-			last_time_group = last_gvt + DELTA_GROUP;
+			if((last_time_group < last_gvt) && master_kernel() && master_thread ())
+				updated_group = false;	
 			#endif
 		}
 	}
@@ -311,8 +312,19 @@ simtime_t gvt_operations(void) {
 
 //TODO MN
 #ifdef HAVE_GLP_SCH_MODULE
-bool virify_time_group(simtime_t timestamp){
+bool virify_time_group(simtime_t timestamp){	
 	return (timestamp < last_time_group);
+}
+
+
+bool need_clustering(void){
+	if(!updated_group){
+		last_time_group = last_gvt + DELTA_GROUP;
+		updated_group = true;	
+		return updated_group;
+	}
+
+	return false;
 }
 #endif
 

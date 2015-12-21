@@ -132,6 +132,12 @@ static void *main_simulation_loop(void *arg) {
 				#else
 				printf("TIME BARRIER %f\n", my_time_barrier);
 				#endif
+				
+				int j=0;
+				for(;j<n_prc;j++)
+					printf("LP[%d]:%lu timestamp:%f\n",j,LPS[j]->state,LPS[j]->bound->timestamp);
+					
+			
 				fflush(stdout);
 			}
 		}

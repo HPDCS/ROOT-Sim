@@ -75,7 +75,6 @@ void ECS(long long ds, unsigned long long hitted_object){
 	msg_t control_msg;
 	msg_hdr_t msg_hdr;
 
-//	printf("ECS synch started on pgd %ld - start wait for hitted object num %lu by %d\n", ds, hitted_object, current_lp);
 
 	// do whatever you want, but you need to reopen access to the objects you cross-depend on before returning
 
@@ -85,6 +84,8 @@ void ECS(long long ds, unsigned long long hitted_object){
 		current_evt->rendezvous_mark = generate_mark(current_lp);
 		LPS[current_lp]->wait_on_rendezvous = current_evt->rendezvous_mark;
 	}
+
+	printf("LP[%d] hits %llu rende_mark:%lu\n",current_lp, hitted_object, current_evt->rendezvous_mark);
 
 	//TODO MN
 	

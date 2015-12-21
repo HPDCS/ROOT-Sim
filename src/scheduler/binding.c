@@ -491,8 +491,8 @@ static inline void GLP_knapsack(void) {
 		return;
 
 	// Clustering group
-	//TODO MN only if LastGVT > GVT + deltaT 
-	update_clustering_groups();
+	if(need_clustering())
+		update_clustering_groups();
 
 	// Estimate the reference knapsack
 	for(i = 0; i < n_grp; i++) {

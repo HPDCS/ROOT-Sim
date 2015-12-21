@@ -29,17 +29,17 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, event_t *c
 			new_event.pointer = state->pointer;
 			new_event.sender = me;
 			
-			//int recv = FindReceiver(TOPOLOGY_MESH);
+			int recv = FindReceiver(TOPOLOGY_MESH);
 		
 			timestamp = now + Expent(DELAY);
 	
-			int recv = 1;
+			/*int recv = 1;
 			if(me==1){
 				recv = 0; 
-			}
+			}*/
 	
-/*			if(content != NULL && content->pointer!=NULL)
-				printf("[%d]\n",content->pointer[0]);*/
+			if(content != NULL && content->pointer!=NULL && me!=content->sender)
+				printf("\t \t LP[%d] mem of %d = %d\n",me,content->sender,content->pointer[0]);
 
 			ScheduleNewEvent(recv, timestamp, PACKET, &new_event, sizeof(new_event));
 		}
