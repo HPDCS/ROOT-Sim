@@ -85,7 +85,7 @@ void ECS(long long ds, unsigned long long hitted_object){
 		LPS[current_lp]->wait_on_rendezvous = current_evt->rendezvous_mark;
 	}
 
-	printf("LP[%d] hits %llu rende_mark:%lu\n",current_lp, hitted_object, current_evt->rendezvous_mark);
+	printf("LP[%d] hits %llu rende_mark:%lu LP_wait_on_rende:%lu\n",current_lp, hitted_object, current_evt->rendezvous_mark,LPS[current_lp]->wait_on_rendezvous);
 
 	//TODO MN
 	

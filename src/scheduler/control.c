@@ -98,6 +98,8 @@ bool anti_control_message(msg_t * msg) {
 	if(msg->type == RENDEZVOUS_ROLLBACK) {
 
 		unsigned int lid_receiver = msg->receiver;
+
+		printf("1 ACM LP[%d]->state:%d\n",lid_receiver,LPS[lid_receiver]->state);
 		
 		//Check if a relative message exists
 		old_rendezvous = list_tail(LPS[lid_receiver]->queue_in);
@@ -126,7 +128,7 @@ bool anti_control_message(msg_t * msg) {
                        	#endif
 		}
 		old_rendezvous->rendezvous_mark = 0;
-		LPS[lid_receiver]->wait_on_rendezvous = 0;
+	//	LPS[lid_receiver]->wait_on_rendezvous = 0;
 		printf("Setting old rendezvous mark to 0\n");
 
 		//Reset ECS information
@@ -134,6 +136,9 @@ bool anti_control_message(msg_t * msg) {
 			LPS[lid_receiver]->ECS_index = 0;
 			LPS[lid_receiver]->wait_on_rendezvous = 0;
 		}
+
+		printf("2 ACM LP[%d]->state:%d\n",lid_receiver,LPS[lid_receiver]->state);
+
 		return false;
 	}
 	#endif
@@ -176,12 +181,29 @@ bool receive_control_msg(msg_t *msg) {
 
 		case RENDEZVOUS_ACK:
 			if(LPS[msg->receiver]->state == LP_STATE_ROLLBACK) {
+				LPS[msg->receiver]->wait_on_rendezvous = 0; //TODO MN rollback
 				break;
 			}
 
 			if(LPS[msg->receiver]->wait_on_rendezvous == msg->rendezvous_mark) {
 				LPS[msg->receiver]->state = LP_STATE_READY_FOR_SYNCH;
 			}
+			else{
+				msg_t control_msg;
+
+				bzero(&control_msg, sizeof(msg_t));
+				control_msg.sender = msg->receiver;
+				control_msg.receiver = msg->sender;
+				control_msg.type = RENDEZVOUS_UNBLOCK;
+				control_msg.timestamp = msg->timestamp;
+				control_msg.send_time = msg->send_time;
+				control_msg.message_kind = positive;
+				control_msg.rendezvous_mark = msg->rendezvous_mark;
+
+				Send(&control_msg);
+				
+			}
+
 
 			break;
 
@@ -190,8 +212,8 @@ bool receive_control_msg(msg_t *msg) {
 			printf("wait_mark: %d \t mark_rendezvous:%d \n",LPS[msg->receiver]->wait_on_rendezvous,msg->rendezvous_mark);
 			
 			if(LPS[msg->receiver]->wait_on_rendezvous == msg->rendezvous_mark) {
-				LPS[msg->receiver]->state = LP_STATE_READY;
 				LPS[msg->receiver]->wait_on_rendezvous = 0;
+				LPS[msg->receiver]->state = LP_STATE_READY;
 			}
 //			current_lp = msg->receiver;
 //			current_lvt = msg->timestamp;

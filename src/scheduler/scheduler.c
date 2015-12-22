@@ -547,6 +547,15 @@ void schedule(void) {
 		event = LPS[lid]->bound;
 	}
 
+int i;
+for (i = 0; i < n_prc_per_thread; i++){
+	if(LPS_bound[i]->bound != NULL)
+		printf("LP[%d]->state:%d at time: %f\n",LPS_bound[i]->lid,LPS_bound[i]->state,LPS_bound[i]->bound->timestamp);
+	else
+		printf("LP[%d]->state:%d\n",LPS_bound[i]->lid,LPS_bound[i]->state);
+}
+
+
 if(lid != event->sender){	
 	printf("LP[%d] from %d \t \t type:%d  mark:%d timestamp:%f\n",lid,event->sender,event->type,event->mark,event->timestamp);
 	fflush(stdout);

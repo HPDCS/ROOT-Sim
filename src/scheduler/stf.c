@@ -21,6 +21,7 @@ unsigned int smallest_timestamp_first(void) {
 	
 	// For each local process
 	for (i = 0; i < n_prc_per_thread; i++) {
+
 		// If waiting for synch, don't take into account the LP
 		if(is_blocked_state(LPS_bound[i]->state)) {
 			continue;
@@ -42,8 +43,6 @@ unsigned int smallest_timestamp_first(void) {
 			}
 		}
 	}
-
-	// Return the process to execute
 	if(D_EQUAL(min_timestamp, -1)) {
 		return IDLE_PROCESS;
 	} else {
