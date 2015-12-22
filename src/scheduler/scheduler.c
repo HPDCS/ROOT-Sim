@@ -547,6 +547,7 @@ void schedule(void) {
 		event = LPS[lid]->bound;
 	}
 
+#ifndef HAVE_GLP_SCH_MODULE
 int i;
 for (i = 0; i < n_prc_per_thread; i++){
 	if(LPS_bound[i]->bound != NULL)
@@ -555,11 +556,12 @@ for (i = 0; i < n_prc_per_thread; i++){
 		printf("LP[%d]->state:%d\n",LPS_bound[i]->lid,LPS_bound[i]->state);
 }
 
-
 if(lid != event->sender){	
 	printf("LP[%d] from %d \t \t type:%d  mark:%d timestamp:%f\n",lid,event->sender,event->type,event->mark,event->timestamp);
 	fflush(stdout);
 }
+#endif
+
 	// Sanity check: if we get here, it means that lid is a LP which has
 	// at least one event to be executed. If advance_to_next_event() returns
 	// NULL, it means that lid has no events to be executed. This is

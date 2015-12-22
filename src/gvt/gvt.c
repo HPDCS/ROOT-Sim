@@ -301,7 +301,7 @@ simtime_t gvt_operations(void) {
 			atomic_dec(&counter_end);
 			last_gvt = adopted_last_gvt;
 			#ifdef HAVE_GLP_SCH_MODULE
-			if((last_time_group < last_gvt) && master_kernel() && master_thread ())
+			if((last_time_group < last_gvt) && master_thread ())
 				updated_group = false;	
 			#endif
 		}

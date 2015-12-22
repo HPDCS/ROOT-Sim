@@ -85,13 +85,16 @@ void ECS(long long ds, unsigned long long hitted_object){
 		LPS[current_lp]->wait_on_rendezvous = current_evt->rendezvous_mark;
 	}
 
+#ifndef HAVE_GLP_SCH_MODULE
+
 	printf("LP[%d] hits %llu rende_mark:%lu LP_wait_on_rende:%lu\n",current_lp, hitted_object, current_evt->rendezvous_mark,LPS[current_lp]->wait_on_rendezvous);
 
+#endif
 	//TODO MN
 	
 	#ifdef HAVE_GLP_SCH_MODULE	
 	//Manage counter to cross-state 
-	ECS_stat* temp_update_access = LPS[current_lp]->ECS_stat_table[LPS[hitted_object]->current_group];
+	ECS_stat* temp_update_access = LPS[current_lp]->ECS_stat_table[hitted_object];
 	if( (temp_update_access->last_access != -1.0) && ((current_lvt - temp_update_access->last_access) < THRESHOLD_TIME_ECS) )
 		temp_update_access->count_access++;
 	else

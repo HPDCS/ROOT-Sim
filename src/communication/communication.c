@@ -162,6 +162,7 @@ void send_antimessages(unsigned int lid, simtime_t after_simtime) {
 	// Get the first message header with a timestamp <= after_simtime
 	anti_msg = list_tail(LPS[lid]->queue_out);
 	while(anti_msg != NULL && anti_msg->send_time > after_simtime)
+//	while(anti_msg != NULL && anti_msg->send_time >= after_simtime)
 		anti_msg = list_prev(anti_msg);
 
 	// The next event is the first event with a sendtime > after_simtime, if any

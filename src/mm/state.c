@@ -118,6 +118,7 @@ void RestoreState(unsigned int lid, state_t *restore_state) {
 	LPS[lid]->current_base_pointer = restore_state->base_pointer;
 	LPS[lid]->state = restore_state->state;
 	LPS[lid]->ECS_index = 0;
+	LPS[lid]->wait_on_rendezvous = 0;
 }
 
 
@@ -206,6 +207,13 @@ void rollback(unsigned int lid) {
 	statistics_post_lp_data(lid, STAT_ROLLBACK, 1.0);
 
 	last_correct_event = LPS[lid]->bound;
+	
+
+	//TODO MN rollback
+//	if(LPS[lid]->ECS_index>0 && list_prev(LPS[lid]->bound)!=NULL){ 
+//		last_correct_event = list_prev(LPS[lid]->bound);
+//		LPS[lid]->bound = list_prev(LPS[lid]->bound);
+//	}	
 
 	// Send antimessages
 	send_antimessages(lid, last_correct_event->timestamp);
@@ -230,11 +238,6 @@ void rollback(unsigned int lid) {
 	// Control messages must be rolled back as well
 	rollback_control_message(lid, last_correct_event->timestamp);
 	
-	#ifdef HAVE_CROSS_STATE
-	LPS[lid]->wait_on_rendezvous = 0;
-        LPS[lid]->ECS_index = 0;
-	#endif
-
 	printf("LP[%d] rollback at time:%f\n",lid,last_correct_event->timestamp);
 }
 

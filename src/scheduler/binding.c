@@ -70,6 +70,7 @@ static double *glp_cost;
 static unsigned int *new_GLPS_binding;
 static GLP_state **new_GLPS;
 static unsigned int *new_group_LPS;
+static unsigned int empty_value;
 #endif
 
 static timer rebinding_timer;
@@ -279,6 +280,8 @@ static inline void GLPs_block_binding(void) {
 	unsigned int offset;
 	unsigned int block_leftover;
 
+	empty_value = n_prc + 2;
+
 	buf1 = (n_prc / n_cores);
 	block_leftover = n_prc - buf1 * n_cores;
 
@@ -369,13 +372,10 @@ static int compare_glp_cost(const void *a, const void *b) {
 	return  (*(double*)b - *(double*)a) ;
 }
 
-
-
-
 /**
 //TODO MN
 **/
-int LP_change_group(GLP_state **GROUPS_global, unsigned int actual_lp,unsigned int **statistics){
+int LP_change_group(GLP_state **GROUPS_global, unsigned int actual_lp,int n, unsigned int (*statistics)[n]){
 	unsigned int group_index = statistics[actual_lp][1];
 		
 	if(LPS[actual_lp]->current_group != group_index){
@@ -403,14 +403,14 @@ int LP_change_group(GLP_state **GROUPS_global, unsigned int actual_lp,unsigned i
 * @author Nazzareno Marziale
 * @author Francesco Nobilia
 */
-static void analise_static_group(unsigned int **statistics){
-	unsigned int temp_max_access = -1, i=0, j=0;
+static void analise_static_group(int n, unsigned int (*statistics)[n]){
+	unsigned int temp_max_access = 0, i=0, j=0;
 	ECS_stat *ECS_entry_temp;	
 	ECS_stat **actual_lp_table;	
 
 	for(i=0 ; i<n_prc ; i++){
-		statistics[i][0] = -1;
-		statistics[i][1] = -1;
+		statistics[i][0] = empty_value;
+		statistics[i][1] = empty_value;
 		actual_lp_table = LPS[i]->ECS_stat_table;
 		for(j=0; j<n_prc;j++){
                 	ECS_entry_temp = actual_lp_table[j];
@@ -418,7 +418,8 @@ static void analise_static_group(unsigned int **statistics){
 				statistics[i][0] = j;
 				temp_max_access =  ECS_entry_temp->count_access;
 			}	
-		}		
+		}	
+		temp_max_access = 0;	
 	}
 }
 
@@ -429,21 +430,21 @@ static void analise_static_group(unsigned int **statistics){
 * @author Nazzareno Marziale
 * @author Francesco Nobilia
 */
-static unsigned int clustering_groups(unsigned int **statistics, unsigned int lid, unsigned int group){
-	if(statistics[lid][1] != -1)
+static unsigned int clustering_groups(int n, unsigned int (*statistics)[n], unsigned int lid, unsigned int group){
+	if(statistics[lid][1] != empty_value)
 		return statistics[lid][1];
 	
-	if(group != -1)
+	if(group != empty_value)
                 statistics[lid][1] = group;
 	else
 		statistics[lid][1] = lid;
 		
-	if(statistics[lid][0] != -1){
-		statistics[lid][1] = clustering_groups(statistics,statistics[lid][0],statistics[lid][1]);
+	if(statistics[lid][0] != empty_value){
+		statistics[lid][1] = clustering_groups(2,statistics,statistics[lid][0],statistics[lid][1]);
 	}
-	
-	if(lid != n_prc && group == -1)
-		clustering_groups(statistics,lid+1,-1);
+		
+//	if(lid != n_prc && group == empty_value)
+//		clustering_groups(2,statistics,lid+1,empty_value);
 	
 	return statistics[lid][1];
 		
@@ -460,15 +461,20 @@ static unsigned int clustering_groups(unsigned int **statistics, unsigned int li
 static void update_clustering_groups(){
 	unsigned int i;
 	unsigned int statistics[n_prc][2];
-	
-	//Create a graph thanks to ECS statistics
-	analise_static_group(statistics);
 
+
+printf("analise_static_group\n");	
+	//Create a graph thanks to ECS statistics
+	analise_static_group(2,statistics);
+
+printf("clustering_group\n");	
 	//Recursive function that update the clustering info
-	clustering_groups(statistics,0,-1);
+	
+	for(i=0; i<n_prc; i++)
+		clustering_groups(2,statistics,i,empty_value);
 	
 	for(i=0; i<n_prc; i++){
-		new_group_LPS[i] = LP_change_group(new_GLPS, i, statistics);
+		new_group_LPS[i] = LP_change_group(new_GLPS, i, 2, statistics);
 	}
 }
 
@@ -489,10 +495,12 @@ static inline void GLP_knapsack(void) {
 
 	if(!master_thread())
 		return;
-
+	
 	// Clustering group
-	if(need_clustering())
+	if(need_clustering()){
+		printf("Compute new clusterig\n");
 		update_clustering_groups();
+	}	
 
 	// Estimate the reference knapsack
 	for(i = 0; i < n_grp; i++) {

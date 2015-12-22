@@ -161,13 +161,15 @@ bool reprocess_control_msg(msg_t *msg) {
 // return true if the event must not be filtered here
 bool receive_control_msg(msg_t *msg) {
 /* Print to debug*/	
+#ifndef HAVE_GLP_SCH_MODULE
 	switch(msg->type){	
 		//case 1: printf("%d receive from %d PACKET\n",msg->receiver,msg->sender); break;
-		case RENDEZVOUS_START:	printf("%d receive from %d START\n",msg->receiver,msg->sender); break;
-		case RENDEZVOUS_ACK:	printf("%d receive from %d ACK\n",msg->receiver,msg->sender); break;
-		case RENDEZVOUS_UNBLOCK:	printf("\t \t %d receive from %d UNBLOCK\n",msg->receiver,msg->sender); break;
-		case RENDEZVOUS_ROLLBACK:	printf("\t \t %d receive from %d R_ROLLBACK\n",msg->receiver,msg->sender); break;
+		case RENDEZVOUS_START:	printf("%d receive from %d START mark:%lu\n",msg->receiver,msg->sender, msg->mark); break;
+		case RENDEZVOUS_ACK:	printf("%d receive from %d ACK mark:%lu\n",msg->receiver,msg->sender, msg->mark); break;
+		case RENDEZVOUS_UNBLOCK:	printf("\t \t %d receive from %d UNBLOCK mark:%lu\n",msg->receiver,msg->sender, msg->mark); break;
+		case RENDEZVOUS_ROLLBACK:	printf("\t \t %d receive from %d R_ROLLBACK mark:%lu\n",msg->receiver,msg->sender, msg->mark); break;
 	}	
+#endif
 			
 	if(msg->type < MIN_VALUE_CONTROL || msg->type > MAX_VALUE_CONTROL) {
 		return true;
@@ -181,7 +183,25 @@ bool receive_control_msg(msg_t *msg) {
 
 		case RENDEZVOUS_ACK:
 			if(LPS[msg->receiver]->state == LP_STATE_ROLLBACK) {
-				LPS[msg->receiver]->wait_on_rendezvous = 0; //TODO MN rollback
+				//TODO MN rollback case
+				//LPS[msg->receiver]->wait_on_rendezvous = 0; 
+				
+				//It should send the anti_start message
+				/*msg_t control_msg;
+
+                                bzero(&control_msg, sizeof(msg_t));
+                                control_msg.sender = msg->receiver;
+                                control_msg.receiver = msg->sender;
+                                control_msg.type = RENDEZVOUS_UNBLOCK;
+                                control_msg.timestamp = msg->timestamp;
+                                control_msg.send_time = msg->send_time;
+                                control_msg.message_kind = positive;
+                                control_msg.rendezvous_mark = msg->rendezvous_mark;
+
+                                Send(&control_msg);*/
+
+				
+				
 				break;
 			}
 
@@ -208,9 +228,10 @@ bool receive_control_msg(msg_t *msg) {
 			break;
 
 		case RENDEZVOUS_UNBLOCK:
+#ifndef HAVE_GLP_SCH_MODULE
 
 			printf("wait_mark: %d \t mark_rendezvous:%d \n",LPS[msg->receiver]->wait_on_rendezvous,msg->rendezvous_mark);
-			
+#endif			
 			if(LPS[msg->receiver]->wait_on_rendezvous == msg->rendezvous_mark) {
 				LPS[msg->receiver]->wait_on_rendezvous = 0;
 				LPS[msg->receiver]->state = LP_STATE_READY;
