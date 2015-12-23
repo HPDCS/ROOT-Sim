@@ -119,6 +119,8 @@ void RestoreState(unsigned int lid, state_t *restore_state) {
 	LPS[lid]->state = restore_state->state;
 	LPS[lid]->ECS_index = 0;
 	LPS[lid]->wait_on_rendezvous = 0;
+	LPS[lid]->wait_on_object = 0;
+
 }
 
 
@@ -208,13 +210,6 @@ void rollback(unsigned int lid) {
 
 	last_correct_event = LPS[lid]->bound;
 	
-
-	//TODO MN rollback
-//	if(LPS[lid]->ECS_index>0 && list_prev(LPS[lid]->bound)!=NULL){ 
-//		last_correct_event = list_prev(LPS[lid]->bound);
-//		LPS[lid]->bound = list_prev(LPS[lid]->bound);
-//	}	
-
 	// Send antimessages
 	send_antimessages(lid, last_correct_event->timestamp);
 
@@ -238,7 +233,9 @@ void rollback(unsigned int lid) {
 	// Control messages must be rolled back as well
 	rollback_control_message(lid, last_correct_event->timestamp);
 	
+	#ifndef HAVE_GLP_SCH_MODULE
 	printf("LP[%d] rollback at time:%f\n",lid,last_correct_event->timestamp);
+	#endif
 }
 
 

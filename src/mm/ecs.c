@@ -75,6 +75,8 @@ void ECS(long long ds, unsigned long long hitted_object){
 	msg_t control_msg;
 	msg_hdr_t msg_hdr;
 
+	if(LPS[current_lp]->state == LP_STATE_SILENT_EXEC) 
+		printf("----ERROR----\n");	
 
 	// do whatever you want, but you need to reopen access to the objects you cross-depend on before returning
 
@@ -199,7 +201,7 @@ void lp_alloc_schedule(void) {
 	
 	//TODO MN open group memory view only if lvt < GVT+deltaT	
 	#ifdef HAVE_GLP_SCH_MODULE
-	if(virify_time_group(lvt(current_lp))){
+	if(verify_time_group(lvt(current_lp)) && GLPS[LPS[current_lp]->current_group]->tot_LP > 1){
 		list = GLPS[LPS[current_lp]->current_group]->local_LPS;
         	for(i=0; i<n_prc; i++){
                 	if(i!=current_lp && list[i]!=NULL && !present_ECS_table(i)){

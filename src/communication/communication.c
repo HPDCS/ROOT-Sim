@@ -120,7 +120,7 @@ void ParallelScheduleNewEvent(unsigned int gid_receiver, simtime_t timestamp, un
 
 	if(event.type == RENDEZVOUS_START) {
 		event.rendezvous_mark = current_evt->rendezvous_mark;
-		printf("RENDEZVOUS_START mark=%d\n",event.rendezvous_mark);
+		printf("RENDEZVOUS_START mark=%llu\n",event.rendezvous_mark);
 		fflush(stdout);
 	}
 
@@ -173,8 +173,10 @@ void send_antimessages(unsigned int lid, simtime_t after_simtime) {
 
 	// Now send all antimessages
 	while(anti_msg != NULL) {
-		printf("ANTIMSG [%d]->[%d] mark:%d\n",anti_msg->sender, anti_msg->receiver,anti_msg->mark);	
-	
+		#ifndef HAVE_GLP_SCH_MODULE
+		printf("ANTIMSG [%d]->[%d] mark:%llu\n",anti_msg->sender, anti_msg->receiver,anti_msg->mark);	
+		#endif
+		
 		bzero(&msg, sizeof(msg_t));
 		msg.sender = anti_msg->sender;
 		msg.receiver = anti_msg->receiver;

@@ -312,7 +312,7 @@ simtime_t gvt_operations(void) {
 
 //TODO MN
 #ifdef HAVE_GLP_SCH_MODULE
-bool virify_time_group(simtime_t timestamp){	
+bool verify_time_group(simtime_t timestamp){	
 	return (timestamp < last_time_group);
 }
 
@@ -320,6 +320,7 @@ bool virify_time_group(simtime_t timestamp){
 bool need_clustering(void){
 	if(!updated_group){
 		last_time_group = last_gvt + DELTA_GROUP;
+		printf("last_time_group: %f\n",last_time_group);
 		updated_group = true;	
 		return updated_group;
 	}

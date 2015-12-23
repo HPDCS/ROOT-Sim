@@ -139,8 +139,7 @@ void scheduler_init(void) {
 		GLPS[i]->local_LPS = (LP_state **)rsalloc(n_prc * sizeof(LP_state *));
 		unsigned int j;
 		for (j = 0; j < n_prc; j++) {
-			GLPS[i]->local_LPS[j] = (LP_state *)rsalloc(sizeof(LP_state));
-			bzero(GLPS[i]->local_LPS[j], sizeof(LP_state));
+			GLPS[i]->local_LPS[j] = NULL;
 		}
 
 	        //Initialise current group
@@ -446,8 +445,10 @@ void activate_LP(unsigned int lp, simtime_t lvt, void *evt, void *state) {
 
 	//printf("Schedule %d\n",lp);
 	//printf("LP[%d] state: %lu\n",lp,LPS[lp]->state);
-	if(is_blocked_state(LPS[lp]->state))
+	if(is_blocked_state(LPS[lp]->state)){
+		printf("wait_on_rendezvoud:%lu tid:%d wait_object:%d \n ",LPS[lp]->wait_on_rendezvous,tid,LPS[lp]->wait_on_object);
 		rootsim_error(true, "Critical condition: LP[%d] has a wrong state -> %lu. Aborting...\n", lp,LPS[lp]->state);
+	}
 
 	#ifdef ENABLE_ULT
 	context_switch(&kernel_context, &LPS[lp]->context);
@@ -487,7 +488,7 @@ bool check_rendevouz_request(unsigned int lid){
 	
 	if(LPS[lid]->bound != NULL && list_next(LPS[lid]->bound) != NULL){
 		temp_mess = list_next(LPS[lid]->bound);
-		printf("\t \t Randezvous_mark: %lu LPS[%d]->wait_on_rendezvous:%lu\n",temp_mess->rendezvous_mark, lid,LPS[lid]->wait_on_rendezvous);
+		printf("\t \t Randezvous_mark: %llu LPS[%d]->wait_on_rendezvous:%llu\n",temp_mess->rendezvous_mark, lid,LPS[lid]->wait_on_rendezvous);
 		return temp_mess->type == RENDEZVOUS_START && LPS[lid]->wait_on_rendezvous > temp_mess->rendezvous_mark;
 	}
 	
@@ -539,8 +540,8 @@ void schedule(void) {
 	}
 
 	
-	if( (!is_blocked_state(LPS[lid]->state) && LPS[lid]->state != LP_STATE_READY_FOR_SYNCH) || check_rendevouz_request(lid) ) {
-//	if(!is_blocked_state(LPS[lid]->state) && LPS[lid]->state != LP_STATE_READY_FOR_SYNCH){
+//	if( (!is_blocked_state(LPS[lid]->state) && LPS[lid]->state != LP_STATE_READY_FOR_SYNCH) || check_rendevouz_request(lid) ) {
+	if(!is_blocked_state(LPS[lid]->state) && LPS[lid]->state != LP_STATE_READY_FOR_SYNCH){
 		event = advance_to_next_event(lid);
 	}
 	else {
