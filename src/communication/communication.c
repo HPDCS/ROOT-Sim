@@ -120,7 +120,7 @@ void ParallelScheduleNewEvent(unsigned int gid_receiver, simtime_t timestamp, un
 
 	if(event.type == RENDEZVOUS_START) {
 		event.rendezvous_mark = current_evt->rendezvous_mark;
-		printf("RENDEZVOUS_START mark=%d\n",event.rendezvous_mark);
+		printf("RENDEZVOUS_START mark=%llu\n",event.rendezvous_mark);
 		fflush(stdout);
 	}
 
@@ -137,7 +137,7 @@ void ParallelScheduleNewEvent(unsigned int gid_receiver, simtime_t timestamp, un
     out:
 	switch_to_application_mode();
 
-	printf("--------------- SEND new event LP-sender:%d LP-receiver:%d type:%d\n",LidToGid(current_lp),gid_receiver,event.type);
+	//printf("--------------- SEND new event LP-sender:%d LP-receiver:%d type:%d\n",LidToGid(current_lp),gid_receiver,event.type);
 }
 
 
@@ -162,6 +162,7 @@ void send_antimessages(unsigned int lid, simtime_t after_simtime) {
 	// Get the first message header with a timestamp <= after_simtime
 	anti_msg = list_tail(LPS[lid]->queue_out);
 	while(anti_msg != NULL && anti_msg->send_time > after_simtime)
+//	while(anti_msg != NULL && anti_msg->send_time >= after_simtime)
 		anti_msg = list_prev(anti_msg);
 
 	// The next event is the first event with a sendtime > after_simtime, if any
@@ -172,6 +173,10 @@ void send_antimessages(unsigned int lid, simtime_t after_simtime) {
 
 	// Now send all antimessages
 	while(anti_msg != NULL) {
+		#ifndef HAVE_GLP_SCH_MODULE
+		printf("ANTIMSG [%d]->[%d] mark:%llu\n",anti_msg->sender, anti_msg->receiver,anti_msg->mark);	
+		#endif
+		
 		bzero(&msg, sizeof(msg_t));
 		msg.sender = anti_msg->sender;
 		msg.receiver = anti_msg->receiver;

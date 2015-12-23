@@ -20,4 +20,4 @@ cd models/packet/
 rm model
 rootsim-cc application.c -o model
 sudo dmesg --clear
-gdb --args model --np 1 --nprc 2
+gdb -tui --args model --np 1 --nprc 2 --debug

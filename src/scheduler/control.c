@@ -49,10 +49,11 @@ void unblock_synchronized_objects(unsigned int lid) {
 		control_msg.message_kind = positive;
 		control_msg.rendezvous_mark = LPS[lid]->wait_on_rendezvous;
 
-		Send(&control_msg);
+		Send(&control_msg);	
 	}
 
 	LPS[lid]->wait_on_rendezvous = 0;
+	LPS[lid]->ECS_index = 0;
 }
 #endif
 
@@ -98,6 +99,12 @@ bool anti_control_message(msg_t * msg) {
 
 		unsigned int lid_receiver = msg->receiver;
 
+		#ifndef HAVE_GLP_SCH_MODULE
+		printf("1 ACM LP[%d]->state:%d\n",lid_receiver,LPS[lid_receiver]->state);
+		#endif
+		
+		//Check if a relative message exists
+		//TODO non serve andare indietro più del tempo di rendezvous_rollback
 		old_rendezvous = list_tail(LPS[lid_receiver]->queue_in);
 		while(old_rendezvous != NULL && old_rendezvous->rendezvous_mark != msg->rendezvous_mark) {
 			old_rendezvous = list_prev(old_rendezvous);
@@ -106,26 +113,39 @@ bool anti_control_message(msg_t * msg) {
 		if(old_rendezvous == NULL) {
 			return false;
 		}
-
+		
+		//If this event is in the past
 		if(old_rendezvous->timestamp <= lvt(lid_receiver)) {
+			
+			//Set LP->bound to the message that caused ECS
 			LPS[lid_receiver]->bound = old_rendezvous;
 	                while (LPS[lid_receiver]->bound != NULL && LPS[lid_receiver]->bound->timestamp >= old_rendezvous->timestamp) {
 	                	LPS[lid_receiver]->bound = list_prev(LPS[lid_receiver]->bound);
 	        	}
-	                LPS[lid_receiver]->state = LP_STATE_ROLLBACK;
-			
+		
 			#ifdef HAVE_GLP_SCH_MODULE
-                        if(virify_time_group(old_rendezvous->timestamp)){
-                       		rollback_group(old_rendezvous->timestamp,lid_receiver);
+                        if(verify_time_group(old_rendezvous->timestamp)){
+				if(GLPS[LPS[lid_receiver]->current_group]->tot_LP != 1)
+					rollback_group(old_rendezvous->timestamp,lid_receiver);
                         }
                        	#endif
+
+	                LPS[lid_receiver]->state = LP_STATE_ROLLBACK;
 		}
 		old_rendezvous->rendezvous_mark = 0;
-
+		#ifndef HAVE_GLP_SCH_MODULE
+		printf("Setting old rendezvous mark to 0\n");
+		#endif
+		//Reset ECS information
 		if(LPS[lid_receiver]->wait_on_rendezvous == msg->rendezvous_mark) {
 			LPS[lid_receiver]->ECS_index = 0;
 			LPS[lid_receiver]->wait_on_rendezvous = 0;
 		}
+		
+		#ifndef HAVE_GLP_SCH_MODULE
+		printf("2 ACM LP[%d]->state:%d\n",lid_receiver,LPS[lid_receiver]->state);
+		#endif
+
 		return false;
 	}
 	#endif
@@ -147,13 +167,16 @@ bool reprocess_control_msg(msg_t *msg) {
 
 // return true if the event must not be filtered here
 bool receive_control_msg(msg_t *msg) {
-	
+/* Print to debug*/	
+#ifndef HAVE_GLP_SCH_MODULE
 	switch(msg->type){	
-		case 1: printf("%d receive from %d PACKET\n",msg->receiver,msg->sender); break;
-		case RENDEZVOUS_START:	printf("%d receive from %d START\n",msg->receiver,msg->sender); break;
+		//case 1: printf("%d receive from %d PACKET\n",msg->receiver,msg->sender); break;
+		case RENDEZVOUS_START:	printf("%d receive from %d START mark:%lu\n",msg->receiver,msg->sender, msg->mark); break;
 		case RENDEZVOUS_ACK:	printf("%d receive from %d ACK\n",msg->receiver,msg->sender); break;
-		case RENDEZVOUS_UNBLOCK:	printf("%d receive from %d UNBLOCK\n",msg->receiver,msg->sender); break;
+		case RENDEZVOUS_UNBLOCK:	printf("\t \t %d receive from %d\n",msg->receiver,msg->sender); break;
+		case RENDEZVOUS_ROLLBACK:	printf("\t \t %d receive from %d R_ROLLBACK mark:%lu\n",msg->receiver,msg->sender, msg->mark); break;
 	}	
+#endif
 			
 	if(msg->type < MIN_VALUE_CONTROL || msg->type > MAX_VALUE_CONTROL) {
 		return true;
@@ -177,9 +200,13 @@ bool receive_control_msg(msg_t *msg) {
 			break;
 
 		case RENDEZVOUS_UNBLOCK:
+			
+			if(LPS[msg->receiver]->state == LP_STATE_ROLLBACK) break;
+
 			if(LPS[msg->receiver]->wait_on_rendezvous == msg->rendezvous_mark) {
-				LPS[msg->receiver]->state = LP_STATE_READY;
 				LPS[msg->receiver]->wait_on_rendezvous = 0;
+				LPS[msg->receiver]->wait_on_object = 0;
+				LPS[msg->receiver]->state = LP_STATE_READY;
 			}
 			current_lp = msg->receiver;
 			current_lvt = msg->timestamp;

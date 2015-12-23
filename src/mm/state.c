@@ -117,6 +117,10 @@ void RestoreState(unsigned int lid, state_t *restore_state) {
 	log_restore(lid, restore_state);
 	LPS[lid]->current_base_pointer = restore_state->base_pointer;
 	LPS[lid]->state = restore_state->state;
+	LPS[lid]->ECS_index = 0;
+	LPS[lid]->wait_on_rendezvous = 0;
+	LPS[lid]->wait_on_object = 0;
+
 }
 
 
@@ -158,7 +162,8 @@ unsigned int silent_execution(unsigned int lid, void *state_buffer, msg_t *evt, 
 		}
 
 		events++;
-
+		
+//		printf("[%d] Old_state: %lu\n",lid,old_state);
 		activate_LP(lid, evt->timestamp, evt, state_buffer);
 		evt = list_next(evt);
 	}
@@ -194,6 +199,7 @@ void rollback(unsigned int lid) {
 		rootsim_error(false, "I'm asked to roll back LP %d's execution, but rollback_bound is not set. Ignoring...\n", LidToGid(lid));
 		return;
 	}
+	
 
 	// Discard any possible execution state related to a blocked execution
 	#ifdef ENABLE_ULT
@@ -203,7 +209,7 @@ void rollback(unsigned int lid) {
 	statistics_post_lp_data(lid, STAT_ROLLBACK, 1.0);
 
 	last_correct_event = LPS[lid]->bound;
-
+	
 	// Send antimessages
 	send_antimessages(lid, last_correct_event->timestamp);
 
@@ -226,6 +232,10 @@ void rollback(unsigned int lid) {
 
 	// Control messages must be rolled back as well
 	rollback_control_message(lid, last_correct_event->timestamp);
+	
+	#ifndef HAVE_GLP_SCH_MODULE
+	printf("LP[%d] rollback at time:%f\n",lid,last_correct_event->timestamp);
+	#endif
 }
 
 

@@ -67,9 +67,12 @@ __thread LP_state **LPS_bound = NULL;
  */
 #ifdef HAVE_GLP_SCH_MODULE
 static double *glp_cost;
+//For each group it tells us which will be the future core
 static unsigned int *new_GLPS_binding;
 static GLP_state **new_GLPS;
+//For updating the current_group stored inside LP_state according to the new configuration
 static unsigned int *new_group_LPS;
+static unsigned int empty_value;
 #endif
 
 static timer rebinding_timer;
@@ -279,6 +282,8 @@ static inline void GLPs_block_binding(void) {
 	unsigned int offset;
 	unsigned int block_leftover;
 
+	empty_value = n_prc + 2;
+
 	buf1 = (n_prc / n_cores);
 	block_leftover = n_prc - buf1 * n_cores;
 
@@ -372,32 +377,126 @@ static int compare_glp_cost(const void *a, const void *b) {
 /**
 //TODO MN
 **/
-int LP_change_group(GLP_state **GROUPS_global, LP_state *actual_lp){
-	ECS_stat *ECS_entry_temp;
-	unsigned int i;
-	unsigned int threshold_access = 100;
-
-	for(i=0 ; i<n_grp ; i++){
-		ECS_entry_temp = actual_lp->ECS_stat_table[i];
-		if(ECS_entry_temp->count_access > threshold_access){
-			
-			//Update old group
-			//spin_lock(GROUPS_global[actual_lp->current_group]->lock);
-			GROUPS_global[actual_lp->current_group]->local_LPS[actual_lp->lid] = NULL;
-			GROUPS_global[actual_lp->current_group]->tot_LP--;
-			//spin_unlock(GROUPS_global[actual_lp->current_group]->lock);
+int LP_change_group(GLP_state **GROUPS_global, unsigned int actual_lp,int n, unsigned int (*statistics)[n], bool force_change){
+	unsigned int group_index = statistics[actual_lp][1];
+		
+	if(force_change || LPS[actual_lp]->current_group != group_index){
+		
+		//Update old group
+		//spin_lock(GROUPS_global[actual_lp->current_group]->lock);
+		GROUPS_global[LPS[actual_lp]->current_group]->local_LPS[actual_lp] = NULL;
+		GROUPS_global[LPS[actual_lp]->current_group]->tot_LP--;
+		//spin_unlock(GROUPS_global[actual_lp->current_group]->lock);
 					
-			//Update new group
-			//spin_lock(GROUPS_global[i]->lock);
-			GROUPS_global[i]->local_LPS[actual_lp->lid] = actual_lp;
-			GROUPS_global[i]->tot_LP++;
-			//spin_unlock(GROUPS_global[i]->lock);
-
-			return i;
-		}
+		//Update new group
+		//spin_lock(GROUPS_global[i]->lock);
+		GROUPS_global[group_index]->local_LPS[actual_lp] = LPS[actual_lp];
+		GROUPS_global[group_index]->tot_LP++;
+		//spin_unlock(GROUPS_global[i]->lock);
 	}
 
-	return actual_lp->current_group;
+	return group_index;
+}
+
+/**
+//TODO MN
+* Updates all groups configurations according to LPs' statistics
+*
+* @author Nazzareno Marziale
+* @author Francesco Nobilia
+*/
+static void analise_static_group(int n, unsigned int (*statistics)[n]){
+	unsigned int temp_max_access = 0, i=0, j=0;
+	ECS_stat *ECS_entry_temp;	
+	ECS_stat **actual_lp_table;	
+
+	for(i=0 ; i<n_prc ; i++){
+		statistics[i][0] = empty_value;
+		statistics[i][1] = empty_value;
+		actual_lp_table = LPS[i]->ECS_stat_table;
+		// Looking for my new groupmate
+		for(j=0; j<n_prc;j++){
+                	ECS_entry_temp = actual_lp_table[j];
+                	if(ECS_entry_temp->count_access > THRESHOLD_ACCESS_ECS  && ECS_entry_temp->count_access > temp_max_access){
+				statistics[i][0] = j;
+				temp_max_access =  ECS_entry_temp->count_access;
+			}
+			// Reset statistics ECS if the my lvt is bigger than last_access plus THRESHOLD
+			if(ECS_entry_temp->last_access + THRESHOLD_TIME_ECS < lvt(i)){
+				
+				ECS_entry_temp->last_access = lvt(i);
+				ECS_entry_temp->count_access = 0;
+			}	
+		}
+		// Reset statistics ECS of my new groupmate
+		if(statistics[i][0]!=empty_value){
+			ECS_entry_temp = actual_lp_table[statistics[i][0]];
+			ECS_entry_temp->last_access = lvt(i);
+                        ECS_entry_temp->count_access = 0;
+
+		}
+						
+		temp_max_access = 0;	
+	}
+}
+
+/**
+//TODO MN
+* Updates all groups configurations according to LPs' statistics
+*
+* @author Nazzareno Marziale
+* @author Francesco Nobilia
+*/
+static unsigned int clustering_groups(int n, unsigned int (*statistics)[n], unsigned int lid, unsigned int group){
+	if(statistics[lid][1] != empty_value)
+		return statistics[lid][1];
+	
+	if(group != empty_value)
+                statistics[lid][1] = group;
+	else
+		statistics[lid][1] = lid;
+		
+	if(statistics[lid][0] != empty_value){
+		statistics[lid][1] = clustering_groups(DIM_STAT_GROUP,statistics,statistics[lid][0],statistics[lid][1]);
+	}
+		
+	return statistics[lid][1];
+}
+
+/**
+//TODO MN
+* 
+*
+* @author Nazzareno Marziale
+* @author Francesco Nobilia
+*/
+static void check_num_group_over_core(int n, unsigned int (*statistics)[n]){
+	unsigned int i, count=0;
+	for(i=0;i<n_grp;i++)
+		if(new_GLPS[i]->tot_LP > 0) count++;
+	
+	if (count >= n_cores) return;
+	
+	for(i=0;i<n_prc;i++){
+		if(statistics[i][1]!=i && new_GLPS[i]->tot_LP == 0){
+			//Update old group
+                	new_GLPS[statistics[i][1]]->local_LPS[i] = NULL;
+                	new_GLPS[statistics[i][1]]->tot_LP--;
+
+                	//Update new group
+                	new_GLPS[i]->local_LPS[i] = LPS[i];
+                	new_GLPS[i]->tot_LP++;
+
+			statistics[i][1] = i;
+			new_group_LPS[i] = i;	
+			count++;
+			
+			printf("Move %d\n",i);
+		}
+		
+		if (count >= n_cores) return;
+	}
+	
 }
 
 /**
@@ -409,9 +508,22 @@ int LP_change_group(GLP_state **GROUPS_global, LP_state *actual_lp){
 */
 static void update_clustering_groups(){
 	unsigned int i;
+	unsigned int statistics[n_prc][DIM_STAT_GROUP];
+
+
+	//Create a graph thanks to ECS statistics
+	analise_static_group(DIM_STAT_GROUP,statistics);
+
+	//Recursive function that update the clustering info
+	for(i=0; i<n_prc; i++)
+		clustering_groups(DIM_STAT_GROUP,statistics,i,empty_value);
+	
 	for(i=0; i<n_prc; i++){
-		new_group_LPS[i] = LP_change_group(new_GLPS, LPS[i]);	
+		new_group_LPS[i] = LP_change_group(new_GLPS, i, DIM_STAT_GROUP, statistics,false);
 	}
+	
+	//Check if the number of groups is at least the number of cores
+	check_num_group_over_core(DIM_STAT_GROUP,statistics);
 }
 
 /**
@@ -431,10 +543,11 @@ static inline void GLP_knapsack(void) {
 
 	if(!master_thread())
 		return;
-
+	
 	// Clustering group
-	//TODO MN only if LastGVT > GVT + deltaT 
-	update_clustering_groups();
+	if(need_clustering()){
+		update_clustering_groups();
+	}	
 
 	// Estimate the reference knapsack
 	for(i = 0; i < n_grp; i++) {
@@ -485,15 +598,20 @@ static inline void GLP_knapsack(void) {
 	//      new_LPS_bingind moves a LP from one group towards another one
 	//      TODO in install_binding
 
-	printf("NEW BINDING\n");
+	printf("NEW GROUP BINDING\n");
 	for(j = 0; j < n_cores; j++) {
 		printf("Thread %d: ", j);
 		for(i = 0; i < n_prc; i++) {
-			if(new_GLPS_binding[i] == j)
+			if(new_GLPS_binding[i] == j && new_GLPS[i]->tot_LP>0)
 				printf("%d ", i);
 		}
 		printf("\n");
 	}
+
+	for(j = 0; j < n_prc; j++) {
+                printf("LP[%d]-G[%d]\n",j,new_group_LPS[j]);
+        }
+
 
 }
 
@@ -511,7 +629,7 @@ static void install_GLPS_binding(void) {
 	n_prc_per_thread = 0;
 
 	for(i = 0; i < n_prc; i++) {
-		if(new_GLPS_binding[LPS[i]->current_group] == tid){
+		if(new_GLPS_binding[new_group_LPS[i]] == tid){
 			LPS_bound[n_prc_per_thread++] = LPS[i];
 
 			if(tid != LPS[i]->worker_thread) {
@@ -576,11 +694,7 @@ void rebind_LPs(void) {
 		//TODO MN
 		// Without HAVE_LP_REBINDING but we want to use groups' module
 		#ifdef HAVE_GLP_SCH_MODULE
-			printf("Rebind_LP_GROUP... ");
 			GLPs_block_binding();
-			printf("Done\n");
-			
-			int j=0;
 		#else	
 			LPs_block_binding();
 		#endif
@@ -605,8 +719,7 @@ void rebind_LPs(void) {
 					new_GLPS[i]->local_LPS = (LP_state **)rsalloc(n_prc * sizeof(LP_state *));
 					unsigned int j;
 					for (j = 0; j < n_prc; j++) {
-						new_GLPS[i]->local_LPS[j] = (LP_state *)rsalloc(sizeof(LP_state));
-						bzero(new_GLPS[i]->local_LPS[j], sizeof(LP_state));
+						new_GLPS[i]->local_LPS[j] = NULL;
 					}
 
 					//Initialise GROUPS
@@ -635,7 +748,6 @@ void rebind_LPs(void) {
 			
 			//TODO MN
 			#ifdef HAVE_GLP_SCH_MODULE
-				printf("GLP_knapsack\n");
 				GLP_knapsack();
 			#else
 				LP_knapsack();
@@ -674,6 +786,9 @@ void rebind_LPs(void) {
 		if(master_thread()) {
 			switch_GLPS();
 		}
+		int k = 0;
+		for(;k<n_prc_per_thread;k++)
+			printf("[tid:%d] LP:%d\n",tid,LPS_bound[k]->lid);
 		thread_barrier(&all_thread_barrier);
 		
 		#endif

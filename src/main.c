@@ -132,6 +132,29 @@ static void *main_simulation_loop(void *arg) {
 				#else
 				printf("TIME BARRIER %f\n", my_time_barrier);
 				#endif
+				
+				
+				unsigned int j=0;
+				#ifdef HAVE_GLP_SCH_MODULE
+				for(;j<n_grp;j++){
+					if(GLPS[j]->tot_LP != 0){
+						printf("GLP[%d]->count: %d \t",j,GLPS[j]->tot_LP);
+						unsigned int i;
+						for(i=0;i<n_prc;i++){
+							if(GLPS[j]->local_LPS[i] != NULL)
+								printf("%d ",i);
+						}
+						printf("\n");
+					}
+
+				}
+				#else
+
+				for(;j<n_prc;j++)
+					printf("LP[%d]:%lu timestamp:%f\n",j,LPS[j]->state,LPS[j]->bound->timestamp);
+				
+				#endif				
+			
 				fflush(stdout);
 			}
 		}

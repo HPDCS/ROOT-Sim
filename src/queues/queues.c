@@ -43,9 +43,6 @@
 #include <statistics/statistics.h>
 #include <gvt/gvt.h>
 
-#ifdef HAVE_GLP_SCH_MODULE
-#include <scheduler/group.h>
-#endif
 
 /**
 * This function returns the timestamp of the last executed event
@@ -126,7 +123,7 @@ msg_t *advance_to_next_event(unsigned int lid) {
 		}
 	}
 
-	printf("\t \t LP:%d bound->timestamp: %f type:%d sender:%d\n",lid,LPS[lid]->bound->timestamp,LPS[lid]->bound->type,LPS[lid]->bound->sender);
+//	printf("\t \t LP:%d bound->timestamp: %f type:%d sender:%d\n",lid,LPS[lid]->bound->timestamp,LPS[lid]->bound->type,LPS[lid]->bound->sender);
 
 	return LPS[lid]->bound;
 }
@@ -224,8 +221,9 @@ void process_bottom_halves(void) {
 						// If the matched message is in the past, we have to rollback
 						if(matched_msg->timestamp <= lvt(lid_receiver)) {
 							#ifdef HAVE_GLP_SCH_MODULE
-							if(virify_time_group(matched_msg->timestamp)){
-								rollback_group(matched_msg->timestamp,lid_receiver);
+							if(verify_time_group(matched_msg->timestamp)){
+								if(GLPS[LPS[lid_receiver]->current_group]->tot_LP != 1)
+									rollback_group(matched_msg->timestamp,lid_receiver);
 							}
 							#endif
 
@@ -250,8 +248,9 @@ void process_bottom_halves(void) {
 					if(msg_to_process->timestamp < lvt(lid_receiver)) {
 						
 						#ifdef HAVE_GLP_SCH_MODULE
-                                               	if(virify_time_group(matched_msg->timestamp)){
-                                                	rollback_group(matched_msg->timestamp,lid_receiver);
+                                               	if(verify_time_group(msg_to_process->timestamp)){
+							if(GLPS[LPS[lid_receiver]->current_group]->tot_LP != 1)
+								rollback_group(msg_to_process->timestamp,lid_receiver);
                                                 }
                                                 #endif
 
@@ -309,3 +308,16 @@ unsigned long long generate_mark(unsigned int lid) {
 
 	return (unsigned long long)( ((k1 + k2) * (k1 + k2 + 1) / 2) + k2 );
 }
+
+
+
+//TODO MN
+//Giving a timestamp and lid of LP; it has to return the message with the maximum timestamp lesser than timestamp
+msg_t *list_get_node_timestamp(simtime_t timestamp, unsigned int lid){
+	msg_t *prev = LPS[lid]->bound;
+	while(list_prev(prev)!=NULL && prev->timestamp >= timestamp ){
+		prev = list_prev(prev);
+	}
+	//LPS[lid]->bound = prev;
+	return prev;
+}	

@@ -20,25 +20,22 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, event_t *c
 
 		case PACKET: {
 			state->packet_count++;
-			/*if(content != NULL && content->sender != me){
+			if(content != NULL && content->sender != me){
 				if(content->pointer!=NULL){
 					content->pointer[0]++;
 				}
-			}*/
+			}
 			new_event.sent_at = now;
 			new_event.pointer = state->pointer;
 			new_event.sender = me;
-			//int recv = FindReceiver(TOPOLOGY_MESH);
-			int recv = 1;
+			
+			int recv = FindReceiver(TOPOLOGY_MESH);
+		
 			timestamp = now + Expent(DELAY);
-			if(me==1 && (((int)timestamp) % 2)==0){
-				recv = 0; 
-			}
 	
-			/*if(content != NULL && content->pointer!=NULL)
-				printf("[%d]\n",content->pointer[0]);*/
+			//if(content != NULL && content->pointer!=NULL && me!=content->sender)
+			//	printf("\t \t LP[%d] mem of %d = %d\n",me,content->sender,content->pointer[0]);
 
-			printf("\t \t Send event with timestamp:%f now:%f\n",timestamp,now);
 			ScheduleNewEvent(recv, timestamp, PACKET, &new_event, sizeof(new_event));
 		}
 	}

@@ -57,7 +57,6 @@ int init_BH(void) {
         
         int i;
         char* addr;
-        int ret;
         int sobjs;
 
         if(handled_sobjs < 0) return INVALID_SOBJS_COUNT; 

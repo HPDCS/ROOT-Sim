@@ -75,8 +75,8 @@ void ECS(long long ds, unsigned long long hitted_object){
 	msg_t control_msg;
 	msg_hdr_t msg_hdr;
 
-	printf("ECS synch started on pgd %ld - start wait for hitted object num %lu by %d\n", ds, hitted_object, current_lp);
-	fflush(stdout);
+	if(LPS[current_lp]->state == LP_STATE_SILENT_EXEC) 
+		printf("----ERROR----\n");	
 
 	// do whatever you want, but you need to reopen access to the objects you cross-depend on before returning
 
@@ -87,11 +87,16 @@ void ECS(long long ds, unsigned long long hitted_object){
 		LPS[current_lp]->wait_on_rendezvous = current_evt->rendezvous_mark;
 	}
 
+#ifndef HAVE_GLP_SCH_MODULE
+
+	printf("LP[%d] hits %llu rende_mark:%lu LP_wait_on_rende:%lu\n",current_lp, hitted_object, current_evt->rendezvous_mark,LPS[current_lp]->wait_on_rendezvous);
+
+#endif
 	//TODO MN
 	
 	#ifdef HAVE_GLP_SCH_MODULE	
 	//Manage counter to cross-state 
-	ECS_stat* temp_update_access = LPS[current_lp]->ECS_stat_table[LPS[hitted_object]->current_group];
+	ECS_stat* temp_update_access = LPS[current_lp]->ECS_stat_table[hitted_object];
 	if( (temp_update_access->last_access != -1.0) && ((current_lvt - temp_update_access->last_access) < THRESHOLD_TIME_ECS) )
 		temp_update_access->count_access++;
 	else
@@ -100,7 +105,7 @@ void ECS(long long ds, unsigned long long hitted_object){
 	temp_update_access->last_access = current_lvt;
 	//data structure that save the number of access and the last timestamp of the access
 	
-	printf("LP:%d --> last_access:%f | count_access:%d \n",current_lp,temp_update_access->last_access,temp_update_access->count_access);
+//	printf("LP:%d --> last_access:%f | count_access:%d \n",current_lp,temp_update_access->last_access,temp_update_access->count_access);
 	
 	#endif
 
@@ -115,8 +120,7 @@ void ECS(long long ds, unsigned long long hitted_object){
 	control_msg.rendezvous_mark = current_evt->rendezvous_mark;
 	control_msg.mark = generate_mark(current_lp);
 
-	printf("ECS_stub lp %d sends to  %d START with  mark %llu\n", current_lp, hitted_object, control_msg.mark);
-	fflush(stdout);
+//	printf("ECS_stub lp %d sends to  %d START with  mark %llu\n", current_lp, hitted_object, control_msg.mark);
 
 	// This message must be stored in the output queue as well, in case this LP rollbacks
 	bzero(&msg_hdr, sizeof(msg_hdr_t));
@@ -142,91 +146,9 @@ void ECS(long long ds, unsigned long long hitted_object){
 	// Give back control to the simulation kernel's user-level thread
 //	context_switch(&LPS[current_lp]->context, &kernel_context);
 	long_jmp(&kernel_context, kernel_context.rax);
-//	lp_alloc_schedule();
-//	
-
-
-//	sched_info.ds = ds;
-//	sched_info.count = ECS_indexes[ds] + 1; // +1 since index ranges from 0
-//	sched_info.objects = ECS_synch_table[ds];
-	/* passing into LP mode - here for the ECS table registered objects */
-//	ioctl(ioctl_fd,IOCTL_SCHEDULE_ON_PGD, &sched_info);
 
 }
 
-void print_rsp(void){
-	unsigned long rsp;
-	
-	__asm__ __volatile__ (
-		"mov %%rsp, %%rax\n\t"
-       		"mov %%eax, %0\n\t"
-    		: "=m" (rsp)
-    		: /* no input */
-    		: "%rax"
-    	);
-
-    	printf("RSP = %p\n", rsp);
-	fflush(stdout);
-}
-
-/*
-static void rootsim_cross_state_dependency_handler(void) { // for now a simple printf of the cross-state dependency involved LP
-	
-	unsigned long __id = -1;
-	void *__addr  = NULL;
-	void *__current_rsp  = NULL;
-	unsigned long __pgd_ds = -1;
-
-	__asm__ __volatile__("push %rax");
-	__asm__ __volatile__("push %rbx");
-	__asm__ __volatile__("push %rcx");
-	__asm__ __volatile__("push %rdx");
-	__asm__ __volatile__("push %rdi");
-	__asm__ __volatile__("push %rsi");
-	__asm__ __volatile__("push %r8");
-	__asm__ __volatile__("push %r9");
-	__asm__ __volatile__("push %r10");
-	__asm__ __volatile__("push %r11");
-	__asm__ __volatile__("push %r12");
-	__asm__ __volatile__("push %r13");
-	__asm__ __volatile__("push %r14");
-	__asm__ __volatile__("push %r15");
-	//__asm__ __volatile__("movq 0x10(%%rbp), %%rax; movq %%rax, %0" : "=m"(addr) : );
-	//__asm__ __volatile__("movq 0x8(%%rbp), %%rax; movq %%rax, %0" : "=m"(id) : );
-
-	__asm__ __volatile__("movq %%rbp, %%rcx" :: );
-	__asm__ __volatile__("movq %%rsp, %%rbp" :: );
-	//__asm__ __volatile__("movq %%rsp, %%rbp; movq %%rbp, %0" : "=m"(__addr) : );
-	//printf("Valueo of rbp: %p\n",__addr); fflush(stdout);
-
-	__asm__ __volatile__("movq 0xb8(%%rbp), %%rax; movq %%rax, %0" : "=m"(__addr) : );
-	__asm__ __volatile__("movq 0xb0(%%rbp), %%rax; movq %%rax, %0" : "=m"(__id) : );
-	__asm__ __volatile__("movq 0xa8(%%rbp), %%rax; movq %%rax, %0" : "=m"(__pgd_ds) : );
-
-	__asm__ __volatile__("movq %%rcx, %%rbp" :: );
-
-	printf("rootsim callback received by the kernel need to sync, pointer passed is %p - hitted object is %u - pdg is %u\n", __addr, __id, __pgd_ds);
-	ECS_stub((int)__pgd_ds,(unsigned int)__id);
-	__asm__ __volatile__("pop %r15");
-	__asm__ __volatile__("pop %r14");
-	__asm__ __volatile__("pop %r13");
-	__asm__ __volatile__("pop %r12");
-	__asm__ __volatile__("pop %r11");
-	__asm__ __volatile__("pop %r10");
-	__asm__ __volatile__("pop %r9");
-	__asm__ __volatile__("pop %r8");
-	__asm__ __volatile__("pop %rsi");
-	__asm__ __volatile__("pop %rdi");
-	__asm__ __volatile__("pop %rdx");
-	__asm__ __volatile__("pop %rcx");
-	__asm__ __volatile__("pop %rbx");
-	__asm__ __volatile__("pop %rax");
-//	__asm__ __volatile__("addq $0x18 , %rsp ; popq %rbp ;  addq $0x8, %rsp ; retq");
-//	__asm__ __volatile__("addq $0x20 , %rsp ;  popq %rbp; addq $0x10 , %rsp ; retq");
-	__asm__ __volatile__("addq $0x28 , %rsp ; popq %rbx ; popq %rbp; addq $0x10 , %rsp ; retq"); // BUONA CON LA PRINTF
-//	__asm__ __volatile__("addq $0x50 , %rsp ; popq %rbx ; popq %rbp; addq $0x10 , %rsp ; retq"); // BUONA SENZA PRINTF
-}
-*/
 // inserire qui tutte le api di schedulazione/deschedulazione
 
 void lp_alloc_thread_init(void) {
@@ -243,8 +165,6 @@ void lp_alloc_thread_init(void) {
         }
 
         ret = ioctl(ioctl_fd, IOCTL_SET_ANCESTOR_PGD);  //ioctl call
-        printf("set ancestor returned %d\n",ret);
-	fflush(stdout);
 
         lp_memory_ioctl_info.ds = -1;
         lp_memory_ioctl_info.mapped_processes = n_prc;
@@ -252,16 +172,21 @@ void lp_alloc_thread_init(void) {
         callback_function =  rootsim_cross_state_dependency_handler;
         lp_memory_ioctl_info.callback = callback_function;
 
-
-        printf("indirizzo originale %p, passato %p\n",  rootsim_cross_state_dependency_handler,  lp_memory_ioctl_info.callback);
-	fflush(stdout);
-
         ret = ioctl(ioctl_fd, IOCTL_SET_VM_RANGE, &lp_memory_ioctl_info);
 	
 	/* required to manage the per-thread memory view */
 	pgd_ds = ioctl(ioctl_fd, IOCTL_GET_PGD);  //ioctl call
-	printf("rootsim thread: pgd descriptor is %d\n",pgd_ds);
-	fflush(stdout);
+}
+
+bool present_ECS_table(unsigned int lid){
+	unsigned int i;
+	unsigned int *table = LPS[current_lp]->ECS_synch_table;
+
+	for(i=0;i<(LPS[current_lp]->ECS_index + 1);i++){
+		if(table[i] == lid)	return true;
+	}
+
+	return false;
 }
 
 
@@ -276,14 +201,15 @@ void lp_alloc_schedule(void) {
 	
 	//TODO MN open group memory view only if lvt < GVT+deltaT	
 	#ifdef HAVE_GLP_SCH_MODULE
-	if(virify_time_group(lvt(current_lp))){
+	if(verify_time_group(lvt(current_lp)) && GLPS[LPS[current_lp]->current_group]->tot_LP > 1){
 		list = GLPS[LPS[current_lp]->current_group]->local_LPS;
         	for(i=0; i<n_prc; i++){
-                	if(i!=current_lp && list[i]!=NULL){
+                	if(i!=current_lp && list[i]!=NULL && !present_ECS_table(i)){
 				sched_info.count++;
         			LPS[current_lp]->ECS_synch_table[sched_info.count] = i;
 			}
 		}
+		printf("GROUP EXECUTION\n");
 	}
 	#endif	
 	
@@ -297,7 +223,7 @@ void lp_alloc_schedule(void) {
 	for(i=0;i<sched_info.count;i++) {
                 sched_info.objects_mmap_pointers[i]= get_base_pointer(sched_info.objects[i]);
         }
-	
+
 	/* passing into LP mode - here for the pgd_ds-th LP */
 	ioctl(ioctl_fd,IOCTL_SCHEDULE_ON_PGD, &sched_info);
 	

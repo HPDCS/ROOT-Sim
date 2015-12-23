@@ -34,12 +34,12 @@ char* get_memory_ecs(unsigned int sobj, size_t size){
 }
 
 int allocator_ecs_init(unsigned int sobjs) {
-        unsigned int i,y;
+        unsigned int y;
         char* addr;
 	unsigned long init_addr;
-	void** pml4;
 	unsigned int num_mmap = sobjs * 2;
 	size_t size = PER_LP_PREALLOCATED_MEMORY / 2;
+	int allocation_counter, pml4_index;
 
 	ioctl_fd = open("/dev/ktblmgr", O_RDONLY);
         if (ioctl_fd == -1) {
@@ -53,17 +53,11 @@ int allocator_ecs_init(unsigned int sobjs) {
 
 	y=0;
 	while(y<num_mmap){
-		int pml4_index = ioctl(ioctl_fd, IOCTL_GET_FREE_PML4);
-		//printf("Value of pml4_index: %d\n",pml4_index);
+		pml4_index = ioctl(ioctl_fd, IOCTL_GET_FREE_PML4);
 		init_addr =(ulong) pml4_index;
-		//printf("Value of initial_add_before_shift = %p\n",init_addr);
 		init_addr = init_addr << 39;
-		//printf("Value of convert = %p\n",PML4(init_addr));
-		//printf("Value of initial_add = %p\n",init_addr);
+		allocation_counter = 0;	
 		
-		fflush(stdout);
-		int allocation_counter = 0;
-
 		for(; y < num_mmap; y++) {
 		
 			// map memory
@@ -73,14 +67,10 @@ int allocator_ecs_init(unsigned int sobjs) {
 			addr[1] = addr[0];
 		
 			// Keep track of the per-LP allocated memory
-			if(y % 2 == 0) {
-				//printf("y=%d\n",y);
+			if(y % 2 == 0)
 				mem_region[y/2].base_pointer = mem_region[y/2].brk = addr;
-			}
-				
-			allocation_counter++;
 			
-			//printf("Y: %d allocation_counter: %d\n",y,allocation_counter);
+			allocation_counter++;
 			
 			if(allocation_counter == (512*2)){
 			 	y++; 
@@ -94,8 +84,6 @@ int allocator_ecs_init(unsigned int sobjs) {
 		
 		
 	}
-	
-	//ioctl(ioctl_fd, IOCTL_PGD_PRINT);
 	
 	return SUCCESS_AECS;
 }

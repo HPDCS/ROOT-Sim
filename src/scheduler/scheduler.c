@@ -139,8 +139,7 @@ void scheduler_init(void) {
 		GLPS[i]->local_LPS = (LP_state **)rsalloc(n_prc * sizeof(LP_state *));
 		unsigned int j;
 		for (j = 0; j < n_prc; j++) {
-			GLPS[i]->local_LPS[j] = (LP_state *)rsalloc(sizeof(LP_state));
-			bzero(GLPS[i]->local_LPS[j], sizeof(LP_state));
+			GLPS[i]->local_LPS[j] = NULL;
 		}
 
 	        //Initialise current group
@@ -247,8 +246,8 @@ static void LP_main_loop(void *args) {
 		
 		switch_to_application_mode();
 		
-		printf("Timestamp: %f\n",current_evt->timestamp);
-
+//		printf("Timestamp: %f\n",current_evt->timestamp);
+		
 		ProcessEvent[current_lp](LidToGid(current_lp), current_evt->timestamp, current_evt->type, current_evt->event_content, current_evt->size, current_state);
 		
 	
@@ -341,12 +340,10 @@ void initialize_LP(unsigned int lp) {
 	LPS[lp]->ECS_synch_table[0] = lp;
 	#endif
 
-printf("Before context_create\n");
 	// Create user thread
 	#ifdef ENABLE_ULT
 	context_create(&LPS[lp]->context, LP_main_loop, NULL, LPS[lp]->stack, LP_STACK_SIZE);
 	#endif
-printf("After context_create\n");
 }
 
 
@@ -440,12 +437,18 @@ void activate_LP(unsigned int lp, simtime_t lvt, void *evt, void *state) {
 //		enable_preemption();
 //	#endif
 	
-	printf(" LP %d current_evt->timestap:%f\n",lp,current_evt->timestamp);
+//	printf(" LP %d current_evt->timestap:%f\n",lp,current_evt->timestamp);
 	#ifdef HAVE_CROSS_STATE
 	// Activate memory view for the current LP
-//	printf("Schedule %d\n",lp);
 	lp_alloc_schedule();
 	#endif
+
+	//printf("Schedule %d\n",lp);
+	//printf("LP[%d] state: %lu\n",lp,LPS[lp]->state);
+	if(is_blocked_state(LPS[lp]->state)){
+		printf("wait_on_rendezvoud:%lu tid:%d wait_object:%d \n ",LPS[lp]->wait_on_rendezvous,tid,LPS[lp]->wait_on_object);
+		rootsim_error(true, "Critical condition: LP[%d] has a wrong state -> %lu. Aborting...\n", lp,LPS[lp]->state);
+	}
 
 	#ifdef ENABLE_ULT
 	context_switch(&kernel_context, &LPS[lp]->context);
@@ -475,6 +478,25 @@ void activate_LP(unsigned int lp, simtime_t lvt, void *evt, void *state) {
 
 
 
+bool check_rendevouz_request(unsigned int lid){
+	msg_t *temp_mess;	
+
+	if(LPS[lid]->state != LP_STATE_WAIT_FOR_SYNCH)
+		return false;
+	
+	printf("CHECK LP: %d\n",lid);
+	
+	if(LPS[lid]->bound != NULL && list_next(LPS[lid]->bound) != NULL){
+		temp_mess = list_next(LPS[lid]->bound);
+		printf("\t \t Randezvous_mark: %llu LPS[%d]->wait_on_rendezvous:%llu\n",temp_mess->rendezvous_mark, lid,LPS[lid]->wait_on_rendezvous);
+		return temp_mess->type == RENDEZVOUS_START && LPS[lid]->wait_on_rendezvous > temp_mess->rendezvous_mark;
+	}
+	
+	return false;
+	
+}
+
+
 /**
 * This function checks wihch LP must be activated (if any),
 * and in turn activates it. This is used only to support forward execution.
@@ -501,10 +523,6 @@ void schedule(void) {
 		default:
 			lid = smallest_timestamp_first();
 	}
-	if(lid != IDLE_PROCESS){
-		printf("\t Selected LP %d with state %#08x\n", lid, LPS[lid]->state);
-		fflush(stdout);
-	}
 	
 	// No logical process found with events to be processed
 	if (lid == IDLE_PROCESS) {
@@ -522,13 +540,28 @@ void schedule(void) {
 	}
 
 	
-	if(!is_blocked_state(LPS[lid]->state) && LPS[lid]->state != LP_STATE_READY_FOR_SYNCH) {
+//	if( (!is_blocked_state(LPS[lid]->state) && LPS[lid]->state != LP_STATE_READY_FOR_SYNCH) || check_rendevouz_request(lid) ) {
+	if(!is_blocked_state(LPS[lid]->state) && LPS[lid]->state != LP_STATE_READY_FOR_SYNCH){
 		event = advance_to_next_event(lid);
-	} else {
-//		printf("Riavvio %d\n", lid);
+	}
+	else {
 		event = LPS[lid]->bound;
 	}
 
+#ifndef HAVE_GLP_SCH_MODULE
+int i;
+for (i = 0; i < n_prc_per_thread; i++){
+	if(LPS_bound[i]->bound != NULL)
+		printf("LP[%d]->state:%d at time: %f\n",LPS_bound[i]->lid,LPS_bound[i]->state,LPS_bound[i]->bound->timestamp);
+	else
+		printf("LP[%d]->state:%d\n",LPS_bound[i]->lid,LPS_bound[i]->state);
+}
+
+if(lid != event->sender){	
+	printf("LP[%d] from %d \t \t type:%d  mark:%d timestamp:%f\n",lid,event->sender,event->type,event->mark,event->timestamp);
+	fflush(stdout);
+}
+#endif
 
 	// Sanity check: if we get here, it means that lid is a LP which has
 	// at least one event to be executed. If advance_to_next_event() returns
@@ -552,8 +585,6 @@ void schedule(void) {
 	}
 	#endif
 	
-	printf("\t \t LP %d with lvt:%f executes message %d at timestamp %f\n",lid,lvt(lid),event->mark,event->timestamp);
-	
 	// Schedule the LP user-level thread
 	LPS[lid]->state = LP_STATE_RUNNING;
 	activate_LP(lid, lvt(lid), event, state);
@@ -563,9 +594,11 @@ void schedule(void) {
 		send_outgoing_msgs(lid);
 	}
 
+
 	#ifdef HAVE_CROSS_STATE
 	if(resume_execution && !is_blocked_state(LPS[lid]->state)) {
 		unblock_synchronized_objects(lid);
+
 		// This is to avoid domino effect when relying on rendezvous messages
 		force_LP_checkpoint(lid);
 	}
