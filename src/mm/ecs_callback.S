@@ -42,9 +42,9 @@
 #    |---------------------|
 #    |        RSI          |
 #    |---------------------|
-#    |        RAX          |
-#    |---------------------|
 #    |       FLAGS         |
+#    |---------------------|
+#    |        RAX          |
 #    |---------------------|
 #    |  WORKER THREAD ID   |  -> Placed by kernel module
 #    |---------------------|
@@ -56,9 +56,14 @@
 # This function accepts no arguments
 
 rootsim_cross_state_dependency_handler:
-	pushfq
-
 	pushq %rax
+
+	# Save FLAGS
+	lahf
+	seto %al
+	push %rax
+
+	# Force checking 
 	movq $1, %rax
 
 	pushq %rsi
@@ -83,9 +88,13 @@ rootsim_cross_state_dependency_handler:
 	popq %rdi
 	popq %rsi
 
+	# Restore FLAGS
+	popq %rax
+	addb $0x7f, %al		# Overflow if OF was set
+	sahf
+
 	popq %rax
 
-	popfq
 	
 	addq $16, %rsp
 	ret
