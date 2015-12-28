@@ -99,9 +99,7 @@ bool anti_control_message(msg_t * msg) {
 
 		unsigned int lid_receiver = msg->receiver;
 
-		#ifndef HAVE_GLP_SCH_MODULE
 		printf("1 ACM LP[%d]->state:%d\n",lid_receiver,LPS[lid_receiver]->state);
-		#endif
 		
 		//Check if a relative message exists
 		//TODO non serve andare indietro più del tempo di rendezvous_rollback
@@ -125,8 +123,10 @@ bool anti_control_message(msg_t * msg) {
 		
 			#ifdef HAVE_GLP_SCH_MODULE
                         if(verify_time_group(old_rendezvous->timestamp)){
-				if(GLPS[LPS[lid_receiver]->current_group]->tot_LP != 1)
+				if(GLPS[LPS[lid_receiver]->current_group]->tot_LP != 1){
+					printf("Rollback group [POSITIVE] at time %f\n",LPS[lid_receiver]->bound->timestamp);	
 					rollback_group(old_rendezvous->timestamp,lid_receiver);
+				}
                         }
                        	#endif
 

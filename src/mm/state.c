@@ -216,12 +216,14 @@ void rollback(unsigned int lid) {
 	// Find the state to be restored, and prune the wrongly computed states
 	restore_state = list_tail(LPS[lid]->queue_states);
 	while (restore_state != NULL && restore_state->lvt > last_correct_event->timestamp) { // It's > rather than >= because we have already taken into account simultaneous events
+		printf("[%d] State: %f\n",lid,restore_state->lvt);
 		s = restore_state;
 		restore_state = list_prev(restore_state);
 		log_delete(s->log);
 		s->last_event = (void *)0xDEADC0DE;
 		list_delete_by_content(lid, LPS[lid]->queue_states, s);
 	}
+		printf("[%d] SELECTED State: %f\n",lid,restore_state->lvt);
 
 	// Restore the simulation state and correct the state base pointer
 	RestoreState(lid, restore_state);

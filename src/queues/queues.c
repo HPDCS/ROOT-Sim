@@ -228,8 +228,10 @@ void process_bottom_halves(void) {
 							LPS[lid_receiver]->state = LP_STATE_ROLLBACK;
 							#ifdef HAVE_GLP_SCH_MODULE
 							if(verify_time_group(LPS[lid_receiver]->bound->timestamp)){
-								if(GLPS[LPS[lid_receiver]->current_group]->tot_LP != 1)
+								if(GLPS[LPS[lid_receiver]->current_group]->tot_LP != 1){
 									rollback_group(LPS[lid_receiver]->bound->timestamp,lid_receiver);
+								printf("Rollback group [NEGATIVE] at time %f\n",LPS[lid_receiver]->bound->timestamp);
+}
 							}
 							#endif
 						}
@@ -259,8 +261,10 @@ void process_bottom_halves(void) {
 						
 						#ifdef HAVE_GLP_SCH_MODULE
                                                	if(verify_time_group(LPS[lid_receiver]->bound->timestamp)){
-							if(GLPS[LPS[lid_receiver]->current_group]->tot_LP != 1)
+							if(GLPS[LPS[lid_receiver]->current_group]->tot_LP != 1){
+								printf("Rollback group [POSITIVE] at time %f\n",LPS[lid_receiver]->bound->timestamp);
 								rollback_group(LPS[lid_receiver]->bound->timestamp,lid_receiver);
+							}
                                                 }
                                                 #endif
 					}
@@ -323,8 +327,10 @@ unsigned long long generate_mark(unsigned int lid) {
 msg_t *list_get_node_timestamp(simtime_t timestamp, unsigned int lid){
 	msg_t *prev = LPS[lid]->bound;
 	while(list_prev(prev)!=NULL && prev->timestamp >= timestamp ){
+		printf("[%d] list_get_node_timestamp timestamp:%f\n",lid,prev->timestamp);
 		prev = list_prev(prev);
 	}
 	//LPS[lid]->bound = prev;
+		printf("[%d] list_get_node_timestamp SELECTED timestamp:%f\n",lid,prev->timestamp);
 	return prev;
 }	

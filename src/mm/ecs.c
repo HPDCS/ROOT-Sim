@@ -76,7 +76,7 @@ void ECS(long long ds, unsigned long long hitted_object){
 	msg_hdr_t msg_hdr;
 
 	if(LPS[current_lp]->state == LP_STATE_SILENT_EXEC) 
-		printf("----ERROR----\n");	
+		printf("----ERROR---- LP[%d] Hitted:%llu Timestamp:%f\n",current_lp,hitted_object,lvt(current_lp));	
 
 	// do whatever you want, but you need to reopen access to the objects you cross-depend on before returning
 
