@@ -354,6 +354,21 @@ case $host_os in
 esac
 
 
+# We might want to disable all kernel modules explicitly. This is useful, for example,
+# when installing the simulator in a per-user space, in a system where the modules
+# were already installed. Using the --disable-modules won't compile nor try to
+# install any module.
+AC_ARG_ENABLE([modules],
+    AS_HELP_STRING([--disable-modules], [Disable compilation/installation of kernel modules]))
+
+ac_disable_modules=no
+AS_IF([test "x$enable_modules" = "xno"], [
+  ac_disable_modules=yes
+  ac_kernel_headers=no
+])
+AM_CONDITIONAL([NO_KERNEL_MODULES], [test "x$ac_disable_modules" = "xyes"])
+
+
 # Per-module checks. To be run only if we are on Linux and kernel headers are available
 if test "x$ac_kernel_headers" = "xyes"
 then
@@ -551,6 +566,15 @@ else
 fi
 
 
+# Compose message to tell whether modules are disabled
+if test "x$ac_disable_modules" = "xyes"
+then
+	ac_modules="Kernel modules compilation/installation disabled via --disable-modules"
+else
+	ac_modules="Kernel modules will be compiled and installed (disable via --disable-modules)"
+fi
+
+
 cat<<EOF
 
 
@@ -566,5 +590,6 @@ LP Preemption Support......... : ${ac_preemption}
 LP Rebinding.................. : ${ac_lp_rebinding}
 Event Cross State Management.. : ${ac_ecs}
 
+${ac_modules}
 
 EOF
