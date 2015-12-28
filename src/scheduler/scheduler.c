@@ -41,6 +41,7 @@
 #include <scheduler/scheduler.h>
 #include <scheduler/stf.h>
 #include <mm/state.h>
+#include <mm/ecs.h>
 #include <mm/dymelor.h>
 #include <statistics/statistics.h>
 #include <arch/thread.h>
@@ -149,6 +150,10 @@ void scheduler_init(void) {
 	        spinlock_init(&GLPS[i]->lock);
         	GLPS[i]->local_LPS[i] = LPS[i];
 	        GLPS[i]->tot_LP = 1;
+		GLPS[i]->initial_group_time = 0.0;
+		GLPS[i]->counter_rollback = 0;
+		GLPS[i]->lvt = 0.0;
+		GLPS[i]->state = GLP_STATE_READY;
 
 	}
         #endif
@@ -508,11 +513,15 @@ void schedule(void) {
 	unsigned int lid;
 	msg_t *event;
 	void *state;
+	bool result_log;
 
 	#ifdef HAVE_CROSS_STATE
 	bool resume_execution = false;
 	#endif
-	
+
+	#ifdef HAVE_GLP_SCH_MODULE
+	bool finish_time_group = false;
+	#endif	
 	// Find next LP to be executed, depending on the chosen scheduler
 	switch (rootsim_config.scheduler) {
 
@@ -533,11 +542,30 @@ void schedule(void) {
 	// If we have to rollback
     	if(LPS[lid]->state == LP_STATE_ROLLBACK) {
 		rollback(lid);
+				
+		#ifdef HAVE_GLP_SCH_MODULE
+			//TODO MN da rivedere perchè il contatore va decrementato al termine della silent execution
+			LPS[lid]->state = LP_STATE_SILENT_EXEC;
+			if(GLPS[LPS[lid]->current_group]->counter_rollback == 1){
+				GLPS[LPS[lid]->current_group]->counter_rollback = 0;
+				GLPS[LPS[lid]->current_group]->state = GLP_STATE_READY;
+			}
+			else
+				GLPS[LPS[lid]->current_group]->counter_rollback--;
+			
+		#else
+			LPS[lid]->state = LP_STATE_READY;
+			send_outgoing_msgs(lid);
+		#endif
 
-		LPS[lid]->state = LP_STATE_READY;
-		send_outgoing_msgs(lid);
 		return;
 	}
+
+
+	#ifdef HAVE_GLP_SCH_MODULE
+	if(verify_time_group(lvt(lid))) finish_time_group = true;
+	#endif
+
 
 	
 //	if( (!is_blocked_state(LPS[lid]->state) && LPS[lid]->state != LP_STATE_READY_FOR_SYNCH) || check_rendevouz_request(lid) ) {
@@ -547,6 +575,12 @@ void schedule(void) {
 	else {
 		event = LPS[lid]->bound;
 	}
+	
+	#ifdef HAVE_GLP_SCH_MODULE
+	if(event->timestamp > GLPS[LPS[lid]->current_group]->lvt)
+		GLPS[LPS[lid]->current_group]->lvt = event->timestamp;
+	#endif
+
 
 #ifndef HAVE_GLP_SCH_MODULE
 int i;
@@ -584,6 +618,7 @@ if(lid != event->sender){
 		resume_execution = true;
 	}
 	#endif
+
 	
 	// Schedule the LP user-level thread
 	LPS[lid]->state = LP_STATE_RUNNING;
@@ -598,14 +633,28 @@ if(lid != event->sender){
 	#ifdef HAVE_CROSS_STATE
 	if(resume_execution && !is_blocked_state(LPS[lid]->state)) {
 		unblock_synchronized_objects(lid);
+		
+		#ifdef HAVE_GLP_SCH_MODULE
+		GLPS[LPS[lid]->current_group]->state = GLP_STATE_READY;
+		#endif		
 
 		// This is to avoid domino effect when relying on rendezvous messages
 		force_LP_checkpoint(lid);
 	}
 	#endif
+	
+	#ifdef HAVE_GLP_SCH_MODULE
+	if(!resume_execution && !verify_time_group(lvt(lid)) && finish_time_group && !is_blocked_state(LPS[lid]->state))
+                force_LP_checkpoint(lid);
+	#endif
 
 	// Log the state, if needed
-	LogState(lid);
+	result_log = LogState(lid);
+	
+	#ifdef HAVE_GLP_SCH_MODULE
+	if(result_log && verify_time_group(lvt(lid)))
+		force_checkpoint_group(lid);
+	#endif
 
 }
 

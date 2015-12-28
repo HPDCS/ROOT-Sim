@@ -42,6 +42,7 @@
 #include <mm/dymelor.h>
 #include <statistics/statistics.h>
 
+#include <scheduler/group.h>
 
 /// Function pointer to switch between the parallel and serial version of SetState
 void (*SetState)(void *new_state);
@@ -55,17 +56,21 @@ void (*SetState)(void *new_state);
 *
 * @param lid The Light Process Identifier
 */
-void LogState(unsigned int lid) {
+bool LogState(unsigned int lid) {
 
 	bool take_snapshot = false;
 	state_t new_state; // If inserted, list API makes a copy of this
 
 	if(is_blocked_state(LPS[lid]->state)) {
-		return;
+		return take_snapshot;
 	}
 
 	// Keep track of the invocations to LogState
 	LPS[lid]->from_last_ckpt++;
+
+	#ifdef HAVE_GLP_SCH_MODULE
+	GLPS[LPS[lid]->current_group]->from_last_ckpt++;
+	#endif
 
 	if(LPS[lid]->state_log_forced) {
 		LPS[lid]->state_log_forced = false;
@@ -82,6 +87,16 @@ void LogState(unsigned int lid) {
 			break;
 
 		case PERIODIC_STATE_SAVING:
+			#ifdef HAVE_GLP_SCH_MODULE
+			if(verify_time_group(lvt(lid))){
+				if(GLPS[LPS[lid]->current_group]->from_last_ckpt >= GLPS[LPS[lid]->current_group]->ckpt_period){
+					take_snapshot = true;
+					GLPS[LPS[lid]->current_group]->from_last_ckpt = 0;
+					LPS[lid]->from_last_ckpt = 0;
+				}
+			}
+			else 
+			#endif
 			if(LPS[lid]->from_last_ckpt >= LPS[lid]->ckpt_period) {
 				take_snapshot = true;
 				LPS[lid]->from_last_ckpt = 0;
@@ -110,6 +125,8 @@ void LogState(unsigned int lid) {
 		(void)list_insert_tail(lid, LPS[lid]->queue_states, &new_state);
 
 	}
+	
+	return take_snapshot;
 }
 
 
@@ -335,6 +352,11 @@ void set_checkpoint_mode(int ckpt_mode) {
 */
 void set_checkpoint_period(unsigned int lid, int period) {
 	LPS[lid]->ckpt_period = period;
+
+	#ifdef HAVE_GLP_SCH_MODULE
+	GLPS[lid]->ckpt_period = period;
+	#endif
+	
 }
 
 

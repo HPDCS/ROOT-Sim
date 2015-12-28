@@ -31,11 +31,10 @@
 #include <core/core.h>
 #include <core/timer.h>
 #include <datatypes/list.h>
-#include <gvt/gvt.h>
 #include <scheduler/process.h>
 #include <scheduler/binding.h>
-//#include <scheduler/group.h>
 #include <statistics/statistics.h>
+#include <gvt/gvt.h>
 
 #include <mm/allocator.h>
 #include <arch/thread.h>
@@ -479,6 +478,7 @@ static void check_num_group_over_core(int n, unsigned int (*statistics)[n]){
 	
 	for(i=0;i<n_prc;i++){
 		if(statistics[i][1]!=i && new_GLPS[i]->tot_LP == 0){
+			
 			//Update old group
                 	new_GLPS[statistics[i][1]]->local_LPS[i] = NULL;
                 	new_GLPS[statistics[i][1]]->tot_LP--;
@@ -501,12 +501,38 @@ static void check_num_group_over_core(int n, unsigned int (*statistics)[n]){
 
 /**
 //TODO MN
+* 
+*
+* @author Nazzareno Marziale
+* @author Francesco Nobilia
+*/
+static void check_timestamp_group_bound(void){
+        unsigned int i,j;
+	GLP_state *temp_GLPS;
+
+        for(i=0;i<n_grp;i++){
+		temp_GLPS = new_GLPS[i];
+                if(temp_GLPS->tot_LP > 1){
+			for(j=0;j<n_prc;j++){
+				if(temp_GLPS->local_LPS[j]!=NULL && lvt(j) > temp_GLPS->initial_group_time){
+					temp_GLPS->initial_group_time = lvt(j);
+				} 
+			}
+		}
+		temp_GLPS->lvt = temp_GLPS->initial_group_time;
+		temp_GLPS->counter_rollback = 0;
+		temp_GLPS->state = GLP_STATE_READY;
+	}
+}
+
+/**
+//TODO MN
 * Updates all groups configurations according to LPs' statistics
 *
 * @author Nazzareno Marziale
 * @author Francesco Nobilia
 */
-static void update_clustering_groups(){
+static void update_clustering_groups(void){
 	unsigned int i;
 	unsigned int statistics[n_prc][DIM_STAT_GROUP];
 
@@ -524,6 +550,10 @@ static void update_clustering_groups(){
 	
 	//Check if the number of groups is at least the number of cores
 	check_num_group_over_core(DIM_STAT_GROUP,statistics);
+
+	//Find maximum timestamp of bound between LPs inside a group
+	check_timestamp_group_bound();
+
 }
 
 /**
@@ -651,7 +681,7 @@ static void install_GLPS_binding(void) {
 * @author Nazzareno Marziale
 * @author Francesco Nobilia
 */
-static void switch_GLPS(){
+static void switch_GLPS(void){
 	unsigned int i;
 	for (i = 0; i < n_grp; i++) {
 		memcpy(GLPS[i]->local_LPS, new_GLPS[i]->local_LPS, n_prc * sizeof(LP_state *));
@@ -726,6 +756,11 @@ void rebind_LPs(void) {
 					spinlock_init(&new_GLPS[i]->lock);
 					new_GLPS[i]->local_LPS[i] = LPS[i];
 					new_GLPS[i]->tot_LP = 1;
+					new_GLPS[i]->initial_group_time = 0.0;
+					new_GLPS[i]->counter_rollback = 0;
+					new_GLPS[i]->lvt = 0.0;
+					new_GLPS[i]->state = GLP_STATE_READY;
+					
 				}
 			#else
 				new_LPS_binding = rsalloc(sizeof(int) * n_prc);
@@ -741,10 +776,14 @@ void rebind_LPs(void) {
 
 #ifdef HAVE_LP_REBINDING
 	if(master_thread()) {
+		#ifndef HAVE_GLP_SCH_MODULE 
 		if(timer_value_seconds(rebinding_timer) >= REBIND_INTERVAL) {
 			timer_restart(rebinding_timer);
 			binding_phase++;
-		} else if(atomic_read(&worker_thread_reduction) == 0) {
+		}
+		#endif
+
+		if(atomic_read(&worker_thread_reduction) == 0) {
 			
 			//TODO MN
 			#ifdef HAVE_GLP_SCH_MODULE
@@ -797,4 +836,6 @@ void rebind_LPs(void) {
 #endif
 }
 
-
+void force_rebind_GLP(void){
+	binding_phase++;
+}

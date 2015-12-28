@@ -21,11 +21,29 @@ unsigned int smallest_timestamp_first(void) {
 	
 	// For each local process
 	for (i = 0; i < n_prc_per_thread; i++) {
-
+	
+		#ifdef HAVE_GLP_SCH_MODULE
+		if(is_blocked_state(LPS_bound[i]->state) || is_blocked_state(GLPS[LPS_bound[i]->current_group]->state)){ 
+			if(!is_blocked_state(GLPS[LPS_bound[i]->current_group]->state)){
+				switch(LPS_bound[i]->state){
+					case LP_STATE_WAIT_FOR_SYNCH:
+						GLPS[LPS_bound[i]->current_group]->state = GLP_STATE_WAIT_FOR_SYNCH;
+						break;
+					case LP_STATE_WAIT_FOR_UNBLOCK:
+						GLPS[LPS_bound[i]->current_group]->state = GLP_STATE_WAIT_FOR_UNBLOCK;
+						break;
+					default:
+						break;
+				}
+			}	
+			continue;
+		}
+		#else
 		// If waiting for synch, don't take into account the LP
 		if(is_blocked_state(LPS_bound[i]->state)) {
 			continue;
 		}
+		#endif
 		//If the LP is in READY_FOR_SYNCH has to handle the same messagge of ECS
 		else if(LPS_bound[i]->state == LP_STATE_READY_FOR_SYNCH) {
 			// The LP handles the suspended event as the next event

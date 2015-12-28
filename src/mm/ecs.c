@@ -76,7 +76,7 @@ void ECS(long long ds, unsigned long long hitted_object){
 	msg_hdr_t msg_hdr;
 
 	if(LPS[current_lp]->state == LP_STATE_SILENT_EXEC) 
-		printf("----ERROR---- LP[%d] Hitted:%llu Timestamp:%f\n",current_lp,hitted_object,lvt(current_lp));	
+		printf("----ERROR---- LP[%d] Hitted:%llu Timestamp:%f\n",current_lp,hitted_object,LPS[current_lp]->bound->timestamp);	
 
 	// do whatever you want, but you need to reopen access to the objects you cross-depend on before returning
 
@@ -134,6 +134,12 @@ void ECS(long long ds, unsigned long long hitted_object){
 
 	// Block the execution of this LP
 	LPS[current_lp]->state = LP_STATE_WAIT_FOR_SYNCH;
+
+	#ifdef HAVE_GLP_SCH_MODULE
+	if(verify_time_group(current_lvt))
+		GLPS[LPS[current_lp]->current_group]->state = GLP_STATE_WAIT_FOR_SYNCH;
+	#endif
+
 	LPS[current_lp]->wait_on_object = LidToGid(hitted_object);
 
 	// Store which LP we are waiting for synchronization. Upon reschedule, it is open immediately
@@ -201,16 +207,18 @@ void lp_alloc_schedule(void) {
 	
 	//TODO MN open group memory view only if lvt < GVT+deltaT	
 	#ifdef HAVE_GLP_SCH_MODULE
-	if(verify_time_group(lvt(current_lp)) && GLPS[LPS[current_lp]->current_group]->tot_LP > 1){
+	if(verify_time_group(lvt(current_lp)) && GLPS[LPS[current_lp]->current_group]->tot_LP > 1 && check_start_group(lvt(current_lp),current_lp)){
 		list = GLPS[LPS[current_lp]->current_group]->local_LPS;
         	for(i=0; i<n_prc; i++){
                 	if(i!=current_lp && list[i]!=NULL && !present_ECS_table(i)){
-				sched_info.count++;
         			LPS[current_lp]->ECS_synch_table[sched_info.count] = i;
+				sched_info.count++;
 			}
 		}
 		printf("GROUP EXECUTION\n");
 	}
+
+	printf("Verify:%d LP:%d state:%lu Sched_info.count:%d\n",verify_time_group(lvt(current_lp)),current_lp,LPS[current_lp]->state,sched_info.count);
 	#endif	
 	
 	sched_info.objects = LPS[current_lp]->ECS_synch_table; // pgd descriptor range from 0 to number threads - a subset of object ids 	

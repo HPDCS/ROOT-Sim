@@ -230,7 +230,7 @@ void process_bottom_halves(void) {
 							if(verify_time_group(LPS[lid_receiver]->bound->timestamp)){
 								if(GLPS[LPS[lid_receiver]->current_group]->tot_LP != 1){
 									rollback_group(LPS[lid_receiver]->bound->timestamp,lid_receiver);
-								printf("Rollback group [NEGATIVE] at time %f\n",LPS[lid_receiver]->bound->timestamp);
+								printf("Rollback group [NEGATIVE] at time %f lid_receiver: %d\n",LPS[lid_receiver]->bound->timestamp, lid_receiver);
 }
 							}
 							#endif
@@ -262,7 +262,7 @@ void process_bottom_halves(void) {
 						#ifdef HAVE_GLP_SCH_MODULE
                                                	if(verify_time_group(LPS[lid_receiver]->bound->timestamp)){
 							if(GLPS[LPS[lid_receiver]->current_group]->tot_LP != 1){
-								printf("Rollback group [POSITIVE] at time %f\n",LPS[lid_receiver]->bound->timestamp);
+								printf("Rollback group [POSITIVE] at time %f lid_receiver: %d\n",LPS[lid_receiver]->bound->timestamp, lid_receiver);
 								rollback_group(LPS[lid_receiver]->bound->timestamp,lid_receiver);
 							}
                                                 }

@@ -5,6 +5,13 @@
 #include <errno.h>
 #include <mm/allocator_ecs.h>
 
+#include <stddef.h>
+
+#if defined(OS_LINUX)
+#include <stropts.h>
+#endif
+
+
 #include <sys/stat.h>
 #include <fcntl.h>
 

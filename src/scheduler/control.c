@@ -32,7 +32,7 @@
 #include <communication/communication.h>
 #include <mm/dymelor.h>
 #include <datatypes/list.h>
-
+#include <gvt/gvt.h>
 
 #ifdef HAVE_CROSS_STATE
 void unblock_synchronized_objects(unsigned int lid) {
@@ -124,7 +124,7 @@ bool anti_control_message(msg_t * msg) {
 			#ifdef HAVE_GLP_SCH_MODULE
                         if(verify_time_group(old_rendezvous->timestamp)){
 				if(GLPS[LPS[lid_receiver]->current_group]->tot_LP != 1){
-					printf("Rollback group [POSITIVE] at time %f\n",LPS[lid_receiver]->bound->timestamp);	
+					printf("Rollback group [ANTI_CONTROL_MSG] at time %f\n",LPS[lid_receiver]->bound->timestamp);	
 					rollback_group(old_rendezvous->timestamp,lid_receiver);
 				}
                         }
@@ -133,6 +133,7 @@ bool anti_control_message(msg_t * msg) {
 	                LPS[lid_receiver]->state = LP_STATE_ROLLBACK;
 		}
 		old_rendezvous->rendezvous_mark = 0;
+
 		#ifndef HAVE_GLP_SCH_MODULE
 		printf("Setting old rendezvous mark to 0\n");
 		#endif
@@ -195,6 +196,10 @@ bool receive_control_msg(msg_t *msg) {
 
 			if(LPS[msg->receiver]->wait_on_rendezvous == msg->rendezvous_mark) {
 				LPS[msg->receiver]->state = LP_STATE_READY_FOR_SYNCH;
+				#ifdef HAVE_GLP_SCH_MODULE
+				GLPS[LPS[msg->receiver]->current_group]->state = GLP_STATE_READY_FOR_SYNCH;
+				#endif
+				
 			}
 
 			break;
@@ -207,17 +212,32 @@ bool receive_control_msg(msg_t *msg) {
 				LPS[msg->receiver]->wait_on_rendezvous = 0;
 				LPS[msg->receiver]->wait_on_object = 0;
 				LPS[msg->receiver]->state = LP_STATE_READY;
+				#ifdef HAVE_GLP_SCH_MODULE
+				GLPS[LPS[msg->receiver]->current_group]->state = GLP_STATE_READY;
+				#endif
 			}
 			current_lp = msg->receiver;
 			current_lvt = msg->timestamp;
 			force_LP_checkpoint(current_lp);
-			LogState(current_lp);
+			
+			bool result_log;
+			// Log the state, if needed
+			result_log = LogState(current_lp);
+			
+			#ifdef HAVE_GLP_SCH_MODULE
+			if(result_log && verify_time_group(msg->timestamp))
+				force_checkpoint_group(current_lp);
+			#endif
+			
 			current_lvt = INFTY;
 			current_lp = IDLE_PROCESS;
-
+	
 			break;
 
 		case RENDEZVOUS_ROLLBACK:
+			return true;
+		
+		case NULL_LOG_MESSAGE:
 			return true;
 
 		default:
@@ -251,6 +271,10 @@ bool process_control_msg(msg_t *msg) {
 			LPS[msg->receiver]->wait_on_rendezvous = msg->rendezvous_mark;
 
 			LPS[msg->receiver]->state = LP_STATE_WAIT_FOR_UNBLOCK;
+			#ifdef HAVE_GLP_SCH_MODULE
+			if(verify_time_group(msg->timestamp))
+				GLPS[LPS[msg->receiver]->current_group]->state = GLP_STATE_WAIT_FOR_UNBLOCK;
+			#endif
 			bzero(&control_msg, sizeof(msg_t));
 			control_msg.sender = msg->receiver;
 			control_msg.receiver = msg->sender;
@@ -269,6 +293,12 @@ bool process_control_msg(msg_t *msg) {
 		case RENDEZVOUS_UNBLOCK:
 			LPS[msg->receiver]->state = LP_STATE_READY;
 			break;*/
+		
+		case NULL_LOG_MESSAGE:
+			force_LP_checkpoint(msg->receiver);
+			LogState(msg->receiver);
+			break;
+	
 
 		default:
 			rootsim_error(true, "Trying to handle a control message which is meaningless at schedule time: %d\n", msg->type);

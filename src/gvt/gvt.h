@@ -49,6 +49,7 @@ extern simtime_t adopt_new_gvt(simtime_t);
 #ifdef HAVE_GLP_SCH_MODULE
 /*TODO MN method to retrive the boundary of groups */
 extern bool verify_time_group(simtime_t);
+extern bool need_clustering(void);
 #endif
 
 #endif
