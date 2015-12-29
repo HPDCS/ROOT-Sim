@@ -50,6 +50,7 @@ extern simtime_t adopt_new_gvt(simtime_t);
 /*TODO MN method to retrive the boundary of groups */
 extern bool verify_time_group(simtime_t);
 extern bool need_clustering(void);
+extern void update_last_time_group(void);
 #endif
 
 #endif

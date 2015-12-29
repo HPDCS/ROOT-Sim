@@ -119,13 +119,15 @@ bool anti_control_message(msg_t * msg) {
 			//Set LP->bound to the message that caused ECS
 			LPS[lid_receiver]->bound = old_rendezvous;
 	                while (LPS[lid_receiver]->bound != NULL && LPS[lid_receiver]->bound->timestamp >= old_rendezvous->timestamp) {
-	                	LPS[lid_receiver]->bound = list_prev(LPS[lid_receiver]->bound);
+	                	if(list_prev(LPS[lid_receiver]->bound) == NULL)
+					break;
+				LPS[lid_receiver]->bound = list_prev(LPS[lid_receiver]->bound);
 	        	}
 		
 			#ifdef HAVE_GLP_SCH_MODULE
-                        if(verify_time_group(old_rendezvous->timestamp)){
+                        if(check_start_group(lid_receiver) && verify_time_group(old_rendezvous->timestamp)){
 				printf("Rollback group [ANTI_CONTROL_MSG] at time %f\n",LPS[lid_receiver]->bound->timestamp);	
-				rollback_group(old_rendezvous->timestamp,lid_receiver);
+				rollback_group(old_rendezvous,lid_receiver);
                         }
                        	#endif
 
@@ -133,9 +135,9 @@ bool anti_control_message(msg_t * msg) {
 		}
 		#ifdef HAVE_GLP_SCH_MODULE
                 else{
-              		if((verify_time_group(old_rendezvous->timestamp) &&
-			   old_rendezvous->timestamp <= GLPS[LPS[lid_receiver]->current_group]->lvt->timestamp)){
-					rollback_group(LPS[lid_receiver]->bound->timestamp,IDLE_PROCESS);
+              		if(check_start_group(lid_receiver) && verify_time_group(old_rendezvous->timestamp) &&
+			   old_rendezvous->timestamp < GLPS[LPS[lid_receiver]->current_group]->lvt->timestamp){
+					rollback_group(LPS[lid_receiver]->bound,IDLE_PROCESS);
 					printf("Rollback group [ANTI_CONTROL_MSG] at time %f lid_receiver: %d\n",LPS[lid_receiver]->bound->timestamp, lid_receiver);        
 			}
 		}
@@ -318,6 +320,7 @@ bool process_control_msg(msg_t *msg) {
 		case SYNCH_GROUP:
 			#ifdef HAVE_GLP_SCH_MODULE
 			current_group = GLPS[LPS[msg->receiver]->current_group];
+			printf("LP[%d] SYNCH GROUP GLP_state %lu\n",msg->receiver,current_group->state);
 
 			// Execute another time this event because i rolled back, 
 			// but in this case i'm already in group execution

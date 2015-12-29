@@ -68,6 +68,6 @@ typedef struct _ECS_stat{
 
 extern GLP_state **GLPS;
 
-extern void rollback_group(simtime_t, unsigned int);
+extern void rollback_group(msg_t*, unsigned int);
 extern bool check_start_group(unsigned int);
 extern void force_checkpoint_group(unsigned int);

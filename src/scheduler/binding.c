@@ -526,6 +526,8 @@ static void check_timestamp_group_bound(void){
 		temp_GLPS = new_GLPS[i];
 		for(j=0;j<temp_GLPS->tot_LP;j++){
 			lp_index = find_LP_newGLPS(lp_index,i);
+			if(lp_index == IDLE_PROCESS)
+				rootsim_error(true,"Returned IDLE_PROCESS in check_timestamp_group_bound. Aborting...");
 			temp_LP = temp_GLPS->local_LPS[lp_index];
 			lp_index++;
 			if(list_next(temp_LP->bound)!=NULL)
@@ -536,8 +538,11 @@ static void check_timestamp_group_bound(void){
 			if(temp_GLPS->initial_group_time==NULL || temp_GLPS->initial_group_time->timestamp < result_evt->timestamp)
 				temp_GLPS->initial_group_time = result_evt;
 		}
+		lp_index=0;
 		temp_GLPS->lvt = temp_GLPS->initial_group_time;
 		temp_GLPS->counter_rollback = 0;
+		temp_GLPS->counter_synch = 0;
+		temp_GLPS->counter_silent_ex = 0;
 		temp_GLPS->state = GLP_STATE_WAIT_FOR_GROUP;
 	}
 }
@@ -692,7 +697,8 @@ static void send_control_group_message(void) {
 			Send(&control_msg);
                         
 			lp_index++;
-		}	
+		}
+		lp_index=0;	
 		
 	}
 	
@@ -744,6 +750,15 @@ static void switch_GLPS(void){
 	for (i = 0; i < n_grp; i++) {
 		memcpy(GLPS[i]->local_LPS, new_GLPS[i]->local_LPS, n_prc * sizeof(LP_state *));
 		GLPS[i]->tot_LP = new_GLPS[i]->tot_LP;
+		GLPS[i]->initial_group_time = new_GLPS[i]->initial_group_time;
+		GLPS[i]->state = new_GLPS[i]->state;
+		GLPS[i]->lvt = new_GLPS[i]->lvt;
+		GLPS[i]->counter_rollback = new_GLPS[i]->counter_rollback;
+		GLPS[i]->counter_silent_ex = new_GLPS[i]->counter_silent_ex;
+		GLPS[i]->from_last_ckpt = new_GLPS[i]->from_last_ckpt;
+		GLPS[i]->ckpt_period = new_GLPS[i]->ckpt_period;
+		GLPS[i]->group_is_ready = new_GLPS[i]->group_is_ready;
+		GLPS[i]->counter_synch = new_GLPS[i]->counter_synch;	
 	}
 
 	for (i = 0; i < n_prc; i++)
@@ -751,7 +766,8 @@ static void switch_GLPS(void){
 
 
 	//TODO MN
-	//	If there exist one LP that changes group, then we need to force checkpoint for storing the new group's image.
+	//	If there exist one LP that changes group, then we need to force checkpoint for storing the new group's image
+	update_last_time_group();
 }
 
 /* -------------------------------------------------------------------- */
@@ -886,7 +902,7 @@ void rebind_LPs(void) {
 		}
 		unsigned int k = 0;
 		for(;k<n_prc_per_thread;k++)
-			printf("[tid:%d] LP:%d\n",tid,LPS_bound[k]->lid);
+			printf("[tid:%d] LP:%d Group_bound:%p\n",tid,LPS_bound[k]->lid,GLPS[LPS_bound[k]->current_group]->lvt);
 		thread_barrier(&all_thread_barrier);
 		
 		#endif

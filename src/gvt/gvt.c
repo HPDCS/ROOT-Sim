@@ -322,13 +322,16 @@ bool verify_time_group(simtime_t timestamp){
 
 bool need_clustering(void){
 	if(!updated_group){
-		last_time_group = last_gvt + DELTA_GROUP;
 		printf("last_time_group: %f\n",last_time_group);
 		updated_group = true;	
 		return updated_group;
 	}
 
 	return false;
+}
+
+void update_last_time_group(void){
+	last_time_group = last_gvt + DELTA_GROUP;
 }
 #endif
 

@@ -11,16 +11,17 @@ unsigned int find_lp_group(unsigned int last_lp, unsigned int group){
 }
 
 //TODO MN
-void rollback_group(simtime_t timestamp, unsigned int receiver){
+void rollback_group(msg_t *straggler, unsigned int receiver){
 	
 	unsigned int i, lp_index = 0;
 	LP_state *local_LP;
 	GLP_state *current_group;
 
-	current_group = GLPS[LPS[receiver]->current_group];
+	current_group = GLPS[straggler->receiver];
 	
-	LPS[receiver]->target_rollback = LPS[receiver]->bound;
-	current_group->lvt = LPS[receiver]->bound;
+	if(receiver != IDLE_PROCESS)
+		LPS[receiver]->target_rollback = LPS[receiver]->bound;
+	current_group->lvt = straggler;
 	current_group->state = GLP_STATE_ROLLBACK;
 	current_group->counter_rollback = current_group->tot_LP;
 	current_group->counter_silent_ex = current_group->tot_LP; 
@@ -28,14 +29,14 @@ void rollback_group(simtime_t timestamp, unsigned int receiver){
 	if(current_group->tot_LP == 1) return;
 
 	for(i=0; i<current_group->tot_LP; i++){
-		lp_index = find_lp_group(lp_index,LPS[receiver]->current_group);
+		lp_index = find_lp_group(lp_index,LPS[straggler->receiver]->current_group);
 		if(lp_index == IDLE_PROCESS)
 			rootsim_error(true, "Error, returned IDLE PROCESS during found LP GROUP. Aborting...");
 		local_LP = LPS[lp_index];
 		if(lp_index!=receiver){
 			printf("ROLLBACK GROUP LP[%d]\n",lp_index);
                        	//Giving a timestamp it has to return the message with the maximum timestamp lesser than timestamp
-                       	local_LP->bound = list_get_node_timestamp(timestamp,lp_index);
+                       	local_LP->bound = list_get_node_timestamp(straggler->timestamp,lp_index);
                        	local_LP->target_rollback = local_LP->bound;
                        	local_LP->state = LP_STATE_ROLLBACK;
 		}
@@ -44,6 +45,7 @@ void rollback_group(simtime_t timestamp, unsigned int receiver){
 		
 		
 	}
+	
 }
 
 bool check_start_group (unsigned int lid){
@@ -65,7 +67,7 @@ void force_checkpoint_group(unsigned int lid){
         		control_msg.timestamp = lvt(lid);
         		control_msg.send_time = lvt(lid);
         		control_msg.message_kind = positive;
-        		control_msg.mark = generate_mark(current_lp);
+        		control_msg.mark = generate_mark(lid);
 
 			// This message must be stored in the output queue as well, in case this LP rollback
 			bzero(&msg_hdr, sizeof(msg_hdr_t)); //TODO check if it could be removed

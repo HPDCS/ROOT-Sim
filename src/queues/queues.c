@@ -222,21 +222,24 @@ void process_bottom_halves(void) {
 						if(matched_msg->timestamp <= lvt(lid_receiver)) {
 							LPS[lid_receiver]->bound = list_prev(matched_msg);
 							while ((LPS[lid_receiver]->bound != NULL) && LPS[lid_receiver]->bound->timestamp == msg_to_process->timestamp) {
+								if(list_prev(LPS[lid_receiver]->bound) == NULL)
+                                        				break;
+
 								LPS[lid_receiver]->bound = list_prev(LPS[lid_receiver]->bound);
 							}
 							LPS[lid_receiver]->state = LP_STATE_ROLLBACK;
 							#ifdef HAVE_GLP_SCH_MODULE
-							if(verify_time_group(matched_msg->timestamp)){
-								rollback_group(LPS[lid_receiver]->bound->timestamp,lid_receiver);
+							if(check_start_group(lid_receiver) && verify_time_group(matched_msg->timestamp)){
+								rollback_group(LPS[lid_receiver]->bound,lid_receiver);
 								printf("Rollback group [NEGATIVE] at time %f lid_receiver: %d\n",LPS[lid_receiver]->bound->timestamp, lid_receiver);
 							}
 							#endif
 						}
 						#ifdef HAVE_GLP_SCH_MODULE
 						else{
-							if((verify_time_group(matched_msg->timestamp) &&
-							matched_msg->timestamp <= GLPS[LPS[lid_receiver]->current_group]->lvt->timestamp)){
-                                                                rollback_group(LPS[lid_receiver]->bound->timestamp,IDLE_PROCESS);
+							if(check_start_group(lid_receiver) && verify_time_group(matched_msg->timestamp) &&
+							matched_msg->timestamp < GLPS[LPS[lid_receiver]->current_group]->lvt->timestamp){
+                                                                rollback_group(LPS[lid_receiver]->bound,IDLE_PROCESS);
                                                                 printf("Rollback group [NEGATIVE] at time %f lid_receiver: %d\n",LPS[lid_receiver]->bound->timestamp, lid_receiver);
 							}
 						}
@@ -262,25 +265,30 @@ void process_bottom_halves(void) {
 
 						LPS[lid_receiver]->bound = list_prev(msg_to_process);
 						while ((LPS[lid_receiver]->bound != NULL) && LPS[lid_receiver]->bound->timestamp == msg_to_process->timestamp) {
+							if(list_prev(LPS[lid_receiver]->bound) == NULL)
+                                       				break;
+
 							LPS[lid_receiver]->bound = list_prev(LPS[lid_receiver]->bound);
 						}
 						LPS[lid_receiver]->state = LP_STATE_ROLLBACK;
 						
 						#ifdef HAVE_GLP_SCH_MODULE
-                                               	if(verify_time_group(msg_to_process->timestamp)){
+                                               	if(check_start_group(lid_receiver) &&  verify_time_group(msg_to_process->timestamp)){
 								printf("Rollback group [POSITIVE] at time %f lid_receiver: %d\n",LPS[lid_receiver]->bound->timestamp, lid_receiver);
-								rollback_group(LPS[lid_receiver]->bound->timestamp,lid_receiver);
+								rollback_group(LPS[lid_receiver]->bound,lid_receiver);
                                                 }
                                                 #endif
 					}
 					#ifdef HAVE_GLP_SCH_MODULE
+					/*
                                         else{
-                                        	if((verify_time_group(msg_to_process->timestamp) &&
-                                                msg_to_process->timestamp <= GLPS[LPS[lid_receiver]->current_group]->lvt->timestamp)){
-                                                	rollback_group(LPS[lid_receiver]->bound->timestamp,IDLE_PROCESS);
-                                                        printf("Rollback group [NEGATIVE] at time %f lid_receiver: %d\n",LPS[lid_receiver]->bound->timestamp, lid_receiver);                  
+                                        	if(check_start_group(lid_receiver) && verify_time_group(msg_to_process->timestamp) &&
+                                                msg_to_process->timestamp < GLPS[LPS[lid_receiver]->current_group]->lvt->timestamp){
+                                                	rollback_group(LPS[lid_receiver]->bound,IDLE_PROCESS);
+                                                        printf("Rollback group [POSITIVE] at time %f lid_receiver: %d\n",LPS[lid_receiver]->bound->timestamp, lid_receiver);                  
                              			}
                                         }
+*/
                                         #endif
 
 					break;
