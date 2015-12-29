@@ -611,7 +611,54 @@ void schedule(void) {
 }
 
 #else
+void debug_group_schedule(int lid){
+	bool print;
+	unsigned int i,j;
+	int temp_group[n_grp]={[0 ... (n_grp-1)] = 0};;
+	simtime_t selected_min,evt_t;
+	
+	print = false;
+	
+	if(LPS_bound[lid]->state == LP_STATE_READY_FOR_SYNCH)
+        	selected_min = LPS_bound[lid]->bound->timestamp;
+       	else
+                selected_min = next_event_timestamp(LPS_bound[lid]->lid);
 
+	for(i=0;i<n_prc;i++){
+		if(LPS_bound[i]->state == LP_STATE_READY_FOR_SYNCH)
+        	        evt_t = LPS_bound[i]->bound->timestamp;
+	        else
+                	evt_t = next_event_timestamp(LPS_bound[i]->lid);
+		
+		if(evt_t < selected_min){
+			print = true;
+			break;
+		}
+	}
+	
+	if(print){
+		printf("********************* LPS_BOUND ********************\n");
+		for(i=0;i<n_prc_per_thread;i++){
+			if(LPS_bound[i]->state == LP_STATE_READY_FOR_SYNCH)
+				evt_t = LPS_bound[i]->bound->timestamp;
+			else
+				evt_t = next_event_timestamp(LPS_bound[i]->lid);
+
+			printf("LP[%d] state:%lu bound_ts:%f next_event_ts:%f\n",i,LPS[i]->state,LPS[i]->bound->timestamp,evt_t->timestamp);
+		}
+		printf("********************* GROUP ********************\n");
+		for(i=0;i<n_prc_thread;i++)
+			temp_group[LPS_bound[i]->current_group] = 1;
+		for(i=0;i<n_grp;i++){
+			if(temp_group[i] == 1){
+				printf("GLP[%d] state:%lu lvt_t:%f init_t:%f\n",i,GLPS[i]->state,GLPS[i]->lvt->timestamp,GLPS[i]->initial_group_time->timestamp);
+			}
+		}
+		printf("***********************************************\n");
+	}
+	else
+		printf("Nothing of strange... simulation_time:%f\n",selected_min);
+}
 /**
 * This function checks wihch GLP must be activated (if any),
 * and in turn activates it. This is used only to support forward execution.
@@ -647,6 +694,8 @@ void schedule(void) {
                 statistics_post_lp_data(lid, STAT_IDLE_CYCLES, 1.0);
                 return;
         }
+
+	debug_group_schedule(lid);
 
         current_group = GLPS[LPS[lid]->current_group];
 
