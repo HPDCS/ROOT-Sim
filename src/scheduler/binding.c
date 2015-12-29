@@ -499,6 +499,15 @@ static void check_num_group_over_core(int n, unsigned int (*statistics)[n]){
 	
 }
 
+
+unsigned int find_LP_newGLPS(unsigned int last_lp, unsigned int group){
+	for(;last_lp<n_prc;last_lp++){
+		if(new_GLPS[group]->local_LPS[last_lp]!=NULL)
+			return last_lp;
+	}
+	return IDLE_PROCESS;
+}
+
 /**
 //TODO MN
 * 
@@ -509,19 +518,27 @@ static void check_num_group_over_core(int n, unsigned int (*statistics)[n]){
 static void check_timestamp_group_bound(void){
         unsigned int i,j;
 	GLP_state *temp_GLPS;
+	LP_state *temp_LP;
+	unsigned int lp_index=0;
+	msg_t *result_evt;
 
         for(i=0;i<n_grp;i++){
 		temp_GLPS = new_GLPS[i];
-                if(temp_GLPS->tot_LP > 1){
-			for(j=0;j<n_prc;j++){
-				if(temp_GLPS->local_LPS[j]!=NULL && lvt(j) > temp_GLPS->initial_group_time){
-					temp_GLPS->initial_group_time = lvt(j);
-				} 
-			}
+		for(j=0;j<temp_GLPS->tot_LP;j++){
+			lp_index = find_LP_newGLPS(lp_index,i);
+			temp_LP = temp_GLPS->local_LPS[lp_index];
+			lp_index++;
+			if(list_next(temp_LP->bound)!=NULL)
+				result_evt = list_next(temp_LP->bound);
+			else
+				result_evt = temp_LP->bound;
+			
+			if(temp_GLPS->initial_group_time==NULL || temp_GLPS->initial_group_time->timestamp < result_evt->timestamp)
+				temp_GLPS->initial_group_time = result_evt;
 		}
 		temp_GLPS->lvt = temp_GLPS->initial_group_time;
 		temp_GLPS->counter_rollback = 0;
-		temp_GLPS->state = GLP_STATE_READY;
+		temp_GLPS->state = GLP_STATE_WAIT_FOR_GROUP;
 	}
 }
 
@@ -550,9 +567,6 @@ static void update_clustering_groups(void){
 	
 	//Check if the number of groups is at least the number of cores
 	check_num_group_over_core(DIM_STAT_GROUP,statistics);
-
-	//Find maximum timestamp of bound between LPs inside a group
-	check_timestamp_group_bound();
 
 }
 
@@ -645,6 +659,48 @@ static inline void GLP_knapsack(void) {
 
 }
 
+
+/** 
+//TODO MN
+* Send control message to groupmate in order to syncronize the start of group
+*
+* @author Nazzareno Marziale
+* @author Francesco Nobilia
+*/
+static void send_control_group_message(void) {
+	unsigned int i,j,lp_index = 0;
+	GLP_state *temp_GLPS;
+        msg_t control_msg;	
+
+	//Find maximum timestamp of bound between LPs inside a group
+	check_timestamp_group_bound();
+	
+	for(i=0;i<n_grp;i++){
+		temp_GLPS = new_GLPS[i];
+                for(j=0;j<temp_GLPS->tot_LP;j++){
+                        lp_index = find_LP_newGLPS(lp_index,i);
+			
+			 // Diretcly place the control message in the target bottom half queue
+			bzero(&control_msg, sizeof(msg_t));
+			control_msg.sender = LidToGid(i);
+			control_msg.receiver = LidToGid(lp_index);
+			control_msg.type = SYNCH_GROUP;
+			control_msg.timestamp = temp_GLPS->initial_group_time->timestamp;
+			control_msg.send_time = temp_GLPS->initial_group_time->timestamp;
+			control_msg.message_kind = positive;
+			control_msg.mark = generate_mark(i);
+			Send(&control_msg);
+                        
+			lp_index++;
+		}	
+		
+	}
+	
+	
+}
+
+
+
 /** 
 //TODO MN
 * Populates the LPS_bound according the group concept
@@ -657,6 +713,8 @@ static void install_GLPS_binding(void) {
 
 	bzero(LPS_bound, sizeof(LP_state *) * n_prc);
 	n_prc_per_thread = 0;
+
+	send_control_group_message();
 
 	for(i = 0; i < n_prc; i++) {
 		if(new_GLPS_binding[new_group_LPS[i]] == tid){
@@ -756,9 +814,10 @@ void rebind_LPs(void) {
 					spinlock_init(&new_GLPS[i]->lock);
 					new_GLPS[i]->local_LPS[i] = LPS[i];
 					new_GLPS[i]->tot_LP = 1;
-					new_GLPS[i]->initial_group_time = 0.0;
+					new_GLPS[i]->initial_group_time = NULL;
 					new_GLPS[i]->counter_rollback = 0;
-					new_GLPS[i]->lvt = 0.0;
+					new_GLPS[i]->counter_synch = 0;
+					new_GLPS[i]->lvt = NULL;
 					new_GLPS[i]->state = GLP_STATE_READY;
 					
 				}
@@ -825,7 +884,7 @@ void rebind_LPs(void) {
 		if(master_thread()) {
 			switch_GLPS();
 		}
-		int k = 0;
+		unsigned int k = 0;
 		for(;k<n_prc_per_thread;k++)
 			printf("[tid:%d] LP:%d\n",tid,LPS_bound[k]->lid);
 		thread_barrier(&all_thread_barrier);

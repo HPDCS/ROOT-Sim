@@ -1,35 +1,53 @@
 #include <scheduler/process.h>
 #ifdef HAVE_GLP_SCH_MODULE
+
+
+unsigned int find_lp_group(unsigned int last_lp, unsigned int group){
+        for(;last_lp<n_prc;last_lp++){
+                if(GLPS[group]->local_LPS[last_lp]!=NULL)
+                        return last_lp;
+        }
+        return IDLE_PROCESS;
+}
+
 //TODO MN
 void rollback_group(simtime_t timestamp, unsigned int receiver){
 	
-	unsigned int i;
-	LP_state **list;
+	unsigned int i, lp_index = 0;
+	LP_state *local_LP;
+	GLP_state *current_group;
+
+	current_group = GLPS[LPS[receiver]->current_group];
 	
-	if(GLPS[LPS[receiver]->current_group]->tot_LP == 1) return;
+	LPS[receiver]->target_rollback = LPS[receiver]->bound;
+	current_group->lvt = LPS[receiver]->bound;
+	current_group->state = GLP_STATE_ROLLBACK;
+	current_group->counter_rollback = current_group->tot_LP;
+	current_group->counter_silent_ex = current_group->tot_LP; 
 
-	list = GLPS[LPS[receiver]->current_group]->local_LPS;
+	if(current_group->tot_LP == 1) return;
 
-	for(i=0; i<n_prc; i++){
-		if(i!=receiver && list[i]!=NULL && timestamp < lvt(i)){
-
-			printf("ROLLBACK GROUP LP[%d]\n",i);
-			//Giving a timestamp it has to return the message with the maximum timestamp lesser than timestamp
-			list[i]->bound = list_get_node_timestamp(timestamp,i);
-//			list_get_node_timestamp(timestamp,i);
-        		list[i]->state = LP_STATE_ROLLBACK;
+	for(i=0; i<current_group->tot_LP; i++){
+		lp_index = find_lp_group(lp_index,LPS[receiver]->current_group);
+		if(lp_index == IDLE_PROCESS)
+			rootsim_error(true, "Error, returned IDLE PROCESS during found LP GROUP. Aborting...");
+		local_LP = LPS[lp_index];
+		if(lp_index!=receiver){
+			printf("ROLLBACK GROUP LP[%d]\n",lp_index);
+                       	//Giving a timestamp it has to return the message with the maximum timestamp lesser than timestamp
+                       	local_LP->bound = list_get_node_timestamp(timestamp,lp_index);
+                       	local_LP->target_rollback = local_LP->bound;
+                       	local_LP->state = LP_STATE_ROLLBACK;
 		}
-	}
 
+		lp_index++;
+		
+		
+	}
 }
 
-bool check_start_group(simtime_t timestamp, unsigned int lid){
-	if(GLPS[LPS[lid]->current_group]->initial_group_time < timestamp){
-		GLPS[LPS[lid]->current_group]->initial_group_time = 0.0;
-		return true;
-	}
-	
-	return false;
+bool check_start_group (unsigned int lid){
+	return GLPS[LPS[lid]->current_group]->state != GLP_STATE_WAIT_FOR_GROUP;
 }
 
 void force_checkpoint_group(unsigned int lid){

@@ -56,6 +56,7 @@
 #define LP_STATE_READY_FOR_SYNCH	0x00011	
 #define LP_STATE_WAIT_FOR_SYNCH		0x01001
 #define LP_STATE_WAIT_FOR_UNBLOCK	0x01002
+#define LP_STATE_WAIT_FOR_GROUP		0x01003
 
 
 #define BLOCKED_STATE			0x01000
@@ -138,6 +139,7 @@ typedef struct _LP_state {
 	#ifdef HAVE_GLP_SCH_MODULE
 	unsigned int current_group;
 	ECS_stat ** ECS_stat_table;
+	msg_t *target_rollback;
 	#endif
 
 } LP_state;

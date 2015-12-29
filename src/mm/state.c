@@ -246,8 +246,11 @@ void rollback(unsigned int lid) {
 	RestoreState(lid, restore_state);
 
 	last_restored_event = restore_state->last_event;
-	reprocessed_events = silent_execution(lid, LPS[lid]->current_base_pointer, last_restored_event, last_correct_event);
-	statistics_post_lp_data(lid, STAT_SILENT, (double)reprocessed_events);
+
+	if(!(check_start_group(lid) && verify_time_group(LPS[lid]->bound->timestamp))){
+		reprocessed_events = silent_execution(lid, LPS[lid]->current_base_pointer, last_restored_event, last_correct_event);
+		statistics_post_lp_data(lid, STAT_SILENT, (double)reprocessed_events);
+	}
 
 	// Control messages must be rolled back as well
 	rollback_control_message(lid, last_correct_event->timestamp);

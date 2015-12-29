@@ -32,6 +32,7 @@
 #include <communication/communication.h>
 #include <mm/dymelor.h>
 #include <datatypes/list.h>
+#include <scheduler/group.h>
 #include <gvt/gvt.h>
 
 #ifdef HAVE_CROSS_STATE
@@ -123,15 +124,24 @@ bool anti_control_message(msg_t * msg) {
 		
 			#ifdef HAVE_GLP_SCH_MODULE
                         if(verify_time_group(old_rendezvous->timestamp)){
-				if(GLPS[LPS[lid_receiver]->current_group]->tot_LP != 1){
-					printf("Rollback group [ANTI_CONTROL_MSG] at time %f\n",LPS[lid_receiver]->bound->timestamp);	
-					rollback_group(old_rendezvous->timestamp,lid_receiver);
-				}
+				printf("Rollback group [ANTI_CONTROL_MSG] at time %f\n",LPS[lid_receiver]->bound->timestamp);	
+				rollback_group(old_rendezvous->timestamp,lid_receiver);
                         }
                        	#endif
 
 	                LPS[lid_receiver]->state = LP_STATE_ROLLBACK;
 		}
+		#ifdef HAVE_GLP_SCH_MODULE
+                else{
+              		if((verify_time_group(old_rendezvous->timestamp) &&
+			   old_rendezvous->timestamp <= GLPS[LPS[lid_receiver]->current_group]->lvt->timestamp)){
+					rollback_group(LPS[lid_receiver]->bound->timestamp,IDLE_PROCESS);
+					printf("Rollback group [ANTI_CONTROL_MSG] at time %f lid_receiver: %d\n",LPS[lid_receiver]->bound->timestamp, lid_receiver);        
+			}
+		}
+		#endif
+		
+
 		old_rendezvous->rendezvous_mark = 0;
 
 		#ifndef HAVE_GLP_SCH_MODULE
@@ -225,7 +235,7 @@ bool receive_control_msg(msg_t *msg) {
 			result_log = LogState(current_lp);
 			
 			#ifdef HAVE_GLP_SCH_MODULE
-			if(result_log && verify_time_group(msg->timestamp))
+			if(result_log && check_start_group(current_lp) && verify_time_group(current_lvt))
 				force_checkpoint_group(current_lp);
 			#endif
 			
@@ -238,6 +248,9 @@ bool receive_control_msg(msg_t *msg) {
 			return true;
 		
 		case NULL_LOG_MESSAGE:
+			return true;
+		
+		case SYNCH_GROUP:
 			return true;
 
 		default:
@@ -257,6 +270,9 @@ bool process_control_msg(msg_t *msg) {
 	msg_t control_msg;
 	#endif
 
+	#ifdef HAVE_GLP_SCH_MODULE
+	GLP_state *current_group;
+	#endif
 
 	if(msg->type < MIN_VALUE_CONTROL || msg->type > MAX_VALUE_CONTROL) {
 		return true;
@@ -297,6 +313,27 @@ bool process_control_msg(msg_t *msg) {
 		case NULL_LOG_MESSAGE:
 			force_LP_checkpoint(msg->receiver);
 			LogState(msg->receiver);
+			break;
+
+		case SYNCH_GROUP:
+			#ifdef HAVE_GLP_SCH_MODULE
+			current_group = GLPS[LPS[msg->receiver]->current_group];
+
+			// Execute another time this event because i rolled back, 
+			// but in this case i'm already in group execution
+			if(current_group->state != GLP_STATE_WAIT_FOR_GROUP) break;
+
+			// Change the state of LP to wait that all the groupmate reach the synch time
+			LPS[msg->receiver]->state = LP_STATE_WAIT_FOR_GROUP;
+			
+			current_group->counter_synch++;
+			if(current_group->counter_synch == current_group->tot_LP){
+				current_group->counter_synch = 0;
+				current_group->state = GLP_STATE_READY;
+			}
+			force_LP_checkpoint(msg->receiver);
+                        LogState(msg->receiver);
+			#endif
 			break;
 	
 

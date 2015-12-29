@@ -207,7 +207,7 @@ void lp_alloc_schedule(void) {
 	
 	//TODO MN open group memory view only if lvt < GVT+deltaT	
 	#ifdef HAVE_GLP_SCH_MODULE
-	if(verify_time_group(lvt(current_lp)) && GLPS[LPS[current_lp]->current_group]->tot_LP > 1 && check_start_group(lvt(current_lp),current_lp)){
+	if( GLPS[LPS[current_lp]->current_group]->tot_LP > 1 && check_start_group(current_lp) && verify_time_group(lvt(current_lp))){
 		list = GLPS[LPS[current_lp]->current_group]->local_LPS;
         	for(i=0; i<n_prc; i++){
                 	if(i!=current_lp && list[i]!=NULL && !present_ECS_table(i)){
