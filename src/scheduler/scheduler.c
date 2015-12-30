@@ -755,8 +755,10 @@ void schedule(void) {
                 event = LPS[lid]->bound;
 	}
 
-        if(current_group->state != GLP_STATE_SILENT_EXEC && check_start_group(lid) && verify_time_group(lvt(lid)))
-                current_group->lvt = event;
+        if(current_group->state != GLP_STATE_SILENT_EXEC && check_start_group(lid) && verify_time_group(lvt(lid))){
+//                printf("UPDATE lvt_group lid:%d sender:%d  msg_type:%lu\n",lid,event->sender,event->type);
+		current_group->lvt = event;
+	}
 
 	if(!check_start_group(lid) && current_group->lvt==event){
 		current_group->counter_synch = 0;

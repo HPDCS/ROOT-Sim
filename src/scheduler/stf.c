@@ -110,6 +110,9 @@ unsigned int smallest_timestamp_first(void) {
 			if(GLPS[LPS_bound[i]->current_group]->state == GLP_STATE_WAIT_FOR_GROUP)
 				continue;
 		}
+		else if(LPS_bound[i]->state == LP_STATE_WAIT_FOR_LOG)
+			 if(GLPS[LPS_bound[i]->current_group]->counter_log != 0)
+				continue;
 		else if(check_state_group(i))
 			continue;
 		#else

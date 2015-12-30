@@ -173,11 +173,14 @@ void process_bottom_halves(void) {
 	for(i = 0; i < n_prc_per_thread; i++) {
 
 		while((msg_to_process = (msg_t *)get_BH(LPS_bound[i]->lid)) != NULL) {
-
+						
 			lid_receiver = msg_to_process->receiver;
+
+//			printf("\t \t receiver:%d sender:%d type:%d timestamp:%f\n",lid_receiver, msg_to_process->sender, msg_to_process->type, msg_to_process->timestamp);			
 
 			// Handle control messages
 			if(!receive_control_msg(msg_to_process)) {
+//				printf("Control lid:%d type:%lu timestamp:%f\n",msg_to_process->receiver,msg_to_process->type,msg_to_process->timestamp);
 				list_deallocate_node_buffer(lid_receiver, msg_to_process);
 				continue;
 			}
@@ -283,7 +286,7 @@ void process_bottom_halves(void) {
                                         else{
                                         	if(check_start_group(lid_receiver) && verify_time_group(msg_to_process->timestamp) &&
                                                 msg_to_process->timestamp < GLPS[LPS[lid_receiver]->current_group]->lvt->timestamp){
-                                                        printf("RG2 [POSITIVE type:%lu] time:%f receiver:%d sender:%d GRP[%d]->lvt:%f\n",msg_to_process->type,LPS[lid_receiver]->bound->timestamp, lid_receiver,msg_to_process->sender,LPS[lid_receiver]->current_group,GLPS[LPS[lid_receiver]->current_group]->lvt->timestamp);
+                                                        printf("RG2 [POSITIVE type:%lu] time:%f receiver:%d sender:%d GRP[%d]->lvt:%f msg->timestamp:%f\n",msg_to_process->type,LPS[lid_receiver]->bound->timestamp, lid_receiver,msg_to_process->sender,LPS[lid_receiver]->current_group,GLPS[LPS[lid_receiver]->current_group]->lvt->timestamp,msg_to_process->timestamp);
                                                 	rollback_group(LPS[lid_receiver]->bound,IDLE_PROCESS);
 							if(n_cores == 1)
 								rootsim_error(true,"Only one core. Rollback is not possible. Aborting...");

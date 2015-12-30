@@ -58,6 +58,7 @@ typedef struct _GLP_state{
 	unsigned int ckpt_period;	// This variable mainains the current checkpointing interval for the LP
 	bool group_is_ready;		// Bool to check if group is at the correct time to execute
 	unsigned int counter_synch;	// Counter to check if all LPs reach the correct time
+	unsigned int counter_log;	// Counter to check if all LPs done the log
 } GLP_state;
 
 // Define how many times a LP exhibits ECS toward another group 

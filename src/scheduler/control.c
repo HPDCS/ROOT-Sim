@@ -239,8 +239,10 @@ bool receive_control_msg(msg_t *msg) {
 			result_log = LogState(current_lp);
 			
 			#ifdef HAVE_GLP_SCH_MODULE
-			if(result_log && check_start_group(current_lp) && verify_time_group(current_lvt)){
-				printf("FCKG lid:%d current_lvt:%f\n",current_lp,current_lvt);	
+			if(result_log && check_start_group(current_lp) && verify_time_group(current_lvt) && GLPS[LPS[current_lp]->current_group]->tot_LP > 1){
+				LPS[current_lp]->state = LP_STATE_WAIT_FOR_LOG;
+				GLPS[LPS[current_lp]->current_group]->counter_log = GLPS[LPS[current_lp]->current_group]->tot_LP-1;
+				printf("FCKG lid:%d current_lvt:%f lvt(%d):%f\n",current_lp,current_lvt,current_lp,lvt(current_lp));	
 				force_checkpoint_group(current_lp);
 			}
 			#endif
@@ -317,6 +319,7 @@ bool process_control_msg(msg_t *msg) {
 			break;*/
 		
 		case NULL_LOG_MESSAGE:
+			GLPS[LPS[msg->receiver]->current_group]->counter_log--;
 			force_LP_checkpoint(msg->receiver);
 			LogState(msg->receiver);
 			break;
@@ -324,7 +327,7 @@ bool process_control_msg(msg_t *msg) {
 		case SYNCH_GROUP:
 			#ifdef HAVE_GLP_SCH_MODULE
 			current_group = GLPS[LPS[msg->receiver]->current_group];
-			printf("LP[%d] SYNCH GROUP GLP_state %lu\n",msg->receiver,current_group->state);
+		//	printf("LP[%d] SYNCH GROUP GLP_state %lu\n",msg->receiver,current_group->state);
 
 			// Execute another time this event because i rolled back, 
 			// but in this case i'm already in group execution

@@ -542,6 +542,7 @@ static void check_timestamp_group_bound(void){
 		temp_GLPS->lvt = temp_GLPS->initial_group_time;
 		temp_GLPS->counter_rollback = 0;
 		temp_GLPS->counter_synch = 0;
+		temp_GLPS->counter_log = 0;
 		temp_GLPS->counter_silent_ex = 0;
 		temp_GLPS->state = GLP_STATE_WAIT_FOR_GROUP;
 	}
@@ -682,6 +683,11 @@ static void send_control_group_message(void) {
 	
 	for(i=0;i<n_grp;i++){
 		temp_GLPS = new_GLPS[i];
+		if(temp_GLPS->tot_LP==1){
+			temp_GLPS->lvt = LPS[i]->bound;
+			temp_GLPS->state = GLP_STATE_READY;
+			continue;
+		}
                 for(j=0;j<temp_GLPS->tot_LP;j++){
                         lp_index = find_LP_newGLPS(lp_index,i);
 			
@@ -759,6 +765,7 @@ static void switch_GLPS(void){
 		GLPS[i]->ckpt_period = new_GLPS[i]->ckpt_period;
 		GLPS[i]->group_is_ready = new_GLPS[i]->group_is_ready;
 		GLPS[i]->counter_synch = new_GLPS[i]->counter_synch;	
+		GLPS[i]->counter_log = new_GLPS[i]->counter_log;	
 	}
 
 	for (i = 0; i < n_prc; i++)
@@ -833,6 +840,7 @@ void rebind_LPs(void) {
 					new_GLPS[i]->initial_group_time = NULL;
 					new_GLPS[i]->counter_rollback = 0;
 					new_GLPS[i]->counter_synch = 0;
+					new_GLPS[i]->counter_log = 0;
 					new_GLPS[i]->lvt = NULL;
 					new_GLPS[i]->state = GLP_STATE_READY;
 					
