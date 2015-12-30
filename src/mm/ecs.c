@@ -136,7 +136,7 @@ void ECS(long long ds, unsigned long long hitted_object){
 	LPS[current_lp]->state = LP_STATE_WAIT_FOR_SYNCH;
 
 	#ifdef HAVE_GLP_SCH_MODULE
-	if(verify_time_group(current_lvt))
+	if(check_start_group(current_lp) && verify_time_group(current_lvt))
 		GLPS[LPS[current_lp]->current_group]->state = GLP_STATE_WAIT_FOR_SYNCH;
 	#endif
 

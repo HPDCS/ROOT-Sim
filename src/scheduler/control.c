@@ -209,7 +209,8 @@ bool receive_control_msg(msg_t *msg) {
 			if(LPS[msg->receiver]->wait_on_rendezvous == msg->rendezvous_mark) {
 				LPS[msg->receiver]->state = LP_STATE_READY_FOR_SYNCH;
 				#ifdef HAVE_GLP_SCH_MODULE
-				GLPS[LPS[msg->receiver]->current_group]->state = GLP_STATE_READY_FOR_SYNCH;
+				if(check_start_group(msg->receiver) && verify_time_group(msg->timestamp))
+					GLPS[LPS[msg->receiver]->current_group]->state = GLP_STATE_READY_FOR_SYNCH;
 				#endif
 				
 			}
@@ -225,7 +226,8 @@ bool receive_control_msg(msg_t *msg) {
 				LPS[msg->receiver]->wait_on_object = 0;
 				LPS[msg->receiver]->state = LP_STATE_READY;
 				#ifdef HAVE_GLP_SCH_MODULE
-				GLPS[LPS[msg->receiver]->current_group]->state = GLP_STATE_READY;
+				if(check_start_group(msg->receiver) && verify_time_group(msg->timestamp))
+					GLPS[LPS[msg->receiver]->current_group]->state = GLP_STATE_READY;
 				#endif
 			}
 			current_lp = msg->receiver;
@@ -290,7 +292,7 @@ bool process_control_msg(msg_t *msg) {
 
 			LPS[msg->receiver]->state = LP_STATE_WAIT_FOR_UNBLOCK;
 			#ifdef HAVE_GLP_SCH_MODULE
-			if(verify_time_group(msg->timestamp))
+			if(check_start_group(msg->receiver) && verify_time_group(msg->timestamp))
 				GLPS[LPS[msg->receiver]->current_group]->state = GLP_STATE_WAIT_FOR_UNBLOCK;
 			#endif
 			bzero(&control_msg, sizeof(msg_t));
