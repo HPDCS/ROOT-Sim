@@ -148,9 +148,8 @@ static void *main_simulation_loop(void *arg) {
 					}
 
 				}
-				#else
-
-				for(;j<n_prc;j++)
+			
+				for(j=0;j<n_prc;j++)
 					printf("LP[%d]:%lu timestamp:%f\n",j,LPS[j]->state,LPS[j]->bound->timestamp);
 				
 				#endif				

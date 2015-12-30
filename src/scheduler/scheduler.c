@@ -614,8 +614,13 @@ void schedule(void) {
 void debug_group_schedule(int lid){
 	bool print;
 	unsigned int i,j;
-	int temp_group[n_grp]={[0 ... (n_grp-1)] = 0};;
-	simtime_t selected_min,evt_t;
+	int temp_group[n_grp];
+	simtime_t selected_min, evt_t;
+
+	for(i=0;i<n_grp;i++){
+		temp_group[i] = 0;
+	}
+
 	
 	print = false;
 	
@@ -627,11 +632,13 @@ void debug_group_schedule(int lid){
 	for(i=0;i<n_prc;i++){
 		if(LPS_bound[i]->state == LP_STATE_READY_FOR_SYNCH)
         	        evt_t = LPS_bound[i]->bound->timestamp;
-	        else
+	        else if(next_event_timestamp(LPS_bound[i]->lid) > 0)
                 	evt_t = next_event_timestamp(LPS_bound[i]->lid);
+		else continue;
 		
 		if(evt_t < selected_min){
 			print = true;
+			printf("**********ERROR lid:%d strange-value:%d selected_min:%f >= evt_t:%f\n",lid,i,selected_min,evt_t);
 			break;
 		}
 	}
@@ -643,15 +650,21 @@ void debug_group_schedule(int lid){
 				evt_t = LPS_bound[i]->bound->timestamp;
 			else
 				evt_t = next_event_timestamp(LPS_bound[i]->lid);
-
-			printf("LP[%d] state:%lu bound_ts:%f next_event_ts:%f\n",i,LPS[i]->state,LPS[i]->bound->timestamp,evt_t->timestamp);
+			if(LPS[i]->bound != NULL)
+				printf("LP[%d] state:%lu bound_ts:%f next_event_ts:%f\n",i,LPS[i]->state,LPS[i]->bound->timestamp,evt_t);
+			else
+				printf("LP[%d] state:%lu bound_ts:null\n",i,LPS[i]->state);
 		}
 		printf("********************* GROUP ********************\n");
-		for(i=0;i<n_prc_thread;i++)
+		for(i=0;i<n_prc_per_thread;i++)
 			temp_group[LPS_bound[i]->current_group] = 1;
 		for(i=0;i<n_grp;i++){
 			if(temp_group[i] == 1){
-				printf("GLP[%d] state:%lu lvt_t:%f init_t:%f\n",i,GLPS[i]->state,GLPS[i]->lvt->timestamp,GLPS[i]->initial_group_time->timestamp);
+				if(GLPS[i]->lvt != NULL && GLPS[i]->initial_group_time != NULL)
+					printf("GLP[%d] state:%lu lvt_t:%f init_t:%f\n",i,GLPS[i]->state,GLPS[i]->lvt->timestamp,GLPS[i]->initial_group_time->timestamp);
+				else 
+					printf("GLP[%d] state:%lu lvt_t:null\n",i,GLPS[i]->state);
+					
 			}
 		}
 		printf("***********************************************\n");
@@ -695,7 +708,7 @@ void schedule(void) {
                 return;
         }
 
-	debug_group_schedule(lid);
+//	debug_group_schedule(lid);
 
         current_group = GLPS[LPS[lid]->current_group];
 
@@ -745,6 +758,11 @@ void schedule(void) {
         if(current_group->state != GLP_STATE_SILENT_EXEC && check_start_group(lid) && verify_time_group(lvt(lid)))
                 current_group->lvt = event;
 
+	if(!check_start_group(lid) && current_group->lvt==event){
+		current_group->counter_synch = 0;
+                current_group->state = GLP_STATE_READY;
+	}
+
         // Sanity check: if we get here, it means that lid is a LP which has
         // at least one event to be executed. If advance_to_next_event() returns
         // NULL, it means that lid has no events to be executed. This is
@@ -781,8 +799,9 @@ void schedule(void) {
 
         if(resume_execution && !is_blocked_state(LPS[lid]->state)) {
                 unblock_synchronized_objects(lid);
-
-                GLPS[LPS[lid]->current_group]->state = GLP_STATE_READY;
+		
+		if(check_start_group(lid) && verify_time_group(lvt(lid)))
+	                GLPS[LPS[lid]->current_group]->state = GLP_STATE_READY;
 
                 // This is to avoid domino effect when relying on rendezvous messages
                 force_LP_checkpoint(lid);
@@ -796,8 +815,10 @@ void schedule(void) {
         // Log the state, if needed
         result_log = LogState(lid);
 
-        if(result_log && check_start_group(lid) && verify_time_group(lvt(lid)) && !is_blocked_state(LPS[lid]->state))
-                force_checkpoint_group(lid);
+        if(result_log && check_start_group(lid) && verify_time_group(lvt(lid)) && !is_blocked_state(LPS[lid]->state)){
+                //printf("FCKG inside scheduler lid:%d lvt:%f type:%lu have_group:%d\n",lid,lvt(lid),LPS[lid]->bound->type,have_group);
+		force_checkpoint_group(lid);
+	}
 
 
 }

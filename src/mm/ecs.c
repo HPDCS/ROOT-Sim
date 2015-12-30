@@ -215,10 +215,10 @@ void lp_alloc_schedule(void) {
 				sched_info.count++;
 			}
 		}
-		printf("GROUP EXECUTION\n");
+//		printf("GROUP EXECUTION\n");
 	}
 
-	printf("Verify:%d LP:%d state:%lu Sched_info.count:%d\n",verify_time_group(lvt(current_lp)),current_lp,LPS[current_lp]->state,sched_info.count);
+//	printf("Check_start_group:%d Verify:%d LP:%d state:%lu Sched_info.count:%d\n",check_start_group(current_lp),verify_time_group(lvt(current_lp)),current_lp,LPS[current_lp]->state,sched_info.count);
 	#endif	
 	
 	sched_info.objects = LPS[current_lp]->ECS_synch_table; // pgd descriptor range from 0 to number threads - a subset of object ids 	

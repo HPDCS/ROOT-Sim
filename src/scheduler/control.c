@@ -239,8 +239,10 @@ bool receive_control_msg(msg_t *msg) {
 			result_log = LogState(current_lp);
 			
 			#ifdef HAVE_GLP_SCH_MODULE
-			if(result_log && check_start_group(current_lp) && verify_time_group(current_lvt))
+			if(result_log && check_start_group(current_lp) && verify_time_group(current_lvt)){
+				printf("FCKG lid:%d current_lvt:%f\n",current_lp,current_lvt);	
 				force_checkpoint_group(current_lp);
+			}
 			#endif
 			
 			current_lvt = INFTY;
