@@ -237,7 +237,7 @@ bool receive_control_msg(msg_t *msg) {
 			bool result_log;
 			// Log the state, if needed
 			result_log = LogState(current_lp);
-			
+			/*	
 			#ifdef HAVE_GLP_SCH_MODULE
 			if(result_log && check_start_group(current_lp) && verify_time_group(current_lvt) && GLPS[LPS[current_lp]->current_group]->tot_LP > 1){
 				LPS[current_lp]->state = LP_STATE_WAIT_FOR_LOG;
@@ -246,6 +246,7 @@ bool receive_control_msg(msg_t *msg) {
 				force_checkpoint_group(current_lp);
 			}
 			#endif
+			*/
 			
 			current_lvt = INFTY;
 			current_lp = IDLE_PROCESS;
@@ -319,6 +320,7 @@ bool process_control_msg(msg_t *msg) {
 			break;*/
 		
 		case NULL_LOG_MESSAGE:
+			printf("[%d] process NULL_LOG_MESSAGE log-counter:%d \n",msg->receiver,GLPS[LPS[msg->receiver]->current_group]->counter_log);
 			GLPS[LPS[msg->receiver]->current_group]->counter_log--;
 			force_LP_checkpoint(msg->receiver);
 			LogState(msg->receiver);
@@ -331,13 +333,17 @@ bool process_control_msg(msg_t *msg) {
 
 			// Execute another time this event because i rolled back, 
 			// but in this case i'm already in group execution
-			if(current_group->state != GLP_STATE_WAIT_FOR_GROUP) break;
+			if(current_group->state != GLP_STATE_WAIT_FOR_GROUP){
+				if(current_group->state == GLP_STATE_READY_FOR_SYNCH)
+					rootsim_error(true,"State not rigth.lid:%d Abort...",msg->receiver);
+				break;
+			}
 
 			// Change the state of LP to wait that all the groupmate reach the synch time
 			LPS[msg->receiver]->state = LP_STATE_WAIT_FOR_GROUP;
 			
 			current_group->counter_synch++;
-			if(current_group->counter_synch == current_group->tot_LP){
+			if(current_group->counter_synch == current_group->tot_LP-1){
 				current_group->counter_synch = 0;
 				current_group->state = GLP_STATE_READY;
 			}

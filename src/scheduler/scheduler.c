@@ -713,6 +713,7 @@ void schedule(void) {
         current_group = GLPS[LPS[lid]->current_group];
 
         if(check_start_group(lid) && verify_time_group(lvt(lid))){
+//		printf("[%d] HAVE GROUP state:%d state_LP:%d\n",lid,current_group->state,LPS[lid]->state);
 		if(LPS[lid]->state == LP_STATE_WAIT_FOR_GROUP)
 			LPS[lid]->state = LP_STATE_READY;
 		have_group = true;
@@ -761,6 +762,7 @@ void schedule(void) {
 	}
 
 	if(!check_start_group(lid) && current_group->lvt==event){
+		printf("Arrive to bound event\n");
 		current_group->counter_synch = 0;
                 current_group->state = GLP_STATE_READY;
 	}
@@ -782,6 +784,7 @@ void schedule(void) {
         // In case we are resuming an interrupted execution, we keep track of this.
         // If at the end of the scheduling the LP is not blocked, we can unblokc all the remote objects
         if(LPS[lid]->state == LP_STATE_READY_FOR_SYNCH) {
+//		printf("[%d] RESUME exec\n",lid);
                 resume_execution = true;
         }
 
@@ -816,11 +819,12 @@ void schedule(void) {
 
         // Log the state, if needed
         result_log = LogState(lid);
-
+	/*
         if(result_log && check_start_group(lid) && verify_time_group(lvt(lid)) && !is_blocked_state(LPS[lid]->state)){
                 //printf("FCKG inside scheduler lid:%d lvt:%f type:%lu have_group:%d\n",lid,lvt(lid),LPS[lid]->bound->type,have_group);
 		force_checkpoint_group(lid);
 	}
+	*/
 
 
 }

@@ -691,6 +691,8 @@ static void send_control_group_message(void) {
                 for(j=0;j<temp_GLPS->tot_LP;j++){
                         lp_index = find_LP_newGLPS(lp_index,i);
 			
+			// Not send control message to lp with bigger bound
+			if(lp_index != temp_GLPS->initial_group_time->receiver){	
 			 // Diretcly place the control message in the target bottom half queue
 			bzero(&control_msg, sizeof(msg_t));
 			control_msg.sender = LidToGid(i);
@@ -701,6 +703,7 @@ static void send_control_group_message(void) {
 			control_msg.message_kind = positive;
 			control_msg.mark = generate_mark(i);
 			Send(&control_msg);
+			}
                         
 			lp_index++;
 		}
