@@ -775,6 +775,7 @@ void schedule(void) {
                 rootsim_error(true, "Critical condition: LP %d seems to have events to be processed, but I cannot find them. Aborting...\n", lid);
         }
 
+//	printf("[%d] event->type:%lu event->timestamp:%f\n",lid,event->type,event->timestamp);
         if(!process_control_msg(event)) {
                 return;
         }
@@ -819,12 +820,16 @@ void schedule(void) {
 
         // Log the state, if needed
         result_log = LogState(lid);
-	/*
-        if(result_log && check_start_group(lid) && verify_time_group(lvt(lid)) && !is_blocked_state(LPS[lid]->state)){
-                //printf("FCKG inside scheduler lid:%d lvt:%f type:%lu have_group:%d\n",lid,lvt(lid),LPS[lid]->bound->type,have_group);
+	
+        if(result_log && check_start_group(lid) && verify_time_group(lvt(lid)) && !is_blocked_state(LPS[lid]->state) && current_group->tot_LP>1){
+                GLPS[LPS[lid]->current_group]->state = GLP_STATE_WAIT_FOR_LOG;
+                GLPS[LPS[lid]->current_group]->counter_log = GLPS[LPS[lid]->current_group]->tot_LP;
+//		printf("FCKG inside scheduler lid:%d lvt:%f type:%lu have_group:%d\n",lid,lvt(lid),LPS[lid]->bound->type,have_group);
 		force_checkpoint_group(lid);
+		send_outgoing_msgs(lid);
+
 	}
-	*/
+	
 
 
 }

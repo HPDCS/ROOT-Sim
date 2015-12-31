@@ -58,7 +58,7 @@ void force_checkpoint_group(unsigned int lid){
         msg_hdr_t msg_hdr;	
 
 	for(i=0;i<n_prc;i++){
-		if(GLPS[LPS[lid]->current_group]->local_LPS[i] != NULL && lid!=i){
+		if(GLPS[LPS[lid]->current_group]->local_LPS[i] != NULL){
 			// Diretcly place the control message in the target bottom half queue
 		        bzero(&control_msg, sizeof(msg_t));//TODO check if it could be removed
 			control_msg.sender = LidToGid(lid);

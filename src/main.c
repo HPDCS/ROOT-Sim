@@ -139,7 +139,7 @@ static void *main_simulation_loop(void *arg) {
 				for(;j<n_grp;j++){
 					if(GLPS[j]->tot_LP != 0){
 						if(GLPS[j]->lvt != NULL)
-							printf("GLP[%d]->state: %d \t lvt:%f \t",j,GLPS[j]->state,GLPS[j]->lvt->timestamp);
+							printf("GLP[%d]->state: %d \t log_counter:%d  \t lvt:%f \t",j,GLPS[j]->state,GLPS[j]->counter_log,GLPS[j]->lvt->timestamp);
 						unsigned int i;
 						for(i=0;i<n_prc;i++){
 							if(GLPS[j]->local_LPS[i] != NULL)

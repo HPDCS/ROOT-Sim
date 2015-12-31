@@ -237,16 +237,17 @@ bool receive_control_msg(msg_t *msg) {
 			bool result_log;
 			// Log the state, if needed
 			result_log = LogState(current_lp);
-			/*	
+				
 			#ifdef HAVE_GLP_SCH_MODULE
 			if(result_log && check_start_group(current_lp) && verify_time_group(current_lvt) && GLPS[LPS[current_lp]->current_group]->tot_LP > 1){
-				LPS[current_lp]->state = LP_STATE_WAIT_FOR_LOG;
-				GLPS[LPS[current_lp]->current_group]->counter_log = GLPS[LPS[current_lp]->current_group]->tot_LP-1;
-				printf("FCKG lid:%d current_lvt:%f lvt(%d):%f\n",current_lp,current_lvt,current_lp,lvt(current_lp));	
+				GLPS[LPS[current_lp]->current_group]->state = GLP_STATE_WAIT_FOR_LOG;
+				GLPS[LPS[current_lp]->current_group]->counter_log = GLPS[LPS[current_lp]->current_group]->tot_LP;
+//				printf("FCKG lid:%d current_lvt:%f lvt(%d):%f\n",current_lp,current_lvt,current_lp,lvt(current_lp));	
 				force_checkpoint_group(current_lp);
+				send_outgoing_msgs(current_lp);
 			}
 			#endif
-			*/
+			
 			
 			current_lvt = INFTY;
 			current_lp = IDLE_PROCESS;
@@ -257,6 +258,7 @@ bool receive_control_msg(msg_t *msg) {
 			return true;
 		
 		case NULL_LOG_MESSAGE:
+	//		printf("[%d] process null message of %d timestamp: %f\n",msg->receiver,msg->sender,msg->timestamp);
 			return true;
 		
 		case SYNCH_GROUP:
@@ -320,10 +322,14 @@ bool process_control_msg(msg_t *msg) {
 			break;*/
 		
 		case NULL_LOG_MESSAGE:
-			printf("[%d] process NULL_LOG_MESSAGE log-counter:%d \n",msg->receiver,GLPS[LPS[msg->receiver]->current_group]->counter_log);
+//			printf("[%d] process NULL_LOG_MESSAGE log-counter:%d \n",msg->receiver,GLPS[LPS[msg->receiver]->current_group]->counter_log);
 			GLPS[LPS[msg->receiver]->current_group]->counter_log--;
 			force_LP_checkpoint(msg->receiver);
 			LogState(msg->receiver);
+			if(GLPS[LPS[msg->receiver]->current_group]->counter_log == 0)
+				GLPS[LPS[msg->receiver]->current_group]->state = GLP_STATE_READY;
+//			LPS[msg->receiver]->state = LP_STATE_READY;
+			
 			break;
 
 		case SYNCH_GROUP:

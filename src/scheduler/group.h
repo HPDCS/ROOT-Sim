@@ -43,6 +43,7 @@
 #define GLP_STATE_WAIT_FOR_SYNCH	0x03001
 #define GLP_STATE_WAIT_FOR_UNBLOCK	0x03002
 #define GLP_STATE_WAIT_FOR_GROUP	0x03003
+#define GLP_STATE_WAIT_FOR_LOG		0x02012
 
 // This data structure defines the state of each group of LP
 typedef struct _GLP_state{
