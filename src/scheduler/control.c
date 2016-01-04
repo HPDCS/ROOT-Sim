@@ -138,7 +138,7 @@ bool anti_control_message(msg_t * msg) {
               		if(check_start_group(lid_receiver) && verify_time_group(old_rendezvous->timestamp) &&
 			   old_rendezvous->timestamp < GLPS[LPS[lid_receiver]->current_group]->lvt->timestamp){
 					rollback_group(LPS[lid_receiver]->bound,IDLE_PROCESS);
-					printf("Rollback group [ANTI_CONTROL_MSG] at time %f lid_receiver: %d\n",LPS[lid_receiver]->bound->timestamp, lid_receiver);        
+					printf("GRB lvt_group [ANTI_CONTROL_MSG] at time %f lid_receiver: %d\n",LPS[lid_receiver]->bound->timestamp, lid_receiver);        
 			}
 		}
 		#endif
@@ -323,6 +323,7 @@ bool process_control_msg(msg_t *msg) {
 		
 		case NULL_LOG_MESSAGE:
 //			printf("[%d] process NULL_LOG_MESSAGE log-counter:%d \n",msg->receiver,GLPS[LPS[msg->receiver]->current_group]->counter_log);
+                        #ifdef HAVE_GLP_SCH_MODULE
 			GLPS[LPS[msg->receiver]->current_group]->counter_log--;
 			if(msg->sender != msg->receiver){
 				force_LP_checkpoint(msg->receiver);
@@ -331,7 +332,7 @@ bool process_control_msg(msg_t *msg) {
 			LPS[msg->receiver]->state = LP_STATE_WAIT_FOR_LOG;
 			if(GLPS[LPS[msg->receiver]->current_group]->counter_log == 0)
 				GLPS[LPS[msg->receiver]->current_group]->state = GLP_STATE_READY;
-			
+			#endif	
 			break;
 
 		case SYNCH_GROUP:

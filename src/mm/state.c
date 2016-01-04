@@ -252,10 +252,17 @@ void rollback(unsigned int lid) {
 
 	last_restored_event = restore_state->last_event;
 
+	#ifdef HAVE_GLP_SCH_MODULE
 	if(!(check_start_group(lid) && verify_time_group(LPS[lid]->bound->timestamp))){
 		reprocessed_events = silent_execution(lid, LPS[lid]->current_base_pointer, last_restored_event, last_correct_event);
 		statistics_post_lp_data(lid, STAT_SILENT, (double)reprocessed_events);
 	}
+	#else
+
+	reprocessed_events = silent_execution(lid, LPS[lid]->current_base_pointer, last_restored_event, last_correct_event);
+	statistics_post_lp_data(lid, STAT_SILENT, (double)reprocessed_events);
+	
+	#endif
 
 	// Control messages must be rolled back as well
 	rollback_control_message(lid, last_correct_event->timestamp);

@@ -243,7 +243,7 @@ void process_bottom_halves(void) {
 							if(check_start_group(lid_receiver) && verify_time_group(matched_msg->timestamp) &&
 							matched_msg->timestamp < GLPS[LPS[lid_receiver]->current_group]->lvt->timestamp){
                                                                 rollback_group(LPS[lid_receiver]->bound,IDLE_PROCESS);
-                                                                printf("Rollback group [NEGATIVE] at time %f lid_receiver: %d\n",LPS[lid_receiver]->bound->timestamp, lid_receiver);
+                                                                printf("GRB lvt_group [NEGATIVE] at time %f lid_receiver: %d\n",LPS[lid_receiver]->bound->timestamp, lid_receiver);
 							}
 						}
                                                 #endif
@@ -277,7 +277,7 @@ void process_bottom_halves(void) {
 						
 						#ifdef HAVE_GLP_SCH_MODULE
                                                	if(check_start_group(lid_receiver) &&  verify_time_group(msg_to_process->timestamp)){
-								printf("1 Rollback group [POSITIVE type:%lu] at time %f lid_receiver: %d\n",msg_to_process->type,LPS[lid_receiver]->bound->timestamp, lid_receiver);
+								printf("Rollback group [POSITIVE type:%lu] at time %f lid_receiver: %d\n",msg_to_process->type,LPS[lid_receiver]->bound->timestamp, lid_receiver);
 								rollback_group(LPS[lid_receiver]->bound,lid_receiver);
                                                 }
                                                 #endif
@@ -286,7 +286,7 @@ void process_bottom_halves(void) {
                                         else{
                                         	if(check_start_group(lid_receiver) && verify_time_group(msg_to_process->timestamp) &&
                                                 msg_to_process->timestamp < GLPS[LPS[lid_receiver]->current_group]->lvt->timestamp){
-                                                        printf("RG2 [POSITIVE type:%lu] time:%f receiver:%d sender:%d GRP[%d]->lvt:%f msg->timestamp:%f\n",msg_to_process->type,LPS[lid_receiver]->bound->timestamp, lid_receiver,msg_to_process->sender,LPS[lid_receiver]->current_group,GLPS[LPS[lid_receiver]->current_group]->lvt->timestamp,msg_to_process->timestamp);
+                                                        printf("GRB ltv_group [POSITIVE type:%lu] time:%f receiver:%d sender:%d GRP[%d]->lvt:%f msg->timestamp:%f\n",msg_to_process->type,LPS[lid_receiver]->bound->timestamp, lid_receiver,msg_to_process->sender,LPS[lid_receiver]->current_group,GLPS[LPS[lid_receiver]->current_group]->lvt->timestamp,msg_to_process->timestamp);
                                                 	rollback_group(LPS[lid_receiver]->bound,IDLE_PROCESS);
 							if(n_cores == 1)
 								rootsim_error(true,"Only one core. Rollback is not possible. Aborting...");

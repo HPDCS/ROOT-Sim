@@ -70,7 +70,7 @@ void update_info_group(){
 	}
 }
 */
-
+#ifdef HAVE_GLP_SCH_MODULE
 bool check_state_group(unsigned int lid){
 
 	LP_state *temp_LP = LPS_bound[lid];
@@ -88,6 +88,7 @@ bool check_state_group(unsigned int lid){
 	return false;
 
 }
+#endif
 
 /**
 * This function implements the smallest timestamp first algorithm
