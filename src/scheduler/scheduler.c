@@ -714,7 +714,7 @@ void schedule(void) {
 
         if(check_start_group(lid) && verify_time_group(lvt(lid))){
 //		printf("[%d] HAVE GROUP state:%d state_LP:%d\n",lid,current_group->state,LPS[lid]->state);
-		if(LPS[lid]->state == LP_STATE_WAIT_FOR_GROUP)
+		if(LPS[lid]->state == LP_STATE_WAIT_FOR_GROUP || LPS[lid]->state == LP_STATE_WAIT_FOR_LOG)
 			LPS[lid]->state = LP_STATE_READY;
 		have_group = true;
 	}
@@ -827,11 +827,7 @@ void schedule(void) {
 //		printf("FCKG inside scheduler lid:%d lvt:%f type:%lu have_group:%d\n",lid,lvt(lid),LPS[lid]->bound->type,have_group);
 		force_checkpoint_group(lid);
 		send_outgoing_msgs(lid);
-
 	}
-	
-
-
 }
 
 #endif

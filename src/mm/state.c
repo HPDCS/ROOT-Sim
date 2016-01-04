@@ -75,6 +75,11 @@ bool LogState(unsigned int lid) {
 	if(LPS[lid]->state_log_forced) {
 		LPS[lid]->state_log_forced = false;
 		LPS[lid]->from_last_ckpt = 0;
+		
+		#ifdef HAVE_GLP_SCH_MODULE
+		GLPS[LPS[lid]->current_group]->from_last_ckpt = 0;
+		#endif
+
 		take_snapshot = true;
 		goto skip_switch;
 	}
@@ -88,7 +93,7 @@ bool LogState(unsigned int lid) {
 
 		case PERIODIC_STATE_SAVING:
 			#ifdef HAVE_GLP_SCH_MODULE
-			if(verify_time_group(lvt(lid))){
+			if(check_start_group(lid) && verify_time_group(lvt(lid))){
 				if(GLPS[LPS[lid]->current_group]->from_last_ckpt >= GLPS[LPS[lid]->current_group]->ckpt_period){
 					take_snapshot = true;
 					GLPS[LPS[lid]->current_group]->from_last_ckpt = 0;

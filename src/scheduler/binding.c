@@ -544,6 +544,8 @@ static void check_timestamp_group_bound(void){
 		temp_GLPS->counter_synch = 0;
 		temp_GLPS->counter_log = 0;
 		temp_GLPS->counter_silent_ex = 0;
+		temp_GLPS->ckpt_period = temp_GLPS->tot_LP * CKPT_PERIOD_GROUP;
+		temp_GLPS->from_last_ckpt = 0;
 		temp_GLPS->state = GLP_STATE_WAIT_FOR_GROUP;
 	}
 }
@@ -846,6 +848,9 @@ void rebind_LPs(void) {
 					new_GLPS[i]->counter_log = 0;
 					new_GLPS[i]->lvt = NULL;
 					new_GLPS[i]->state = GLP_STATE_READY;
+					new_GLPS[i]->from_last_ckpt = 0;
+               				new_GLPS[i]->ckpt_period = CKPT_PERIOD_GROUP;
+
 					
 				}
 			#else

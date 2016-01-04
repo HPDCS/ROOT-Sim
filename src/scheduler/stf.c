@@ -110,9 +110,13 @@ unsigned int smallest_timestamp_first(void) {
 			if(GLPS[LPS_bound[i]->current_group]->state == GLP_STATE_WAIT_FOR_GROUP)
 				continue;
 		}
-		else if(LPS_bound[i]->state == LP_STATE_WAIT_FOR_LOG)
-			 if(GLPS[LPS_bound[i]->current_group]->state == GLP_STATE_WAIT_FOR_LOG)
+		else if(LPS_bound[i]->state == LP_STATE_WAIT_FOR_LOG){
+			if(GLPS[LPS_bound[i]->current_group]->state == GLP_STATE_WAIT_FOR_LOG)
 				continue;
+			else
+				//For avoiding deadlock in case of double log instance
+				LPS_bound[i]->state = LP_STATE_READY;
+		}
 		else if(check_state_group(i))
 			continue;
 		#else

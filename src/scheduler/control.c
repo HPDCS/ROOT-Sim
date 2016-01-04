@@ -324,11 +324,13 @@ bool process_control_msg(msg_t *msg) {
 		case NULL_LOG_MESSAGE:
 //			printf("[%d] process NULL_LOG_MESSAGE log-counter:%d \n",msg->receiver,GLPS[LPS[msg->receiver]->current_group]->counter_log);
 			GLPS[LPS[msg->receiver]->current_group]->counter_log--;
-			force_LP_checkpoint(msg->receiver);
-			LogState(msg->receiver);
+			if(msg->sender != msg->receiver){
+				force_LP_checkpoint(msg->receiver);
+				LogState(msg->receiver);
+			}
+			LPS[msg->receiver]->state = LP_STATE_WAIT_FOR_LOG;
 			if(GLPS[LPS[msg->receiver]->current_group]->counter_log == 0)
 				GLPS[LPS[msg->receiver]->current_group]->state = GLP_STATE_READY;
-//			LPS[msg->receiver]->state = LP_STATE_READY;
 			
 			break;
 
