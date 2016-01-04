@@ -113,6 +113,11 @@ bool anti_control_message(msg_t * msg) {
 			return false;
 		}
 		
+		if(LPS[lid_receiver]->target_rollback == old_rendezvous){
+			printf("Antimessage for tagert_message of LP[%d] [ACM]\n",lid_receiver);
+			LPS[lid_receiver]->target_rollback = list_prev(LPS[lid_receiver]->target_rollback);
+                }
+			
 		//If this event is in the past
 		if(old_rendezvous->timestamp <= lvt(lid_receiver)) {
 			
@@ -125,7 +130,7 @@ bool anti_control_message(msg_t * msg) {
 	        	}
 		
 			#ifdef HAVE_GLP_SCH_MODULE
-                        if(check_start_group(lid_receiver) && verify_time_group(old_rendezvous->timestamp)){
+                        if(check_start_group(lid_receiver) && verify_time_group(LPS[lid_receiver]->bound->timestamp)){
 				printf("Rollback group [ANTI_CONTROL_MSG] at time %f\n",LPS[lid_receiver]->bound->timestamp);	
 				rollback_group(old_rendezvous,lid_receiver);
                         }
@@ -352,7 +357,7 @@ bool process_control_msg(msg_t *msg) {
 			LPS[msg->receiver]->state = LP_STATE_WAIT_FOR_GROUP;
 			
 			current_group->counter_synch++;
-			if(current_group->counter_synch == current_group->tot_LP-1){
+			if(current_group->counter_synch == current_group->tot_LP){
 				current_group->counter_synch = 0;
 				current_group->state = GLP_STATE_READY;
 			}

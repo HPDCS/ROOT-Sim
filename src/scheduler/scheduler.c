@@ -154,7 +154,7 @@ void scheduler_init(void) {
 		GLPS[i]->counter_rollback = 0;
 		GLPS[i]->lvt = NULL;
 		GLPS[i]->counter_synch = 0;
-		GLPS[i]->state = GLP_STATE_READY;
+		GLPS[i]->state = GLP_STATE_WAIT_FOR_GROUP;
 
 	}
         #endif
@@ -624,6 +624,7 @@ void debug_group_schedule(int lid){
 	
 	print = false;
 	
+	/*	
 	if(LPS_bound[lid]->state == LP_STATE_READY_FOR_SYNCH)
         	selected_min = LPS_bound[lid]->bound->timestamp;
        	else
@@ -641,19 +642,23 @@ void debug_group_schedule(int lid){
 			printf("**********ERROR lid:%d strange-value:%d selected_min:%f >= evt_t:%f\n",lid,i,selected_min,evt_t);
 			break;
 		}
-	}
+	}*/
 	
+	print = true;
 	if(print){
 		printf("********************* LPS_BOUND ********************\n");
 		for(i=0;i<n_prc_per_thread;i++){
-			if(LPS_bound[i]->state == LP_STATE_READY_FOR_SYNCH)
-				evt_t = LPS_bound[i]->bound->timestamp;
+		
+			LP_state *lp_temp = LPS_bound[i];			
+
+			if(lp_temp->state == LP_STATE_READY_FOR_SYNCH)
+				evt_t = lp_temp->bound->timestamp;
 			else
-				evt_t = next_event_timestamp(LPS_bound[i]->lid);
-			if(LPS[i]->bound != NULL)
-				printf("LP[%d] state:%lu bound_ts:%f next_event_ts:%f\n",i,LPS[i]->state,LPS[i]->bound->timestamp,evt_t);
+				evt_t = next_event_timestamp(lp_temp->lid);
+			if(lp_temp->bound != NULL)
+				printf("LP[%d] state:%lu bound_ts:%f bound_sender:%d next_event_ts:%f\n",lp_temp->lid,lp_temp->state,lp_temp->bound->timestamp,lp_temp->bound->sender,evt_t);
 			else
-				printf("LP[%d] state:%lu bound_ts:null\n",i,LPS[i]->state);
+				printf("LP[%d] state:%lu bound_ts:null\n",lp_temp->lid,lp_temp->state);
 		}
 		printf("********************* GROUP ********************\n");
 		for(i=0;i<n_prc_per_thread;i++)
@@ -685,6 +690,7 @@ void schedule(void) {
         msg_t *event;
         void *state;
         bool result_log;
+        bool need_log_group = true;
 
         bool resume_execution = false;
         bool have_group = false;
@@ -708,7 +714,7 @@ void schedule(void) {
                 return;
         }
 
-//	debug_group_schedule(lid);
+	//debug_group_schedule(lid);
 
         current_group = GLPS[LPS[lid]->current_group];
 
@@ -742,7 +748,9 @@ void schedule(void) {
 		current_group->counter_silent_ex--;
                 if(current_group->counter_silent_ex == 0)
                         current_group->state = GLP_STATE_READY;
-
+		
+		printf("LP[%d]\n",lid);
+		
 		LPS[lid]->state = LP_STATE_READY;
                	send_outgoing_msgs(lid);
 		return;
@@ -763,8 +771,13 @@ void schedule(void) {
 
 	if(!check_start_group(lid) && current_group->lvt==event){
 		printf("Arrive to bound event\n");
-		current_group->counter_synch = 0;
-                current_group->state = GLP_STATE_READY;
+		current_group->counter_synch++;
+		if(current_group->counter_synch == current_group->tot_LP){
+			current_group->counter_synch = 0;
+			current_group->state = GLP_STATE_READY;
+		}
+		force_LP_checkpoint(lid);
+		need_log_group = false;
 	}
 
         // Sanity check: if we get here, it means that lid is a LP which has
@@ -821,7 +834,7 @@ void schedule(void) {
         // Log the state, if needed
         result_log = LogState(lid);
 	
-        if(result_log && check_start_group(lid) && verify_time_group(lvt(lid)) && !is_blocked_state(LPS[lid]->state) && current_group->tot_LP>1){
+        if(need_log_group && result_log && check_start_group(lid) && verify_time_group(lvt(lid)) && !is_blocked_state(LPS[lid]->state) && current_group->tot_LP>1){
                 GLPS[LPS[lid]->current_group]->state = GLP_STATE_WAIT_FOR_LOG;
                 GLPS[LPS[lid]->current_group]->counter_log = GLPS[LPS[lid]->current_group]->tot_LP;
 //		printf("FCKG inside scheduler lid:%d lvt:%f type:%lu have_group:%d\n",lid,lvt(lid),LPS[lid]->bound->type,have_group);

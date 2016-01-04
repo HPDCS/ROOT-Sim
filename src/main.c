@@ -151,13 +151,38 @@ static void *main_simulation_loop(void *arg) {
 				}
 			
 				for(j=0;j<n_prc;j++)
-					printf("LP[%d]:%lu \t check_start_group:%d \t timestamp:%f\n",j,LPS[j]->state,check_start_group(j),LPS[j]->bound->timestamp);
+					printf("LP[%d]:%lu \t check_start_group:%d \t timestamp:%f bound_sender:%d\n",j,LPS[j]->state,check_start_group(j),LPS[j]->bound->timestamp,LPS[j]->bound->sender);
 				
 				#endif				
 			
 				fflush(stdout);
 			}
 		}
+		
+		/*if(master_kernel() && master_thread()){
+			unsigned int j=0;
+			#ifdef HAVE_GLP_SCH_MODULE
+			for(;j<n_grp;j++){
+				if(GLPS[j]->tot_LP != 0){
+					if(GLPS[j]->lvt != NULL)
+						printf("GLP[%d]->state: %d \t counter_rollback:%d  \t lvt:%f \t",j,GLPS[j]->state,GLPS[j]->counter_rollback,GLPS[j]->lvt->timestamp);
+					unsigned int i;
+					for(i=0;i<n_prc;i++){
+						if(GLPS[j]->local_LPS[i] != NULL)
+							printf("%d ",i);
+					}
+					printf("\n");
+				}
+
+			}
+
+			for(j=0;j<n_prc;j++)
+				printf("LP[%d]:%lu \t check_start_group:%d \t timestamp:%f bound_sender:%d\n",j,LPS[j]->state,check_start_group(j),LPS[j]->bound->timestamp,LPS[j]->bound->sender);
+			#endif
+
+			fflush(stdout);
+
+		}*/
 	}
 
 	// If we're exiting due to an error, we neatly shut down the simulation

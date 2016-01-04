@@ -220,6 +220,11 @@ void process_bottom_halves(void) {
 						fflush(stdout);
 						abort();
 					} else {
+		
+						if(LPS[lid_receiver]->target_rollback == matched_msg){
+							printf("Antimessage for tagert_message of LP[%d]\n",lid_receiver);
+							LPS[lid_receiver]->target_rollback = list_prev(LPS[lid_receiver]->target_rollback);
+						}
 
 						// If the matched message is in the past, we have to rollback
 						if(matched_msg->timestamp <= lvt(lid_receiver)) {
@@ -230,11 +235,13 @@ void process_bottom_halves(void) {
 
 								LPS[lid_receiver]->bound = list_prev(LPS[lid_receiver]->bound);
 							}
+							
 							LPS[lid_receiver]->state = LP_STATE_ROLLBACK;
+
 							#ifdef HAVE_GLP_SCH_MODULE
 							if(check_start_group(lid_receiver) && verify_time_group(matched_msg->timestamp)){
 								rollback_group(LPS[lid_receiver]->bound,lid_receiver);
-								printf("Rollback group [NEGATIVE] at time %f lid_receiver: %d\n",LPS[lid_receiver]->bound->timestamp, lid_receiver);
+								printf("Rollback group [NEGATIVE] at time %f sender:%d receiver:%d\n",LPS[lid_receiver]->bound->timestamp, matched_msg->sender, lid_receiver);
 							}
 							#endif
 						}
@@ -243,7 +250,7 @@ void process_bottom_halves(void) {
 							if(check_start_group(lid_receiver) && verify_time_group(matched_msg->timestamp) &&
 							matched_msg->timestamp < GLPS[LPS[lid_receiver]->current_group]->lvt->timestamp){
                                                                 rollback_group(LPS[lid_receiver]->bound,IDLE_PROCESS);
-                                                                printf("GRB lvt_group [NEGATIVE] at time %f lid_receiver: %d\n",LPS[lid_receiver]->bound->timestamp, lid_receiver);
+                                                                printf("GRB lvt_group [NEGATIVE] at time %f sender:%d receiver:%d\n",LPS[lid_receiver]->bound->timestamp, matched_msg->sender, lid_receiver);
 							}
 						}
                                                 #endif
@@ -273,11 +280,12 @@ void process_bottom_halves(void) {
 
 							LPS[lid_receiver]->bound = list_prev(LPS[lid_receiver]->bound);
 						}
+
 						LPS[lid_receiver]->state = LP_STATE_ROLLBACK;
 						
 						#ifdef HAVE_GLP_SCH_MODULE
-                                               	if(check_start_group(lid_receiver) &&  verify_time_group(msg_to_process->timestamp)){
-								printf("Rollback group [POSITIVE type:%lu] at time %f lid_receiver: %d\n",msg_to_process->type,LPS[lid_receiver]->bound->timestamp, lid_receiver);
+                                               	if(check_start_group(lid_receiver) &&  verify_time_group(LPS[lid_receiver]->bound->timestamp)){
+								printf("Rollback group [POSITIVE type:%lu] at time %f sender:%d receiver:%d\n",msg_to_process->type,LPS[lid_receiver]->bound->timestamp, msg_to_process->sender, lid_receiver);
 								rollback_group(LPS[lid_receiver]->bound,lid_receiver);
                                                 }
                                                 #endif

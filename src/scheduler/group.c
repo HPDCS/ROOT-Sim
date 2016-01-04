@@ -17,7 +17,7 @@ void rollback_group(msg_t *straggler, unsigned int receiver){
 	LP_state *local_LP;
 	GLP_state *current_group;
 
-	current_group = GLPS[straggler->receiver];
+	current_group = GLPS[LPS[straggler->receiver]->current_group];
 	
 	if(receiver != IDLE_PROCESS)
 		LPS[receiver]->target_rollback = LPS[receiver]->bound;
