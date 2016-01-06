@@ -99,8 +99,6 @@ bool anti_control_message(msg_t * msg) {
 	if(msg->type == RENDEZVOUS_ROLLBACK) {
 
 		unsigned int lid_receiver = msg->receiver;
-
-		printf("1 ACM LP[%d]->state:%d\n",lid_receiver,LPS[lid_receiver]->state);
 		
 		//Check if a relative message exists
 		//TODO non serve andare indietro più del tempo di rendezvous_rollback
@@ -113,11 +111,6 @@ bool anti_control_message(msg_t * msg) {
 			return false;
 		}
 		
-		if(LPS[lid_receiver]->target_rollback == old_rendezvous){
-			printf("Antimessage for tagert_message of LP[%d] [ACM]\n",lid_receiver);
-			LPS[lid_receiver]->target_rollback = list_prev(LPS[lid_receiver]->target_rollback);
-                }
-			
 		//If this event is in the past
 		if(old_rendezvous->timestamp <= lvt(lid_receiver)) {
 			
@@ -131,38 +124,33 @@ bool anti_control_message(msg_t * msg) {
 		
 			#ifdef HAVE_GLP_SCH_MODULE
                         if(check_start_group(lid_receiver) && verify_time_group(LPS[lid_receiver]->bound->timestamp)){
-				printf("Rollback group [ANTI_CONTROL_MSG] at time %f\n",LPS[lid_receiver]->bound->timestamp);	
+				printf("RGB [ANTI_CONTROL_MSG] T:%f\n",LPS[lid_receiver]->bound->timestamp);	
 				rollback_group(old_rendezvous,lid_receiver);
                         }
                        	#endif
 
 	                LPS[lid_receiver]->state = LP_STATE_ROLLBACK;
 		}
+		
 		#ifdef HAVE_GLP_SCH_MODULE
                 else{
-              		if(check_start_group(lid_receiver) && verify_time_group(old_rendezvous->timestamp) &&
-			   old_rendezvous->timestamp < GLPS[LPS[lid_receiver]->current_group]->lvt->timestamp){
-					rollback_group(LPS[lid_receiver]->bound,IDLE_PROCESS);
-					printf("GRB lvt_group [ANTI_CONTROL_MSG] at time %f lid_receiver: %d\n",LPS[lid_receiver]->bound->timestamp, lid_receiver);        
-			}
+			if(GLPS[LPS[lid_receiver]->current_group]->lvt!= NULL)
+				printf("ERRORE LP:%d receive anti-control message T:%f after LP-lvt:%f GLP-lvt:%f \n",
+			 	     lid_receiver,old_rendezvous->timestamp, lvt(lid_receiver), GLPS[LPS[lid_receiver]->current_group]->lvt->timestamp
+			     	 );
+			else
+				 printf("ERRORE LP:%d receive anti-control message T:%f after LP-lvt:%f \n",
+                                     lid_receiver,old_rendezvous->timestamp, lvt(lid_receiver));
 		}
 		#endif
-		
 
 		old_rendezvous->rendezvous_mark = 0;
 
-		#ifndef HAVE_GLP_SCH_MODULE
-		printf("Setting old rendezvous mark to 0\n");
-		#endif
 		//Reset ECS information
 		if(LPS[lid_receiver]->wait_on_rendezvous == msg->rendezvous_mark) {
 			LPS[lid_receiver]->ECS_index = 0;
 			LPS[lid_receiver]->wait_on_rendezvous = 0;
 		}
-		
-		#ifndef HAVE_GLP_SCH_MODULE
-		printf("2 ACM LP[%d]->state:%d\n",lid_receiver,LPS[lid_receiver]->state);
-		#endif
 
 		return false;
 	}
@@ -269,6 +257,9 @@ bool receive_control_msg(msg_t *msg) {
 		case SYNCH_GROUP:
 			return true;
 
+		case CLOSE_GROUP:
+			return true;
+
 		default:
 			rootsim_error(true, "Trying to handle a control message which is meaningless at receive time: %d\n", msg->type);
 
@@ -339,6 +330,14 @@ bool process_control_msg(msg_t *msg) {
 				GLPS[LPS[msg->receiver]->current_group]->state = GLP_STATE_READY;
 			#endif	
 			break;
+
+		case CLOSE_GROUP:
+                        #ifdef HAVE_GLP_SCH_MODULE
+                        force_LP_checkpoint(msg->receiver);
+                        LogState(msg->receiver);
+                        #endif
+                        break;
+
 
 		case SYNCH_GROUP:
 			#ifdef HAVE_GLP_SCH_MODULE

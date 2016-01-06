@@ -255,8 +255,22 @@ void rollback(unsigned int lid) {
 	#ifdef HAVE_GLP_SCH_MODULE
 	if(!(check_start_group(lid) && verify_time_group(LPS[lid]->bound->timestamp))){
 		reprocessed_events = silent_execution(lid, LPS[lid]->current_base_pointer, last_restored_event, last_correct_event);
+		printf("LP[%d] executes silent execution without group\n",lid);
 		statistics_post_lp_data(lid, STAT_SILENT, (double)reprocessed_events);
+		if(GLPS[LPS[lid]->current_group]->state == GLP_STATE_ROLLBACK){
+			GLPS[LPS[lid]->current_group]->counter_rollback--;
+			if(GLPS[LPS[lid]->current_group]->counter_rollback == 0)
+				GLPS[LPS[lid]->current_group]->state = GLP_STATE_SILENT_EXEC;
+			GLPS[LPS[lid]->current_group]->counter_silent_ex--;
+		}
 	}
+	else
+		printf("LP[%d] CST:%d VTG:%d T:%f \n",
+			lid,
+			check_start_group(lid),
+			verify_time_group(LPS[lid]->bound->timestamp),
+			LPS[lid]->bound->timestamp
+		      );
 	#else
 
 	reprocessed_events = silent_execution(lid, LPS[lid]->current_base_pointer, last_restored_event, last_correct_event);

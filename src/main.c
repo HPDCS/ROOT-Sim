@@ -139,7 +139,13 @@ static void *main_simulation_loop(void *arg) {
 				for(;j<n_grp;j++){
 					if(GLPS[j]->tot_LP != 0){
 						if(GLPS[j]->lvt != NULL)
-							printf("GLP[%d]->state: %d \t log_counter:%d  \t lvt:%f \t",j,GLPS[j]->state,GLPS[j]->counter_log,GLPS[j]->lvt->timestamp);
+							printf("GLP[%d]->state: %d \t silent_counter:%d  \t lvt:%f VTG:%d \t",
+								j,
+								GLPS[j]->state,
+								GLPS[j]->counter_silent_ex,
+								GLPS[j]->lvt->timestamp,
+								verify_time_group(GLPS[j]->lvt->timestamp)
+							      );
 						unsigned int i;
 						for(i=0;i<n_prc;i++){
 							if(GLPS[j]->local_LPS[i] != NULL)
@@ -150,9 +156,18 @@ static void *main_simulation_loop(void *arg) {
 
 				}
 			
-				for(j=0;j<n_prc;j++)
-					printf("LP[%d]:%lu \t check_start_group:%d \t timestamp:%f bound_sender:%d\n",j,LPS[j]->state,check_start_group(j),LPS[j]->bound->timestamp,LPS[j]->bound->sender);
-				
+				for(j=0;j<n_prc;j++){
+					printf("LP[%d]:%lu \t CSG:%d \t T:%f B_S:%d\n",
+						j,
+						LPS[j]->state,
+						check_start_group(j),
+						LPS[j]->bound->timestamp,
+						LPS[j]->bound->sender
+					      );
+					
+					if (LPS[j]->target_rollback != NULL)
+						printf("R_T:%f N_E_T:%f \n",LPS[j]->target_rollback->timestamp,next_event_timestamp(j));
+				}
 				#endif				
 			
 				fflush(stdout);

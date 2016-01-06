@@ -76,7 +76,7 @@ void ECS(long long ds, unsigned long long hitted_object){
 	msg_hdr_t msg_hdr;
 
 	if(LPS[current_lp]->state == LP_STATE_SILENT_EXEC) 
-		printf("----ERROR---- LP[%d] Hitted:%llu Timestamp:%f\n",current_lp,hitted_object,LPS[current_lp]->bound->timestamp);	
+		rootsim_error(true,"----ERROR---- LP[%d] Hitted:%llu Timestamp:%f\n",current_lp,hitted_object,current_lvt);	
 
 	// do whatever you want, but you need to reopen access to the objects you cross-depend on before returning
 
@@ -139,6 +139,28 @@ void ECS(long long ds, unsigned long long hitted_object){
 	if(check_start_group(current_lp) && verify_time_group(current_lvt)){
 		GLPS[LPS[current_lp]->current_group]->state = GLP_STATE_WAIT_FOR_SYNCH;
 	}
+	
+	GLP_state *current_group;
+	
+	current_group = GLPS[LPS[current_lp]->current_group];
+	
+	if(!check_start_group(current_lp) 
+		&& verify_time_group(current_lvt) 
+		&& current_group->lvt==LPS[current_lp]->bound
+		&& LPS[current_lp]->current_group == LPS[hitted_object]->current_group){
+                        current_group->counter_synch++;
+                        
+			printf("**ECS** Bound_Event_Synch Counter:%d Lid:%d GLP:%d\n",
+				current_group->counter_synch,
+				current_lp,
+				LPS[current_lp]->current_group);
+			
+                        if(current_group->counter_synch == current_group->tot_LP){
+                                current_group->counter_synch = 0;
+                                current_group->state = GLP_STATE_READY;
+                        }
+	}
+
 	#endif
 
 	LPS[current_lp]->wait_on_object = LidToGid(hitted_object);

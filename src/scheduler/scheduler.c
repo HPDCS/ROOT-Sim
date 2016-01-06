@@ -744,12 +744,13 @@ void schedule(void) {
                 return;
         }
 	
+	// This is needed because if the only event of SILENT_EXECUTION it is exactly the bound
 	if(LPS[lid]->state == LP_STATE_SILENT_EXEC && LPS[lid]->bound==LPS[lid]->target_rollback){ 
 		current_group->counter_silent_ex--;
                 if(current_group->counter_silent_ex == 0)
                         current_group->state = GLP_STATE_READY;
 		
-		printf("LP[%d]\n",lid);
+		printf("Complete silent execution with current bound LP[%d]\n",lid);
 		
 		LPS[lid]->state = LP_STATE_READY;
                	send_outgoing_msgs(lid);
@@ -764,21 +765,30 @@ void schedule(void) {
                 event = LPS[lid]->bound;
 	}
 
-        if(current_group->state != GLP_STATE_SILENT_EXEC && check_start_group(lid) && verify_time_group(lvt(lid))){
-//                printf("UPDATE lvt_group lid:%d sender:%d  msg_type:%lu\n",lid,event->sender,event->type);
+        if((current_group->state != GLP_STATE_SILENT_EXEC && check_start_group(lid) && verify_time_group(lvt(lid))) || (event->type == CLOSE_GROUP)){
+                printf("UPDATE lvt_group lid:%d sender:%d  msg_type:%d timestamp:%f\n",lid,event->sender,event->type,event->timestamp);
 		current_group->lvt = event;
 	}
+	else{
+                printf("NOT UPDATE group-state:%d CSG:%d VTG:%d lid:%d sender:%d state:%d msg_type:%d msg_timestamp:%f\n"
+		,current_group->state,check_start_group(lid),verify_time_group(lvt(lid)),lid,event->sender,
+		LPS[lid]->state,event->type,event->timestamp);
+	}
+
+
+/* TODO CHECK IF IT IS CORRECT REMOVE THIS CODE
 
 	if(!check_start_group(lid) && current_group->lvt==event){
-		printf("Arrive to bound event\n");
 		current_group->counter_synch++;
+		printf("Bound_Event_Synch Counter:%d Lid:%d GLP:%d\n",current_group->counter_synch,lid,LPS[lid]->current_group);
 		if(current_group->counter_synch == current_group->tot_LP){
 			current_group->counter_synch = 0;
 			current_group->state = GLP_STATE_READY;
 		}
-		force_LP_checkpoint(lid);
+	//	force_LP_checkpoint(lid);
 		need_log_group = false;
 	}
+*/
 
         // Sanity check: if we get here, it means that lid is a LP which has
         // at least one event to be executed. If advance_to_next_event() returns
@@ -808,12 +818,38 @@ void schedule(void) {
 
         activate_LP(lid, lvt(lid), event, state);
 
-	if(LPS[lid]->state == LP_STATE_SILENT_EXEC)
+	// Check if it is the last event of silent execution. This is needed because if the LP 
+	// does not have other messages after bound never go out from SILENT_EXECUTION.
+	if(LPS[lid]->state == LP_STATE_SILENT_EXEC){
+		if(LPS[lid]->bound==LPS[lid]->target_rollback){
+                	current_group->counter_silent_ex--;
+			if(current_group->counter_silent_ex == 0)
+				current_group->state = GLP_STATE_READY;
+
+			printf("Complete silent execution LP[%d]\n",lid);
+
+			LPS[lid]->state = LP_STATE_READY;
+			send_outgoing_msgs(lid);
+		}
 		return;
+	}
 
         if(!is_blocked_state(LPS[lid]->state)) {
                 LPS[lid]->state = LP_STATE_READY;
                 send_outgoing_msgs(lid);
+
+		if(!check_start_group(lid) && current_group->initial_group_time==event){
+			current_group->counter_synch++;
+			printf("Bound_Event_Synch Counter:%d Lid:%d GLP:%d\n",current_group->counter_synch,lid,LPS[lid]->current_group);
+			if(current_group->counter_synch == current_group->tot_LP){
+				current_group->counter_synch = 0;
+				current_group->state = GLP_STATE_READY;
+			}
+	     
+			force_LP_checkpoint(lid);
+			need_log_group = false;
+		}
+
         }
 
         if(resume_execution && !is_blocked_state(LPS[lid]->state)) {
@@ -826,13 +862,20 @@ void schedule(void) {
                 force_LP_checkpoint(lid);
         }
 
-        if(!resume_execution && !verify_time_group(lvt(lid)) && have_group && !is_blocked_state(LPS[lid]->state)){
+       /* if(!resume_execution && !verify_time_group(lvt(lid)) && have_group && !is_blocked_state(LPS[lid]->state)){
 		current_group->group_is_ready = false;
                 force_LP_checkpoint(lid);
-	}
+		if(current_group->tot_LP>1){
+			GLPS[LPS[lid]->current_group]->state = GLP_STATE_WAIT_FOR_LOG;
+			GLPS[LPS[lid]->current_group]->counter_log = GLPS[LPS[lid]->current_group]->tot_LP;
+			force_checkpoint_group(lid);
+			send_outgoing_msgs(lid);
+		}
+	}*///Created control message CLOSE_GROUP
 
         // Log the state, if needed
-        result_log = LogState(lid);
+        if(current_group->state != GLP_STATE_SILENT_EXEC)
+		result_log = LogState(lid);
 	
         if(need_log_group && result_log && check_start_group(lid) && verify_time_group(lvt(lid)) && !is_blocked_state(LPS[lid]->state) && current_group->tot_LP>1){
                 GLPS[LPS[lid]->current_group]->state = GLP_STATE_WAIT_FOR_LOG;

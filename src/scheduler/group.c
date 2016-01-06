@@ -19,14 +19,16 @@ void rollback_group(msg_t *straggler, unsigned int receiver){
 
 	current_group = GLPS[LPS[straggler->receiver]->current_group];
 	
-	if(receiver != IDLE_PROCESS)
+	printf("TIMESTAMP OF ROLLBACK %f\n",straggler->timestamp);	
+
+	current_group->lvt = NULL;	
+	if(receiver != IDLE_PROCESS){
 		LPS[receiver]->target_rollback = LPS[receiver]->bound;
-	current_group->lvt = straggler;
+	        current_group->lvt = LPS[receiver]->target_rollback;
+	}
 	current_group->state = GLP_STATE_ROLLBACK;
 	current_group->counter_rollback = current_group->tot_LP;
 	current_group->counter_silent_ex = current_group->tot_LP; 
-
-	if(current_group->tot_LP == 1) return;
 
 	for(i=0; i<current_group->tot_LP; i++){
 		lp_index = find_lp_group(lp_index,LPS[straggler->receiver]->current_group);
@@ -39,6 +41,9 @@ void rollback_group(msg_t *straggler, unsigned int receiver){
                        	local_LP->bound = list_get_node_timestamp(straggler->timestamp,lp_index);
                        	local_LP->target_rollback = local_LP->bound;
                        	local_LP->state = LP_STATE_ROLLBACK;
+			
+			if(current_group->lvt == NULL || current_group->lvt->timestamp < local_LP->target_rollback->timestamp)
+				current_group->lvt = local_LP->target_rollback;
 		}
 
 		lp_index++;

@@ -679,9 +679,6 @@ static void send_control_group_message(void) {
 	unsigned int i,j,lp_index = 0;
 	GLP_state *temp_GLPS;
         msg_t control_msg;	
-
-	//Find maximum timestamp of bound between LPs inside a group
-	check_timestamp_group_bound();
 	
 	for(i=0;i<n_grp;i++){
 		temp_GLPS = new_GLPS[i];
@@ -696,16 +693,27 @@ static void send_control_group_message(void) {
 			// Not send control message to lp with bigger bound
 			if(lp_index != temp_GLPS->initial_group_time->receiver){	
 			 // Diretcly place the control message in the target bottom half queue
-			bzero(&control_msg, sizeof(msg_t));
-			control_msg.sender = LidToGid(i);
-			control_msg.receiver = LidToGid(lp_index);
-			control_msg.type = SYNCH_GROUP;
-			control_msg.timestamp = temp_GLPS->initial_group_time->timestamp;
-			control_msg.send_time = temp_GLPS->initial_group_time->timestamp;
-			control_msg.message_kind = positive;
-			control_msg.mark = generate_mark(i);
-			Send(&control_msg);
+				bzero(&control_msg, sizeof(msg_t));
+				control_msg.sender = LidToGid(i);
+				control_msg.receiver = LidToGid(lp_index);
+				control_msg.type = SYNCH_GROUP;
+				control_msg.timestamp = temp_GLPS->initial_group_time->timestamp;
+				control_msg.send_time = temp_GLPS->initial_group_time->timestamp;
+				control_msg.message_kind = positive;
+				control_msg.mark = generate_mark(i);
+				Send(&control_msg);
 			}
+			
+			//Useful to take a log at the end the group execution otherwise an ECS may be executed in silent mode
+			bzero(&control_msg, sizeof(msg_t));
+                        control_msg.sender = LidToGid(i);
+                        control_msg.receiver = LidToGid(lp_index);
+                        control_msg.type = CLOSE_GROUP;
+                        control_msg.timestamp = get_last_gvt() + DELTA_GROUP;
+                        control_msg.send_time = get_last_gvt() + DELTA_GROUP;
+                        control_msg.message_kind = positive;
+                        control_msg.mark = generate_mark(i);
+                        Send(&control_msg);
                         
 			lp_index++;
 		}
@@ -731,7 +739,7 @@ static void install_GLPS_binding(void) {
 	bzero(LPS_bound, sizeof(LP_state *) * n_prc);
 	n_prc_per_thread = 0;
 
-	send_control_group_message();
+//	send_control_group_message(); //TODO check if it is correct remove from here
 
 	for(i = 0; i < n_prc; i++) {
 		if(new_GLPS_binding[new_group_LPS[i]] == tid){
@@ -914,6 +922,12 @@ void rebind_LPs(void) {
 		//TODO MN
 		#ifdef HAVE_GLP_SCH_MODULE
 		if(master_thread()) {
+	
+			//Find maximum timestamp of bound between LPs inside a group
+			check_timestamp_group_bound();
+
+		        send_control_group_message();
+
 			switch_GLPS();
 		}
 		unsigned int k = 0;

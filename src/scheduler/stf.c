@@ -72,7 +72,7 @@ unsigned int smallest_timestamp_first(void) {
 		else if(LPS_bound[i]->state == LP_STATE_ROLLBACK && next_event_timestamp(LPS_bound[i]->lid) <= -1){
 			evt_time = LPS_bound[i]->bound->timestamp;
 		}
-		else if(LPS_bound[i]->state == LP_STATE_SILENT_EXEC && GLPS[LPS_bound[i]->current_group]->state == GLP_STATE_SILENT_EXEC && GLPS[LPS_bound[i]->current_group]->tot_LP == 1 && next_event_timestamp(LPS_bound[i]->lid) <= -1){
+		else if(LPS_bound[i]->state == LP_STATE_SILENT_EXEC && GLPS[LPS_bound[i]->current_group]->state == GLP_STATE_SILENT_EXEC  && (next_event_timestamp(LPS_bound[i]->lid) <= -1 || next_event_timestamp(LPS_bound[i]->lid) > GLPS[LPS_bound[i]->current_group]->lvt->timestamp) ){
                         evt_time = LPS_bound[i]->bound->timestamp;
                 }
 	 	#endif
