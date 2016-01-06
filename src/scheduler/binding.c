@@ -529,15 +529,23 @@ static void check_timestamp_group_bound(void){
 			if(lp_index == IDLE_PROCESS)
 				rootsim_error(true,"Returned IDLE_PROCESS in check_timestamp_group_bound. Aborting...");
 			temp_LP = temp_GLPS->local_LPS[lp_index];
-			lp_index++;
-			if(list_next(temp_LP->bound)!=NULL)
-				result_evt = list_next(temp_LP->bound);
-			else
-				result_evt = temp_LP->bound;
 			
-			if(temp_GLPS->initial_group_time==NULL || temp_GLPS->initial_group_time->timestamp < result_evt->timestamp)
+			if(list_next(temp_LP->bound)!=NULL){
+				result_evt = list_next(temp_LP->bound);
+			}
+			else{
+				result_evt = temp_LP->bound;
+			}
+			
+			if(temp_GLPS->initial_group_time==NULL || temp_GLPS->initial_group_time->timestamp < result_evt->timestamp){
 				temp_GLPS->initial_group_time = result_evt;
+			}
+			
+			lp_index++;
 		}
+		
+		printf("GLP[%d] TL%d IGT:%p\n",i,temp_GLPS->tot_LP,temp_GLPS->initial_group_time);
+		
 		lp_index=0;
 		temp_GLPS->lvt = temp_GLPS->initial_group_time;
 		temp_GLPS->counter_rollback = 0;
@@ -683,6 +691,7 @@ static void send_control_group_message(void) {
 	for(i=0;i<n_grp;i++){
 		temp_GLPS = new_GLPS[i];
 		if(temp_GLPS->tot_LP==1){
+			temp_GLPS->initial_group_time = LPS[i]->bound;
 			temp_GLPS->lvt = LPS[i]->bound;
 			temp_GLPS->state = GLP_STATE_READY;
 			continue;
@@ -691,8 +700,8 @@ static void send_control_group_message(void) {
                         lp_index = find_LP_newGLPS(lp_index,i);
 			
 			// Not send control message to lp with bigger bound
-			if(lp_index != temp_GLPS->initial_group_time->receiver){	
-			 // Diretcly place the control message in the target bottom half queue
+			if(lp_index != temp_GLPS->initial_group_time->receiver || temp_GLPS->initial_group_time == LPS[lp_index]->bound){	
+				// Diretcly place the control message in the target bottom half queue
 				bzero(&control_msg, sizeof(msg_t));
 				control_msg.sender = LidToGid(i);
 				control_msg.receiver = LidToGid(lp_index);
@@ -702,6 +711,8 @@ static void send_control_group_message(void) {
 				control_msg.message_kind = positive;
 				control_msg.mark = generate_mark(i);
 				Send(&control_msg);
+				
+				printf("SENDED SYNCH MESSAGE TO %d\n",lp_index);
 			}
 			
 			//Useful to take a log at the end the group execution otherwise an ECS may be executed in silent mode
@@ -770,15 +781,23 @@ static void switch_GLPS(void){
 		memcpy(GLPS[i]->local_LPS, new_GLPS[i]->local_LPS, n_prc * sizeof(LP_state *));
 		GLPS[i]->tot_LP = new_GLPS[i]->tot_LP;
 		GLPS[i]->initial_group_time = new_GLPS[i]->initial_group_time;
+		new_GLPS[i]->initial_group_time = NULL;
 		GLPS[i]->state = new_GLPS[i]->state;
+		new_GLPS[i]->state = GLP_STATE_WAIT_FOR_GROUP;
 		GLPS[i]->lvt = new_GLPS[i]->lvt;
+		new_GLPS[i]->lvt = NULL;
 		GLPS[i]->counter_rollback = new_GLPS[i]->counter_rollback;
+		new_GLPS[i]->counter_rollback = 0;
 		GLPS[i]->counter_silent_ex = new_GLPS[i]->counter_silent_ex;
+		new_GLPS[i]->counter_silent_ex = 0;
 		GLPS[i]->from_last_ckpt = new_GLPS[i]->from_last_ckpt;
+		new_GLPS[i]->from_last_ckpt = 0;
 		GLPS[i]->ckpt_period = new_GLPS[i]->ckpt_period;
 		GLPS[i]->group_is_ready = new_GLPS[i]->group_is_ready;
 		GLPS[i]->counter_synch = new_GLPS[i]->counter_synch;	
+		new_GLPS[i]->counter_synch = 0;	
 		GLPS[i]->counter_log = new_GLPS[i]->counter_log;	
+		new_GLPS[i]->counter_log = 0;	
 	}
 
 	for (i = 0; i < n_prc; i++)

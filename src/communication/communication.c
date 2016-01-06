@@ -173,8 +173,8 @@ void send_antimessages(unsigned int lid, simtime_t after_simtime) {
 
 	// Now send all antimessages
 	while(anti_msg != NULL) {
-		#ifndef HAVE_GLP_SCH_MODULE
-		printf("ANTIMSG [%d]->[%d] mark:%llu\n",anti_msg->sender, anti_msg->receiver,anti_msg->mark);	
+		#ifdef HAVE_GLP_SCH_MODULE
+		printf("ANTIMSG S:%d R:%d mark:%llu T:%f \n",anti_msg->sender, anti_msg->receiver,anti_msg->mark,anti_msg->timestamp);	
 		#endif
 		
 		bzero(&msg, sizeof(msg_t));

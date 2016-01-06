@@ -19,7 +19,11 @@ void rollback_group(msg_t *straggler, unsigned int receiver){
 
 	current_group = GLPS[LPS[straggler->receiver]->current_group];
 	
-	printf("TIMESTAMP OF ROLLBACK %f\n",straggler->timestamp);	
+	printf("S:%d R:%d Type:%d TIMESTAMP OF ROLLBACK %f\n",
+		straggler->sender,
+		straggler->receiver,
+		straggler->type,
+		straggler->timestamp);	
 
 	current_group->lvt = NULL;	
 	if(receiver != IDLE_PROCESS){
@@ -37,13 +41,19 @@ void rollback_group(msg_t *straggler, unsigned int receiver){
 		local_LP = LPS[lp_index];
 		if(lp_index!=receiver){
 			printf("ROLLBACK GROUP LP[%d]\n",lp_index);
-                       	//Giving a timestamp it has to return the message with the maximum timestamp lesser than timestamp
-                       	local_LP->bound = list_get_node_timestamp(straggler->timestamp,lp_index);
-                       	local_LP->target_rollback = local_LP->bound;
-                       	local_LP->state = LP_STATE_ROLLBACK;
 			
-			if(current_group->lvt == NULL || current_group->lvt->timestamp < local_LP->target_rollback->timestamp)
-				current_group->lvt = local_LP->target_rollback;
+			if(straggler->timestamp > local_LP->bound->timestamp){
+				local_LP->target_rollback = NULL;
+			}
+			else{
+				//Giving a timestamp it has to return the message with the maximum timestamp lesser than timestamp
+				local_LP->bound = list_get_node_timestamp(straggler->timestamp,lp_index);
+				local_LP->target_rollback = local_LP->bound;
+			
+				if(current_group->lvt == NULL || current_group->lvt->timestamp < local_LP->target_rollback->timestamp)
+					current_group->lvt = local_LP->target_rollback;
+			}
+                       	local_LP->state = LP_STATE_ROLLBACK;
 		}
 
 		lp_index++;

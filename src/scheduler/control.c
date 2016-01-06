@@ -295,8 +295,26 @@ bool process_control_msg(msg_t *msg) {
 
 			LPS[msg->receiver]->state = LP_STATE_WAIT_FOR_UNBLOCK;
 			#ifdef HAVE_GLP_SCH_MODULE
+			GLP_state *current_group;
+			current_group = GLPS[LPS[msg->receiver]->current_group];
+
 			if(check_start_group(msg->receiver) && verify_time_group(msg->timestamp))
-				GLPS[LPS[msg->receiver]->current_group]->state = GLP_STATE_WAIT_FOR_UNBLOCK;
+				current_group->state = GLP_STATE_WAIT_FOR_UNBLOCK;
+			
+			if(!check_start_group(msg->receiver) && verify_time_group(msg->timestamp) && msg==current_group->initial_group_time){
+				current_group->counter_synch++;
+                       		
+				printf("Control_msg_BOUND Counter:%d Lid:%d GLP:%d\n",
+					current_group->counter_synch,
+					msg->receiver,
+					LPS[msg->receiver]->current_group);
+				
+                        	if(current_group->counter_synch == current_group->tot_LP){
+                                	current_group->counter_synch = 0;
+                                	current_group->state = GLP_STATE_WAIT_FOR_UNBLOCK;
+                        	}
+			}
+				
 			#endif
 			bzero(&control_msg, sizeof(msg_t));
 			control_msg.sender = msg->receiver;

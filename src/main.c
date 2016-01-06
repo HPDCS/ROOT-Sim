@@ -139,9 +139,11 @@ static void *main_simulation_loop(void *arg) {
 				for(;j<n_grp;j++){
 					if(GLPS[j]->tot_LP != 0){
 						if(GLPS[j]->lvt != NULL)
-							printf("GLP[%d]->state: %d \t silent_counter:%d  \t lvt:%f VTG:%d \t",
+							printf("GLP[%d]->state: %d \tsyn_c:%d r_c:%d sil_c:%d  \t lvt:%f VTG:%d \t",
 								j,
 								GLPS[j]->state,
+								GLPS[j]->counter_synch,
+								GLPS[j]->counter_rollback,
 								GLPS[j]->counter_silent_ex,
 								GLPS[j]->lvt->timestamp,
 								verify_time_group(GLPS[j]->lvt->timestamp)
@@ -166,7 +168,7 @@ static void *main_simulation_loop(void *arg) {
 					      );
 					
 					if (LPS[j]->target_rollback != NULL)
-						printf("R_T:%f N_E_T:%f \n",LPS[j]->target_rollback->timestamp,next_event_timestamp(j));
+						printf("R_T:%f \n",LPS[j]->target_rollback->timestamp);
 				}
 				#endif				
 			

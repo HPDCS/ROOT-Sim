@@ -727,7 +727,13 @@ void schedule(void) {
         
 	// If we have to rollback
         if(LPS[lid]->state == LP_STATE_ROLLBACK) {
-                rollback(lid);
+		
+		if((LPS[lid]->target_rollback != NULL) || !have_group)
+                	rollback(lid);
+		else{
+			LPS[lid]->target_rollback = LPS[lid]->bound;
+			printf("LP[%d] H_G:%d \n",lid,have_group);
+		}
 		
 		if(have_group){
 			//TODO MN da rivedere perchè il contatore va decrementato al termine della silent execution

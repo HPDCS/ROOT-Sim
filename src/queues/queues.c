@@ -220,9 +220,36 @@ void process_bottom_halves(void) {
 						fflush(stdout);
 						abort();
 					} else {
+
+						#ifdef HAVE_GLP_SCH_MODULE
+						if(GLPS[LPS[lid_receiver]->current_group]->initial_group_time == matched_msg){
+							msg_t control_msg;
+							bzero(&control_msg, sizeof(msg_t));
+							control_msg.sender = LidToGid(LPS[lid_receiver]->current_group);
+							control_msg.receiver = LidToGid(lid_receiver);
+							control_msg.type = SYNCH_GROUP;
+							control_msg.timestamp = matched_msg->timestamp;
+							control_msg.send_time = matched_msg->timestamp;
+							control_msg.message_kind = positive;
+							control_msg.mark = generate_mark(lid_receiver);
+							Send(&control_msg);
+
+							printf("ANTIMESSAGE INITIAL MESSAGE %d\n",lid_receiver);
+						
+						}
+						#endif
 		
 						// If the matched message is in the past, we have to rollback
 						if(matched_msg->timestamp <= lvt(lid_receiver)) {
+							
+							printf("RN Type:%d T:%f S:%d R:%d \n",
+                                                        	matched_msg->type,
+                                                        	matched_msg->timestamp,
+                                                        	matched_msg->sender, 
+                                                        	lid_receiver
+                                                       	       );
+
+							
 							LPS[lid_receiver]->bound = list_prev(matched_msg);
 							while ((LPS[lid_receiver]->bound != NULL) && LPS[lid_receiver]->bound->timestamp == msg_to_process->timestamp) {
 								if(list_prev(LPS[lid_receiver]->bound) == NULL)
@@ -273,7 +300,13 @@ void process_bottom_halves(void) {
 					// Check if we've just inserted an out-of-order event
 					if(msg_to_process->timestamp < lvt(lid_receiver)) {
 						
-
+						printf("RP Type:%d T:%f S:%d R:%d \n",
+							msg_to_process->type,
+							msg_to_process->timestamp,
+                                                        msg_to_process->sender, 
+							lid_receiver
+						       );
+						
 						LPS[lid_receiver]->bound = list_prev(msg_to_process);
 						while ((LPS[lid_receiver]->bound != NULL) && LPS[lid_receiver]->bound->timestamp == msg_to_process->timestamp) {
 							if(list_prev(LPS[lid_receiver]->bound) == NULL)
