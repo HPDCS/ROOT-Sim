@@ -347,6 +347,8 @@ bool process_control_msg(msg_t *msg) {
 		case NULL_LOG_MESSAGE:
 //			printf("[%d] process NULL_LOG_MESSAGE log-counter:%d \n",msg->receiver,GLPS[LPS[msg->receiver]->current_group]->counter_log);
                         #ifdef HAVE_GLP_SCH_MODULE
+			current_lp = msg->receiver;
+                        current_lvt = msg->timestamp;
 			GLPS[LPS[msg->receiver]->current_group]->counter_log--;
 			if(msg->sender != msg->receiver){
 				force_LP_checkpoint(msg->receiver);
@@ -355,19 +357,27 @@ bool process_control_msg(msg_t *msg) {
 			LPS[msg->receiver]->state = LP_STATE_WAIT_FOR_LOG;
 			if(GLPS[LPS[msg->receiver]->current_group]->counter_log == 0)
 				GLPS[LPS[msg->receiver]->current_group]->state = GLP_STATE_READY;
+			current_lvt = INFTY;
+                        current_lp = IDLE_PROCESS;
 			#endif	
 			break;
 
 		case CLOSE_GROUP:
                         #ifdef HAVE_GLP_SCH_MODULE
+			current_lp = msg->receiver;
+                        current_lvt = msg->timestamp;
                         force_LP_checkpoint(msg->receiver);
                         LogState(msg->receiver);
+			current_lvt = INFTY;
+                        current_lp = IDLE_PROCESS;
                         #endif
                         break;
 
 
 		case SYNCH_GROUP:
 			#ifdef HAVE_GLP_SCH_MODULE
+			current_lp = msg->receiver;
+                        current_lvt = msg->timestamp;
 			current_group = GLPS[LPS[msg->receiver]->current_group];
 		//	printf("LP[%d] SYNCH GROUP GLP_state %lu\n",msg->receiver,current_group->state);
 
@@ -389,6 +399,8 @@ bool process_control_msg(msg_t *msg) {
 			}
 			force_LP_checkpoint(msg->receiver);
                         LogState(msg->receiver);
+			current_lvt = INFTY;
+                        current_lp = IDLE_PROCESS;
 			#endif
 			break;
 	

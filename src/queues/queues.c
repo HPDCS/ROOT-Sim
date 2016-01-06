@@ -167,6 +167,7 @@ void insert_bottom_half(msg_t *msg) {
 void process_bottom_halves(void) {
 	unsigned int i;
 	unsigned int lid_receiver;
+	simtime_t lvt_receiver;
 	msg_t *msg_to_process;
 	msg_t *matched_msg;
 
@@ -175,6 +176,7 @@ void process_bottom_halves(void) {
 		while((msg_to_process = (msg_t *)get_BH(LPS_bound[i]->lid)) != NULL) {
 						
 			lid_receiver = msg_to_process->receiver;
+			lvt_receiver = lvt(lid_receiver);
 
 //			printf("\t \t receiver:%d sender:%d type:%d timestamp:%f\n",lid_receiver, msg_to_process->sender, msg_to_process->type, msg_to_process->timestamp);			
 
@@ -246,7 +248,7 @@ void process_bottom_halves(void) {
 
 						}
 						#ifdef HAVE_GLP_SCH_MODULE
-	                                                check_rollback_group(matched_msg, lid_receiver, negative);	
+	                                                check_rollback_group(matched_msg, lid_receiver, lvt_receiver, negative);	
 						#endif
 				
 
@@ -262,7 +264,7 @@ void process_bottom_halves(void) {
 				case positive:
 
 					list_place_by_content(lid_receiver, LPS[lid_receiver]->queue_in, timestamp, msg_to_process);
-
+						
 					// Check if we've just inserted an out-of-order event
 					if(msg_to_process->timestamp < lvt(lid_receiver)) {
 						
@@ -289,7 +291,7 @@ void process_bottom_halves(void) {
 						
 					}
 					#ifdef HAVE_GLP_SCH_MODULE
-                                        	check_rollback_group(msg_to_process, lid_receiver, positive);
+                                        	check_rollback_group(msg_to_process, lid_receiver, lvt_receiver, positive);
 					#endif
 
 					break;

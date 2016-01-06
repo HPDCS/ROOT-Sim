@@ -772,12 +772,13 @@ void schedule(void) {
 	}
 
         if((current_group->state != GLP_STATE_SILENT_EXEC && check_start_group(lid) && verify_time_group(lvt(lid))) || (event->type == CLOSE_GROUP)){
-                printf("UPDATE lvt_group lid:%d sender:%d  msg_type:%d timestamp:%f\n",lid,event->sender,event->type,event->timestamp);
+                printf("UPDATE lvt_group lid:%d sender:%d  msg_type:%d timestamp:%f IGT:%f\n",
+			lid,event->sender,event->type,event->timestamp,current_group->initial_group_time->timestamp);
 		current_group->lvt = event;
 	}
 	else{
-                printf("NOT UPDATE group-state:%d CSG:%d VTG:%d lid:%d sender:%d state:%d msg_type:%d msg_timestamp:%f\n"
-		,current_group->state,check_start_group(lid),verify_time_group(lvt(lid)),lid,event->sender,
+                printf("NOT UPDATE group-state:%d CSG:%d VTG:%d lid:%d sender:%d state:%d msg_type:%d msg_timestamp:%f\n",
+		current_group->state,check_start_group(lid),verify_time_group(lvt(lid)),lid,event->sender,
 		LPS[lid]->state,event->type,event->timestamp);
 	}
 

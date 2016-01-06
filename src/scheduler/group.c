@@ -1,5 +1,5 @@
 #include <scheduler/process.h>
-
+#include <gvt/gvt.h>
 
 #ifdef HAVE_GLP_SCH_MODULE
 unsigned int find_lp_group(unsigned int last_lp, unsigned int group){
@@ -15,12 +15,12 @@ void reset_synch_counter(unsigned int lid){
 		GLPS[LPS[lid]->current_group]->counter_synch--;	
 }
 
-void check_rollback_group(msg_t *straggler, unsigned int lid, int msg_case){
+void check_rollback_group(msg_t *straggler, unsigned int lid, simtime_t lvt_receiver, int msg_case){
 	
 	switch(msg_case){
 		case positive:
 			if(check_start_group(lid) &&  verify_time_group(LPS[lid]->bound->timestamp)){
-				if(straggler->timestamp < lvt(lid)){
+				if(straggler->timestamp < lvt_receiver){
                                         printf("RGB [POSITIVE Type:%lu] T:%f S:%d R:%d\n",
                                         	straggler->type,LPS[lid]->bound->timestamp,
                                         	straggler->sender, lid);
@@ -53,12 +53,12 @@ void check_rollback_group(msg_t *straggler, unsigned int lid, int msg_case){
 				control_msg.mark = generate_mark(lid);
 				Send(&control_msg);
 
-				printf("ANTIMESSAGE INITIAL MESSAGE %d\n",lid_receiver);
+				printf("ANTIMESSAGE INITIAL MESSAGE %d\n",lid);
 
 			}
 
                         if(check_start_group(lid) &&  verify_time_group(LPS[lid]->bound->timestamp)){
-                                if(straggler->timestamp <= lvt(lid)){
+                                if(straggler->timestamp <= lvt_receiver){
                                		 printf("RGB [NEGATIVE] T:%f S:%d R:%d\n",
 						LPS[lid]->bound->timestamp, straggler->sender, lid);
 

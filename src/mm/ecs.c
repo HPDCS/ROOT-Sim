@@ -146,7 +146,7 @@ void ECS(long long ds, unsigned long long hitted_object){
 	
 	if(!check_start_group(current_lp) 
 		&& verify_time_group(current_lvt) 
-		&& current_group->lvt==LPS[current_lp]->bound
+		&& current_group->initial_group_time==LPS[current_lp]->bound
 		&& LPS[current_lp]->current_group == LPS[hitted_object]->current_group){
                         current_group->counter_synch++;
                         

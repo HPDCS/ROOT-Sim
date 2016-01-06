@@ -74,3 +74,5 @@ extern GLP_state **GLPS;
 extern void rollback_group(msg_t*, unsigned int);
 extern bool check_start_group(unsigned int);
 extern void force_checkpoint_group(unsigned int);
+extern void reset_synch_counter(unsigned int);
+extern void check_rollback_group(msg_t*, unsigned int, simtime_t, int);
