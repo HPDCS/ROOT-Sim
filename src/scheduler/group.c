@@ -1,13 +1,84 @@
 #include <scheduler/process.h>
+
+
 #ifdef HAVE_GLP_SCH_MODULE
-
-
 unsigned int find_lp_group(unsigned int last_lp, unsigned int group){
         for(;last_lp<n_prc;last_lp++){
                 if(GLPS[group]->local_LPS[last_lp]!=NULL)
                         return last_lp;
         }
         return IDLE_PROCESS;
+}
+
+void reset_synch_counter(unsigned int lid){
+	if(LPS[lid]->bound->type == SYNCH_GROUP)
+		GLPS[LPS[lid]->current_group]->counter_synch--;	
+}
+
+void check_rollback_group(msg_t *straggler, unsigned int lid, int msg_case){
+	
+	switch(msg_case){
+		case positive:
+			if(check_start_group(lid) &&  verify_time_group(LPS[lid]->bound->timestamp)){
+				if(straggler->timestamp < lvt(lid)){
+                                        printf("RGB [POSITIVE Type:%lu] T:%f S:%d R:%d\n",
+                                        	straggler->type,LPS[lid]->bound->timestamp,
+                                        	straggler->sender, lid);
+
+                                	rollback_group(straggler,lid);
+                         	}
+				else if(straggler->timestamp < GLPS[LPS[lid]->current_group]->lvt->timestamp){
+					printf("RGB ltv_group [POSITIVE Type:%lu] T:%f R:%d S:%d GRP[%d]->lvt:%f msg->Time:%f\n",
+						straggler->type,LPS[lid]->bound->timestamp,
+						lid,straggler->sender,LPS[lid]->current_group,
+						GLPS[LPS[lid]->current_group]->lvt->timestamp,
+						straggler->timestamp
+					       );
+
+					rollback_group(straggler,IDLE_PROCESS);
+                               }
+			}
+			break;
+		
+		case negative:
+			if(GLPS[LPS[lid]->current_group]->initial_group_time == straggler){
+				msg_t control_msg;
+				bzero(&control_msg, sizeof(msg_t));
+				control_msg.sender = LidToGid(LPS[lid]->current_group);
+				control_msg.receiver = LidToGid(lid);
+				control_msg.type = SYNCH_GROUP;
+				control_msg.timestamp = straggler->timestamp;
+				control_msg.send_time = straggler->timestamp;
+				control_msg.message_kind = positive;
+				control_msg.mark = generate_mark(lid);
+				Send(&control_msg);
+
+				printf("ANTIMESSAGE INITIAL MESSAGE %d\n",lid_receiver);
+
+			}
+
+                        if(check_start_group(lid) &&  verify_time_group(LPS[lid]->bound->timestamp)){
+                                if(straggler->timestamp <= lvt(lid)){
+                               		 printf("RGB [NEGATIVE] T:%f S:%d R:%d\n",
+						LPS[lid]->bound->timestamp, straggler->sender, lid);
+
+						// TODO analise case with antimessage, we have to consider 
+						// matched message instead of bound
+						rollback_group(straggler,lid);
+ 
+				}
+                        	else if(straggler->timestamp <= GLPS[LPS[lid]->current_group]->lvt->timestamp){
+					printf("GRB lvt_group [NEGATIVE] T:%f S:%d R:%d\n",
+						LPS[lid]->bound->timestamp, straggler->sender, lid);
+						// TODO understand if is correct IDLE_PROCESS
+					
+					rollback_group(straggler,IDLE_PROCESS);
+				}
+                        }
+                        break;
+
+	}
+
 }
 
 //TODO MN
@@ -30,10 +101,7 @@ void rollback_group(msg_t *straggler, unsigned int receiver){
 		LPS[receiver]->target_rollback = LPS[receiver]->bound;
 	        current_group->lvt = LPS[receiver]->target_rollback;
 	}
-	current_group->state = GLP_STATE_ROLLBACK;
-	current_group->counter_rollback = current_group->tot_LP;
-	current_group->counter_silent_ex = current_group->tot_LP; 
-
+	
 	for(i=0; i<current_group->tot_LP; i++){
 		lp_index = find_lp_group(lp_index,LPS[straggler->receiver]->current_group);
 		if(lp_index == IDLE_PROCESS)
@@ -42,23 +110,32 @@ void rollback_group(msg_t *straggler, unsigned int receiver){
 		if(lp_index!=receiver){
 			printf("ROLLBACK GROUP LP[%d]\n",lp_index);
 			
-			if(straggler->timestamp > local_LP->bound->timestamp){
+			/*if(straggler->timestamp > local_LP->bound->timestamp){
 				local_LP->target_rollback = NULL;
 			}
-			else{
+			else{*/
 				//Giving a timestamp it has to return the message with the maximum timestamp lesser than timestamp
 				local_LP->bound = list_get_node_timestamp(straggler->timestamp,lp_index);
 				local_LP->target_rollback = local_LP->bound;
 			
 				if(current_group->lvt == NULL || current_group->lvt->timestamp < local_LP->target_rollback->timestamp)
 					current_group->lvt = local_LP->target_rollback;
-			}
+		//	}
                        	local_LP->state = LP_STATE_ROLLBACK;
 		}
 
-		lp_index++;
-		
-		
+		lp_index++;	
+	}
+	
+	if(current_group->tot_LP > 1 && current_group->initial_group_time->timestamp >= straggler->timestamp){
+		printf("RESET GROUP IGT:%f S->T:%f\n",current_group->initial_group_time->timestamp, straggler->timestamp);
+		current_group->state = GLP_STATE_WAIT_FOR_GROUP;
+	        current_group->counter_synch = 0;
+	}
+	else{
+		current_group->state = GLP_STATE_ROLLBACK;
+	        current_group->counter_rollback = current_group->tot_LP;
+       		current_group->counter_silent_ex = current_group->tot_LP;
 	}
 	
 }

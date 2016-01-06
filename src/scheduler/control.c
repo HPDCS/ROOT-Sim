@@ -196,6 +196,15 @@ bool receive_control_msg(msg_t *msg) {
 
 		case RENDEZVOUS_ACK:
 			if(LPS[msg->receiver]->state == LP_STATE_ROLLBACK) {
+				printf("*************** R:%d S:%d RM:%d LPRM:%d T:%f LVT:%f GRP->state:%d \n ",
+					msg->receiver,
+					msg->sender,
+					msg->rendezvous_mark,
+					LPS[msg->receiver]->wait_on_rendezvous,
+					msg->timestamp,
+					lvt(msg->receiver),
+					GLPS[LPS[msg->receiver]->current_group]->state
+				      );
 				break;
 			}
 

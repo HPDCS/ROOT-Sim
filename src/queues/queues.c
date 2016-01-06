@@ -220,24 +220,6 @@ void process_bottom_halves(void) {
 						fflush(stdout);
 						abort();
 					} else {
-
-						#ifdef HAVE_GLP_SCH_MODULE
-						if(GLPS[LPS[lid_receiver]->current_group]->initial_group_time == matched_msg){
-							msg_t control_msg;
-							bzero(&control_msg, sizeof(msg_t));
-							control_msg.sender = LidToGid(LPS[lid_receiver]->current_group);
-							control_msg.receiver = LidToGid(lid_receiver);
-							control_msg.type = SYNCH_GROUP;
-							control_msg.timestamp = matched_msg->timestamp;
-							control_msg.send_time = matched_msg->timestamp;
-							control_msg.message_kind = positive;
-							control_msg.mark = generate_mark(lid_receiver);
-							Send(&control_msg);
-
-							printf("ANTIMESSAGE INITIAL MESSAGE %d\n",lid_receiver);
-						
-						}
-						#endif
 		
 						// If the matched message is in the past, we have to rollback
 						if(matched_msg->timestamp <= lvt(lid_receiver)) {
@@ -248,8 +230,10 @@ void process_bottom_halves(void) {
                                                         	matched_msg->sender, 
                                                         	lid_receiver
                                                        	       );
-
-							
+							#ifdef HAVE_GLP_SCH_MODULE
+							reset_synch_counter(lid_receiver);
+							#endif
+								
 							LPS[lid_receiver]->bound = list_prev(matched_msg);
 							while ((LPS[lid_receiver]->bound != NULL) && LPS[lid_receiver]->bound->timestamp == msg_to_process->timestamp) {
 								if(list_prev(LPS[lid_receiver]->bound) == NULL)
@@ -260,28 +244,10 @@ void process_bottom_halves(void) {
 							
 							LPS[lid_receiver]->state = LP_STATE_ROLLBACK;
 
-							#ifdef HAVE_GLP_SCH_MODULE
-							if(check_start_group(lid_receiver) && verify_time_group(matched_msg->timestamp)){
-								printf("RGB [NEGATIVE] T:%f S:%d R:%d\n",
-								LPS[lid_receiver]->bound->timestamp, matched_msg->sender, lid_receiver);
-								
-								// TODO analise case with antimessage, we have to consider 
-								// matched message instead of bound
-								rollback_group(matched_msg,lid_receiver);
-							}
-							#endif
 						}
 						#ifdef HAVE_GLP_SCH_MODULE
-						else{
-							if(check_start_group(lid_receiver) && verify_time_group(matched_msg->timestamp) &&
-							matched_msg->timestamp <= GLPS[LPS[lid_receiver]->current_group]->lvt->timestamp){
-                                                                printf("GRB lvt_group [NEGATIVE] T:%f S:%d R:%d\n",
-								LPS[lid_receiver]->bound->timestamp, matched_msg->sender, lid_receiver);
-                                                                // TODO understand if is correct IDLE_PROCESS
-								rollback_group(matched_msg,IDLE_PROCESS);
-							}
-						}
-                                                #endif
+	                                                check_rollback_group(matched_msg, lid_receiver, negative);	
+						#endif
 				
 
 						// Delete the matched message
@@ -307,6 +273,10 @@ void process_bottom_halves(void) {
 							lid_receiver
 						       );
 						
+						#ifdef HAVE_GLP_SCH_MODULE
+						reset_synch_counter(lid_receiver);
+						#endif
+						
 						LPS[lid_receiver]->bound = list_prev(msg_to_process);
 						while ((LPS[lid_receiver]->bound != NULL) && LPS[lid_receiver]->bound->timestamp == msg_to_process->timestamp) {
 							if(list_prev(LPS[lid_receiver]->bound) == NULL)
@@ -317,34 +287,10 @@ void process_bottom_halves(void) {
 
 						LPS[lid_receiver]->state = LP_STATE_ROLLBACK;
 						
-						#ifdef HAVE_GLP_SCH_MODULE
-                                               	if(check_start_group(lid_receiver) &&  verify_time_group(LPS[lid_receiver]->bound->timestamp)){
-								printf("RGB [POSITIVE Type:%lu] T:%f S:%d R:%d\n",
-								       msg_to_process->type,LPS[lid_receiver]->bound->timestamp,
-								       msg_to_process->sender, lid_receiver);
-								
-								rollback_group(msg_to_process,lid_receiver);
-                                                }
-                                                #endif
 					}
 					#ifdef HAVE_GLP_SCH_MODULE
-                                        else{
-                                        	if(check_start_group(lid_receiver) && verify_time_group(msg_to_process->timestamp) &&
-                                                msg_to_process->timestamp < GLPS[LPS[lid_receiver]->current_group]->lvt->timestamp){
-                                                        printf("RGB ltv_group [POSITIVE Type:%lu] T:%f R:%d S:%d GRP[%d]->lvt:%f msg->Time:%f\n",
-								msg_to_process->type,LPS[lid_receiver]->bound->timestamp, 
-								lid_receiver,msg_to_process->sender,LPS[lid_receiver]->current_group,
-								GLPS[LPS[lid_receiver]->current_group]->lvt->timestamp,
-								msg_to_process->timestamp
-							       );
-                                                	
-							rollback_group(msg_to_process,IDLE_PROCESS);
-
-							if(n_cores == 1)
-								rootsim_error(true,"Only one core. Rollback is not possible. Aborting...");
-                             			}
-                                        }
-                                        #endif
+                                        	check_rollback_group(msg_to_process, lid_receiver, positive);
+					#endif
 
 					break;
 

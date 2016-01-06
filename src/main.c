@@ -35,11 +35,11 @@
 #include <core/core.h>
 #include <arch/thread.h>
 #include <statistics/statistics.h>
-#include <gvt/gvt.h>
 #include <gvt/ccgs.h>
 #include <scheduler/binding.h>
 #include <scheduler/scheduler.h>
 #include <scheduler/process.h>
+#include <gvt/gvt.h>
 #include <mm/dymelor.h>
 #include <mm/ecs.h>
 #include <serial/serial.h>
@@ -168,7 +168,7 @@ static void *main_simulation_loop(void *arg) {
 					      );
 					
 					if (LPS[j]->target_rollback != NULL)
-						printf("R_T:%f \n",LPS[j]->target_rollback->timestamp);
+						printf("R_T:%f N_E:%f \n",LPS[j]->target_rollback->timestamp,next_event_timestamp(j));
 				}
 				#endif				
 			
