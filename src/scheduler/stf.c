@@ -13,8 +13,12 @@ bool check_state_group(unsigned int lid){
 	GLP_state *current_group = GLPS[temp_LP->current_group];
 
 
-	if(is_blocked_state(temp_LP->state) || (is_blocked_state(current_group->state) &&  min_timestamp > current_group->initial_group_time->timestamp  && verify_time_group(lvt(lid)))){ 
-      		return true;
+	if(is_blocked_state(temp_LP->state) || 
+			(is_blocked_state(current_group->state) &&
+			check_start_group(temp_LP->lid) &&
+			verify_time_group(lvt(lid)))){ 
+      		
+		return true;
 	}
 	
 	if(temp_LP->state == LP_STATE_SILENT_EXEC && current_group->state == GLP_STATE_ROLLBACK)
@@ -95,7 +99,7 @@ unsigned int smallest_timestamp_first(void) {
 			is_blocked_state(GLPS[LPS[next]->current_group]->state) && 
 			min_timestamp > GLPS[LPS[next]->current_group]->initial_group_time->timestamp &&
 			verify_time_group(lvt(next)))		
-			printf("############ ERRORE STF ############\n");
+			printf("############ ERRORE STF  ############\n");
 		return next;
 	}
 }
