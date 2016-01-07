@@ -161,7 +161,7 @@ void rollback_group(msg_t *straggler, unsigned int receiver){
 		lp_index++;	
 	}
 	
-	if(current_group->tot_LP > 1 && current_group->initial_group_time->timestamp >= straggler->timestamp){
+	if(current_group->initial_group_time->timestamp >= straggler->timestamp){
 		PRINT_DEBUG_GLP{
 			printf("RESET GROUP IGT:%f S->T:%f\n",current_group->initial_group_time->timestamp, straggler->timestamp);
 		}

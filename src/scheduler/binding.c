@@ -688,13 +688,8 @@ static void send_control_group_message(void) {
 	
 	for(i=0;i<n_grp;i++){
 		temp_GLPS = new_GLPS[i];
-		if(temp_GLPS->tot_LP==1){
-			update_IGT(temp_GLPS->initial_group_time,LPS[i]->bound);
-			temp_GLPS->lvt = LPS[i]->bound;
-			temp_GLPS->state = GLP_STATE_READY;
-			continue;
-		}
-                for(j=0;j<temp_GLPS->tot_LP;j++){
+                
+		for(j=0;j<temp_GLPS->tot_LP;j++){
                         lp_index = find_LP_newGLPS(lp_index,i);
 			
 			// Diretcly place the control message in the target bottom half queue

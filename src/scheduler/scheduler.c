@@ -690,11 +690,14 @@ void schedule(void) {
 	// This is needed because if the only event of SILENT_EXECUTION it is exactly the bound
 	if(LPS[lid]->state == LP_STATE_SILENT_EXEC && LPS[lid]->bound==LPS[lid]->target_rollback){ 
 		current_group->counter_silent_ex--;
-                if(current_group->counter_silent_ex == 0)
+                if(current_group->counter_silent_ex == 0){
                         current_group->state = GLP_STATE_READY;
+		}
+		
 		PRINT_DEBUG_GLP{
 			printf("Complete silent execution with current bound LP[%d]\n",lid);
 		}
+
 		LPS[lid]->state = LP_STATE_READY;
                	send_outgoing_msgs(lid);
 		return;
