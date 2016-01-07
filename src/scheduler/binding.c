@@ -664,10 +664,11 @@ static inline void GLP_knapsack(void) {
 		}
 		printf("\n");
 	}
-
+	PRINT_DEBUG_GLP{
 	for(j = 0; j < n_prc; j++) {
                 printf("LP[%d]-G[%d]\n",j,new_group_LPS[j]);
         }
+	}
 
 
 }
@@ -696,22 +697,23 @@ static void send_control_group_message(void) {
                 for(j=0;j<temp_GLPS->tot_LP;j++){
                         lp_index = find_LP_newGLPS(lp_index,i);
 			
-			// Not send control message to lp with bigger bound
-			if(lp_index != temp_GLPS->initial_group_time->receiver || check_IGT(temp_GLPS->initial_group_time,LPS[lp_index]->bound)){	
-				// Diretcly place the control message in the target bottom half queue
-				bzero(&control_msg, sizeof(msg_t));
-				control_msg.sender = LidToGid(i);
-				control_msg.receiver = LidToGid(lp_index);
-				control_msg.type = SYNCH_GROUP;
-				control_msg.timestamp = temp_GLPS->initial_group_time->timestamp;
-				control_msg.send_time = temp_GLPS->initial_group_time->timestamp;
-				control_msg.message_kind = positive;
-				control_msg.mark = generate_mark(i);
-				Send(&control_msg);
-				
+			// Diretcly place the control message in the target bottom half queue
+			bzero(&control_msg, sizeof(msg_t));
+			control_msg.sender = LidToGid(i);
+			control_msg.receiver = LidToGid(lp_index);
+			control_msg.type = SYNCH_GROUP;
+			control_msg.timestamp = temp_GLPS->initial_group_time->timestamp;
+			control_msg.send_time = temp_GLPS->initial_group_time->timestamp;
+			control_msg.message_kind = positive;
+			control_msg.mark = generate_mark(i);
+			Send(&control_msg);
+		
+			if(lp_index == temp_GLPS->initial_group_time->receiver){
+				update_IGT(temp_GLPS->initial_group_time,&control_msg);
+			}		
+			PRINT_DEBUG_GLP{	
 				printf("SENDED SYNCH MESSAGE TO %d\n",lp_index);
 			}
-			
 			//Useful to take a log at the end the group execution otherwise an ECS may be executed in silent mode
 			bzero(&control_msg, sizeof(msg_t));
                         control_msg.sender = LidToGid(i);
@@ -946,9 +948,11 @@ void rebind_LPs(void) {
 
 			switch_GLPS();
 		}
+		PRINT_DEBUG_GLP{
 		unsigned int k = 0;
 		for(;k<n_prc_per_thread;k++)
 			printf("[tid:%d] LP:%d Group_bound:%p\n",tid,LPS_bound[k]->lid,GLPS[LPS_bound[k]->current_group]->lvt);
+		}
 		thread_barrier(&all_thread_barrier);
 		
 		#endif

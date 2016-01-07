@@ -86,10 +86,10 @@ void ECS(long long ds, unsigned long long hitted_object){
 		LPS[current_lp]->wait_on_rendezvous = current_evt->rendezvous_mark;
 	}
 
-#ifndef HAVE_GLP_SCH_MODULE
-
-	printf("LP[%d] hits %llu rende_mark:%lu LP_wait_on_rende:%lu\n",current_lp, hitted_object, current_evt->rendezvous_mark,LPS[current_lp]->wait_on_rendezvous);
-
+#ifdef HAVE_GLP_SCH_MODULE
+	PRINT_DEBUG_GLP{
+		printf("LP[%d] hits %llu rende_mark:%lu LP_wait_on_rende:%lu\n",current_lp, hitted_object, current_evt->rendezvous_mark,LPS[current_lp]->wait_on_rendezvous);
+	}
 #endif
 	//TODO MN
 	
@@ -139,35 +139,20 @@ void ECS(long long ds, unsigned long long hitted_object){
 	current_group = GLPS[LPS[current_lp]->current_group];
 	
 	if(check_start_group(current_lp) && verify_time_group(current_lvt)){
-		printf("GLP[%d] set state WAIT_FOR_SYNCH\n",LPS[current_lp]->current_group);
+		PRINT_DEBUG_GLP{
+			printf("GLP[%d] set state WAIT_FOR_SYNCH\n",LPS[current_lp]->current_group);
+		}
 		current_group->state = GLP_STATE_WAIT_FOR_SYNCH;
 	}
 	else{
-		printf("Not update LP:%d G[%d] G-STATE:%d ECS CSG:%d VTG:%d \n",
+		PRINT_DEBUG_GLP{
+			printf("Not update LP:%d G[%d] G-STATE:%d ECS CSG:%d VTG:%d \n",
 			current_lp,
 			LPS[current_lp]->current_group,
 			current_group->state,
 			check_start_group(current_lp),
 			verify_time_group(current_lvt));
-	}
-	
-	
-	if(!check_start_group(current_lp) 
-		&& verify_time_group(current_lvt) 
-		&& check_IGT(current_group->initial_group_time,LPS[current_lp]->bound)
-		&& LPS[current_lp]->current_group == LPS[hitted_object]->current_group){
-                        current_group->counter_synch++;
-                        LPS[current_lp]->updated_counter = true;
-			printf("**ECS** Bound_Event_Synch Counter:%d Lid:%d GLP:%d\n",
-				current_group->counter_synch,
-				current_lp,
-				LPS[current_lp]->current_group);
-			
-                        if(current_group->counter_synch == current_group->tot_LP){
-				reset_flag_counter_synch(LPS[current_lp]->current_group);
-                                current_group->counter_synch = 0;
-                                current_group->state = GLP_STATE_READY;
-                        }
+		}
 	}
 
 	#endif

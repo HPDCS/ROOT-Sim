@@ -667,7 +667,9 @@ void schedule(void) {
                 	rollback(lid);
 		else{
 			LPS[lid]->target_rollback = LPS[lid]->bound;
-			printf("LP[%d] H_G:%d \n",lid,have_group);
+			PRINT_DEBUG_GLP{
+				printf("LP[%d] H_G:%d \n",lid,have_group);
+			}
 		}
 		
 		if(have_group){
@@ -690,9 +692,9 @@ void schedule(void) {
 		current_group->counter_silent_ex--;
                 if(current_group->counter_silent_ex == 0)
                         current_group->state = GLP_STATE_READY;
-		
-		printf("Complete silent execution with current bound LP[%d]\n",lid);
-		
+		PRINT_DEBUG_GLP{
+			printf("Complete silent execution with current bound LP[%d]\n",lid);
+		}
 		LPS[lid]->state = LP_STATE_READY;
                	send_outgoing_msgs(lid);
 		return;
@@ -707,7 +709,8 @@ void schedule(void) {
 	}
 
         if((current_group->state != GLP_STATE_SILENT_EXEC && check_start_group(lid) && verify_time_group(lvt(lid))) || (event->type == CLOSE_GROUP)){
-                printf("UPDATE lvt_group lid:%d sender:%d  msg_type:%d timestamp:%f G_state:%d IGT:%f S-IGT:%d R-IGT:%d Type:%d\n",
+                PRINT_DEBUG_GLP{
+		  printf("UPDATE lvt_group lid:%d sender:%d  msg_type:%d timestamp:%f G_state:%d IGT:%f S-IGT:%d R-IGT:%d Type:%d\n",
 			lid,
 			event->sender,
 			event->type,
@@ -717,12 +720,16 @@ void schedule(void) {
 			current_group->initial_group_time->sender,
 			current_group->initial_group_time->receiver,
 			current_group->initial_group_time->type);
+		}
+		
 		current_group->lvt = event;
 	}
 	else{
-                printf("NOT UPDATE group-state:%d CSG:%d VTG:%d lid:%d sender:%d state:%d msg_type:%d msg_timestamp:%f\n",
+               PRINT_DEBUG_GLP{
+		 printf("NOT UPDATE group-state:%d CSG:%d VTG:%d lid:%d sender:%d state:%d msg_type:%d msg_timestamp:%f\n",
 		current_group->state,check_start_group(lid),verify_time_group(lvt(lid)),lid,event->sender,
 		LPS[lid]->state,event->type,event->timestamp);
+		}
 	}
 
 
@@ -775,9 +782,9 @@ void schedule(void) {
                 	current_group->counter_silent_ex--;
 			if(current_group->counter_silent_ex == 0)
 				current_group->state = GLP_STATE_READY;
-
-			printf("Complete silent execution LP[%d]\n",lid);
-
+			PRINT_DEBUG_GLP{
+				printf("Complete silent execution LP[%d]\n",lid);
+			}
 			LPS[lid]->state = LP_STATE_READY;
 			send_outgoing_msgs(lid);
 		}
@@ -787,21 +794,6 @@ void schedule(void) {
         if(!is_blocked_state(LPS[lid]->state)) {
                 LPS[lid]->state = LP_STATE_READY;
                 send_outgoing_msgs(lid);
-
-		if(!check_start_group(lid) && check_IGT(current_group->initial_group_time,event)){
-			current_group->counter_synch++;
-			LPS[lid]->updated_counter = true;
-			printf("Bound_Event_Synch Counter:%d Lid:%d GLP:%d\n",current_group->counter_synch,lid,LPS[lid]->current_group);
-			if(current_group->counter_synch == current_group->tot_LP){
-				reset_flag_counter_synch(LPS[lid]->current_group);
-				current_group->counter_synch = 0;
-				current_group->state = GLP_STATE_READY;
-			}
-	     
-			force_LP_checkpoint(lid);
-			need_log_group = false;
-		}
-
         }
 
         if(resume_execution && !is_blocked_state(LPS[lid]->state)) {

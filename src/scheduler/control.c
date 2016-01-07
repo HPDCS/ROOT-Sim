@@ -124,7 +124,9 @@ bool anti_control_message(msg_t * msg) {
 		
 			#ifdef HAVE_GLP_SCH_MODULE
                         if(check_start_group(lid_receiver) && verify_time_group(LPS[lid_receiver]->bound->timestamp)){
-				printf("RGB [ANTI_CONTROL_MSG] T:%f\n",LPS[lid_receiver]->bound->timestamp);	
+				PRINT_DEBUG_GLP{
+					printf("RGB [ANTI_CONTROL_MSG] T:%f\n",LPS[lid_receiver]->bound->timestamp);	
+				}
 				rollback_group(old_rendezvous,lid_receiver);
                         }
                        	#endif
@@ -132,8 +134,9 @@ bool anti_control_message(msg_t * msg) {
 	                LPS[lid_receiver]->state = LP_STATE_ROLLBACK;
 		}
 		
-		#ifdef HAVE_GLP_SCH_MODULE
+		#ifdef HAVE_GLP_SCH_MODUL
                 else{
+		PRINT_DEBUG_GLP{
 			if(GLPS[LPS[lid_receiver]->current_group]->lvt!= NULL)
 				printf("ERRORE LP:%d S:%d anti-control message T:%f after LP-lvt:%f GLP-lvt:%f \n",
 			 	     lid_receiver,old_rendezvous->sender,old_rendezvous->timestamp, lvt(lid_receiver), GLPS[LPS[lid_receiver]->current_group]->lvt->timestamp
@@ -142,6 +145,8 @@ bool anti_control_message(msg_t * msg) {
 				 printf("ERRORE LP:%d S:%d anti-control message T:%f after LP-lvt:%f \n",
                                      lid_receiver,old_rendezvous->sender,old_rendezvous->timestamp, lvt(lid_receiver));
 		}
+		}
+		
 		#endif
 
 		old_rendezvous->rendezvous_mark = 0;
@@ -173,16 +178,6 @@ bool reprocess_control_msg(msg_t *msg) {
 
 // return true if the event must not be filtered here
 bool receive_control_msg(msg_t *msg) {
-/* Print to debug*/	
-#ifndef HAVE_GLP_SCH_MODULE
-	switch(msg->type){	
-		//case 1: printf("%d receive from %d PACKET\n",msg->receiver,msg->sender); break;
-		case RENDEZVOUS_START:	printf("%d receive from %d START mark:%lu\n",msg->receiver,msg->sender, msg->mark); break;
-		case RENDEZVOUS_ACK:	printf("%d receive from %d ACK\n",msg->receiver,msg->sender); break;
-		case RENDEZVOUS_UNBLOCK:	printf("\t \t %d receive from %d\n",msg->receiver,msg->sender); break;
-		case RENDEZVOUS_ROLLBACK:	printf("\t \t %d receive from %d R_ROLLBACK mark:%lu\n",msg->receiver,msg->sender, msg->mark); break;
-	}	
-#endif
 			
 	if(msg->type < MIN_VALUE_CONTROL || msg->type > MAX_VALUE_CONTROL) {
 		return true;
@@ -196,15 +191,19 @@ bool receive_control_msg(msg_t *msg) {
 
 		case RENDEZVOUS_ACK:
 			if(LPS[msg->receiver]->state == LP_STATE_ROLLBACK) {
-				printf("*************** R:%d S:%d RM:%llu LPRM:%llu T:%f LVT:%f GRP->state:%d \n ",
-					msg->receiver,
-					msg->sender,
-					msg->rendezvous_mark,
-					LPS[msg->receiver]->wait_on_rendezvous,
-					msg->timestamp,
-					lvt(msg->receiver),
-					GLPS[LPS[msg->receiver]->current_group]->state
-				      );
+				#ifdef HAVE_GLP_SCH_MODULE
+				PRINT_DEBUG_GLP{
+					printf("*************** R:%d S:%d RM:%llu LPRM:%llu T:%f LVT:%f GRP->state:%d \n ",
+						msg->receiver,
+						msg->sender,
+						msg->rendezvous_mark,
+						LPS[msg->receiver]->wait_on_rendezvous,
+						msg->timestamp,
+						lvt(msg->receiver),
+						GLPS[LPS[msg->receiver]->current_group]->state
+					      );
+				}
+				#endif
 				break;
 			}
 
@@ -307,30 +306,18 @@ bool process_control_msg(msg_t *msg) {
 			current_group = GLPS[LPS[msg->receiver]->current_group];
 
 			if(check_start_group(msg->receiver) && verify_time_group(msg->timestamp)){
-				printf("GLP[%d] set state WAIT_FOR_UNBLOCK\n",LPS[msg->receiver]->current_group);
+				PRINT_DEBUG_GLP{
+					printf("GLP[%d] set state WAIT_FOR_UNBLOCK\n",LPS[msg->receiver]->current_group);
+				}
 				current_group->state = GLP_STATE_WAIT_FOR_UNBLOCK;
 			}
-			else
-				printf("not updated upon START LP:%d CS:%d VT:%d\n",
-					msg->receiver,check_start_group(msg->receiver),
-					verify_time_group(msg->timestamp));
-			
-			if(!check_start_group(msg->receiver) && verify_time_group(msg->timestamp) && check_IGT(current_group->initial_group_time,msg)){
-				current_group->counter_synch++;
-				LPS[msg->receiver]->updated_counter = true;
-                       		
-				printf("Control_msg_BOUND Counter:%d Lid:%d GLP:%d\n",
-					current_group->counter_synch,
-					msg->receiver,
-					LPS[msg->receiver]->current_group);
-				
-                        	if(current_group->counter_synch == current_group->tot_LP){
-					reset_flag_counter_synch(LPS[msg->receiver]->current_group);
-                                	current_group->counter_synch = 0;
-                                	current_group->state = GLP_STATE_WAIT_FOR_UNBLOCK;
-                        	}
+			else{
+				PRINT_DEBUG_GLP{
+					printf("not updated upon START LP:%d CS:%d VT:%d\n",
+						msg->receiver,check_start_group(msg->receiver),
+						verify_time_group(msg->timestamp));
+				}
 			}
-				
 			#endif
 			bzero(&control_msg, sizeof(msg_t));
 			control_msg.sender = msg->receiver;

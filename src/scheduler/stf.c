@@ -6,30 +6,6 @@
 #include <gvt/gvt.h>
 #include <mm/dymelor.h>
 
-#ifdef HAVE_GLP_SCH_MODULE
-bool check_state_group(unsigned int lid){
-
-	LP_state *temp_LP = LPS_bound[lid];
-	GLP_state *current_group = GLPS[temp_LP->current_group];
-
-
-	if(is_blocked_state(temp_LP->state) || 
-			(is_blocked_state(current_group->state) &&
-			check_start_group(temp_LP->lid) &&
-			verify_time_group(lvt(lid)))){ 
-      		
-		return true;
-	}
-	
-	if(temp_LP->state == LP_STATE_SILENT_EXEC && current_group->state == GLP_STATE_ROLLBACK)
-		return true;
-
-
-	return false;
-
-}
-#endif
-
 /**
 * This function implements the smallest timestamp first algorithm
 *
@@ -46,19 +22,7 @@ unsigned int smallest_timestamp_first(void) {
 	// For each local process
 	for (i = 0; i < n_prc_per_thread; i++) {
 		#ifdef HAVE_GLP_SCH_MODULE
-
-		if(LPS_bound[i]->state == LP_STATE_WAIT_FOR_GROUP){
-			if(GLPS[LPS_bound[i]->current_group]->state == GLP_STATE_WAIT_FOR_GROUP)
-				continue;
-		}
-		else if(LPS_bound[i]->state == LP_STATE_WAIT_FOR_LOG){
-			if(GLPS[LPS_bound[i]->current_group]->state == GLP_STATE_WAIT_FOR_LOG)
-				continue;
-			else
-				//For avoiding deadlock in case of double log instance
-				LPS_bound[i]->state = LP_STATE_READY;
-		}
-		else if(check_state_group(i))
+		if(check_state_group(i))
 			continue;
 		#else
 		// If waiting for synch, don't take into account the LP
@@ -99,7 +63,15 @@ unsigned int smallest_timestamp_first(void) {
 			is_blocked_state(GLPS[LPS[next]->current_group]->state) && 
 			min_timestamp > GLPS[LPS[next]->current_group]->initial_group_time->timestamp &&
 			verify_time_group(lvt(next)))		
-			printf("############ ERRORE STF  ############\n");
+			printf("############ ERRORE STF LP:%d LP-S:%d GLP-S:%d LVT-LP:%f LVT-GLP:%f CSG:%d VTG:%d  ############\n",
+				next,
+				LPS[next]->state,
+				GLPS[LPS[next]->current_group]->state,
+				lvt(next),
+				GLPS[LPS[next]->current_group]->lvt->timestamp,
+				check_start_group(next),
+				verify_time_group(lvt(next))
+			);
 		return next;
 	}
 }

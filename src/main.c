@@ -134,8 +134,9 @@ static void *main_simulation_loop(void *arg) {
 				#endif
 				
 				
-				unsigned int j=0;
 				#ifdef HAVE_GLP_SCH_MODULE
+				unsigned int j=0;
+				PRINT_DEBUG_GLP{
 				for(;j<n_grp;j++){
 					if(GLPS[j]->tot_LP != 0){
 						if(GLPS[j]->lvt != NULL)
@@ -169,6 +170,7 @@ static void *main_simulation_loop(void *arg) {
 					
 					if (LPS[j]->target_rollback != NULL)
 						printf("R_T:%f N_E:%f \n",LPS[j]->target_rollback->timestamp,next_event_timestamp(j));
+				}
 				}
 				#endif				
 			

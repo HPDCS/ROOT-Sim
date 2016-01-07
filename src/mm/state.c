@@ -241,14 +241,18 @@ void rollback(unsigned int lid) {
 	// Find the state to be restored, and prune the wrongly computed states
 	restore_state = list_tail(LPS[lid]->queue_states);
 	while (restore_state != NULL && restore_state->lvt > last_correct_event->timestamp) { // It's > rather than >= because we have already taken into account simultaneous events
-		printf("[%d] State: %f\n",lid,restore_state->lvt);
+		PRINT_DEBUG_GLP{
+			printf("[%d] State: %f\n",lid,restore_state->lvt);
+		}
 		s = restore_state;
 		restore_state = list_prev(restore_state);
 		log_delete(s->log);
 		s->last_event = (void *)0xDEADC0DE;
 		list_delete_by_content(lid, LPS[lid]->queue_states, s);
 	}
-		printf("[%d] SELECTED State: %f\n",lid,restore_state->lvt);
+		PRINT_DEBUG_GLP{
+			printf("[%d] SELECTED State: %f\n",lid,restore_state->lvt);
+		}
 
 	// Restore the simulation state and correct the state base pointer
 	RestoreState(lid, restore_state);
@@ -258,7 +262,9 @@ void rollback(unsigned int lid) {
 	#ifdef HAVE_GLP_SCH_MODULE
 	if(!(check_start_group(lid) && verify_time_group(LPS[lid]->bound->timestamp))){
 		reprocessed_events = silent_execution(lid, LPS[lid]->current_base_pointer, last_restored_event, last_correct_event);
-		printf("LP[%d] executes silent execution without group\n",lid);
+		PRINT_DEBUG_GLP{
+			printf("LP[%d] executes silent execution without group\n",lid);
+		}
 		statistics_post_lp_data(lid, STAT_SILENT, (double)reprocessed_events);
 		if(GLPS[LPS[lid]->current_group]->state == GLP_STATE_ROLLBACK){
 			GLPS[LPS[lid]->current_group]->counter_rollback--;
@@ -267,13 +273,16 @@ void rollback(unsigned int lid) {
 			GLPS[LPS[lid]->current_group]->counter_silent_ex--;
 		}
 	}
-	else
-		printf("LP[%d] CST:%d VTG:%d T:%f \n",
-			lid,
-			check_start_group(lid),
-			verify_time_group(LPS[lid]->bound->timestamp),
-			LPS[lid]->bound->timestamp
-		      );
+	else{
+		PRINT_DEBUG_GLP{
+			printf("LP[%d] CST:%d VTG:%d T:%f \n",
+				lid,
+				check_start_group(lid),
+				verify_time_group(LPS[lid]->bound->timestamp),
+				LPS[lid]->bound->timestamp
+		      	);
+		}
+	}
 	#else
 
 	reprocessed_events = silent_execution(lid, LPS[lid]->current_base_pointer, last_restored_event, last_correct_event);
@@ -284,8 +293,10 @@ void rollback(unsigned int lid) {
 	// Control messages must be rolled back as well
 	rollback_control_message(lid, last_correct_event->timestamp);
 	
-	#ifndef HAVE_GLP_SCH_MODULE
-	printf("LP[%d] rollback at time:%f\n",lid,last_correct_event->timestamp);
+	#ifdef HAVE_GLP_SCH_MODULE
+	PRINT_DEBUG_GLP{
+		printf("LP[%d] rollback at time:%f\n",lid,last_correct_event->timestamp);
+	}
 	#endif
 }
 

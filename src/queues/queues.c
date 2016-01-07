@@ -225,14 +225,17 @@ void process_bottom_halves(void) {
 		
 						// If the matched message is in the past, we have to rollback
 						if(matched_msg->timestamp <= lvt(lid_receiver)) {
+						// TODO understand if is correct IDLE_PROCESS
 							
-							printf("RN Type:%d T:%f S:%d R:%d \n",
-                                                        	matched_msg->type,
-                                                        	matched_msg->timestamp,
-                                                        	matched_msg->sender, 
-                                                        	lid_receiver
-                                                       	       );
 							#ifdef HAVE_GLP_SCH_MODULE
+							PRINT_DEBUG_GLP{	
+								printf("RN Type:%d T:%f S:%d R:%d \n",
+        	                                                	matched_msg->type,
+                	                                        	matched_msg->timestamp,
+                        	                                	matched_msg->sender, 
+                                	                        	lid_receiver
+                                        	               	       );
+							}
 							reset_synch_counter(lid_receiver);
 							#endif
 								
@@ -269,14 +272,15 @@ void process_bottom_halves(void) {
 					// Check if we've just inserted an out-of-order event
 					if(msg_to_process->timestamp < lvt(lid_receiver)) {
 						
-						printf("RP Type:%d T:%f S:%d R:%d \n",
-							msg_to_process->type,
-							msg_to_process->timestamp,
-                                                        msg_to_process->sender, 
-							lid_receiver
-						       );
-						
 						#ifdef HAVE_GLP_SCH_MODULE
+						PRINT_DEBUG_GLP{
+							printf("RP Type:%d T:%f S:%d R:%d \n",
+								msg_to_process->type,
+								msg_to_process->timestamp,
+                                                        	msg_to_process->sender, 
+								lid_receiver
+							       );
+						}
 						reset_synch_counter(lid_receiver);
 						#endif
 						
@@ -357,10 +361,14 @@ unsigned long long generate_mark(unsigned int lid) {
 msg_t *list_get_node_timestamp(simtime_t timestamp, unsigned int lid){
 	msg_t *prev = LPS[lid]->bound;
 	while(list_prev(prev)!=NULL && prev->timestamp >= timestamp ){
-		printf("[%d] list_get_node_timestamp timestamp:%f\n",lid,prev->timestamp);
+		PRINT_DEBUG_GLP{
+			printf("[%d] list_get_node_timestamp timestamp:%f\n",lid,prev->timestamp);
+		}
 		prev = list_prev(prev);
 	}
 	//LPS[lid]->bound = prev;
-		printf("[%d] list_get_node_timestamp SELECTED timestamp:%f\n",lid,prev->timestamp);
+		PRINT_DEBUG_GLP{
+			printf("[%d] list_get_node_timestamp SELECTED timestamp:%f\n",lid,prev->timestamp);
+		}
 	return prev;
 }	
