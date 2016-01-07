@@ -43,6 +43,9 @@
 #include <statistics/statistics.h>
 
 #include <scheduler/group.h>
+#ifdef HAVE_GLP_SCH_MODULE
+#include <gvt/gvt.h>
+#endif
 
 /// Function pointer to switch between the parallel and serial version of SetState
 void (*SetState)(void *new_state);

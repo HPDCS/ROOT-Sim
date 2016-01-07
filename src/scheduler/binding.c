@@ -333,15 +333,15 @@ static inline void GLPs_block_binding(void) {
 *
 * @return The workload of group id
 */
-static double compute_workload_GLP(int id) {
+static double compute_workload_GLP(unsigned int id) {
 	glp_cost[id] = 0;
 
 	GLP_state *group = new_GLPS[id];
 	//Lock is required since there may be a WT that is updating the local_LP and the correlated tot_LP count
 	spin_lock_x86(&(group->lock));
 
-	int count = 0;
-	int i=0;
+	unsigned int count = 0;
+	unsigned int i=0;
 	while(count < group->tot_LP){
 		if(group->local_LPS[i] != NULL){
 			glp_cost[id] += lp_cost[i].workload_factor;
@@ -537,17 +537,15 @@ static void check_timestamp_group_bound(void){
 				result_evt = temp_LP->bound;
 			}
 			
-			if(temp_GLPS->initial_group_time==NULL || temp_GLPS->initial_group_time->timestamp < result_evt->timestamp){
-				temp_GLPS->initial_group_time = result_evt;
+			if(temp_GLPS->initial_group_time->timestamp <= result_evt->timestamp){
+				update_IGT(temp_GLPS->initial_group_time,result_evt);
+				temp_GLPS->lvt = result_evt;
 			}
 			
 			lp_index++;
 		}
 		
-		printf("GLP[%d] TL%d IGT:%p\n",i,temp_GLPS->tot_LP,temp_GLPS->initial_group_time);
-		
 		lp_index=0;
-		temp_GLPS->lvt = temp_GLPS->initial_group_time;
 		temp_GLPS->counter_rollback = 0;
 		temp_GLPS->counter_synch = 0;
 		temp_GLPS->counter_log = 0;
@@ -597,7 +595,6 @@ static void update_clustering_groups(void){
 static inline void GLP_knapsack(void) {
 	register unsigned int i, j;
 	double reference_knapsack = 0;
-	double reference_lvt;
 	bool assigned;
 	double assignments[n_cores];
 
@@ -691,7 +688,7 @@ static void send_control_group_message(void) {
 	for(i=0;i<n_grp;i++){
 		temp_GLPS = new_GLPS[i];
 		if(temp_GLPS->tot_LP==1){
-			temp_GLPS->initial_group_time = LPS[i]->bound;
+			update_IGT(temp_GLPS->initial_group_time,LPS[i]->bound);
 			temp_GLPS->lvt = LPS[i]->bound;
 			temp_GLPS->state = GLP_STATE_READY;
 			continue;
@@ -700,7 +697,7 @@ static void send_control_group_message(void) {
                         lp_index = find_LP_newGLPS(lp_index,i);
 			
 			// Not send control message to lp with bigger bound
-			if(lp_index != temp_GLPS->initial_group_time->receiver || temp_GLPS->initial_group_time == LPS[lp_index]->bound){	
+			if(lp_index != temp_GLPS->initial_group_time->receiver || check_IGT(temp_GLPS->initial_group_time,LPS[lp_index]->bound)){	
 				// Diretcly place the control message in the target bottom half queue
 				bzero(&control_msg, sizeof(msg_t));
 				control_msg.sender = LidToGid(i);
@@ -780,8 +777,8 @@ static void switch_GLPS(void){
 	for (i = 0; i < n_grp; i++) {
 		memcpy(GLPS[i]->local_LPS, new_GLPS[i]->local_LPS, n_prc * sizeof(LP_state *));
 		GLPS[i]->tot_LP = new_GLPS[i]->tot_LP;
-		GLPS[i]->initial_group_time = new_GLPS[i]->initial_group_time;
-		new_GLPS[i]->initial_group_time = NULL;
+		update_IGT(GLPS[i]->initial_group_time,new_GLPS[i]->initial_group_time);
+		reset_IGT(new_GLPS[i]->initial_group_time);
 		GLPS[i]->state = new_GLPS[i]->state;
 		new_GLPS[i]->state = GLP_STATE_WAIT_FOR_GROUP;
 		GLPS[i]->lvt = new_GLPS[i]->lvt;
@@ -869,7 +866,7 @@ void rebind_LPs(void) {
 					spinlock_init(&new_GLPS[i]->lock);
 					new_GLPS[i]->local_LPS[i] = LPS[i];
 					new_GLPS[i]->tot_LP = 1;
-					new_GLPS[i]->initial_group_time = NULL;
+					new_GLPS[i]->initial_group_time = (msg_t *)rsalloc(sizeof(msg_t));
 					new_GLPS[i]->counter_rollback = 0;
 					new_GLPS[i]->counter_synch = 0;
 					new_GLPS[i]->counter_log = 0;

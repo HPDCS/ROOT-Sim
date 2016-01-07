@@ -237,7 +237,8 @@ void process_bottom_halves(void) {
 							#endif
 								
 							LPS[lid_receiver]->bound = list_prev(matched_msg);
-							while ((LPS[lid_receiver]->bound != NULL) && LPS[lid_receiver]->bound->timestamp == msg_to_process->timestamp) {
+							while ((LPS[lid_receiver]->bound != NULL) && 
+								D_EQUAL(LPS[lid_receiver]->bound->timestamp, msg_to_process->timestamp)) {
 								if(list_prev(LPS[lid_receiver]->bound) == NULL)
                                         				break;
 
@@ -280,7 +281,8 @@ void process_bottom_halves(void) {
 						#endif
 						
 						LPS[lid_receiver]->bound = list_prev(msg_to_process);
-						while ((LPS[lid_receiver]->bound != NULL) && LPS[lid_receiver]->bound->timestamp == msg_to_process->timestamp) {
+						while ((LPS[lid_receiver]->bound != NULL) && 
+							D_EQUAL(LPS[lid_receiver]->bound->timestamp, msg_to_process->timestamp)) {
 							if(list_prev(LPS[lid_receiver]->bound) == NULL)
                                        				break;
 

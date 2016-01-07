@@ -71,7 +71,6 @@ extern void rootsim_cross_state_dependency_handler(void);
 
 
 void ECS(long long ds, unsigned long long hitted_object){
-	ioctl_info sched_info;
 	msg_t control_msg;
 	msg_hdr_t msg_hdr;
 
@@ -97,7 +96,7 @@ void ECS(long long ds, unsigned long long hitted_object){
 	#ifdef HAVE_GLP_SCH_MODULE	
 	//Manage counter to cross-state 
 	ECS_stat* temp_update_access = LPS[current_lp]->ECS_stat_table[hitted_object];
-	if( (temp_update_access->last_access != -1.0) && ((current_lvt - temp_update_access->last_access) < THRESHOLD_TIME_ECS) )
+	if(!D_EQUAL(temp_update_access->last_access,-1.0) && ((current_lvt - temp_update_access->last_access) < THRESHOLD_TIME_ECS) )
 		temp_update_access->count_access++;
 	else
 		temp_update_access->count_access = 1;
@@ -136,26 +135,36 @@ void ECS(long long ds, unsigned long long hitted_object){
 	LPS[current_lp]->state = LP_STATE_WAIT_FOR_SYNCH;
 
 	#ifdef HAVE_GLP_SCH_MODULE
+	GLP_state *current_group;	
+	current_group = GLPS[LPS[current_lp]->current_group];
+	
 	if(check_start_group(current_lp) && verify_time_group(current_lvt)){
-		GLPS[LPS[current_lp]->current_group]->state = GLP_STATE_WAIT_FOR_SYNCH;
+		printf("GLP[%d] set state WAIT_FOR_SYNCH\n",LPS[current_lp]->current_group);
+		current_group->state = GLP_STATE_WAIT_FOR_SYNCH;
+	}
+	else{
+		printf("Not update LP:%d G[%d] G-STATE:%d ECS CSG:%d VTG:%d \n",
+			current_lp,
+			LPS[current_lp]->current_group,
+			current_group->state,
+			check_start_group(current_lp),
+			verify_time_group(current_lvt));
 	}
 	
-	GLP_state *current_group;
-	
-	current_group = GLPS[LPS[current_lp]->current_group];
 	
 	if(!check_start_group(current_lp) 
 		&& verify_time_group(current_lvt) 
-		&& current_group->initial_group_time==LPS[current_lp]->bound
+		&& check_IGT(current_group->initial_group_time,LPS[current_lp]->bound)
 		&& LPS[current_lp]->current_group == LPS[hitted_object]->current_group){
                         current_group->counter_synch++;
-                        
+                        LPS[current_lp]->updated_counter = true;
 			printf("**ECS** Bound_Event_Synch Counter:%d Lid:%d GLP:%d\n",
 				current_group->counter_synch,
 				current_lp,
 				LPS[current_lp]->current_group);
 			
                         if(current_group->counter_synch == current_group->tot_LP){
+				reset_flag_counter_synch(LPS[current_lp]->current_group);
                                 current_group->counter_synch = 0;
                                 current_group->state = GLP_STATE_READY;
                         }
@@ -182,18 +191,12 @@ void ECS(long long ds, unsigned long long hitted_object){
 
 void lp_alloc_thread_init(void) {
 	
-	unsigned int i;
-        int ret;
-
-
-	//TODO MN
-
         ioctl_fd = open("/dev/ktblmgr", O_RDONLY);
         if (ioctl_fd == -1) {
                 rootsim_error(true, "Error in opening special device file. ROOT-Sim is compiled for using the ktblmgr linux kernel module, which seems to be not loaded.");
         }
 
-        ret = ioctl(ioctl_fd, IOCTL_SET_ANCESTOR_PGD);  //ioctl call
+        ioctl(ioctl_fd, IOCTL_SET_ANCESTOR_PGD);  //ioctl call
 
         lp_memory_ioctl_info.ds = -1;
         lp_memory_ioctl_info.mapped_processes = n_prc;
@@ -201,7 +204,7 @@ void lp_alloc_thread_init(void) {
         callback_function =  rootsim_cross_state_dependency_handler;
         lp_memory_ioctl_info.callback = callback_function;
 
-        ret = ioctl(ioctl_fd, IOCTL_SET_VM_RANGE, &lp_memory_ioctl_info);
+	ioctl(ioctl_fd, IOCTL_SET_VM_RANGE, &lp_memory_ioctl_info);
 	
 	/* required to manage the per-thread memory view */
 	pgd_ds = ioctl(ioctl_fd, IOCTL_GET_PGD);  //ioctl call
@@ -221,7 +224,7 @@ bool present_ECS_table(unsigned int lid){
 
 void lp_alloc_schedule(void) {
 	
-	int i;
+	unsigned int i;
 	ioctl_info sched_info;
 	LP_state **list;	
 

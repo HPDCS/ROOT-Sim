@@ -115,6 +115,7 @@ void scheduler_init(void) {
 		//TODO MN
 		#ifdef HAVE_GLP_SCH_MODULE
 		// Allocate ECS_stat_table
+		LPS[i]->updated_counter = false;
 		LPS[i]->ECS_stat_table = (ECS_stat **)rsalloc(n_grp * sizeof(ECS_stat *));
 		unsigned int j;
 		for (j = 0; j < n_prc; j++) {
@@ -150,7 +151,9 @@ void scheduler_init(void) {
 	        spinlock_init(&GLPS[i]->lock);
         	GLPS[i]->local_LPS[i] = LPS[i];
 	        GLPS[i]->tot_LP = 1;
-		GLPS[i]->initial_group_time = NULL; //TODO MN check if it is correct
+		GLPS[i]->initial_group_time = (msg_t *)rsalloc(sizeof(msg_t));
+		GLPS[i]->initial_group_time->timestamp = -1.0;
+		GLPS[i]->initial_group_time->mark = 0;
 		GLPS[i]->counter_rollback = 0;
 		GLPS[i]->lvt = NULL;
 		GLPS[i]->counter_synch = 0;
@@ -452,8 +455,8 @@ void activate_LP(unsigned int lp, simtime_t lvt, void *evt, void *state) {
 	//printf("Schedule %d\n",lp);
 	//printf("LP[%d] state: %lu\n",lp,LPS[lp]->state);
 	if(is_blocked_state(LPS[lp]->state)){
-		printf("wait_on_rendezvoud:%lu tid:%d wait_object:%d \n ",LPS[lp]->wait_on_rendezvous,tid,LPS[lp]->wait_on_object);
-		rootsim_error(true, "Critical condition: LP[%d] has a wrong state -> %lu. Aborting...\n", lp,LPS[lp]->state);
+		printf("wait_on_rendezvoud:%llu tid:%d wait_object:%d \n ",LPS[lp]->wait_on_rendezvous,tid,LPS[lp]->wait_on_object);
+		rootsim_error(true, "Critical condition: LP[%d] has a wrong state -> %d. Aborting...\n", lp,LPS[lp]->state);
 	}
 
 	#ifdef ENABLE_ULT
@@ -611,72 +614,6 @@ void schedule(void) {
 }
 
 #else
-void debug_group_schedule(int lid){
-	bool print;
-	unsigned int i,j;
-	int temp_group[n_grp];
-	simtime_t selected_min, evt_t;
-
-	for(i=0;i<n_grp;i++){
-		temp_group[i] = 0;
-	}
-
-	
-	print = false;
-	
-	/*	
-	if(LPS_bound[lid]->state == LP_STATE_READY_FOR_SYNCH)
-        	selected_min = LPS_bound[lid]->bound->timestamp;
-       	else
-                selected_min = next_event_timestamp(LPS_bound[lid]->lid);
-
-	for(i=0;i<n_prc;i++){
-		if(LPS_bound[i]->state == LP_STATE_READY_FOR_SYNCH)
-        	        evt_t = LPS_bound[i]->bound->timestamp;
-	        else if(next_event_timestamp(LPS_bound[i]->lid) > 0)
-                	evt_t = next_event_timestamp(LPS_bound[i]->lid);
-		else continue;
-		
-		if(evt_t < selected_min){
-			print = true;
-			printf("**********ERROR lid:%d strange-value:%d selected_min:%f >= evt_t:%f\n",lid,i,selected_min,evt_t);
-			break;
-		}
-	}*/
-	
-	print = true;
-	if(print){
-		printf("********************* LPS_BOUND ********************\n");
-		for(i=0;i<n_prc_per_thread;i++){
-		
-			LP_state *lp_temp = LPS_bound[i];			
-
-			if(lp_temp->state == LP_STATE_READY_FOR_SYNCH)
-				evt_t = lp_temp->bound->timestamp;
-			else
-				evt_t = next_event_timestamp(lp_temp->lid);
-			if(lp_temp->bound != NULL)
-				printf("LP[%d] state:%lu bound_ts:%f bound_sender:%d next_event_ts:%f\n",lp_temp->lid,lp_temp->state,lp_temp->bound->timestamp,lp_temp->bound->sender,evt_t);
-			else
-				printf("LP[%d] state:%lu bound_ts:null\n",lp_temp->lid,lp_temp->state);
-		}
-		printf("********************* GROUP ********************\n");
-		for(i=0;i<n_prc_per_thread;i++)
-			temp_group[LPS_bound[i]->current_group] = 1;
-		for(i=0;i<n_grp;i++){
-			if(temp_group[i] == 1){
-				if(GLPS[i]->lvt != NULL && GLPS[i]->initial_group_time != NULL)
-					printf("GLP[%d] state:%lu lvt_t:%f init_t:%f\n",i,GLPS[i]->state,GLPS[i]->lvt->timestamp,GLPS[i]->initial_group_time->timestamp);
-				else 
-					printf("GLP[%d] state:%lu lvt_t:null\n",i,GLPS[i]->state);
-					
-			}
-		}
-		printf("***********************************************\n");
-	}
-	else
-		printf("Nothing of strange... simulation_time:%f\n",selected_min);
-}
 /**
 * This function checks wihch GLP must be activated (if any),
 * and in turn activates it. This is used only to support forward execution.
@@ -713,8 +650,6 @@ void schedule(void) {
                 statistics_post_lp_data(lid, STAT_IDLE_CYCLES, 1.0);
                 return;
         }
-
-	//debug_group_schedule(lid);
 
         current_group = GLPS[LPS[lid]->current_group];
 
@@ -772,8 +707,16 @@ void schedule(void) {
 	}
 
         if((current_group->state != GLP_STATE_SILENT_EXEC && check_start_group(lid) && verify_time_group(lvt(lid))) || (event->type == CLOSE_GROUP)){
-                printf("UPDATE lvt_group lid:%d sender:%d  msg_type:%d timestamp:%f IGT:%f\n",
-			lid,event->sender,event->type,event->timestamp,current_group->initial_group_time->timestamp);
+                printf("UPDATE lvt_group lid:%d sender:%d  msg_type:%d timestamp:%f G_state:%d IGT:%f S-IGT:%d R-IGT:%d Type:%d\n",
+			lid,
+			event->sender,
+			event->type,
+			event->timestamp,
+			current_group->state,
+			current_group->initial_group_time->timestamp,
+			current_group->initial_group_time->sender,
+			current_group->initial_group_time->receiver,
+			current_group->initial_group_time->type);
 		current_group->lvt = event;
 	}
 	else{
@@ -845,10 +788,12 @@ void schedule(void) {
                 LPS[lid]->state = LP_STATE_READY;
                 send_outgoing_msgs(lid);
 
-		if(!check_start_group(lid) && current_group->initial_group_time==event){
+		if(!check_start_group(lid) && check_IGT(current_group->initial_group_time,event)){
 			current_group->counter_synch++;
+			LPS[lid]->updated_counter = true;
 			printf("Bound_Event_Synch Counter:%d Lid:%d GLP:%d\n",current_group->counter_synch,lid,LPS[lid]->current_group);
 			if(current_group->counter_synch == current_group->tot_LP){
+				reset_flag_counter_synch(LPS[lid]->current_group);
 				current_group->counter_synch = 0;
 				current_group->state = GLP_STATE_READY;
 			}

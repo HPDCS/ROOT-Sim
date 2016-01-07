@@ -10,9 +10,48 @@ unsigned int find_lp_group(unsigned int last_lp, unsigned int group){
         return IDLE_PROCESS;
 }
 
+void update_IGT(msg_t *IGT, msg_t *new_IGT){
+	memcpy(IGT,new_IGT,sizeof(msg_t));	
+}
+
+bool check_IGT(msg_t *IGT, msg_t *msg){
+	if(D_EQUAL(IGT->timestamp,msg->timestamp) && IGT->mark == msg->mark)
+		return true;
+	
+	return false;
+}
+
+void reset_IGT(msg_t *IGT){
+	IGT->timestamp = -1.0;
+	IGT->mark = 0;
+}
+
+void reset_flag_counter_synch(unsigned int group){
+	unsigned int i,lp_index = 0;
+	GLP_state *current_group = GLPS[group];
+	
+        for(i=0;i<current_group->tot_LP;i++){
+                lp_index = find_lp_group(lp_index,group);
+		LPS[lp_index]->updated_counter = false;
+		lp_index++;
+	}
+	
+	
+}
+
 void reset_synch_counter(unsigned int lid){
-	if(LPS[lid]->bound->type == SYNCH_GROUP)
-		GLPS[LPS[lid]->current_group]->counter_synch--;	
+	LP_state *temp_LP = LPS[lid];
+	GLP_state *current_group = GLPS[LPS[lid]->current_group];
+ 
+	if(temp_LP->bound->type == SYNCH_GROUP || 
+		(temp_LP->bound->mark == current_group->initial_group_time->mark && 
+			D_EQUAL(temp_LP->bound->timestamp,current_group->initial_group_time->timestamp)) &&
+	  	temp_LP->updated_counter
+	    ){
+		printf("DEC COUNTER LP:%d GLP:%d Type:%d \n",lid,LPS[lid]->current_group,temp_LP->bound->type);
+		current_group->counter_synch--;	
+		temp_LP->updated_counter = false;
+	}
 }
 
 void check_rollback_group(msg_t *straggler, unsigned int lid, simtime_t lvt_receiver, int msg_case){
@@ -21,14 +60,14 @@ void check_rollback_group(msg_t *straggler, unsigned int lid, simtime_t lvt_rece
 		case positive:
 			if(check_start_group(lid) &&  verify_time_group(LPS[lid]->bound->timestamp)){
 				if(straggler->timestamp < lvt_receiver){
-                                        printf("RGB [POSITIVE Type:%lu] T:%f S:%d R:%d\n",
+                                        printf("RGB [POSITIVE Type:%d] T:%f S:%d R:%d\n",
                                         	straggler->type,LPS[lid]->bound->timestamp,
                                         	straggler->sender, lid);
 
                                 	rollback_group(straggler,lid);
                          	}
 				else if(straggler->timestamp < GLPS[LPS[lid]->current_group]->lvt->timestamp){
-					printf("RGB ltv_group [POSITIVE Type:%lu] T:%f R:%d S:%d GRP[%d]->lvt:%f msg->Time:%f\n",
+					printf("RGB ltv_group [POSITIVE Type:%d] T:%f R:%d S:%d GRP[%d]->lvt:%f msg->Time:%f\n",
 						straggler->type,LPS[lid]->bound->timestamp,
 						lid,straggler->sender,LPS[lid]->current_group,
 						GLPS[LPS[lid]->current_group]->lvt->timestamp,
@@ -41,7 +80,7 @@ void check_rollback_group(msg_t *straggler, unsigned int lid, simtime_t lvt_rece
 			break;
 		
 		case negative:
-			if(GLPS[LPS[lid]->current_group]->initial_group_time == straggler){
+			if(check_IGT(GLPS[LPS[lid]->current_group]->initial_group_time,straggler)){
 				msg_t control_msg;
 				bzero(&control_msg, sizeof(msg_t));
 				control_msg.sender = LidToGid(LPS[lid]->current_group);
@@ -131,6 +170,7 @@ void rollback_group(msg_t *straggler, unsigned int receiver){
 		printf("RESET GROUP IGT:%f S->T:%f\n",current_group->initial_group_time->timestamp, straggler->timestamp);
 		current_group->state = GLP_STATE_WAIT_FOR_GROUP;
 	        current_group->counter_synch = 0;
+		reset_flag_counter_synch(LPS[straggler->receiver]->current_group);
 	}
 	else{
 		current_group->state = GLP_STATE_ROLLBACK;

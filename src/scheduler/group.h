@@ -76,3 +76,8 @@ extern bool check_start_group(unsigned int);
 extern void force_checkpoint_group(unsigned int);
 extern void reset_synch_counter(unsigned int);
 extern void check_rollback_group(msg_t*, unsigned int, simtime_t, int);
+extern void update_IGT(msg_t*, msg_t*);      
+extern bool check_IGT(msg_t*, msg_t*);                 
+extern void reset_IGT(msg_t*);
+extern void reset_flag_counter_synch(unsigned int);
+

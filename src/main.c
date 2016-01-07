@@ -159,7 +159,7 @@ static void *main_simulation_loop(void *arg) {
 				}
 			
 				for(j=0;j<n_prc;j++){
-					printf("LP[%d]:%lu \t CSG:%d \t T:%f B_S:%d\n",
+					printf("LP[%d]:%d \t CSG:%d \t T:%f B_S:%d\n",
 						j,
 						LPS[j]->state,
 						check_start_group(j),

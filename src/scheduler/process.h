@@ -141,6 +141,7 @@ typedef struct _LP_state {
 	unsigned int current_group;
 	ECS_stat ** ECS_stat_table;
 	msg_t *target_rollback;
+	bool updated_counter;
 	#endif
 
 } LP_state;

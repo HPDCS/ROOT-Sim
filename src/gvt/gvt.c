@@ -317,8 +317,8 @@ simtime_t gvt_operations(void) {
 #ifdef HAVE_GLP_SCH_MODULE
 bool verify_time_group(simtime_t timestamp){	
 	//return (timestamp < last_time_group);
-	if(timestamp < last_time_group) return 1;
-	else return 0;
+	if(timestamp < last_time_group) return true;
+	else return false;
 }
 
 
