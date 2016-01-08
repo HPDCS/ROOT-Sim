@@ -218,15 +218,14 @@ void lp_alloc_schedule(void) {
 	
 	//TODO MN open group memory view only if lvt < GVT+deltaT	
 	#ifdef HAVE_GLP_SCH_MODULE
-	if( GLPS[LPS[current_lp]->current_group]->tot_LP > 1 && check_start_group(current_lp) && verify_time_group(lvt(current_lp))){
+	if(check_start_group(current_lp) && verify_time_group(lvt(current_lp))){
 		list = GLPS[LPS[current_lp]->current_group]->local_LPS;
-        	for(i=0; i<n_prc; i++){
-                	if(i!=current_lp && list[i]!=NULL && !present_ECS_table(i)){
-        			LPS[current_lp]->ECS_synch_table[sched_info.count] = i;
+        	for(i=0; i< GLPS[LPS[current_lp]->current_group]->tot_LP; i++){
+                	if(list[i]->lid != current_lp && !present_ECS_table(list[i]->lid)){
+        			LPS[current_lp]->ECS_synch_table[sched_info.count] = list[i]->lid;
 				sched_info.count++;
 			}
 		}
-//		printf("GROUP EXECUTION\n");
 	}
 
 //	printf("Check_start_group:%d Verify:%d LP:%d state:%lu Sched_info.count:%d\n",check_start_group(current_lp),verify_time_group(lvt(current_lp)),current_lp,LPS[current_lp]->state,sched_info.count);

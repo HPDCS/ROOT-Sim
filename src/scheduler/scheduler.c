@@ -139,17 +139,20 @@ void scheduler_init(void) {
 		bzero(GLPS[i], sizeof(GLP_state));
 
 		GLPS[i]->local_LPS = (LP_state **)rsalloc(n_prc * sizeof(LP_state *));
+		/*
 		unsigned int j;
 		for (j = 0; j < n_prc; j++) {
 			GLPS[i]->local_LPS[j] = NULL;
 		}
+		*/
 
 	        //Initialise current group
 	        LPS[i]->current_group = i;
 
         	//Initialise GROUPS
 	        spinlock_init(&GLPS[i]->lock);
-        	GLPS[i]->local_LPS[i] = LPS[i];
+		GLPS[i]->id = i;
+        	GLPS[i]->local_LPS[0] = LPS[i];
 	        GLPS[i]->tot_LP = 1;
 		GLPS[i]->initial_group_time = (msg_t *)rsalloc(sizeof(msg_t));
 		GLPS[i]->initial_group_time->timestamp = -1.0;
@@ -810,7 +813,6 @@ void schedule(void) {
         }
 
        /* if(!resume_execution && !verify_time_group(lvt(lid)) && have_group && !is_blocked_state(LPS[lid]->state)){
-		current_group->group_is_ready = false;
                 force_LP_checkpoint(lid);
 		if(current_group->tot_LP>1){
 			GLPS[LPS[lid]->current_group]->state = GLP_STATE_WAIT_FOR_LOG;

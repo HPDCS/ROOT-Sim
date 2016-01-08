@@ -299,14 +299,11 @@ static inline void GLPs_block_binding(void) {
 			if(offset == tid) {
 				spin_lock_x86(&(GLPS[i]->lock));
 				count = 0;
-				y=0;
+				LP_state **list = GLPS[i]->local_LPS;
 				while(count < GLPS[i]->tot_LP){
-					if(GLPS[i]->local_LPS[y] != NULL){
-						LPS_bound[n_prc_per_thread++] = LPS[i];
-						LPS[i]->worker_thread = tid;
-						count++;
-					}
-					y++;
+					LPS_bound[n_prc_per_thread++] = GLPS[i]->local_LPS[count];
+					list[count]->worker_thread = tid;
+					count++;
 				}
 				spin_unlock_x86(&(GLPS[i]->lock));
 			}
@@ -337,21 +334,12 @@ static double compute_workload_GLP(unsigned int id) {
 	glp_cost[id] = 0;
 
 	GLP_state *group = new_GLPS[id];
-	//Lock is required since there may be a WT that is updating the local_LP and the correlated tot_LP count
-	spin_lock_x86(&(group->lock));
 
-	unsigned int count = 0;
-	unsigned int i=0;
-	while(count < group->tot_LP){
-		if(group->local_LPS[i] != NULL){
-			glp_cost[id] += lp_cost[i].workload_factor;
-			count++;
-		}
-		
-		i++;
+	unsigned int count;
+	LP_state **list = group->local_LPS;
+	for(count = 0;count < group->tot_LP;count++){
+		glp_cost[id] += lp_cost[list[count]->lid].workload_factor;
 	}
-
-	spin_unlock_x86(&(group->lock));
 
 	return glp_cost[id];
 }
@@ -381,17 +369,11 @@ int LP_change_group(GLP_state **GROUPS_global, unsigned int actual_lp,int n, uns
 		
 	if(force_change || LPS[actual_lp]->current_group != group_index){
 		
-		//Update old group
-		//spin_lock(GROUPS_global[actual_lp->current_group]->lock);
-		GROUPS_global[LPS[actual_lp]->current_group]->local_LPS[actual_lp] = NULL;
-		GROUPS_global[LPS[actual_lp]->current_group]->tot_LP--;
-		//spin_unlock(GROUPS_global[actual_lp->current_group]->lock);
+		//Update old group VERIFICA
+		remove_lp_group(GROUPS_global[LPS[actual_lp]->current_group],actual_lp);
 					
 		//Update new group
-		//spin_lock(GROUPS_global[i]->lock);
-		GROUPS_global[group_index]->local_LPS[actual_lp] = LPS[actual_lp];
-		GROUPS_global[group_index]->tot_LP++;
-		//spin_unlock(GROUPS_global[i]->lock);
+		insert_lp_group(GROUPS_global[group_index],actual_lp);
 	}
 
 	return group_index;
@@ -470,7 +452,7 @@ static unsigned int clustering_groups(int n, unsigned int (*statistics)[n], unsi
 * @author Francesco Nobilia
 */
 static void check_num_group_over_core(int n, unsigned int (*statistics)[n]){
-	unsigned int i, count=0;
+	unsigned int i,j,count=0;
 	for(i=0;i<n_grp;i++)
 		if(new_GLPS[i]->tot_LP > 0) count++;
 	
@@ -480,12 +462,10 @@ static void check_num_group_over_core(int n, unsigned int (*statistics)[n]){
 		if(statistics[i][1]!=i && new_GLPS[i]->tot_LP == 0){
 			
 			//Update old group
-                	new_GLPS[statistics[i][1]]->local_LPS[i] = NULL;
-                	new_GLPS[statistics[i][1]]->tot_LP--;
+			remove_lp_group(new_GLPS[statistics[i][1]],i);
 
                 	//Update new group
-                	new_GLPS[i]->local_LPS[i] = LPS[i];
-                	new_GLPS[i]->tot_LP++;
+			insert_lp_group(new_GLPS[i],i);
 
 			statistics[i][1] = i;
 			new_group_LPS[i] = i;	
@@ -500,14 +480,6 @@ static void check_num_group_over_core(int n, unsigned int (*statistics)[n]){
 }
 
 
-unsigned int find_LP_newGLPS(unsigned int last_lp, unsigned int group){
-	for(;last_lp<n_prc;last_lp++){
-		if(new_GLPS[group]->local_LPS[last_lp]!=NULL)
-			return last_lp;
-	}
-	return IDLE_PROCESS;
-}
-
 /**
 //TODO MN
 * 
@@ -519,16 +491,12 @@ static void check_timestamp_group_bound(void){
         unsigned int i,j;
 	GLP_state *temp_GLPS;
 	LP_state *temp_LP;
-	unsigned int lp_index=0;
 	msg_t *result_evt;
 
         for(i=0;i<n_grp;i++){
 		temp_GLPS = new_GLPS[i];
 		for(j=0;j<temp_GLPS->tot_LP;j++){
-			lp_index = find_LP_newGLPS(lp_index,i);
-			if(lp_index == IDLE_PROCESS)
-				rootsim_error(true,"Returned IDLE_PROCESS in check_timestamp_group_bound. Aborting...");
-			temp_LP = temp_GLPS->local_LPS[lp_index];
+			temp_LP = temp_GLPS->local_LPS[j];
 			
 			if(list_next(temp_LP->bound)!=NULL){
 				result_evt = list_next(temp_LP->bound);
@@ -542,10 +510,7 @@ static void check_timestamp_group_bound(void){
 				temp_GLPS->lvt = result_evt;
 			}
 			
-			lp_index++;
 		}
-		
-		lp_index=0;
 		temp_GLPS->counter_rollback = 0;
 		temp_GLPS->counter_synch = 0;
 		temp_GLPS->counter_log = 0;
@@ -684,13 +649,14 @@ static inline void GLP_knapsack(void) {
 static void send_control_group_message(void) {
 	unsigned int i,j,lp_index = 0;
 	GLP_state *temp_GLPS;
+	LP_state **list;
         msg_t control_msg;	
 	
 	for(i=0;i<n_grp;i++){
 		temp_GLPS = new_GLPS[i];
-                
+                list = temp_GLPS->local_LPS;
 		for(j=0;j<temp_GLPS->tot_LP;j++){
-                        lp_index = find_LP_newGLPS(lp_index,i);
+                        lp_index = list[j]->lid;
 			
 			// Diretcly place the control message in the target bottom half queue
 			bzero(&control_msg, sizeof(msg_t));
@@ -787,7 +753,6 @@ static void switch_GLPS(void){
 		GLPS[i]->from_last_ckpt = new_GLPS[i]->from_last_ckpt;
 		new_GLPS[i]->from_last_ckpt = 0;
 		GLPS[i]->ckpt_period = new_GLPS[i]->ckpt_period;
-		GLPS[i]->group_is_ready = new_GLPS[i]->group_is_ready;
 		GLPS[i]->counter_synch = new_GLPS[i]->counter_synch;	
 		new_GLPS[i]->counter_synch = 0;	
 		GLPS[i]->counter_log = new_GLPS[i]->counter_log;	
@@ -854,14 +819,17 @@ void rebind_LPs(void) {
 					bzero(new_GLPS[i], sizeof(GLP_state));
 
 					new_GLPS[i]->local_LPS = (LP_state **)rsalloc(n_prc * sizeof(LP_state *));
+					/*
 					unsigned int j;
 					for (j = 0; j < n_prc; j++) {
 						new_GLPS[i]->local_LPS[j] = NULL;
 					}
+					*/
 
 					//Initialise GROUPS
 					spinlock_init(&new_GLPS[i]->lock);
-					new_GLPS[i]->local_LPS[i] = LPS[i];
+					new_GLPS[i]->id = i;
+					new_GLPS[i]->local_LPS[0] = LPS[i];
 					new_GLPS[i]->tot_LP = 1;
 					new_GLPS[i]->initial_group_time = (msg_t *)rsalloc(sizeof(msg_t));
 					new_GLPS[i]->counter_rollback = 0;

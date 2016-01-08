@@ -2,13 +2,30 @@
 #include <gvt/gvt.h>
 
 #ifdef HAVE_GLP_SCH_MODULE
-unsigned int find_lp_group(unsigned int last_lp, unsigned int group){
-        for(;last_lp<n_prc;last_lp++){
-                if(GLPS[group]->local_LPS[last_lp]!=NULL)
-                        return last_lp;
-        }
-        return IDLE_PROCESS;
+void insert_lp_group(GLP_state *current_group, unsigned int lid){
+	current_group->local_LPS[current_group->tot_LP] = LPS[lid];
+        current_group->tot_LP++;
 }
+
+void remove_lp_group(GLP_state *old_group, unsigned int lid){
+	unsigned int i;
+	LP_state **list;
+	for(i=0; i< old_group->tot_LP; i++){
+		list = old_group->local_LPS;
+		if(list[i]->lid == lid){
+			if(old_group->tot_LP == 1 || (old_group->tot_LP-1) == i){
+				old_group->tot_LP--;
+			}
+			else{
+				list[i] = list[old_group->tot_LP-1];
+				old_group->tot_LP--;
+			}
+	
+			break;
+		}
+	}
+}
+
 
 void update_IGT(msg_t *IGT, msg_t *new_IGT){
 	memcpy(IGT,new_IGT,sizeof(msg_t));	
@@ -27,13 +44,11 @@ void reset_IGT(msg_t *IGT){
 }
 
 void reset_flag_counter_synch(unsigned int group){
-	unsigned int i,lp_index = 0;
+	unsigned int i;
 	GLP_state *current_group = GLPS[group];
-	
+	LP_state **list = current_group->local_LPS;	
         for(i=0;i<current_group->tot_LP;i++){
-                lp_index = find_lp_group(lp_index,group);
-		LPS[lp_index]->updated_counter = false;
-		lp_index++;
+		list[i]->updated_counter = false;
 	}
 	
 	
@@ -116,7 +131,7 @@ void check_rollback_group(msg_t *straggler, unsigned int lid, simtime_t lvt_rece
 //TODO MN
 void rollback_group(msg_t *straggler, unsigned int receiver){
 	
-	unsigned int i, lp_index = 0;
+	unsigned int i;
 	LP_state *local_LP;
 	GLP_state *current_group;
 
@@ -136,29 +151,23 @@ void rollback_group(msg_t *straggler, unsigned int receiver){
 	}
 	
 	for(i=0; i<current_group->tot_LP; i++){
-		lp_index = find_lp_group(lp_index,LPS[straggler->receiver]->current_group);
-		if(lp_index == IDLE_PROCESS)
-			rootsim_error(true, "Error, returned IDLE PROCESS during found LP GROUP. Aborting...");
-		local_LP = LPS[lp_index];
-		if(lp_index!=receiver){
-			PRINT_DEBUG_GLP{
-				printf("ROLLBACK GROUP LP[%d]\n",lp_index);
-			}
-			/*if(straggler->timestamp > local_LP->bound->timestamp){
-				local_LP->target_rollback = NULL;
-			}
-			else{*/
-				//Giving a timestamp it has to return the message with the maximum timestamp lesser than timestamp
-				local_LP->bound = list_get_node_timestamp(straggler->timestamp,lp_index);
-				local_LP->target_rollback = local_LP->bound;
+		local_LP = current_group->local_LPS[i];
+		
+		if(local_LP->lid != receiver){
 			
-				if(current_group->lvt == NULL || current_group->lvt->timestamp < local_LP->target_rollback->timestamp)
-					current_group->lvt = local_LP->target_rollback;
-		//	}
-                       	local_LP->state = LP_STATE_ROLLBACK;
+			PRINT_DEBUG_GLP{
+				printf("ROLLBACK GROUP LP[%d]\n",local_LP->lid);
+			}
+			
+			//Giving a timestamp it has to return the message with the maximum timestamp lesser than timestamp
+			local_LP->bound = list_get_node_timestamp(straggler->timestamp,local_LP->lid);
+			local_LP->target_rollback = local_LP->bound;
+		
+			if(current_group->lvt == NULL || current_group->lvt->timestamp < local_LP->target_rollback->timestamp)
+				current_group->lvt = local_LP->target_rollback;
+                       	
+			local_LP->state = LP_STATE_ROLLBACK;
 		}
-
-		lp_index++;	
 	}
 	
 	if(current_group->initial_group_time->timestamp >= straggler->timestamp){
@@ -186,12 +195,14 @@ void force_checkpoint_group(unsigned int lid){
 	msg_t control_msg;
         msg_hdr_t msg_hdr;
 	GLP_state *current_group;
+	LP_state **list;
 
 	current_group = GLPS[LPS[lid]->current_group];
-		
+	list = current_group->local_LPS;
+	
 	for(i=0;i<current_group->tot_LP;i++){
 		
-		lp_index = find_lp_group(lp_index,LPS[lid]->current_group);
+		lp_index = list[i]->lid;
 		
 		if(lp_index == IDLE_PROCESS ){
 			rootsim_error(true,"Returned IDLE_PROCESS during send NULL_LOG messages.Aborting...");
@@ -271,14 +282,16 @@ bool check_state_group(unsigned int lid_bound){
                 	return true;
 		}
         }
-        else if(temp_LP->state == LP_STATE_WAIT_FOR_LOG){
+        
+	if(temp_LP->state == LP_STATE_WAIT_FOR_LOG){
         	if(current_group->state == GLP_STATE_WAIT_FOR_LOG)
 	                return true;
                 else
                 	//For avoiding deadlock in case of double log instance
                         temp_LP->state = LP_STATE_READY;
         }
-        else if(is_blocked_state(temp_LP->state) ||
+       
+	if( (is_blocked_state(temp_LP->state) && temp_LP->state != LP_STATE_WAIT_FOR_GROUP) ||
                         (is_blocked_state(current_group->state) &&
                         check_start_group(temp_LP->lid) &&
                         verify_time_group(lvt(temp_LP->lid)))){

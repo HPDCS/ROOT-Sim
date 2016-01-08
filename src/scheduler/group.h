@@ -36,7 +36,7 @@
 #define DELTA_GROUP 1000000.0
 #define DIM_STAT_GROUP 2
 #define CKPT_PERIOD_GROUP 10
-#define PRINT_DEBUG_GLP if(0) 		// Change with 1 to enable debug's print
+#define PRINT_DEBUG_GLP if(1) 		// Change with 1 to enable debug's print
 
 #define GLP_STATE_READY			0x02001
 #define GLP_STATE_ROLLBACK		0x02004
@@ -49,6 +49,7 @@
 
 // This data structure defines the state of each group of LP
 typedef struct _GLP_state{
+	unsigned int id;		// Identifier of current group
 	struct LP_state **local_LPS;	// Array that maintains all the LP managed by this group
 	unsigned int tot_LP;		// Total number of LP managed by this group
 	spinlock_t lock;
@@ -59,7 +60,6 @@ typedef struct _GLP_state{
 	unsigned int counter_silent_ex;	// Counter to verify the condition to exit from GLP_STATE_SILENT_EXEC
 	unsigned int from_last_ckpt;	// Counts how many events executed from the last checkpoint (to support PSS)
 	unsigned int ckpt_period;	// This variable mainains the current checkpointing interval for the LP
-	bool group_is_ready;		// Bool to check if group is at the correct time to execute
 	unsigned int counter_synch;	// Counter to check if all LPs reach the correct time
 	unsigned int counter_log;	// Counter to check if all LPs done the log
 } GLP_state;
@@ -82,4 +82,5 @@ extern bool check_IGT(msg_t*, msg_t*);
 extern void reset_IGT(msg_t*);
 extern void reset_flag_counter_synch(unsigned int);
 extern bool check_state_group(unsigned int); 
-
+extern void remove_lp_group(GLP_state*, unsigned int);
+extern void insert_lp_group(GLP_state*, unsigned int);
