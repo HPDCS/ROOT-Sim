@@ -33,10 +33,10 @@
 #define HAVE_GLP_SCH_MODULE
 #define THRESHOLD_TIME_ECS 3000.0
 #define THRESHOLD_ACCESS_ECS 20
-#define DELTA_GROUP 1000000.0
+#define DELTA_GROUP 5
 #define DIM_STAT_GROUP 2
 #define CKPT_PERIOD_GROUP 10
-#define PRINT_DEBUG_GLP if(1) 		// Change with 1 to enable debug's print
+#define PRINT_DEBUG_GLP if(0) 		// Change with 1 to enable debug's print
 
 #define GLP_STATE_READY			0x02001
 #define GLP_STATE_ROLLBACK		0x02004
@@ -84,3 +84,4 @@ extern void reset_flag_counter_synch(unsigned int);
 extern bool check_state_group(unsigned int); 
 extern void remove_lp_group(GLP_state*, unsigned int);
 extern void insert_lp_group(GLP_state*, unsigned int);
+extern simtime_t get_delta_group(void);

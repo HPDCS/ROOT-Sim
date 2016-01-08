@@ -584,11 +584,21 @@ static inline void GLP_knapsack(void) {
 	// At least one GLP per thread
 	bzero(assignments, sizeof(double) * n_cores);
 	j = 0;
-	for(i = 0; i < n_cores; i++) {
-		assignments[j] += glp_cost[i];
-		new_GLPS_binding[i] = j;
-		j++;
+	for(i = 0; i < n_grp; i++) {
+		if(new_GLPS[i]->tot_LP > 0){
+			assignments[j] += glp_cost[i];
+			new_GLPS_binding[i] = j;
+			j++;
+		
+			if(j==n_cores){
+				i++;
+                        	break;
+			}
+		}
 	}
+
+	if(j!=n_cores)
+		rootsim_error(true,"Number of group less than number of cores. Aborting...");
 
 	// Very suboptimal approximation of knapsack
 	for(; i < n_grp; i++) {
@@ -623,7 +633,7 @@ static inline void GLP_knapsack(void) {
 	printf("NEW GROUP BINDING\n");
 	for(j = 0; j < n_cores; j++) {
 		printf("Thread %d: ", j);
-		for(i = 0; i < n_prc; i++) {
+		for(i = 0; i < n_grp; i++) {
 			if(new_GLPS_binding[i] == j && new_GLPS[i]->tot_LP>0)
 				printf("%d ", i);
 		}
@@ -680,8 +690,8 @@ static void send_control_group_message(void) {
                         control_msg.sender = LidToGid(i);
                         control_msg.receiver = LidToGid(lp_index);
                         control_msg.type = CLOSE_GROUP;
-                        control_msg.timestamp = get_last_gvt() + DELTA_GROUP;
-                        control_msg.send_time = get_last_gvt() + DELTA_GROUP;
+                        control_msg.timestamp = get_last_gvt() + get_delta_group();
+                        control_msg.send_time = get_last_gvt() + get_delta_group();
                         control_msg.message_kind = positive;
                         control_msg.mark = generate_mark(i);
                         Send(&control_msg);

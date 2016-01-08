@@ -1,5 +1,6 @@
 #include <scheduler/process.h>
 #include <gvt/gvt.h>
+#include <statistics/statistics.h>
 
 #ifdef HAVE_GLP_SCH_MODULE
 void insert_lp_group(GLP_state *current_group, unsigned int lid){
@@ -305,6 +306,10 @@ bool check_state_group(unsigned int lid_bound){
 
         return false;
 
+}
+
+simtime_t get_delta_group(void){
+	return DELTA_GROUP * statistics_get_data(STAT_GET_SIMTIME_ADVANCEMENT,0.0);
 }
 
 #endif

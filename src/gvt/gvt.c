@@ -333,7 +333,7 @@ bool need_clustering(void){
 }
 
 void update_last_time_group(void){
-	last_time_group = last_gvt + DELTA_GROUP;
+	last_time_group = last_gvt + get_delta_group();
 }
 #endif
 

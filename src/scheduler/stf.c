@@ -59,6 +59,7 @@ unsigned int smallest_timestamp_first(void) {
 	if(D_EQUAL(min_timestamp, -1)) {
 		return IDLE_PROCESS;
 	} else {
+		#ifdef HAVE_GLP_SCH_MODULE
 		if(!is_blocked_state(LPS[next]->state) && 
 			is_blocked_state(GLPS[LPS[next]->current_group]->state) && 
 			min_timestamp > GLPS[LPS[next]->current_group]->initial_group_time->timestamp &&
@@ -72,6 +73,7 @@ unsigned int smallest_timestamp_first(void) {
 				check_start_group(next),
 				verify_time_group(lvt(next))
 			);
+		#endif
 		return next;
 	}
 }
