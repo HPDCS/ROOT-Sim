@@ -1,5 +1,5 @@
-#include <math.h>
 #include <ROOT-Sim.h>
+#include <math.h>
 
 unsigned int get_tot_regions(void){
 	unsigned int tot_region,check_value;
@@ -43,9 +43,9 @@ unsigned int get_region(unsigned int me, unsigned int obstacle,unsigned int agen
 	
 	// CASE corner up-left
 	if(me == 0){
-		random = Random();
-		temp = 1 * random;
-		printf("TEMP:%d random:%f\n",temp,random);
+		//random = Random();
+		//temp = 1 * random;
+		temp = 1 * Random();
 		switch(temp){
 			case 0: // go rigth
 				return me + 1;

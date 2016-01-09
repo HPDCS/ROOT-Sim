@@ -1,6 +1,7 @@
+#include <ROOT-Sim.h>
+#include <strings.h>
 #include "application.h"
 #include "utility.c"
-#include <string.h>
 
 void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, event_t *content, unsigned int size, lp_state_t *state) {
         event_t new_event;
@@ -8,29 +9,26 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, event_t *c
 	unsigned int i,j;
 	unsigned int* new_agent;
 	unsigned int* old_agent;
-	unsigned int** temp_agents;
+	unsigned int* temp_region;
+	void** temp_pointer;
+	unsigned int agent_counter;
 
         switch(event) {
 
                 case INIT: // must be ALWAYS implemented
+			
 			state = (lp_state_t *)malloc(sizeof(lp_state_t));
                         if(is_agent(me)){
 				state->type = AGENT;
 				state->region = random_region();
-				/*
-				// Allocate the presence bitmap
-				state->visited_regions = ALLOCATE_BITMAP(get_tot_regions());
-				bzero(state->visited_regions, BITMAP_SIZE(get_tot_regions()));
-				*/
-				
-				state->visited_regions = (unsigned int *)malloc(get_tot_regions()*sizeof(unsigned int));
+				state->visited_regions = (unsigned int *)calloc(get_tot_regions(),sizeof(unsigned int));
         			state->visited_counter = 0;
 			}
 			else{
 				state->type = REGION;
-				//state->actual_agent = (unsigned char **)malloc(get_tot_agents()*sizeof(unsigned char*));
-				state->actual_agent = (unsigned int **)malloc(get_tot_agents()*sizeof(unsigned int *));
-				printf("TOT_AGENTS:%d\n",get_tot_agents());
+				temp_pointer = malloc(get_tot_agents()*sizeof(void *));
+				temp_pointer = memset(temp_pointer,0,get_tot_agents()*sizeof(void *));
+				state->actual_agent = temp_pointer;
         			state->agent_counter = 0;     
         			state->obstacles = get_obstacles();
 			}
@@ -56,7 +54,7 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, event_t *c
                                 ScheduleNewEvent(state->region, timestamp + Expent(DELAY), EXIT, &new_event, sizeof(new_event));
 			}
 			else{
-                        	printf("REGION[%d] send PING\n",me,state->region);
+                        	printf("REGION[%d] send PING\n",me);
 				ScheduleNewEvent(me, timestamp, PING, NULL, 0);	
 			}
 
@@ -70,15 +68,17 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, event_t *c
 			break;
 
 		case ENTER:
+			temp_pointer = state->actual_agent;
+			agent_counter = state->agent_counter;
 			printf("REGION[%d] process ENTER from AGENT:%d content->VR:%p \n",me,content->sender,content->visited_regions);
-			state->actual_agent[state->agent_counter] = content->visited_regions;
-			printf("content->VT:%p \t state->AG[%d]:%p\n",content->visited_regions,state->agent_counter,state->actual_agent[state->agent_counter]);	
-			state->agent_counter++;
+			temp_pointer[agent_counter] = content->visited_regions;
+			printf("AGP:%p AGP[%d]:%p \n",
+					temp_pointer,
+					state->agent_counter,
+					&(temp_pointer[state->agent_counter]));
 			new_agent = content->visited_regions;
-			printf("new agent:%p \n",new_agent);
-			temp_agents = state->actual_agent;
-			for(i=0; i<state->agent_counter-1; i++){
-				old_agent = (unsigned int *)temp_agents[i];
+			for(i=0; i<agent_counter; i++){
+				old_agent = (unsigned int *)temp_pointer[i];
 				printf("new_agent:%d old_agent:%d \n",content->sender,i);
 				for(j=0; j<get_tot_regions(); j++){
 					/*
@@ -95,23 +95,32 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, event_t *c
                                                 new_agent[j] = 1;
 				}
 			}
+			agent_counter++;
+			state->actual_agent = temp_pointer;
+			state->agent_counter = agent_counter;
 			
 			break;
 
 		case EXIT: 
 			new_event.destination = get_region(me,state->obstacles,content->sender);
+			temp_pointer = state->actual_agent;
+			agent_counter = state->agent_counter;
 			
-			for(i=0; i<state->agent_counter; i++){
-				if(state->actual_agent[i] == content->visited_regions){
-					if(state->agent_counter != 1){
-						state->actual_agent[i] = state->actual_agent[state->agent_counter-1];
+			for(i=0; i<agent_counter; i++){
+				if(temp_pointer[i] == content->visited_regions){
+					if(agent_counter != 1){
+						printf("SAA-old:%p  SAA-new:%p\n",temp_pointer[i],temp_pointer[state->agent_counter-1]);
+						temp_pointer[i] = temp_pointer[state->agent_counter-1];
+						printf("SAA-old:%p  SAA-new:%p\n",temp_pointer[i],temp_pointer[state->agent_counter-1]);
 					}
 						
-					state->agent_counter--;
+					agent_counter--;
 					break;
 				}
 			}
 			
+			state->actual_agent = temp_pointer;
+			state->agent_counter = agent_counter;
                         printf("REGION[%d] send DESTINATION to AGENT:%d agent_counte=%d\n",me,content->sender,state->agent_counter);
 			ScheduleNewEvent(content->sender, now, DESTINATION, &new_event, sizeof(new_event));
 
@@ -120,14 +129,17 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, event_t *c
 		case DESTINATION: 
 			
 			//Send ENTER message
+			temp_region = state->visited_regions;	
 			state->region = content->destination;
-			state->visited_regions[state->region] = 1;
+			temp_region[state->region] = 1;
                         state->visited_counter = 0;
 			for(i=0;i<get_tot_regions();i++){
-				if(state->visited_regions[i] == 1)
+				if(temp_region[i] == 1)
 		                        state->visited_counter++;
 				
 			}
+			
+			state->visited_regions = temp_region;
 
 			new_event.sender = me;
 			if(state->visited_counter/get_tot_regions() >= VISITED){
@@ -171,7 +183,7 @@ bool OnGVT(unsigned int me, lp_state_t *snapshot) {
 		is_agent = true;
 
         if(is_agent && me == tot_reg){
-                printf("Completed work: %f\%\n", (double)(snapshot->visited_counter/tot_reg)*100);
+                printf("Completed work: %f\n", (double)(snapshot->visited_counter/tot_reg)*100);
         }
 	
 	if(snapshot->visited_counter/tot_reg < VISITED)

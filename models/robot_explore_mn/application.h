@@ -47,7 +47,7 @@ typedef struct lp_state_t{
 	unsigned int visited_counter;	
 	
 	//Region variables
-	unsigned int **actual_agent;
+	void **actual_agent;
 	unsigned int agent_counter;
 	unsigned int obstacles;	
 } lp_state_t;
