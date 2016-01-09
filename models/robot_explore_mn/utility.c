@@ -37,12 +37,15 @@ unsigned char get_obstacles(void){
 
 unsigned int get_region(unsigned int me, unsigned int obstacle,unsigned int agent){
 	unsigned int edge,temp,tot_region;
+	double random;
 	tot_region = get_tot_regions();
 	edge = sqrt(tot_region);
 	
 	// CASE corner up-left
 	if(me == 0){
-		temp = 1 * Random();
+		random = Random();
+		temp = 1 * random;
+		printf("TEMP:%d random:%f\n",temp,random);
 		switch(temp){
 			case 0: // go rigth
 				return me + 1;

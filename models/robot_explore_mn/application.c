@@ -30,6 +30,7 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, event_t *c
 				state->type = REGION;
 				//state->actual_agent = (unsigned char **)malloc(get_tot_agents()*sizeof(unsigned char*));
 				state->actual_agent = (unsigned int **)malloc(get_tot_agents()*sizeof(unsigned int *));
+				printf("TOT_AGENTS:%d\n",get_tot_agents());
         			state->agent_counter = 0;     
         			state->obstacles = get_obstacles();
 			}
@@ -45,14 +46,17 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, event_t *c
 
                         	new_event.visited_regions = state->visited_regions;
                         	new_event.sender = me;
-                        	ScheduleNewEvent(state->region, timestamp, ENTER, &new_event, sizeof(new_event));
+                        	printf("AGENT[%d] send ENTER to REGION:%d\n",me,state->region);
+				ScheduleNewEvent(state->region, timestamp, ENTER, &new_event, sizeof(new_event));
 				
 				//Send EXIT message		
                                 new_event.sender = me;
                         	new_event.visited_regions = state->visited_regions;
+                        	printf("AGENT[%d] send EXIT to REGION:%d\n",me,state->region);
                                 ScheduleNewEvent(state->region, timestamp + Expent(DELAY), EXIT, &new_event, sizeof(new_event));
 			}
 			else{
+                        	printf("REGION[%d] send PING\n",me,state->region);
 				ScheduleNewEvent(me, timestamp, PING, NULL, 0);	
 			}
 
@@ -65,14 +69,17 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, event_t *c
 			
 			break;
 
-		case ENTER: 
+		case ENTER:
+			printf("REGION[%d] process ENTER from AGENT:%d content->VR:%p \n",me,content->sender,content->visited_regions);
 			state->actual_agent[state->agent_counter] = content->visited_regions;
+			printf("content->VT:%p \t state->AG[%d]:%p\n",content->visited_regions,state->agent_counter,state->actual_agent[state->agent_counter]);	
 			state->agent_counter++;
-			
 			new_agent = content->visited_regions;
+			printf("new agent:%p \n",new_agent);
 			temp_agents = state->actual_agent;
 			for(i=0; i<state->agent_counter-1; i++){
 				old_agent = (unsigned int *)temp_agents[i];
+				printf("new_agent:%d old_agent:%d \n",content->sender,i);
 				for(j=0; j<get_tot_regions(); j++){
 					/*
 					if(BITMAP_CHECK_BIT(new_agent, j)  && BITMAP_CHECK_BIT(old_agent, j) == 0){
@@ -105,6 +112,7 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, event_t *c
 				}
 			}
 			
+                        printf("REGION[%d] send DESTINATION to AGENT:%d agent_counte=%d\n",me,content->sender,state->agent_counter);
 			ScheduleNewEvent(content->sender, now, DESTINATION, &new_event, sizeof(new_event));
 
 			break;
@@ -131,11 +139,13 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, event_t *c
 			}
 			
 			new_event.visited_regions = state->visited_regions;
+                        printf("AGENT[%d] send ENTER to REGION:%d\n",me,state->region);
 			ScheduleNewEvent(content->destination, now, ENTER, &new_event, sizeof(new_event));
 
 			//Send EXIT message             
 			new_event.sender = me;
 			new_event.visited_regions = state->visited_regions;
+                        printf("AGENT[%d] send EXIT to REGION:%d\n",me,state->region);
 			ScheduleNewEvent(state->region, now + Expent(DELAY), EXIT, &new_event, sizeof(new_event));
 
 			break;
