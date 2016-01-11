@@ -37,7 +37,7 @@ typedef struct event_content_t {
 	unsigned int sender;
 } event_t;
 
-typedef struct lp_state_t{
+typedef struct lp_agent_t{
 	
 	unsigned int type;
 	bool complete;	
@@ -46,11 +46,16 @@ typedef struct lp_state_t{
 	unsigned int region;
 	unsigned int *visited_regions;
 	unsigned int visited_counter;	
-	
+}lp_agent_t;
+
+typedef struct lp_region_t{	
+	unsigned int type;
+	bool complete;
+
 	//Region variables
-	void **actual_agent;
+	void **actual_agents;
 	unsigned int agent_counter;
 	unsigned int obstacles;	
-} lp_state_t;
+} lp_region_t;
 
 

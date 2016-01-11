@@ -5,57 +5,52 @@
 
 #define DEBUG if(1)
 
-void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, event_t *content, unsigned int size, lp_state_t *state) {
+void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, event_t *content, unsigned int size, void *state) {
         event_t new_event;
         simtime_t timestamp;
+	lp_agent_t *agent;
+	lp_region_t *region;
+	unsigned int *old_agent;
 	unsigned int i,j;
-	unsigned int* new_agent;
-	unsigned int* old_agent;
-	unsigned int* temp_region;
-	void** temp_pointer;
-	unsigned int agent_counter;
-
+	
         switch(event) {
 
                 case INIT: // must be ALWAYS implemented
 			
-			state = (lp_state_t *)malloc(sizeof(lp_state_t));
                         if(is_agent(me)){
-				state->type = AGENT;
-				state->complete = false;
-				state->region = random_region();
-				state->visited_regions = (unsigned int *)calloc(get_tot_regions(),sizeof(unsigned int));
-        			state->visited_counter = 0;
+				agent = (lp_agent_t *)malloc(sizeof(lp_agent_t));
+				agent->type = AGENT;
+				agent->complete = false;
+				agent->region = random_region();
+				agent->visited_regions = (unsigned int *)calloc(get_tot_regions(),sizeof(unsigned int));
+        			agent->visited_counter = 0;
+				SetState(agent);
 			}
 			else{
-				state->type = REGION;
-				state->complete = false;
-				temp_pointer = calloc(get_tot_agents(),sizeof(void *));
-				state->actual_agent = temp_pointer;
-        			state->agent_counter = 0;     
-        			state->obstacles = get_obstacles();
+				region = (lp_region_t *)malloc(sizeof(lp_region_t));
+				region->type = REGION;
+				region->complete = false;
+				region->actual_agents = calloc(get_tot_agents(),sizeof(void *));
+        			region->agent_counter = 0;     
+        			region->obstacles = get_obstacles();
+				SetState(region);	
 			}
-
-                        
-                        SetState(state);
 			
                         timestamp = (simtime_t)(20 * Random());
 
 			if(is_agent(me)){
 				//Send ENTER message
-				state->visited_regions[state->region] = 1;
-				state->visited_counter++;
+				agent->visited_regions[agent->region] = 1;
+				agent->visited_counter++;
 
-                        	new_event.visited_regions = state->visited_regions;
+                        	new_event.visited_regions = agent->visited_regions;
                         	new_event.sender = me;
-                        	printf("AGENT[%d] send ENTER to REGION:%d\n",me,state->region);
-				ScheduleNewEvent(state->region, timestamp, ENTER, &new_event, sizeof(new_event));
+                        	printf("AGENT[%d] send ENTER to REGION:%d\n",me,agent->region);
+				ScheduleNewEvent(agent->region, timestamp, ENTER, &new_event, sizeof(new_event));
 				
 				//Send EXIT message		
-                                new_event.sender = me;
-                        	new_event.visited_regions = state->visited_regions;
-                        	printf("AGENT[%d] send EXIT to REGION:%d\n",me,state->region);
-                                ScheduleNewEvent(state->region, timestamp + Expent(DELAY), EXIT, &new_event, sizeof(new_event));
+                        	printf("AGENT[%d] send EXIT to REGION:%d\n",me,agent->region);
+                                ScheduleNewEvent(agent->region, timestamp + Expent(DELAY), EXIT, &new_event, sizeof(new_event));
 			}
 			else{
                         	printf("REGION[%d] send PING\n",me);
@@ -72,146 +67,143 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, event_t *c
 			break;
 
 		case ENTER:
-			temp_pointer = state->actual_agent;
-			agent_counter = state->agent_counter;
-			DEBUG	printf("REGION[%d] process ENTER from AGENT:%d content->VR:%p \n",me,content->sender,content->visited_regions);
-			temp_pointer[agent_counter] = content->visited_regions;
-			DEBUG{	printf("AGP:%p AGP[%d]:%p \n",
-					temp_pointer,
-					state->agent_counter,
-					&(temp_pointer[state->agent_counter]));
-			}
-			new_agent = content->visited_regions;
-			for(i=0; i<agent_counter; i++){
-				old_agent = (unsigned int *)temp_pointer[i];
-				DEBUG	printf("new_agent:%d old_agent:%d \n",content->sender,i);
-				for(j=0; j<get_tot_regions(); j++){
-					/*
-					if(BITMAP_CHECK_BIT(new_agent, j)  && BITMAP_CHECK_BIT(old_agent, j) == 0){
-						BITMAP_SET_BIT(old_agent, j);
-					}
-					else if(BITMAP_CHECK_BIT(new_agent, j) == 0  && BITMAP_CHECK_BIT(old_agent, j)){
-                                                BITMAP_SET_BIT(new_agent, j);
-                                        }
-					*/
-					if(new_agent[j] == 1 && old_agent[j] == 0)
-						old_agent[j] = 1;
-					else if(new_agent[j] == 0 && old_agent[j] == 1)
-                                                new_agent[j] = 1;
+			region = (lp_region_t *) state;
+			region->actual_agents[region->agent_counter] = content->visited_regions;
+			
+			for(i=0;i<region->agent_counter;i++){
+				old_agent = region->actual_agents[i];
+				for(j=0;j<get_tot_regions();j++){
+					if(content->visited_regions[j]==0 && old_agent[j]==1)
+						content->visited_regions[j]=1;
+					else if(content->visited_regions[j]==1 && old_agent[j]==0)
+                                                old_agent[j]=1;
 				}
+				region->actual_agents[i] = old_agent;
 			}
-			agent_counter++;
-			state->actual_agent = temp_pointer;
-			state->agent_counter = agent_counter;
+			
+			region->agent_counter++;	
 			
 			break;
 
 		case EXIT: 
-			new_event.destination = get_region(me,state->obstacles,content->sender);
-			temp_pointer = state->actual_agent;
-			agent_counter = state->agent_counter;
+			region = (lp_region_t *) state;
 			
-			for(i=0; i<agent_counter; i++){
-				if(temp_pointer[i] == content->visited_regions){
-					if(agent_counter != 1){
-						DEBUG	printf("SAA-old:%p  SAA-new:%p\n",
-								temp_pointer[i],
-								temp_pointer[state->agent_counter-1]);
-						
-						temp_pointer[i] = temp_pointer[state->agent_counter-1];
-						DEBUG 	printf("SAA-old:%p  SAA-new:%p\n",
-								temp_pointer[i],
-								temp_pointer[state->agent_counter-1]);
+			new_event.destination = get_region(me,region->obstacles,content->sender);
+			new_event.visited_regions = NULL;
+			new_event.sender = me;
+
+			for(i=0;i<region->agent_counter;i++){
+				if(region->actual_agents[i] == content->visited_regions){
+					if(i==(region->agent_counter-1) || region->agent_counter == 1){
+						region->actual_agents[i] = NULL;
 					}
-						
-					agent_counter--;
+					else{
+						region->actual_agents[i] = region->actual_agents[region->agent_counter-1];
+					}
+					region->agent_counter--;	
 					break;
 				}
 			}
 			
-			state->actual_agent = temp_pointer;
-			state->agent_counter = agent_counter;
-                        DEBUG	printf("REGION[%d] send DESTINATION to AGENT:%d agent_counte=%d\n",me,content->sender,state->agent_counter);
 			ScheduleNewEvent(content->sender, now, DESTINATION, &new_event, sizeof(new_event));
-
+			
 			break;
 
 		case DESTINATION: 
-			
-			//Send ENTER message
-			temp_region = state->visited_regions;	
-			state->region = content->destination;
-			temp_region[state->region] = 1;
-                        state->visited_counter = 0;
+			agent = (lp_agent_t *) state;
+			agent->visited_regions[content->destination] = 1;
+                        agent->visited_counter = 0;
+			agent->region = content->destination;
+
 			for(i=0;i<get_tot_regions();i++){
-				if(temp_region[i] == 1)
-		                        state->visited_counter++;
-				
+				if(agent->visited_regions[i] == 1){
+					agent->visited_counter++;
+				}
 			}
-			
-			state->visited_regions = temp_region;
-
-			new_event.sender = me;
-			double counter = (double)state->visited_counter;
-			double tot_reg = (double)get_tot_regions();
-			double result = counter/tot_reg;
-
-			if(result >= VISITED){
-				printf("ME[%d] value:%f\n",me,result);
-				state->complete = true;
+				
+			if(check_termination((double) agent->visited_counter)){
+				printf("Agente:%d complete! AVC:%d\n",me,agent->visited_counter);
+				agent->complete = true;
+	                        
+				new_event.destination = content->destination;
+        	                new_event.visited_regions = NULL;
+                	        new_event.sender = me;
+				
 				if(me + 1 == n_prc_tot)
-					ScheduleNewEvent(0,now,COMPLETE,&new_event, sizeof(new_event));
-				else
-					ScheduleNewEvent(me+1,now,COMPLETE,&new_event, sizeof(new_event));
+			 		ScheduleNewEvent(0, now + Expent(DELAY), COMPLETE, &new_event, sizeof(new_event));
+				else	
+			 		ScheduleNewEvent(me + 1, now + Expent(DELAY), COMPLETE, &new_event, sizeof(new_event));
+
 				break;
 			}
 			
-			new_event.visited_regions = state->visited_regions;
-                        DEBUG	printf("AGENT[%d] send ENTER to REGION:%d\n",me,state->region);
+			new_event.destination = content->destination;
+                        new_event.visited_regions = agent->visited_regions;
+                        new_event.sender = me;
 			ScheduleNewEvent(content->destination, now, ENTER, &new_event, sizeof(new_event));
 
-			//Send EXIT message             
-			new_event.sender = me;
-			new_event.visited_regions = state->visited_regions;
-                        DEBUG	printf("AGENT[%d] send EXIT to REGION:%d\n",me,state->region);
-			ScheduleNewEvent(state->region, now + Expent(DELAY), EXIT, &new_event, sizeof(new_event));
-
+			ScheduleNewEvent(content->destination, now + Expent(DELAY), EXIT, &new_event, sizeof(new_event));
 			break;
 
 		case COMPLETE:
-			state->complete = true;
-			DEBUG printf("ME[%d] processes message COMPLETE SVC:%d\n",me,state->visited_counter);
-			
-			if(me + 1 != content->sender){
-				if(me + 1 == n_prc_tot)
-                                        ScheduleNewEvent(0,now,COMPLETE,content, sizeof(event_t));
-                                else
-                                        ScheduleNewEvent(me+1,now,COMPLETE,content, sizeof(event_t));
+			if(is_agent(me)){
+				agent = (lp_agent_t *) state;
+				agent->complete = true;
+				agent->visited_counter = get_tot_regions();
+				new_event.destination = agent->region;
 			}
+			else{
+				region = (lp_region_t *) state;
+				region->complete = true;
+				new_event.destination = me;
+			}
+
+			new_event.visited_regions = NULL;
+                        new_event.sender = me;
+
+                        if(me + 1 == n_prc_tot)
+				ScheduleNewEvent(0,  now + Expent(DELAY), COMPLETE, &new_event, sizeof(new_event));
+			else
+				ScheduleNewEvent(me + 1,  now + Expent(DELAY), COMPLETE, &new_event, sizeof(new_event));
+
+			break;
 		
-			break;		
         }
 }
 
-bool OnGVT(unsigned int me, lp_state_t *snapshot) {
+bool OnGVT(unsigned int me, void *snapshot) {
 	double tot_reg, counter, result;
+	unsigned int i;
+	lp_agent_t *agent;
+	lp_region_t *region;
 	
-	tot_reg = (double)get_tot_regions();
-	counter = (double)(snapshot->visited_counter);
-	result = counter/tot_reg;
-
-        if(is_agent(me) && me == get_tot_regions()){
-                printf("Completed work: %f\%\n", counter/tot_reg*100.0);
-        }
+	if(is_agent(me)){
+		agent = (lp_agent_t *) snapshot;	
+		tot_reg = (double)get_tot_regions();
+		counter = (double)(agent->visited_counter);
+		result = counter/tot_reg;
+		printf("Agent[%d] VC:%d \t{",me,agent->visited_counter);
+		for(i=0;i<get_tot_regions();i++)
+			printf("%d ",agent->visited_regions[i]);
+		printf("}\n");
+        	if(me == get_tot_regions()){
+                	printf("Completed work: %f\%\n", result);
+        	}
 		
-	if(is_agent(me) && (result < VISITED && !snapshot->complete)){
-		printf("[ME:%d] Complete:%f flag:%d\n",me,counter/tot_reg,snapshot->complete);
-		return false;
+		if(!check_termination(counter) && !agent->complete){
+			printf("[ME:%d] Complete:%f flag:%d\n",me,result,agent->complete);
+			return false;
+		}
+		printf("%d complete execution  C:%f F:%d\n",me,result,agent->complete);
 	}
-	else if(!is_agent(me) && !snapshot->complete){
-		printf("[ME:%d] flag:%d\n",me,snapshot->complete);
-		return false;
+	else{ 
+		region = (lp_region_t *) snapshot;
+		if(!region->complete){
+			printf("[ME:%d] flag:%d\n",me,region->complete);
+			return false;
+		}
+		printf("[ME:%d] flag:%d\n",me,region->complete);
 	}
-
+	
 	return true;
 }

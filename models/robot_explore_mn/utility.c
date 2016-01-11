@@ -155,3 +155,11 @@ unsigned int get_region(unsigned int me, unsigned int obstacle,unsigned int agen
 
 	return me;
 }
+
+bool check_termination(double regions){
+	double tot_region = get_tot_regions();
+	double result = regions/tot_region;
+	if(result >= VISITED){ return true; }
+
+	return false;
+}
