@@ -39,7 +39,8 @@ typedef struct event_content_t {
 
 typedef struct lp_state_t{
 	
-	unsigned int type;	
+	unsigned int type;
+	bool complete;	
 
 	//Agent variables
 	unsigned int region;

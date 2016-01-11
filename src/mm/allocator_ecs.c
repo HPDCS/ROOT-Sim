@@ -37,6 +37,8 @@ char* get_memory_ecs(unsigned int sobj, size_t size){
 	
 	char* return_value = local_mem_region.brk;
 	local_mem_region.brk += size;
+	mem_region[sobj] = local_mem_region;
+	printf("LP[%d] return_value=%p brk=%p size=%d \n",sobj,return_value,local_mem_region.brk,size);
 	return return_value;
 }
 

@@ -3,6 +3,8 @@
 #include "application.h"
 #include "utility.c"
 
+#define DEBUG if(1)
+
 void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, event_t *content, unsigned int size, lp_state_t *state) {
         event_t new_event;
         simtime_t timestamp;
@@ -20,18 +22,20 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, event_t *c
 			state = (lp_state_t *)malloc(sizeof(lp_state_t));
                         if(is_agent(me)){
 				state->type = AGENT;
+				state->complete = false;
 				state->region = random_region();
 				state->visited_regions = (unsigned int *)calloc(get_tot_regions(),sizeof(unsigned int));
         			state->visited_counter = 0;
 			}
 			else{
 				state->type = REGION;
-				temp_pointer = malloc(get_tot_agents()*sizeof(void *));
-				temp_pointer = memset(temp_pointer,0,get_tot_agents()*sizeof(void *));
+				state->complete = false;
+				temp_pointer = calloc(get_tot_agents(),sizeof(void *));
 				state->actual_agent = temp_pointer;
         			state->agent_counter = 0;     
         			state->obstacles = get_obstacles();
 			}
+
                         
                         SetState(state);
 			
@@ -70,16 +74,17 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, event_t *c
 		case ENTER:
 			temp_pointer = state->actual_agent;
 			agent_counter = state->agent_counter;
-			printf("REGION[%d] process ENTER from AGENT:%d content->VR:%p \n",me,content->sender,content->visited_regions);
+			DEBUG	printf("REGION[%d] process ENTER from AGENT:%d content->VR:%p \n",me,content->sender,content->visited_regions);
 			temp_pointer[agent_counter] = content->visited_regions;
-			printf("AGP:%p AGP[%d]:%p \n",
+			DEBUG{	printf("AGP:%p AGP[%d]:%p \n",
 					temp_pointer,
 					state->agent_counter,
 					&(temp_pointer[state->agent_counter]));
+			}
 			new_agent = content->visited_regions;
 			for(i=0; i<agent_counter; i++){
 				old_agent = (unsigned int *)temp_pointer[i];
-				printf("new_agent:%d old_agent:%d \n",content->sender,i);
+				DEBUG	printf("new_agent:%d old_agent:%d \n",content->sender,i);
 				for(j=0; j<get_tot_regions(); j++){
 					/*
 					if(BITMAP_CHECK_BIT(new_agent, j)  && BITMAP_CHECK_BIT(old_agent, j) == 0){
@@ -109,9 +114,14 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, event_t *c
 			for(i=0; i<agent_counter; i++){
 				if(temp_pointer[i] == content->visited_regions){
 					if(agent_counter != 1){
-						printf("SAA-old:%p  SAA-new:%p\n",temp_pointer[i],temp_pointer[state->agent_counter-1]);
+						DEBUG	printf("SAA-old:%p  SAA-new:%p\n",
+								temp_pointer[i],
+								temp_pointer[state->agent_counter-1]);
+						
 						temp_pointer[i] = temp_pointer[state->agent_counter-1];
-						printf("SAA-old:%p  SAA-new:%p\n",temp_pointer[i],temp_pointer[state->agent_counter-1]);
+						DEBUG 	printf("SAA-old:%p  SAA-new:%p\n",
+								temp_pointer[i],
+								temp_pointer[state->agent_counter-1]);
 					}
 						
 					agent_counter--;
@@ -121,7 +131,7 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, event_t *c
 			
 			state->actual_agent = temp_pointer;
 			state->agent_counter = agent_counter;
-                        printf("REGION[%d] send DESTINATION to AGENT:%d agent_counte=%d\n",me,content->sender,state->agent_counter);
+                        DEBUG	printf("REGION[%d] send DESTINATION to AGENT:%d agent_counte=%d\n",me,content->sender,state->agent_counter);
 			ScheduleNewEvent(content->sender, now, DESTINATION, &new_event, sizeof(new_event));
 
 			break;
@@ -142,7 +152,13 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, event_t *c
 			state->visited_regions = temp_region;
 
 			new_event.sender = me;
-			if(state->visited_counter/get_tot_regions() >= VISITED){
+			double counter = (double)state->visited_counter;
+			double tot_reg = (double)get_tot_regions();
+			double result = counter/tot_reg;
+
+			if(result >= VISITED){
+				printf("ME[%d] value:%f\n",me,result);
+				state->complete = true;
 				if(me + 1 == n_prc_tot)
 					ScheduleNewEvent(0,now,COMPLETE,&new_event, sizeof(new_event));
 				else
@@ -151,19 +167,20 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, event_t *c
 			}
 			
 			new_event.visited_regions = state->visited_regions;
-                        printf("AGENT[%d] send ENTER to REGION:%d\n",me,state->region);
+                        DEBUG	printf("AGENT[%d] send ENTER to REGION:%d\n",me,state->region);
 			ScheduleNewEvent(content->destination, now, ENTER, &new_event, sizeof(new_event));
 
 			//Send EXIT message             
 			new_event.sender = me;
 			new_event.visited_regions = state->visited_regions;
-                        printf("AGENT[%d] send EXIT to REGION:%d\n",me,state->region);
+                        DEBUG	printf("AGENT[%d] send EXIT to REGION:%d\n",me,state->region);
 			ScheduleNewEvent(state->region, now + Expent(DELAY), EXIT, &new_event, sizeof(new_event));
 
 			break;
 
 		case COMPLETE:
-			state->visited_counter = get_tot_regions();
+			state->complete = true;
+			DEBUG printf("ME[%d] processes message COMPLETE SVC:%d\n",me,state->visited_counter);
 			
 			if(me + 1 != content->sender){
 				if(me + 1 == n_prc_tot)
@@ -177,16 +194,24 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, event_t *c
 }
 
 bool OnGVT(unsigned int me, lp_state_t *snapshot) {
-	unsigned int tot_reg = get_tot_regions();
-	bool is_agent = false;	
-	if(snapshot->type == AGENT)
-		is_agent = true;
-
-        if(is_agent && me == tot_reg){
-                printf("Completed work: %f\n", (double)(snapshot->visited_counter/tot_reg)*100);
-        }
+	double tot_reg, counter, result;
 	
-	if(snapshot->visited_counter/tot_reg < VISITED)
+	tot_reg = (double)get_tot_regions();
+	counter = (double)(snapshot->visited_counter);
+	result = counter/tot_reg;
+
+        if(is_agent(me) && me == get_tot_regions()){
+                printf("Completed work: %f\%\n", counter/tot_reg*100.0);
+        }
+		
+	if(is_agent(me) && (result < VISITED && !snapshot->complete)){
+		printf("[ME:%d] Complete:%f flag:%d\n",me,counter/tot_reg,snapshot->complete);
 		return false;
+	}
+	else if(!is_agent(me) && !snapshot->complete){
+		printf("[ME:%d] flag:%d\n",me,snapshot->complete);
+		return false;
+	}
+
 	return true;
 }

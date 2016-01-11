@@ -40,12 +40,12 @@ unsigned int get_region(unsigned int me, unsigned int obstacle,unsigned int agen
 	double random;
 	tot_region = get_tot_regions();
 	edge = sqrt(tot_region);
-	
+
+	random = Random();
+
 	// CASE corner up-left
 	if(me == 0){
-		//random = Random();
-		//temp = 1 * random;
-		temp = 1 * Random();
+		temp = 2 * random;
 		switch(temp){
 			case 0: // go rigth
 				return me + 1;
@@ -55,7 +55,7 @@ unsigned int get_region(unsigned int me, unsigned int obstacle,unsigned int agen
 	}
 	// CASE corner up-rigth
 	else if(me == edge - 1){
-		temp = 1 * Random();
+		temp = 2 * random;
                 switch(temp){
                         case 0: // go left
                                 return me - 1;
@@ -65,7 +65,7 @@ unsigned int get_region(unsigned int me, unsigned int obstacle,unsigned int agen
 	}
 	// CASE corner down-rigth
 	else if(me == tot_region - 1){
-                temp = 1 * Random();
+		temp = 2 * random;
                 switch(temp){
                         case 0: // go left
                                 return me - 1;
@@ -75,7 +75,7 @@ unsigned int get_region(unsigned int me, unsigned int obstacle,unsigned int agen
         }
 	// CASE corner down-left
 	else if(me == tot_region - edge){
-                temp = 1 * Random();
+		temp = 2 * random;
                 switch(temp){
                         case 0: // go rigth
                                 return me + 1;
@@ -85,7 +85,7 @@ unsigned int get_region(unsigned int me, unsigned int obstacle,unsigned int agen
         }
 	// CASE first row
 	else if(me <  edge){
-                temp = 2 * Random();
+		temp = 3 * random;
                 switch(temp){
                         case 0: // go rigth
                                 return me + 1;
@@ -98,7 +98,7 @@ unsigned int get_region(unsigned int me, unsigned int obstacle,unsigned int agen
         }
 	// CASE last row
         else if(me > tot_region - edge && me <  tot_region - 1){
-                temp = 2 * Random();
+		temp = 3 * random;
                 switch(temp){
                         case 0: // go rigth
                                 return me + 1;
@@ -111,7 +111,7 @@ unsigned int get_region(unsigned int me, unsigned int obstacle,unsigned int agen
         }
 	// CASE first column
         else if(me % edge == 0){
-                temp = 2 * Random();
+		temp = 3 * random;
                 switch(temp){
                         case 0: // go rigth
                                 return me + 1;
@@ -124,7 +124,7 @@ unsigned int get_region(unsigned int me, unsigned int obstacle,unsigned int agen
         }
 	// CASE last column
 	else if((me+1) % edge == 0){
-                temp = 2 * Random();
+		temp = 3 * random;
                 switch(temp){
                         case 0: // go left
                                 return me - 1;
@@ -137,7 +137,7 @@ unsigned int get_region(unsigned int me, unsigned int obstacle,unsigned int agen
         }
 	// Normal case
 	else{
-                temp = 3 * Random();
+		temp = 4 * random;
                 switch(temp){
                         case 0: // go rigth
                                 return me + 1;
@@ -151,6 +151,7 @@ unsigned int get_region(unsigned int me, unsigned int obstacle,unsigned int agen
 				return me - 1;
                 }
         }
+	
 
 	return me;
 }
