@@ -156,10 +156,21 @@ unsigned int get_region(unsigned int me, unsigned int obstacle,unsigned int agen
 	return me;
 }
 
-bool check_termination(double regions){
+bool check_termination(lp_agent_t *agent){
+	double region = (double)agent->counter;
 	double tot_region = get_tot_regions();
 	double result = regions/tot_region;
-	if(result >= VISITED){ return true; }
+	
+	if(result >= VISITED || agent->complete)
+		return true;
 
 	return false;
+}
+
+double percentage(lp_agent_t *agent){
+	double region = (double)agent->counter;
+	double tot_region = get_tot_regions();
+	double result = (regions/tot_region)*100;
+
+	return result;
 }

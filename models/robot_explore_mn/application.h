@@ -1,17 +1,17 @@
 #include <ROOT-Sim.h>
 
-#define DESTINATION 		1		//
-#define ENTER 			2
-#define EXIT			3
-#define PING			4
-#define COMPLETE		5
+#define DESTINATION 		1		//Message used by Region to communicate to the Agent the next destination
+#define ENTER 			2		//Message used by Agent for communicating its arrival	
+#define EXIT			3		//Message useb by Agent for communicating its exit
+#define PING			4		//Keep alive of Region
+#define COMPLETE		5		//Message sent by the first Agent that covers the required percentage of regions
 
-#define AGENT			6
-#define REGION			7
+#define AGENT			6		//Agent opcode
+#define REGION			7		//Region opcode
 
-#define PERC_REGION		0.50
+#define PERC_REGION		0.50		//Fraction of LPs that states regions 
  
-#define DELAY 			120
+#define DELAY 			120		//Expeted value for the delay function
 
 #define VISITED 		0.95 		// Termination condition
 
@@ -31,31 +31,34 @@
 #define ALLOCATE_BITMAP(size) (malloc(BITMAP_SIZE(size)))
 #define BITMAP_BZERO(map, size) (bzero(((unsigned char*)(map)), BITMAP_SIZE(size)))
 
-typedef struct event_content_t {
-	unsigned int *visited_regions;
-	unsigned int destination;
-	unsigned int sender;
-} event_t;
+typedef struct enter_content_t {
+	unsigned char *map; 			//Pointer to the sender's map
+} enter_t;
+
+typedef struct exit_content_t {
+	unsigned int agent;			//Sender's Lid
+	char int *map;				//Pointer to the sender's map
+} exit_t;
+
+typedef struct destination_content_t {
+	unsigned int region;			//Id of next region
+} destiantion_t;
+
+typedef struct complete_content_t {
+	unsigned int agent;			//Id of agent that completes the mission
+} complete_t;
 
 typedef struct lp_agent_t{
-	
-	unsigned int type;
-	bool complete;	
-
-	//Agent variables
-	unsigned int region;
-	unsigned int *visited_regions;
-	unsigned int visited_counter;	
+	unsigned int region;			//Current region
+	unsigned char *map;			//Map pointer
+	unsigned int count;			//Amount of already visited regions
+	bool complete;				//True if it has received the COMPLETE message
 }lp_agent_t;
 
 typedef struct lp_region_t{	
-	unsigned int type;
-	bool complete;
-
-	//Region variables
-	void **actual_agents;
-	unsigned int agent_counter;
-	unsigned int obstacles;	
+	unsigned char **guests;			//Vector that stores pointers of agent guest map
+	unsigned int count;			//Amount of agents inside the region
+	unsigned char obstacles;		//Map of obstacles
 } lp_region_t;
 
 
