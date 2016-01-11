@@ -3,7 +3,7 @@
 #include "application.h"
 #include "utility.c"
 
-#define DEBUG if(1)
+#define DEBUG if(0)
 
 void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, event_t *content, unsigned int size, void *state) {
         event_t new_event;
@@ -45,15 +45,15 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, event_t *c
 
                         	new_event.visited_regions = agent->visited_regions;
                         	new_event.sender = me;
-                        	printf("AGENT[%d] send ENTER to REGION:%d\n",me,agent->region);
+                        	DEBUG	printf("AGENT[%d] send ENTER to REGION:%d\n",me,agent->region);
 				ScheduleNewEvent(agent->region, timestamp, ENTER, &new_event, sizeof(new_event));
 				
 				//Send EXIT message		
-                        	printf("AGENT[%d] send EXIT to REGION:%d\n",me,agent->region);
+                        	DEBUG	printf("AGENT[%d] send EXIT to REGION:%d\n",me,agent->region);
                                 ScheduleNewEvent(agent->region, timestamp + Expent(DELAY), EXIT, &new_event, sizeof(new_event));
 			}
 			else{
-                        	printf("REGION[%d] send PING\n",me);
+                        	DEBUG	printf("REGION[%d] send PING\n",me);
 				ScheduleNewEvent(me, timestamp, PING, NULL, 0);	
 			}
 
@@ -122,7 +122,7 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, event_t *c
 			}
 				
 			if(check_termination((double) agent->visited_counter)){
-				printf("Agente:%d complete! AVC:%d\n",me,agent->visited_counter);
+				DEBUG	printf("Agente:%d complete! AVC:%d\n",me,agent->visited_counter);
 				agent->complete = true;
 	                        
 				new_event.destination = content->destination;
@@ -182,27 +182,30 @@ bool OnGVT(unsigned int me, void *snapshot) {
 		tot_reg = (double)get_tot_regions();
 		counter = (double)(agent->visited_counter);
 		result = counter/tot_reg;
-		printf("Agent[%d] VC:%d \t{",me,agent->visited_counter);
-		for(i=0;i<get_tot_regions();i++)
-			printf("%d ",agent->visited_regions[i]);
-		printf("}\n");
+		DEBUG{	
+			printf("Agent[%d] VC:%d \t{",me,agent->visited_counter);
+			for(i=0;i<get_tot_regions();i++)
+				printf("%d ",agent->visited_regions[i]);
+			printf("}\n");
+		}
         	if(me == get_tot_regions()){
                 	printf("Completed work: %f\%\n", result);
         	}
 		
+			
 		if(!check_termination(counter) && !agent->complete){
-			printf("[ME:%d] Complete:%f flag:%d\n",me,result,agent->complete);
+			DEBUG	printf("[ME:%d] Complete:%f flag:%d\n",me,result,agent->complete);
 			return false;
 		}
-		printf("%d complete execution  C:%f F:%d\n",me,result,agent->complete);
+		DEBUG printf("%d complete execution  C:%f F:%d\n",me,result,agent->complete);
 	}
 	else{ 
 		region = (lp_region_t *) snapshot;
 		if(!region->complete){
-			printf("[ME:%d] flag:%d\n",me,region->complete);
+			DEBUG printf("[ME:%d] flag:%d\n",me,region->complete);
 			return false;
 		}
-		printf("[ME:%d] flag:%d\n",me,region->complete);
+		DEBUG printf("[ME:%d] flag:%d\n",me,region->complete);
 	}
 	
 	return true;
