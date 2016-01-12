@@ -1,6 +1,6 @@
 #include <ROOT-Sim.h>
 
-//#define ECS_TEST
+#define ECS_TEST
 
 #define DESTINATION 		1		//Message used by Region to communicate to the Agent the next destination
 #define ENTER 			2		//Message used by Agent for communicating its arrival	
@@ -34,6 +34,7 @@
 #define BITMAP_BZERO(map, size) (bzero(((unsigned char*)(map)), BITMAP_SIZE(size)))
 
 typedef struct enter_content_t {
+	unsigned int agent;			//Sender's Lid
 	unsigned char *map; 			//Pointer to the sender's map
 } enter_t;
 

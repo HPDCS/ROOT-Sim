@@ -160,7 +160,7 @@ void print_pgd(void** pgd_entry){
 			printk(KERN_ERR "\t\t[PML4E]: %d\n",index_pgd);
 			pud_busy = 0;
 			
-			temp = (void *)((ulong) pgd_entry[index_pgd] & 0xfffffffffffff000);
+			temp = (void *)((ulong) pgd_entry[index_pgd] & MASK_PTADDR);
                         temp = (void *)(__va(temp));
 			pud_entry = (void **)temp;
 			
@@ -216,14 +216,14 @@ int root_sim_page_fault(struct pt_regs* regs, long error_code){
 			}
 
 
-			my_pdp = __va((ulong)my_pdp & 0xfffffffffffff000);
+			my_pdp = __va((ulong)my_pdp & MASK_PTADDR);
 			if((void *)my_pdp[PDP(target_address)] != NULL)
 				return 0; /* faults at lower levels than PDP - need to be handled by traditional fault manager */
 
 			printk(KERN_ERR "addr: %p entry_pdp: %d dirty_pml4:%d\n",target_address,PDP(target_address),dirty_pml4[PML4(target_address)]);
 
 #ifdef ON_FAULT_OPEN
-			ancestor_pdp = __va((ulong)ancestor_pdp & 0xfffffffffffff000);
+			ancestor_pdp = __va((ulong)ancestor_pdp & MASK_PTADDR);
 			my_pdp[PDP(target_address)] = ancestor_pdp[PDP(target_address)];
 			rootsim_load_cr3(pgd_addr[i]);
 
@@ -300,7 +300,7 @@ int rs_ktblmgr_release(struct inode *inode, struct file *filp) {
                         for (i=0; i<PTRS_PER_PGD; i++){ 
                         	pml4_entry = pgd_entry[i];
 	                      	if(pml4_entry != NULL && dirty_pml4[i]){
-                                	temp = (void *)((ulong) pml4_entry & 0xfffffffffffff000);
+                                	temp = (void *)((ulong) pml4_entry & MASK_PTADDR);
                                         temp = (void *)(__va(temp));
                                         pdpt_entry = (void **)temp;
 					
@@ -464,7 +464,7 @@ goto bridging_from_get_pgd;
                                 memset(address_pdpt,0,4096);
 
                                 //Control bits
-                                pml4_entry = (void *)((ulong) original_pml4[pml4_index] & 0x0000000000000fff);
+                                pml4_entry = (void *)((ulong) original_pml4[pml4_index] & MASK_PTCONT);
 
                                 //Final value of PML4E
                                 address_pdpt = (void *)__pa(address_pdpt);
@@ -474,12 +474,12 @@ goto bridging_from_get_pgd;
                             }
 
                             //Pointer to Original PDPT
-                            temp = (void *)((ulong) original_pml4[pml4_index] & 0xfffffffffffff000);
+                            temp = (void *)((ulong) original_pml4[pml4_index] & MASK_PTADDR);
                             temp = (void *)(__va(temp));
                             original_pdpt = (void **)temp;
 
                             //Pointer to new PDPT                   
-                            temp = (void *)((ulong) pml4_entry & 0xfffffffffffff000);
+                            temp = (void *)((ulong) pml4_entry & MASK_PTADDR);
                             temp = (void *)(__va(temp));
                             pdpt_table = (void **)temp;
 				
@@ -539,7 +539,7 @@ goto bridging_from_get_pgd;
 	//			continue;
 				pml4_table =(void **)pgd_addr[descriptor];
 				pdpt_table =(void *)pml4_table[pml4_index];
-				pdpt_table = __va((ulong)pdpt_table & 0xfffffffffffff000);
+				pdpt_table = __va((ulong)pdpt_table & MASK_PTADDR);
 
 
 				pdpt_table[pud_index(object_to_close)] = NULL;

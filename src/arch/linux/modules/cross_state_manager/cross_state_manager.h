@@ -93,6 +93,8 @@ typedef struct _ioctl_info{
 #define GET_ADDRESS(addr)  ( (((long long)(addr)) & ((1LL << 40) - 1)) >> 12)
 #define PML4_PLUS_ONE(addr) (void *)((long long)(addr) + (1LL << 39))
 
+#define MASK_PTADDR 0x07FFFFFFFFFFF000
+#define MASK_PTCONT 0xF800000000000FFF
 
 #endif /* __CROSS_STATE_H */
 
