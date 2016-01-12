@@ -178,6 +178,9 @@ void process_bottom_halves(void) {
 			lid_receiver = msg_to_process->receiver;
 			lvt_receiver = lvt(lid_receiver);
 
+			if(msg_to_process->timestamp < get_last_gvt())
+				printf("ERRORE\n");
+			
 //			printf("\t \t receiver:%d sender:%d type:%d timestamp:%f\n",lid_receiver, msg_to_process->sender, msg_to_process->type, msg_to_process->timestamp);			
 
 			// Handle control messages

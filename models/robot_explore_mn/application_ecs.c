@@ -33,17 +33,21 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
 				
 				agent->complete = false;
 				agent->region = random_region();
-				agent->map = (unsigned char *)calloc(get_tot_regions(),sizeof(unsigned char));
-				//agent->map = ALLOCATE_BITMAP(get_tot_regions());
-				//BITMAP_BZERO(agent->map,get_tot_regions());
+			//	agent->map = (unsigned char *)calloc(get_tot_regions(),sizeof(unsigned char));
+				agent->map = ALLOCATE_BITMAP(get_tot_regions());
+				BITMAP_BZERO(agent->map,get_tot_regions());
         			agent->count = 0;
 
 				SetState(agent);
 			}
 			else{
 				region = (lp_region_t *)malloc(sizeof(lp_region_t));
-				
+				#ifdef ECS_TEST	
 				region->guests = calloc(get_tot_agents(),sizeof(unsigned char *));
+				#else
+				region->map = ALLOCATE_BITMAP(get_tot_regions());
+                                BITMAP_BZERO(region->map,get_tot_regions());
+				#endif
         			region->count = 0;     
         			region->obstacles = get_obstacles();
 
@@ -55,13 +59,23 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
 			if(is_agent(me)){
 				BITMAP_SET_BIT(agent->map,agent->region);
 				agent->count++;
-
+				
+				#ifdef ECS_TEST
                         	enter.map = agent->map;
+				#else
+				enter.map = ALLOCATE_BITMAP(get_tot_regions());
+				memcpy(enter.map,agent->map,get_tot_regions());
+				#endif
+				
 				ScheduleNewEvent(agent->region, timestamp, ENTER, &enter, sizeof(enter));
 				
 				exit.agent = me;		
-                        	exit.map = agent->map;
-                                ScheduleNewEvent(agent->region, timestamp + Expent(DELAY), EXIT, &exit, sizeof(exit));
+                        	#ifdef ECS_TEST
+				exit.map = agent->map;
+				#endif
+				
+				timestamp += Expent(DELAY);
+                                ScheduleNewEvent(agent->region, timestamp, EXIT, &exit, sizeof(exit));
 			}
 			else{
 				ScheduleNewEvent(me, timestamp, PING, NULL, 0);	
@@ -76,7 +90,8 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
 		case ENTER:
 			enter_p = (enter_t *) content;
 			region = (lp_region_t *) state;
-			
+		
+			#ifdef ECS_TEST	
 			region->guests[region->count] = enter_p->map;
 			
 			for(i=0; i<region->count; i++){
@@ -89,7 +104,13 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
 						BITMAP_SET_BIT(old_agent,j);
 				}
 			}
-			
+			#else
+			for(j=0; j<get_tot_regions(); j++){
+                        	if(BITMAP_CHECK_BIT(enter_p->map,j) && !BITMAP_CHECK_BIT(region->map,j))
+					BITMAP_SET_BIT(region->map,j);
+                        }
+			#endif
+
 			region->count++;	
 			
 			break;
@@ -99,7 +120,8 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
 			region = (lp_region_t *) state;
 			
 			destination.region = get_region(me,region->obstacles,exit_p->agent);
-
+			
+			#ifdef ECS_TEST
 			for(i=0;i<region->count; i++){
 				if(region->guests[i] == exit_p->map){
 					if(i!=(region->count-1) && region->count >= 1)
@@ -109,6 +131,15 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
 					break;
 				}
 			}
+			#else
+			destination.map = ALLOCATE_BITMAP(get_tot_regions());
+                        memcpy(destination.map,region->map,get_tot_regions());
+
+			if(region->count == 1)
+				BITMAP_BZERO(region->map,get_tot_regions());	
+			
+			region->count--;
+			#endif
 			
 			ScheduleNewEvent(exit_p->agent, now + Expent(DELAY), DESTINATION, &destination, sizeof(destination));
 			
@@ -117,8 +148,12 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
 		case DESTINATION: 
 			destination_p = (destination_t *) content;
 			agent = (lp_agent_t *) state;
-
+			
+			#ifdef ECS_TEST
 			agent->region = destination_p->region;
+			#else	
+			memcpy(agent->map,destination_p->map,get_tot_regions());
+			#endif
 			BITMAP_SET_BIT(agent->map,destination_p->region);
 
                         agent->count = 0;
@@ -133,7 +168,7 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
 				complete.agent = me;
 				
 				if(me + 1 == n_prc_tot)
-			 		ScheduleNewEvent(0, now + Expent(DELAY), COMPLETE, &complete, sizeof(complete));
+			 		ScheduleNewEvent(get_tot_regions(), now + Expent(DELAY), COMPLETE, &complete, sizeof(complete));
 				else	
 			 		ScheduleNewEvent(me + 1, now + Expent(DELAY), COMPLETE, &complete, sizeof(complete));
 
@@ -141,12 +176,21 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
 			}
 			
 			timestamp = now + Expent(DELAY);			
+			
+			#ifdef ECS_TEST
+			enter.map = agent->map;
+			#else
+			enter.map = ALLOCATE_BITMAP(get_tot_regions());
+			memcpy(enter.map,agent->map,get_tot_regions());
+			#endif
 
-                        enter.map = agent->map;
 			ScheduleNewEvent(destination_p->region, timestamp, ENTER, &enter, sizeof(enter));
 
-                        exit.agent = me;
+			exit.agent = me;
+			#ifdef ECS_TEST
                         exit.map = agent->map;
+                        #endif
+			
 			ScheduleNewEvent(destination_p->region, timestamp + Expent(DELAY), EXIT, &exit, sizeof(exit));
 			break;
 
@@ -161,7 +205,7 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
                         complete.agent = me;
 
                         if(me + 1 == n_prc_tot)
-				ScheduleNewEvent(0,  now + Expent(DELAY), COMPLETE, &complete, sizeof(complete));
+				ScheduleNewEvent(get_tot_regions(),  now + Expent(DELAY), COMPLETE, &complete, sizeof(complete));
 			else
 				ScheduleNewEvent(me + 1,  now + Expent(DELAY), COMPLETE, &complete, sizeof(complete));
 

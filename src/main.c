@@ -41,7 +41,11 @@
 #include <scheduler/process.h>
 #include <gvt/gvt.h>
 #include <mm/dymelor.h>
+
+#ifdef HAVE_CROSS_STATE
 #include <mm/ecs.h>
+#endif
+
 #include <serial/serial.h>
 
 
@@ -135,11 +139,10 @@ static void *main_simulation_loop(void *arg) {
 				
 				
 				#ifdef HAVE_GLP_SCH_MODULE
-				PRINT_DEBUG_GLP{
 				unsigned int j=0;
 				for(;j<n_grp;j++){
 					if(GLPS[j]->tot_LP != 0){
-						if(GLPS[j]->lvt != NULL)
+						if(GLPS[j]->lvt != NULL){
 							printf("GLP[%d]->state: %d \tsyn_c:%d r_c:%d sil_c:%d  \t lvt:%f VTG:%d \t",
 								j,
 								GLPS[j]->state,
@@ -156,6 +159,7 @@ static void *main_simulation_loop(void *arg) {
 							printf("%d ",list[i]->lid);
 						}
 						printf("\n");
+						}
 					}
 
 				}
@@ -171,7 +175,6 @@ static void *main_simulation_loop(void *arg) {
 					
 					if (LPS[j]->target_rollback != NULL)
 						printf("R_T:%f N_E:%f \n",LPS[j]->target_rollback->timestamp,next_event_timestamp(j));
-				}
 				}
 				#endif				
 			

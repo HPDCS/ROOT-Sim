@@ -41,7 +41,11 @@
 #include <scheduler/scheduler.h>
 #include <scheduler/stf.h>
 #include <mm/state.h>
+
+#ifdef HAVE_CROSS_STATE
 #include <mm/ecs.h>
+#endif
+
 #include <mm/dymelor.h>
 #include <statistics/statistics.h>
 #include <arch/thread.h>
@@ -836,3 +840,16 @@ void schedule(void) {
 }
 
 #endif
+
+unsigned int get_first_LP(void){
+	LP_state *lp;
+	unsigned int i;
+	
+	lp = LPS[0];
+	for(i=0; i<n_prc; i++){
+		if(lvt(lp->lid) > lvt(LPS[i]->lid))
+			lp = LPS[i];
+	}
+	
+	return lp->lid;
+}

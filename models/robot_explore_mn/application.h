@@ -1,5 +1,7 @@
 #include <ROOT-Sim.h>
 
+//#define ECS_TEST
+
 #define DESTINATION 		1		//Message used by Region to communicate to the Agent the next destination
 #define ENTER 			2		//Message used by Agent for communicating its arrival	
 #define EXIT			3		//Message useb by Agent for communicating its exit
@@ -9,7 +11,7 @@
 #define AGENT			6		//Agent opcode
 #define REGION			7		//Region opcode
 
-#define PERC_REGION		0.50		//Fraction of LPs that states regions 
+#define PERC_REGION		0.90		//Fraction of LPs that states regions 
  
 #define DELAY 			120		//Expeted value for the delay function
 
@@ -37,11 +39,16 @@ typedef struct enter_content_t {
 
 typedef struct exit_content_t {
 	unsigned int agent;			//Sender's Lid
-	unsigned char *map;				//Pointer to the sender's map
+	#ifdef ECS_TEST
+	unsigned char *map;			//Pointer to the sender's map
+	#endif
 } exit_t;
 
 typedef struct destination_content_t {
 	unsigned int region;			//Id of next region
+	#ifndef ECS_TEST
+	unsigned char *map;
+	#endif
 } destination_t;
 
 typedef struct complete_content_t {
@@ -55,8 +62,14 @@ typedef struct lp_agent_t{
 	bool complete;				//True if it has received the COMPLETE message
 }lp_agent_t;
 
-typedef struct lp_region_t{	
+typedef struct lp_region_t{
+	
+	#ifdef ECS_TEST	
 	unsigned char **guests;			//Vector that stores pointers of agent guest map
+	#else
+	unsigned char *map;
+	#endif
+	
 	unsigned int count;			//Amount of agents inside the region
 	unsigned char obstacles;		//Map of obstacles
 } lp_region_t;

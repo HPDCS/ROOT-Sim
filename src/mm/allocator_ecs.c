@@ -1,3 +1,5 @@
+#ifdef HAVE_CROSS_STATE
+
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -14,10 +16,7 @@
 
 #include <sys/stat.h>
 #include <fcntl.h>
-
-#ifdef HAVE_CROSS_STATE
 #include <arch/linux/modules/cross_state_manager/cross_state_manager.h>
-#endif
 
 lp_mem_region mem_region[MAX_LPs];
 static int ioctl_fd;
@@ -110,5 +109,4 @@ void allocator_ecs_fini(unsigned int sobjs){
 	close(ioctl_fd);
 
 }
-
-
+#endif

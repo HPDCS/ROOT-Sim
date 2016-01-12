@@ -142,9 +142,11 @@ void RestoreState(unsigned int lid, state_t *restore_state) {
 	log_restore(lid, restore_state);
 	LPS[lid]->current_base_pointer = restore_state->base_pointer;
 	LPS[lid]->state = restore_state->state;
+        #ifdef HAVE_CROSS_STATE
 	LPS[lid]->ECS_index = 0;
 	LPS[lid]->wait_on_rendezvous = 0;
 	LPS[lid]->wait_on_object = 0;
+	#endif
 
 }
 

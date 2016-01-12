@@ -25,6 +25,8 @@
 * @author Alessandro Pellegrini
 */
 
+#ifdef HAVE_CROSS_STATE
+
 #include <unistd.h>
 #include <stddef.h>
 #include <string.h>
@@ -68,7 +70,6 @@ static __thread int pgd_ds;
 
 // Declared in ecsstub.S
 extern void rootsim_cross_state_dependency_handler(void);
-
 
 void ECS(long long ds, unsigned long long hitted_object){
 	msg_t control_msg;
@@ -260,4 +261,4 @@ void lp_alloc_deschedule(void) {
 
 void lp_alloc_thread_fini(void) {
 }
-
+#endif

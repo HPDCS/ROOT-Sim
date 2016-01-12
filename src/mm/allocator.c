@@ -54,7 +54,7 @@ static spinlock_t segment_lock;
 
 mem_map maps[MAX_SOBJS];
 map_move moves[MAX_SOBJS];
-int handled_sobjs = -1;
+int handled_sobjs = - 1;
 
 
 char *allocate_pages(int num_pages) {
@@ -210,17 +210,20 @@ void* allocate_segment(unsigned int sobj, size_t size, bool is_recoverable) {
 
 
 	#ifndef NEW_ALLOCATOR
+	#ifdef HAVE_CROSS_STATE
 	//TODO MN
 	if(is_recoverable)
 		segment = (char*)get_memory_ecs(sobj,PAGE_SIZE*numpages);
 	else
+	#endif
 		segment = (char*)mmap((void*)NULL,PAGE_SIZE*numpages, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, 0,0);
 
 	#else
 
 
 	spin_lock(&segment_lock);
-	
+
+	#ifdef HAVE_CROSS_STATE	
 	//TODO MN
 	if(is_recoverable){
                 segment = (char*) get_memory_ecs(sobj,PAGE_SIZE*numpages);
@@ -231,6 +234,11 @@ void* allocate_segment(unsigned int sobj, size_t size, bool is_recoverable) {
 		my_initial_address = (void *)((char *)my_initial_address - ( PAGE_SIZE * (int)( ceil((double)numpages / 256.0) * 256  )  ));
 		segment = (char*)mmap(my_initial_address, PAGE_SIZE*numpages, PROT_READ|PROT_WRITE, MAP_FIXED|MAP_PRIVATE|MAP_ANONYMOUS, 0,0);
 	}
+	#else
+	// Update my_initial_address, keeping it aligned to large pages
+        my_initial_address = (void *)((char *)my_initial_address - ( PAGE_SIZE * (int)( ceil((double)numpages / 256.0) * 256  )  ));
+        segment = (char*)mmap(my_initial_address, PAGE_SIZE*numpages, PROT_READ|PROT_WRITE, MAP_FIXED|MAP_PRIVATE|MAP_ANONYMOUS, 0,0);
+	#endif
 	
 	spin_unlock(&segment_lock);
 	
@@ -344,11 +352,13 @@ int allocator_init(unsigned int sobjs) {
 
 	if( (sobjs > MAX_SOBJS) )
 		return INVALID_SOBJS_COUNT; 
-	
+
+	#ifdef HAVE_CROSS_STATE	
 	if(allocator_ecs_init(sobjs)) {
 		printf("ERROR allocator_ecs_init\n");
 		return INIT_ERROR;
 	}
+	#endif
 	
 	handled_sobjs = sobjs;
 
@@ -384,7 +394,9 @@ bad_init:
 
 //TODO MN
 void allocator_fini(unsigned int sobjs) {
+	#ifdef HAVE_CROSS_STATE
 	allocator_ecs_fini(sobjs);
+	#endif
 }
 
 mem_map* get_m_map(int sobj){
