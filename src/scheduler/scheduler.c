@@ -528,8 +528,7 @@ void schedule(void) {
 	unsigned int lid;
 	msg_t *event;
 	void *state;
-	bool result_log;
-
+	
 	#ifdef HAVE_CROSS_STATE
 	bool resume_execution = false;
 	#endif
@@ -615,7 +614,7 @@ void schedule(void) {
 	
 
 	// Log the state, if needed
-	result_log = LogState(lid);
+	LogState(lid);
 	
 
 }

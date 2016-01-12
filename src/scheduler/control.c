@@ -235,11 +235,11 @@ bool receive_control_msg(msg_t *msg) {
 			current_lvt = msg->timestamp;
 			force_LP_checkpoint(current_lp);
 			
+			#ifdef HAVE_GLP_SCH_MODULE
 			bool result_log;
 			// Log the state, if needed
 			result_log = LogState(current_lp);
 				
-			#ifdef HAVE_GLP_SCH_MODULE
 			if(result_log && check_start_group(current_lp) && verify_time_group(current_lvt) && GLPS[LPS[current_lp]->current_group]->tot_LP > 1){
 				GLPS[LPS[current_lp]->current_group]->state = GLP_STATE_WAIT_FOR_LOG;
 				GLPS[LPS[current_lp]->current_group]->counter_log = GLPS[LPS[current_lp]->current_group]->tot_LP;
@@ -247,6 +247,20 @@ bool receive_control_msg(msg_t *msg) {
 				force_checkpoint_group(current_lp);
 				send_outgoing_msgs(current_lp);
 			}
+			
+			//Manage counter to cross-state 
+			ECS_stat* temp_update_access = LPS[current_lp]->ECS_stat_table[msg->sender];
+			if(!D_EQUAL(temp_update_access->last_access,-1.0) && ((current_lvt - temp_update_access->last_access) < THRESHOLD_TIME_ECS) )
+				temp_update_access->count_access++;
+			else
+				temp_update_access->count_access = 1;
+
+			temp_update_access->last_access = current_lvt;
+			
+			#else
+			
+			LogState(current_lp);		
+	
 			#endif
 			
 			

@@ -167,7 +167,11 @@ void insert_bottom_half(msg_t *msg) {
 void process_bottom_halves(void) {
 	unsigned int i;
 	unsigned int lid_receiver;
+
+	#ifdef HAVE_GLP_SCH_MODULE
 	simtime_t lvt_receiver;
+	#endif
+	
 	msg_t *msg_to_process;
 	msg_t *matched_msg;
 
@@ -176,8 +180,11 @@ void process_bottom_halves(void) {
 		while((msg_to_process = (msg_t *)get_BH(LPS_bound[i]->lid)) != NULL) {
 						
 			lid_receiver = msg_to_process->receiver;
+			
+			#ifdef HAVE_GLP_SCH_MODULE
 			lvt_receiver = lvt(lid_receiver);
-
+			#endif
+	
 			if(msg_to_process->timestamp < get_last_gvt())
 				printf("ERRORE\n");
 			

@@ -104,11 +104,11 @@ static __thread unsigned int my_GVT_round = 0;
 static simtime_t *local_min;
 
 
-
+#ifdef HAVE_GLP_SCH_GROUP
 /// Variable to update the time for current group
 static simtime_t last_time_group = -1.0;
 static bool updated_group = true;
-
+#endif
 
 /**
 * Initialization of the GVT subsystem

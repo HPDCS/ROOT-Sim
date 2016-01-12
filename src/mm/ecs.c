@@ -55,8 +55,6 @@
 #include <gvt/gvt.h>
 #endif
 
-/// This variable keeps track of per-LP allocated (and assigned) memory regions
-static struct _lp_memory *lp_memory_regions;
 
 void (*callback_function)(void);
 
@@ -91,10 +89,7 @@ void ECS(long long ds, unsigned long long hitted_object){
 	PRINT_DEBUG_GLP{
 		printf("LP[%d] hits %llu rende_mark:%lu LP_wait_on_rende:%lu\n",current_lp, hitted_object, current_evt->rendezvous_mark,LPS[current_lp]->wait_on_rendezvous);
 	}
-#endif
-	//TODO MN
 	
-	#ifdef HAVE_GLP_SCH_MODULE	
 	//Manage counter to cross-state 
 	ECS_stat* temp_update_access = LPS[current_lp]->ECS_stat_table[hitted_object];
 	if(!D_EQUAL(temp_update_access->last_access,-1.0) && ((current_lvt - temp_update_access->last_access) < THRESHOLD_TIME_ECS) )
@@ -212,13 +207,13 @@ void lp_alloc_schedule(void) {
 	
 	unsigned int i;
 	ioctl_info sched_info;
-	LP_state **list;	
 
 	sched_info.ds = pgd_ds; // this is current
 	sched_info.count = LPS[current_lp]->ECS_index + 1; // it's a counter
 	
 	//TODO MN open group memory view only if lvt < GVT+deltaT	
 	#ifdef HAVE_GLP_SCH_MODULE
+	LP_state **list;	
 	if(check_start_group(current_lp) && verify_time_group(lvt(current_lp))){
 		list = GLPS[LPS[current_lp]->current_group]->local_LPS;
         	for(i=0; i< GLPS[LPS[current_lp]->current_group]->tot_LP; i++){
@@ -228,8 +223,6 @@ void lp_alloc_schedule(void) {
 			}
 		}
 	}
-
-//	printf("Check_start_group:%d Verify:%d LP:%d state:%lu Sched_info.count:%d\n",check_start_group(current_lp),verify_time_group(lvt(current_lp)),current_lp,LPS[current_lp]->state,sched_info.count);
 	#endif	
 	
 	sched_info.objects = LPS[current_lp]->ECS_synch_table; // pgd descriptor range from 0 to number threads - a subset of object ids 	
