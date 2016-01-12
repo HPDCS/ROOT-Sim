@@ -311,8 +311,8 @@ for_mixed_restore:
 		current_revwin = delete_revwin->prev;
 		//current_revwin = list_prev(current_revwin);
 		//revwin_free(lid,delete_revwin);
-		//revwin_reset(lid,delete_revwin);
-		revwin_reset(delete_revwin);
+		revwin_reset(lid,delete_revwin);
+		//revwin_reset(delete_revwin);
 	}
 
 	LPS[lid]->current_revwin = NULL;
@@ -339,8 +339,8 @@ FCF_path:
 		s = restore_state;
 		restore_state = list_prev(restore_state);
 		log_delete(s->log);
-		if(s->last_event != NULL)  // Per considerare gli eventi eliminati da antimessaggi
-			s->last_event->checkpoint_of_event = NULL; // Cannot use anti-dangling here, because we explicitly check for NULL 
+	//	if(s->last_event != NULL)  // Per considerare gli eventi eliminati da antimessaggi
+	//		s->last_event->checkpoint_of_event = NULL; // Cannot use anti-dangling here, because we explicitly check for NULL 
 		s->last_event = (void *)0xDEADC0DE;
 		list_delete_by_content(lid, LPS[lid]->queue_states, s);
 	}
@@ -430,7 +430,6 @@ FCF_path:
 			list_delete_by_content(lid, LPS[lid]->queue_states, s);
 			s = s1;
 		}
-
 		/*
 		if(event_with_log != last_correct_event) {
 			s = restore_state;
@@ -466,8 +465,7 @@ FCF_path:
 		current_revwin = delete_revwin->prev;
 		//current_revwin = list_prev(current_revwin);
 		//revwin_free(lid,delete_revwin);
-		//revwin_reset(lid,delete_revwin);
-		revwin_reset(delete_revwin);
+		revwin_reset(lid, delete_revwin);
 	}
 
 	

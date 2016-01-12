@@ -9,29 +9,20 @@
 //#include <mm/dymelor.h>
 
 
-//#define REVWIN_SIZE 1024 * 4	//! Defalut size of the reverse window which will contain the reverse code
-#define REVWIN_SIZE 1024 * 8	//! Defalut size of the reverse window which will contain the reverse code
+#define REVWIN_SIZE 1024 * 32	//! Defalut size of the reverse window which will contain the reverse code
 #define REVWIN_CODE_SIZE (REVWIN_SIZE - sizeof(revwin_t))
-//#define REVWIN_STACK_SIZE 4*1024*1024*1024	//! Default size of the emultated reverse stack window on the heap space
-#define REVWIN_STACK_SIZE 1024	//! Default size of the emultated reverse stack window on the heap space
 #define REVWIN_RZONE_SIZE 100		//! Size of the red zone in the reverse window that will be skipped to prevent cache misses
 #define RANDOMIZE_REVWIN 0 			//! Activate the rendomization of the addresses used by revwin to prevent cache misses
 
-#define HMAP_SIZE		32768		//! Default size ot the address hash map to handle colliding mov addresses
-#define HMAP_INDEX_MASK		0xffffffc0	//! Most significant 10 bits are used to index quad-word which contains address bit
-#define HMAP_OFFSET_MASK	0x3f	//! Least significant 6 bits are used to intercept address presence
-#define HMAP_OFF_MASK_SIZE	6
-
-#define PAGE_SIZE 4096
-
-//#define current_win map->map[tid]
-
+//#define PAGE_SIZE 4096
 
 #define CLUSTER_SIZE 64
-#define ADDRESS_PREFIX -CLUSTER_SIZE
+#define ADDRESS_PREFIX (-CLUSTER_SIZE)
+#define CLUSTER_PREFIX (CLUSTER_SIZE - 1)
 #define PREFIX_HEAD_SIZE 1024
 
-#define REVERSE_THRESHOLD 0.15
+#define FRAG_THRESHOLD 0.15
+#define LOAD_THRESHOLD 0.15
 
 #define STRATEGY_SINGLE 0
 #define STRATEGY_CHUNK 1
@@ -69,10 +60,10 @@ typedef struct _cache_entry {
  */
 typedef struct _prefix_head {
 	unsigned long long prefix;			//! Base address prefix of this cluster head
-	cache_entry cache[CLUSTER_SIZE];	//! List of registered addresses with current prefix
-	unsigned int count;					//! Number of total address in this cluster
-	double fragmentation;				//! Internal fragmentation of addresses in the cluster, i.e. how much they are sparse
+	unsigned int load;					//! Number of total address in this cluster (current cluster load)
 	unsigned int contiguous;			//! Maximum number of contiguous addresses registered
+	double fragmentation;				//! Internal fragmentation of addresses in the cluster, i.e. how much they are sparse
+	cache_entry cache[CLUSTER_SIZE];	//! List of registered addresses with current prefix
 } prefix_head;
 
 
@@ -83,8 +74,8 @@ typedef struct _prefix_head {
  * address cluster of the specified size.
  */
 typedef struct _revwin_cache {
-	prefix_head cluster[PREFIX_HEAD_SIZE];
-	unsigned int count;
+	unsigned int load;							//! The overall load factor of the software cache
+	prefix_head cluster[PREFIX_HEAD_SIZE];		//! Array of cache clusters
 } revwin_cache;
 
 
@@ -93,15 +84,13 @@ typedef struct _revwin_cache {
  * Descriptor of a single reverse window
  */
  typedef struct _revwin_t {
-	
-	struct _revwin_t *prev;
+	struct _revwin_t *prev;			//! Pointer to the previous reverse window
 	void *top;				//! Pointer to the first instruction byte to be executed
 	void *base;				//! Pointer to the logic base of the window
 	unsigned int offset;	//! A random offset used to prevent cache lines to be alligned
 	size_t size;			//! The actual size of the reverse window executable portion
 	void *dump;				//! This is the pointer to the memory area where chunk reversal has been dumped
-//	unsigned long long dummy;
-	char code[];			//! Placeholder for the actual executable reverse code, i.e. from this point there is code
+	char code[];			//! Placeholder for the actual executable reverse code, i.e. the point where the executable code is
 } revwin_t;
 
 
@@ -110,40 +99,38 @@ typedef struct _revwin_cache {
 // ========================================= //
 // ================== API ================== //
 
-
+/**
+ * Initialize a thread local reverse manager to build and populate reverse windows
+ * for the simulation events. This manager leans on a SLAB allocator to fast handle
+ * creation and destruction of reverse windows.
+ *
+ * @author Davide Cingolani
+ *
+ * @param revwin_sise The size the SLAB will allocate for each reverse window
+ */
 extern void reverse_init(size_t revwin_size);
 
-extern void reverse_fini(void);
-
-//extern void revwin_init(void);
-
-
-/**
- * This will allocate a window on the HEAP of the exefutable file in order
- * to write directly on it the reverse code to be executed later on demand.
+/** 
+ * Finalize the reverse manager. It must be called at the end of the overall execution
+ * in order to clean up the internal allocator and free the resources.
  *
- * @param size The size to which initialize the new reverse window. If the size paramter is 0, default
- * value will be used (REVERSE_WIN_SIZE)
- *
- * @return The address of the created window
- *
- * Note: mmap is invoked with both write and executable access, but actually
- * it does not to be a good idea since could be less portable and further
- * could open to security exploits.
+ * @author Davide Cingolani
  */
-//extern void *create_new_revwin(size_t size);
-
+extern void reverse_fini(void);
 
 
 /**
  * Initializes locally a new reverse window.
  *
+ * @author Davide Cingolani
  */
 extern revwin_t *revwin_create(void);
 
 
 /**
  * Free the reverse window passed as argument.
+ *
+ * @author Davide Cingolani 
  *
  * @param window A pointer to a reverse window
  */
@@ -153,31 +140,56 @@ extern void revwin_free(unsigned int lid, revwin_t *win);
 /**
  * Reset local reverse window
  *
+ * @author Davide Cingolani 
+ *
+ * @param lid The ID of the LP issuing the execution
  * @param win Pointer to the reverse window descriptor
  */
-extern void revwin_reset(revwin_t *win);
+extern void revwin_reset(unsigned int lid, revwin_t *win);
 
 
 /**
- * Will execute an undo event
+ * Prompt the execution of the specified reverse window.
  *
+ * @author Davide Cingolani 
+ *
+ * @param lid The ID of the LP issuing the execution
  * @param win Pointer to the reverse window descriptor
  */
 extern void execute_undo_event(unsigned int lid, revwin_t *win);
 
 
 /**
- * Prints some statistics of the software cache
+ * Prints some statistics of the software 
+ *
+ * @author Davide Cingolani 
  */
 extern void print_cache_stats(void);
 
 
-
+/**
+ * Computes the actual size of the passed reverse window.
+ *
+ * @author Davide Cingolani
+ *
+ * @param win Pointer to the reverse window descriptor
+ *
+ * @returns A size_t representing the size of the passed reverse window
+ */
 extern size_t revwin_size(revwin_t *win);
 
 
+/**
+ * Clean up the software cache used to keep track of the reversed addresses.
+ * Upon this cache is built the model to choose the reversing strategy to
+ * apply.
+ *
+ * @author Davide Cingolani
+ *
+ */
 extern void revwin_flush_cache(void);
 
 
 #endif /* __REVERSE_H */
 #endif /* HAVE_REVERSE */
+

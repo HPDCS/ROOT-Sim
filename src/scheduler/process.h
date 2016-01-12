@@ -60,6 +60,7 @@
 #define BLOCKED_STATE			0x01000
 #define is_blocked_state(state)	(bool)(state & BLOCKED_STATE)
 
+struct _revwin_t;
 
 typedef struct _LP_state {
 
@@ -145,7 +146,7 @@ typedef struct _LP_state {
 	unsigned int		wait_on_object;
 
 	unsigned int		FCF;
-	revwin_t		*current_revwin;
+	struct _revwin_t	*current_revwin;
 	simtime_t		last_correct_log_time;
 
 } LP_state;

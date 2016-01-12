@@ -226,8 +226,7 @@ static void LP_main_loop(void *args) {
 				if(current_evt->revwin == NULL)
 					current_evt->revwin = revwin_create();
 				else
-					//revwin_reset(current_lp,current_evt->revwin);
-					revwin_reset(current_evt->revwin);
+					revwin_reset(current_lp, current_evt->revwin);
 
 				prev_event = list_prev(current_evt);
 

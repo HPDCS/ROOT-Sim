@@ -15,26 +15,14 @@
 #include <datatypes/slab.h>
 
 
-// Variables to hold the emulated stack window on the heap
-// used to reverse the event without affecting the actual stack;
-// This is needed since the reverse-MOVs could overwrite portions
-// of what was the function's stack in the past event processing.
-// Prevents that possible reverse instructions that affect the old stack
-// will stain the current one
-__thread void *estack;
-__thread void *orig_stack;
-
-// Internal software cache to keep track of the reversed instructions
+//! Internal software cache to keep track of the reversed instructions
 __thread revwin_cache cache;
 
-// Keeps track of the current reversing strategy
+//! Keeps track of the current reversing strategy
 __thread strategy_t strategy;
 
-
-// Handling of the reverse windows
+//! Handling of the reverse windows
 __thread struct slab_chain *slab_chain;
-
-
 
 
 /*
@@ -51,11 +39,12 @@ static void revwin_add_code(revwin_t *win, unsigned char *bytes, size_t size) {
 	win->top = (void *)((char *)win->top - size);
 
 	if (win->top < win->base) {
+		printf("[LP%d] :: event %d win at %p\n", current_lp, current_evt->type, win);
 		fprintf(stderr, "Insufficent reverse window memory heap!\n");
 		exit(-ENOMEM);
 	}
 
-	// copy the instructions to the heap
+	// copy the instructions to the reverse window code area
 	memcpy(win->top, bytes, size);
 
 //	printf("Added %ld bytes to the reverse window\n", size);
@@ -70,15 +59,7 @@ static void revwin_add_code(revwin_t *win, unsigned char *bytes, size_t size) {
  * @param address The starting address from which to copy
  * @param size The number of bytes to reverse
  */
-static void reverse_chunk(revwin_t *win, const void *address, size_t size) {
-	//void *dump;
-
-	// unsigned char code[24] = {
-	// 	0x48, 0xc7, 0xc1, 0x00, 0x00, 0x00, 0x00,
-	// 	0x48, 0xc7, 0xc6, 0x00, 0x00, 0x00, 0x00,
-	// 	0x48, 0xc7, 0xc7, 0x00, 0x00, 0x00, 0x00,
-	// 	0xf3, 0x48, 0xa5
-	// };
+static void reverse_chunk(revwin_t *win, const unsigned long long address, size_t size) {
 	unsigned char code[36] = {
 		0x48, 0xc7, 0xc1, 0x00, 0x00, 0x00, 0x00,							// mov 0x0,%rcx
 		0x48, 0xb8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,			// movabs 0x0,%rax
@@ -97,10 +78,10 @@ static void reverse_chunk(revwin_t *win, const void *address, size_t size) {
 	// e.g. execute_undo_event, and revwin_free
 	win->dump = umalloc(current_lp, size);
 	if(win->dump == NULL) {
-		printf("Error reversing a memory chunk of %d bytes at %p\n", size, address);
+		printf("Error reversing a memory chunk of %ld bytes at %llx\n", size, address);
 		abort();
 	}
-	memcpy(win->dump, address, size);
+	memcpy(win->dump, (void *)address, size);
 
 
 	#ifdef REVERSE_SSE_SUPPORT
@@ -132,71 +113,89 @@ static void reverse_chunk(revwin_t *win, const void *address, size_t size) {
  * @param address The starting address from which to copy
  * @param size The number of bytes to reverse
  */
-
-
-static void reverse_single(revwin_t *win, const void *address, size_t size) {
-	unsigned long value, value_lower;
+static void reverse_single(revwin_t *win, const unsigned long long address, size_t size) {
+	unsigned long long value, value_lower;
 	unsigned char *code;
 	unsigned short size_code;
 
-	unsigned char revcode_longword[17] = {
+	unsigned char revcode_byte[14] = {
 		0x48, 0xb8, 0xda, 0xd0, 0xda, 0xd0, 0x00, 0x00, 0x00, 0x00,			// movabs $0x0, %rax
-		0x48, 0xc7, 0x00, 0xd3, 0xb0, 0x00, 0x00,							// mov $0x0, (%rax)
+		0xc6, 0x00, 0xaa,													// movb $0x0, (%rax)
 	};
 
-	unsigned char revcode_quadword[25] = {
+	unsigned char revcode_word[15] = {
 		0x48, 0xb8, 0xda, 0xd0, 0xda, 0xd0, 0x00, 0x00, 0x00, 0x00,			// movabs $0x0, %rax
-		0x48, 0xc7, 0x00, 0xd3, 0xb0, 0x00, 0x00,							// mov $0x0, (%rax)
-		0x48, 0xc7, 0x40, 0x04, 0xb0, 0xd3, 0x00, 0x00 						// mov $0x0, 4(%rax)
+		0x66, 0xc7, 0x00, 0xaa, 0xaa,										// movw $0x0, (%rax)
+	};
+
+	unsigned char revcode_longword[16] = {
+		0x48, 0xb8, 0xda, 0xd0, 0xda, 0xd0, 0x00, 0x00, 0x00, 0x00,			// movabs $0x0, %rax
+		0xc7, 0x00, 0xaa, 0xaa, 0xaa, 0xaa,									// movl $0x0, (%rax)
+	};
+
+	unsigned char revcode_quadword[23] = {
+		0x48, 0xb8, 0xda, 0xd0, 0xda, 0xd0, 0x00, 0x00, 0x00, 0x00,			// movabs $0x0, %rax
+		0xc7, 0x00, 0xd3, 0xb0, 0x00, 0x00,									// movl $0x0, (%rax)
+		0xc7, 0x40, 0x04, 0xb0, 0xd3, 0x00, 0x00 							// movl $0x0, 4(%rax)
 	};
 
 	// Get the value pointed to by 'address'
-	memcpy(&value, address, size);
+	memcpy(&value, (void *)address, 8);
+
+	switch(size) {
+		case 1:
+			// Byte
+			code = revcode_byte;
+			size_code = sizeof(revcode_byte);
+			memcpy(code+12, &value, 1);
+		break;
+
+		case 2:
+			// Word
+			code = revcode_word;
+			size_code = sizeof(revcode_word);
+			memcpy(code+13, &value, 2);
+		break;
+
+		case 4:
+			// Longword
+			code = revcode_longword;
+			size_code = sizeof(revcode_longword);
+			memcpy(code+12, &value, 4);
+		break;
+
+		case 8:
+			// Quadword
+			code = revcode_quadword;
+			size_code = sizeof(revcode_quadword);
+			value_lower = ((value >> 32) & 0x0FFFFFFFF);
+			memcpy(code+12, &value, 4);
+			memcpy(code+19, &value_lower, 4);
+		break;
+	}
 
 	// We must handle the case of a quadword with two subsequent MOVs
 	// properly embedding the upper and lower parts of values
-	if(0 && size == 8) {
+/*	if(size == 8) {
 		code = revcode_quadword;
 		size_code = sizeof(revcode_quadword);
 		value_lower = ((value >> 32) &0x0FFFFFFFF);
-		memcpy(code+21, &value_lower, 4);
+		memcpy(code+19, &value_lower, 4);
 
 	} else {
 		code = revcode_longword;
 		size_code = sizeof(revcode_longword);
 	}
-
+*/
 	// Copy the destination address into the binary code
 	// of MOVABS (first 2 bytes are the opcode)
 	memcpy(code+2, &address, 8);
-	memcpy(code+13, &value, 4);
+//	memcpy(code+12, &value, 4);
 
-	//printf("Single address reverse code generated\n");
+	//printf("Single address reverse code generated (%d bytes)\n", size);
 
 	// Now 'code' contains the right code to add in the reverse window
 	revwin_add_code(win, code, size_code);
-}
-
-
-/**
- * Reset the cluster cache.
- *
- * @author Davide Cingolani
- */
-void revwin_flush_cache(void) {
-	int c, i;
-	prefix_head *cluster;
-
-	for(c = 0; c < PREFIX_HEAD_SIZE; c++) {
-		cluster = &cache.cluster[c];
-
-		cluster->prefix = NULL;
-
-		for(i = 0; i < CLUSTER_SIZE; i++) {
-			cluster->cache[i].address = 0;
-			cluster->cache[i].touches = 0;
-		}
-	}
 }
 
 
@@ -212,7 +211,7 @@ static void dump_cluster(prefix_head *cluster) {
 	for(i = 0; i < CLUSTER_SIZE; i++) {
 		entry = &cluster->cache[i];
 
-		if(entry->address != NULL) {
+		if(entry->address != 0) {
 			printf("[%d] => %llx, %d\n", i, entry->address, entry->touches);
 		}
 	}
@@ -227,23 +226,31 @@ static void dump_cluster(prefix_head *cluster) {
  *
  * @author Davide Cingolani
  */
-static void choose_strategy() {
+static void choose_strategy(void) {
 	int i;
 	double frag;
+	double avg_load;
 
 	// Computes the actual average fragmentation among all clusters
 	// of the software cache
 	frag = 0;
+	avg_load = 0;
 	for(i = 0; i < PREFIX_HEAD_SIZE; i++) {
 		frag += cache.cluster[i].fragmentation;
+		avg_load += cache.cluster[i].load;
 	}
-	frag /= cache.count;
+	frag /= cache.load;
 
+//	printf("Frag=%f, avg_load=%f\n", frag, avg_load);
+
+	// TODO: introdurre un modello di costo più complesso
 
 	// Choose the strategy: if the current fragmentation
 	// is lower than a certain threshold it is reasonable
 	// to coalesce reversing instrucitons to one chunk
-	if(0 && frag < REVERSE_THRESHOLD) {
+
+	// TODO: forced to single
+	if(0 && frag < FRAG_THRESHOLD) {
 		if(strategy.current != STRATEGY_CHUNK)
 			printf("Strategy switch to Chunk\n");
 		
@@ -268,10 +275,7 @@ static void choose_strategy() {
  * @return true if the reverse MOV instruction relative to 'address' would be
  * the dominant one, false otherwise
  */
-static bool check_dominance(void *address) {
-	int line_number;
-	malloc_area *area;
-	char bit;
+static bool check_dominance(unsigned long long address) {
 	int i;
 
 	unsigned long long page_address;
@@ -280,18 +284,9 @@ static bool check_dominance(void *address) {
 	cache_entry *entry;
 	prefix_head *cluster;
 
-	// line_number = GET_CACHE_LINE_NUMBER((unsigned long)address);
-	// area = get_area_from_ptr(address);
-
-	// if(area == NULL) {
-	// 	printf("Failed to get malloc_area\n");
-	// 	abort();
-	// }
-
-	//printf("Check dominance for %p\n", address);
 
 	// Computes the prefix within the head list
-	page_address = (unsigned long long)address & ADDRESS_PREFIX;
+	page_address = address & ADDRESS_PREFIX;
 
 	// TODO: la cache non è ordinata e richiede una ricerca lineare
 
@@ -309,32 +304,31 @@ static bool check_dominance(void *address) {
 		// Otherwinse, if no cluster has been found
 		// a new one must be addes with this prefix
 		for(i = 0; i < PREFIX_HEAD_SIZE; i++) {
-			if(cache.cluster[i].prefix == NULL)
+			if(cache.cluster[i].prefix == 0)
 				break;
 		}
 
 		// Check whether the cache is full
 		if (i == PREFIX_HEAD_SIZE) {
-			printf("Cache full, no entry found\n");
+			printf("Reverse cache is full!\n");
 			// TODO: gestire diversamente questo caso!
 			abort();
 		}
 
 		cache.cluster[i].prefix = page_address;
-		cache.count++;
+		cache.load++;
 		cluster = &cache.cluster[i];
 
 		//printf("Added prefix %p at cluster %d\n", page_address, i);
 	}
 
 	// Computes the index within the cluster
-	address_idx = (unsigned long long)address & (CLUSTER_SIZE - 1);
+	address_idx = address & CLUSTER_PREFIX;
 
 	// Once the pointer to the correct address cluster is found, if any,
 	// check the presence of the specific address
-
 	entry = &cluster->cache[address_idx];
-	if(entry->address != NULL) {
+	if(entry->address != 0) {
 		entry->touches++;
 		return true;
 	}
@@ -343,7 +337,7 @@ static bool check_dominance(void *address) {
 	// has not been yet referenced and must be set for the first time at the indexed cell
 	entry->address = address;
 	entry->touches = 1;
-	cluster->count++;
+	cluster->load++;
 
 
 	// A new address which wasn't in cache has been touched and added
@@ -356,7 +350,7 @@ static bool check_dominance(void *address) {
 	for(i = 0; i < CLUSTER_SIZE; i++) {
 		entry = &cluster->cache[i];
 
-		if(entry->address == NULL) {
+		if(entry->address == 0) {
 			if(counter > cluster->contiguous)
 				cluster->contiguous = counter;
 
@@ -368,11 +362,12 @@ static bool check_dominance(void *address) {
 			continue;
 		}
 
-		cluster->count++;
+		cluster->load++;
 		counter++;
 	}
 
 	cluster->fragmentation /= CLUSTER_SIZE;
+
 
 
 	// Check whether to switch to another reversing strategy
@@ -380,63 +375,43 @@ static bool check_dominance(void *address) {
 	// within the cache
 	choose_strategy();
 
-
-	//printf("Checking address dominance for %p :: cache line %d malloc_area address %p\n",
-	//	address, line_number, area);
-
-	// Check whether i-th bit is dirty
-	/*if(CHECK_DIRTY_BIT(area, bit) == 0){
-		// The address is not referenced yet, therefore we it must be tracked
-		// and its relative dirty bit set.
-
-		SET_DIRTY_BIT(area, bit);
-
-		return true;
-	}*/
-
-	// The address is has been yet referenced previously, therefore
+	// This address has been yet referenced previously, therefore
 	// it is not necessary to reverse it again since the value would
 	// be overwritten anyway by the first reversal.
 	return false;
 }
 
 
-/**
- * Computes how many bytes have been touched per single malloc_area based
- * on the knoledge of ts dirty bitmap.
- *
- * @author Davide Cingolani
- *
- * @param area Pointer to the malloc_area in exam
- * 
- * @return the number of bytes actually reversed per single malloc_area
- */
-static int compute_span(malloc_area *area) {
-	int bit;
-	unsigned int dirty;
+void revwin_flush_cache(void) {
+	memset(&cache, 0, sizeof(revwin_cache));
+}
+/*void revwin_flush_cache(void) {
+	int c, i;
+	prefix_head *cluster;
 
-	dirty = 0;
-	for(bit = 0; bit < area->chunk_size; bit++) {
-		if(CHECK_DIRTY_BIT(area, bit))
-			dirty++;
+	for(c = 0; c < PREFIX_HEAD_SIZE; c++) {
+		cluster = &cache.cluster[c];
+
+		memset(cluster, 0, sizeof(prefix_head));
+//		cluster->prefix = 0;
+//		cluster->load = 0;
+//		cluster->fragmentation = 0;
+
+//		for(i = 0; i < CLUSTER_SIZE; i++) {
+//			memset(cluster->cache[i], 0, sizeof(cache_entry));
+//			cluster->cache[i].address = 0;
+//			cluster->cache[i].touches = 0;
+//		}
 	}
 
-	return dirty;
-}
+	cache.load = 0;
+}*/
 
 
 revwin_t *revwin_create(void) {
 	revwin_t *win;
 
 	unsigned char code_closing[2] = {0x58, 0xc3};
-
-	// Set the current window as the one registred
-/*	win = rsalloc(sizeof(revwin));
-	if(win == NULL) {
-		perror("Failed to allocate reverse window descriptor\n");
-		abort();
-	}
-	memset(win, 0, sizeof(revwin));*/
 
 	// Query the slab allocator to retrieve a new reverse window
 	// executable area. The address represents the base address of
@@ -462,26 +437,11 @@ revwin_t *revwin_create(void) {
 #endif
 
 
-	// Adds the closing instructions to the end of the window
+	// Initialize the executable code area with the closing
+	// instructions at the end of the actual window.
+	// In this way we are sure the exection will correctly returns
+	// once the whole revwin has been reverted.
 	revwin_add_code(win, code_closing, sizeof(code_closing));
-
-	/**
-	 * Allocate a new stack window in order to not modify anything
-	 * on the real one, otherwise during the reversible undo event
-	 * processing, the old stack will overwrite the current one which
-	 * collide with the execute_undo_event() function
-	 */
-
-	// Allocate 1024 bytes for a limited memory which emulates
-	// the future stack of the execute_undo_event()'s stack
-	// TODO: da sistemare!!!!
-/*	win->estack = umalloc(current_lp, EMULATED_STACK_SIZE);
-	if(win->estack == NULL) {
-		perror("Failed to allocate the emulated stack window\n");
-		abort();
-	}
-	// The stack grows towards low addresses
-	win->estack += (EMULATED_STACK_SIZE - 1);*/
 
 	return win;
 }
@@ -527,18 +487,6 @@ void reverse_init(size_t revwin_size) {
 	// which will be created by each event indipendently.
 	slab_init(slab_chain, revwin_size);
 
-	// TODO: da eliminare!
-	// Allocate 1024 bytes for a limited memory which emulates
-	// the future stack of the execute_undo_event()'s stack
-	//estack = umalloc(current_lp, REVWIN_STACK_SIZE);
-	estack = rsalloc(REVWIN_STACK_SIZE);
-	if(estack == NULL) {
-		perror("Failed to allocate the emulated stack window\n");
-		abort();
-	}
-	// The stack grows towards low addresses
-	estack += (REVWIN_STACK_SIZE - 1);
-
 	// Reset the cluster cache
 	revwin_flush_cache();
 }
@@ -550,20 +498,13 @@ void reverse_fini(void) {
 
 	// Destroy the SLAB allocator
 	slab_destroy(slab_chain);
-
-	// Destroy the emulated stack, if any
-	/*
-	if(estack != NULL) {
-		ufree(current_lp, estack-REVWIN_STACK_SIZE);
-	}
-	*/
 }
 
 
 /*
  * Reset the reverse window intruction pointer
  */
-void revwin_reset(revwin_t *win) {
+void revwin_reset(unsigned int lid, revwin_t *win) {
 
 	// Sanity check
 	if (win == NULL) {
@@ -579,7 +520,10 @@ void revwin_reset(revwin_t *win) {
 	// TODO: quando resettare la cache??
 	// flush_cache();
 
-	// TODO: Should be reset also the chunk dumping area, if present?
+	// Reset also the chunk dumping area, if present
+	if(win->dump != NULL) {
+		ufree(lid, win->dump);
+	}
 }
 
 
@@ -588,7 +532,7 @@ void revwin_reset(revwin_t *win) {
  *
  * @author Davide Cingolani
  */
-void print_cache_stats() {
+void print_cache_stats(void) {
 	int c;
 	double utilization;
 	prefix_head *cluster;
@@ -597,7 +541,7 @@ void print_cache_stats() {
 	for(c = 0; c < PREFIX_HEAD_SIZE; c++) {
 		cluster = &cache.cluster[c];
 
-		if(cluster->prefix != NULL) {
+		if(cluster->prefix != 0) {
 			utilization++;
 			dump_cluster(cluster);
 			printf("=======================\n");
@@ -617,23 +561,22 @@ void print_cache_stats() {
  * 
  * @author Davide Cingolani
  *
- * @param address The pointer to the memeory location which the MOV refers to
+ * @param address The address of the memeory location to which the MOV refers
  * @param size The size of data will be written by MOV
  */
 
 #define SIMULATED_INCREMENTAL_CKPT if(0)
 
-void reverse_code_generator(const void *address, const size_t size) {
-	void *chunk_address;
+void reverse_code_generator(const unsigned long long address, const size_t size) {
+	unsigned long long chunk_address;
 	size_t chunk_size;
-	malloc_area *area;
 	bool dominant;
 	revwin_t *win;
 
 	//printf("address is %p - size is %d\n",address,size);
 
 	//SIMULATED_INCREMENTAL_CKPT return;
-	
+
 	// We have to retrieve the current event structure bound to this LP
 	// in order to bind this reverse window to it.
 	win = current_evt->revwin;
@@ -645,20 +588,6 @@ void reverse_code_generator(const void *address, const size_t size) {
 	timer t;
 	timer_start(t);
 
-	// In order to dump the whole chunk reverse, now we inquire
-	// dymelor to get the malloc_area struct which contains the
-	// current address.
-
-	// TODO: get dymelor's malloc_area to dump the whole chunk
-	// area = get_area_from_ptr(address);
-	// if(area == NULL) {
-	// 	printf("Returned a NULL malloc_area\n");
-	// 	abort();
-	// }
-	// chunk_size = area->chunk_size;
-	// chunk_address = area->area;
-
-	//cache[]
 
 	// Check whether the current address' update dominates over some other
 	// update on the same memory region. If so, we can return earlier.
@@ -669,6 +598,7 @@ void reverse_code_generator(const void *address, const size_t size) {
 
 	/*
 	dominant = check_dominance(address);
+//	dominant = false;
 	if(dominant) {
 		// If the current address is dominated by some other update,
 		// then there is no need to generate any reversing instruction
@@ -676,10 +606,6 @@ void reverse_code_generator(const void *address, const size_t size) {
 	}
 */
 
-
-	// int blocks;
-	// blocks = compute_span(area);
-	// printf("In malloc_area at %p, %d bytes have been reversed so far\n", area, blocks);
 
 	// Act accordingly to the currrent selected reversing strategy
 	//
@@ -689,16 +615,14 @@ void reverse_code_generator(const void *address, const size_t size) {
 		case STRATEGY_CHUNK:
 			// Reverse the whole malloc_area chunk passing the pointer
 			// of the target memory chunk to reverse (not the malloc_area one)
-			chunk_address = (unsigned long long)address & ADDRESS_PREFIX;
+			chunk_address = address & ADDRESS_PREFIX;
 			chunk_size = CLUSTER_SIZE;
 			reverse_chunk(win, chunk_address, chunk_size);
-			//cache.reverse_bytes += chunk_size;
 			break;
 
 		case STRATEGY_SINGLE:
 			// Reverse the single buffer access
 			reverse_single(win, address, size);
-			//cache.reverse_bytes += size;
 			break;
 	}
 	*/
@@ -713,22 +637,13 @@ void reverse_code_generator(const void *address, const size_t size) {
 	statistics_post_lp_data(current_lp, STAT_REVERSE_GENERATE_TIME, elapsed);
 
 	//printf("[%d] :: Reverse MOV instruction generated to save value %lx\n", tid, *((unsigned long *)address));
-
-
-	// TODO: evaluate how many bytes have been touched so far
-
-	// TODO: use dymelor's dirty bitmap to track the reversed addresses
-
-	// Checks whether this address has been previously touched
-	// by looking at the dirty bitmap
-	// TODO: check dirty bit
 }
 
 
 size_t revwin_size(revwin_t *win) {
 	if(win == NULL)
 		return 0;
-	return ((win->base + win->size - 3) - win->top);
+	return (((unsigned long long)win->base + (unsigned long long)win->size - 3) - (unsigned long long)win->top);
 }
 
 /**
@@ -741,7 +656,7 @@ size_t revwin_size(revwin_t *win) {
 void execute_undo_event(unsigned int lid, revwin_t *win) {
 	unsigned char push = 0x50;
 	void *revcode;
-	size_t revcode_size;
+	int err;
 
 
 	// Sanity check
@@ -750,7 +665,7 @@ void execute_undo_event(unsigned int lid, revwin_t *win) {
 		return;
 	}
 
-	revcode_size = ((win->base + win->size - 3) - win->top);
+	//revcode_size = ((win->base + win->size - 3) - win->top);
 	//printf("UNDO :: [%p - %p] revcode size= %d\n", win, event, revcode_size);
 	//printf("UNDO :: [%p]  revcode size= %d\n", win, revcode_size);
 	/*
@@ -803,8 +718,6 @@ void execute_undo_event(unsigned int lid, revwin_t *win) {
 	// Calls the reversing function
 	((void (*)(void))revcode) ();
 
-	// Replace the original stack on the relative register
-//	__asm__ volatile ("movq %0, %%rsp" : : "m" (orig_stack) : "rsp");
 
 	double elapsed = (double)timer_value_micro(reverse_block_timer);
 	statistics_post_lp_data(lid, STAT_REVERSE_EXECUTE, 1.0);
@@ -820,6 +733,7 @@ void execute_undo_event(unsigned int lid, revwin_t *win) {
 	}
 
 	// Reset the reverse window
+	// TODO: ?
 	//reset_window(w);
 }
 
