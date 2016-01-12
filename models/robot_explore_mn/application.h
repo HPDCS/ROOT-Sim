@@ -37,12 +37,12 @@ typedef struct enter_content_t {
 
 typedef struct exit_content_t {
 	unsigned int agent;			//Sender's Lid
-	char int *map;				//Pointer to the sender's map
+	unsigned char *map;				//Pointer to the sender's map
 } exit_t;
 
 typedef struct destination_content_t {
 	unsigned int region;			//Id of next region
-} destiantion_t;
+} destination_t;
 
 typedef struct complete_content_t {
 	unsigned int agent;			//Id of agent that completes the mission

@@ -157,7 +157,7 @@ unsigned int get_region(unsigned int me, unsigned int obstacle,unsigned int agen
 }
 
 bool check_termination(lp_agent_t *agent){
-	double region = (double)agent->counter;
+	double regions = (double)agent->count;
 	double tot_region = get_tot_regions();
 	double result = regions/tot_region;
 	
@@ -168,7 +168,7 @@ bool check_termination(lp_agent_t *agent){
 }
 
 double percentage(lp_agent_t *agent){
-	double region = (double)agent->counter;
+	double regions = (double)agent->count;
 	double tot_region = get_tot_regions();
 	double result = (regions/tot_region)*100;
 

@@ -6,7 +6,12 @@
 #define DEBUG if(0)
 
 void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *content, unsigned int size, void *state) {
-        enter_t eneter;
+        enter_t *enter_p;
+	exit_t *exit_p;
+	destination_t *destination_p;
+	complete_t *complete_p;
+        
+	enter_t enter;
 	exit_t exit;
 	destination_t destination;
 	complete_t complete;
@@ -29,16 +34,17 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
 				agent->complete = false;
 				agent->region = random_region();
 				agent->map = (unsigned char *)calloc(get_tot_regions(),sizeof(unsigned char));
-        			agent->counter = 0;
+				//agent->map = ALLOCATE_BITMAP(get_tot_regions());
+				//BITMAP_BZERO(agent->map,get_tot_regions());
+        			agent->count = 0;
 
 				SetState(agent);
 			}
 			else{
 				region = (lp_region_t *)malloc(sizeof(lp_region_t));
 				
-				region->complete = false;
 				region->guests = calloc(get_tot_agents(),sizeof(unsigned char *));
-        			region->counter = 0;     
+        			region->count = 0;     
         			region->obstacles = get_obstacles();
 
 				SetState(region);	
@@ -47,87 +53,81 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
                         timestamp = (simtime_t)(20 * Random());
 
 			if(is_agent(me)){
-				SET_BIT_AT(agent->map,agent->region);
-				agent->counter++;
+				BITMAP_SET_BIT(agent->map,agent->region);
+				agent->count++;
 
                         	enter.map = agent->map;
 				ScheduleNewEvent(agent->region, timestamp, ENTER, &enter, sizeof(enter));
-                        	DEBUG	printf("AGENT[%d] send ENTER to REGION:%d\n",me,agent->region);
 				
-				//Send EXIT message
 				exit.agent = me;		
                         	exit.map = agent->map;
                                 ScheduleNewEvent(agent->region, timestamp + Expent(DELAY), EXIT, &exit, sizeof(exit));
-                        	DEBUG	printf("AGENT[%d] send EXIT to REGION:%d\n",me,agent->region);
 			}
 			else{
-                        	DEBUG	printf("REGION[%d] send PING\n",me);
 				ScheduleNewEvent(me, timestamp, PING, NULL, 0);	
 			}
 
                         break;
 
-                case PING
+                case PING:
                         ScheduleNewEvent(me, now + Expent(DELAY), PING, NULL, 0);
-			
 			break;
 
 		case ENTER:
-			enter = (enter_t) content;
+			enter_p = (enter_t *) content;
 			region = (lp_region_t *) state;
 			
-			region->guests[region->counter] = enter->map;
+			region->guests[region->count] = enter_p->map;
 			
-			for(i=0; i<region->counter; i++){
+			for(i=0; i<region->count; i++){
 				old_agent = region->guests[i];
 
 				for(j=0; j<get_tot_regions(); j++){
-					if(!CHECK_BIT_AT(enter->map,j) && CHECK_BIT_AT(old_agent,j))
-						SET_BIT_AT(enter->map,j);
-					else if(CHECK_BIT_AT(enter->map,j) && !CHECK_BIT_AT(old_agent,j))
-						SET_BIT_AT(old_agent,j);
+					if(!BITMAP_CHECK_BIT(enter_p->map,j) && BITMAP_CHECK_BIT(old_agent,j))
+						BITMAP_SET_BIT(enter_p->map,j);
+					else if(BITMAP_CHECK_BIT(enter_p->map,j) && !BITMAP_CHECK_BIT(old_agent,j))
+						BITMAP_SET_BIT(old_agent,j);
 				}
 			}
 			
-			region->counter++;	
+			region->count++;	
 			
 			break;
 
 		case EXIT: 
-			exit = (exit_t) content;
+			exit_p = (exit_t *) content;
 			region = (lp_region_t *) state;
 			
-			destination.region = get_region(me,region->obstacles,exit->agent);
+			destination.region = get_region(me,region->obstacles,exit_p->agent);
 
-			for(i=0;i<region->counter;i++){
-				if(region->guests[i] == exit->map){
-					if(i!=(region->counter-1) && region->counter >= 1)
-						region->guests[i] = region->guests[region->counter-1];
+			for(i=0;i<region->count; i++){
+				if(region->guests[i] == exit_p->map){
+					if(i!=(region->count-1) && region->count >= 1)
+						region->guests[i] = region->guests[region->count-1];
 					
-					region->counter--;	
+					region->count--;	
 					break;
 				}
 			}
 			
-			ScheduleNewEvent(content->sender, now + Expent(DELAY), DESTINATION, &destination, sizeof(destination));
+			ScheduleNewEvent(exit_p->agent, now + Expent(DELAY), DESTINATION, &destination, sizeof(destination));
 			
 			break;
 
 		case DESTINATION: 
-			destiantion = (destiantion_t) content;
+			destination_p = (destination_t *) content;
 			agent = (lp_agent_t *) state;
 
-			agent->region = destination->destination;
-			SET_BIT_AT(agent->map,destination->region);
+			agent->region = destination_p->region;
+			BITMAP_SET_BIT(agent->map,destination_p->region);
 
-                        agent->counter = 0;
+                        agent->count = 0;
 			for(i=0; i<get_tot_regions(); i++){
-				if(CHECK_BIT_AT(agent->map,i)
-					agent->counter++;
+				if(BITMAP_CHECK_BIT(agent->map,i))
+					agent->count++;
 			}
 				
 			if(check_termination(agent)){
-				DEBUG	printf("Agente:%d complete! AVC:%d\n",me,agent->visited_counter);
 				agent->complete = true;
 	                        
 				complete.agent = me;
@@ -143,21 +143,22 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
 			timestamp = now + Expent(DELAY);			
 
                         enter.map = agent->map;
-			ScheduleNewEvent(content->destination, timestamp, ENTER, &enter, sizeof(enter));
+			ScheduleNewEvent(destination_p->region, timestamp, ENTER, &enter, sizeof(enter));
 
                         exit.agent = me;
                         exit.map = agent->map;
-			ScheduleNewEvent(content->destination, timestamp + Expent(DELAY), EXIT, &exit, sizeof(exit));
+			ScheduleNewEvent(destination_p->region, timestamp + Expent(DELAY), EXIT, &exit, sizeof(exit));
 			break;
 
 		case COMPLETE:
+			complete_p = (complete_t *) content;
 			if(is_agent(me)){
 				agent = (lp_agent_t *) state;
 				agent->complete = true;
-				agent->counter = get_tot_regions();
+				agent->count = get_tot_regions();
 			}
 
-                        complete.sender = me;
+                        complete.agent = me;
 
                         if(me + 1 == n_prc_tot)
 				ScheduleNewEvent(0,  now + Expent(DELAY), COMPLETE, &complete, sizeof(complete));
@@ -177,18 +178,24 @@ bool OnGVT(unsigned int me, void *snapshot) {
 		
 		DEBUG{	
 			unsigned int i;
-			printf("Agent[%d] VC:%d \t{",me,agent->visited_counter);
-			for(i=0;i<get_tot_regions();i++)
-				printf("%d ",agent->visited_regions[i]);
+			printf("Agent[%d]\t",me);
+			printf("C:%s \t", agent->complete ? "true" : "false");
+			printf("VC:%d \t{",agent->count);
+			for(i=0;i<get_tot_regions();i++){
+				if(BITMAP_CHECK_BIT(agent->map,i))
+					printf("1 ");
+				else
+					printf("0 ");
+			}
 			printf("}\n");
 		}
 		
         	if(me == get_tot_regions())
-                	printf("Completed work: %f\%\n", percentage(agent));
+                	printf("Completed work: %f%%\n", percentage(agent));
         	
 		
 			
-		if(check_termination(agent)){
+		if(!check_termination(agent)){
 			DEBUG	printf("[ME:%d] Complete:%f flag:%d\n",me,percentage(agent),agent->complete);
 			return false;
 		}
