@@ -32,18 +32,30 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
 				agent = (lp_agent_t *)malloc(sizeof(lp_agent_t));
 				
 				agent->complete = false;
+
+				#ifndef TEST_CASE
 				agent->region = random_region();
-			//	agent->map = (unsigned char *)calloc(get_tot_regions(),sizeof(unsigned char));
 				agent->map = ALLOCATE_BITMAP(get_tot_regions());
 				BITMAP_BZERO(agent->map,get_tot_regions());
-        			agent->count = 0;
+				#else
+				agent->region = 0;
+				agent->map = ALLOCATE_BITMAP(8);
+				BITMAP_BZERO(agent->map,8);		
+				#endif
+
+				agent->count = 0;
 
 				SetState(agent);
 			}
 			else{
 				region = (lp_region_t *)malloc(sizeof(lp_region_t));
-				#ifdef ECS_TEST	
-				region->guests = calloc(get_tot_agents(),sizeof(unsigned char *));
+				#ifdef ECS_TEST
+					#ifndef TEST_CASE
+						region->guests = calloc(get_tot_agents(),sizeof(unsigned char *));
+					#else
+						if(me == 0)
+							region->guests = calloc(get_tot_agents(),sizeof(unsigned char *));
+					#endif
 				#else
 				region->map = ALLOCATE_BITMAP(get_tot_regions());
                                 BITMAP_BZERO(region->map,get_tot_regions());
@@ -78,17 +90,23 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
 				
 				timestamp += Expent(DELAY);
 				DEBUG printf("%d send EXIT to %d\n",me,agent->region);
-                                ScheduleNewEvent(agent->region, timestamp, EXIT, &exit, sizeof(exit));
+	                        #ifndef TEST_CASE
+				ScheduleNewEvent(agent->region, timestamp, EXIT, &exit, sizeof(exit));
+				#endif
 			}
 			else{
+				#ifndef TEST_case
 				ScheduleNewEvent(me, timestamp, PING, NULL, 0);	
+				#endif
 			}
 
                         break;
 
                 case PING:
 			DEBUG printf("Send PING\n");
+			#ifndef TEST_CASE
                         ScheduleNewEvent(me, now + Expent(DELAY), PING, NULL, 0);
+			#endif
 			break;
 
 		case ENTER:
