@@ -74,8 +74,10 @@ int allocator_ecs_init(unsigned int sobjs) {
 			addr[1] = addr[0];
 		
 			// Keep track of the per-LP allocated memory
-			if(y % 2 == 0)
+			if(y % 2 == 0){
 				mem_region[y/2].base_pointer = mem_region[y/2].brk = addr;
+				printf("LP[%d] address:%p\n",y/2,addr);
+			}
 			
 			allocation_counter++;
 			

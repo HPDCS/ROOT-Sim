@@ -12,7 +12,11 @@
 #define AGENT			6		//Agent opcode
 #define REGION			7		//Region opcode
 
-#define PERC_REGION		0.90		//Fraction of LPs that states regions 
+#ifdef ECS_TEST
+	#define PERC_REGION		0.90		//Fraction of LPs that states regions 
+#else
+	#define TOT_REG			900		//Number of LPs that states regions 
+#endif
  
 #define DELAY 			120		//Expeted value for the delay function
 
@@ -36,7 +40,11 @@
 
 typedef struct enter_content_t {
 	unsigned int agent;			//Sender's Lid
+	#ifdef ECS_TEST
 	unsigned char *map; 			//Pointer to the sender's map
+	#else
+	unsigned char map[(TOT_REG/NUM_CHUNKS_PER_BLOCK) + 1];
+	#endif
 } enter_t;
 
 typedef struct exit_content_t {
@@ -49,7 +57,7 @@ typedef struct exit_content_t {
 typedef struct destination_content_t {
 	unsigned int region;			//Id of next region
 	#ifndef ECS_TEST
-	unsigned char *map;
+	unsigned char map[(TOT_REG/NUM_CHUNKS_PER_BLOCK) + 1];
 	#endif
 } destination_t;
 

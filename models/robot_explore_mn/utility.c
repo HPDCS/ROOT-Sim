@@ -2,16 +2,20 @@
 #include <math.h>
 
 unsigned int get_tot_regions(void){
-	unsigned int tot_region,check_value;
+	#ifdef ECS_TEST
+		unsigned int tot_region,check_value;
 
-	tot_region = n_prc_tot * PERC_REGION;
-	check_value = sqrt(tot_region);
+		tot_region = n_prc_tot * PERC_REGION;
+		check_value = sqrt(tot_region);
 
-	if(check_value * check_value != tot_region) {
-               printf("Hexagonal map wrongly specified!\n");
-        }
-		
-	return tot_region;
+		if(check_value * check_value != tot_region) {
+		       printf("Hexagonal map wrongly specified!\n");
+		}
+			
+		return tot_region;
+	#else
+		return TOT_REG;
+	#endif
 }
 
 unsigned int get_tot_agents(void){
@@ -173,4 +177,15 @@ double percentage(lp_agent_t *agent){
 	double result = (regions/tot_region)*100;
 
 	return result;
+}
+
+void copy_map(unsigned char *pointer, int n, unsigned char (vector)[n]){
+	unsigned int i;
+	
+	for(i=0; i<get_tot_regions(); i++){
+		if(!BITMAP_CHECK_BIT(pointer,i) && BITMAP_CHECK_BIT(&vector,i))
+			BITMAP_SET_BIT(pointer,i);
+		else if(BITMAP_CHECK_BIT(pointer,i) && !BITMAP_CHECK_BIT(&vector,i))
+			BITMAP_SET_BIT(&vector,i);
+	}
 }
