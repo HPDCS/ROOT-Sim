@@ -200,11 +200,13 @@ int root_sim_page_fault(struct pt_regs* regs, long error_code){
 	if(current->mm == NULL) return 0;  /* this is a kernel thread - not a rootsim thread */
 	
 	target_address = (void *)read_cr2();
-	
+
 	/* discriminate whether this is a classical fault or a root-sim proper fault */
 
 	for(i=0;i<SIBLING_PGD;i++) {
 		if ((root_sim_processes[i])==(current->pid)) {
+
+			printk("\t%d == %d\n", root_sim_processes[i], current->pid);
 
 			my_pgd =(void **)pgd_addr[i];
                         my_pdp =(void *)my_pgd[PML4(target_address)];
@@ -212,13 +214,16 @@ int root_sim_page_fault(struct pt_regs* regs, long error_code){
 			ancestor_pdp =(void *) ancestor_pml4[PML4(target_address)];
 
 			if(!dirty_pml4[PML4(target_address)]) {
+				printk("\t\treturn 0 - 1 \n");
 				return 0; /* a fault outside the root-sim object zone - it needs to be handeld by the traditional fault manager */				
 			}
 
 
 			my_pdp = __va((ulong)my_pdp & MASK_PTADDR);
-			if((void *)my_pdp[PDP(target_address)] != NULL)
+			if((void *)my_pdp[PDP(target_address)] != NULL) {
+				printk("\t\t target_address:%p PDPE:%d return 0 - 2 \n",target_address,PDP(target_address));
 				return 0; /* faults at lower levels than PDP - need to be handled by traditional fault manager */
+			}
 
 			printk(KERN_ERR "addr: %p entry_pdp: %d dirty_pml4:%d\n",target_address,PDP(target_address),dirty_pml4[PML4(target_address)]);
 
@@ -226,6 +231,7 @@ int root_sim_page_fault(struct pt_regs* regs, long error_code){
 			ancestor_pdp = __va((ulong)ancestor_pdp & MASK_PTADDR);
 			my_pdp[PDP(target_address)] = ancestor_pdp[PDP(target_address)];
 			rootsim_load_cr3(pgd_addr[i]);
+#error WTF
 
 			return 1;
 #else
@@ -250,13 +256,12 @@ int root_sim_page_fault(struct pt_regs* regs, long error_code){
 		        copy_to_user((void *)auxiliary_stack_pointer,(void *)&i,8);	
 			//printk("Added current LP[%d]: %p\n",i,auxiliary_stack_pointer);
 			
-			printk("IP: %p \t hitted_object: %d \t WT %d\n",regs->ip,hitted_object,i)
-;
+			printk("IP: %p \t hitted_object: %d \t WT %d\n",regs->ip,hitted_object,i);
+
 			regs->sp = auxiliary_stack_pointer;
 			regs->ip = callback;
 			
 			//printk("ROOT-SIm_page_fault stack: %p\n",regs->sp);
-
 			return 1;
 		}
 	}

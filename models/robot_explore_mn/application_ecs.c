@@ -42,12 +42,14 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
 			}
 			else{
 				region = (lp_region_t *)malloc(sizeof(lp_region_t));
+
 				#ifdef ECS_TEST	
 				region->guests = calloc(get_tot_agents(),sizeof(unsigned char *));
 				#else
 				region->map = ALLOCATE_BITMAP(get_tot_regions());
                                 BITMAP_BZERO(region->map,get_tot_regions());
 				#endif
+
         			region->count = 0;     
         			region->obstacles = get_obstacles();
 
@@ -64,8 +66,8 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
 				enter.agent = me;
                         	enter.map = agent->map;
 				#else
-				enter.map = ALLOCATE_BITMAP(get_tot_regions());
-				memcpy(enter.map,agent->map,get_tot_regions());
+				copy_map(agent->map,(TOT_REG/NUM_CHUNKS_PER_BLOCK) + 1,enter.map);
+//				memcpy(&(enter.map),agent->map,get_tot_regions());
 				#endif
 				
 				DEBUG printf("%d send ENTER to %d\n",me,agent->region);
@@ -112,7 +114,7 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
 			}
 			#else
 			for(j=0; j<get_tot_regions(); j++){
-                        	if(BITMAP_CHECK_BIT(enter_p->map,j) && !BITMAP_CHECK_BIT(region->map,j))
+                        	if(BITMAP_CHECK_BIT(&(enter_p->map),j) && !BITMAP_CHECK_BIT(region->map,j))
 					BITMAP_SET_BIT(region->map,j);
                         }
 			#endif
@@ -139,8 +141,9 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
 				}
 			}
 			#else
-			destination.map = ALLOCATE_BITMAP(get_tot_regions());
-                        memcpy(destination.map,region->map,get_tot_regions());
+			
+			copy_map(region->map,(TOT_REG/NUM_CHUNKS_PER_BLOCK) + 1,destination.map);
+//                        memcpy(&(destination.map),region->map,get_tot_regions());
 
 			if(region->count == 1)
 				BITMAP_BZERO(region->map,get_tot_regions());	
@@ -159,10 +162,12 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
 			
 			#ifdef ECS_TEST
 			agent->region = destination_p->region;
-			#else	
-			memcpy(agent->map,destination_p->map,get_tot_regions());
-			#endif
 			BITMAP_SET_BIT(agent->map,destination_p->region);
+			#else	
+			copy_map(agent->map,(TOT_REG/NUM_CHUNKS_PER_BLOCK) + 1,destination_p->map);
+//			memcpy(agent->map,&(destination_p->map),get_tot_regions());
+			BITMAP_SET_BIT(agent->map,&(destination_p->region));
+			#endif
 
                         agent->count = 0;
 			for(i=0; i<get_tot_regions(); i++){
@@ -180,7 +185,8 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
 			 		ScheduleNewEvent(get_tot_regions(), now + Expent(DELAY), COMPLETE, &complete, sizeof(complete));
 				else	
 			 		ScheduleNewEvent(me + 1, now + Expent(DELAY), COMPLETE, &complete, sizeof(complete));
-
+				
+				//Unnote break command to stop exploration if the termination condiction is true
 				//break;
 			}
 			
@@ -190,8 +196,8 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
 			enter.agent = me;
 			enter.map = agent->map;
 			#else
-			enter.map = ALLOCATE_BITMAP(get_tot_regions());
-			memcpy(enter.map,agent->map,get_tot_regions());
+			copy_map(agent->map,(TOT_REG/NUM_CHUNKS_PER_BLOCK) + 1,enter.map);
+//			memcpy(&(enter.map),agent->map,get_tot_regions());
 			#endif
 
 					
