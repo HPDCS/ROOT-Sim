@@ -43,17 +43,17 @@
 #include <linux/sched.h>
 #include <linux/slab.h>
 #include <linux/version.h>
+
 #include <asm/tlbflush.h>
 #include <asm/page.h>
 #include <asm/cacheflush.h>
+
 #include <linux/uaccess.h>
 
 
 #include "cross_state_manager.h"
 
-//#define SIBLING_PGD 128
 #define AUXILIARY_FRAMES 256
-
 
 #if LINUX_VERSION_CODE <= KERNEL_VERSION(2,6,25)
 #error Unsupported Kernel Version
@@ -111,8 +111,6 @@ void * auxiliary_frames[AUXILIARY_FRAMES];
 
 int root_sim_processes[SIBLING_PGD]={[0 ... (SIBLING_PGD-1)] = -1};
 
-//TODO MN change currently_open from int to unsigned long
-//#define MAX_CROSS_STATE_DEPENDENCIES 1024
 unsigned long currently_open[SIBLING_PGD][MAX_CROSS_STATE_DEPENDENCIES];
 int open_index[SIBLING_PGD]={[0 ... (SIBLING_PGD-1)] = -1};
 
@@ -129,7 +127,6 @@ struct vm_operations_struct * original_vm_ops;
 struct vm_operations_struct auxiliary_vm_ops_table;
 struct vm_area_struct *target_vma;
 
-
 int (*original_fault_handler)(struct vm_area_struct *vma, struct vm_fault *vmf);
 
 static DEVICE_ATTR(multimap, S_IRUSR|S_IRGRP|S_IROTH, NULL, NULL);
@@ -143,39 +140,34 @@ struct file_operations fops = {
 };
 
 //TODO MN
-int dirty_pml4[512]={[0 ... (512-1)] = 0};;
+int dirty_pml4[512]={[0 ... (512-1)] = 0};
 
 void print_pgd(void** pgd_entry){
 	int index_pgd;
 	int index_pud;
-	int pgd_busy;
-	int pud_busy;
 	void** pud_entry;
 	void* temp;
+	void* control_bit;
+	void* addr_temp;
 		
-	pgd_busy = 0;
-                        
 	for (index_pgd=0; index_pgd<PTRS_PER_PGD; index_pgd++){
-		if(pgd_entry[index_pgd] != NULL){
+		if(pgd_entry[index_pgd] != NULL && dirty_pml4[index_pgd]){
 			printk(KERN_ERR "\t\t[PML4E]: %d\n",index_pgd);
-			pud_busy = 0;
 			
 			temp = (void *)((ulong) pgd_entry[index_pgd] & MASK_PTADDR);
                         temp = (void *)(__va(temp));
 			pud_entry = (void **)temp;
 			
 			for (index_pud=0; index_pud<PTRS_PER_PUD; index_pud++){
-				if(pud_entry[index_pud] != NULL) pud_busy++;
+				if(pud_entry[index_pud] != NULL){
+					control_bit = (void *)((ulong) pud_entry[index_pud] & MASK_PTCONT);
+					addr_temp = (void *)((ulong) pud_entry[index_pud] & MASK_PTADDR);
+					printk(KERN_ERR "\t\t\t\t[%d]: Addr:%p CB:%p \n",index_pud,addr_temp,control_bit);
+				}
 			}
-			
-			printk(KERN_ERR "\t\t\t\t[PDU_BUSY]: %d\n",pud_busy);
-                        printk(KERN_ERR "\t\t\t\t[PDU_FREE]: %d\n",PTRS_PER_PUD - pud_busy);
-                        pgd_busy++;
 
 		}
 	}
-	printk(KERN_ERR "[PML4E_BUSY]: %d\n",pgd_busy);
-        printk(KERN_ERR "[PML4E_FREE]: %d\n",PTRS_PER_PGD - pgd_busy);	
 }
 
 /// This is to access the actual flush_tlb_all using a kernel proble
@@ -188,14 +180,13 @@ int root_sim_page_fault(struct pt_regs* regs, long error_code){
 	void *target_address;
 	void **my_pgd;
 	void **my_pdp;
-	void **target_pdp_entry;
 	void **ancestor_pdp;
 	ulong i;
-	void *cr3;
 	ulong *auxiliary_stack_pointer;
 	ulong hitted_object;
 	int count_involved_pml4=-1;
         int index_involved_pml4;
+	ulong result_copy_user;
 
 	if(current->mm == NULL) return 0;  /* this is a kernel thread - not a rootsim thread */
 	
@@ -221,11 +212,17 @@ int root_sim_page_fault(struct pt_regs* regs, long error_code){
 
 			my_pdp = __va((ulong)my_pdp & MASK_PTADDR);
 			if((void *)my_pdp[PDP(target_address)] != NULL) {
-				printk("\t\t target_address:%p PDPE:%d return 0 - 2 \n",target_address,PDP(target_address));
+				printk("ORIGINAL VIEW\n");
+	                        print_pgd(ancestor_pml4);
+				printk("_______________________________________________________________________\n");
+				printk("PARALLEL VIEW\n");
+	                        print_pgd(my_pgd);
+				printk("_______________________________________________________________________\n");
+				printk("\t\t target_address:%p PDPE:%llu return 0 - 2 \n",target_address,PDP(target_address));
 				return 0; /* faults at lower levels than PDP - need to be handled by traditional fault manager */
 			}
 
-			printk(KERN_ERR "addr: %p entry_pdp: %d dirty_pml4:%d\n",target_address,PDP(target_address),dirty_pml4[PML4(target_address)]);
+			printk(KERN_ERR "addr: %p entry_pdp: %llu dirty_pml4:%d\n",target_address,PDP(target_address),dirty_pml4[PML4(target_address)]);
 
 #ifdef ON_FAULT_OPEN
 			ancestor_pdp = __va((ulong)ancestor_pdp & MASK_PTADDR);
@@ -247,16 +244,22 @@ int root_sim_page_fault(struct pt_regs* regs, long error_code){
 			auxiliary_stack_pointer = regs->sp;
 			//printk("Auxiliary stack: %p\n",auxiliary_stack_pointer);
 			auxiliary_stack_pointer--;
-		        copy_to_user((void *)auxiliary_stack_pointer,(void *)&regs->ip,8);	
+		        result_copy_user = copy_to_user((void *)auxiliary_stack_pointer,(void *)&regs->ip,8);
+			if(result_copy_user != 0)
+				printk("\t \t \t ERROR to copy_to_user\n");
 			//printk("Added IP[%p]: %p\n",regs->ip,auxiliary_stack_pointer);
 			auxiliary_stack_pointer--;
-		        copy_to_user((void *)auxiliary_stack_pointer,(void *)&hitted_object,8);	
+		        result_copy_user = copy_to_user((void *)auxiliary_stack_pointer,(void *)&hitted_object,8);	
+			if(result_copy_user != 0)
+				printk("\t \t \t ERROR to copy_to_user\n");
 			//printk("Added hitted_object[%d]: %p\n",hitted_object,auxiliary_stack_pointer);
 			auxiliary_stack_pointer--;
-		        copy_to_user((void *)auxiliary_stack_pointer,(void *)&i,8);	
+		        result_copy_user = copy_to_user((void *)auxiliary_stack_pointer,(void *)&i,8);	
+			if(result_copy_user != 0)
+				printk("\t \t \t ERROR to copy_to_user\n");
 			//printk("Added current LP[%d]: %p\n",i,auxiliary_stack_pointer);
 			
-			printk("IP: %p \t hitted_object: %d \t WT %d\n",regs->ip,hitted_object,i);
+			printk("IP: %lu \t hitted_object: %lu \t WT %lu\n",regs->ip,hitted_object,i);
 
 			regs->sp = auxiliary_stack_pointer;
 			regs->ip = callback;
@@ -315,7 +318,7 @@ int rs_ktblmgr_release(struct inode *inode, struct file *filp) {
 			} 
 
 			if(pgd_entry!=NULL)
-				__free_pages(pgd_entry,0);
+				__free_pages((void *)pgd_entry,0);
 			original_view[s]=NULL;
 
 		}// enf if != NULL
@@ -386,13 +389,13 @@ static long rs_ktblmgr_ioctl(struct file *filp, unsigned int cmd, unsigned long 
 	switch (cmd) {
 
 	case IOCTL_SET_ANCESTOR_PGD:
-		printk("IOCTL_SET_ANCESTOR_ANCESTOR\n");
+		//printk("IOCTL_SET_ANCESTOR_ANCESTOR\n");
 		ancestor_pml4 = (void **)current->mm->pgd;
 	//	printk("ANCESTOR PML4 SET - ADDRESS IS %p\n",ancestor_pml4);
 		break;
 
 	case IOCTL_GET_PGD:
-		printk("IOCTL_GET_PGD\n");
+		//printk("IOCTL_GET_PGD\n");
 		mutex_lock(&pgd_get_mutex);
 		for (i = 0; i < SIBLING_PGD; i++) {
 			if (original_view[i] == NULL) {
@@ -432,8 +435,8 @@ goto bridging_from_get_pgd;
 			//PML4 of current
                          pml4_table =(void **) pgd_addr[descriptor];
 				
-		//	printk(KERN_ERR "[SCHEDULE_ON_PGD] before enter in update hitted object\n");
-		//	print_pgd(pml4_table);			
+			printk(KERN_ERR "[SCHEDULE_ON_PGD] before enter in update hitted object\n");
+			print_pgd((void **)current->mm->pgd);			
 
                         //Original PML4
                         original_pml4 = (void **) original_view[descriptor]->pgd;
@@ -516,8 +519,8 @@ goto bridging_from_get_pgd;
 			rootsim_load_cr3(pgd_addr[descriptor]);
 			
 
-		//	printk(KERN_ERR "[SCHEDULE_ON_PGD] After update hitted object\n");
-		//	print_pgd(pml4_table);
+			printk(KERN_ERR "[SCHEDULE_ON_PGD] After update hitted object\n");
+			print_pgd(pml4_table);
 			ret = 0;
 		}else{
 			 ret = -1;
@@ -558,6 +561,9 @@ goto bridging_from_get_pgd;
 		}else{
 			ret = -1;
 		}
+		
+		printk(KERN_ERR "At the end of UNSCHEDULE \n");
+		print_pgd(pgd_addr[descriptor]);
 
 		break;
 
@@ -637,7 +643,7 @@ bridging_from_get_pgd:
 		case IOCTL_GET_FREE_PML4:
 			original_pml4 = (void **)current->mm->pgd;
                         
-			for (i=0; i<PTRS_PER_PGD; i++){
+			for (i=5; i<PTRS_PER_PGD; i++){
                                 if(original_pml4[i]==NULL){ 
 					dirty_pml4[i] = 1;
 					return i;
