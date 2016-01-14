@@ -361,6 +361,10 @@ void *do_malloc(unsigned int lid, malloc_state *mem_pool, size_t size) {
 
 	// Keep track of the malloc_area which this chunk belongs to
 	*(unsigned long long *)ptr = (unsigned long long)m_area->self_pointer;
+
+	printf("[%d] Ptr:%p \t size:%llu \t result:%p \n",lid,ptr,sizeof(long long),(void*)((char*)ptr + sizeof(long long)));
+
+
 	return (void*)((char*)ptr + sizeof(long long));
 }
 

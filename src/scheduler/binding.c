@@ -661,10 +661,15 @@ static void send_control_group_message(void) {
 	GLP_state *temp_GLPS;
 	LP_state **list;
         msg_t control_msg;	
+
 	
 	for(i=0;i<n_grp;i++){
 		temp_GLPS = new_GLPS[i];
                 list = temp_GLPS->local_LPS;
+		
+		if( temp_GLPS->initial_group_time->timestamp > getlast_time_group())
+			continue;
+		
 		for(j=0;j<temp_GLPS->tot_LP;j++){
                         lp_index = list[j]->lid;
 			

@@ -282,6 +282,8 @@ bool check_state_group(unsigned int lid_bound){
 			}
                 	return true;
 		}
+                else
+                        temp_LP->state = LP_STATE_READY;
         }
         
 	if(temp_LP->state == LP_STATE_WAIT_FOR_LOG){
