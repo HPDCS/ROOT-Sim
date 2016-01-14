@@ -282,10 +282,11 @@ bool check_state_group(unsigned int lid_bound){
 			}
                 	return true;
 		}
-		else
+		else {
 			// For avoiding deadlock in case next_event_timestamp is after the 
 			// end group time
                         temp_LP->state = LP_STATE_READY;		
+		}
         }
         
 	if(temp_LP->state == LP_STATE_WAIT_FOR_LOG){
