@@ -28,7 +28,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
-
 #include <datatypes/list.h>
 #include <core/core.h>
 #include <core/init.h>
@@ -120,10 +119,10 @@ void scheduler_init(void) {
 		#ifdef HAVE_GLP_SCH_MODULE
 		// Allocate ECS_stat_table
 		LPS[i]->updated_counter = false;
-		LPS[i]->ECS_stat_table = (ECS_stat **)rsalloc(n_grp * sizeof(ECS_stat *));
+		LPS[i]->ECS_stat_table = rsalloc(n_grp * sizeof(ECS_stat *));
 		unsigned int j;
 		for (j = 0; j < n_prc; j++) {
-			LPS[i]->ECS_stat_table[j] = (ECS_stat *)rsalloc(sizeof(ECS_stat));
+			LPS[i]->ECS_stat_table[j] = rsalloc(sizeof(ECS_stat));
 			bzero(LPS[i]->ECS_stat_table[j], sizeof(ECS_stat));
 			
 			//NOTE: each entry of ECS_stat_table must be initialise otherwise it can figure 
@@ -137,12 +136,12 @@ void scheduler_init(void) {
 	//TODO MN
 	#ifdef HAVE_GLP_SCH_MODULE
 	// Allocate GLPS control blocks
-	GLPS = (GLP_state **)rsalloc(n_grp * sizeof(GLP_state *));
+	GLPS = rsalloc(n_grp * sizeof(GLP_state *));
 	for (i = 0; i < n_grp; i++) {
-		GLPS[i] = (GLP_state *)rsalloc(sizeof(GLP_state));
+		GLPS[i] = rsalloc(sizeof(GLP_state));
 		bzero(GLPS[i], sizeof(GLP_state));
 
-		GLPS[i]->local_LPS = (LP_state **)rsalloc(n_prc * sizeof(LP_state *));
+		GLPS[i]->local_LPS = rsalloc(n_prc * sizeof(LP_state *));
 		/*
 		unsigned int j;
 		for (j = 0; j < n_prc; j++) {

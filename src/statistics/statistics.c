@@ -247,7 +247,7 @@ static char *format_size(double size) {
 }
 
 
-static inline statistics_flush_gvt_buffer(void) {
+static inline void statistics_flush_gvt_buffer(void) {
 	FILE *f;
 
 	f = get_file(STAT_PER_THREAD, GVT_STAT);

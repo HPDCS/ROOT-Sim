@@ -45,7 +45,9 @@
 extern void *__real_malloc(size_t);
 extern void __real_free(void *);
 
+#ifdef HAVE_NUMA
 static int *numa_nodes;
+#endif
 
 static spinlock_t segment_lock;
 
@@ -89,7 +91,7 @@ void audit_map(unsigned int sobj){
 	mdt_entry* mdte;
 	int i;
 		
-	if( (sobj >= handled_sobjs) ){
+	if( ((int)sobj >= handled_sobjs) ){
 		printf("audit request on invalid sobj\n");
 		return ; 
 	}
@@ -343,6 +345,8 @@ void *pool_get_memory(unsigned int lid, size_t size, bool is_recoverable) {
 
 
 void pool_release_memory(unsigned int lid, void *ptr) {
+	(void)lid;
+	(void)ptr;
 	// TODO
 }
 

@@ -70,6 +70,7 @@ static __thread int pgd_ds;
 extern void rootsim_cross_state_dependency_handler(void);
 
 void ECS(long long ds, unsigned long long hitted_object){
+	(void)ds;
 	msg_t control_msg;
 	msg_hdr_t msg_hdr;
 
@@ -87,7 +88,7 @@ void ECS(long long ds, unsigned long long hitted_object){
 
 #ifdef HAVE_GLP_SCH_MODULE
 	PRINT_DEBUG_GLP{
-		printf("LP[%d] hits %llu rende_mark:%lu LP_wait_on_rende:%lu\n",current_lp, hitted_object, current_evt->rendezvous_mark,LPS[current_lp]->wait_on_rendezvous);
+		printf("LP[%d] hits %llu rende_mark:%llu LP_wait_on_rende:%llu\n",current_lp, hitted_object, current_evt->rendezvous_mark,LPS[current_lp]->wait_on_rendezvous);
 	}
 	
 	//Manage counter to cross-state 

@@ -109,7 +109,7 @@ int insert_BH(int sobj, void* msg, int size) {
 
 	if( (sobj<0) || sobj >= handled_sobjs) goto bad_insert;
 
-	if( (size<=0) || size > MAX_MSG_SIZE) goto bad_insert;
+	if( (size<=0) || (unsigned int)size > MAX_MSG_SIZE) goto bad_insert;
 
 	if( msg == NULL ) goto bad_insert;
 
@@ -190,11 +190,11 @@ void *get_BH(int sobj) {
 
 	buff = get_buffer(sobj, msg_tag);
 
-	msg_addr += sizeof(msg_tag);
+	msg_addr = (void *)((char *)msg_addr + sizeof(msg_tag));
 
 	memcpy(buff, msg_addr, msg_tag);
 
-	msg_addr += msg_tag;
+	msg_addr = (void *)((char *)msg_addr + msg_tag);
 
 	bhmaps[sobj].expired_offset = (char*)msg_addr - bhmaps[sobj].expired_bh;
 

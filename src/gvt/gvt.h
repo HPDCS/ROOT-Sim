@@ -51,6 +51,7 @@ extern simtime_t adopt_new_gvt(simtime_t);
 extern bool verify_time_group(simtime_t);
 extern bool need_clustering(void);
 extern void update_last_time_group(void);
+extern simtime_t future_end_group(void);
 #endif
 
 #endif

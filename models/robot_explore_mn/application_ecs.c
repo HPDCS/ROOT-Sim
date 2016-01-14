@@ -3,7 +3,7 @@
 #include "application.h"
 #include "utility.c"
 
-#define DEBUG if(0)
+#define DEBUG if(1)
 
 void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *content, unsigned int size, void *state) {
         enter_t *enter_p;
@@ -104,7 +104,7 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
                         break;
 
                 case PING:
-			DEBUG printf("Send PING\n");
+		//	DEBUG printf("Send PING\n");
 			#ifndef TEST_CASE
                         ScheduleNewEvent(me, now + Expent(DELAY), PING, NULL, 0);
 			#endif
@@ -197,14 +197,14 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
 	                        
 				complete.agent = me;
 				
-				DEBUG printf("%d send COMPLETE to %d\n",me,me+1);
+				printf("%d send COMPLETE to %d\n",me,me+1);
 				if(me + 1 == n_prc_tot)
 			 		ScheduleNewEvent(get_tot_regions(), now + Expent(DELAY), COMPLETE, &complete, sizeof(complete));
 				else	
 			 		ScheduleNewEvent(me + 1, now + Expent(DELAY), COMPLETE, &complete, sizeof(complete));
 				
 				//Unnote break command to stop exploration if the termination condiction is true
-				//break;
+				break;
 			}
 			
 			timestamp = now + Expent(DELAY);			
@@ -238,7 +238,9 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
 				agent->count = get_tot_regions();
 			}
 
-                        complete.agent = me;
+                        if(complete_p->agent == me) break;
+			
+			complete.agent = complete_p->agent;
 
 			DEBUG printf("%d send COMPLETE to %d\n",me,me+1);
                         if(me + 1 == n_prc_tot)

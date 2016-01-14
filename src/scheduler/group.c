@@ -238,7 +238,7 @@ bool check_postpone_synch_message(unsigned int lid){
 	msg_t *msg = LPS[lid]->bound;
 	msg_t *old_bound;
 
-	while(list_next(msg) != NULL && list_next(msg)->timestamp == msg->timestamp ){
+	while(list_next(msg) != NULL && D_EQUAL(list_next(msg)->timestamp, msg->timestamp) ){
 		msg = list_next(msg);
 		if(msg->type == RENDEZVOUS_START){
 			old_bound = LPS[lid]->bound;
@@ -282,6 +282,10 @@ bool check_state_group(unsigned int lid_bound){
 			}
                 	return true;
 		}
+		else
+			// For avoiding deadlock in case next_event_timestamp is after the 
+			// end group time
+                        temp_LP->state = LP_STATE_READY;		
         }
         
 	if(temp_LP->state == LP_STATE_WAIT_FOR_LOG){

@@ -37,7 +37,7 @@
 #define DELTA_GROUP_TIME 1000.0
 #define DIM_STAT_GROUP 2
 #define CKPT_PERIOD_GROUP 10
-#define PRINT_DEBUG_GLP if(0) 		// Change with 1 to enable debug's print
+#define PRINT_DEBUG_GLP if(1) 		// Change with 1 to enable debug's print
 
 #define GLP_STATE_READY			0x02001
 #define GLP_STATE_ROLLBACK		0x02004
@@ -48,10 +48,13 @@
 #define GLP_STATE_WAIT_FOR_GROUP	0x03003
 #define GLP_STATE_WAIT_FOR_LOG		0x02012
 
+
+struct _LP_state;
+
 // This data structure defines the state of each group of LP
 typedef struct _GLP_state{
 	unsigned int id;		// Identifier of current group
-	struct LP_state **local_LPS;	// Array that maintains all the LP managed by this group
+	struct _LP_state **local_LPS;	// Array that maintains all the LP managed by this group
 	unsigned int tot_LP;		// Total number of LP managed by this group
 	spinlock_t lock;
 	msg_t *initial_group_time;	// Time from with the group is ready to start

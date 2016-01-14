@@ -196,6 +196,7 @@ char *__list_insert(unsigned int lid, void *li, unsigned int size, size_t key_po
 *           This is different from the container node, which is not exposed to the caller.
 */
 char *__list_place(unsigned int lid, void *li, size_t key_position, struct rootsim_list_node *new_n) {
+	(void)lid;
 
 	rootsim_list *l = (rootsim_list *)li;
 

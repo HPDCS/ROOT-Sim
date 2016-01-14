@@ -1,6 +1,6 @@
 #include <ROOT-Sim.h>
 
-//#define ECS_TEST
+#define ECS_TEST
 //#define TEST_CASE
 
 #define DESTINATION 		1		//Message used by Region to communicate to the Agent the next destination

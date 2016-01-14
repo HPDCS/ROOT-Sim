@@ -72,18 +72,15 @@ static GLP_state **new_GLPS;
 //For updating the current_group stored inside LP_state according to the new configuration
 static unsigned int *new_group_LPS;
 static unsigned int empty_value;
-#endif
-
-static timer rebinding_timer;
-
-static unsigned int *new_LPS_binding;
-
-
-static int binding_phase = 0;
-static __thread int local_binding_phase = 0;
-
+#else
 static int binding_acquire_phase = 0;
 static __thread int local_binding_acquire_phase = 0;
+#endif
+
+static unsigned int *new_LPS_binding;
+static timer rebinding_timer;
+static int binding_phase = 0;
+static __thread int local_binding_phase = 0;
 
 static atomic_t worker_thread_reduction;
 
@@ -160,7 +157,7 @@ static int compare_lp_cost(const void *a, const void *b) {
 static inline void LP_knapsack(void) {
 	register unsigned int i, j;
 	double reference_knapsack = 0;
-	double reference_lvt;
+//	double reference_lvt;
 	bool assigned;
 	double assignments[n_cores];
 
@@ -661,10 +658,18 @@ static void send_control_group_message(void) {
 	GLP_state *temp_GLPS;
 	LP_state **list;
         msg_t control_msg;	
-	
+
+		
 	for(i=0;i<n_grp;i++){
 		temp_GLPS = new_GLPS[i];
                 list = temp_GLPS->local_LPS;
+	
+		// TODO This check is to avoid that a SYNCH_GROUP message has a timestamp
+		// bigger than the group end time. Check if it is possible to avoid this 
+		// situation in another way.
+		if(temp_GLPS->initial_group_time->timestamp > future_end_group())
+			continue;
+
 		for(j=0;j<temp_GLPS->tot_LP;j++){
                         lp_index = list[j]->lid;
 			
@@ -685,6 +690,7 @@ static void send_control_group_message(void) {
 			PRINT_DEBUG_GLP{	
 				printf("SENDED SYNCH MESSAGE TO %d\n",lp_index);
 			}
+
 			//Useful to take a log at the end the group execution otherwise an ECS may be executed in silent mode
 			bzero(&control_msg, sizeof(msg_t));
                         control_msg.sender = LidToGid(i);
@@ -747,6 +753,7 @@ static void install_GLPS_binding(void) {
 */
 static void switch_GLPS(void){
 	unsigned int i;
+	
 	for (i = 0; i < n_grp; i++) {
 		memcpy(GLPS[i]->local_LPS, new_GLPS[i]->local_LPS, n_prc * sizeof(LP_state *));
 		GLPS[i]->tot_LP = new_GLPS[i]->tot_LP;
@@ -772,10 +779,8 @@ static void switch_GLPS(void){
 	for (i = 0; i < n_prc; i++)
 		LPS[i]->current_group = new_group_LPS[i];
 
-
-	//TODO MN
-	//	If there exist one LP that changes group, then we need to force checkpoint for storing the new group's image
 	update_last_time_group();
+
 }
 
 /* -------------------------------------------------------------------- */
@@ -828,7 +833,7 @@ void rebind_LPs(void) {
 					new_GLPS[i] = (GLP_state *)rsalloc(sizeof(GLP_state));
 					bzero(new_GLPS[i], sizeof(GLP_state));
 
-					new_GLPS[i]->local_LPS = (LP_state **)rsalloc(n_prc * sizeof(LP_state *));
+					new_GLPS[i]->local_LPS = rsalloc(n_prc * sizeof(LP_state *));
 					/*
 					unsigned int j;
 					for (j = 0; j < n_prc; j++) {

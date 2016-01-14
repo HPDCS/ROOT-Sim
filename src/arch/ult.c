@@ -71,6 +71,7 @@ static __thread void			*context_creat_arg;
 */
 void *get_ult_stack(unsigned int lid, size_t size) {
 //	int err;
+	(void)lid;
 	void *stack;
 	size_t reminder;
 

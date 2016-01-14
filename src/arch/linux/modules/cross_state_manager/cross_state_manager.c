@@ -348,26 +348,6 @@ static void print_bits(unsigned long long number) {
 
 static long rs_ktblmgr_ioctl(struct file *filp, unsigned int cmd, unsigned long arg) {
 
-	/*void **my_pgd;
-	void **my_pdp;
-	void **ancestor_pdp;
-	void **pgd_entry;
-	void **source_pgd_entry;
-	void *pdp_entry;
-	void *pde_entry;
-	void *pte_entry;
-	void **temp;
-	void **temp1;
-	void **temp2;
-	int pml4, pdp;
-	int involved_pml4;
-	void *source_pdp;
-	//ulong aux;
-
-	char* aux;
-	char* aux1;*/
-
-
 	//TODO MN
 	int ret = 0;
 	void *cr3;
@@ -393,9 +373,7 @@ static long rs_ktblmgr_ioctl(struct file *filp, unsigned int cmd, unsigned long 
 	switch (cmd) {
 
 	case IOCTL_SET_ANCESTOR_PGD:
-		//printk("IOCTL_SET_ANCESTOR_ANCESTOR\n");
 		ancestor_pml4 = (void **)current->mm->pgd;
-	//	printk("ANCESTOR PML4 SET - ADDRESS IS %p\n",ancestor_pml4);
 		break;
 
 	case IOCTL_GET_PGD:

@@ -335,6 +335,10 @@ bool need_clustering(void){
 void update_last_time_group(void){
 	last_time_group = last_gvt + get_delta_group();
 }
+
+simtime_t future_end_group(void){
+	return last_gvt + get_delta_group();
+}
 #endif
 
 
