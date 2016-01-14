@@ -183,9 +183,9 @@ void copy_map(unsigned char *pointer, int n, unsigned char (vector)[n]){
 	unsigned int i;
 	
 	for(i=0; i<get_tot_regions(); i++){
-		if(!BITMAP_CHECK_BIT(pointer,i) && BITMAP_CHECK_BIT(&vector,i))
+		if(!BITMAP_CHECK_BIT(pointer,i) && BITMAP_CHECK_BIT(vector,i))
 			BITMAP_SET_BIT(pointer,i);
-		else if(BITMAP_CHECK_BIT(pointer,i) && !BITMAP_CHECK_BIT(&vector,i))
-			BITMAP_SET_BIT(&vector,i);
+		else if(BITMAP_CHECK_BIT(pointer,i) && !BITMAP_CHECK_BIT(vector,i))
+			BITMAP_SET_BIT(vector,i);
 	}
 }

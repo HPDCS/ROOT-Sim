@@ -170,7 +170,6 @@ void* allocate_segment(unsigned int sobj, size_t size, bool is_recoverable) {
 	mdt_entry* mdt;
 	char* segment;
 	int numpages;
-	int ret;
 
 	#ifdef NEW_ALLOCATOR
 	static void *my_initial_address = (void *)(180L * 256L * 256L * 256L * PAGE_SIZE);
@@ -191,6 +190,7 @@ void* allocate_segment(unsigned int sobj, size_t size, bool is_recoverable) {
 	if(numpages > MAX_SEGMENT_SIZE) goto bad_allocate;
 
 	#ifdef HAVE_NUMA
+	int ret;
 	ret = lock(sobj);
 	if(ret == FAILURE)
 		goto bad_allocate;
@@ -227,7 +227,7 @@ void* allocate_segment(unsigned int sobj, size_t size, bool is_recoverable) {
 	//TODO MN
 	if(is_recoverable){
                 segment = (char*) get_memory_ecs(sobj,PAGE_SIZE*numpages);
-		printf("Memory recoverable - value of segment: %p\n",segment);
+	//	printf("Memory recoverable - value of segment: %p\n",segment);
 	}
         else{
 		// Update my_initial_address, keeping it aligned to large pages

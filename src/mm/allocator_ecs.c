@@ -59,16 +59,24 @@ int allocator_ecs_init(unsigned int sobjs) {
                 return INVALID_SOBJS_COUNT_AECS;
 
 	y=0;
+//	pml4_index = 9;
 	while(y<num_mmap){
 		pml4_index = ioctl(ioctl_fd, IOCTL_GET_FREE_PML4);
+//		pml4_index++;
 		init_addr =(ulong) pml4_index;
 		init_addr = init_addr << 39;
 		allocation_counter = 0;	
+
+		printf("pml4_idx: %d\n", pml4_index);
 		
 		for(; y < num_mmap; y++) {
 		
 			// map memory
 			addr = mmap((void*)init_addr,size,PROT_READ|PROT_WRITE,MAP_PRIVATE|MAP_ANONYMOUS|MAP_FIXED,0,0);
+			if(addr == MAP_FAILED) {
+				printf("NOOOOOOOOOOOOOOOOOOOOOOOOO!\n");
+				abort();
+			}
 			// Access the memory in write mode to force the kernel to create the page table entries
 			addr[0] = 'x';
 			addr[1] = addr[0];

@@ -309,7 +309,12 @@ bool check_state_group(unsigned int lid_bound){
 }
 
 simtime_t get_delta_group(void){
-	return DELTA_GROUP * statistics_get_data(STAT_GET_SIMTIME_ADVANCEMENT,0.0);
+	simtime_t result;
+	result = DELTA_GROUP * statistics_get_data(STAT_GET_SIMTIME_ADVANCEMENT,0.0);
+	if(result > 10)
+		return result;
+	else
+		return DELTA_GROUP_TIME;
 }
 
 #endif

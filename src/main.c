@@ -142,7 +142,7 @@ static void *main_simulation_loop(void *arg) {
 				unsigned int j=0;
 				for(;j<n_grp;j++){
 					if(GLPS[j]->tot_LP != 0){
-						if(GLPS[j]->lvt != NULL){
+						if(GLPS[j]->lvt != NULL && GLPS[j]->tot_LP > 1){
 							printf("GLP[%d]->state: %d \tsyn_c:%d r_c:%d sil_c:%d  \t lvt:%f VTG:%d \t",
 								j,
 								GLPS[j]->state,
@@ -163,7 +163,7 @@ static void *main_simulation_loop(void *arg) {
 					}
 
 				}
-			
+				/*
 				for(j=0;j<n_prc;j++){
 					printf("LP[%d]:%d \t CSG:%d \t T:%f B_S:%d\n",
 						j,
@@ -176,6 +176,7 @@ static void *main_simulation_loop(void *arg) {
 					if (LPS[j]->target_rollback != NULL)
 						printf("R_T:%f N_E:%f \n",LPS[j]->target_rollback->timestamp,next_event_timestamp(j));
 				}
+				*/
 				#endif				
 			
 				fflush(stdout);

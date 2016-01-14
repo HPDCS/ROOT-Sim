@@ -1,7 +1,7 @@
 #include <ROOT-Sim.h>
 
-#define ECS_TEST
-#define TEST_CASE
+//#define ECS_TEST
+//#define TEST_CASE
 
 #define DESTINATION 		1		//Message used by Region to communicate to the Agent the next destination
 #define ENTER 			2		//Message used by Agent for communicating its arrival	
@@ -15,7 +15,10 @@
 #ifdef ECS_TEST
 	#define PERC_REGION		0.90		//Fraction of LPs that states regions 
 #else
-	#define TOT_REG			900		//Number of LPs that states regions 
+//	#define TOT_REG			900		//Number of LPs that states regions
+//	#define DIM_ARRAY		114 
+	#define TOT_REG			961		//Test with 1068 LP
+	#define DIM_ARRAY		122 
 #endif
  
 #define DELAY 			120		//Expeted value for the delay function
@@ -43,7 +46,7 @@ typedef struct enter_content_t {
 	#ifdef ECS_TEST
 	unsigned char *map; 			//Pointer to the sender's map
 	#else
-	unsigned char map[(TOT_REG/NUM_CHUNKS_PER_BLOCK) + 1];
+	unsigned char map[DIM_ARRAY];
 	#endif
 } enter_t;
 
@@ -57,7 +60,7 @@ typedef struct exit_content_t {
 typedef struct destination_content_t {
 	unsigned int region;			//Id of next region
 	#ifndef ECS_TEST
-	unsigned char map[(TOT_REG/NUM_CHUNKS_PER_BLOCK) + 1];
+	unsigned char map[DIM_ARRAY];
 	#endif
 } destination_t;
 

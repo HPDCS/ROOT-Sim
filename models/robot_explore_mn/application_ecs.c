@@ -77,7 +77,7 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
 				enter.agent = me;
                         	enter.map = agent->map;
 				#else
-				copy_map(agent->map,(TOT_REG/NUM_CHUNKS_PER_BLOCK) + 1,enter.map);
+				copy_map(agent->map,DIM_ARRAY,enter.map);
 //				memcpy(&(enter.map),agent->map,get_tot_regions());
 				#endif
 				
@@ -114,7 +114,7 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
 			enter_p = (enter_t *) content;
 			region = (lp_region_t *) state;
 
-			printf("Region%d process ENTER of %d\n",me,enter_p->agent);
+			DEBUG printf("Region%d process ENTER of %d\n",me,enter_p->agent);
 		
 			#ifdef ECS_TEST	
 			region->guests[region->count] = enter_p->map;
@@ -137,7 +137,7 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
 			#endif
 
 			region->count++;	
-			printf("End enter Region:%d\n",me);
+			DEBUG printf("End enter Region:%d\n",me);
 			
 			break;
 
@@ -159,7 +159,7 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
 			}
 			#else
 			
-			copy_map(region->map,(TOT_REG/NUM_CHUNKS_PER_BLOCK) + 1,destination.map);
+			copy_map(region->map,DIM_ARRAY,destination.map);
 //                        memcpy(&(destination.map),region->map,get_tot_regions());
 
 			if(region->count == 1)
@@ -181,9 +181,9 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
 			agent->region = destination_p->region;
 			BITMAP_SET_BIT(agent->map,destination_p->region);
 			#else	
-			copy_map(agent->map,(TOT_REG/NUM_CHUNKS_PER_BLOCK) + 1,destination_p->map);
+			copy_map(agent->map,DIM_ARRAY,destination_p->map);
 //			memcpy(agent->map,&(destination_p->map),get_tot_regions());
-			BITMAP_SET_BIT(agent->map,&(destination_p->region));
+			BITMAP_SET_BIT(agent->map,destination_p->region);
 			#endif
 
                         agent->count = 0;
@@ -213,7 +213,7 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
 			enter.agent = me;
 			enter.map = agent->map;
 			#else
-			copy_map(agent->map,(TOT_REG/NUM_CHUNKS_PER_BLOCK) + 1,enter.map);
+			copy_map(agent->map,DIM_ARRAY,enter.map);
 //			memcpy(&(enter.map),agent->map,get_tot_regions());
 			#endif
 
