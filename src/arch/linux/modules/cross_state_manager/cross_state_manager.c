@@ -47,6 +47,7 @@
 #include <asm/tlbflush.h>
 #include <asm/page.h>
 #include <asm/cacheflush.h>
+#include <asm/atomic.h>
 
 #include <linux/uaccess.h>
 
@@ -141,6 +142,9 @@ struct file_operations fops = {
 
 //TODO MN
 int dirty_pml4[512]={[0 ... (512-1)] = 0};
+
+
+atomic_t count;
 
 void print_pgd(void** pgd_entry){
 	int index_pgd;
@@ -680,9 +684,11 @@ bridging_from_get_pgd:
 }
 
 
-
+// TODO: what about this name?!
 void foo(struct task_struct *tsk) {
 	int i;
+
+	atomic_inc(&count);
 
 	if(current->mm != NULL){
 		for(i=0;i<SIBLING_PGD;i++){	
@@ -691,6 +697,8 @@ void foo(struct task_struct *tsk) {
 			}
 		}
 	}
+
+	atomic_dec(&count);
 }
 
 
@@ -704,6 +712,7 @@ static int rs_ktblmgr_init(void) {
 
 	mutex_init(&pgd_get_mutex);
 
+	atomic_set(&count, 0);	
 
 	// Dynamically allocate a major for the device
 	major = register_chrdev(0, "rs_ktblmgr", &fops);
@@ -811,7 +820,6 @@ static int rs_ktblmgr_init(void) {
 }
 
 
-
 static void rs_ktblmgr_cleanup(void) {
 
 //	int i;
@@ -820,8 +828,10 @@ static void rs_ktblmgr_cleanup(void) {
 //	class_unregister(dev_cl);
 //	class_destroy(dev_cl);
 
-//	rootsim_pager = NULL;
 	unregister_chrdev(major, "rs_ktblmgr");
+
+	while(atomic_read(&count) > 0);
+//	rootsim_pager_hook = NULL;
 
 	for (; managed_pgds > 0; managed_pgds--) {
 		__free_pages((void *)mm_struct_addr[managed_pgds-1],0);
