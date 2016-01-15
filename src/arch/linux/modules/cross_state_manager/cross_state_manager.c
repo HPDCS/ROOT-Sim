@@ -216,13 +216,13 @@ int root_sim_page_fault(struct pt_regs* regs, long error_code){
 
 			my_pdp = __va((ulong)my_pdp & MASK_PTADDR);
 			if((void *)my_pdp[PDP(target_address)] != NULL) {
-				printk("ORIGINAL VIEW\n");
+/*				printk("ORIGINAL VIEW\n");
 	                        print_pgd(ancestor_pml4);
 				printk("_______________________________________________________________________\n");
 				printk("PARALLEL VIEW\n");
 	                        print_pgd(my_pgd);
 				printk("_______________________________________________________________________\n");
-				printk("\t\t target_address:%p PDPE:%llu return 0 - 2 \n",target_address,PDP(target_address));
+*/				printk("\t\t target_address:%p PDPE:%llu return 0 - 2 \n",target_address,PDP(target_address));
 				return 0; /* faults at lower levels than PDP - need to be handled by traditional fault manager */
 			}
 
@@ -417,8 +417,8 @@ goto bridging_from_get_pgd;
 			//PML4 of current
                          pml4_table =(void **) pgd_addr[descriptor];
 				
-			printk(KERN_ERR "[SCHEDULE_ON_PGD] before enter in update hitted object\n");
-			print_pgd((void **)current->mm->pgd);			
+//			printk(KERN_ERR "[SCHEDULE_ON_PGD] before enter in update hitted object\n");
+//			print_pgd((void **)current->mm->pgd);			
 
                         //Original PML4
                         original_pml4 = (void **) original_view[descriptor]->pgd;
@@ -501,8 +501,8 @@ goto bridging_from_get_pgd;
 			rootsim_load_cr3(pgd_addr[descriptor]);
 			
 
-			printk(KERN_ERR "[SCHEDULE_ON_PGD] After update hitted object\n");
-			print_pgd(pml4_table);
+//			printk(KERN_ERR "[SCHEDULE_ON_PGD] After update hitted object\n");
+//			print_pgd(pml4_table);
 			ret = 0;
 		}else{
 			 ret = -1;
@@ -544,8 +544,8 @@ goto bridging_from_get_pgd;
 			ret = -1;
 		}
 		
-		printk(KERN_ERR "At the end of UNSCHEDULE \n");
-		print_pgd(pgd_addr[descriptor]);
+//		printk(KERN_ERR "At the end of UNSCHEDULE \n");
+//		print_pgd(pgd_addr[descriptor]);
 
 		break;
 

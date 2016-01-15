@@ -1,11 +1,11 @@
 #include <ROOT-Sim.h>
 #include <strings.h>
 #include "application.h"
-#include "utility.c"
 
 #define DEBUG if(0)
 
 void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *content, unsigned int size, void *state) {
+	(void)size;
         enter_t *enter_p;
 	exit_t *exit_p;
 	destination_t *destination_p;
@@ -23,6 +23,14 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
 
 	unsigned char *old_agent;
 	unsigned int i,j;
+
+	bzero(&enter, sizeof(enter));
+	bzero(&exit, sizeof(exit));
+	bzero(&destination, sizeof(destination));
+	bzero(&complete, sizeof(complete));
+
+	if(is_agent(me) && event != INIT)
+		((lp_agent_t *)state)->lvt = now;
 	
         switch(event) {
 
@@ -30,7 +38,7 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
 			
                         if(is_agent(me)){
 				agent = (lp_agent_t *)malloc(sizeof(lp_agent_t));
-				printf("AGENT ADD:%p\n",agent);	
+				DEBUG printf("AGENT ADD:%p\n",agent);	
 				agent->complete = false;
 
 			//	agent->region = random_region();
@@ -79,6 +87,7 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
 
                 case PING:
 			DEBUG printf("Send PING\n");
+			for(i = 0; i < 100000; i++);
                         ScheduleNewEvent(me, now + Expent(DELAY), PING, NULL, 0);
 			break;
 
@@ -86,7 +95,7 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
 			enter_p = (enter_t *) content;
 			region = (lp_region_t *) state;
 
-			printf("Region%d process ENTER of %d\n",me,enter_p->agent);
+			DEBUG printf("Region %d process ENTER of %d\n",me,enter_p->agent);
 		
 			region->guests[region->count] = enter_p->map;
 			
@@ -94,9 +103,11 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
 				old_agent = region->guests[i];
 
 				for(j=0; j<get_tot_regions(); j++){
-					if(!BITMAP_CHECK_BIT(enter_p->map,j) && BITMAP_CHECK_BIT(old_agent,j))
+					if(!BITMAP_CHECK_BIT(enter_p->map,j) &&
+					    BITMAP_CHECK_BIT(old_agent,j))
 						BITMAP_SET_BIT(enter_p->map,j);
-					else if(BITMAP_CHECK_BIT(enter_p->map,j) && !BITMAP_CHECK_BIT(old_agent,j))
+					else if(BITMAP_CHECK_BIT(enter_p->map,j) &&
+						!BITMAP_CHECK_BIT(old_agent,j))
 						BITMAP_SET_BIT(old_agent,j);
 				}
 			}
@@ -141,24 +152,26 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
 			}
 				
 			if(check_termination(agent)){
-				/*
+				
 				agent->complete = true;
 	                        
 				complete.agent = me;
 				
+				timestamp = now + Expent(DELAY);
+
 				if(me + 1 == n_prc_tot){
-					printf("%d send COMPLETE to %d add:%p \n",me,get_tot_regions(),agent);
-			 		ScheduleNewEvent(get_tot_regions(), now + Expent(DELAY), COMPLETE, &complete, sizeof(complete));
+					printf("%d send COMPLETE to %d add at %f: %p \n",me,get_tot_regions(),timestamp,agent);
+			 		ScheduleNewEvent(get_tot_regions(), timestamp, COMPLETE, &complete, sizeof(complete));
 				}
 				else{	
-					printf("%d send COMPLETE to add:%p %d\n",me,me+1,agent);
-			 		ScheduleNewEvent(me + 1, now + Expent(DELAY), COMPLETE, &complete, sizeof(complete));
+					printf("%d send COMPLETE to %d add at %f: %p\n",me, me+1, timestamp,agent);
+			 		ScheduleNewEvent(me + 1, timestamp, COMPLETE, &complete, sizeof(complete));
 				}
 				
 				//Unnote break command to stop exploration if the termination condiction is true
-				*/
-				printf("%d send COMPLETE to %d add:%p \n",me,get_tot_regions(),agent);
-				break;
+			
+//				printf("%d send COMPLETE to %d add:%p \n",me,get_tot_regions(),agent);
+//				break;
 			}
 			
 			timestamp = now + Expent(DELAY);			
@@ -177,6 +190,7 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
 			break;
 
 		case COMPLETE:
+		DEBUG	printf("%d executes COMPLETE at %f\n", me, now);
 			complete_p = (complete_t *) content;
 			if(is_agent(me)){
 				agent = (lp_agent_t *) state;
@@ -188,13 +202,14 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
 
                         complete.agent = complete_p->agent;
 
+			timestamp = now + Expent(DELAY);
                         if(me + 1 == n_prc_tot){
-				printf("%d send COMPLETE to %d\n",me,get_tot_regions());
-				ScheduleNewEvent(get_tot_regions(),  now + Expent(DELAY), COMPLETE, &complete, sizeof(complete));
+		DEBUG		printf("%d send COMPLETE to %d at %f\n",me,get_tot_regions(), timestamp);
+				ScheduleNewEvent(get_tot_regions(),  timestamp, COMPLETE, &complete, sizeof(complete));
 			}
 			else{
-				printf("%d send COMPLETE to %d\n",me,me+1);
-				ScheduleNewEvent(me + 1,  now + Expent(DELAY), COMPLETE, &complete, sizeof(complete));
+		DEBUG		printf("%d send COMPLETE to %d at %f\n",me,me+1, timestamp);
+				ScheduleNewEvent(me + 1,  timestamp, COMPLETE, &complete, sizeof(complete));
 			}
 
 			break;
@@ -208,9 +223,10 @@ bool OnGVT(unsigned int me, void *snapshot) {
 	if(is_agent(me)){
 		agent = (lp_agent_t *) snapshot;	
 		
-//		DEBUG{	
+		DEBUG{	
 			unsigned int i;
 			printf("Agent[%d]\t",me);
+			printf("LVT:%f\t",agent->lvt);
 			printf("ADD:%p \t", agent);
 			printf("C:%s \t", agent->complete ? "true" : "false");
 			printf("VC:%d \t{",agent->count);
@@ -221,7 +237,7 @@ bool OnGVT(unsigned int me, void *snapshot) {
 					printf("0 ");
 			}
 			printf("}\n");
-//		}
+		}
 		
         	if(me == get_tot_regions())
                 	printf("Completed work: %f%%\n", percentage(agent));

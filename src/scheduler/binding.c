@@ -72,10 +72,9 @@ static GLP_state **new_GLPS;
 //For updating the current_group stored inside LP_state according to the new configuration
 static unsigned int *new_group_LPS;
 static unsigned int empty_value;
-#else
+#endif
 static int binding_acquire_phase = 0;
 static __thread int local_binding_acquire_phase = 0;
-#endif
 
 static unsigned int *new_LPS_binding;
 static timer rebinding_timer;
@@ -237,7 +236,7 @@ static void post_local_reduction(void) {
 	}
 }
 
-
+#ifndef HAVE_GLP_SCH_MODULE
 static void install_binding(void) {
 	unsigned int i;
 
@@ -259,6 +258,7 @@ static void install_binding(void) {
 		}
 	}
 }
+#endif
 
 #ifdef HAVE_GLP_SCH_MODULE
 /* -------------------------------------------------------------------- */
@@ -273,7 +273,7 @@ static void install_binding(void) {
 * @author Francesco Nobilia
 */
 static inline void GLPs_block_binding(void) {
-	unsigned int i, j, y, count;
+	unsigned int i, j, count;
 	unsigned int buf1;
 	unsigned int offset;
 	unsigned int block_leftover;
@@ -449,7 +449,7 @@ static unsigned int clustering_groups(int n, unsigned int (*statistics)[n], unsi
 * @author Francesco Nobilia
 */
 static void check_num_group_over_core(int n, unsigned int (*statistics)[n]){
-	unsigned int i,j,count=0;
+	unsigned int i,count=0;
 	for(i=0;i<n_grp;i++)
 		if(new_GLPS[i]->tot_LP > 0) count++;
 	

@@ -209,6 +209,8 @@ void lp_alloc_schedule(void) {
 	unsigned int i;
 	ioctl_info sched_info;
 
+	bzero(&sched_info, sizeof(ioctl_info));
+
 	sched_info.ds = pgd_ds; // this is current
 	sched_info.count = LPS[current_lp]->ECS_index + 1; // it's a counter
 	
@@ -234,8 +236,8 @@ void lp_alloc_schedule(void) {
 	
 	sched_info.objects_mmap_pointers = rsalloc(sizeof(void *) * sched_info.objects_mmap_count);	
 	for(i=0;i<sched_info.count;i++) {
-                sched_info.objects_mmap_pointers[i]= get_base_pointer(sched_info.objects[i]);
-		printf("lp_alloc_schedule - [%d] addr:%p\n",current_lp,sched_info.objects_mmap_pointers[i]);
+                sched_info.objects_mmap_pointers[i] = get_base_pointer(sched_info.objects[i]);
+//		printf("lp_alloc_schedule - [%d] addr:%p\n",current_lp,sched_info.objects_mmap_pointers[i]);
         }
 
 	/* passing into LP mode - here for the pgd_ds-th LP */

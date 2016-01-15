@@ -1,5 +1,7 @@
 #include <ROOT-Sim.h>
 
+#include <stdbool.h>
+
 #define ECS_TEST
 //#define TEST_CASE
 
@@ -73,6 +75,7 @@ typedef struct lp_agent_t{
 	unsigned char *map;			//Map pointer
 	unsigned int count;			//Amount of already visited regions
 	bool complete;				//True if it has received the COMPLETE message
+	simtime_t lvt;
 }lp_agent_t;
 
 typedef struct lp_region_t{
@@ -88,3 +91,12 @@ typedef struct lp_region_t{
 } lp_region_t;
 
 
+
+
+extern unsigned int get_tot_regions(void);
+extern unsigned int get_tot_agents(void);
+extern unsigned char get_obstacles(void);
+extern unsigned int get_region(unsigned int me, unsigned int obstacle,unsigned int agent);
+extern bool check_termination(lp_agent_t *);
+extern bool is_agent(unsigned int);
+extern  double percentage(lp_agent_t *agent);

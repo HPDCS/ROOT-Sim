@@ -184,7 +184,7 @@ void context_create(LP_context_t *context, void (*entry_point)(void *), void *ar
 	raise(SIGUSR1);
 	sigaltstack(&oss, NULL);
 	
-	printf("Print to context_switch\n"); // NON LEVARE QUESTA PRINTF
+//	printf("Print to context_switch\n"); // NON LEVARE QUESTA PRINTF
 	context_switch_create(&context_caller, context);
 }
 

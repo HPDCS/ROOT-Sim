@@ -60,8 +60,8 @@ void reset_synch_counter(unsigned int lid){
 	GLP_state *current_group = GLPS[LPS[lid]->current_group];
  
 	if(temp_LP->bound->type == SYNCH_GROUP || 
-		(temp_LP->bound->mark == current_group->initial_group_time->mark && 
-			D_EQUAL(temp_LP->bound->timestamp,current_group->initial_group_time->timestamp)) &&
+		/*(temp_LP->bound->mark == current_group->initial_group_time->mark && 
+			D_EQUAL(temp_LP->bound->timestamp,current_group->initial_group_time->timestamp)) &&*/
 	  	temp_LP->updated_counter
 	    ){
 		PRINT_DEBUG_GLP{

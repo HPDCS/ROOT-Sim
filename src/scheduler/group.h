@@ -37,7 +37,7 @@
 #define DELTA_GROUP_TIME 1000.0
 #define DIM_STAT_GROUP 2
 #define CKPT_PERIOD_GROUP 10
-#define PRINT_DEBUG_GLP if(1) 		// Change with 1 to enable debug's print
+#define PRINT_DEBUG_GLP if(0) 		// Change with 1 to enable debug's print
 
 #define GLP_STATE_READY			0x02001
 #define GLP_STATE_ROLLBACK		0x02004

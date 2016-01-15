@@ -1,6 +1,8 @@
 #include <ROOT-Sim.h>
 #include <math.h>
 
+#include "application.h"
+
 unsigned int get_tot_regions(void){
 	#ifdef ECS_TEST
 		unsigned int tot_region,check_value;
@@ -40,6 +42,8 @@ unsigned char get_obstacles(void){
 }
 
 unsigned int get_region(unsigned int me, unsigned int obstacle,unsigned int agent){
+	(void)obstacle;
+	(void)agent;
 	unsigned int edge,temp,tot_region;
 	double random;
 	tot_region = get_tot_regions();
