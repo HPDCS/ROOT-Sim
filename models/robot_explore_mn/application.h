@@ -43,20 +43,43 @@
 #define ALLOCATE_BITMAP(size) (malloc(BITMAP_SIZE(size)))
 #define BITMAP_BZERO(map, size) (bzero(((unsigned char*)(map)), BITMAP_SIZE(size)))
 
+typedef struct lp_agent_t{
+	unsigned int id;
+        unsigned int region;                    //Current region
+        unsigned char *map;                     //Map pointer
+
+        #ifdef ECS_TEST 
+        unsigned char **group;                  //Vector that stores pointers of agent that this agent has been met
+        #endif
+
+        unsigned int count;                     //Amount of already visited regions
+        bool complete;                          //True if it has received the COMPLETE message
+        simtime_t lvt;
+}lp_agent_t;
+
+typedef struct lp_region_t{
+
+        #ifdef ECS_TEST 
+        lp_agent_t **guests;                 //Vector that stores pointers of agent guest map
+        #else
+        unsigned char *map;
+        #endif
+
+        unsigned int count;                     //Amount of agents inside the region
+        unsigned char obstacles;                //Map of obstacles
+} lp_region_t;
+
 typedef struct enter_content_t {
-	unsigned int agent;			//Sender's Lid
 	#ifdef ECS_TEST
-	unsigned char *map; 			//Pointer to the sender's map
+	lp_agent_t *agent; 			//Pointer to the state map
 	#else
+	unsigned int agent;			//Sender's Lid
 	unsigned char map[DIM_ARRAY];
 	#endif
 } enter_t;
 
 typedef struct exit_content_t {
 	unsigned int agent;			//Sender's Lid
-	#ifdef ECS_TEST
-	unsigned char *map;			//Pointer to the sender's map
-	#endif
 } exit_t;
 
 typedef struct destination_content_t {
@@ -70,27 +93,6 @@ typedef struct complete_content_t {
 	unsigned int agent;			//Id of agent that completes the mission
 } complete_t;
 
-typedef struct lp_agent_t{
-	unsigned int region;			//Current region
-	unsigned char *map;			//Map pointer
-	unsigned int count;			//Amount of already visited regions
-	bool complete;				//True if it has received the COMPLETE message
-	simtime_t lvt;
-}lp_agent_t;
-
-typedef struct lp_region_t{
-	
-	#ifdef ECS_TEST	
-	unsigned char **guests;			//Vector that stores pointers of agent guest map
-	#else
-	unsigned char *map;
-	#endif
-	
-	unsigned int count;			//Amount of agents inside the region
-	unsigned char obstacles;		//Map of obstacles
-} lp_region_t;
-
-
 
 
 extern unsigned int get_tot_regions(void);
@@ -100,3 +102,5 @@ extern unsigned int get_region(unsigned int me, unsigned int obstacle,unsigned i
 extern bool check_termination(lp_agent_t *);
 extern bool is_agent(unsigned int);
 extern  double percentage(lp_agent_t *agent);
+extern unsigned int random_region(void);
+extern void send_updated_info(lp_agent_t*);

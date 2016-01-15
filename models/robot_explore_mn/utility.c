@@ -193,3 +193,26 @@ void copy_map(unsigned char *pointer, int n, unsigned char (vector)[n]){
 			BITMAP_SET_BIT(vector,i);
 	}
 }
+
+void send_updated_info(lp_agent_t *agent){	
+	unsigned char *group_map;
+	BITMAP_SET_BIT(agent->map,agent->region);
+	agent->count = 0;
+	unsigned int i,j;
+	
+	for(i=0; i<get_tot_agents(); i++){
+		if(agent->group[i] != NULL){
+			group_map = agent->group[i];
+			for(j=0;j<get_tot_regions();j++){
+				if(BITMAP_CHECK_BIT(agent->map,j) && !BITMAP_CHECK_BIT(group_map,j))
+					 BITMAP_SET_BIT(group_map,j);
+				else if(!BITMAP_CHECK_BIT(agent->map,j) && BITMAP_CHECK_BIT(group_map,j))
+                                         BITMAP_SET_BIT(agent->map,j);
+			}
+		}
+	}
+
+	for(j=0;j<get_tot_regions();j++)
+		if(BITMAP_CHECK_BIT(agent->map,j))
+                        agent->count++;
+} 

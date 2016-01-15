@@ -262,7 +262,8 @@ bool check_postpone_synch_message(unsigned int lid){
 }
 
 bool check_state_group(unsigned int lid_bound){
-
+	
+	msg_t *next_event;
         LP_state *temp_LP = LPS_bound[lid_bound];
         GLP_state *current_group = GLPS[temp_LP->current_group];
 
@@ -296,6 +297,18 @@ bool check_state_group(unsigned int lid_bound){
                 	//For avoiding deadlock in case of double log instance
                         temp_LP->state = LP_STATE_READY;
         }
+
+	if(current_group->state == GLP_STATE_WAIT_FOR_UNBLOCK && temp_LP->state == LP_STATE_READY){
+		next_event = advance_to_next_event(temp_LP->lid);
+		if(	next_event != NULL && 
+			next_event->type == RENDEZVOUS_START &&
+			next_event->sender == current_group->lvt->sender && 
+			next_event->rendezvous_mark == current_group->lvt->rendezvous_mark &&
+			verify_time_group(next_event->timestamp)
+		  ){
+			return false;
+		}	
+	}
        
 	if( (is_blocked_state(temp_LP->state) && temp_LP->state != LP_STATE_WAIT_FOR_GROUP) ||
                         (is_blocked_state(current_group->state) &&

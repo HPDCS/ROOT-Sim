@@ -37,7 +37,7 @@
 
 /* core user defined parameters */
 #define SIBLING_PGD 128 // max number of concurrent memory views (concurrent root-sim worker threads on a node)
-#define MAX_CROSS_STATE_DEPENDENCIES 1024 // max number of cross-state dependencied per LP at each event
+#define MAX_CROSS_STATE_DEPENDENCIES 4096 // max number of cross-state dependencied per LP at each event
 
 
 typedef struct _ioctl_info{

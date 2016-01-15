@@ -137,7 +137,7 @@ static void *main_simulation_loop(void *arg) {
 				printf("TIME BARRIER %f\n", my_time_barrier);
 				#endif
 				
-				
+			/*	
 				#ifdef HAVE_GLP_SCH_MODULE
 				unsigned int j=0;
 				for(;j<n_grp;j++){
@@ -163,7 +163,8 @@ static void *main_simulation_loop(void *arg) {
 					}
 
 				}
-				/*
+			
+			
 				for(j=0;j<n_prc;j++){
 					printf("LP[%d]:%d \t CSG:%d \t T:%f B_S:%d\n",
 						j,
@@ -176,8 +177,8 @@ static void *main_simulation_loop(void *arg) {
 					if (LPS[j]->target_rollback != NULL)
 						printf("R_T:%f N_E:%f \n",LPS[j]->target_rollback->timestamp,next_event_timestamp(j));
 				}
-				*/
 				#endif				
+				*/
 			
 				fflush(stdout);
 			}

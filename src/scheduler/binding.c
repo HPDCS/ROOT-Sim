@@ -606,7 +606,9 @@ static inline void GLP_knapsack(void) {
 				assignments[j] += glp_cost[i];
 				new_GLPS_binding[i] = j;
 				assigned = true;
-				break;
+				i++;
+
+				if(i==n_grp)	break;
 			}
 		}
 
@@ -755,6 +757,7 @@ static void switch_GLPS(void){
 	unsigned int i;
 	
 	for (i = 0; i < n_grp; i++) {
+		GLPS[i]->id = new_GLPS[i]->id;
 		memcpy(GLPS[i]->local_LPS, new_GLPS[i]->local_LPS, n_prc * sizeof(LP_state *));
 		GLPS[i]->tot_LP = new_GLPS[i]->tot_LP;
 		update_IGT(GLPS[i]->initial_group_time,new_GLPS[i]->initial_group_time);

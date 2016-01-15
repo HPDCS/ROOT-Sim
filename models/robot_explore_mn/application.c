@@ -21,7 +21,8 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
 	lp_agent_t *agent;
 	lp_region_t *region;
 
-	unsigned char *old_agent;
+	unsigned char **new_group;
+	unsigned char **old_group;
 	unsigned int i,j;
 
 	bzero(&enter, sizeof(enter));
@@ -40,19 +41,22 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
 				agent = (lp_agent_t *)malloc(sizeof(lp_agent_t));
 				DEBUG printf("AGENT ADD:%p\n",agent);	
 				agent->complete = false;
-
-			//	agent->region = random_region();
-				agent->region = 0;
+				
+				agent->id = me;
+				agent->region = random_region();
+		//		agent->region = 0;
 				agent->map = ALLOCATE_BITMAP(get_tot_regions());
 				BITMAP_BZERO(agent->map,get_tot_regions());
 
+				agent->group = calloc(get_tot_agents(),sizeof(unsigned char *));
+				agent->group[me] = agent->map;
 				agent->count = 0;
 
 				SetState(agent);
 			}
 			else{
 				region = (lp_region_t *)malloc(sizeof(lp_region_t));
-				region->guests = calloc(get_tot_agents(),sizeof(unsigned char *));
+				region->guests = calloc(get_tot_agents(),sizeof(lp_agent_t *));
 
         			region->count = 0;     
         			region->obstacles = get_obstacles();
@@ -66,14 +70,12 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
 				BITMAP_SET_BIT(agent->map,agent->region);
 				agent->count++;
 				
-				enter.agent = me;
-                        	enter.map = agent->map;
+				enter.agent = agent;
 				
 				DEBUG printf("%d send ENTER to %d\n",me,agent->region);
 				ScheduleNewEvent(agent->region, timestamp, ENTER, &enter, sizeof(enter));
 				
 				exit.agent = me;		
-				exit.map = agent->map;
 				
 				timestamp += Expent(DELAY);
 				DEBUG printf("%d send EXIT to %d\n",me,agent->region);
@@ -95,22 +97,19 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
 			enter_p = (enter_t *) content;
 			region = (lp_region_t *) state;
 
-			DEBUG printf("Region %d process ENTER of %d\n",me,enter_p->agent);
+			DEBUG printf("Region %d process ENTER of %d\n",me,enter_p->agent->id);
 		
-			region->guests[region->count] = enter_p->map;
-			
-			for(i=0; i<region->count; i++){
-				old_agent = region->guests[i];
-
-				for(j=0; j<get_tot_regions(); j++){
-					if(!BITMAP_CHECK_BIT(enter_p->map,j) &&
-					    BITMAP_CHECK_BIT(old_agent,j))
-						BITMAP_SET_BIT(enter_p->map,j);
-					else if(BITMAP_CHECK_BIT(enter_p->map,j) &&
-						!BITMAP_CHECK_BIT(old_agent,j))
-						BITMAP_SET_BIT(old_agent,j);
+			region->guests[region->count] = enter_p->agent;
+			new_group = enter_p->agent->group;	
+			for(i=0;i<region->count;i++){
+				old_group = region->guests[i]->group;
+				for(j=0;j<get_tot_agents();j++){
+					if(new_group[j] == NULL && old_group[j] != NULL)
+						new_group[j] = old_group[j];
+					else if(new_group[j] != NULL && old_group[j] == NULL)
+                                                old_group[j] = new_group[j];
 				}
-			}
+			}			
 
 			region->count++;	
 			DEBUG	printf("End enter Region:%d\n",me);
@@ -124,10 +123,10 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
 			destination.region = get_region(me,region->obstacles,exit_p->agent);
 			
 			for(i=0;i<region->count; i++){
-				if(region->guests[i] == exit_p->map){
+				if(region->guests[i]->id == exit_p->agent){
 					if(i!=(region->count-1) && region->count >= 1)
 						region->guests[i] = region->guests[region->count-1];
-					
+					region->guests[region->count-1] = NULL;
 					region->count--;	
 					break;
 				}
@@ -141,16 +140,10 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
 		case DESTINATION: 
 			destination_p = (destination_t *) content;
 			agent = (lp_agent_t *) state;
-			
 			agent->region = destination_p->region;
-			BITMAP_SET_BIT(agent->map,destination_p->region);
 
-                        agent->count = 0;
-			for(i=0; i<get_tot_regions(); i++){
-				if(BITMAP_CHECK_BIT(agent->map,i))
-					agent->count++;
-			}
-				
+			send_updated_info(agent);			
+		
 			if(check_termination(agent)){
 				
 				agent->complete = true;
@@ -176,14 +169,12 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
 			
 			timestamp = now + Expent(DELAY);			
 			
-			enter.agent = me;
-			enter.map = agent->map;
+			enter.agent = agent;
 
 			DEBUG printf("%d send ENTER to %d\n",me,destination_p->region);
 			ScheduleNewEvent(destination_p->region, timestamp, ENTER, &enter, sizeof(enter));
 
 			exit.agent = me;
-                        exit.map = agent->map;
 			
 			DEBUG printf("%d send EXIT to %d\n",me,destination_p->region);
 			ScheduleNewEvent(destination_p->region, timestamp + Expent(DELAY), EXIT, &exit, sizeof(exit));
