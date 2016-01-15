@@ -239,11 +239,12 @@ void process_bottom_halves(void) {
 							
 							#ifdef HAVE_GLP_SCH_MODULE
 							PRINT_DEBUG_GLP{	
-								printf("RN Type:%d T:%f S:%d R:%d \n",
+								printf("RN Type:%d T:%f S:%d R:%d LVT:%f\n",
         	                                                	matched_msg->type,
                 	                                        	matched_msg->timestamp,
                         	                                	matched_msg->sender, 
-                                	                        	lid_receiver
+                                	                        	lid_receiver,
+									lvt(lid_receiver)
                                         	               	       );
 							}
 							reset_synch_counter(lid_receiver);
@@ -284,11 +285,12 @@ void process_bottom_halves(void) {
 						
 						#ifdef HAVE_GLP_SCH_MODULE
 						PRINT_DEBUG_GLP{
-							printf("RP Type:%d T:%f S:%d R:%d \n",
+							printf("RP Type:%d T:%f S:%d R:%d LVT:%f\n",
 								msg_to_process->type,
 								msg_to_process->timestamp,
                                                         	msg_to_process->sender, 
-								lid_receiver
+								lid_receiver,
+								lvt(lid_receiver)
 							       );
 						}
 						reset_synch_counter(lid_receiver);

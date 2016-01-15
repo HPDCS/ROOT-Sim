@@ -141,7 +141,7 @@ struct file_operations fops = {
 };
 
 //TODO MN
-int dirty_pml4[512]={[0 ... (512-1)] = 0};
+int dirty_pml4[PTRS_PER_PGD]={[0 ... (PTRS_PER_PGD-1)] = 0};
 
 
 atomic_t count;
@@ -278,6 +278,7 @@ int root_sim_page_fault(struct pt_regs* regs, long error_code){
 EXPORT_SYMBOL(root_sim_page_fault);
 
 int rs_ktblmgr_open(struct inode *inode, struct file *filp) {
+	int i;
 
 	// It's meaningless to open this device in write mode
 	if (((filp->f_flags & O_ACCMODE) == O_WRONLY)
@@ -291,6 +292,10 @@ int rs_ktblmgr_open(struct inode *inode, struct file *filp) {
 	// Only one access at a time
 	if (!mutex_trylock(&rs_ktblmgr_mutex)) {
 		return -EBUSY;
+	}
+
+	for(i = 0; i < PTRS_PER_PGD; i++) {
+		dirty_pml4[i] = 0;
 	}
 
 	return 0;
@@ -625,7 +630,7 @@ bridging_from_get_pgd:
 		case IOCTL_GET_FREE_PML4:
 			original_pml4 = (void **)current->mm->pgd;
                         
-			for (i=5; i<PTRS_PER_PGD; i++){
+			for (i=0; i<PTRS_PER_PGD; i++){
                                 if(original_pml4[i]==NULL){ 
 					dirty_pml4[i] = 1;
 					return i;

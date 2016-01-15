@@ -30,7 +30,7 @@
 
 #include <arch/atomic.h>
 
-#define HAVE_GLP_SCH_MODULE
+//#define HAVE_GLP_SCH_MODULE
 #define THRESHOLD_TIME_ECS 3000.0
 #define THRESHOLD_ACCESS_ECS 5
 #define DELTA_GROUP 5
