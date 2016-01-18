@@ -30,7 +30,7 @@
 
 #include <arch/atomic.h>
 
-//#define HAVE_GLP_SCH_MODULE
+#define HAVE_GLP_SCH_MODULE
 #define THRESHOLD_TIME_ECS 3000.0
 #define THRESHOLD_ACCESS_ECS 5
 #define DELTA_GROUP 5
@@ -89,3 +89,4 @@ extern bool check_state_group(unsigned int);
 extern void remove_lp_group(GLP_state*, unsigned int);
 extern void insert_lp_group(GLP_state*, unsigned int);
 extern simtime_t get_delta_group(void);
+extern void check_state_order(unsigned int);

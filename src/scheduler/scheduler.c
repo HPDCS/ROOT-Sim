@@ -686,9 +686,9 @@ void schedule(void) {
 		}
 		else{
 			LPS[lid]->state = LP_STATE_READY;
-	                send_outgoing_msgs(lid);	
 		}
 
+	        send_outgoing_msgs(lid);	
                 return;
         }
 	

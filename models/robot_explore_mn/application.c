@@ -57,6 +57,7 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
 			else{
 				region = (lp_region_t *)malloc(sizeof(lp_region_t));
 				region->guests = calloc(get_tot_agents(),sizeof(lp_agent_t *));
+				region->time = calloc(get_tot_agents(),sizeof(double));
 
         			region->count = 0;     
         			region->obstacles = get_obstacles();
@@ -89,8 +90,8 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
 
                 case PING:
 			DEBUG printf("Send PING\n");
-			for(i = 0; i < 100000; i++);
-                        ScheduleNewEvent(me, now + Expent(DELAY), PING, NULL, 0);
+			for(i = 0; i < 90000; i++);
+                        ScheduleNewEvent(me, now + Expent(DELAY_PING), PING, NULL, 0);
 			break;
 
 		case ENTER:
@@ -100,6 +101,7 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
 			DEBUG printf("Region %d process ENTER of %d\n",me,enter_p->agent->id);
 		
 			region->guests[region->count] = enter_p->agent;
+			region->time[region->count] = now;
 			new_group = enter_p->agent->group;	
 			for(i=0;i<region->count;i++){
 				old_group = region->guests[i]->group;
@@ -127,6 +129,7 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
 					if(i!=(region->count-1) && region->count >= 1)
 						region->guests[i] = region->guests[region->count-1];
 					region->guests[region->count-1] = NULL;
+					region->time[region->count-1] = 0.0;
 					region->count--;	
 					break;
 				}

@@ -205,10 +205,6 @@ void force_checkpoint_group(unsigned int lid){
 		
 		lp_index = list[i]->lid;
 		
-		if(lp_index == IDLE_PROCESS ){
-			rootsim_error(true,"Returned IDLE_PROCESS during send NULL_LOG messages.Aborting...");
-		}
-
 		// Diretcly place the control message in the target bottom half queue
 		bzero(&control_msg, sizeof(msg_t));//TODO check if it could be removed
 		control_msg.sender = LidToGid(lid);
@@ -299,7 +295,7 @@ bool check_state_group(unsigned int lid_bound){
         }
 
 	if(current_group->state == GLP_STATE_WAIT_FOR_UNBLOCK && temp_LP->state == LP_STATE_READY){
-		next_event = advance_to_next_event(temp_LP->lid);
+		next_event = list_next(LPS[temp_LP->lid]->bound);
 		if(	next_event != NULL && 
 			next_event->type == RENDEZVOUS_START &&
 			next_event->sender == current_group->lvt->sender && 
@@ -333,6 +329,18 @@ simtime_t get_delta_group(void){
 		return result;
 	else
 		return DELTA_GROUP_TIME;
+}
+
+void check_state_order(unsigned int lid){
+	state_t *restore_state;
+	state_t *s;
+	
+	restore_state = list_tail(LPS[lid]->queue_states);
+        while (restore_state != NULL) {
+                printf("[%d] State: %f\n",lid,restore_state->lvt);
+                s = restore_state;
+                restore_state = list_prev(restore_state);
+        }
 }
 
 #endif

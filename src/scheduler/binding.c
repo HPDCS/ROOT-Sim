@@ -72,6 +72,7 @@ static GLP_state **new_GLPS;
 //For updating the current_group stored inside LP_state according to the new configuration
 static unsigned int *new_group_LPS;
 static unsigned int empty_value;
+static __thread bool updated_newgpls = false;
 #endif
 static int binding_acquire_phase = 0;
 static __thread int local_binding_acquire_phase = 0;
@@ -566,6 +567,7 @@ static inline void GLP_knapsack(void) {
 	// Clustering group
 	if(need_clustering()){
 		update_clustering_groups();
+		updated_newgpls = true;
 	}	
 
 	// Estimate the reference knapsack
@@ -920,14 +922,16 @@ void rebind_LPs(void) {
 
 		//TODO MN
 		#ifdef HAVE_GLP_SCH_MODULE
-		if(master_thread()) {
+		if(master_thread() && updated_newgpls) {
 	
 			//Find maximum timestamp of bound between LPs inside a group
-			check_timestamp_group_bound();
+			check_timestamp_group_bound(); 	// RENDERLO PER THREAD
 
-		        send_control_group_message();
+		        send_control_group_message(); 	// RENDERLO PER THREAD
 
-			switch_GLPS();
+			switch_GLPS();			
+			
+			updated_newgpls = false;
 		}
 		PRINT_DEBUG_GLP{
 		unsigned int k = 0;

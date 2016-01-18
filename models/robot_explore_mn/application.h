@@ -24,6 +24,7 @@
 #endif
  
 #define DELAY 			120		//Expeted value for the delay function
+#define DELAY_PING 		250		//Expeted value for the delay function
 
 #define VISITED 		0.95 		// Termination condition
 
@@ -61,6 +62,7 @@ typedef struct lp_region_t{
 
         #ifdef ECS_TEST 
         lp_agent_t **guests;                 //Vector that stores pointers of agent guest map
+	double* time;
         #else
         unsigned char *map;
         #endif
