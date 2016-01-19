@@ -89,8 +89,8 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
                         break;
 
                 case PING:
-			DEBUG printf("Send PING\n");
-			for(i = 0; i < 90000; i++);
+//			DEBUG printf("Send PING\n");
+			for(i = 0; i < 100000; i++);
                         ScheduleNewEvent(me, now + Expent(DELAY_PING), PING, NULL, 0);
 			break;
 
@@ -156,11 +156,11 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
 				timestamp = now + Expent(DELAY);
 
 				if(me + 1 == n_prc_tot){
-					printf("%d send COMPLETE to %d add at %f: %p \n",me,get_tot_regions(),timestamp,agent);
+					DEBUG printf("%d send COMPLETE to %d add at %f: %p \n",me,get_tot_regions(),timestamp,agent);
 			 		ScheduleNewEvent(get_tot_regions(), timestamp, COMPLETE, &complete, sizeof(complete));
 				}
 				else{	
-					printf("%d send COMPLETE to %d add at %f: %p\n",me, me+1, timestamp,agent);
+					DEBUG printf("%d send COMPLETE to %d add at %f: %p\n",me, me+1, timestamp,agent);
 			 		ScheduleNewEvent(me + 1, timestamp, COMPLETE, &complete, sizeof(complete));
 				}
 				
@@ -219,18 +219,18 @@ bool OnGVT(unsigned int me, void *snapshot) {
 		
 		DEBUG{	
 			unsigned int i;
-			printf("Agent[%d]\t",me);
-			printf("LVT:%f\t",agent->lvt);
-			printf("ADD:%p \t", agent);
-			printf("C:%s \t", agent->complete ? "true" : "false");
-			printf("VC:%d \t{",agent->count);
-			for(i=0;i<get_tot_regions();i++){
-				if(BITMAP_CHECK_BIT(agent->map,i))
-					printf("1 ");
-				else
-					printf("0 ");
-			}
-			printf("}\n");
+//			printf("Agent[%d]\t",me);
+//			printf("LVT:%f\t",agent->lvt);
+//			printf("ADD:%p \t", agent);
+//			printf("C:%s \t", agent->complete ? "true" : "false");
+//			printf("VC:%d \t{",agent->count);
+//			for(i=0;i<get_tot_regions();i++){
+//				if(BITMAP_CHECK_BIT(agent->map,i))
+//					printf("1 ");
+//				else
+//					printf("0 ");
+//			}
+//			printf("}\n");
 		}
 		
         	if(me == get_tot_regions())
@@ -239,11 +239,11 @@ bool OnGVT(unsigned int me, void *snapshot) {
 		
 			
 		if(!check_termination(agent)){
-			DEBUG	printf("[ME:%d] Complete:%f flag:%d\n",me,percentage(agent),agent->complete);
+//			DEBUG	printf("[ME:%d] Complete:%f flag:%d\n",me,percentage(agent),agent->complete);
 			return false;
 		}
 	
-		DEBUG printf("%d complete execution  C:%f F:%d\n",me,percentage(agent),agent->complete);
+//		DEBUG printf("%d complete execution  C:%f F:%d\n",me,percentage(agent),agent->complete);
 	}
 	
 	return true;

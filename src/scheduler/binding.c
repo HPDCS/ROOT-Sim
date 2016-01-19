@@ -509,6 +509,9 @@ static void set_group_bound(void){
 				}
 				
 			}
+			if(D_EQUAL(temp_GLPS->initial_group_time->timestamp,-1.0) && temp_GLPS->tot_LP > 0)
+				rootsim_error(true,"Errore IGT");
+				
 			temp_GLPS->counter_rollback = 0;
 			temp_GLPS->counter_synch = 0;
 			temp_GLPS->counter_log = 0;
@@ -693,7 +696,7 @@ static void send_control_group_message(void) {
 					update_IGT(temp_GLPS->initial_group_time,&control_msg);
 				}		
 				PRINT_DEBUG_GLP{	
-					printf("SENDED SYNCH MESSAGE TO %d\n",lp_index);
+					printf("SENDED SYNCH MESSAGE TO %d timestamp:%f FAG:%f \n",lp_index,temp_GLPS->initial_group_time->timestamp,future_end_group());
 				}
 
 				//Useful to take a log at the end the group execution otherwise an ECS may be executed in silent mode
@@ -845,6 +848,8 @@ void rebind_LPs(void) {
 	}
 
 #ifdef HAVE_LP_REBINDING
+if(!gvt_stable()) return;
+
 	if(master_thread()) {
 
 		if(atomic_read(&worker_thread_reduction) == 0) {
@@ -881,12 +886,11 @@ void rebind_LPs(void) {
 
 		switch_GLPS();			
 			
-		PRINT_DEBUG_GLP{
-	
+		/*	
 		unsigned int k = 0;
 		for(;k<n_prc_per_thread;k++)
-			printf("[tid:%d] LP:%d Group_bound:%p\n",tid,LPS_bound[k]->lid,GLPS[LPS_bound[k]->current_group]->lvt);
-		}
+			printf("[tid:%d] LP:%d G:%d\n",tid,LPS_bound[k]->lid,LPS_bound[k]->current_group);
+		*/
 		
 	}
 #endif

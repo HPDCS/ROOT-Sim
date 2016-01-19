@@ -119,7 +119,7 @@ bool LogState(unsigned int lid) {
 
 	// Shall we take a log?
 	if (take_snapshot) {
-
+		
 		// Take a log and set the associated LVT
 		new_state.log = log_state(lid);
 		new_state.lvt = lvt(lid);
@@ -146,6 +146,10 @@ void RestoreState(unsigned int lid, state_t *restore_state) {
 	LPS[lid]->ECS_index = 0;
 	LPS[lid]->wait_on_rendezvous = 0;
 	LPS[lid]->wait_on_object = 0;
+	#endif
+	#ifdef HAVE_GLP_SCH_MODULE
+	GLP_state *current_group = GLPS[LPS[lid]->current_group];
+	current_group->counter_log = 0;
 	#endif
 
 }
@@ -226,8 +230,12 @@ void rollback(unsigned int lid) {
 		rootsim_error(false, "I'm asked to roll back LP %d's execution, but rollback_bound is not set. Ignoring...\n", LidToGid(lid));
 		return;
 	}
-	
 
+	#ifdef HAVE_GLP_SCH_MODULE
+	if(LPS[lid]->bound->timestamp < GLPS[LPS[lid]->current_group]->initial_group_time->timestamp && LPS[lid]->updated_counter){
+		printf("Inside error LP[%d]\n",lid);
+	}
+	#endif
 	// Discard any possible execution state related to a blocked execution
 	#ifdef ENABLE_ULT
 	memcpy(&LPS[lid]->context, &LPS[lid]->default_context, sizeof(LP_context_t));
@@ -236,14 +244,15 @@ void rollback(unsigned int lid) {
 	statistics_post_lp_data(lid, STAT_ROLLBACK, 1.0);
 
 	last_correct_event = LPS[lid]->bound;
-	
+
+	PRINT_DEBUG_GLP_DETAIL printf("[%d] last_corr:%p target_mess:%p\n",lid,last_correct_event, LPS[lid]->target_rollback);	
 	// Send antimessages
 	send_antimessages(lid, last_correct_event->timestamp);
 
 	// Find the state to be restored, and prune the wrongly computed states
 	restore_state = list_tail(LPS[lid]->queue_states);
 	while (restore_state != NULL && restore_state->lvt > last_correct_event->timestamp) { // It's > rather than >= because we have already taken into account simultaneous events
-		PRINT_DEBUG_GLP{
+		PRINT_DEBUG_GLP_DETAIL{
 			printf("[%d] State: %f\n",lid,restore_state->lvt);
 		}
 		s = restore_state;
@@ -260,6 +269,7 @@ void rollback(unsigned int lid) {
 	RestoreState(lid, restore_state);
 
 	last_restored_event = restore_state->last_event;
+	PRINT_DEBUG_GLP_DETAIL	printf("[%d] last_restored_event:%p next:%p\n",lid,last_restored_event,list_next(last_restored_event));	
 
 	#ifdef HAVE_GLP_SCH_MODULE
 	if(!(check_start_group(lid) && verify_time_group(LPS[lid]->bound->timestamp))){

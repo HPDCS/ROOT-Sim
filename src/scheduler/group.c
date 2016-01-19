@@ -65,7 +65,7 @@ void reset_synch_counter(unsigned int lid){
 	  	temp_LP->updated_counter
 	    ){
 		PRINT_DEBUG_GLP{
-			printf("DEC COUNTER LP:%d GLP:%d Type:%d \n",lid,LPS[lid]->current_group,temp_LP->bound->type);
+			printf("DEC COUNTER LP:%d GLP:%d Type:%d counter:%d \n",lid,LPS[lid]->current_group,temp_LP->bound->type,current_group->counter_synch);
 		}
 		current_group->counter_synch--;	
 		temp_LP->updated_counter = false;
@@ -120,7 +120,12 @@ void check_rollback_group(msg_t *straggler, unsigned int lid, simtime_t lvt_rece
 						printf("GRB lvt_group [NEGATIVE] T:%f S:%d R:%d\n",
 							LPS[lid]->bound->timestamp, straggler->sender, lid);
 					}
-					rollback_group(straggler,IDLE_PROCESS);
+					if(LPS[lid]->state == LP_STATE_SILENT_EXEC){
+						PRINT_DEBUG_GLP printf("Rollback negative with SIL_EXEC\n");
+						rollback_group(straggler,lid);	
+					}	
+					else
+						rollback_group(straggler,IDLE_PROCESS);
 				}
                         }
                         break;
@@ -147,8 +152,23 @@ void rollback_group(msg_t *straggler, unsigned int receiver){
 
 	current_group->lvt = NULL;	
 	if(receiver != IDLE_PROCESS){
-		LPS[receiver]->target_rollback = LPS[receiver]->bound;
-	        current_group->lvt = LPS[receiver]->target_rollback;
+		 if(LPS[receiver]->state == LP_STATE_SILENT_EXEC){
+			PRINT_DEBUG_GLP	printf("R Straggler:%f\n",straggler->timestamp);
+			while(LPS[receiver]->target_rollback->timestamp >= straggler->timestamp){
+				LPS[receiver]->target_rollback = list_prev(LPS[receiver]->target_rollback);
+					if(LPS[receiver]->target_rollback == NULL){
+						rootsim_error(true,"Target rollback NULL\n");
+					}
+				PRINT_DEBUG_GLP	printf("R Mex:%f\n",LPS[receiver]->target_rollback->timestamp);
+			}
+			LPS[receiver]->bound = LPS[receiver]->target_rollback;
+	        	current_group->lvt = LPS[receiver]->target_rollback;
+			PRINT_DEBUG_GLP	printf("LP[%d] Selected_targhet_rollback:%f\n",receiver,LPS[receiver]->target_rollback->timestamp);
+                }
+                else{
+			LPS[receiver]->target_rollback = LPS[receiver]->bound;
+	        	current_group->lvt = LPS[receiver]->target_rollback;
+		}
 	}
 	
 	for(i=0; i<current_group->tot_LP; i++){
@@ -160,9 +180,25 @@ void rollback_group(msg_t *straggler, unsigned int receiver){
 				printf("ROLLBACK GROUP LP[%d]\n",local_LP->lid);
 			}
 			
+			PRINT_DEBUG_GLP	printf("LP[%d] lvt:%f\n",local_LP->lid,lvt(local_LP->lid));
 			//Giving a timestamp it has to return the message with the maximum timestamp lesser than timestamp
-			local_LP->bound = list_get_node_timestamp(straggler->timestamp,local_LP->lid);
-			local_LP->target_rollback = local_LP->bound;
+			if(local_LP->state == LP_STATE_SILENT_EXEC){
+				PRINT_DEBUG_GLP	printf("Straggler:%f\n",straggler->timestamp);
+				while(local_LP->target_rollback->timestamp >= straggler->timestamp){
+					local_LP->target_rollback = list_prev(local_LP->target_rollback);
+					if(local_LP->target_rollback == NULL){
+						rootsim_error(true,"Target rollback NULL\n");
+					}
+					PRINT_DEBUG_GLP	printf("Mex:%f\n",local_LP->target_rollback->timestamp);
+				}
+				local_LP->bound = local_LP->target_rollback;
+				PRINT_DEBUG_GLP	printf("Selected:%f\n",local_LP->bound->timestamp);
+			}
+			else{
+				local_LP->bound = list_get_node_timestamp(straggler->timestamp,local_LP->lid);
+				local_LP->target_rollback = local_LP->bound;
+			}
+			PRINT_DEBUG_GLP	printf("LP[%d] Selected_targhet_rollback:%f\n",local_LP->lid,LPS[local_LP->lid]->target_rollback->timestamp);
 		
 			if(current_group->lvt == NULL || current_group->lvt->timestamp < local_LP->target_rollback->timestamp)
 				current_group->lvt = local_LP->target_rollback;
@@ -171,7 +207,7 @@ void rollback_group(msg_t *straggler, unsigned int receiver){
 		}
 	}
 	
-	if(current_group->initial_group_time->timestamp >= straggler->timestamp){
+	if(current_group->initial_group_time->timestamp >= straggler->timestamp && check_start_group(local_LP->lid)){
 		PRINT_DEBUG_GLP{
 			printf("RESET GROUP IGT:%f S->T:%f\n",current_group->initial_group_time->timestamp, straggler->timestamp);
 		}
@@ -333,7 +369,7 @@ simtime_t get_delta_group(void){
 
 void check_state_order(unsigned int lid){
 	state_t *restore_state;
-	state_t *s;
+	state_t *s=NULL;
 	
 	restore_state = list_tail(LPS[lid]->queue_states);
         while (restore_state != NULL) {
@@ -341,6 +377,17 @@ void check_state_order(unsigned int lid){
                 s = restore_state;
                 restore_state = list_prev(restore_state);
         }
+}
+
+void check_lvt_group(unsigned int lid){
+	unsigned int j;
+	GLP_state *current_group = GLPS[LPS[lid]->current_group];
+		
+
+	for(j=0;j<current_group->tot_LP;j++){
+		if(lvt(current_group->local_LPS[j]->lid) < current_group->initial_group_time->timestamp)
+			printf("ERRORE lvt group\n");	
+	}
 }
 
 #endif

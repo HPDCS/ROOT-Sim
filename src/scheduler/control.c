@@ -120,13 +120,14 @@ bool anti_control_message(msg_t * msg) {
 	                	if(list_prev(LPS[lid_receiver]->bound) == NULL)
 					break;
 				LPS[lid_receiver]->bound = list_prev(LPS[lid_receiver]->bound);
+				PRINT_DEBUG_GLP	printf("LP[%d] [ANTI_CONTROL_MSG] T:%f\n",lid_receiver,LPS[lid_receiver]->bound->timestamp);	
 	        	}
-		
+			
 			#ifdef HAVE_GLP_SCH_MODULE
+			reset_synch_counter(lid_receiver);
+		
                         if(check_start_group(lid_receiver) && verify_time_group(LPS[lid_receiver]->bound->timestamp)){
-				PRINT_DEBUG_GLP{
-					printf("RGB [ANTI_CONTROL_MSG] T:%f\n",LPS[lid_receiver]->bound->timestamp);	
-				}
+				PRINT_DEBUG_GLP	printf("RGB [ANTI_CONTROL_MSG] T:%f\n",LPS[lid_receiver]->bound->timestamp);	
 				rollback_group(old_rendezvous,lid_receiver);
                         }
                        	#endif
@@ -136,7 +137,7 @@ bool anti_control_message(msg_t * msg) {
 		
 		#ifdef HAVE_GLP_SCH_MODUL
                 else{
-		PRINT_DEBUG_GLP{
+//		PRINT_DEBUG_GLP{
 			if(GLPS[LPS[lid_receiver]->current_group]->lvt!= NULL)
 				printf("ERRORE LP:%d S:%d anti-control message T:%f after LP-lvt:%f GLP-lvt:%f \n",
 			 	     lid_receiver,old_rendezvous->sender,old_rendezvous->timestamp, lvt(lid_receiver), GLPS[LPS[lid_receiver]->current_group]->lvt->timestamp
@@ -144,7 +145,7 @@ bool anti_control_message(msg_t * msg) {
 			else
 				 printf("ERRORE LP:%d S:%d anti-control message T:%f after LP-lvt:%f \n",
                                      lid_receiver,old_rendezvous->sender,old_rendezvous->timestamp, lvt(lid_receiver));
-		}
+//		}
 		}
 		
 		#endif
@@ -227,7 +228,10 @@ bool receive_control_msg(msg_t *msg) {
 				LPS[msg->receiver]->wait_on_object = 0;
 				LPS[msg->receiver]->state = LP_STATE_READY;
 				#ifdef HAVE_GLP_SCH_MODULE
-				if(check_start_group(msg->receiver) && verify_time_group(msg->timestamp))
+				if(	check_start_group(msg->receiver) && 
+					verify_time_group(msg->timestamp) &&  
+					GLPS[LPS[msg->receiver]->current_group]->state != GLP_STATE_WAIT_FOR_LOG
+				)
 					GLPS[LPS[msg->receiver]->current_group]->state = GLP_STATE_READY;
 				#endif
 			}
@@ -240,7 +244,12 @@ bool receive_control_msg(msg_t *msg) {
 			// Log the state, if needed
 			result_log = LogState(current_lp);
 				
-			if(result_log && check_start_group(current_lp) && verify_time_group(current_lvt) && GLPS[LPS[current_lp]->current_group]->tot_LP > 1){
+			if(	result_log && 
+				check_start_group(current_lp) && 
+				verify_time_group(current_lvt) && 
+				GLPS[LPS[current_lp]->current_group]->tot_LP > 1 &&
+				GLPS[LPS[current_lp]->current_group]->state != GLP_STATE_WAIT_FOR_LOG
+			){
 				GLPS[LPS[current_lp]->current_group]->state = GLP_STATE_WAIT_FOR_LOG;
 				GLPS[LPS[current_lp]->current_group]->counter_log = GLPS[LPS[current_lp]->current_group]->tot_LP;
 //				printf("FCKG lid:%d current_lvt:%f lvt(%d):%f\n",current_lp,current_lvt,current_lp,lvt(current_lp));	
@@ -321,13 +330,13 @@ bool process_control_msg(msg_t *msg) {
 			current_group = GLPS[LPS[msg->receiver]->current_group];
 
 			if(check_start_group(msg->receiver) && verify_time_group(msg->timestamp)){
-				PRINT_DEBUG_GLP{
+				PRINT_DEBUG_GLP_DETAIL{
 					printf("GLP[%d] set state WAIT_FOR_UNBLOCK\n",LPS[msg->receiver]->current_group);
 				}
 				current_group->state = GLP_STATE_WAIT_FOR_UNBLOCK;
 			}
 			else{
-				PRINT_DEBUG_GLP{
+				PRINT_DEBUG_GLP_DETAIL{
 					printf("not updated upon START LP:%d CS:%d VT:%d\n",
 						msg->receiver,check_start_group(msg->receiver),
 						verify_time_group(msg->timestamp));
@@ -357,6 +366,9 @@ bool process_control_msg(msg_t *msg) {
 //			printf("[%d] process NULL_LOG_MESSAGE log-counter:%d \n",msg->receiver,GLPS[LPS[msg->receiver]->current_group]->counter_log);
                         #ifdef HAVE_GLP_SCH_MODULE
 			current_lp = msg->receiver;
+
+			if(LPS[current_lp]->state == LP_STATE_SILENT_EXEC) break;
+
                         current_lvt = msg->timestamp;
 			current_group = GLPS[LPS[msg->receiver]->current_group];
 
@@ -365,7 +377,7 @@ bool process_control_msg(msg_t *msg) {
 				force_LP_checkpoint(msg->receiver);
 				LogState(msg->receiver);
 			}
-			LPS[msg->receiver]->state = LP_STATE_WAIT_FOR_LOG;
+			LPS[current_lp]->state = LP_STATE_WAIT_FOR_LOG;
 			if(current_group->counter_log == 0)
 				current_group->state = GLP_STATE_READY;
 			
@@ -390,10 +402,11 @@ bool process_control_msg(msg_t *msg) {
 
 		case SYNCH_GROUP:
 			#ifdef HAVE_GLP_SCH_MODULE
+			
 			current_lp = msg->receiver;
-                        current_lvt = msg->timestamp;
+			current_lvt = msg->timestamp;
 			current_group = GLPS[LPS[msg->receiver]->current_group];
-		//	printf("LP[%d] SYNCH GROUP GLP_state %lu\n",msg->receiver,current_group->state);
+			PRINT_DEBUG_GLP printf("LP[%d] SYNCH GROUP GLP_state %lu counter:%d \n",msg->receiver,current_group->state,current_group->counter_synch);
 
 			// Execute another time this event because i rolled back, 
 			// but in this case i'm already in group execution
@@ -409,6 +422,7 @@ bool process_control_msg(msg_t *msg) {
 			current_group->counter_synch++;
 			LPS[current_lp]->updated_counter = true;
 			if(current_group->counter_synch == current_group->tot_LP){
+				check_lvt_group(current_lp);
 				reset_flag_counter_synch(LPS[current_lp]->current_group);
 				current_group->counter_synch = 0;
 				current_group->state = GLP_STATE_READY;

@@ -668,15 +668,8 @@ void schedule(void) {
 	// If we have to rollback
         if(LPS[lid]->state == LP_STATE_ROLLBACK) {
 		
-		if((LPS[lid]->target_rollback != NULL) || !have_group)
-                	rollback(lid);
-		else{
-			LPS[lid]->target_rollback = LPS[lid]->bound;
-			PRINT_DEBUG_GLP{
-				printf("LP[%d] H_G:%d \n",lid,have_group);
-			}
-		}
-		
+		rollback(lid);
+			
 		if(have_group){
 			//TODO MN da rivedere perchè il contatore va decrementato al termine della silent execution
 			LPS[lid]->state = LP_STATE_SILENT_EXEC;
@@ -717,7 +710,7 @@ void schedule(void) {
 	}
 
         if((current_group->state != GLP_STATE_SILENT_EXEC && check_start_group(lid) && verify_time_group(lvt(lid))) || (event->type == CLOSE_GROUP)){
-                PRINT_DEBUG_GLP{
+                PRINT_DEBUG_GLP_DETAIL{
 		  printf("UPDATE lvt_group lid:%d sender:%d  msg_type:%d timestamp:%f G_state:%d IGT:%f S-IGT:%d R-IGT:%d Type:%d\n",
 			lid,
 			event->sender,
@@ -733,7 +726,7 @@ void schedule(void) {
 		current_group->lvt = event;
 	}
 	else{
-               PRINT_DEBUG_GLP{
+               PRINT_DEBUG_GLP_DETAIL{
 		 printf("NOT UPDATE group-state:%d CSG:%d VTG:%d lid:%d sender:%d state:%d msg_type:%d msg_timestamp:%f\n",
 		current_group->state,check_start_group(lid),verify_time_group(lvt(lid)),lid,event->sender,
 		LPS[lid]->state,event->type,event->timestamp);
@@ -812,6 +805,7 @@ void schedule(void) {
 
                 // This is to avoid domino effect when relying on rendezvous messages
                 force_LP_checkpoint(lid);
+//		printf("[%d] force checkpoint timestamp:%f\n",lid,lvt(lid));
         }
 
        /* if(!resume_execution && !verify_time_group(lvt(lid)) && have_group && !is_blocked_state(LPS[lid]->state)){
@@ -825,6 +819,7 @@ void schedule(void) {
 	}*///Created control message CLOSE_GROUP
 
         // Log the state, if needed
+        //if(!(check_start_group(lid) && verify_time_group(lvt(lid)) && current_group->state == GLP_STATE_SILENT_EXEC))
         if(current_group->state != GLP_STATE_SILENT_EXEC)
 		result_log = LogState(lid);
 	

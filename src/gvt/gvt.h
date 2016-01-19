@@ -40,7 +40,7 @@ extern void gvt_init(void);
 extern void gvt_fini(void);
 extern simtime_t gvt_operations(void);
 inline extern simtime_t get_last_gvt(void);
-
+extern bool gvt_stable(void);
 
 /* API from fossil.c */
 extern simtime_t adopt_new_gvt(simtime_t);

@@ -303,6 +303,7 @@ simtime_t gvt_operations(void) {
 			last_gvt = adopted_last_gvt;
 			#ifdef HAVE_GLP_SCH_MODULE
 			if((last_time_group < last_gvt) && master_thread ()){
+				printf("LTG:%f /t last_gvt:%f\n",last_time_group,last_gvt);
 				updated_group = false;	
 				force_rebind_GLP();
 			}
@@ -311,6 +312,10 @@ simtime_t gvt_operations(void) {
 	}
 
 	return -1.0;
+}
+
+bool gvt_stable(void) {
+	return (my_phase == phase_A);
 }
 
 //TODO MN
