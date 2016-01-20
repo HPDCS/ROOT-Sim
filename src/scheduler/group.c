@@ -390,4 +390,26 @@ void check_lvt_group(unsigned int lid){
 	}
 }
 
+void print_blocked_group(void){
+	unsigned int i,j =0;
+	GLP_state current_group;
+	LP_state mate;
+
+	for(j=0;j<n_grp;j++){
+		current_group = GLPS[j];		
+		if(is_blocked_state(current_group->state) || GLP_STATE_READY_FOR_SYNCH==current_group->state || GLP_STATE_WAIT_FOR_LOG==current_group->state){
+			printf("GLP[%d] state:%d RC:%d SYC:%d SIC:%d \t LP:",j,current_group->state,
+				current_group->counter_rollback,
+				current_group->counter_synch,
+				current_group->counter_silent_exe
+			);
+			fori(i=0;i<current_group->tot_LP;i++){
+				mate = current_group->local_LPS[i];
+				printf("%d state:%d ",mate->lid,mate->state);
+			}
+			printf("\n");
+		}	
+	}
+}
+
 #endif

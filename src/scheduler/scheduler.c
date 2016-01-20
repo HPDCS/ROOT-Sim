@@ -632,7 +632,6 @@ void schedule(void) {
         msg_t *event;
         void *state;
         bool result_log;
-        bool need_log_group = true;
 
         bool resume_execution = false;
         bool have_group = false;
@@ -820,10 +819,10 @@ void schedule(void) {
 
         // Log the state, if needed
         //if(!(check_start_group(lid) && verify_time_group(lvt(lid)) && current_group->state == GLP_STATE_SILENT_EXEC))
-        if(current_group->state != GLP_STATE_SILENT_EXEC)
+        if(current_group->state != GLP_STATE_SILENT_EXEC && current_group->state != GLP_STATE_WAIT_FOR_LOG)
 		result_log = LogState(lid);
 	
-        if(need_log_group && result_log && check_start_group(lid) && verify_time_group(lvt(lid)) && !is_blocked_state(LPS[lid]->state) && current_group->tot_LP>1){
+        if(result_log && check_start_group(lid) && verify_time_group(lvt(lid)) && !is_blocked_state(LPS[lid]->state) && current_group->tot_LP>1){
                 GLPS[LPS[lid]->current_group]->state = GLP_STATE_WAIT_FOR_LOG;
                 GLPS[LPS[lid]->current_group]->counter_log = GLPS[LPS[lid]->current_group]->tot_LP;
 //		printf("FCKG inside scheduler lid:%d lvt:%f type:%lu have_group:%d\n",lid,lvt(lid),LPS[lid]->bound->type,have_group);

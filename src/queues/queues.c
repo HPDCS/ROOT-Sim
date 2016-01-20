@@ -175,6 +175,8 @@ void process_bottom_halves(void) {
 	msg_t *msg_to_process;
 	msg_t *matched_msg;
 
+restart:
+
 	for(i = 0; i < n_prc_per_thread; i++) {
 
 		while((msg_to_process = (msg_t *)get_BH(LPS_bound[i]->lid)) != NULL) {
@@ -194,7 +196,7 @@ void process_bottom_halves(void) {
 			if(!receive_control_msg(msg_to_process)) {
 //				printf("Control lid:%d type:%lu timestamp:%f\n",msg_to_process->receiver,msg_to_process->type,msg_to_process->timestamp);
 				list_deallocate_node_buffer(lid_receiver, msg_to_process);
-				continue;
+				goto restart;
 			}
 
 			switch (msg_to_process->message_kind) {

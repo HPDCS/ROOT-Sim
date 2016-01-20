@@ -254,8 +254,8 @@ bool receive_control_msg(msg_t *msg) {
 				GLPS[LPS[current_lp]->current_group]->counter_log = GLPS[LPS[current_lp]->current_group]->tot_LP;
 //				printf("FCKG lid:%d current_lvt:%f lvt(%d):%f\n",current_lp,current_lvt,current_lp,lvt(current_lp));	
 				force_checkpoint_group(current_lp);
-				// check if needed
-				//	send_outgoing_msgs(current_lp);
+				
+				send_outgoing_msgs(current_lp);
 			}
 			
 			//Manage counter to cross-state 

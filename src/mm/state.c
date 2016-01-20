@@ -245,7 +245,10 @@ void rollback(unsigned int lid) {
 
 	last_correct_event = LPS[lid]->bound;
 
-	PRINT_DEBUG_GLP_DETAIL printf("[%d] last_corr:%p target_mess:%p\n",lid,last_correct_event, LPS[lid]->target_rollback);	
+	#ifdef HAVE_GLP_SCH_MODULE
+	PRINT_DEBUG_GLP_DETAIL printf("[%d] last_corr:%p\n",lid,last_correct_event);	
+	#endif
+
 	// Send antimessages
 	send_antimessages(lid, last_correct_event->timestamp);
 
