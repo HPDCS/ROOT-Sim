@@ -375,13 +375,13 @@ unsigned long long generate_mark(unsigned int lid) {
 msg_t *list_get_node_timestamp(simtime_t timestamp, unsigned int lid){
 	msg_t *prev = LPS[lid]->bound;
 	while(list_prev(prev)!=NULL && prev->timestamp >= timestamp ){
-		PRINT_DEBUG_GLP{
+		PRINT_DEBUG_GLP_DETAIL{
 			printf("[%d] list_get_node_timestamp timestamp:%f\n",lid,prev->timestamp);
 		}
 		prev = list_prev(prev);
 	}
 	//LPS[lid]->bound = prev;
-		PRINT_DEBUG_GLP{
+		PRINT_DEBUG_GLP_DETAIL{
 			printf("[%d] list_get_node_timestamp SELECTED timestamp:%f\n",lid,prev->timestamp);
 		}
 	return prev;

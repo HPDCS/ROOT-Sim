@@ -191,9 +191,11 @@ bool receive_control_msg(msg_t *msg) {
 			return true;
 
 		case RENDEZVOUS_ACK:
-			if(LPS[msg->receiver]->state == LP_STATE_ROLLBACK) {
+			if(	LPS[msg->receiver]->state == LP_STATE_ROLLBACK ||
+				LPS[msg->receiver]->state == LP_STATE_SILENT_EXEC	
+			) {
 				#ifdef HAVE_GLP_SCH_MODULE
-				PRINT_DEBUG_GLP{
+				PRINT_DEBUG_GLP_DETAIL{
 					printf("*************** R:%d S:%d RM:%llu LPRM:%llu T:%f LVT:%f GRP->state:%d \n ",
 						msg->receiver,
 						msg->sender,
@@ -207,6 +209,10 @@ bool receive_control_msg(msg_t *msg) {
 				#endif
 				break;
 			}
+			
+			if(GLPS[LPS[msg->receiver]->current_group]->state == GLP_STATE_ROLLBACK ||
+				GLPS[LPS[msg->receiver]->current_group]->state == GLP_STATE_SILENT_EXEC)
+				break;
 
 			if(LPS[msg->receiver]->wait_on_rendezvous == msg->rendezvous_mark) {
 				LPS[msg->receiver]->state = LP_STATE_READY_FOR_SYNCH;
@@ -221,7 +227,14 @@ bool receive_control_msg(msg_t *msg) {
 
 		case RENDEZVOUS_UNBLOCK:
 			
-			if(LPS[msg->receiver]->state == LP_STATE_ROLLBACK) break;
+			if(	LPS[msg->receiver]->state == LP_STATE_ROLLBACK ||
+				LPS[msg->receiver]->state == LP_STATE_SILENT_EXEC
+			) 
+				break;
+	
+			if(GLPS[LPS[msg->receiver]->current_group]->state == GLP_STATE_ROLLBACK ||
+				GLPS[LPS[msg->receiver]->current_group]->state == GLP_STATE_SILENT_EXEC)
+				break;
 
 			if(LPS[msg->receiver]->wait_on_rendezvous == msg->rendezvous_mark) {
 				LPS[msg->receiver]->wait_on_rendezvous = 0;
@@ -230,53 +243,53 @@ bool receive_control_msg(msg_t *msg) {
 				#ifdef HAVE_GLP_SCH_MODULE
 				if(	check_start_group(msg->receiver) && 
 					verify_time_group(msg->timestamp) &&  
-					GLPS[LPS[msg->receiver]->current_group]->state != GLP_STATE_WAIT_FOR_LOG
+					GLPS[LPS[msg->receiver]->current_group]->state != GLP_STATE_WAIT_FOR_LOG					
+					
 				)
 					GLPS[LPS[msg->receiver]->current_group]->state = GLP_STATE_READY;
 				#endif
-			}
-			current_lp = msg->receiver;
-			current_lvt = msg->timestamp;
-			force_LP_checkpoint(current_lp);
-			
-			#ifdef HAVE_GLP_SCH_MODULE
-			bool result_log;
-			// Log the state, if needed
-			result_log = LogState(current_lp);
+				current_lp = msg->receiver;
+				current_lvt = msg->timestamp;
+				force_LP_checkpoint(current_lp);
 				
-			if(	result_log && 
-				check_start_group(current_lp) && 
-				verify_time_group(current_lvt) && 
-				GLPS[LPS[current_lp]->current_group]->tot_LP > 1 &&
-				GLPS[LPS[current_lp]->current_group]->state != GLP_STATE_WAIT_FOR_LOG
-			){
-				GLPS[LPS[current_lp]->current_group]->state = GLP_STATE_WAIT_FOR_LOG;
-				GLPS[LPS[current_lp]->current_group]->counter_log = GLPS[LPS[current_lp]->current_group]->tot_LP;
-//				printf("FCKG lid:%d current_lvt:%f lvt(%d):%f\n",current_lp,current_lvt,current_lp,lvt(current_lp));	
-				force_checkpoint_group(current_lp);
+				#ifdef HAVE_GLP_SCH_MODULE
+				bool result_log;
+				// Log the state, if needed
+				result_log = LogState(current_lp);
+					
+				if(	result_log && 
+					check_start_group(current_lp) && 
+					verify_time_group(current_lvt) && 
+					GLPS[LPS[current_lp]->current_group]->tot_LP > 1 &&
+					GLPS[LPS[current_lp]->current_group]->state != GLP_STATE_WAIT_FOR_LOG
+				){
+					GLPS[LPS[current_lp]->current_group]->state = GLP_STATE_WAIT_FOR_LOG;
+					GLPS[LPS[current_lp]->current_group]->counter_log = GLPS[LPS[current_lp]->current_group]->tot_LP;
+	//				printf("FCKG lid:%d current_lvt:%f lvt(%d):%f\n",current_lp,current_lvt,current_lp,lvt(current_lp));	
+					force_checkpoint_group(current_lp);
+					
+					send_outgoing_msgs(current_lp);
+				}
 				
-				send_outgoing_msgs(current_lp);
-			}
-			
-			//Manage counter to cross-state 
-			ECS_stat* temp_update_access = LPS[current_lp]->ECS_stat_table[msg->sender];
-			if(!D_EQUAL(temp_update_access->last_access,-1.0) && ((current_lvt - temp_update_access->last_access) < THRESHOLD_TIME_ECS) )
-				temp_update_access->count_access++;
-			else
-				temp_update_access->count_access = 1;
+				//Manage counter to cross-state 
+				ECS_stat* temp_update_access = LPS[current_lp]->ECS_stat_table[msg->sender];
+				if(!D_EQUAL(temp_update_access->last_access,-1.0) && ((current_lvt - temp_update_access->last_access) < THRESHOLD_TIME_ECS) )
+					temp_update_access->count_access++;
+				else
+					temp_update_access->count_access = 1;
 
-			temp_update_access->last_access = current_lvt;
-			
-			#else
-			
-			LogState(current_lp);		
-	
-			#endif
-			
-			
-			current_lvt = INFTY;
-			current_lp = IDLE_PROCESS;
-	
+				temp_update_access->last_access = current_lvt;
+				
+				#else
+				
+				LogState(current_lp);		
+		
+				#endif
+				
+				
+				current_lvt = INFTY;
+				current_lp = IDLE_PROCESS;
+			}
 			break;
 
 		case RENDEZVOUS_ROLLBACK:
@@ -321,6 +334,11 @@ bool process_control_msg(msg_t *msg) {
 	switch(msg->type) {
 
 		case RENDEZVOUS_START:
+			
+			if(GLPS[LPS[msg->receiver]->current_group]->state == GLP_STATE_ROLLBACK ||
+                                GLPS[LPS[msg->receiver]->current_group]->state == GLP_STATE_SILENT_EXEC)
+				printf("\t ########### \t ERRORE START\n");
+			
 			list_insert(msg->receiver, LPS[msg->receiver]->rendezvous_queue, timestamp, msg);
 			// Place this into input queue
 			LPS[msg->receiver]->wait_on_rendezvous = msg->rendezvous_mark;
@@ -328,7 +346,7 @@ bool process_control_msg(msg_t *msg) {
 			LPS[msg->receiver]->state = LP_STATE_WAIT_FOR_UNBLOCK;
 			#ifdef HAVE_GLP_SCH_MODULE
 			current_group = GLPS[LPS[msg->receiver]->current_group];
-
+		
 			if(check_start_group(msg->receiver) && verify_time_group(msg->timestamp)){
 				PRINT_DEBUG_GLP_DETAIL{
 					printf("GLP[%d] set state WAIT_FOR_UNBLOCK\n",LPS[msg->receiver]->current_group);
@@ -365,10 +383,17 @@ bool process_control_msg(msg_t *msg) {
 		case NULL_LOG_MESSAGE:
 //			printf("[%d] process NULL_LOG_MESSAGE log-counter:%d \n",msg->receiver,GLPS[LPS[msg->receiver]->current_group]->counter_log);
                         #ifdef HAVE_GLP_SCH_MODULE
+			if((GLPS[LPS[msg->receiver]->current_group]->state == GLP_STATE_ROLLBACK ||
+                                GLPS[LPS[msg->receiver]->current_group]->state == GLP_STATE_SILENT_EXEC ||
+				LPS[msg->receiver]->state == LP_STATE_ROLLBACK) &&
+				msg->sender != msg->receiver
+				)
+				printf("\t ########### \t ERRORE NULL LOG MESSAGE\n");
+			
+
+			if(LPS[msg->receiver]->state == LP_STATE_SILENT_EXEC || LPS[msg->receiver]->state == LP_STATE_ROLLBACK) break;
+
 			current_lp = msg->receiver;
-
-			if(LPS[current_lp]->state == LP_STATE_SILENT_EXEC) break;
-
                         current_lvt = msg->timestamp;
 			current_group = GLPS[LPS[msg->receiver]->current_group];
 
@@ -388,6 +413,9 @@ bool process_control_msg(msg_t *msg) {
 
 		case CLOSE_GROUP:
                         #ifdef HAVE_GLP_SCH_MODULE
+			if(GLPS[LPS[msg->receiver]->current_group]->state == GLP_STATE_ROLLBACK ||
+                                GLPS[LPS[msg->receiver]->current_group]->state == GLP_STATE_SILENT_EXEC)
+				printf("\t ########### \t CLOSE GROUP\n");
 			current_lp = msg->receiver;
                         current_lvt = msg->timestamp;
 
@@ -402,11 +430,14 @@ bool process_control_msg(msg_t *msg) {
 
 		case SYNCH_GROUP:
 			#ifdef HAVE_GLP_SCH_MODULE
-			
+			if(GLPS[LPS[msg->receiver]->current_group]->state == GLP_STATE_ROLLBACK ||
+                                GLPS[LPS[msg->receiver]->current_group]->state == GLP_STATE_SILENT_EXEC)
+				break;
+	
 			current_lp = msg->receiver;
 			current_lvt = msg->timestamp;
 			current_group = GLPS[LPS[msg->receiver]->current_group];
-			PRINT_DEBUG_GLP printf("LP[%d] SYNCH GROUP GLP_state %lu counter:%d \n",msg->receiver,current_group->state,current_group->counter_synch);
+			PRINT_DEBUG_GLP_DETAIL printf("LP[%d] SYNCH GROUP GLP_state %lu counter:%d \n",msg->receiver,current_group->state,current_group->counter_synch);
 
 			// Execute another time this event because i rolled back, 
 			// but in this case i'm already in group execution

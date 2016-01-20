@@ -50,6 +50,7 @@ void reset_flag_counter_synch(unsigned int group){
 	LP_state **list = current_group->local_LPS;	
         for(i=0;i<current_group->tot_LP;i++){
 		list[i]->updated_counter = false;
+		list[i]->target_rollback = NULL;
 	}
 	
 	
@@ -64,7 +65,7 @@ void reset_synch_counter(unsigned int lid){
 			D_EQUAL(temp_LP->bound->timestamp,current_group->initial_group_time->timestamp)) &&*/
 	  	temp_LP->updated_counter
 	    ){
-		PRINT_DEBUG_GLP{
+		PRINT_DEBUG_GLP_DETAIL{
 			printf("DEC COUNTER LP:%d GLP:%d Type:%d counter:%d \n",lid,LPS[lid]->current_group,temp_LP->bound->type,current_group->counter_synch);
 		}
 		current_group->counter_synch--;	
@@ -105,7 +106,7 @@ void check_rollback_group(msg_t *straggler, unsigned int lid, simtime_t lvt_rece
 
                         if(check_start_group(lid) &&  verify_time_group(LPS[lid]->bound->timestamp)){
                                 if(straggler->timestamp <= lvt_receiver){
-                               		PRINT_DEBUG_GLP{
+                              		PRINT_DEBUG_GLP{
 						printf("RGB [NEGATIVE] T:%f S:%d R:%d\n",
 							LPS[lid]->bound->timestamp, straggler->sender, lid);
 					}
@@ -159,16 +160,16 @@ void rollback_group(msg_t *straggler, unsigned int receiver){
 					if(LPS[receiver]->target_rollback == NULL){
 						rootsim_error(true,"Target rollback NULL\n");
 					}
-				PRINT_DEBUG_GLP	printf("R Mex:%f\n",LPS[receiver]->target_rollback->timestamp);
+				PRINT_DEBUG_GLP_DETAIL	printf("R Mex:%f\n",LPS[receiver]->target_rollback->timestamp);
 			}
 			LPS[receiver]->bound = LPS[receiver]->target_rollback;
 	        	current_group->lvt = LPS[receiver]->target_rollback;
-			PRINT_DEBUG_GLP	printf("LP[%d] Selected_targhet_rollback:%f\n",receiver,LPS[receiver]->target_rollback->timestamp);
                 }
                 else{
 			LPS[receiver]->target_rollback = LPS[receiver]->bound;
 	        	current_group->lvt = LPS[receiver]->target_rollback;
 		}
+		PRINT_DEBUG_GLP	printf("LP[%d] Selected_targhet_rollback:%f\n",receiver,LPS[receiver]->target_rollback->timestamp);
 	}
 	
 	for(i=0; i<current_group->tot_LP; i++){
@@ -189,10 +190,9 @@ void rollback_group(msg_t *straggler, unsigned int receiver){
 					if(local_LP->target_rollback == NULL){
 						rootsim_error(true,"Target rollback NULL\n");
 					}
-					PRINT_DEBUG_GLP	printf("Mex:%f\n",local_LP->target_rollback->timestamp);
+					PRINT_DEBUG_GLP_DETAIL	printf("Mex:%f\n",local_LP->target_rollback->timestamp);
 				}
 				local_LP->bound = local_LP->target_rollback;
-				PRINT_DEBUG_GLP	printf("Selected:%f\n",local_LP->bound->timestamp);
 			}
 			else{
 				local_LP->bound = list_get_node_timestamp(straggler->timestamp,local_LP->lid);
@@ -203,8 +203,8 @@ void rollback_group(msg_t *straggler, unsigned int receiver){
 			if(current_group->lvt == NULL || current_group->lvt->timestamp < local_LP->target_rollback->timestamp)
 				current_group->lvt = local_LP->target_rollback;
                        	
-			local_LP->state = LP_STATE_ROLLBACK;
 		}
+		local_LP->state = LP_STATE_ROLLBACK;
 	}
 	
 	if(current_group->initial_group_time->timestamp >= straggler->timestamp && check_start_group(local_LP->lid)){
@@ -213,6 +213,8 @@ void rollback_group(msg_t *straggler, unsigned int receiver){
 		}
 		current_group->state = GLP_STATE_WAIT_FOR_GROUP;
 	        current_group->counter_synch = 0;
+	        current_group->counter_rollback = 0;
+       		current_group->counter_silent_ex = 0;
 		reset_flag_counter_synch(LPS[straggler->receiver]->current_group);
 	}
 	else{
@@ -277,13 +279,13 @@ bool check_postpone_synch_message(unsigned int lid){
 			LPS[lid]->bound = list_prev(LPS[lid]->bound);
 			msg = list_extract_by_content(lid,LPS[lid]->queue_in,old_bound);
 			list_insert(lid,LPS[lid]->queue_in,timestamp,msg);
-			PRINT_DEBUG_GLP{	
+			PRINT_DEBUG_GLP_DETAIL{	
 				printf("Before state:%d\n",LPS[lid]->state);
 			}
 			LPS[lid]->state = LP_STATE_READY;
 			GLPS[LPS[lid]->current_group]->counter_synch--;
 			LPS[lid]->updated_counter = false;
-			PRINT_DEBUG_GLP{
+			PRINT_DEBUG_GLP_DETAIL{
 				printf("Inside check_postpone LP:%d \n",lid);
 			}
 			return true;
@@ -308,6 +310,12 @@ bool check_state_group(unsigned int lid_bound){
 		verify_time_group(lvt(temp_LP->lid))
 		);
 */	
+        if(temp_LP->state == LP_STATE_SILENT_EXEC && current_group->state == GLP_STATE_ROLLBACK)
+                return true;
+
+	if(temp_LP->state == LP_STATE_SILENT_EXEC && current_group->tot_LP > 1 && current_group->state != GLP_STATE_SILENT_EXEC)
+		printf("1 Errore LP[%d]\n",temp_LP->lid);
+
 	if(temp_LP->state == LP_STATE_WAIT_FOR_GROUP){
         	if(current_group->state == GLP_STATE_WAIT_FOR_GROUP){
 			if(check_postpone_synch_message(temp_LP->lid)){
@@ -350,9 +358,9 @@ bool check_state_group(unsigned int lid_bound){
                 return true;
         }
 
-        if(temp_LP->state == LP_STATE_SILENT_EXEC && current_group->state == GLP_STATE_ROLLBACK)
-                return true;
 
+	if(temp_LP->state == LP_STATE_SILENT_EXEC && (current_group->counter_rollback !=0 || current_group->state != GLP_STATE_SILENT_EXEC))
+		printf("Errore LP[%d]\n",temp_LP->lid);
 
         return false;
 
@@ -392,18 +400,21 @@ void check_lvt_group(unsigned int lid){
 
 void print_blocked_group(void){
 	unsigned int i,j =0;
-	GLP_state current_group;
-	LP_state mate;
+	GLP_state *current_group;
+	LP_state *mate;
 
 	for(j=0;j<n_grp;j++){
 		current_group = GLPS[j];		
-		if(is_blocked_state(current_group->state) || GLP_STATE_READY_FOR_SYNCH==current_group->state || GLP_STATE_WAIT_FOR_LOG==current_group->state){
-			printf("GLP[%d] state:%d RC:%d SYC:%d SIC:%d \t LP:",j,current_group->state,
+	//	if(GLP_STATE_READY !=current_group->state && current_group->tot_LP>0){
+		if(GLP_STATE_ROLLBACK ==current_group->state && current_group->tot_LP>1){
+			printf("GLP[%d] state:%d RC:%d SYC:%d SIC:%d \t LP:",
+				j,
+				current_group->state,
 				current_group->counter_rollback,
 				current_group->counter_synch,
-				current_group->counter_silent_exe
+				current_group->counter_silent_ex
 			);
-			fori(i=0;i<current_group->tot_LP;i++){
+			for(i=0;i<current_group->tot_LP;i++){
 				mate = current_group->local_LPS[i];
 				printf("%d state:%d ",mate->lid,mate->state);
 			}

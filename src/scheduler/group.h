@@ -92,4 +92,4 @@ extern void insert_lp_group(GLP_state*, unsigned int);
 extern simtime_t get_delta_group(void);
 extern void check_state_order(unsigned int);
 extern void check_lvt_group(unsigned int);
-export void print_blocked_group(void);
+extern void print_blocked_group(void);

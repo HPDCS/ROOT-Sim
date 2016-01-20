@@ -87,7 +87,7 @@ void ECS(long long ds, unsigned long long hitted_object){
 	}
 
 #ifdef HAVE_GLP_SCH_MODULE
-	PRINT_DEBUG_GLP{
+	PRINT_DEBUG_GLP_DETAIL{
 		printf("LP[%d] hits %llu rende_mark:%llu LP_wait_on_rende:%llu\n",current_lp, hitted_object, current_evt->rendezvous_mark,LPS[current_lp]->wait_on_rendezvous);
 	}
 	
@@ -136,13 +136,13 @@ void ECS(long long ds, unsigned long long hitted_object){
 	current_group = GLPS[LPS[current_lp]->current_group];
 	
 	if(check_start_group(current_lp) && verify_time_group(current_lvt)){
-		PRINT_DEBUG_GLP{
+		PRINT_DEBUG_GLP_DETAIL{
 			printf("GLP[%d] set state WAIT_FOR_SYNCH\n",LPS[current_lp]->current_group);
 		}
 		current_group->state = GLP_STATE_WAIT_FOR_SYNCH;
 	}
 	else{
-		PRINT_DEBUG_GLP{
+		PRINT_DEBUG_GLP_DETAIL{
 			printf("Not update LP:%d G[%d] G-STATE:%d ECS CSG:%d VTG:%d \n",
 			current_lp,
 			LPS[current_lp]->current_group,

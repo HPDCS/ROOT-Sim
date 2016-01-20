@@ -172,6 +172,10 @@ unsigned int silent_execution(unsigned int lid, void *state_buffer, msg_t *evt, 
 	unsigned int events = 0;
 	unsigned short int old_state;
 
+
+	if(GLPS[LPS[lid]->current_group]->counter_rollback != 0)
+		printf("ERRORE SILENT\n");
+
 	// current state can be either idle READY, BLOCKED or ROLLBACK, so we save it and then put it back in place
 	old_state = LPS[lid]->state;
 	LPS[lid]->state = LP_STATE_SILENT_EXEC;
@@ -282,6 +286,7 @@ void rollback(unsigned int lid) {
 		}
 		statistics_post_lp_data(lid, STAT_SILENT, (double)reprocessed_events);
 		if(GLPS[LPS[lid]->current_group]->state == GLP_STATE_ROLLBACK){
+			printf("INSIDE SILENT\n");
 			GLPS[LPS[lid]->current_group]->counter_rollback--;
 			if(GLPS[LPS[lid]->current_group]->counter_rollback == 0)
 				GLPS[LPS[lid]->current_group]->state = GLP_STATE_SILENT_EXEC;
@@ -289,7 +294,9 @@ void rollback(unsigned int lid) {
 		}
 	}
 	else{
-		PRINT_DEBUG_GLP{
+		if(LPS[lid]->target_rollback != last_restored_event)
+			LPS[lid]->bound = last_restored_event;
+		PRINT_DEBUG_GLP_DETAIL{
 			printf("LP[%d] CST:%d VTG:%d T:%f \n",
 				lid,
 				check_start_group(lid),

@@ -643,7 +643,7 @@ static inline void GLP_knapsack(void) {
 		}
 		printf("\n");
 	}
-	PRINT_DEBUG_GLP{
+	PRINT_DEBUG_GLP_DETAIL{
 	for(j = 0; j < n_prc; j++) {
                 printf("LP[%d]-G[%d]\n",j,new_group_LPS[j]);
         }
@@ -695,7 +695,7 @@ static void send_control_group_message(void) {
 				if(lp_index == temp_GLPS->initial_group_time->receiver){
 					update_IGT(temp_GLPS->initial_group_time,&control_msg);
 				}		
-				PRINT_DEBUG_GLP{	
+				PRINT_DEBUG_GLP_DETAIL{	
 					printf("SENDED SYNCH MESSAGE TO %d timestamp:%f FAG:%f \n",lp_index,temp_GLPS->initial_group_time->timestamp,future_end_group());
 				}
 

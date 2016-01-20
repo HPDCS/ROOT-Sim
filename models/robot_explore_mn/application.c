@@ -48,7 +48,7 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
 				agent->map = ALLOCATE_BITMAP(get_tot_regions());
 				BITMAP_BZERO(agent->map,get_tot_regions());
 
-				agent->group = calloc(get_tot_agents(),sizeof(unsigned char *));
+				agent->group = calloc(n_prc_tot,sizeof(unsigned char *));
 				agent->group[me] = agent->map;
 				agent->count = 0;
 
