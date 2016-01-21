@@ -2,8 +2,6 @@
 
 #include <stdbool.h>
 
-#define ECS_TEST
-//#define TEST_CASE
 
 #define DESTINATION 		1		//Message used by Region to communicate to the Agent the next destination
 #define ENTER 			2		//Message used by Agent for communicating its arrival	
@@ -62,7 +60,6 @@ typedef struct lp_region_t{
 
         #ifdef ECS_TEST 
         lp_agent_t **guests;                 //Vector that stores pointers of agent guest map
-	double* time;
         #else
         unsigned char *map;
         #endif
@@ -96,13 +93,13 @@ typedef struct complete_content_t {
 } complete_t;
 
 
-
-extern unsigned int get_tot_regions(void);
-extern unsigned int get_tot_agents(void);
-extern unsigned char get_obstacles(void);
-extern unsigned int get_region(unsigned int me, unsigned int obstacle,unsigned int agent);
-extern bool check_termination(lp_agent_t *);
-extern bool is_agent(unsigned int);
-extern  double percentage(lp_agent_t *agent);
-extern unsigned int random_region(void);
-extern void send_updated_info(lp_agent_t*);
+extern unsigned int get_tot_regions(void);							//Return the number of regions
+extern unsigned int get_tot_agents(void);							//Return the number of agents
+extern unsigned char get_obstacles(void);							//Generate obstacles
+extern unsigned int get_region(unsigned int me, unsigned int obstacle,unsigned int agent);	//Return the next region
+extern bool check_termination(lp_agent_t *);							//Check the termiantion condiction
+extern bool is_agent(unsigned int);								//Verify if the current LP is an agent
+extern double percentage(lp_agent_t *agent);							//Compute the execution percentage
+extern unsigned int random_region(void);							//Retunr a random region
+extern void send_updated_info(lp_agent_t*);							//Notify the group of new discoveries
+extern void copy_map(unsigned char*, int, unsigned char*);

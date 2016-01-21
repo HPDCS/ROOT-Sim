@@ -209,10 +209,11 @@ bool receive_control_msg(msg_t *msg) {
 				#endif
 				break;
 			}
-			
+			#ifdef HAVE_GLP_SCH_MODULE	
 			if(GLPS[LPS[msg->receiver]->current_group]->state == GLP_STATE_ROLLBACK ||
 				GLPS[LPS[msg->receiver]->current_group]->state == GLP_STATE_SILENT_EXEC)
 				break;
+			#endif
 
 			if(LPS[msg->receiver]->wait_on_rendezvous == msg->rendezvous_mark) {
 				LPS[msg->receiver]->state = LP_STATE_READY_FOR_SYNCH;
@@ -231,10 +232,12 @@ bool receive_control_msg(msg_t *msg) {
 				LPS[msg->receiver]->state == LP_STATE_SILENT_EXEC
 			) 
 				break;
-	
+			
+			#ifdef HAVE_GLP_SCH_MODULE	
 			if(GLPS[LPS[msg->receiver]->current_group]->state == GLP_STATE_ROLLBACK ||
 				GLPS[LPS[msg->receiver]->current_group]->state == GLP_STATE_SILENT_EXEC)
 				break;
+			#endif
 
 			if(LPS[msg->receiver]->wait_on_rendezvous == msg->rendezvous_mark) {
 				LPS[msg->receiver]->wait_on_rendezvous = 0;
@@ -335,9 +338,11 @@ bool process_control_msg(msg_t *msg) {
 
 		case RENDEZVOUS_START:
 			
+			#ifdef HAVE_GLP_SCH_MODULE
 			if(GLPS[LPS[msg->receiver]->current_group]->state == GLP_STATE_ROLLBACK ||
                                 GLPS[LPS[msg->receiver]->current_group]->state == GLP_STATE_SILENT_EXEC)
 				printf("\t ########### \t ERRORE START\n");
+			#endif
 			
 			list_insert(msg->receiver, LPS[msg->receiver]->rendezvous_queue, timestamp, msg);
 			// Place this into input queue
@@ -437,7 +442,7 @@ bool process_control_msg(msg_t *msg) {
 			current_lp = msg->receiver;
 			current_lvt = msg->timestamp;
 			current_group = GLPS[LPS[msg->receiver]->current_group];
-			PRINT_DEBUG_GLP_DETAIL printf("LP[%d] SYNCH GROUP GLP_state %lu counter:%d \n",msg->receiver,current_group->state,current_group->counter_synch);
+			PRINT_DEBUG_GLP_DETAIL printf("LP[%d] SYNCH GROUP GLP_state %d counter:%d \n",msg->receiver,current_group->state,current_group->counter_synch);
 
 			// Execute another time this event because i rolled back, 
 			// but in this case i'm already in group execution

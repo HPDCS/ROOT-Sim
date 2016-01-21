@@ -446,11 +446,13 @@ void activate_LP(unsigned int lp, simtime_t lvt, void *evt, void *state) {
 	current_lvt = lvt;
 	current_evt = evt;
 	current_state = state;
-
+	
+	#ifdef HAVE_GLP_SCH_MODULE
 	if(LPS[current_lp]->target_rollback != NULL && LPS[current_lp]->state != LP_STATE_SILENT_EXEC && lvt < LPS[current_lp]->target_rollback->timestamp
 		&& GLPS[LPS[current_lp]->current_group]->state != GLP_STATE_SILENT_EXEC && check_start_group(current_lp) && verify_time_group(lvt)
 	)
 		printf("ERRORE ROLLBACK\n");
+	#endif
 
 //	#ifdef HAVE_PREEMPTION
 //	if(!rootsim_config.disable_preemption)
@@ -639,7 +641,6 @@ void schedule(void) {
         bool result_log;
 
         bool resume_execution = false;
-        bool have_group = false;
         GLP_state *current_group;
 
 
@@ -661,18 +662,15 @@ void schedule(void) {
         }
 
 	if(LPS[lid]->bound != NULL && list_next(LPS[lid]->bound) != NULL && 
-		list_next(LPS[lid]->bound)->timestamp < LPS[lid]->bound->timestamp)
+		list_next(LPS[lid]->bound)->timestamp < LPS[lid]->bound->timestamp){
+		printf("Errore scheduler. Aborting ...\n");
+		fflush(stdout);
 		abort();
+	
+	}
 
         current_group = GLPS[LPS[lid]->current_group];
 
-        if(check_start_group(lid) && verify_time_group(lvt(lid))){
-//		printf("[%d] HAVE GROUP state:%d state_LP:%d\n",lid,current_group->state,LPS[lid]->state);
-//		if(LPS[lid]->state == LP_STATE_WAIT_FOR_GROUP || LPS[lid]->state == LP_STATE_WAIT_FOR_LOG)
-//			LPS[lid]->state = LP_STATE_READY;
-		have_group = true;
-	}
-        
 	// If we have to rollback
         if(LPS[lid]->state == LP_STATE_ROLLBACK) {
 		

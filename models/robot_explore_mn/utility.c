@@ -183,6 +183,7 @@ double percentage(lp_agent_t *agent){
 	return result;
 }
 
+#ifndef ECS_TEST
 void copy_map(unsigned char *pointer, int n, unsigned char (vector)[n]){
 	unsigned int i;
 	
@@ -193,7 +194,7 @@ void copy_map(unsigned char *pointer, int n, unsigned char (vector)[n]){
 			BITMAP_SET_BIT(vector,i);
 	}
 }
-
+#else
 void send_updated_info(lp_agent_t *agent){	
 	unsigned char *group_map;
 	BITMAP_SET_BIT(agent->map,agent->region);
@@ -216,3 +217,4 @@ void send_updated_info(lp_agent_t *agent){
 		if(BITMAP_CHECK_BIT(agent->map,j))
                         agent->count++;
 } 
+#endif

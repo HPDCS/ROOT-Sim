@@ -172,9 +172,10 @@ unsigned int silent_execution(unsigned int lid, void *state_buffer, msg_t *evt, 
 	unsigned int events = 0;
 	unsigned short int old_state;
 
-
+	#ifdef HAVE_GLP_SCH_MODULE
 	if(GLPS[LPS[lid]->current_group]->counter_rollback != 0)
 		printf("ERRORE SILENT\n");
+	#endif
 
 	// current state can be either idle READY, BLOCKED or ROLLBACK, so we save it and then put it back in place
 	old_state = LPS[lid]->state;

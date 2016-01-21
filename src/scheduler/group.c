@@ -377,12 +377,10 @@ simtime_t get_delta_group(void){
 
 void check_state_order(unsigned int lid){
 	state_t *restore_state;
-	state_t *s=NULL;
 	
 	restore_state = list_tail(LPS[lid]->queue_states);
         while (restore_state != NULL) {
                 printf("[%d] State: %f\n",lid,restore_state->lvt);
-                s = restore_state;
                 restore_state = list_prev(restore_state);
         }
 }
