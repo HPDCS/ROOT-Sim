@@ -2,6 +2,7 @@
 
 #include <stdbool.h>
 
+#define ECS_TEST
 
 #define DESTINATION 		1		//Message used by Region to communicate to the Agent the next destination
 #define ENTER 			2		//Message used by Agent for communicating its arrival	

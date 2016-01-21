@@ -1,4 +1,3 @@
-#define ECS_TEST
 
 #include <ROOT-Sim.h>
 #include <strings.h>

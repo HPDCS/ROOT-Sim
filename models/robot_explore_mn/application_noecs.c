@@ -55,6 +55,8 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
                         timestamp = (simtime_t)(20 * Random());
 
 			if(is_agent(me)){
+				bzero(&enter, sizeof(enter));
+				bzero(&exit, sizeof(exit));
 				BITMAP_SET_BIT(agent->map,agent->region);
 				agent->count++;
 				
@@ -78,6 +80,7 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
 
                 case PING:
 		//	DEBUG printf("Send PING\n");
+			for(j = 0; j < 100000; j++);
                         ScheduleNewEvent(me, now + Expent(DELAY), PING, NULL, 0);
 			break;
 
@@ -98,6 +101,7 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
 			break;
 
 		case EXIT: 
+			bzero(&destination, sizeof(destination));
 			exit_p = (exit_t *) content;
 			region = (lp_region_t *) state;
 			
@@ -116,6 +120,8 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
 			break;
 
 		case DESTINATION: 
+			bzero(&enter, sizeof(enter));
+			bzero(&exit, sizeof(exit));
 			destination_p = (destination_t *) content;
 			agent = (lp_agent_t *) state;
 			
@@ -130,6 +136,7 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
 			}
 				
 			if(check_termination(agent)){
+				bzero(&complete, sizeof(complete));
 				agent->complete = true;
 	                        
 				complete.agent = me;
@@ -162,6 +169,7 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
 			break;
 
 		case COMPLETE:
+			bzero(&complete, sizeof(complete));
 			complete_p = (complete_t *) content;
 			if(is_agent(me)){
 				agent = (lp_agent_t *) state;
