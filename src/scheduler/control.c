@@ -192,7 +192,7 @@ bool receive_control_msg(msg_t *msg) {
 
 		case RENDEZVOUS_ACK:
 
-			printf("(%d) matched mark:%llu WOR:%llu state:%d from %d\n",msg->receiver, msg->rendezvous_mark,LPS[msg->receiver]->wait_on_rendezvous, LPS[msg->receiver]->state, msg->sender);
+//			printf("(%d) matched mark:%llu WOR:%llu state:%d from %d\n",msg->receiver, msg->rendezvous_mark,LPS[msg->receiver]->wait_on_rendezvous, LPS[msg->receiver]->state, msg->sender);
 			
 			if(	LPS[msg->receiver]->state == LP_STATE_ROLLBACK ||
 				LPS[msg->receiver]->state == LP_STATE_SILENT_EXEC	
@@ -234,7 +234,7 @@ bool receive_control_msg(msg_t *msg) {
 			if(	LPS[msg->receiver]->state == LP_STATE_ROLLBACK ||
 				LPS[msg->receiver]->state == LP_STATE_SILENT_EXEC
 			)  {
-				printf("(%d) discarding mark %llu\n",msg->receiver, msg->rendezvous_mark);
+//				printf("(%d) discarding mark %llu\n",msg->receiver, msg->rendezvous_mark);
 				break;
 			}
 			
@@ -246,7 +246,7 @@ bool receive_control_msg(msg_t *msg) {
 
 			if(LPS[msg->receiver]->wait_on_rendezvous == msg->rendezvous_mark) {
 
-				printf("(%d) matched mark %llu from %d\n",msg->receiver, msg->rendezvous_mark, msg->sender);
+//				printf("(%d) matched mark %llu from %d\n",msg->receiver, msg->rendezvous_mark, msg->sender);
 
 				LPS[msg->receiver]->wait_on_rendezvous = 0;
 				LPS[msg->receiver]->wait_on_object = 0;
@@ -301,7 +301,7 @@ bool receive_control_msg(msg_t *msg) {
 				current_lvt = INFTY;
 				current_lp = IDLE_PROCESS;
 			} else {
-				printf("(%d) wait on rendezvous: %llu - mark: %llu - unblock from %d\n",msg->receiver, LPS[msg->receiver]->wait_on_rendezvous, msg->rendezvous_mark, msg->sender);
+//				printf("(%d) wait on rendezvous: %llu - mark: %llu - unblock from %d\n",msg->receiver, LPS[msg->receiver]->wait_on_rendezvous, msg->rendezvous_mark, msg->sender);
 			}
 			break;
 

@@ -87,7 +87,7 @@ void fossil_collection(unsigned int lid, simtime_t time_barrier) {
 */
 simtime_t adopt_new_gvt(simtime_t new_gvt) {
 
-	printf("(%d) adopt new gvt: %f\n", tid, new_gvt);
+//	printf("(%d) adopt new gvt: %f\n", tid, new_gvt);
 
 	register unsigned int i;
 

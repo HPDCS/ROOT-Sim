@@ -196,8 +196,8 @@ restart:
 			if(!receive_control_msg(msg_to_process)) {
 //				printf("Control lid:%d type:%lu timestamp:%f\n",msg_to_process->receiver,msg_to_process->type,msg_to_process->timestamp);
 				list_deallocate_node_buffer(lid_receiver, msg_to_process);
-//				goto restart;
-				continue;
+				goto restart;
+//				continue;
 			}
 
 			switch (msg_to_process->message_kind) {
@@ -213,9 +213,9 @@ restart:
 						matched_msg = list_prev(matched_msg);
 					}
 
-					if(matched_msg->type == RENDEZVOUS_START) {
-						printf("matched START from %d to %d mark %llu rendezvous_mark %llu\n", matched_msg->sender, matched_msg->receiver, matched_msg->mark, matched_msg->rendezvous_mark);
-					}
+//					if(matched_msg->type == RENDEZVOUS_START) {
+//						printf("matched START from %d to %d mark %llu rendezvous_mark %llu\n", matched_msg->sender, matched_msg->receiver, matched_msg->mark, matched_msg->rendezvous_mark);
+//					}
 
 					if(matched_msg == NULL) {
 						rootsim_error(false, "LP %d Received an antimessage with mark %llu at LP %u from LP %u, but no such mark found in the input queue!\n", LPS_bound[i]->lid, msg_to_process->mark, msg_to_process->receiver, msg_to_process->sender);
@@ -243,9 +243,9 @@ restart:
 						// If the matched message is in the past, we have to rollback
 						if(matched_msg->timestamp <= lvt(lid_receiver)) {
 						// TODO understand if is correct IDLE_PROCESS
-							if(matched_msg->type == RENDEZVOUS_START) {
-								printf("straggler START antimessage mark %llu rmark %llu\n", matched_msg->mark, matched_msg->rendezvous_mark);
-							}
+//							if(matched_msg->type == RENDEZVOUS_START) {
+//								printf("straggler START antimessage mark %llu rmark %llu\n", matched_msg->mark, matched_msg->rendezvous_mark);
+//							}
 							
 							#ifdef HAVE_GLP_SCH_MODULE
 							PRINT_DEBUG_GLP{	

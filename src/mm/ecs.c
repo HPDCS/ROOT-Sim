@@ -136,9 +136,9 @@ void ECS(long long ds, unsigned long long hitted_object){
 	msg_hdr.rendezvous_mark = control_msg.rendezvous_mark;
 	(void)list_insert(current_lp, LPS[current_lp]->queue_out, send_time, &msg_hdr);
 
-	fprintf(stdout, "placing a START message in output queue from %d to %d at %f sendtime %f mark %llu rendezvous %llu\n",
-			msg_hdr.sender, msg_hdr.receiver, msg_hdr.timestamp, msg_hdr.send_time, msg_hdr.mark, msg_hdr.rendezvous_mark
-		);
+//	fprintf(stdout, "placing a START message in output queue from %d to %d at %f sendtime %f mark %llu rendezvous %llu\n",
+//			msg_hdr.sender, msg_hdr.receiver, msg_hdr.timestamp, msg_hdr.send_time, msg_hdr.mark, msg_hdr.rendezvous_mark
+//		);
 
 
 	// Block the execution of this LP
