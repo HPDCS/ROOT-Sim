@@ -251,11 +251,8 @@ state_t *find_time_barrier(int lid, simtime_t simtime) {
 	while (barrier_state != NULL && barrier_state->lvt >= simtime) {
 		barrier_state = list_prev(barrier_state);
   	}
-  	if(barrier_state == NULL)
+  	if(barrier_state == NULL) {
 		barrier_state = list_head(LPS[lid]->queue_states);
-
-	if (barrier_state->lvt > simtime) {
-		rootsim_error(true, "Time barrier=%f, found for LP %d. Greater than gvt=%f! Aborting...\n", barrier_state->lvt, lid, simtime);
 	}
 
 /*
@@ -269,19 +266,6 @@ state_t *find_time_barrier(int lid, simtime_t simtime) {
 
 	return barrier_state;
 }
-
-
-state_t *update_time_barrier(unsigned int lid, state_t *current, simtime_t minimum) {
-	while(current != NULL && current->lvt > minimum) {
-		current = list_prev(current);
-	}
-
-	if(current == NULL) {
-		printf("Cannot sanitize the time barrier for lid %d\n", lid);
-	}
-}
-
-
 
 /**
 * This function sets the buffer of the current LP's state

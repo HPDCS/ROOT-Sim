@@ -83,7 +83,7 @@ void fossil_collection(unsigned int lid, simtime_t time_barrier) {
 *
 * @author Francesco Quaglia
 */
-simtime_t adopt_new_gvt(simtime_t new_gvt, state_t **time_barrier_pointer) {
+simtime_t adopt_new_gvt(simtime_t new_gvt, simtime_t new_min_barrier) {
 	register unsigned int i;
 	unsigned int lid;
 
@@ -104,7 +104,7 @@ simtime_t adopt_new_gvt(simtime_t new_gvt, state_t **time_barrier_pointer) {
 	for (i = 0; i < n_prc_per_thread; i++) {
 		lid = LPS_bound[i]->lid;
 
-		time_barrier_pointer[lid] = update_time_barrier(lid, time_barrier_pointer[lid], local_time_barrier);
+		time_barrier_pointer[i] = find_time_barrier(LPS_bound[i]->lid, new_min_barrier);
 
 		// TODO: forse non serve il check su NULL
 		if(time_barrier_pointer[i] == NULL) {
