@@ -79,6 +79,9 @@ static atomic_t counter_end;
  */
 static volatile unsigned int GVT_flag = 0;
 
+/// Pointers to the barrier states of the bound LPs
+static state_t **time_barrier_pointer;
+
 
 /** Keep track of the last computed gvt value. Its a per-thread variable
  * to avoid synchronization on it, but eventually all threads write here
@@ -91,10 +94,6 @@ static volatile unsigned int GVT_flag = 0;
 static __thread simtime_t last_gvt = 0.0;
 static __thread simtime_t adopted_last_gvt = 0.0;
 
-
-
-/* Per-thread private data */
-
 /// What is my phase? All threads start in the initial phase
 static __thread enum gvt_phases my_phase = phase_A;
 
@@ -103,9 +102,6 @@ static __thread unsigned int my_GVT_round = 0;
 
 /// The local (per-thread) minimum. It's not TLS, rather an array, to allow reduction by master thread
 static simtime_t *local_min;
-
-
-
 
 
 
@@ -122,6 +118,7 @@ void gvt_init(void) {
 
 	// Initialize the local minima
 	local_min = malloc(sizeof(simtime_t) * n_cores);
+	time_barrier_pointer = malloc(sizeof(state_t *) * n_prc);
 	for(i = 0; i < n_cores; i++) {
 		local_min[i] = INFTY;
 	}
@@ -253,6 +250,9 @@ simtime_t gvt_operations(void) {
 				}
 
 				local_min[tid] = min(local_min[tid], LPS_bound[i]->bound->timestamp);
+
+				// First approximation of the time barrier (will be refined later)
+				time_barrier_pointer[i] = find_time_barrier(i, LPS_bound[i]->bound->timestamp);
 			}
 
 			my_phase = phase_aware;
@@ -268,8 +268,6 @@ simtime_t gvt_operations(void) {
 				new_gvt = min(local_min[i], new_gvt);
 			}
 
-			my_phase = phase_end;
-
 			atomic_dec(&counter_aware);
 
 			if(atomic_read(&counter_aware) == 0) {
@@ -283,10 +281,12 @@ simtime_t gvt_operations(void) {
 			// thread. To check for termination based on simulation time,
 			// this variable must be explicitly inspected using
 			// get_last_gvt()
-			adopted_last_gvt = adopt_new_gvt(new_gvt);
+			adopted_last_gvt = adopt_new_gvt(new_gvt, time_barrier_pointer);
 
 			// Dump statistics
 			statistics_post_other_data(STAT_GVT, new_gvt);
+
+			my_phase = phase_end;
 
 			return last_gvt;
 		}

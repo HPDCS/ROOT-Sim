@@ -37,7 +37,6 @@
 /// Counter for the invocations of adopt_new_gvt. This is used to determine whether a consistent state must be reconstructed
 static unsigned long long snapshot_cycles;
 
-
 /**
 * Determine which snapshots in the state queue can be free'd because are placed before the current time barrier.
 *
@@ -84,11 +83,10 @@ void fossil_collection(unsigned int lid, simtime_t time_barrier) {
 *
 * @author Francesco Quaglia
 */
-simtime_t adopt_new_gvt(simtime_t new_gvt) {
-
+simtime_t adopt_new_gvt(simtime_t new_gvt, state_t **time_barrier_pointer) {
 	register unsigned int i;
+	unsigned int lid;
 
-	state_t *time_barrier_pointer[n_prc_per_thread];
 	simtime_t local_time_barrier = INFTY;
 	simtime_t lp_time_barrier;
 	bool compute_snapshot;
@@ -97,15 +95,25 @@ simtime_t adopt_new_gvt(simtime_t new_gvt) {
 	snapshot_cycles++;
 	compute_snapshot = ((snapshot_cycles % rootsim_config.gvt_snapshot_cycles) == 0);
 
+	// Reduce the global minimum for the time barriers
+	for(i = 0; i < n_prc; i++) {
+		local_time_barrier = min(local_time_barrier, time_barrier_pointer[i]->lvt);
+	}
+
 	// Precompute the time barrier for each process
 	for (i = 0; i < n_prc_per_thread; i++) {
+		lid = LPS_bound[i]->lid;
 
-		time_barrier_pointer[i] = find_time_barrier(LPS_bound[i]->lid, new_gvt);
+		time_barrier_pointer[lid] = update_time_barrier(lid, time_barrier_pointer[lid], local_time_barrier);
 
-		if(time_barrier_pointer[i] == NULL)
+		// TODO: forse non serve il check su NULL
+		if(time_barrier_pointer[i] == NULL) {
 			lp_time_barrier = 0.0;
-		else
+		} else {
 			lp_time_barrier = time_barrier_pointer[i]->lvt;
+		}
+
+		// TODO: serve?
 		if (lp_time_barrier > -1) {
 			local_time_barrier = min(local_time_barrier, lp_time_barrier);
 		}
