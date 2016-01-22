@@ -43,7 +43,7 @@ inline extern simtime_t get_last_gvt(void);
 extern bool gvt_stable(void);
 
 /* API from fossil.c */
-extern simtime_t adopt_new_gvt(simtime_t);
+extern simtime_t adopt_new_gvt(simtime_t, simtime_t);
 
 
 #ifdef HAVE_GLP_SCH_MODULE

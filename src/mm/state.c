@@ -352,12 +352,7 @@ state_t *find_time_barrier(int lid, simtime_t simtime) {
 		barrier_state = list_prev(barrier_state);
   	}
   	if(barrier_state == NULL) {
-		printf("FORCING BARRIER TO HEAD\n");
 		barrier_state = list_head(LPS[lid]->queue_states);
-	}
-
-	if (barrier_state->lvt > simtime) {
-		rootsim_error(true, "Time barrier=%f, found for LP %d on tid %d. Greater than gvt=%f! Aborting...\n", barrier_state->lvt, lid, tid, simtime);
 	}
 
 /*
