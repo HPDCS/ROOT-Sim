@@ -41,9 +41,7 @@ extern void gvt_fini(void);
 extern simtime_t gvt_operations(void);
 inline extern simtime_t get_last_gvt(void);
 
-
 /* API from fossil.c */
-extern simtime_t adopt_new_gvt(simtime_t, state_t **time_barrier_pointer);
-
+extern simtime_t adopt_new_gvt(simtime_t, simtime_t);
 
 #endif
