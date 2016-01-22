@@ -55,7 +55,7 @@ void fossil_collection(unsigned int lid, simtime_t time_barrier) {
 	msg_t *last_kept_event;
 	double committed_events;
 
-	time_barrier = 0.7 * time_barrier;
+//	time_barrier = 0.7 * time_barrier;
 
 	// State list must be handled differently, as nodes point to malloc'd
 	// nodes. We therefore manually scan the list and free the memory.
@@ -86,6 +86,8 @@ void fossil_collection(unsigned int lid, simtime_t time_barrier) {
 * @author Francesco Quaglia
 */
 simtime_t adopt_new_gvt(simtime_t new_gvt) {
+
+	printf("(%d) adopt new gvt: %f\n", tid, new_gvt);
 
 	register unsigned int i;
 

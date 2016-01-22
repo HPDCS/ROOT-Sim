@@ -79,9 +79,19 @@ rootsim_cross_state_dependency_handler:
 	testq %rax, %rax
 	jnz .dont
 
-	movq 32(%rsp), %rdi
-	movq 40(%rsp), %rsi
+	// Fake frame to support printf in ECS
+	push %rbp
+	mov %rsp, %rbp
+
+//	movq 32(%rsp), %rdi
+//	movq 40(%rsp), %rsi
+	movq 40(%rsp), %rdi
+	movq 48(%rsp), %rsi
 	call ECS
+
+	add $8, %rsp
+	pop %rbp
+	
 
      .dont:
 

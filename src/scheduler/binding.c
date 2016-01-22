@@ -493,6 +493,8 @@ static void set_group_bound(void){
         for(i=0;i<n_grp;i++){
 		if(new_GLPS_binding[i] == tid){
 			temp_GLPS = new_GLPS[i];
+			temp_GLPS->lvt = NULL;
+
 			for(j=0;j<temp_GLPS->tot_LP;j++){
 				temp_LP = temp_GLPS->local_LPS[j];
 				

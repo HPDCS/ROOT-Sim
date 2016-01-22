@@ -678,11 +678,21 @@ void schedule(void) {
 			
 		if(check_start_group(lid) && verify_time_group(lvt(lid))){
 			//TODO MN da rivedere perchè il contatore va decrementato al termine della silent execution
-			LPS[lid]->state = LP_STATE_SILENT_EXEC;
-			current_group->counter_rollback--;
+			unsigned int j;
+			for(j=0;j<current_group->tot_LP;j++){
+				if(current_group->local_LPS[j]->lid != lid)
+					rollback(current_group->local_LPS[j]->lid);
+				
+				LPS[current_group->local_LPS[j]->lid]->state = LP_STATE_SILENT_EXEC;
+				current_group->counter_rollback--;
+			}
+	
 			if(current_group->counter_rollback == 0){
 				//printf("Error GLP[%d] rollback\n",LPS[lid]->current_group);
 				current_group->state = GLP_STATE_SILENT_EXEC;
+			} else {
+				printf("Serious error\n");
+				abort();
 			}
 		}
 		else{
@@ -785,8 +795,9 @@ void schedule(void) {
         }
 
         // Schedule the LP user-level thread
-        if(LPS[lid]->state != LP_STATE_SILENT_EXEC)
-               // LPS[lid]->state = LP_STATE_RUNNING;
+        if(LPS[lid]->state != LP_STATE_SILENT_EXEC) {
+               LPS[lid]->state = LP_STATE_RUNNING;
+	}
 
         activate_LP(lid, lvt(lid), event, state);
 

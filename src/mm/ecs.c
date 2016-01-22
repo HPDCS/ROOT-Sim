@@ -81,6 +81,13 @@ void ECS(long long ds, unsigned long long hitted_object){
 
 	// Generate a Rendez-Vous Mark
 	// if it is presente already another synchronization event we do not need to generate another mark
+
+	if(LPS[current_lp]->wait_on_rendezvous != 0 && LPS[current_lp]->wait_on_rendezvous != current_evt->rendezvous_mark) {
+		printf("muori male\n");
+		fflush(stdout);
+		abort();
+	}
+
 	if(LPS[current_lp]->wait_on_rendezvous == 0) {
 		current_evt->rendezvous_mark = generate_mark(current_lp);
 		LPS[current_lp]->wait_on_rendezvous = current_evt->rendezvous_mark;
@@ -122,10 +129,16 @@ void ECS(long long ds, unsigned long long hitted_object){
 	bzero(&msg_hdr, sizeof(msg_hdr_t));
 	msg_hdr.sender = control_msg.sender;
 	msg_hdr.receiver = control_msg.receiver;
+        msg_hdr.type = RENDEZVOUS_START;
 	msg_hdr.timestamp = control_msg.timestamp;
 	msg_hdr.send_time = control_msg.send_time;
 	msg_hdr.mark = control_msg.mark;
+	msg_hdr.rendezvous_mark = control_msg.rendezvous_mark;
 	(void)list_insert(current_lp, LPS[current_lp]->queue_out, send_time, &msg_hdr);
+
+	fprintf(stdout, "placing a START message in output queue from %d to %d at %f sendtime %f mark %llu rendezvous %llu\n",
+			msg_hdr.sender, msg_hdr.receiver, msg_hdr.timestamp, msg_hdr.send_time, msg_hdr.mark, msg_hdr.rendezvous_mark
+		);
 
 
 	// Block the execution of this LP

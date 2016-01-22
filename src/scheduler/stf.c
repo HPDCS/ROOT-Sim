@@ -41,12 +41,6 @@ unsigned int smallest_timestamp_first(void) {
 		}
 		#ifdef HAVE_GLP_SCH_MODULE
 		//Due to rollback group in case of LP whitout next event that has to update the state of group
-		else if(LPS_bound[i]->state == LP_STATE_ROLLBACK && 
-			//next_event_timestamp(LPS_bound[i]->lid) <= -1 &&
-			GLPS[LPS_bound[i]->current_group]->state != GLP_STATE_SILENT_EXEC
-		){
-			evt_time = LPS_bound[i]->bound->timestamp;
-		}
 		else if(LPS_bound[i]->state == LP_STATE_SILENT_EXEC && 
 			GLPS[LPS_bound[i]->current_group]->state == GLP_STATE_SILENT_EXEC && 
 				(next_event_timestamp(LPS_bound[i]->lid) <= -1 || 

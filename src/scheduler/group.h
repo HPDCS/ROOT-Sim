@@ -30,11 +30,11 @@
 
 #include <arch/atomic.h>
 
-#define HAVE_GLP_SCH_MODULE
-#define THRESHOLD_TIME_ECS 3000.0
-#define THRESHOLD_ACCESS_ECS 20
-#define DELTA_GROUP 8
-#define DELTA_GROUP_TIME 1000.0
+//#define HAVE_GLP_SCH_MODULE
+#define THRESHOLD_TIME_ECS 300.0
+#define THRESHOLD_ACCESS_ECS 10
+#define DELTA_GROUP 5
+#define DELTA_GROUP_TIME 100.0
 #define DIM_STAT_GROUP 2
 #define CKPT_PERIOD_GROUP 10
 #define PRINT_DEBUG_GLP if(0) 		// Change with 1 to enable debug's print
