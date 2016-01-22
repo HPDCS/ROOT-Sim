@@ -65,6 +65,7 @@ extern void LogState(unsigned int);
 extern void RestoreState(unsigned int lid, state_t *restore_state);
 extern void rollback(unsigned int lid);
 extern state_t *find_time_barrier(int lid,  simtime_t time);
+extern state_t *update_time_barrier(unsigned int, state_t *, simtime_t);
 extern void clean_queue_states(unsigned int lid, simtime_t new_gvt);
 extern void rebuild_state(unsigned int lid, state_t *state_pointer, simtime_t time);
 extern void set_checkpoint_period(unsigned int lid, int period);

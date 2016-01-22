@@ -271,6 +271,16 @@ state_t *find_time_barrier(int lid, simtime_t simtime) {
 }
 
 
+state_t *update_time_barrier(unsigned int lid, state_t *current, simtime_t minimum) {
+	while(current != NULL && current->lvt > minimum) {
+		current = list_prev(current);
+	}
+
+	if(current == NULL) {
+		printf("Cannot sanitize the time barrier for lid %d\n", lid);
+	}
+}
+
 
 
 /**
