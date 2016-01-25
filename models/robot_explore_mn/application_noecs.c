@@ -10,11 +10,20 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
 	exit_t *exit_p;
 	destination_t *destination_p;
 	complete_t *complete_p;
+
+#ifdef ECS_TEST
+	exchange_t xchg;
+#endif
         
 	enter_t enter;
 	exit_t exit;
 	destination_t destination;
 	complete_t complete;
+
+	bzero(&enter, sizeof(enter));
+	bzero(&exit, sizeof(exit));
+	bzero(&destination, sizeof(destination));
+	bzero(&complete, sizeof(complete));
 
         simtime_t timestamp;
 
@@ -61,6 +70,8 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
 				agent->count++;
 				
 				copy_map(agent->map,DIM_ARRAY,enter.map);
+				copy_map(agent->map,DIM_ARRAY,enter.map);
+				enter.agent = me;
 				
 				DEBUG printf("%d send ENTER to %d\n",me,agent->region);
 				ScheduleNewEvent(agent->region, timestamp, ENTER, &enter, sizeof(enter));
@@ -80,13 +91,15 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
 
                 case PING:
 		//	DEBUG printf("Send PING\n");
-			for(j = 0; j < 100000; j++);
+			for(j = 0; j < 1000000; j++);
                         ScheduleNewEvent(me, now + Expent(DELAY), PING, NULL, 0);
 			break;
 
 		case ENTER:
 			enter_p = (enter_t *) content;
 			region = (lp_region_t *) state;
+
+			region->robots[enter_p->agent - 900] = 1;
 
 			DEBUG printf("Region%d process ENTER of %d\n",me,enter_p->agent);
 		
@@ -102,10 +115,12 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
 
 		case EXIT: 
 			bzero(&destination, sizeof(destination));
+			bzero(&destination, sizeof(destination));
 			exit_p = (exit_t *) content;
 			region = (lp_region_t *) state;
 			
 			destination.region = get_region(me,region->obstacles,exit_p->agent);
+			memcpy(&destination.robots, region->robots, sizeof(unsigned int) * 100);
 			
 			copy_map(region->map,DIM_ARRAY,destination.map);
 
@@ -119,6 +134,21 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
 			
 			break;
 
+#ifdef ECS_TEST
+		case EXCHANGE:
+		{
+			exchange_t *x = (exchange_t *)content;
+			agent = (lp_agent_t *)state;
+			copy_map(agent->map, DIM_ARRAY, x->map);
+			for(i = 0; i < 100; i++) {
+				if(x->robots[i] == 1) {
+					agent->robots[i] = 1;
+				}
+			}
+			break;
+		}
+#endif
+
 		case DESTINATION: 
 			bzero(&enter, sizeof(enter));
 			bzero(&exit, sizeof(exit));
@@ -126,8 +156,24 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
 			agent = (lp_agent_t *) state;
 			
 			copy_map(agent->map,DIM_ARRAY,destination_p->map);
-
 			BITMAP_SET_BIT(agent->map,destination_p->region);
+
+#ifdef ECS_TEST
+			bzero(&xchg.map, sizeof(xchg));
+			copy_map(agent->map, DIM_ARRAY, xchg.map);
+
+			for(i = 0; i < 100; i++) {
+				if(destination_p->robots[i] == 1 || agent->robots[i] == 1) {
+					agent->robots[i] = 1;
+					xchg.robots[i] = 1;
+				}
+			}
+			for(i = 0; i < 100; i++) {
+				if(agent->robots[i] == 1) {
+					ScheduleNewEvent(i + 900, now + Expent(DELAY), EXCHANGE, &xchg, sizeof(xchg));
+				}
+			}
+#endif
 
                         agent->count = 0;
 			for(i=0; i<get_tot_regions(); i++){
@@ -160,6 +206,7 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
 
 					
 			DEBUG printf("%d send ENTER to %d\n",me,destination_p->region);
+				enter.agent = me;
 			ScheduleNewEvent(destination_p->region, timestamp, ENTER, &enter, sizeof(enter));
 
 			exit.agent = me;

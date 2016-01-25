@@ -37,6 +37,9 @@
 #include <scheduler/binding.h> // this is for force_rebind_GLP
 #include <statistics/statistics.h>
 #include <mm/dymelor.h>
+#include <scheduler/group.h>
+
+extern  bool verify_time_group(simtime_t timestamp);
 
 
 // Defintion of GVT-reduction phases
@@ -230,7 +233,16 @@ simtime_t gvt_operations(void) {
 					break;
 				}
 
-				local_min[tid] = min(local_min[tid], LPS_bound[i]->bound->timestamp);
+				#ifdef HAVE_GLP_SCH_MODULE
+				if(LPS_bound[i]->state == LP_STATE_SILENT_EXEC && check_start_group(LPS_bound[i]->lid) && verify_time_group(LPS_bound[i]->bound->timestamp)) {
+					local_min[tid] = min(local_min[tid], LPS_bound[i]->target_rollback->timestamp);
+				} else {
+					local_min[tid] = min(local_min[tid], LPS_bound[i]->bound->timestamp);
+				}
+				#else
+					local_min[tid] = min(local_min[tid], LPS_bound[i]->bound->timestamp);
+				#endif
+
 				tentative_barrier = find_time_barrier(LPS_bound[i]->lid, LPS_bound[i]->bound->timestamp);
 				local_min_barrier[tid] = min(local_min_barrier[tid], tentative_barrier->lvt);
 			}
@@ -258,7 +270,15 @@ simtime_t gvt_operations(void) {
 					break;
 				}
 
-				local_min[tid] = min(local_min[tid], LPS_bound[i]->bound->timestamp);
+				#ifdef HAVE_GLP_SCH_MODULE
+				if(LPS_bound[i]->state == LP_STATE_SILENT_EXEC && check_start_group(LPS_bound[i]->lid) && verify_time_group(LPS_bound[i]->bound->timestamp)) {
+					local_min[tid] = min(local_min[tid], LPS_bound[i]->target_rollback->timestamp);
+				} else {
+					local_min[tid] = min(local_min[tid], LPS_bound[i]->bound->timestamp);
+				}
+				#else
+					local_min[tid] = min(local_min[tid], LPS_bound[i]->bound->timestamp);
+				#endif
 				tentative_barrier = find_time_barrier(LPS_bound[i]->lid, LPS_bound[i]->bound->timestamp);
 				local_min_barrier[tid] = min(local_min_barrier[tid], tentative_barrier->lvt);
 			}

@@ -2,7 +2,7 @@
 
 #include <stdbool.h>
 
-#define ECS_TEST
+//#define ECS_TEST
 
 #define DESTINATION 		1		//Message used by Region to communicate to the Agent the next destination
 #define ENTER 			2		//Message used by Agent for communicating its arrival	
@@ -13,13 +13,15 @@
 #define AGENT			6		//Agent opcode
 #define REGION			7		//Region opcode
 
+#define EXCHANGE		88
+
 #ifdef ECS_TEST
 	#define PERC_REGION		0.90		//Fraction of LPs that states regions 
 #else
-//	#define TOT_REG			900		//Number of LPs that states regions
-//	#define DIM_ARRAY		114 
-	#define TOT_REG			961		//Test with 1068 LP
-	#define DIM_ARRAY		122 
+	#define TOT_REG			900		//Number of LPs that states regions
+	#define DIM_ARRAY		114 
+//	#define TOT_REG			961		//Test with 1068 LP
+//	#define DIM_ARRAY		122 
 #endif
  
 #define DELAY 			120		//Expeted value for the delay function
@@ -50,12 +52,21 @@ typedef struct lp_agent_t{
 
         #ifdef ECS_TEST 
         unsigned char **group;                  //Vector that stores pointers of agent that this agent has been met
-        #endif
+        #else
+	unsigned int robots[100];
+	#endif
 
         unsigned int count;                     //Amount of already visited regions
         bool complete;                          //True if it has received the COMPLETE message
         simtime_t lvt;
 }lp_agent_t;
+
+#ifdef ECS_TEST
+typedef struct _exchange_t {
+	unsigned char map[DIM_ARRAY];
+	unsigned int robots[100];
+} exchange_t;
+#endif
 
 typedef struct lp_region_t{
 
@@ -63,6 +74,7 @@ typedef struct lp_region_t{
         lp_agent_t **guests;                 //Vector that stores pointers of agent guest map
         #else
         unsigned char *map;
+	unsigned int robots[100];
         #endif
 
         unsigned int count;                     //Amount of agents inside the region
@@ -86,6 +98,7 @@ typedef struct destination_content_t {
 	unsigned int region;			//Id of next region
 	#ifndef ECS_TEST
 	unsigned char map[DIM_ARRAY];
+	unsigned int robots[100];
 	#endif
 } destination_t;
 
