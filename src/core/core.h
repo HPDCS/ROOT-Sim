@@ -69,7 +69,8 @@
 #define MAX_LPs		8192		// This is 2^20
 
 /// Maximum event size (in bytes)
-#define MAX_EVENT_SIZE	128
+//#define MAX_EVENT_SIZE	128
+#define MAX_EVENT_SIZE	600
 
 
 // XXX: this should be moved somewhere else...
@@ -155,6 +156,10 @@ typedef struct _msg_hdr_t {
 	// Kernel's information
 	unsigned int   		sender;
 	unsigned int   		receiver;
+	// TODO: non serve davvero, togliere
+	int   			type;
+	unsigned long long	rendezvous_mark;	/// Unique identifier of the message, used for rendez-vous event
+	// TODO: fine togliere
 	simtime_t		timestamp;
 	simtime_t		send_time;
 	unsigned long long	mark;

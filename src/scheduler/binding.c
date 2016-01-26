@@ -210,7 +210,7 @@ static inline void LP_knapsack(void) {
 	}
 
 	printf("NEW BINDING\n");
-	for(j = 0; j < n_cores; j++) {
+/*	for(j = 0; j < n_cores; j++) {
 		printf("Thread %d: ", j);
 		for(i = 0; i < n_prc; i++) {
 			if(new_LPS_binding[i] == j)
@@ -218,7 +218,7 @@ static inline void LP_knapsack(void) {
 		}
 		printf("\n");
 	}
-
+*/
 }
 
 
@@ -493,6 +493,8 @@ static void set_group_bound(void){
         for(i=0;i<n_grp;i++){
 		if(new_GLPS_binding[i] == tid){
 			temp_GLPS = new_GLPS[i];
+			temp_GLPS->lvt = NULL;
+
 			for(j=0;j<temp_GLPS->tot_LP;j++){
 				temp_LP = temp_GLPS->local_LPS[j];
 				
@@ -635,7 +637,7 @@ static inline void GLP_knapsack(void) {
 	//      TODO in install_binding
 
 	printf("NEW GROUP BINDING\n");
-	for(j = 0; j < n_cores; j++) {
+/*	for(j = 0; j < n_cores; j++) {
 		printf("Thread %d: ", j);
 		for(i = 0; i < n_grp; i++) {
 			if(new_GLPS_binding[i] == j && new_GLPS[i]->tot_LP>0)
@@ -648,7 +650,7 @@ static inline void GLP_knapsack(void) {
                 printf("LP[%d]-G[%d]\n",j,new_group_LPS[j]);
         }
 	}
-
+*/
 
 }
 

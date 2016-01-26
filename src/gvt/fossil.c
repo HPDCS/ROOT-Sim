@@ -55,7 +55,7 @@ void fossil_collection(unsigned int lid, simtime_t time_barrier) {
 	msg_t *last_kept_event;
 	double committed_events;
 
-	time_barrier = 0.7 * time_barrier;
+//	time_barrier = 0.7 * time_barrier;
 
 	// State list must be handled differently, as nodes point to malloc'd
 	// nodes. We therefore manually scan the list and free the memory.
@@ -85,7 +85,9 @@ void fossil_collection(unsigned int lid, simtime_t time_barrier) {
 *
 * @author Francesco Quaglia
 */
-simtime_t adopt_new_gvt(simtime_t new_gvt) {
+simtime_t adopt_new_gvt(simtime_t new_gvt, simtime_t new_min_barrier) {
+
+//	printf("(%d) adopt new gvt: %f\n", tid, new_gvt);
 
 	register unsigned int i;
 
@@ -94,6 +96,8 @@ simtime_t adopt_new_gvt(simtime_t new_gvt) {
 	simtime_t lp_time_barrier;
 	bool compute_snapshot;
 
+	printf("%d: gvt: %f barrier: %f\n", tid, new_gvt, new_min_barrier);
+
 	// Snapshot should be recomputed only periodically
 	snapshot_cycles++;
 	compute_snapshot = ((snapshot_cycles % rootsim_config.gvt_snapshot_cycles) == 0);
@@ -101,7 +105,7 @@ simtime_t adopt_new_gvt(simtime_t new_gvt) {
 	// Precompute the time barrier for each process
 	for (i = 0; i < n_prc_per_thread; i++) {
 
-		time_barrier_pointer[i] = find_time_barrier(LPS_bound[i]->lid, new_gvt);
+		time_barrier_pointer[i] = find_time_barrier(LPS_bound[i]->lid, new_min_barrier);
 
 		if(time_barrier_pointer[i] == NULL)
 			lp_time_barrier = 0.0;

@@ -121,6 +121,8 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 				new_event_content.from = me;
 				new_event_content.sent_at = now;
 
+//				printf("(%d) allocation %d at %f\n", me, new_event_content.channel, now);
+
 				// Determine call duration
 				switch (DURATION_DISTRIBUTION) {
 
@@ -214,6 +216,8 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 
 				new_event_content.channel = allocation(state);
 				new_event_content.call_term_time = event_content->call_term_time;
+
+//				printf("(%d) allocation %d at %f\n", me, new_event_content.channel, now);
 
 				switch (CELL_CHANGE_DISTRIBUTION) {
 					case UNIFORM:

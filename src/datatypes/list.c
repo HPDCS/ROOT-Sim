@@ -422,6 +422,7 @@ char *__list_extract_by_content(unsigned int lid, void *li, unsigned int size, v
 	n->next = (void *)0xDEADC0DE;
 	n->prev = (void *)0xDEADC0DE;
 //	bzero(n->data, size);
+	memset(n->data, 0xe9, size);
 	ufree(lid, n);
 
 	l->size--;

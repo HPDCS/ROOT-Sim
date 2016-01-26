@@ -118,12 +118,12 @@ void ParallelScheduleNewEvent(unsigned int gid_receiver, simtime_t timestamp, un
 	event.mark = generate_mark(current_lp);
 	event.size = event_size;
 
-	if(event.type == RENDEZVOUS_START) {
+/*	if(event.type == RENDEZVOUS_START) {
 		event.rendezvous_mark = current_evt->rendezvous_mark;
 		printf("RENDEZVOUS_START mark=%llu\n",event.rendezvous_mark);
 		fflush(stdout);
 	}
-
+*/
 	if(event_size > MAX_EVENT_SIZE) {
 		rootsim_error(true, "Event size (%d) exceeds MAX_EVENT_SIZE\n", event_size);
 	}
@@ -149,6 +149,8 @@ void ParallelScheduleNewEvent(unsigned int gid_receiver, simtime_t timestamp, un
 * @author Francesco Quaglia
 *
 * @param lid The Logical Process Id
+*
+* @todo One shot scan of the list
 */
 void send_antimessages(unsigned int lid, simtime_t after_simtime) {
 	msg_hdr_t *anti_msg,
@@ -156,32 +158,46 @@ void send_antimessages(unsigned int lid, simtime_t after_simtime) {
 
 	msg_t msg;
 
+//	printf("send_antimessages lid: %d after: %f\n", lid, after_simtime);
+
 	if (list_empty(LPS[lid]->queue_out))
 		return;
 
 	// Get the first message header with a timestamp <= after_simtime
 	anti_msg = list_tail(LPS[lid]->queue_out);
-	while(anti_msg != NULL && anti_msg->send_time > after_simtime)
+//	printf("\tlid: %d %f (tail)\n", lid, (anti_msg != NULL ? anti_msg->timestamp : -1.0));
+	while(anti_msg != NULL && anti_msg->send_time > after_simtime) {
 //	while(anti_msg != NULL && anti_msg->send_time >= after_simtime)
 		anti_msg = list_prev(anti_msg);
+//		printf("\tlid: %d %f\n", lid, (anti_msg != NULL ? anti_msg->timestamp : -1.0));
+	}
 
-	// The next event is the first event with a sendtime > after_simtime, if any
-	if(anti_msg == NULL)
+	// The next event is the first event with a sendtime > after_simtime, if any.
+	// Explicitly consider the case in which all anti messages should be sent.
+	if(anti_msg == NULL && list_head(LPS[lid]->queue_out)->send_time <= after_simtime) {
 		return;
-
-	anti_msg = list_next(anti_msg);
+	} else if (anti_msg == NULL && list_head(LPS[lid]->queue_out)->send_time > after_simtime) {
+		anti_msg = list_head(LPS[lid]->queue_out);
+	} else {
+		anti_msg = list_next(anti_msg);
+	}
 
 	// Now send all antimessages
 	while(anti_msg != NULL) {
-		#ifdef HAVE_GLP_SCH_MODULE
-		PRINT_DEBUG_GLP_DETAIL{
-			printf("ANTIMSG S:%d R:%d mark:%llu T:%f \n",anti_msg->sender, anti_msg->receiver,anti_msg->mark,anti_msg->timestamp);	
-		}
-		#endif
+//		#ifdef HAVE_GLP_SCH_MODULE
+//		PRINT_DEBUG_GLP_DETAIL{
+//			printf("ANTIMSG type: %d S:%d R:%d mark:%llu T:%f ST: %f\n", anti_msg->type, anti_msg->sender, anti_msg->receiver,anti_msg->mark,anti_msg->timestamp, anti_msg->send_time);	
+//		}
+//		#endif
+
+//		if(anti_msg->type == RENDEZVOUS_START) {
+//			printf("Sending a START antimessage from %d to %d at %f RM: %llu\n", anti_msg->sender, anti_msg->receiver, anti_msg->timestamp, anti_msg->rendezvous_mark);
+//		}
 		
 		bzero(&msg, sizeof(msg_t));
 		msg.sender = anti_msg->sender;
 		msg.receiver = anti_msg->receiver;
+		msg.type = anti_msg->type;
 		msg.timestamp = anti_msg->timestamp;
 		msg.send_time = anti_msg->send_time;
 		msg.mark = anti_msg->mark;

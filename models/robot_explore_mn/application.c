@@ -90,7 +90,7 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
 
                 case PING:
 //			DEBUG printf("Send PING\n");
-			for(i = 0; i < 100000; i++);
+			for(i = 0; i < 1000000; i++);
                         ScheduleNewEvent(me, now + Expent(DELAY_PING), PING, NULL, 0);
 			break;
 
