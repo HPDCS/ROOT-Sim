@@ -83,47 +83,25 @@ void fossil_collection(unsigned int lid, simtime_t time_barrier) {
 *
 * @author Francesco Quaglia
 */
-simtime_t adopt_new_gvt(simtime_t new_gvt, simtime_t new_min_barrier) {
+void adopt_new_gvt(simtime_t new_gvt, simtime_t new_min_barrier) {
 	register unsigned int i;
-	unsigned int lid;
 
-	simtime_t local_time_barrier = INFTY;
-	simtime_t lp_time_barrier;
+	state_t *time_barrier_pointer[n_prc_per_thread];
 	bool compute_snapshot;
 
 	// Snapshot should be recomputed only periodically
 	snapshot_cycles++;
 	compute_snapshot = ((snapshot_cycles % rootsim_config.gvt_snapshot_cycles) == 0);
 
-	// Reduce the global minimum for the time barriers
-	for(i = 0; i < n_prc; i++) {
-		local_time_barrier = min(local_time_barrier, time_barrier_pointer[i]->lvt);
-	}
-
 	// Precompute the time barrier for each process
 	for (i = 0; i < n_prc_per_thread; i++) {
-		lid = LPS_bound[i]->lid;
-
 		time_barrier_pointer[i] = find_time_barrier(LPS_bound[i]->lid, new_min_barrier);
-
-		// TODO: forse non serve il check su NULL
-		if(time_barrier_pointer[i] == NULL) {
-			lp_time_barrier = 0.0;
-		} else {
-			lp_time_barrier = time_barrier_pointer[i]->lvt;
-		}
-
-		// TODO: serve?
-		if (lp_time_barrier > -1) {
-			local_time_barrier = min(local_time_barrier, lp_time_barrier);
-		}
 	}
 
 	// If needed, call the CCGS subsystem
 	if(compute_snapshot) {
 		ccgs_compute_snapshot(time_barrier_pointer, new_gvt);
 	}
-
 
 	for(i = 0; i < n_prc_per_thread; i++) {
 
@@ -136,7 +114,5 @@ simtime_t adopt_new_gvt(simtime_t new_gvt, simtime_t new_min_barrier) {
 		// Actually release memory buffer allocated by the LPs and then released via free() calls
 		clean_buffers_on_gvt(LPS_bound[i]->lid, time_barrier_pointer[i]->lvt);
 	}
-
-	return local_time_barrier;
 }
 
