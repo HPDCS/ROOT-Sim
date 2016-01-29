@@ -33,6 +33,7 @@
 #define GVT_H
 
 #include <ROOT-Sim.h>
+#include <mm/state.h>
 
 /* API from gvt.c */
 extern void gvt_init(void);
@@ -40,9 +41,7 @@ extern void gvt_fini(void);
 extern simtime_t gvt_operations(void);
 inline extern simtime_t get_last_gvt(void);
 
-
 /* API from fossil.c */
-extern simtime_t adopt_new_gvt(simtime_t);
-
+extern void adopt_new_gvt(simtime_t, simtime_t);
 
 #endif
