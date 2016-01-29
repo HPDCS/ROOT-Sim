@@ -140,7 +140,7 @@ void barrier_init(barrier_t *b, int t) {
 
 
 bool reserve_barrier(barrier_t *b) {
-	return atomic_test_and_set(&b->reserved);
+	return atomic_test_and_set((int *)&b->reserved); // the cast must be removed
 }
 
 

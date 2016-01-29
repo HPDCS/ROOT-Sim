@@ -39,8 +39,12 @@
 
 preempt_callback:
 	push %rbp
-	pushfq
 	push %rax
+
+	lahf
+	seto %al
+	pushq %rax
+
 	push %rbx
 	push %rcx
 	push %rdx
@@ -86,8 +90,12 @@ preempt_callback:
 	pop %rdx
 	pop %rcx
 	pop %rbx
+
 	pop %rax
-	popfq
+	addb $0x7f, %al
+	sahf
+
+	pop %rax
 	pop %rbp
 	retq
 

@@ -3,6 +3,13 @@ AM_CFLAGS = -I$(top_srcdir)/src
 AM_MAKEFLAGS = -s
 AUTOMAKE_OPTIONS = subdir-objects
 
+if NO_KERNEL_MODULES
+SUBDIRS = 
+else
+SUBDIRS = arch/linux/modules
+endif
+DIST_SUBDIRS = arch/linux/modules
+
 librootsim_include_HEADERS = ROOT-Sim.h
 librootsim_includedir = $(includedir)
 lib_LIBRARIES = librootsim.a libwrapperl.a libdymelor.a
@@ -20,6 +27,8 @@ librootsim_a_SOURCES =	main.c \
 			datatypes/list.c \
 			datatypes/calqueue.c \
 			mm/state.c \
+			mm/ecs.c \
+			mm/ecs_callback.S \
 			queues/queues.c \
 			queues/xxhash.c \
 			core/init.c \
@@ -30,6 +39,7 @@ librootsim_a_SOURCES =	main.c \
 			scheduler/preempt_callback.S \
 			scheduler/stf.c \
 			scheduler/scheduler.c \
+			scheduler/group.c \
 			serial/serial.c \
 			statistics/statistics.c \
 			gvt/gvt.c \
@@ -48,3 +58,4 @@ libdymelor_a_SOURCES = 	mm/checkpoints.c \
 			mm/allocator.c \
 			mm/bh.c \
 			mm/numa.c
+			mm/allocator_ecs.c

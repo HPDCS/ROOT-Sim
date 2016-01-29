@@ -103,6 +103,7 @@ static int parse_cmd_line(int argc, char **argv) {
 	rootsim_config.output_dir = DEFAULT_OUTPUT_DIR;
 	rootsim_config.backtrace = false;
 	rootsim_config.gvt_time_period = 1000;
+//	rootsim_config.gvt_time_period = 10; //TODO MN DEBUG
 	rootsim_config.scheduler = SMALLEST_TIMESTAMP_FIRST;
 	rootsim_config.checkpointing = INVALID_STATE_SAVING;
 	rootsim_config.ckpt_period = 10;
@@ -429,6 +430,7 @@ void SystemInit(int argc, char **argv) {
 	// Initialize ROOT-Sim subsystems.
 	// All init routines are executed serially (there is no notion of threads in there)
 	// and the order of invocation can matter!
+	
 	base_init();
 	statistics_init();
 	scheduler_init();
@@ -440,9 +442,5 @@ void SystemInit(int argc, char **argv) {
 	// This call tells the simulation engine that the sequential initial simulation is complete
 	initialization_complete();
 }
-
-
-
-
 
 

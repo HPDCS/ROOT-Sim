@@ -61,7 +61,7 @@ typedef struct _state_t {
 
 
 extern void ParallelSetState(void *new_state);
-extern void LogState(unsigned int);
+extern bool LogState(unsigned int);
 extern void RestoreState(unsigned int lid, state_t *restore_state);
 extern void rollback(unsigned int lid);
 extern state_t *find_time_barrier(int lid,  simtime_t time);

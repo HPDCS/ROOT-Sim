@@ -32,6 +32,7 @@
 #ifndef GVT_H
 #define GVT_H
 
+
 #include <ROOT-Sim.h>
 #include <mm/state.h>
 
@@ -43,5 +44,14 @@ inline extern simtime_t get_last_gvt(void);
 
 /* API from fossil.c */
 extern void adopt_new_gvt(simtime_t, simtime_t);
+extern bool gvt_stable(void);
+
+#ifdef HAVE_GLP_SCH_MODULE
+/*TODO MN method to retrive the boundary of groups */
+extern bool verify_time_group(simtime_t);
+extern bool need_clustering(void);
+extern void update_last_time_group(void);
+extern simtime_t future_end_group(void);
+#endif
 
 #endif

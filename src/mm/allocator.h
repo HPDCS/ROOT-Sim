@@ -23,7 +23,6 @@
 * @author Francesco Quaglia
 */
 
-
 #pragma once
 #ifndef _ALLOCATOR_H
 #define _ALLOCATOR_H
@@ -43,8 +42,8 @@ typedef struct _map_move {
 
 
 struct _buddy {
-    size_t size;
-    size_t longest[1];
+	size_t size;
+	size_t longest[1];
 };
 
 

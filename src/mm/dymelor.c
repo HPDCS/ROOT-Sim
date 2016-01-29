@@ -239,7 +239,7 @@ void *do_malloc(unsigned int lid, malloc_state *mem_pool, size_t size) {
 
 		if(mem_pool->num_areas == mem_pool->max_num_areas){
 
-			malloc_area *tmp;
+			malloc_area *tmp = NULL;
 
 			if ((mem_pool->max_num_areas << 1) > MAX_LIMIT_NUM_AREAS)
 				return NULL;
@@ -286,12 +286,15 @@ void *do_malloc(unsigned int lid, malloc_state *mem_pool, size_t size) {
 		area_size = sizeof(malloc_area *) + bitmap_blocks * BLOCK_SIZE * 2 + num_chunks * size;
 
 		#ifdef HAVE_PARALLEL_ALLOCATOR
+		//TODO MN insert is recoverable in pool_get_memory
 		m_area->self_pointer = (malloc_area *)pool_get_memory(lid, area_size);
 		#else
 		m_area->self_pointer = rsalloc(area_size);
 		#endif
 
 		if(m_area->self_pointer == NULL){
+			printf("Is recoverable: ");
+			printf(is_recoverable ? "true\n" : "false\n");
 			rootsim_error(true, "DyMeLoR: error allocating space\n");
 		}
 
@@ -353,6 +356,10 @@ void *do_malloc(unsigned int lid, malloc_state *mem_pool, size_t size) {
 
 	// Keep track of the malloc_area which this chunk belongs to
 	*(unsigned long long *)ptr = (unsigned long long)m_area->self_pointer;
+
+	//printf("[%d] Ptr:%p \t size:%lu \t result:%p \n",lid,ptr,sizeof(long long),(void*)((char*)ptr + sizeof(long long)));
+
+
 	return (void*)((char*)ptr + sizeof(long long));
 }
 
@@ -362,6 +369,8 @@ void *do_malloc(unsigned int lid, malloc_state *mem_pool, size_t size) {
 // TODO: multiple checks on m_area->is_recoverable. The code should be refactored
 // TODO: lid non necessario qui
 void do_free(unsigned int lid, malloc_state *mem_pool, void *ptr) {
+
+	(void)lid;
 	
 	malloc_area * m_area;
 	int idx, bitmap_blocks;

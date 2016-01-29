@@ -42,6 +42,10 @@
 #include <mm/dymelor.h>
 #include <statistics/statistics.h>
 
+#include <scheduler/group.h>
+#ifdef HAVE_GLP_SCH_MODULE
+#include <gvt/gvt.h>
+#endif
 
 /// Function pointer to switch between the parallel and serial version of SetState
 void (*SetState)(void *new_state);
@@ -55,21 +59,30 @@ void (*SetState)(void *new_state);
 *
 * @param lid The Light Process Identifier
 */
-void LogState(unsigned int lid) {
+bool LogState(unsigned int lid) {
 
 	bool take_snapshot = false;
 	state_t new_state; // If inserted, list API makes a copy of this
 
 	if(is_blocked_state(LPS[lid]->state)) {
-		return;
+		return take_snapshot;
 	}
 
 	// Keep track of the invocations to LogState
 	LPS[lid]->from_last_ckpt++;
 
+	#ifdef HAVE_GLP_SCH_MODULE
+	GLPS[LPS[lid]->current_group]->from_last_ckpt++;
+	#endif
+
 	if(LPS[lid]->state_log_forced) {
 		LPS[lid]->state_log_forced = false;
 		LPS[lid]->from_last_ckpt = 0;
+		
+		#ifdef HAVE_GLP_SCH_MODULE
+		GLPS[LPS[lid]->current_group]->from_last_ckpt = 0;
+		#endif
+
 		take_snapshot = true;
 		goto skip_switch;
 	}
@@ -82,6 +95,16 @@ void LogState(unsigned int lid) {
 			break;
 
 		case PERIODIC_STATE_SAVING:
+			#ifdef HAVE_GLP_SCH_MODULE
+			if(check_start_group(lid) && verify_time_group(lvt(lid))){
+				if(GLPS[LPS[lid]->current_group]->from_last_ckpt >= GLPS[LPS[lid]->current_group]->ckpt_period){
+					take_snapshot = true;
+					GLPS[LPS[lid]->current_group]->from_last_ckpt = 0;
+					LPS[lid]->from_last_ckpt = 0;
+				}
+			}
+			else 
+			#endif
 			if(LPS[lid]->from_last_ckpt >= LPS[lid]->ckpt_period) {
 				take_snapshot = true;
 				LPS[lid]->from_last_ckpt = 0;
@@ -96,7 +119,7 @@ void LogState(unsigned int lid) {
 
 	// Shall we take a log?
 	if (take_snapshot) {
-
+		
 		// Take a log and set the associated LVT
 		new_state.log = log_state(lid);
 		new_state.lvt = lvt(lid);
@@ -110,6 +133,8 @@ void LogState(unsigned int lid) {
 		(void)list_insert_tail(lid, LPS[lid]->queue_states, &new_state);
 
 	}
+	
+	return take_snapshot;
 }
 
 
@@ -117,6 +142,16 @@ void RestoreState(unsigned int lid, state_t *restore_state) {
 	log_restore(lid, restore_state);
 	LPS[lid]->current_base_pointer = restore_state->base_pointer;
 	LPS[lid]->state = restore_state->state;
+        #ifdef HAVE_CROSS_STATE
+	LPS[lid]->ECS_index = 0;
+	LPS[lid]->wait_on_rendezvous = 0;
+	LPS[lid]->wait_on_object = 0;
+	#endif
+	#ifdef HAVE_GLP_SCH_MODULE
+	GLP_state *current_group = GLPS[LPS[lid]->current_group];
+	current_group->counter_log = 0;
+	#endif
+
 }
 
 
@@ -136,6 +171,11 @@ void RestoreState(unsigned int lid, state_t *restore_state) {
 unsigned int silent_execution(unsigned int lid, void *state_buffer, msg_t *evt, msg_t *final_evt) {
 	unsigned int events = 0;
 	unsigned short int old_state;
+
+	#ifdef HAVE_GLP_SCH_MODULE
+	if(GLPS[LPS[lid]->current_group]->counter_rollback != 0)
+		printf("ERRORE SILENT\n");
+	#endif
 
 	// current state can be either idle READY, BLOCKED or ROLLBACK, so we save it and then put it back in place
 	old_state = LPS[lid]->state;
@@ -158,7 +198,8 @@ unsigned int silent_execution(unsigned int lid, void *state_buffer, msg_t *evt, 
 		}
 
 		events++;
-
+		
+//		printf("[%d] Old_state: %lu\n",lid,old_state);
 		activate_LP(lid, evt->timestamp, evt, state_buffer);
 		evt = list_next(evt);
 	}
@@ -195,6 +236,11 @@ void rollback(unsigned int lid) {
 		return;
 	}
 
+	#ifdef HAVE_GLP_SCH_MODULE
+	if(LPS[lid]->bound->timestamp < GLPS[LPS[lid]->current_group]->initial_group_time->timestamp && LPS[lid]->updated_counter){
+		printf("Inside error LP[%d]\n",lid);
+	}
+	#endif
 	// Discard any possible execution state related to a blocked execution
 	#ifdef ENABLE_ULT
 	memcpy(&LPS[lid]->context, &LPS[lid]->default_context, sizeof(LP_context_t));
@@ -204,28 +250,77 @@ void rollback(unsigned int lid) {
 
 	last_correct_event = LPS[lid]->bound;
 
+	#ifdef HAVE_GLP_SCH_MODULE
+	PRINT_DEBUG_GLP_DETAIL printf("[%d] last_corr: %p at %f\n",lid,last_correct_event, last_correct_event->timestamp);	
+	#endif
+
 	// Send antimessages
 	send_antimessages(lid, last_correct_event->timestamp);
 
 	// Find the state to be restored, and prune the wrongly computed states
 	restore_state = list_tail(LPS[lid]->queue_states);
 	while (restore_state != NULL && restore_state->lvt > last_correct_event->timestamp) { // It's > rather than >= because we have already taken into account simultaneous events
-		s = restore_state;
+/*		PRINT_DEBUG_GLP_DETAIL{
+			printf("[%d] State: %f\n",lid,restore_state->lvt);
+		}
+*/		s = restore_state;
 		restore_state = list_prev(restore_state);
 		log_delete(s->log);
 		s->last_event = (void *)0xDEADC0DE;
 		list_delete_by_content(lid, LPS[lid]->queue_states, s);
 	}
+		PRINT_DEBUG_GLP{
+			printf("[%d] SELECTED State: %f\n",lid,restore_state->lvt);
+		}
 
 	// Restore the simulation state and correct the state base pointer
 	RestoreState(lid, restore_state);
 
 	last_restored_event = restore_state->last_event;
+//	PRINT_DEBUG_GLP_DETAIL	printf("[%d] last_restored_event:%p next:%p\n",lid,last_restored_event,list_next(last_restored_event));	
+
+	#ifdef HAVE_GLP_SCH_MODULE
+	if(!(check_start_group(lid) && verify_time_group(LPS[lid]->bound->timestamp))){
+		reprocessed_events = silent_execution(lid, LPS[lid]->current_base_pointer, last_restored_event, last_correct_event);
+/*		PRINT_DEBUG_GLP{
+			printf("LP[%d] executes silent execution without group\n",lid);
+		}
+*/		statistics_post_lp_data(lid, STAT_SILENT, (double)reprocessed_events);
+		if(GLPS[LPS[lid]->current_group]->state == GLP_STATE_ROLLBACK){
+			printf("INSIDE SILENT\n");
+			GLPS[LPS[lid]->current_group]->counter_rollback--;
+			if(GLPS[LPS[lid]->current_group]->counter_rollback == 0)
+				GLPS[LPS[lid]->current_group]->state = GLP_STATE_SILENT_EXEC;
+			GLPS[LPS[lid]->current_group]->counter_silent_ex--;
+		}
+	}
+	else{
+		if(LPS[lid]->target_rollback != last_restored_event)
+			LPS[lid]->bound = last_restored_event;
+/*		PRINT_DEBUG_GLP_DETAIL{
+			printf("LP[%d] CST:%d VTG:%d T:%f \n",
+				lid,
+				check_start_group(lid),
+				verify_time_group(LPS[lid]->bound->timestamp),
+				LPS[lid]->bound->timestamp
+		      	);
+		}
+*/	}
+	#else
+
 	reprocessed_events = silent_execution(lid, LPS[lid]->current_base_pointer, last_restored_event, last_correct_event);
 	statistics_post_lp_data(lid, STAT_SILENT, (double)reprocessed_events);
+	
+	#endif
 
 	// Control messages must be rolled back as well
 	rollback_control_message(lid, last_correct_event->timestamp);
+	
+	#ifdef HAVE_GLP_SCH_MODULE
+	PRINT_DEBUG_GLP{
+		printf("LP[%d] rollback at time:%f\n",lid,last_correct_event->timestamp);
+	}
+	#endif
 }
 
 
@@ -317,6 +412,11 @@ void set_checkpoint_mode(int ckpt_mode) {
 */
 void set_checkpoint_period(unsigned int lid, int period) {
 	LPS[lid]->ckpt_period = period;
+
+	#ifdef HAVE_GLP_SCH_MODULE
+	GLPS[lid]->ckpt_period = period;
+	#endif
+	
 }
 
 

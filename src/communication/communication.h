@@ -52,6 +52,9 @@ enum _control_msgs {
 	RENDEZVOUS_ACK,
 	RENDEZVOUS_UNBLOCK,
 	RENDEZVOUS_ROLLBACK,
+	NULL_LOG_MESSAGE,
+	SYNCH_GROUP,
+	CLOSE_GROUP,
 	MAX_VALUE_CONTROL
 };
 
@@ -101,10 +104,7 @@ typedef struct _wnd_buffer {
 	window wnd_buffer[WND_BUFFER_LENGTH];
 } wnd_buffer;
 
-
-
 extern void ParallelScheduleNewEvent(unsigned int, simtime_t, unsigned int, void *, unsigned int);
-
 
 /* Functions invoked by other modules */
 extern void communication_init(void);
@@ -124,8 +124,5 @@ extern void receive_ack(void);
 extern void send_forced_ack(void);
 extern simtime_t local_min_timestamp(void);
 extern void start_ack_timer(void);
-
-
-
 
 #endif

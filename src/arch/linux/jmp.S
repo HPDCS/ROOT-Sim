@@ -1,4 +1,3 @@
-
 /**
 *			Copyright (C) 2008-2015 HPDCS Group
 *			http://www.dis.uniroma1.it/~hpdcs
@@ -34,11 +33,11 @@
 # Stack organization of this function after the first three push:
 #
 #    _______________
-#    |     R11     |
-#    |-------------|
-#    |     RAX     |
-#    |-------------| <-- Saved RSP points here
 #    |    FLAGS    |
+#    |-------------|
+#    |     R11     |
+#    |-------------| <-- Saved RSP points here
+#    |     RAX     |
 #    |-------------|
 #    |  Ret. Addr. |
 #    |-------------|
@@ -52,11 +51,17 @@
 .globl _set_jmp
 .type _set_jmp, @function
 _set_jmp:
-	pushfq			# save flags
 	pushq %rax 		# save rax, it will point to the context
 	pushq %r11		# save r11, it will be used as the source
+
+	# Save only status flags
+	lahf
+	seto %al
+	pushq %rax
+
+	# Save the context
 	movq %rdi, %rax 	# rax points to the context
-	movq 8(%rsp), %r11 	# r11 keeps the 'old' rax
+	movq 16(%rsp), %r11 	# r11 keeps the 'old' rax
 	movq %r11, (%rax)	# rax is the first field of the context
 	movq %rdx, 8(%rax)
 	movq %rcx, 16(%rax)
@@ -70,13 +75,13 @@ _set_jmp:
 	movq %r8, 64(%rax)
 	movq %r9, 72(%rax)
 	movq %r10, 80(%rax)
-	movq (%rsp), %r11 	# r11 keeps the 'old' r11
+	movq 8(%rsp), %r11 	# r11 keeps the 'old' r11
 	movq %r11, 88(%rax)	# r11 is the 12-th field of the context
 	movq %r12, 96(%rax)
 	movq %r13, 104(%rax)
 	movq %r14, 112(%rax)
 	movq %r15, 120(%rax)
-	movq 16(%rsp), %rdx
+	movq (%rsp), %rdx
 	movq %rdx, 136(%rax)	# (%rsp) is flags
 	
 	movq 24(%rsp), %r11	# Save the original return address
@@ -128,7 +133,6 @@ _long_jmp:
 	movq 32(%rax), %rsp 
 	movq 40(%rax), %rbp
 	movq 48(%rax), %rsi
-	movq 56(%rax), %rdi
 	movq 64(%rax), %r8
 	movq 72(%rax), %r9
 	movq 80(%rax), %r10	# Finish to restore GP registers
@@ -136,9 +140,17 @@ _long_jmp:
 	movq 96(%rax), %r12
 	movq 104(%rax), %r13
 	movq 112(%rax), %r14
+
+	# Restore FLAGS
+	movq 136(%rax), %rax	# this is flags
+	addb $0x7f, %al		# Overflows if OF was set
+	sahf
+	
+	
+	# Restore remaining rdi and r15
+	movq %rdi, %rax		# rax now points again to context
+	movq 56(%rax), %rdi
 	movq 120(%rax), %r15
-	pushq 136(%rax)		# this is flags
-	popfq
 
 	# Restore other registers
 	fxrstor 144(%rax)

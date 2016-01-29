@@ -71,6 +71,7 @@ static __thread void			*context_creat_arg;
 */
 void *get_ult_stack(unsigned int lid, size_t size) {
 //	int err;
+	(void)lid;
 	void *stack;
 	size_t reminder;
 
@@ -116,7 +117,7 @@ static void context_create_boot(void) {
 
 	void (*context_start_func)(void *);
 	void *context_start_arg;
-
+	
 	context_start_func = context_creat_func;
 	context_start_arg = context_creat_arg;
 
@@ -182,8 +183,9 @@ void context_create(LP_context_t *context, void (*entry_point)(void *), void *ar
 	context_called = false;
 	raise(SIGUSR1);
 	sigaltstack(&oss, NULL);
-
-	context_switch(&context_caller, context);
+	
+//	printf("Print to context_switch\n"); // NON LEVARE QUESTA PRINTF
+	context_switch_create(&context_caller, context);
 }
 
 
@@ -214,3 +216,4 @@ void context_create(LP_context_t *context, void (*entry_point)(void *), void *ar
 #endif /* OS */
 
 #endif /* ENABLE_ULT */
+

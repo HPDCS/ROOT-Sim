@@ -35,12 +35,17 @@
 #include <core/core.h>
 #include <arch/thread.h>
 #include <statistics/statistics.h>
-#include <gvt/gvt.h>
 #include <gvt/ccgs.h>
 #include <scheduler/binding.h>
 #include <scheduler/scheduler.h>
 #include <scheduler/process.h>
+#include <gvt/gvt.h>
 #include <mm/dymelor.h>
+
+#ifdef HAVE_CROSS_STATE
+#include <mm/ecs.h>
+#endif
+
 #include <serial/serial.h>
 
 
@@ -92,14 +97,14 @@ static void *main_simulation_loop(void *arg) {
 	(void)arg;
 
 	simtime_t my_time_barrier = -1.0;
-
-	#ifdef HAVE_LINUX_KERNEL_MAP_MODULE
+	
+	#ifdef HAVE_CROSS_STATE
 	lp_alloc_thread_init();
 	#endif
 
 	// Do the initial (local) LP binding, then execute INIT at all (local) LPs
 	initialize_worker_thread();
-
+	
 	// Notify the statistics subsystem that we are now starting the actual simulation
 	if(master_thread()) {
 		statistics_post_other_data(STAT_SIM_START, 1.0);
@@ -112,7 +117,7 @@ static void *main_simulation_loop(void *arg) {
 
 		// Recompute the LPs-thread binding
 		rebind_LPs();
-
+		
 		// Check whether we have new ingoing messages sent by remote instances
 		// and then process bottom halves
 //		messages_checking();
@@ -131,9 +136,54 @@ static void *main_simulation_loop(void *arg) {
 				#else
 				printf("TIME BARRIER %f\n", my_time_barrier);
 				#endif
+				
+			/*	
+				#ifdef HAVE_GLP_SCH_MODULE
+				unsigned int j=0;
+				for(;j<n_grp;j++){
+					if(GLPS[j]->tot_LP != 0){
+						if(GLPS[j]->lvt != NULL && GLPS[j]->tot_LP > 1){
+							printf("GLP[%d]->state: %d \tsyn_c:%d r_c:%d sil_c:%d  \t lvt:%f VTG:%d \t",
+								j,
+								GLPS[j]->state,
+								GLPS[j]->counter_synch,
+								GLPS[j]->counter_rollback,
+								GLPS[j]->counter_silent_ex,
+								GLPS[j]->lvt->timestamp,
+								verify_time_group(GLPS[j]->lvt->timestamp)
+							      );
+						unsigned int i;
+						LP_state **list = GLPS[j]->local_LPS;
+						for(i=0;i<GLPS[j]->tot_LP;i++){
+							
+							printf("%d ",list[i]->lid);
+						}
+						printf("\n");
+						}
+					}
+
+				}
+			
+			
+				for(j=0;j<n_prc;j++){
+					printf("LP[%d]:%d \t CSG:%d \t T:%f B_S:%d\n",
+						j,
+						LPS[j]->state,
+						check_start_group(j),
+						LPS[j]->bound->timestamp,
+						LPS[j]->bound->sender
+					      );
+					
+					if (LPS[j]->target_rollback != NULL)
+						printf("R_T:%f N_E:%f \n",LPS[j]->target_rollback->timestamp,next_event_timestamp(j));
+				}
+				#endif				
+				*/
+			
 				fflush(stdout);
 			}
 		}
+		
 	}
 
 	// If we're exiting due to an error, we neatly shut down the simulation
@@ -159,8 +209,8 @@ int main(int argc, char **argv) {
 	set_affinity(0);
 
 	SystemInit(argc, argv);
-
-	if(rootsim_config.serial) {
+	
+        if(rootsim_config.serial) {
 		serial_simulation();
 	} else {
 
