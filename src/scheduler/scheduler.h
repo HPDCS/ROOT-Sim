@@ -100,11 +100,11 @@ extern __thread volatile bool rolling_back;
 
   #define switch_to_application_mode() do {\
 					if(LPS[current_lp]->state != LP_STATE_SILENT_EXEC) {\
-						platform_mode = false;\
 						if(min_in_transit_lvt[tid] < current_lvt){\
 							atomic_inc(&need_resched);\
 							resched();\
 						}\
+						platform_mode = false;\
 					}\
 				} while(0)
 

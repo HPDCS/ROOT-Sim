@@ -124,58 +124,10 @@ void update_min_in_transit(unsigned int thread, simtime_t lvt) {
 
 
 void resched(void){
-
-ACTUAL_PREEMPTION{
-                        LPS[current_lp]->state = LP_STATE_SUSPENDED; // Questo triggera la logica di ripartenza dell'LP di ECS, ma forse va cambiato nome...
-                        switch_to_platform_mode();
-                        context_switch(&LPS[current_lp]->context, &kernel_context);
-                        }
-
-
+	switch_to_platform_mode();
+	LPS[current_lp]->state = LP_STATE_SUSPENDED; // Questo triggera la logica di ripartenza dell'LP di ECS, ma forse va cambiato nome...
+	context_switch(&LPS[current_lp]->context, &kernel_context);
 }
-
-
-/**
- * This function is activated when control is transferred back from
- * kernel space, when an APIC timer interrupt is received. When this is
- * the case, this function quickly checks whether some other LP has
- * gained an increased priority over the currently executing one, and
- * in the case changes the control flow so as to activate it.
- */
-void preempt(void) {
-
-//	if(rootsim_config.disable_preemption)
-//		return;
-
-
-	// if min_in_transit_lvt < current_lvt
-	// and in platform mode
-
-	atomic_inc(&preempt_count);
-
-	if(rolling_back){
-		atomic_inc(&overtick_platform);
-		return;
-	}
-
-	if(!platform_mode && !rolling_back) {
-
-		atomic_inc(&overtick_user);
-
-		if(min_in_transit_lvt[tid] < current_lvt) {
-			atomic_inc(&would_preempt);
-		ACTUAL_PREEMPTION{
-			LPS[current_lp]->state = LP_STATE_SUSPENDED; // Questo triggera la logica di ripartenza dell'LP di ECS, ma forse va cambiato nome...
-			switch_to_platform_mode();
-			context_switch(&LPS[current_lp]->context, &kernel_context);
-			}
-		}
-	} else {
-		atomic_inc(&overtick_platform);
-	}
-
-}
-
 
 void enable_preemption(void) {
 	int ret;

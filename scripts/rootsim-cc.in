@@ -262,7 +262,7 @@ $LD -r -L $libdir --wrap strcpy --wrap strncpy --wrap strcat --wrap strncat --wr
 $LD -r -L $libdir --wrap malloc --wrap free --wrap realloc --wrap calloc -o APP-dym-wrapped.o APP-lib-wrapped.o --whole-archive -ldymelor
 check_term
 #$CC -Xlinker --no-check-sections -Xlinker -T -Xlinker $$.ld-final -Xlinker --section-start -Xlinker .warp=$APPLICATION_START_POINT -Xlinker --section-start -Xlinker .warl=$APPLICATION_START_POINT_LIGHT  APP-dym-wrapped.o -lrootsim -lm -DGATHER_DATA -o $OUTNAME
-$CC APP-dym-wrapped.o $CFLAGS -lrootsim -lm -DGATHER_DATA -o $OUTNAME
+$CC APP-dym-wrapped.o -lrootsim $CFLAGS -lm -DGATHER_DATA -o $OUTNAME
 check_term
 
 
