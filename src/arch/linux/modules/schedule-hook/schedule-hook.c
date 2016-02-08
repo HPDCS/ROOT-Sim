@@ -76,16 +76,8 @@
 
 
 void (*the_hook)(void) = 0x0;
-#define SYS_FS  // undefine this if you would not like to drive the actual hoook via sys-fs 
-		// which is the default we selected
-		// in that case you can rely on the exported symbol 'the_hook'
-#ifdef SYS_FS
-#define PERMISSION_MASK 0777 // this is the permission mask associated with the module parameter the_hook
-			     // 0777 is a permissive default value, change it according to your requirements
+#define PERMISSION_MASK (S_IRUSR | S_IRGRP | S_IROTH)
 module_param(the_hook, ulong, PERMISSION_MASK);
-#else
-EXPORT_SYMBOL(the_hook);
-#endif
 
 int safe_guard = 1;
 

@@ -85,7 +85,7 @@ static inline void rootsim_load_cr3(pgd_t *pgdir) {
 }
 
 void (*rootsim_pager_hook)(void)=0x0;
-#define PERMISSION_MASK 0777 
+#define PERMISSION_MASK (S_IRUSR | S_IRGRP | S_IROTH)
 module_param(rootsim_pager_hook, ulong, PERMISSION_MASK); 
 
 /// Device major number
