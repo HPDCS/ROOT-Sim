@@ -77,6 +77,9 @@ static atomic_t counter_end;
  */
 static volatile unsigned int GVT_flag = 0;
 
+/// Pointers to the barrier states of the bound LPs
+static state_t **time_barrier_pointer;
+
 
 /** Keep track of the last computed gvt value. Its a per-thread variable
  * to avoid synchronization on it, but eventually all threads write here
@@ -89,10 +92,6 @@ static volatile unsigned int GVT_flag = 0;
 static __thread simtime_t last_gvt = 0.0;
 static __thread simtime_t adopted_last_gvt = 0.0;
 
-
-
-/* Per-thread private data */
-
 /// What is my phase? All threads start in the initial phase
 static __thread enum gvt_phases my_phase = phase_A;
 
@@ -102,9 +101,7 @@ static __thread unsigned int my_GVT_round = 0;
 /// The local (per-thread) minimum. It's not TLS, rather an array, to allow reduction by master thread
 static simtime_t *local_min;
 
-
-
-
+static simtime_t *local_min_barrier;
 
 
 /**
@@ -120,8 +117,10 @@ void gvt_init(void) {
 
 	// Initialize the local minima
 	local_min = rsalloc(sizeof(simtime_t) * n_cores);
+	local_min_barrier = rsalloc(sizeof(simtime_t) * n_cores);
 	for(i = 0; i < n_cores; i++) {
 		local_min[i] = INFTY;
+		local_min_barrier[i] = INFTY;
 	}
 
 	timer_start(gvt_timer);
@@ -172,6 +171,8 @@ inline simtime_t get_last_gvt(void) {
 simtime_t gvt_operations(void) {
 	register unsigned int i;
 	simtime_t new_gvt;
+	simtime_t new_min_barrier;
+	state_t *tentative_barrier;
 
 	// GVT reduction initialization.
 	// This is different from the paper's pseudocode to reduce
@@ -218,10 +219,13 @@ simtime_t gvt_operations(void) {
 			for(i = 0; i < n_prc_per_thread; i++) {
 				if(LPS_bound[i]->bound == NULL) {
 					local_min[tid] = 0.0;
+					local_min_barrier[tid] = 0.0;
 					break;
 				}
 
 				local_min[tid] = min(local_min[tid], LPS_bound[i]->bound->timestamp);
+				tentative_barrier = find_time_barrier(LPS_bound[i]->lid, LPS_bound[i]->bound->timestamp);
+				local_min_barrier[tid] = min(local_min_barrier[tid], tentative_barrier->lvt);
 			}
 			my_phase = phase_send;	// Entering phase send
 			atomic_dec(&counter_A);	// Notify finalization of phase A
@@ -243,10 +247,13 @@ simtime_t gvt_operations(void) {
 			for(i = 0; i < n_prc_per_thread; i++) {
 				if(LPS_bound[i]->bound == NULL) {
 					local_min[tid] = 0.0;
+					local_min_barrier[tid] = 0.0;
 					break;
 				}
 
 				local_min[tid] = min(local_min[tid], LPS_bound[i]->bound->timestamp);
+				tentative_barrier = find_time_barrier(LPS_bound[i]->lid, LPS_bound[i]->bound->timestamp);
+				local_min_barrier[tid] = min(local_min_barrier[tid], tentative_barrier->lvt);
 			}
 
 			my_phase = phase_aware;
@@ -257,12 +264,12 @@ simtime_t gvt_operations(void) {
 
 		if(my_phase == phase_aware && atomic_read(&counter_B) == 0) {
 			new_gvt = INFTY;
+			new_min_barrier = INFTY;
 
 			for(i = 0; i < n_cores; i++) {
 				new_gvt = min(local_min[i], new_gvt);
+				new_min_barrier = min(local_min_barrier[i], new_min_barrier);
 			}
-
-			my_phase = phase_end;
 
 			atomic_dec(&counter_aware);
 
@@ -277,10 +284,13 @@ simtime_t gvt_operations(void) {
 			// thread. To check for termination based on simulation time,
 			// this variable must be explicitly inspected using
 			// get_last_gvt()
-			adopted_last_gvt = adopt_new_gvt(new_gvt);
+			adopt_new_gvt(new_gvt, new_min_barrier);
+			adopted_last_gvt = new_gvt;
 
 			// Dump statistics
 			statistics_post_other_data(STAT_GVT, new_gvt);
+
+			my_phase = phase_end;
 
 			return last_gvt;
 		}
@@ -296,6 +306,7 @@ simtime_t gvt_operations(void) {
 			// Back to phase A for next GVT round
 			my_phase = phase_A;
 			local_min[tid] = INFTY;
+			local_min_barrier[tid] = INFTY;
 			atomic_dec(&counter_end);
 			last_gvt = adopted_last_gvt;
 		}
