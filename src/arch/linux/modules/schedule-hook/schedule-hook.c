@@ -41,6 +41,8 @@
 #include <linux/time.h>
 #include <linux/string.h>
 #include <linux/vmalloc.h>
+#include <linux/completion.h>
+#include <linux/preempt.h>
 #include <asm/atomic.h>
 //#include <asm/page.h>
 //#include <asm/cacheflush.h>
@@ -83,6 +85,8 @@ int safe_guard = 1;
 
 static int bytes_to_patch_in_schedule = 4;
 
+DECLARE_COMPLETION(patch_completion);
+atomic_t patch_enter;
 
 atomic_t count ;
 atomic_t reference_count ;
@@ -91,7 +95,7 @@ ulong phase = 0;//this is used to implement a phase based retry protocol for umo
 
 
 /** FUNCTION PROTOTYPES
- * All the functions in this module must be listed here with a high alignment
+ * All the functions in this module must be listed here
  * and explicitly handled in prepare_self_patch(), so as to allow a correct self-patching
  * independently of the order of symbols emitted by the linker, which changes
  * even when small changes to the code are made.
@@ -102,7 +106,7 @@ ulong phase = 0;//this is used to implement a phase based retry protocol for umo
  * the job!
  */
 
-static void cpu_aware(void);
+static smp_call_func_t synchronize_patching(void *);
 static void *prepare_self_patch(void);
 static void schedule_hook_cleanup(void);
 static int schedule_hook_init(void);
@@ -130,9 +134,34 @@ void *finish_task_switch_next = (void *)FTS_ADDR_NEXT;
 
  
 
-void cpu_aware(){
-	printk("cpu %d is aware of module unmount\n",smp_processor_id());
+static smp_call_func_t synchronize_patching(void *ptr) {
+	(void)ptr;
+
+	printk("cpu %d entering synchronize_patching\n", smp_processor_id());
+	atomic_dec(&patch_enter);
+	preempt_disable();
+	wait_for_completion(&patch_completion);
+	preempt_enable();
+	printk("cpu %d leaving synchronize_patching\n", smp_processor_id());
+	return NULL;
 }
+
+
+#define synchronize_all() do { \
+		printk("cpu %d asking from unpreemptive synchronization\n", smp_processor_id()); \
+		init_completion(&patch_completion); \
+		atomic_set(&patch_enter, num_online_cpus() - 1); \
+		preempt_disable(); \
+		smp_call_function_many(cpu_online_mask, synchronize_patching, NULL, false); /* 0 because we manually synchronize */ \
+		while(atomic_read(&patch_enter) == 0); \
+		printk("cpu %d all kernel threads synchronized\n", smp_processor_id()); \
+	} while(0)
+
+#define unsychronize_all() do { \
+		printk("cpu %d freeing other kernel threads\n", smp_processor_id()); \
+		complete(&patch_completion); \
+		preempt_enable(); \
+	} while(0)
 
 
 static void print_bytes(char *str, unsigned char *ptr, size_t s) {
@@ -237,14 +266,14 @@ static int check_patch_compatibility(void) {
 	finish_task_switch_next = ptr;
 	
 	if(bytes_to_patch_in_schedule > 4) {
-		printk(KERN_CONT "%02x ", ((unsigned char *)finish_task_switch_next)[-6]);
+		printk(KERN_CONT "%02x ", ((unsigned char *)finish_task_switch_next)[-5]);
 	}
 	printk(KERN_CONT "%02x %02x %02x %02x %02x looks correct.\n",
-			((unsigned char *)finish_task_switch_next)[-5],
 			((unsigned char *)finish_task_switch_next)[-4],
 			((unsigned char *)finish_task_switch_next)[-3],
 			((unsigned char *)finish_task_switch_next)[-2],
-			((unsigned char *)finish_task_switch_next)[-1]);
+			((unsigned char *)finish_task_switch_next)[-1],
+			((unsigned char *)finish_task_switch_next)[-0]);
 
 	printk(KERN_DEBUG "%s: total number of bytes to be patched is %d\n", KBUILD_MODNAME, bytes_to_patch_in_schedule);
 
@@ -255,11 +284,11 @@ static int check_patch_compatibility(void) {
 	printk(KERN_NOTICE "%s: magic check on bytes ", KBUILD_MODNAME);
 
 	printk(KERN_CONT "%02x %02x %02x %02x %02x failed.\n",
-			((unsigned char *)finish_task_switch_next)[-5],
 			((unsigned char *)finish_task_switch_next)[-4],
 			((unsigned char *)finish_task_switch_next)[-3],
 			((unsigned char *)finish_task_switch_next)[-2],
-			((unsigned char *)finish_task_switch_next)[-1]);
+			((unsigned char *)finish_task_switch_next)[-1],
+			((unsigned char *)finish_task_switch_next)[-0]);
 	
 	return -1;
 }
@@ -324,22 +353,35 @@ static int schedule_patch(void) {
 		goto out;
 	}
 	
-	printk("%s: upon succesfully returning from prepare_self_patch",KBUILD_MODNAME) ;
+//	printk("%s: upon succesfully returning from prepare_self_patch", KBUILD_MODNAME);
+
+	// Synchronize threads. We force all other kernel threads to enter a synchronization function,
+	// disable preemption, do the patching and then we can all continue happily
+	synchronize_all();
+
 	// Now do the actual patching. Clear CR0.WP to disable memory protection.
 	cr0 = read_cr0();
 	write_cr0(cr0 & ~X86_CR0_WP);
 
 	// Patch the end of our schedule_hook to execute final bytes of finish_task_switch
-	print_bytes("schedule_hook before self patching", (unsigned char *)schedule_hook, 600);
+//	print_bytes("schedule_hook before self patching", (unsigned char *)schedule_hook, 600);
 	memcpy(ptr, finish_task_switch_original_bytes, bytes_to_patch_in_schedule);
-	print_bytes("schedule_hook after self patching", (unsigned char *)schedule_hook, 600);
+//	print_bytes("schedule_hook after self patching", (unsigned char *)schedule_hook, 600);
+
+//	printk(KERN_DEBUG "%s: The patching will go from %p to %p, the following bytes will be patched: ", KBUILD_MODNAME, (unsigned char *)finish_task_switch_next - bytes_to_patch_in_schedule, (unsigned char *)finish_task_switch_next);
+//	for(pos = 0; pos < bytes_to_patch_in_schedule; pos++) {
+//		printk(KERN_CONT "%02x ", ((unsigned char *)finish_task_switch_next - bytes_to_patch_in_schedule)[pos]);
+//	}
+//	printk(KERN_CONT "\n");
 
 	// Patch finish_task_switch to jump, at the end, to schedule_hook
-	print_bytes("finish_task_switch_next before self patching", (unsigned char *)finish_task_switch_next - bytes_to_patch_in_schedule, 64);
-	memcpy((unsigned char *)finish_task_switch_next - bytes_to_patch_in_schedule, bytes_to_redirect, bytes_to_patch_in_schedule);
-	print_bytes("finish_task_switch_next after self patching", (unsigned char *)finish_task_switch_next - bytes_to_patch_in_schedule, 64);
+//	print_bytes("finish_task_switch_next before self patching", (unsigned char *)finish_task_switch_next - bytes_to_patch_in_schedule, 64);
+//	memcpy((unsigned char *)finish_task_switch_next - bytes_to_patch_in_schedule, bytes_to_redirect, bytes_to_patch_in_schedule);
+//	print_bytes("finish_task_switch_next after self patching", (unsigned char *)finish_task_switch_next - bytes_to_patch_in_schedule, 64);
 		
 	write_cr0(cr0);
+
+	unsychronize_all();
 	
 
 	printk(KERN_INFO "%s: schedule function correctly patched...\n", KBUILD_MODNAME);
@@ -360,7 +402,7 @@ static void schedule_unpatch(void) {
 	write_cr0(cr0 & ~X86_CR0_WP);
 
 	// Here is for the scheduler
-	memcpy((char *)finish_task_switch_next - bytes_to_patch_in_schedule, (char *)finish_task_switch_original_bytes, bytes_to_patch_in_schedule);
+//	memcpy((char *)finish_task_switch_next - bytes_to_patch_in_schedule, (char *)finish_task_switch_original_bytes, bytes_to_patch_in_schedule);
 
 	write_cr0(cr0);
 
@@ -420,7 +462,7 @@ retry_needed:
 			break;
 	}
 
-	//smp_call_function((smp_call_func_t)cpu_aware,NULL,1);
+	//smp_call_function((smp_call_func_t)synchronize_patching,NULL,1);
 	
 	printk(KERN_DEBUG "%s: module umount run by cpu %d\n",KBUILD_MODNAME,smp_processor_id());
 
@@ -433,7 +475,7 @@ static void *prepare_self_patch(void) {
 	unsigned char *next = NULL;
 	// All functions in this module, excepting schedule_hook.
 	// Read the comment above function prototypes for an explanation
-	void *functions[] = {	cpu_aware,
+	void *functions[] = {	synchronize_patching,
 				prepare_self_patch,
 				schedule_hook_cleanup,
 				schedule_hook_init,
