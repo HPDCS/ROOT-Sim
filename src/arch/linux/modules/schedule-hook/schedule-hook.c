@@ -41,7 +41,6 @@
 #include <linux/time.h>
 #include <linux/string.h>
 #include <linux/vmalloc.h>
-#include <linux/completion.h>
 #include <linux/preempt.h>
 #include <asm/atomic.h>
 //#include <asm/page.h>
@@ -85,8 +84,8 @@ int safe_guard = 1;
 
 static int bytes_to_patch_in_schedule = 4;
 
-DECLARE_COMPLETION(patch_completion);
-atomic_t patch_enter;
+static atomic_t synch_leave;
+static atomic_t synch_enter;
 
 atomic_t count ;
 atomic_t reference_count ;
@@ -138,28 +137,29 @@ static smp_call_func_t synchronize_patching(void *ptr) {
 	(void)ptr;
 
 	printk("cpu %d entering synchronize_patching\n", smp_processor_id());
-	atomic_dec(&patch_enter);
+	atomic_dec(&synch_enter);
 	preempt_disable();
-	wait_for_completion(&patch_completion);
+	while(atomic_read(&synch_leave) > 0);
 	preempt_enable();
 	printk("cpu %d leaving synchronize_patching\n", smp_processor_id());
 	return NULL;
 }
 
+int dummycount = 0;
 
 #define synchronize_all() do { \
 		printk("cpu %d asking from unpreemptive synchronization\n", smp_processor_id()); \
-		init_completion(&patch_completion); \
-		atomic_set(&patch_enter, num_online_cpus() - 1); \
+		atomic_set(&synch_enter, num_online_cpus() - 1); \
+		atomic_set(&synch_leave, 1); \
 		preempt_disable(); \
 		smp_call_function_many(cpu_online_mask, synchronize_patching, NULL, false); /* 0 because we manually synchronize */ \
-		while(atomic_read(&patch_enter) == 0); \
+		while(atomic_read(&synch_enter) > 0); \
 		printk("cpu %d all kernel threads synchronized\n", smp_processor_id()); \
 	} while(0)
 
 #define unsychronize_all() do { \
 		printk("cpu %d freeing other kernel threads\n", smp_processor_id()); \
-		complete(&patch_completion); \
+		atomic_set(&synch_leave, 0); \
 		preempt_enable(); \
 	} while(0)
 
@@ -358,6 +358,7 @@ static int schedule_patch(void) {
 	// Synchronize threads. We force all other kernel threads to enter a synchronization function,
 	// disable preemption, do the patching and then we can all continue happily
 	synchronize_all();
+	unsychronize_all();
 
 	// Now do the actual patching. Clear CR0.WP to disable memory protection.
 	cr0 = read_cr0();
@@ -381,7 +382,6 @@ static int schedule_patch(void) {
 		
 	write_cr0(cr0);
 
-	unsychronize_all();
 	
 
 	printk(KERN_INFO "%s: schedule function correctly patched...\n", KBUILD_MODNAME);
