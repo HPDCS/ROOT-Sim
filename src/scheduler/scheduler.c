@@ -76,7 +76,7 @@ __thread void *current_state;
 
 //TODO MN
 #ifdef HAVE_GLP_SCH_MODULE
-/// Maintain groups' state 
+/// Maintain groups' state
 GLP_state **GLPS = NULL;
 #endif
 
@@ -110,13 +110,13 @@ void scheduler_init(void) {
 		LPS[i] = (LP_state *)rsalloc(sizeof(LP_state));
 		bzero(LPS[i], sizeof(LP_state));
 
-		// Allocate memory for the outgoing buffer 
+		// Allocate memory for the outgoing buffer
 		LPS[i]->outgoing_buffer.max_size = INIT_OUTGOING_MSG;
 		LPS[i]->outgoing_buffer.outgoing_msgs = rsalloc(sizeof(msg_t) * INIT_OUTGOING_MSG);
 
 		// That's the only sequentially executed place where we can set the lid
 		LPS[i]->lid = i;
-	
+
 		//TODO MN
 		#ifdef HAVE_GLP_SCH_MODULE
 		// Allocate ECS_stat_table
@@ -126,11 +126,11 @@ void scheduler_init(void) {
 		for (j = 0; j < n_prc; j++) {
 			LPS[i]->ECS_stat_table[j] = rsalloc(sizeof(ECS_stat));
 			bzero(LPS[i]->ECS_stat_table[j], sizeof(ECS_stat));
-			
-			//NOTE: each entry of ECS_stat_table must be initialise otherwise it can figure 
+
+			//NOTE: each entry of ECS_stat_table must be initialise otherwise it can figure
 			//      out problem during the first access
 			LPS[i]->ECS_stat_table[j]->last_access = -1.0;
-			
+
 		}
 		#endif
 	}
@@ -169,7 +169,7 @@ void scheduler_init(void) {
 
 	}
         #endif
-	
+
 	#ifdef HAVE_PREEMPTION
 	preempt_init();
 	#endif
@@ -236,7 +236,7 @@ void scheduler_fini(void) {
 * @param args arguments passed to the LP main loop. Currently, this is not used.
 */
 static void LP_main_loop(void *args) {
-	
+
 	#ifdef EXTRA_CHECKS
 	unsigned long long hash1, hash2;
 	hash1 = hash2 = 0;
@@ -260,14 +260,14 @@ static void LP_main_loop(void *args) {
 		// Process the event
 		timer event_timer;
 		timer_start(event_timer);
-		
+
 		switch_to_application_mode();
-		
+
 //		printf("Timestamp: %f\n",current_evt->timestamp);
-		
+
 		ProcessEvent[current_lp](LidToGid(current_lp), current_evt->timestamp, current_evt->type, current_evt->event_content, current_evt->size, current_state);
-		
-	
+
+
 		switch_to_platform_mode();
 
 		int delta_event_timer = timer_value_micro(event_timer);
@@ -313,13 +313,13 @@ static void LP_main_loop(void *args) {
  */
 void initialize_LP(unsigned int lp) {
 	unsigned int i;
-	
+
 	// Allocate LP stack
 	#ifdef ENABLE_ULT
 	LPS[lp]->stack = get_ult_stack(lp, LP_STACK_SIZE);
 	#endif
-	
-	
+
+
 	// Set the initial checkpointing period for this LP.
 	// If the checkpointing period is fixed, this will not change during the
 	// execution. Otherwise, new calls to this function will (locally) update
@@ -380,7 +380,7 @@ void initialize_worker_thread(void) {
 
 		// Create user level thread for the current LP and initialize LP control block
 		initialize_LP(LPS_bound[t]->lid);
-		
+
 		// Schedule an INIT event to the newly instantiated LP
 		msg_t init_event = {
 			sender: LidToGid(LPS_bound[t]->lid),
@@ -393,7 +393,7 @@ void initialize_worker_thread(void) {
 			message_kind: positive,
 		};
 
-		
+
 		// Copy the relevant string pointers to the INIT event payload
 		if(model_parameters.size > 0) {
 			memcpy(init_event.event_content, model_parameters.arguments, model_parameters.size * sizeof(char *));
@@ -448,7 +448,7 @@ void activate_LP(unsigned int lp, simtime_t lvt, void *evt, void *state) {
 	current_lvt = lvt;
 	current_evt = evt;
 	current_state = state;
-	
+
 	#ifdef HAVE_GLP_SCH_MODULE
 	if(LPS[current_lp]->target_rollback != NULL && LPS[current_lp]->state != LP_STATE_SILENT_EXEC && lvt < LPS[current_lp]->target_rollback->timestamp
 		&& GLPS[LPS[current_lp]->current_group]->state != GLP_STATE_SILENT_EXEC && check_start_group(current_lp) && verify_time_group(lvt)
@@ -460,7 +460,7 @@ void activate_LP(unsigned int lp, simtime_t lvt, void *evt, void *state) {
 //	if(!rootsim_config.disable_preemption)
 //		enable_preemption();
 //	#endif
-	
+
 //	printf(" LP %d current_evt->timestap:%f\n",lp,current_evt->timestamp);
 	#ifdef HAVE_CROSS_STATE
 	// Activate memory view for the current LP
@@ -479,8 +479,8 @@ void activate_LP(unsigned int lp, simtime_t lvt, void *evt, void *state) {
 	#else
 	LP_main_loop(NULL);
 	#endif
-	
-	
+
+
 //	#ifdef HAVE_PREEMPTION
 //        if(!rootsim_config.disable_preemption)
 //                disable_preemption();
@@ -488,7 +488,7 @@ void activate_LP(unsigned int lp, simtime_t lvt, void *evt, void *state) {
 
 	#ifdef HAVE_CROSS_STATE
 	// Deactivate memory view for the current LP if no conflict has arisen
-	if(!is_blocked_state(LPS[lp]->state)) {	
+	if(!is_blocked_state(LPS[lp]->state)) {
 //		printf("Deschedule %d\n",lp);
 		lp_alloc_deschedule();
 	}
@@ -503,21 +503,21 @@ void activate_LP(unsigned int lp, simtime_t lvt, void *evt, void *state) {
 
 
 bool check_rendevouz_request(unsigned int lid){
-	msg_t *temp_mess;	
+	msg_t *temp_mess;
 
 	if(LPS[lid]->state != LP_STATE_WAIT_FOR_SYNCH)
 		return false;
-	
+
 	printf("CHECK LP: %d\n",lid);
-	
+
 	if(LPS[lid]->bound != NULL && list_next(LPS[lid]->bound) != NULL){
 		temp_mess = list_next(LPS[lid]->bound);
 		printf("\t \t Randezvous_mark: %llu LPS[%d]->wait_on_rendezvous:%llu\n",temp_mess->rendezvous_mark, lid,LPS[lid]->wait_on_rendezvous);
 		return temp_mess->type == RENDEZVOUS_START && LPS[lid]->wait_on_rendezvous > temp_mess->rendezvous_mark;
 	}
-	
+
 	return false;
-	
+
 }
 
 
@@ -536,7 +536,7 @@ void schedule(void) {
 	unsigned int lid;
 	msg_t *event;
 	void *state;
-	
+
 	#ifdef HAVE_CROSS_STATE
 	bool resume_execution = false;
 	#endif
@@ -551,7 +551,7 @@ void schedule(void) {
 		default:
 			lid = smallest_timestamp_first();
 	}
-	
+
 	// No logical process found with events to be processed
 	if (lid == IDLE_PROCESS) {
 		statistics_post_lp_data(lid, STAT_IDLE_CYCLES, 1.0);
@@ -562,7 +562,7 @@ void schedule(void) {
 	// If we have to rollback
     	if(LPS[lid]->state == LP_STATE_ROLLBACK) {
 		rollback(lid);
-				
+
 		LPS[lid]->state = LP_STATE_READY;
 		send_outgoing_msgs(lid);
 
@@ -575,7 +575,7 @@ void schedule(void) {
 	else {
 		event = LPS[lid]->bound;
 	}
-	
+
 
 	// Sanity check: if we get here, it means that lid is a LP which has
 	// at least one event to be executed. If advance_to_next_event() returns
@@ -599,12 +599,12 @@ void schedule(void) {
 	}
 	#endif
 
-	
+
 	// Schedule the LP user-level thread
 	LPS[lid]->state = LP_STATE_RUNNING;
 	activate_LP(lid, lvt(lid), event, state);
 
-	
+
 	if(!is_blocked_state(LPS[lid]->state)) {
 		LPS[lid]->state = LP_STATE_READY;
 		send_outgoing_msgs(lid);
@@ -614,16 +614,16 @@ void schedule(void) {
 	#ifdef HAVE_CROSS_STATE
 	if(resume_execution && !is_blocked_state(LPS[lid]->state)) {
 		unblock_synchronized_objects(lid);
-		
+
 		// This is to avoid domino effect when relying on rendezvous messages
 		force_LP_checkpoint(lid);
 	}
 	#endif
-	
+
 
 	// Log the state, if needed
 	LogState(lid);
-	
+
 
 }
 
@@ -636,7 +636,7 @@ void schedule(void) {
 * @author Francesco Nobilia
 */
 void schedule(void) {
-	
+
 	unsigned int lid;
         msg_t *event;
         void *state;
@@ -663,32 +663,32 @@ void schedule(void) {
                 return;
         }
 
-	if(LPS[lid]->bound != NULL && list_next(LPS[lid]->bound) != NULL && 
+	if(LPS[lid]->bound != NULL && list_next(LPS[lid]->bound) != NULL &&
 		list_next(LPS[lid]->bound)->timestamp < LPS[lid]->bound->timestamp){
 		printf("Errore scheduler. Aborting ...\n");
 		fflush(stdout);
 		abort();
-	
+
 	}
 
         current_group = GLPS[LPS[lid]->current_group];
 
 	// If we have to rollback
         if(LPS[lid]->state == LP_STATE_ROLLBACK) {
-		
+
 		rollback(lid);
-			
+
 		if(check_start_group(lid) && verify_time_group(lvt(lid))){
 			//TODO MN da rivedere perchè il contatore va decrementato al termine della silent execution
 			unsigned int j;
 			for(j=0;j<current_group->tot_LP;j++){
 				if(current_group->local_LPS[j]->lid != lid)
 					rollback(current_group->local_LPS[j]->lid);
-				
+
 				LPS[current_group->local_LPS[j]->lid]->state = LP_STATE_SILENT_EXEC;
 				current_group->counter_rollback--;
 			}
-	
+
 			if(current_group->counter_rollback == 0){
 				//printf("Error GLP[%d] rollback\n",LPS[lid]->current_group);
 				current_group->state = GLP_STATE_SILENT_EXEC;
@@ -703,20 +703,20 @@ void schedule(void) {
 			LPS[lid]->state = LP_STATE_READY;
 		}
 
-	        send_outgoing_msgs(lid);	
+	        send_outgoing_msgs(lid);
                 return;
         }
 
 	if(current_group->counter_rollback!=0)
 		printf("Error LP[%d] scheduler\n",lid);
-	
+
 	// This is needed because if the only event of SILENT_EXECUTION it is exactly the bound
-	if(LPS[lid]->state == LP_STATE_SILENT_EXEC && LPS[lid]->bound==LPS[lid]->target_rollback){ 
+	if(LPS[lid]->state == LP_STATE_SILENT_EXEC && LPS[lid]->bound==LPS[lid]->target_rollback){
 		current_group->counter_silent_ex--;
                 if(current_group->counter_silent_ex == 0){
                         current_group->state = GLP_STATE_READY;
 		}
-		
+
 		PRINT_DEBUG_GLP{
 			printf("Complete silent execution with current bound LP[%d]\n",lid);
 		}
@@ -748,7 +748,7 @@ void schedule(void) {
 			current_group->initial_group_time->receiver,
 			current_group->initial_group_time->type);
 		}
-		
+
 		current_group->lvt = event;
 	}
 	else{
@@ -803,7 +803,7 @@ void schedule(void) {
 
         activate_LP(lid, lvt(lid), event, state);
 
-	// Check if it is the last event of silent execution. This is needed because if the LP 
+	// Check if it is the last event of silent execution. This is needed because if the LP
 	// does not have other messages after bound never go out from SILENT_EXECUTION.
 	if(LPS[lid]->state == LP_STATE_SILENT_EXEC){
 		if(LPS[lid]->bound==LPS[lid]->target_rollback){
@@ -827,10 +827,10 @@ void schedule(void) {
 
         if(resume_execution && !is_blocked_state(LPS[lid]->state)) {
                 unblock_synchronized_objects(lid);
-		
+
 		if(GLPS[LPS[lid]->current_group]->state == GLP_STATE_WAIT_FOR_LOG)
 			printf("log while another log\n");
-			
+
 		if(check_start_group(lid) && verify_time_group(lvt(lid)))
 	                GLPS[LPS[lid]->current_group]->state = GLP_STATE_READY;
 
@@ -853,7 +853,7 @@ void schedule(void) {
         //if(!(check_start_group(lid) && verify_time_group(lvt(lid)) && current_group->state == GLP_STATE_SILENT_EXEC))
         if(current_group->state != GLP_STATE_SILENT_EXEC && current_group->state != GLP_STATE_WAIT_FOR_LOG)
 		result_log = LogState(lid);
-	
+
         if(result_log && check_start_group(lid) && verify_time_group(lvt(lid)) && !is_blocked_state(LPS[lid]->state) && current_group->tot_LP>1){
                 GLPS[LPS[lid]->current_group]->state = GLP_STATE_WAIT_FOR_LOG;
                 GLPS[LPS[lid]->current_group]->counter_log = GLPS[LPS[lid]->current_group]->tot_LP;
@@ -868,12 +868,12 @@ void schedule(void) {
 unsigned int get_first_LP(void){
 	LP_state *lp;
 	unsigned int i;
-	
+
 	lp = LPS[0];
 	for(i=0; i<n_prc; i++){
 		if(lvt(lp->lid) > lvt(LPS[i]->lid))
 			lp = LPS[i];
 	}
-	
+
 	return lp->lid;
 }

@@ -84,7 +84,7 @@ void *log_full(int lid) {
 
 	recoverable_state[lid]->is_incremental = false;
 	size = get_log_size(recoverable_state[lid]);
-	
+
 	ckpt = rsalloc(size);
 
 	if(ckpt == NULL) {

@@ -78,7 +78,7 @@ bool LogState(unsigned int lid) {
 	if(LPS[lid]->state_log_forced) {
 		LPS[lid]->state_log_forced = false;
 		LPS[lid]->from_last_ckpt = 0;
-		
+
 		#ifdef HAVE_GLP_SCH_MODULE
 		GLPS[LPS[lid]->current_group]->from_last_ckpt = 0;
 		#endif
@@ -103,7 +103,7 @@ bool LogState(unsigned int lid) {
 					LPS[lid]->from_last_ckpt = 0;
 				}
 			}
-			else 
+			else
 			#endif
 			if(LPS[lid]->from_last_ckpt >= LPS[lid]->ckpt_period) {
 				take_snapshot = true;
@@ -119,7 +119,7 @@ bool LogState(unsigned int lid) {
 
 	// Shall we take a log?
 	if (take_snapshot) {
-		
+
 		// Take a log and set the associated LVT
 		new_state.log = log_state(lid);
 		new_state.lvt = lvt(lid);
@@ -133,7 +133,7 @@ bool LogState(unsigned int lid) {
 		(void)list_insert_tail(lid, LPS[lid]->queue_states, &new_state);
 
 	}
-	
+
 	return take_snapshot;
 }
 
@@ -198,7 +198,7 @@ unsigned int silent_execution(unsigned int lid, void *state_buffer, msg_t *evt, 
 		}
 
 		events++;
-		
+
 //		printf("[%d] Old_state: %lu\n",lid,old_state);
 		activate_LP(lid, evt->timestamp, evt, state_buffer);
 		evt = list_next(evt);
@@ -251,7 +251,7 @@ void rollback(unsigned int lid) {
 	last_correct_event = LPS[lid]->bound;
 
 	#ifdef HAVE_GLP_SCH_MODULE
-	PRINT_DEBUG_GLP_DETAIL printf("[%d] last_corr: %p at %f\n",lid,last_correct_event, last_correct_event->timestamp);	
+	PRINT_DEBUG_GLP_DETAIL printf("[%d] last_corr: %p at %f\n",lid,last_correct_event, last_correct_event->timestamp);
 	#endif
 
 	// Send antimessages
@@ -277,7 +277,7 @@ void rollback(unsigned int lid) {
 	RestoreState(lid, restore_state);
 
 	last_restored_event = restore_state->last_event;
-//	PRINT_DEBUG_GLP_DETAIL	printf("[%d] last_restored_event:%p next:%p\n",lid,last_restored_event,list_next(last_restored_event));	
+//	PRINT_DEBUG_GLP_DETAIL	printf("[%d] last_restored_event:%p next:%p\n",lid,last_restored_event,list_next(last_restored_event));
 
 	#ifdef HAVE_GLP_SCH_MODULE
 	if(!(check_start_group(lid) && verify_time_group(LPS[lid]->bound->timestamp))){
@@ -310,12 +310,12 @@ void rollback(unsigned int lid) {
 
 	reprocessed_events = silent_execution(lid, LPS[lid]->current_base_pointer, last_restored_event, last_correct_event);
 	statistics_post_lp_data(lid, STAT_SILENT, (double)reprocessed_events);
-	
+
 	#endif
 
 	// Control messages must be rolled back as well
 	rollback_control_message(lid, last_correct_event->timestamp);
-	
+
 	#ifdef HAVE_GLP_SCH_MODULE
 	PRINT_DEBUG_GLP{
 		printf("LP[%d] rollback at time:%f\n",lid,last_correct_event->timestamp);
@@ -416,7 +416,7 @@ void set_checkpoint_period(unsigned int lid, int period) {
 	#ifdef HAVE_GLP_SCH_MODULE
 	GLPS[lid]->ckpt_period = period;
 	#endif
-	
+
 }
 
 

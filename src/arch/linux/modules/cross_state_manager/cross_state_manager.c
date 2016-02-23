@@ -3,28 +3,28 @@
 *
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
-* 
+*
 * ROOT-Sim is free software; you can redistribute it and/or modify it under the
 * terms of the GNU General Public License as published by the Free Software
 * Foundation; either version 3 of the License, or (at your option) any later
 * version.
-* 
+*
 * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
 * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-* 
+*
 * You should have received a copy of the GNU General Public License along with
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-* 
-* @file cross_state_manager.c 
+*
+* @file cross_state_manager.c
 * @brief This Linux kernel module implements a modification to the x86_64 page
 * 	 table management to support event cross state dependency tracking
-* 
+*
 * @author Alessandro Pellegrini
 * @author Francesco Quaglia
 *
-* @date 
+* @date
 *       November 15, 2013 - Initial version
 *       September 19, 2015 - Full restyle of the module, to use dynamic scheduler
 * 			     patching
@@ -75,7 +75,7 @@ module_init(rs_ktblmgr_init);
 module_exit(rs_ktblmgr_cleanup);
 
 /* MODULE VARIABLES */
-//extern (*rootsim_pager)(struct task_struct *tsk); 
+//extern (*rootsim_pager)(struct task_struct *tsk);
 //extern void rootsim_load_cr3(ulong addr);
 
 static inline void rootsim_load_cr3(pgd_t *pgdir) {
@@ -86,7 +86,7 @@ static inline void rootsim_load_cr3(pgd_t *pgdir) {
 
 void (*rootsim_pager_hook)(void)=0x0;
 #define PERMISSION_MASK (S_IRUSR | S_IRGRP | S_IROTH)
-module_param(rootsim_pager_hook, ulong, PERMISSION_MASK); 
+module_param(rootsim_pager_hook, ulong, PERMISSION_MASK);
 
 /// Device major number
 static int major;
@@ -153,15 +153,15 @@ void print_pgd(void** pgd_entry){
 	void* temp;
 	void* control_bit;
 	void* addr_temp;
-		
+
 	for (index_pgd=0; index_pgd<PTRS_PER_PGD; index_pgd++){
 		if(pgd_entry[index_pgd] != NULL && dirty_pml4[index_pgd]){
 			printk(KERN_ERR "\t\t[PML4E]: %d\n",index_pgd);
-			
+
 			temp = (void *)((ulong) pgd_entry[index_pgd] & MASK_PTADDR);
                         temp = (void *)(__va(temp));
 			pud_entry = (void **)temp;
-			
+
 			for (index_pud=0; index_pud<PTRS_PER_PUD; index_pud++){
 				if(pud_entry[index_pud] != NULL){
 					control_bit = (void *)((ulong) pud_entry[index_pud] & MASK_PTCONT);
@@ -178,7 +178,7 @@ void print_pgd(void** pgd_entry){
 void (*flush_tlb_all_lookup)(void) = NULL;
 
 int root_sim_page_fault(struct pt_regs* regs, long error_code){
- 	
+
 	//printk("INIT Root_sim_page_fault stack: %p\n",regs->sp);
 
 	void *target_address;
@@ -193,7 +193,7 @@ int root_sim_page_fault(struct pt_regs* regs, long error_code){
 	ulong result_copy_user;
 
 	if(current->mm == NULL) return 0;  /* this is a kernel thread - not a rootsim thread */
-	
+
 	target_address = (void *)read_cr2();
 
 	/* discriminate whether this is a classical fault or a root-sim proper fault */
@@ -205,12 +205,12 @@ int root_sim_page_fault(struct pt_regs* regs, long error_code){
 
 			my_pgd =(void **)pgd_addr[i];
                         my_pdp =(void *)my_pgd[PML4(target_address)];
-			
+
 			ancestor_pdp =(void *) ancestor_pml4[PML4(target_address)];
 
 			if(!dirty_pml4[PML4(target_address)]) {
 				printk("\t\treturn 0 - 1 \n");
-				return 0; /* a fault outside the root-sim object zone - it needs to be handeld by the traditional fault manager */				
+				return 0; /* a fault outside the root-sim object zone - it needs to be handeld by the traditional fault manager */
 			}
 
 
@@ -243,7 +243,7 @@ int root_sim_page_fault(struct pt_regs* regs, long error_code){
 				if(dirty_pml4[index_involved_pml4]) count_involved_pml4++;
 			}
 			hitted_object = count_involved_pml4*512 + PDP(target_address) ;
-			
+
 
 			auxiliary_stack_pointer = regs->sp;
 			//printk("Auxiliary stack: %p\n",auxiliary_stack_pointer);
@@ -253,21 +253,21 @@ int root_sim_page_fault(struct pt_regs* regs, long error_code){
 				printk("\t \t \t ERROR to copy_to_user\n");
 			//printk("Added IP[%p]: %p\n",regs->ip,auxiliary_stack_pointer);
 			auxiliary_stack_pointer--;
-		        result_copy_user = copy_to_user((void *)auxiliary_stack_pointer,(void *)&hitted_object,8);	
+		        result_copy_user = copy_to_user((void *)auxiliary_stack_pointer,(void *)&hitted_object,8);
 			if(result_copy_user != 0)
 				printk("\t \t \t ERROR to copy_to_user\n");
 			//printk("Added hitted_object[%d]: %p\n",hitted_object,auxiliary_stack_pointer);
 			auxiliary_stack_pointer--;
-		        result_copy_user = copy_to_user((void *)auxiliary_stack_pointer,(void *)&i,8);	
+		        result_copy_user = copy_to_user((void *)auxiliary_stack_pointer,(void *)&i,8);
 			if(result_copy_user != 0)
 				printk("\t \t \t ERROR to copy_to_user\n");
 			//printk("Added current LP[%d]: %p\n",i,auxiliary_stack_pointer);
-			
+
 			printk("IP: %lu \t hitted_object: %lu \t WT %lu\n",regs->ip,hitted_object,i);
 
 			regs->sp = auxiliary_stack_pointer;
 			regs->ip = callback;
-			
+
 			//printk("ROOT-SIm_page_fault stack: %p\n",regs->sp);
 			return 1;
 		}
@@ -308,23 +308,23 @@ int rs_ktblmgr_release(struct inode *inode, struct file *filp) {
        	void* pml4_entry;
        	void** pdpt_entry;
         void* temp;
-	
+
 	for (s=0;s<SIBLING_PGD;s++){
 		if(original_view[s]!=NULL){ /* need to recover memory used for PDPs that have not been deallocated */
-			
+
 			pgd_entry = (void**) pgd_addr[s];
-	
-                        for (i=0; i<PTRS_PER_PGD; i++){ 
+
+                        for (i=0; i<PTRS_PER_PGD; i++){
                         	pml4_entry = pgd_entry[i];
 	                      	if(pml4_entry != NULL && dirty_pml4[i]){
                                 	temp = (void *)((ulong) pml4_entry & MASK_PTADDR);
                                         temp = (void *)(__va(temp));
                                         pdpt_entry = (void **)temp;
-					
+
 					if(temp!=NULL)
                                         	__free_pages(temp,0);
                                 }
-			} 
+			}
 
 			if(pgd_entry!=NULL)
 				__free_pages((void *)pgd_entry,0);
@@ -332,7 +332,7 @@ int rs_ktblmgr_release(struct inode *inode, struct file *filp) {
 
 		}// enf if != NULL
 	}// end for s
-	
+
 	printk("\t Done release\n");
 	return 0;
 }
@@ -387,17 +387,16 @@ static long rs_ktblmgr_ioctl(struct file *filp, unsigned int cmd, unsigned long 
 		for (i = 0; i < SIBLING_PGD; i++) {
 			if (original_view[i] == NULL) {
 				memcpy((void *)pgd_addr[i], (void *)(current->mm->pgd), 4096);
-				
+
 				//PML4 of current
  	                        pml4_table =(void **) pgd_addr[i];
 
 				for(pml4_index=0;pml4_index<PTRS_PER_PGD;pml4_index++){
 					if((pml4_table[pml4_index]!=NULL)&&(dirty_pml4[pml4_index])){
                                         	pml4_table[pml4_index] = NULL;
-                                	}	
+					}
                         	}
-	
-			
+
 				original_view[i] = current->mm;
 				descriptor = i;
 				ret = descriptor;
@@ -410,7 +409,7 @@ static long rs_ktblmgr_ioctl(struct file *filp, unsigned int cmd, unsigned long 
 goto bridging_from_get_pgd;
 		break;
 
-	case IOCTL_SCHEDULE_ON_PGD:	
+	case IOCTL_SCHEDULE_ON_PGD:
 //		printk("IOCTL_SCHEDULE_ON_PGD\n");
 		//flush_cache_all();
 		descriptor = ((ioctl_info*)arg)->ds;
@@ -421,9 +420,9 @@ goto bridging_from_get_pgd;
 		if (original_view[descriptor] != NULL) { //sanity check
 			//PML4 of current
                          pml4_table =(void **) pgd_addr[descriptor];
-				
+
 //			printk(KERN_ERR "[SCHEDULE_ON_PGD] before enter in update hitted object\n");
-//			print_pgd((void **)current->mm->pgd);			
+//			print_pgd((void **)current->mm->pgd);
 
                         //Original PML4
                         original_pml4 = (void **) original_view[descriptor]->pgd;
@@ -431,22 +430,22 @@ goto bridging_from_get_pgd;
 			for(pml4_index=0;pml4_index<PTRS_PER_PGD;pml4_index++){
 				if((original_pml4[pml4_index]!=NULL)&&(pml4_table[pml4_index]==NULL)&&(!dirty_pml4[pml4_index])){
 					printk("PML4_index: %d, descriptor: %d\n",pml4_index,descriptor);
-					pml4_table[pml4_index] = original_pml4[pml4_index];					
+					pml4_table[pml4_index] = original_pml4[pml4_index];
 				}
 			}
-                        
+
 			for(index_mdt=0; index_mdt<obj_mmap_count; index_mdt++){
 
 			    //Update currently_open with address of hitted obecjt
 			    open_index[descriptor]++;
                             currently_open[descriptor][open_index[descriptor]]=(unsigned long) sheduled_mmaps_pointers[index_mdt];
-                            
-                            //Index of PML4 
+
+                            //Index of PML4
                             pml4_index = pgd_index((unsigned long) sheduled_mmaps_pointers[index_mdt]);
 
                             //Entry PML4
                             pml4_entry =(void *) pml4_table[pml4_index];
-				
+
                             if(original_pml4[pml4_index]==NULL){
                                     printk(KERN_ERR "[SCHEDULE_ON_PGD]: Rootsim error original_pml4[%d]=NULL\n",pml4_index);
                                     break;
@@ -473,13 +472,13 @@ goto bridging_from_get_pgd;
                             temp = (void *)(__va(temp));
                             original_pdpt = (void **)temp;
 
-                            //Pointer to new PDPT                   
+                            //Pointer to new PDPT
                             temp = (void *)((ulong) pml4_entry & MASK_PTADDR);
                             temp = (void *)(__va(temp));
                             pdpt_table = (void **)temp;
-				
+
                     //        printk(KERN_ERR "pdpt_table: %p\n",pdpt_table);
-			
+
                             pdpt_index = pud_index((unsigned long) sheduled_mmaps_pointers[index_mdt]);
 
                             if(original_pdpt[pdpt_index] == NULL){
@@ -492,19 +491,19 @@ goto bridging_from_get_pgd;
 				pdpt_entry = original_pdpt[pdpt_index];
                   //          	printk("Value of pdtp_index: %d\n",pdpt_index);
                             }
-                           
-				 
-                            //Update new PDPTE                                      
+
+
+                            //Update new PDPTE
                             pdpt_table[pdpt_index] = pdpt_entry;
 
                             //Update new PML4E
                             pml4_table[pml4_index] = pml4_entry;
                         }
-	
+
 			/* actual change of the view on memory */
 			root_sim_processes[descriptor] = current->pid;
 			rootsim_load_cr3(pgd_addr[descriptor]);
-			
+
 
 //			printk(KERN_ERR "[SCHEDULE_ON_PGD] After update hitted object\n");
 //			print_pgd(pml4_table);
@@ -515,20 +514,20 @@ goto bridging_from_get_pgd;
 		break;
 
 
-	case IOCTL_UNSCHEDULE_ON_PGD:	
+	case IOCTL_UNSCHEDULE_ON_PGD:
 //		printk("IOCTL_UNSCHEDULE_ON_PGD\n");
-	
+
 		//flush_cache_all();
 		descriptor = arg;
 
 		if ((original_view[descriptor] != NULL) && (current->mm->pgd != NULL)) { //sanity check
-			root_sim_processes[descriptor] = -1;	
+			root_sim_processes[descriptor] = -1;
 			rootsim_load_cr3(current->mm->pgd);
-			
+
 			for(i=open_index[descriptor];i>=0;i--){
 
 				object_to_close = currently_open[descriptor][i];
-				
+
 				pml4_index = pgd_index(object_to_close);
 //				printk("UNSCHEDULE: closing pml4 %d - object %d\n",pml4,object_to_close);
 	//			continue;
@@ -538,7 +537,7 @@ goto bridging_from_get_pgd;
 
 
 				pdpt_table[pud_index(object_to_close)] = NULL;
-				
+
 				//printk(KERN_ERR "At the end of UNSCHEDULE \n");
 				//print_pgd(pgd_addr[descriptor]);
 			}
@@ -548,40 +547,40 @@ goto bridging_from_get_pgd;
 		}else{
 			ret = -1;
 		}
-		
+
 //		printk(KERN_ERR "At the end of UNSCHEDULE \n");
 //		print_pgd(pgd_addr[descriptor]);
 
 		break;
 
 	case IOCTL_GET_INFO_PGD:
-//		printk("--------------------------------\n");	
+//		printk("--------------------------------\n");
 //		printk("mm is  %p --  mm->pgd is %p -- PA(pgd) is %p\n",(void *)current->mm,(void *)current->mm->pgd,(void *)__pa(current->mm->pgd));
-//		printk("PRINTING THE WHOLE PGD (non-NULL entries)\n");	
+//		printk("PRINTING THE WHOLE PGD (non-NULL entries)\n");
 		pml4_table = (void **)current->mm->pgd;
 		for(i=0;i<512;i++){
 			if (*(pml4_table + i) != NULL){
-//				printk("\tentry \t%d \t- value \t%p\n",i,(void *)(*(pgd_entry+i)));	
-			//printk("\tentry \t%d \t- value \t%X\n",i,current->mm->pgd[i]);	
+//				printk("\tentry \t%d \t- value \t%p\n",i,(void *)(*(pgd_entry+i)));
+			//printk("\tentry \t%d \t- value \t%X\n",i,current->mm->pgd[i]);
 			}
-		}	
+		}
 
 		break;
 
 	case IOCTL_GET_INFO_VMAREA:
 		mmap = current->mm->mmap;
-//		printk("--------------------------------\n");	
+//		printk("--------------------------------\n");
 
-//		printk("PRINTING THE WHOLE VMAREA LIST\n");	
+//		printk("PRINTING THE WHOLE VMAREA LIST\n");
 	//	pgd_entry = (void **)current->mm->pgd;
 		for(i=0;mmap;i++){
 			//if (*(pgd_entry + i) != NULL){
-//			printk("\t VMAREA entry \t%d - start = \t%p - end = \t%p - ops addr = \t%p\n",i,(void *)mmap->vm_start,(void *)mmap->vm_end,(void *)mmap->vm_ops);	
+//			printk("\t VMAREA entry \t%d - start = \t%p - end = \t%p - ops addr = \t%p\n",i,(void *)mmap->vm_start,(void *)mmap->vm_end,(void *)mmap->vm_ops);
 			mmap = mmap->vm_next;
-			//printk("\tentry \t%d \t- value \t%X\n",i,current->mm->pgd[i]);	
+			//printk("\tentry \t%d \t- value \t%X\n",i,current->mm->pgd[i]);
 		//	}
 
-		}	
+		}
 
 		break;
 
@@ -590,15 +589,15 @@ goto bridging_from_get_pgd;
 		asm volatile("movq %%CR0, %0":"=r" (cr3));
 //		printk("CR0 = ");
 		print_bits((unsigned long long)cr3);
-		
+
 		asm volatile("\nmovq %%CR2, %0":"=r" (cr3));
 //		printk("CR2 = ");
 		print_bits((unsigned long long)cr3);
-		
+
 		asm volatile("\nmovq %%CR3, %0":"=r" (cr3));
 //		printk("CR3 = ");
 		print_bits((unsigned long long)cr3);
-		
+
 		asm volatile("\nmovq %%CR4, %0":"=r" (cr3));
 //		printk("CR4 = ");
 		print_bits((unsigned long long)cr3);
@@ -609,7 +608,7 @@ goto bridging_from_get_pgd;
 	printk("IOCTL_SET_VM_RANGE\n");
 //TODO MN
 			flush_cache_all(); /* to make new range visible across multiple runs */
-			
+
 			mapped_processes = (((ioctl_info*)arg)->mapped_processes);
 
 			callback = ((ioctl_info*)arg)->callback;
@@ -626,21 +625,21 @@ bridging_from_get_pgd:
 //TODO MN
 			flush_cache_all();
 		break;
-	
+
 		case IOCTL_GET_FREE_PML4:
 			original_pml4 = (void **)current->mm->pgd;
-                        
+
 			for (i=0; i<PTRS_PER_PGD; i++){
-                                if(original_pml4[i]==NULL){ 
+                                if(original_pml4[i]==NULL){
 					dirty_pml4[i] = 1;
 					return i;
-					
+
 				}
 			}
 
 			return -1;
 		break;
-	
+
 		case IOCTL_PGD_PRINT:
 			print_pgd((void**)current->mm->pgd);
                         return 0;
@@ -651,7 +650,7 @@ bridging_from_get_pgd:
 		break;
 
 	case IOCTL_SCHEDULE_ID:
-		
+
 		break;
 
 	case IOCTL_UNSCHEDULE_CURRENT:
@@ -674,8 +673,8 @@ void foo(struct task_struct *tsk) {
 	atomic_inc(&count);
 
 	if(current->mm != NULL){
-		for(i=0;i<SIBLING_PGD;i++){	
-			if ((root_sim_processes[i])==(current->pid)){	
+		for(i=0;i<SIBLING_PGD;i++){
+			if ((root_sim_processes[i])==(current->pid)){
 				rootsim_load_cr3(pgd_addr[i]);
 			}
 		}
@@ -695,7 +694,7 @@ static int rs_ktblmgr_init(void) {
 
 	mutex_init(&pgd_get_mutex);
 
-	atomic_set(&count, 0);	
+	atomic_set(&count, 0);
 
 	// Dynamically allocate a major for the device
 	major = register_chrdev(0, "rs_ktblmgr", &fops);
@@ -704,7 +703,7 @@ static int rs_ktblmgr_init(void) {
 		goto failed_chrdevreg;
 	}
 	printk("major for ktblmgr is %d\n",major);
-	
+
 	goto allocate;
 
 	// Create a class for the device
@@ -722,7 +721,7 @@ static int rs_ktblmgr_init(void) {
 		ret = PTR_ERR(device);
 		goto failed_devreg;
 	}
-	
+
 
 	// Create sysfs endpoints
 	// dev_attr_multimap comes from the DEVICE_ATTR(...) at the top of this module
@@ -782,7 +781,7 @@ static int rs_ktblmgr_init(void) {
 	if (!register_kprobe(&kp)) {
 		flush_tlb_all_lookup = (void *) kp.addr;
 		unregister_kprobe(&kp);
-	} 
+	}
 
 
 	return 0;
@@ -795,7 +794,7 @@ static int rs_ktblmgr_init(void) {
 	unregister_chrdev(major, "rs_ktblmgr");
     failed_chrdevreg:
 	return ret;
- 
+
 
     bad_alloc:
 	printk(KERN_ERR "rs_ktblmgr: something wrong while preallocatin pgds\n");

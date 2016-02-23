@@ -334,7 +334,7 @@ simtime_t gvt_operations(void) {
 			#ifdef HAVE_GLP_SCH_MODULE
 			if((last_time_group < last_gvt) && master_thread ()){
 				printf("LTG:%f /t last_gvt:%f\n",last_time_group,last_gvt);
-				updated_group = false;	
+				updated_group = false;
 				force_rebind_GLP();
 			}
 			#endif
@@ -350,7 +350,7 @@ bool gvt_stable(void) {
 
 //TODO MN
 #ifdef HAVE_GLP_SCH_MODULE
-bool verify_time_group(simtime_t timestamp){	
+bool verify_time_group(simtime_t timestamp){
 	//return (timestamp < last_time_group);
 	if(timestamp < last_time_group) return true;
 	else return false;
@@ -360,7 +360,7 @@ bool verify_time_group(simtime_t timestamp){
 bool need_clustering(void){
 	if(!updated_group){
 		printf("last_time_group: %f\n",last_time_group);
-		updated_group = true;	
+		updated_group = true;
 		return updated_group;
 	}
 

@@ -160,7 +160,7 @@ void dump_l(struct rootsim_list_node *n, size_t key_position) {
 
 char *__list_insert(unsigned int lid, void *li, unsigned int size, size_t key_position, void *data) {
 	struct rootsim_list_node *new_n;
-	
+
 	new_n = list_allocate_node(lid, size);
 	bzero(new_n, sizeof(struct rootsim_list_node) + size);
 	memcpy(&new_n->data, data, size);
@@ -577,12 +577,12 @@ void *list_allocate_node(unsigned int lid, size_t size) {
 
 void *list_allocate_node_buffer(unsigned int lid, size_t size) {
 	char *ptr;
-	
+
 	ptr = list_allocate_node(lid, size);
 
 	if(ptr == NULL)
 		return NULL;
-		
+
 	return (void *)(ptr + sizeof(struct rootsim_list_node));
 }
 

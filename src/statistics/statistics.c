@@ -330,7 +330,7 @@ void statistics_stop(int exit_code) {
 			timer_start(simulation_finished);
 			total_time = timer_value_seconds(simulation_timer);
 		}
-		
+
 		/* Finish flushing GVT statistics */
 		statistics_flush_gvt_buffer();
 

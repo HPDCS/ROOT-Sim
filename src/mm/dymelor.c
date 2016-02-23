@@ -204,14 +204,14 @@ static void find_next_free(malloc_area *m_area){
 
 
 void *do_malloc(unsigned int lid, malloc_state *mem_pool, size_t size) {
-	
+
 	malloc_area *m_area, *prev_area;
 	void *ptr;
 	int bitmap_blocks, num_chunks;
 	size_t area_size;
 	bool is_recoverable;
 	int j;
-	
+
 	#ifndef HAVE_PARALLEL_ALLOCATOR
 	(void)lid;
 	#endif
@@ -304,8 +304,8 @@ void *do_malloc(unsigned int lid, malloc_state *mem_pool, size_t size) {
 		m_area->use_bitmap = (unsigned int *)((char *)m_area->self_pointer + sizeof(malloc_area *));
 
 		m_area->dirty_bitmap = (unsigned int*)((char *)m_area->use_bitmap + bitmap_blocks * BLOCK_SIZE);
-		
-		m_area->area = (void *)((char*)m_area->use_bitmap + bitmap_blocks * BLOCK_SIZE * 2);	
+
+		m_area->area = (void *)((char*)m_area->use_bitmap + bitmap_blocks * BLOCK_SIZE * 2);
 	}
 
 	if(m_area->area == NULL) {
@@ -371,7 +371,7 @@ void *do_malloc(unsigned int lid, malloc_state *mem_pool, size_t size) {
 void do_free(unsigned int lid, malloc_state *mem_pool, void *ptr) {
 
 	(void)lid;
-	
+
 	malloc_area * m_area;
 	int idx, bitmap_blocks;
 	size_t chunk_size;
@@ -430,7 +430,7 @@ void do_free(unsigned int lid, malloc_state *mem_pool, void *ptr) {
 		}
 
 		m_area->state_changed = 1;
-		
+
 		m_area->last_access = current_lvt;
 	}
 

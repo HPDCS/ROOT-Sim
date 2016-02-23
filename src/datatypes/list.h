@@ -90,10 +90,10 @@ struct rootsim_list {
 /// Insert an existing node in the list. Refer to <__list_place>() for a more thorough documentation.
 #define list_place(lid, list, key_name, node) \
 			(__typeof__(list))__list_place((lid), (list), my_offsetof((list), key_name), (node))
-			
+
 #define list_place_by_content(lid, list, key_name, node) \
 			(__typeof__(list))__list_place((lid), (list), my_offsetof((list), key_name), list_container_of(node))
-			
+
 /// Remove a node in the list. Refer to <__list_delete>() for a more thorough documentation.
 #define list_delete(list, key_name, key_value) \
 		__list_delete((list), sizeof *(list), (double)(key_value), my_offsetof((list), key_name))

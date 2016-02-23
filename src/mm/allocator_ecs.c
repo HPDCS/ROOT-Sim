@@ -26,14 +26,14 @@ void* get_base_pointer(unsigned int sobj){
 }
 
 char* get_memory_ecs(unsigned int sobj, size_t size){
-	lp_mem_region local_mem_region = mem_region[sobj];	
+	lp_mem_region local_mem_region = mem_region[sobj];
 
 	if((local_mem_region.brk + size) - local_mem_region.base_pointer > PER_LP_PREALLOCATED_MEMORY ){
 		printf("Error no enough memory");
 		//TODO MN future managment of more memory
 		return MAP_FAILED;
 	}
-	
+
 	char* return_value = local_mem_region.brk;
 	local_mem_region.brk += size;
 	mem_region[sobj] = local_mem_region;
@@ -65,12 +65,12 @@ int allocator_ecs_init(unsigned int sobjs) {
 //		pml4_index++;
 		init_addr =(ulong) pml4_index;
 		init_addr = init_addr << 39;
-		allocation_counter = 0;	
+		allocation_counter = 0;
 
 		printf("pml4_idx: %d\n", pml4_index);
-		
+
 		for(; y < num_mmap; y++) {
-		
+
 			// map memory
 			addr = mmap((void*)init_addr,size,PROT_READ|PROT_WRITE,MAP_PRIVATE|MAP_ANONYMOUS|MAP_FIXED,0,0);
 			if(addr == MAP_FAILED) {
@@ -80,28 +80,28 @@ int allocator_ecs_init(unsigned int sobjs) {
 			// Access the memory in write mode to force the kernel to create the page table entries
 			addr[0] = 'x';
 			addr[1] = addr[0];
-		
+
 			// Keep track of the per-LP allocated memory
 			if(y % 2 == 0){
 				mem_region[y/2].base_pointer = mem_region[y/2].brk = addr;
 //				printf("LP[%d] address:%p\n",y/2,addr);
 			}
-			
+
 			allocation_counter++;
-			
+
 			if(allocation_counter == (512*2)){
-			 	y++; 
+				y++;
 				break;
 			}
-			
-			
+
+
 			init_addr += size;
 		}
-			
-		
-		
+
+
+
 	}
-	
+
 	return SUCCESS_AECS;
 }
 
@@ -110,7 +110,7 @@ void allocator_ecs_fini(unsigned int sobjs){
 	int return_value;
 	for(i=0;i<sobjs;i++){
 		return_value = munmap(mem_region[i].base_pointer,PER_LP_PREALLOCATED_MEMORY);
-		if(return_value){	
+		if(return_value){
 			printf("ERROR on release value:%d\n",return_value);
 			break;
 		}
