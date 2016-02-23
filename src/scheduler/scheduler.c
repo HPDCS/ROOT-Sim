@@ -30,7 +30,6 @@
 #include <stdbool.h>
 #include <datatypes/list.h>
 #include <core/core.h>
-#include <core/init.h>
 #include <core/timer.h>
 #include <arch/atomic.h>
 #include <arch/ult.h>
@@ -40,6 +39,9 @@
 #include <scheduler/scheduler.h>
 #include <scheduler/stf.h>
 #include <mm/state.h>
+
+#define _INIT_FROM_MAIN
+#include <core/init.h>
 
 #ifdef HAVE_CROSS_STATE
 #include <mm/ecs.h>

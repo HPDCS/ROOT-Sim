@@ -566,7 +566,7 @@ static inline void statistics_flush_gvt(double gvt) {
 	// If we are using a higher level of statistics, buffer data and eventually dump on file
 	if(rootsim_config.stats == STATS_PERF || rootsim_config.stats == STATS_LP || rootsim_config.stats ==  STATS_ALL) {
 
-		snprintf(gvt_line, 512, "%f\t%f\t%d\t%d\n\0", exec_time, gvt, committed, cumulated);
+		snprintf(gvt_line, 512, "%f\t%f\t%d\t%d\n", exec_time, gvt, committed, cumulated);
 		gvt_line_len = strlen(gvt_line);
 
 		if(gvt_buffer.pos + gvt_line_len > GVT_BUFF_SIZE - 2) {

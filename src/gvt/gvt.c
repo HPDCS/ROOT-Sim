@@ -81,10 +81,6 @@ static atomic_t counter_end;
  */
 static volatile unsigned int GVT_flag = 0;
 
-/// Pointers to the barrier states of the bound LPs
-static state_t **time_barrier_pointer;
-
-
 /** Keep track of the last computed gvt value. Its a per-thread variable
  * to avoid synchronization on it, but eventually all threads write here
  * the same exact value.

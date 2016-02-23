@@ -69,6 +69,7 @@ static __thread int pgd_ds;
 // Declared in ecsstub.S
 extern void rootsim_cross_state_dependency_handler(void);
 
+void ECS(long long ds, unsigned long long hitted_object) __attribute__((__used__));
 void ECS(long long ds, unsigned long long hitted_object){
 	(void)ds;
 	msg_t control_msg;
