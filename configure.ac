@@ -126,15 +126,17 @@ AC_MSG_CHECKING([for supported host Operating System])
 
 case $host_os in
   linux*)
-        # Do something specific for linux
         AC_MSG_RESULT([yes, ${host_os}])
         AC_DEFINE([OS_LINUX])
         ac_on_linux=yes
 	;;
   cygwin*)
-        # Do something specific for cygwin
         AC_MSG_RESULT([yes, ${host_os}])
-        AC_DEFINE([OS_CYGWIN])
+        AC_DEFINE([OS_WINDOWS])
+	;;
+  mingw*)
+        AC_MSG_RESULT([yes, ${host_os}])
+        AC_DEFINE([OS_WINDOWS])
 	;;
     *)
         #Default Case
@@ -257,27 +259,6 @@ AS_IF([test "x$enable_ult" != "xno"], [
 ])
 
 
-# If our libtimestretch library is installed, then we can use Preemptive Time Warp
-AC_CHECK_LIB(timestretch, ts_start, [libtimestretch=yes], [libtimestretch=no])
-ac_preemption=no
-if test "x$libtimestretch" = "xyes" -a "x$enable_ult" != "xno"
-then
-        #
-        # We have found everything that we need, but the user can disable the subsystem
-        #
-
-	AC_ARG_ENABLE([preemption],
-	AS_HELP_STRING([--disable-preemption], [Disable Preemptive Time Warp)]))
-
-	AS_IF([test "x$enable_preemption" != "xno"], [
-		AC_DEFINE([HAVE_PREEMPTION])
-		ac_have_preemption=yes
-		CFLAGS="$CFLAGS -ltimestretch"
-	])
-fi
-
-
-
 # LP binding support
 AC_ARG_ENABLE([rebinding],
 AS_HELP_STRING([--disable-rebinding], [Disable LPs Rebinding (Enabled by default)]))
@@ -298,121 +279,139 @@ AS_IF([test "x$enable_allocator" != "xno"], [
 
 
 
-# If we are on a NUMA system, try to use the NUMA subsystem
-AC_CHECK_LIB(numa, numa_num_possible_nodes, [numa_cv_libnuma=yes], [numa_cv_libnuma=no])
-AC_CHECK_HEADER(numa.h, [numa_cv_numa_h=yes], [numa_cv_numa_h=no])
-AC_CHECK_PROG([numactl],[numactl],[yes],[no])
+#------------------------------------------------------------
+# Linux specific subsystems.
+# On other architectures all these checks are just skipped
+#------------------------------------------------------------
+ac_preemption=no
 ac_have_numa=no
-
-if test "x$numa_cv_libnuma" = "xyes" -a "x$numa_cv_numa_h" = "xyes" -a "x$numactl" = "xyes" -a "x$ac_have_parallel_allocator" = "xyes"
-then
-        #
-        # We have found everything that we need, but the user can disable the subsystem
-        #
-
-	AC_ARG_ENABLE([numa],
-	AS_HELP_STRING([--disable-numa], [Disable NUMA subsystem on NUMA machines (enabled by default)]))
-
-	AS_IF([test "x$enable_numa" != "xno"], [
-		AC_DEFINE([HAVE_NUMA])
-		ac_have_numa=yes
-		CFLAGS="$CFLAGS -lnuma"
-	])
-fi
-
-
-# Event Cross State dependency manager
-AC_ARG_ENABLE([ecs],
-AS_HELP_STRING([--disable-ecs], [Disable Event Cross-State Management (Enabled by default on linux)]))
-
-AS_IF([test "x$enable_ecs" != "xno"], [
-	if test "x$ac_on_linux" = "xyes"
-	then
-	        AC_DEFINE([HAVE_CROSS_STATE])
-		ac_have_cross_state=yes
-	fi
-])
-
-# LP Group Management
-AC_ARG_ENABLE([groups],
-AS_HELP_STRING([--disable-groups], [Disable LP Group Management (Enabled by default with ECS)]))
-
-AS_IF([test "x$enable_groups" != "xno"], [
-	if test "x$ac_on_linux" = "xyes" -a "x$ac_on_linux" = "xyes"
-	then
-	        AC_DEFINE([HAVE_GROUPS])
-		ac_have_groups=yes
-	fi
-])
-
-
-
-#-----------------------------------------------------------
-# Preliminary checks for linux modules. These are run only
-# if we're compiling on a linux box
-#-----------------------------------------------------------
+ac_have_cross_state=no
+ac_have_groups=no
 ac_kernel_headers=no
-case $host_os in
-	linux*)
-		# Are kernel headers installed?
-		AC_CHECK_HEADERS([linux/ioctl.h],
-			[ac_kernel_headers=yes])
+ac_disable_modules=yes
 
-		if test "x$ac_kernel_headers" = "xyes"
-		then
-			# Configure kernel module paths
-			AC_SUBST([with_kernel], [`uname -r`])
-			AC_SUBST([with_kernel_mod], [/lib/modules/$with_kernel/extra])
-			AC_SUBST([KERNEL_SRC], [/lib/modules/$with_kernel/build])
-			AC_SUBST([KERNEL_MOD], [$with_kernel_mod])
-		fi
-		;;
-esac
-
-
-# We might want to disable all kernel modules explicitly. This is useful, for example,
-# when installing the simulator in a per-user space, in a system where the modules
-# were already installed. Using the --disable-modules won't compile nor try to
-# install any module.
-AC_ARG_ENABLE([modules],
-    AS_HELP_STRING([--disable-modules], [Disable compilation/installation of kernel modules]))
-
-ac_disable_modules=no
-AS_IF([test "x$enable_modules" = "xno"], [
-  ac_disable_modules=yes
-  ac_kernel_headers=no
-])
-AM_CONDITIONAL([NO_KERNEL_MODULES], [test "x$ac_disable_modules" = "xyes"])
-
-
-# Per-module checks. To be run only if we are on Linux and kernel headers are available
-if test "x$ac_kernel_headers" = "xyes"
+if test "x$ac_on_linux" = "xyes"
 then
 
-	# Get finish_task_switch in the current kernel
-	AC_MSG_CHECKING([for finish_task_switch in the current kernel])
-	fts_line=$($GREP -n finish_task_switch /boot/System.map-$(uname -r) | $SED 's/:.*//')
-	finish_task_switch=$($SED "${fts_line}q;d" /boot/System.map-$(uname -r) | $SED 's/ .*//')
-	if test -z "$finish_task_switch"; then
-	        AC_MSG_ERROR([Address of finish_task_switch not found in kernel map])
+	echo "------------------------------> PASSING HERE"
+
+	# If our libtimestretch library is installed, then we can use Preemptive Time Warp
+	AC_CHECK_LIB(timestretch, ts_start, [libtimestretch=yes], [libtimestretch=no])
+	if test "x$libtimestretch" = "xyes" -a "x$enable_ult" != "xno"
+	then
+			#
+			# We have found everything that we need, but the user can disable the subsystem
+			#
+
+		AC_ARG_ENABLE([preemption],
+		AS_HELP_STRING([--disable-preemption], [Disable Preemptive Time Warp)]))
+
+		AS_IF([test "x$enable_preemption" != "xno"], [
+			AC_DEFINE([HAVE_PREEMPTION])
+			ac_have_preemption=yes
+			CFLAGS="$CFLAGS -ltimestretch"
+		])
 	fi
-	AC_MSG_RESULT([found at 0x$finish_task_switch])
-	AC_SUBST([FTS_ADDR], [0x$finish_task_switch])
 
-	# Get function after finish_task_switch in the current kernel
-	AC_MSG_CHECKING([the address of function next to finish_task_switch in the current kernel])
-	let fts_line=$fts_line+1
-	finish_task_switch_next=$($SED "${fts_line}q;d" /boot/System.map-$(uname -r) | $SED 's/ .*//')
-	if test -z "$finish_task_switch_next"; then
-	        AC_MSG_ERROR([Address of function aftr finish_task_switch not found in kernel map])
+	# If we are on a NUMA system, try to use the NUMA subsystem
+	AC_CHECK_LIB(numa, numa_num_possible_nodes, [numa_cv_libnuma=yes], [numa_cv_libnuma=no])
+	AC_CHECK_HEADER(numa.h, [numa_cv_numa_h=yes], [numa_cv_numa_h=no])
+	AC_CHECK_PROG([numactl],[numactl],[yes],[no])
+
+	if test "x$numa_cv_libnuma" = "xyes" -a "x$numa_cv_numa_h" = "xyes" -a "x$numactl" = "xyes" -a "x$ac_have_parallel_allocator" = "xyes"
+	then
+			#
+			# We have found everything that we need, but the user can disable the subsystem
+			#
+
+		AC_ARG_ENABLE([numa],
+		AS_HELP_STRING([--disable-numa], [Disable NUMA subsystem on NUMA machines (enabled by default)]))
+
+		AS_IF([test "x$enable_numa" != "xno"], [
+			AC_DEFINE([HAVE_NUMA])
+			ac_have_numa=yes
+			CFLAGS="$CFLAGS -lnuma"
+		])
 	fi
-	AC_MSG_RESULT([found at 0x$finish_task_switch_next])
-	AC_SUBST([FTS_ADDR_NEXT], [0x$finish_task_switch_next])
 
 
-fi # closes the global Linux kernel headers availability check
+	# Event Cross State dependency manager
+	AC_ARG_ENABLE([ecs],
+	AS_HELP_STRING([--disable-ecs], [Disable Event Cross-State Management (Enabled by default on linux)]))
+
+	AS_IF([test "x$enable_ecs" != "xno"], [
+		AC_DEFINE([HAVE_CROSS_STATE])
+		ac_have_cross_state=yes
+	])
+
+	# LP Group Management
+	AC_ARG_ENABLE([groups],
+	AS_HELP_STRING([--disable-groups], [Disable LP Group Management (Enabled by default with ECS)]))
+
+	AS_IF([test "x$enable_groups" != "xno"], [
+		AC_DEFINE([HAVE_GROUPS])
+		ac_have_groups=yes
+	])
 
 
+	# Test for linux headers, to compile kernel modules
+	ac_kernel_headers=no
+	AC_CHECK_HEADERS([linux/ioctl.h],
+		[ac_kernel_headers=yes])
+
+	if test "x$ac_kernel_headers" = "xyes"
+	then
+		# Configure kernel module paths
+		AC_SUBST([with_kernel], [`uname -r`])
+		AC_SUBST([with_kernel_mod], [/lib/modules/$with_kernel/extra])
+		AC_SUBST([KERNEL_SRC], [/lib/modules/$with_kernel/build])
+		AC_SUBST([KERNEL_MOD], [$with_kernel_mod])
+	fi
+
+	# We might want to disable all kernel modules explicitly. This is useful, for example,
+	# when installing the simulator in a per-user space, in a system where the modules
+	# were already installed. Using the --disable-modules won't compile nor try to
+	# install any module.
+	AC_ARG_ENABLE([modules],
+		AS_HELP_STRING([--disable-modules], [Disable compilation/installation of kernel modules]))
+
+	ac_disable_modules=no
+	AS_IF([test "x$enable_modules" = "xno"], [
+		ac_disable_modules=yes
+		ac_kernel_headers=no
+	])
+
+	# Per-module checks. To be run only if we are on Linux and kernel headers are available
+	if test "x$ac_kernel_headers" = "xyes"
+	then
+
+		# Get finish_task_switch in the current kernel
+		AC_MSG_CHECKING([for finish_task_switch in the current kernel])
+		fts_line=$($GREP -n finish_task_switch /boot/System.map-$(uname -r) | $SED 's/:.*//')
+		finish_task_switch=$($SED "${fts_line}q;d" /boot/System.map-$(uname -r) | $SED 's/ .*//')
+		if test -z "$finish_task_switch"; then
+				AC_MSG_ERROR([Address of finish_task_switch not found in kernel map])
+		fi
+		AC_MSG_RESULT([found at 0x$finish_task_switch])
+		AC_SUBST([FTS_ADDR], [0x$finish_task_switch])
+
+		# Get function after finish_task_switch in the current kernel
+		AC_MSG_CHECKING([the address of function next to finish_task_switch in the current kernel])
+		let fts_line=$fts_line+1
+		finish_task_switch_next=$($SED "${fts_line}q;d" /boot/System.map-$(uname -r) | $SED 's/ .*//')
+		if test -z "$finish_task_switch_next"; then
+				AC_MSG_ERROR([Address of function aftr finish_task_switch not found in kernel map])
+		fi
+		AC_MSG_RESULT([found at 0x$finish_task_switch_next])
+		AC_SUBST([FTS_ADDR_NEXT], [0x$finish_task_switch_next])
+
+
+	fi # closes the global Linux kernel headers availability check
+
+fi # Closes che global check for Linux availability
+
+# This instructs the Makefile to build kernel modules only when possible
+AM_CONDITIONAL([NO_KERNEL_MODULES], [test "x$ac_disable_modules" = "xyes"])
 
 #----------------------------------------------------------------------------
 # Check scripts sizes.
@@ -600,7 +599,13 @@ fi
 # Compose message to tell whether modules are disabled
 if test "x$ac_disable_modules" = "xyes"
 then
-	ac_modules="Kernel modules compilation/installation disabled via --disable-modules"
+	ac_modules="Kernel modules compilation/installation disabled"
+	if test "x$ac_on_linux" = "xyes"
+	then
+		ac_modules="${ac_modules} via --disable-modules"
+	else
+		ac_modules="${ac_modules} on a non-Linux system"
+	fi
 else
 	ac_modules="Kernel modules will be compiled and installed (disable via --disable-modules)"
 fi
