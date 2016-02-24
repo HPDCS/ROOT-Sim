@@ -30,7 +30,7 @@ intercept.ko: intercept/intercept_page_fault.c intercept/my_page_fault.c
 	cp cross_state_manager/Module.symvers intercept/
 	$(MAKE) -C $(KERNEL_SRC) M=$(abs_srcdir)/intercept/ CFLAGS="" EXTRA_FLAGS="$(FLAGS)"
 
-schedule-hook.ko: schedule-hook/schedule-hook.c
+schedule-hook.ko: schedule-hook/schedule-hook.c schedule-hook/hook.S
 	$(MAKE) -C $(KERNEL_SRC) M=$(abs_srcdir)/schedule-hook/ CFLAGS="" EXTRA_CFLAGS="$(FLAGS) \
 											-DFTS_ADDR=$(FTS_ADDR)\
 	       										-DFTS_ADDR_NEXT=$(FTS_ADDR_NEXT)"

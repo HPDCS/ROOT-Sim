@@ -172,7 +172,7 @@ void process_bottom_halves(void) {
 	#ifdef HAVE_GROUPS
 	simtime_t lvt_receiver;
 	#endif
-	
+
 	msg_t *msg_to_process;
 	msg_t *matched_msg;
 
@@ -181,17 +181,17 @@ restart:
 	for(i = 0; i < n_prc_per_thread; i++) {
 
 		while((msg_to_process = (msg_t *)get_BH(LPS_bound[i]->lid)) != NULL) {
-						
+
 			lid_receiver = msg_to_process->receiver;
-			
+
 			#ifdef HAVE_GROUPS
 			lvt_receiver = lvt(lid_receiver);
 			#endif
-	
+
 			if(msg_to_process->timestamp < get_last_gvt())
 				printf("ERRORE\n");
-			
-//			printf("\t \t receiver:%d sender:%d type:%d timestamp:%f\n",lid_receiver, msg_to_process->sender, msg_to_process->type, msg_to_process->timestamp);			
+
+//			printf("\t \t receiver:%d sender:%d type:%d timestamp:%f\n",lid_receiver, msg_to_process->sender, msg_to_process->type, msg_to_process->timestamp);
 
 			// Handle control messages
 			if(!receive_control_msg(msg_to_process)) {
@@ -240,29 +240,29 @@ restart:
 						fflush(stdout);
 						abort();
 					} else {
-		
+
 						// If the matched message is in the past, we have to rollback
 						if(matched_msg->timestamp <= lvt(lid_receiver)) {
 						// TODO understand if is correct IDLE_PROCESS
 //							if(matched_msg->type == RENDEZVOUS_START) {
 //								printf("straggler START antimessage mark %llu rmark %llu\n", matched_msg->mark, matched_msg->rendezvous_mark);
 //							}
-							
+
 							#ifdef HAVE_GROUPS
 							PRINT_DEBUG_GLP{	
 								printf("RN Type:%d T:%f S:%d R:%d LVT:%f\n",
         	                                                	matched_msg->type,
                 	                                        	matched_msg->timestamp,
-                        	                                	matched_msg->sender, 
+									matched_msg->sender,
                                 	                        	lid_receiver,
 									lvt(lid_receiver)
                                         	               	       );
 							}
 							reset_synch_counter(lid_receiver);
 							#endif
-								
+
 							LPS[lid_receiver]->bound = list_prev(matched_msg);
-							while ((LPS[lid_receiver]->bound != NULL) && 
+							while ((LPS[lid_receiver]->bound != NULL) &&
 								D_EQUAL(LPS[lid_receiver]->bound->timestamp, msg_to_process->timestamp)) {
 								if(list_prev(LPS[lid_receiver]->bound) == NULL) {
 									printf("WTF\n");
@@ -272,14 +272,14 @@ restart:
 
 								LPS[lid_receiver]->bound = list_prev(LPS[lid_receiver]->bound);
 							}
-							
+
 							LPS[lid_receiver]->state = LP_STATE_ROLLBACK;
 
 						}
 						#ifdef HAVE_GROUPS
 	                                                check_rollback_group(matched_msg, lid_receiver, lvt_receiver, negative);	
 						#endif
-				
+
 
 						// Delete the matched message
 						list_delete_by_content(matched_msg->sender, LPS[lid_receiver]->queue_in, matched_msg);
@@ -295,22 +295,22 @@ restart:
 					(void)list_place_by_content(lid_receiver, LPS[lid_receiver]->queue_in, timestamp, msg_to_process);
 					// Check if we've just inserted an out-of-order event
 					if(msg_to_process->timestamp < lvt(lid_receiver)) {
-						
+
 						#ifdef HAVE_GROUPS
 						PRINT_DEBUG_GLP{
 							printf("RP Type:%d T:%f S:%d R:%d LVT:%f\n",
 								msg_to_process->type,
 								msg_to_process->timestamp,
-                                                        	msg_to_process->sender, 
+                                                        	msg_to_process->sender,
 								lid_receiver,
 								lvt(lid_receiver)
 							       );
 						}
 						reset_synch_counter(lid_receiver);
 						#endif
-						
+
 						LPS[lid_receiver]->bound = list_prev(msg_to_process);
-						while ((LPS[lid_receiver]->bound != NULL) && 
+						while ((LPS[lid_receiver]->bound != NULL) &&
 							D_EQUAL(LPS[lid_receiver]->bound->timestamp, msg_to_process->timestamp)) {
 							if(list_prev(LPS[lid_receiver]->bound) == NULL)
                                        				break;
@@ -319,7 +319,7 @@ restart:
 						}
 
 						LPS[lid_receiver]->state = LP_STATE_ROLLBACK;
-						
+
 					}
 					#ifdef HAVE_GROUPS
                                         	check_rollback_group(msg_to_process, lid_receiver, lvt_receiver, positive);
@@ -329,13 +329,13 @@ restart:
 
 				// It's a control message
 				case other:
-					
+
 					// Check if it is an anti control message
 					if(!anti_control_message(msg_to_process)) {
 						list_deallocate_node_buffer(lid_receiver, msg_to_process);
 						continue;
 					}
-					
+
 					break;
 
 				default:
@@ -396,4 +396,4 @@ msg_t *list_get_node_timestamp(simtime_t timestamp, unsigned int lid){
 			printf("[%d] list_get_node_timestamp SELECTED timestamp:%f\n",lid,prev->timestamp);
 		}
 	return prev;
-}	
+}

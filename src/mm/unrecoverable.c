@@ -67,7 +67,7 @@ void unrecoverable_fini(void) {
 /*
 	unsigned int i, j;
 	malloc_area *current_area;
-	
+
 	for(i = 0; i < n_prc; i++) {
 		for (j = 0; j < (unsigned int)unrecoverable_state[i]->num_areas; j++) {
 			current_area = &(unrecoverable_state[i]->areas[j]);
@@ -121,11 +121,11 @@ void ufree(unsigned int lid, void *ptr) {
 
 
 void *urealloc(unsigned int lid, void *ptr, size_t new_s) {
-	
+
 	void *new_buffer;
 	size_t old_size;
 	malloc_area *m_area;
-	
+
 	// If ptr is NULL realloc is equivalent to the malloc
 	if (ptr == NULL) {
 		return umalloc(lid, new_s);

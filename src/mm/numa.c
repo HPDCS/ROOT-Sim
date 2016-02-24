@@ -65,7 +65,7 @@ void move_lid(int lid, unsigned numa_node) {
 	for (i = 0; i < pagecount; i++){
 		pages[i] = segment_addr + i * PAGE_SIZE;
 		nodes[i] = numa_node;
-	}	
+	}
 
 	numa_move_pages(0, pagecount, (void **)pages, nodes, status, MPOL_MF_MOVE);
 }
@@ -142,7 +142,7 @@ static int query_numa_node(int id){
 
                 while(p){
                         core_id = strtol(p,NULL, 10);
-                        if (core_id == id) 
+                        if (core_id == id)
 				return i;
                         p = strtok(NULL," ");
                 }
@@ -152,7 +152,7 @@ static int query_numa_node(int id){
 	fclose(numa_info);
 
 	unlink("numa_info");
-       
+
         return -1;
 	#undef NUMA_INFO_FILE
 	#undef BUFF_SIZE

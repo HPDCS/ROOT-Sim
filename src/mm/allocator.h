@@ -19,7 +19,7 @@
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
 * @file allocator.h
-* @brief 
+* @brief
 * @author Francesco Quaglia
 */
 
@@ -38,7 +38,7 @@ typedef struct _map_move {
 	unsigned 	target_node;
 	int      	need_move;
 	int    		in_progress;
-} map_move; 
+} map_move;
 
 
 struct _buddy {

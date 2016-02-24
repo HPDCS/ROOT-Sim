@@ -1,20 +1,20 @@
 /**                       Copyright (C) 2014 HPDCS Group
 *                       http://www.dis.uniroma1.it/~hpdcs
-* 
-* This is free software; 
+*
+* This is free software;
 * You can redistribute it and/or modify this file under the
 * terms of the GNU General Public License as published by the Free Software
 * Foundation; either version 3 of the License, or (at your option) any later
 * version.
-* 
+*
 * This file is distributed in the hope that it will be useful, but WITHOUT ANY
 * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-* 
+*
 * You should have received a copy of the GNU General Public License along with
 * this file; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-* 
+*
 * @file timestretch.h
 * @brief This is the header file to configure the timestretch module
 * @author Francesco Quaglia
@@ -46,9 +46,9 @@
 
 #define HTM_THREADS 16 // max number of concurrent threads rnning HTM transactions with timer stretch
 
-#define IOCTL_SETUP_PID _IOW(TSTRETCH_IOCTL_MAGIC, 2, unsigned long ) 
-#define IOCTL_SHUTDOWN_PID _IOW(TSTRETCH_IOCTL_MAGIC, 3, unsigned long ) 
-#define IOCTL_SHUTDOWN_ACK _IOW(TSTRETCH_IOCTL_MAGIC, 4, unsigned long ) 
-#define IOCTL_SHUTDOWN_VIEWS _IOW(TSTRETCH_IOCTL_MAGIC, 5, unsigned long ) 
+#define IOCTL_SETUP_PID _IOW(TSTRETCH_IOCTL_MAGIC, 2, unsigned long )
+#define IOCTL_SHUTDOWN_PID _IOW(TSTRETCH_IOCTL_MAGIC, 3, unsigned long )
+#define IOCTL_SHUTDOWN_ACK _IOW(TSTRETCH_IOCTL_MAGIC, 4, unsigned long )
+#define IOCTL_SHUTDOWN_VIEWS _IOW(TSTRETCH_IOCTL_MAGIC, 5, unsigned long )
 
 #endif /* __KERNEL_TIME_SLICE_STRETCH */

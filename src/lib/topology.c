@@ -144,9 +144,9 @@ unsigned int FindReceiver(int topology) {
 			receiver = (ny * edge + nx);
 
 			break;
-			
+
 		case TOPOLOGY_TORUS:
-		
+
 			// Convert linear coords to square coords
 			x = current_lp % edge;
 			y = current_lp / edge;
@@ -156,7 +156,7 @@ unsigned int FindReceiver(int topology) {
 				receiver = current_lp;
 				break;
 			}
-			
+
 			receiver = 4 * Random();
 			if(receiver == 4) {
 				receiver = 3;
@@ -182,16 +182,16 @@ unsigned int FindReceiver(int topology) {
 				default:
 					rootsim_error(true, "Met an impossible condition at %s:%d. Aborting...\n", __FILE__, __LINE__);
 			}
-			
+
 			// Check for wrapping around
 			if(nx >= edge)
 				nx = nx % edge;
 			if(ny >= edge)
 				ny = ny % edge;
-			
+
 			// Convert back to linear coordinates
 			receiver = (ny * edge + nx);
-		
+
 			break;
 
 
@@ -290,7 +290,7 @@ int GetReceiver(int topology, int direction) {
 				receiver = current_lp;
 				break;
 			}
-	
+
 			switch(direction) {
 				case DIRECTION_NW:
 					nx = (y % 2 == 0 ? x - 1 : x);
@@ -319,7 +319,7 @@ int GetReceiver(int topology, int direction) {
 				default:
 					goto out;
 			}
-			
+
 			if(nx >= edge || ny >= edge)
 				receiver = -1;
 			else
@@ -367,7 +367,7 @@ int GetReceiver(int topology, int direction) {
 				receiver = (ny * edge + nx);
 
 			break;
-			
+
 		case TOPOLOGY_TORUS:
 			// Convert linear coords to square coords
 			x = current_lp % edge;
@@ -399,16 +399,16 @@ int GetReceiver(int topology, int direction) {
 				default:
 					goto out;
 			}
-			
+
 			// Check for wrapping around
 			if(nx >= edge)
 				nx = nx % edge;
 			if(ny >= edge)
 				ny = ny % edge;
-			
+
 			// Convert back to linear coordinates
 			receiver = (ny * edge + nx);
-		
+
 			break;
 
 		case TOPOLOGY_BIDRING:

@@ -24,10 +24,10 @@ unsigned int smallest_timestamp_first(void) {
 		#ifdef HAVE_GROUPS
 		if(check_state_group(i))
 			continue;
-		
+
 		if(LPS_bound[i]->state == LP_STATE_SILENT_EXEC && GLPS[LPS_bound[i]->current_group]->state != GLP_STATE_SILENT_EXEC)
 			printf("##########################Error STF\n");
-	
+
 		#else
 		// If waiting for synch, don't take into account the LP
 		if(is_blocked_state(LPS_bound[i]->state)) {
@@ -41,10 +41,10 @@ unsigned int smallest_timestamp_first(void) {
 		}
 		#ifdef HAVE_GROUPS
 		//Due to rollback group in case of LP whitout next event that has to update the state of group
-		else if(LPS_bound[i]->state == LP_STATE_SILENT_EXEC && 
-			GLPS[LPS_bound[i]->current_group]->state == GLP_STATE_SILENT_EXEC && 
-				(next_event_timestamp(LPS_bound[i]->lid) <= -1 || 
-				next_event_timestamp(LPS_bound[i]->lid) > GLPS[LPS_bound[i]->current_group]->lvt->timestamp) 
+		else if(LPS_bound[i]->state == LP_STATE_SILENT_EXEC &&
+			GLPS[LPS_bound[i]->current_group]->state == GLP_STATE_SILENT_EXEC &&
+				(next_event_timestamp(LPS_bound[i]->lid) <= -1 ||
+				next_event_timestamp(LPS_bound[i]->lid) > GLPS[LPS_bound[i]->current_group]->lvt->timestamp)
 			){
                         evt_time = LPS_bound[i]->bound->timestamp;
                 }
@@ -66,10 +66,10 @@ unsigned int smallest_timestamp_first(void) {
 	} else {
 		#ifdef HAVE_GROUPS
 /*
-		if(!is_blocked_state(LPS[next]->state) && 
-			is_blocked_state(GLPS[LPS[next]->current_group]->state) && 
+		if(!is_blocked_state(LPS[next]->state) &&
+			is_blocked_state(GLPS[LPS[next]->current_group]->state) &&
 			min_timestamp > GLPS[LPS[next]->current_group]->initial_group_time->timestamp &&
-			verify_time_group(lvt(next)))		
+			verify_time_group(lvt(next)))
 			printf("############ ERRORE STF LP:%d LP-S:%d GLP-S:%d LVT-LP:%f LVT-GLP:%f CSG:%d VTG:%d  ############\n",
 				next,
 				LPS[next]->state,

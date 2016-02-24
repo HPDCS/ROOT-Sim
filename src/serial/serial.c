@@ -139,7 +139,7 @@ void serial_simulation(void) {
                         rootsim_error(true, "Error, LP %d has modified the payload of event %d during its processing. Aborting...\n", current_lp, event->type);
                 }
                 #endif
-		
+
 		current_lp = IDLE_PROCESS;
 
 		// Termination detection can happen only after the state is initialized

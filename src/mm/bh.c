@@ -19,7 +19,7 @@
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
 * @file bh.c
-* @brief 
+* @brief
 * @author Francesco Quaglia
 */
 
@@ -68,12 +68,12 @@ static void *get_buffer(int lid, int size) {
 
 void BH_fini(void) {
 	unsigned int i;
-	
+
 	for (i = 0; i < n_prc; i++) {
 		free_pages(bh_maps[i].actual_bh_addresses[0], bh_maps[i].current_pages[0]);
 		free_pages(bh_maps[i].actual_bh_addresses[1], bh_maps[i].current_pages[1]);
 	}
-	
+
 	rsfree(bh_maps);
 	rsfree(bh_write);
 	rsfree(bh_read);
@@ -99,7 +99,7 @@ bool BH_init(void) {
                 addr = allocate_pages(INITIAL_BH_PAGES);
                 if (addr == NULL)
 			return false;
-			
+
                 bh_maps[i].live_bh = addr;
 		bh_maps[i].actual_bh_addresses[0] = addr;
 		bh_maps[i].current_pages[0] = INITIAL_BH_PAGES;
@@ -108,7 +108,7 @@ bool BH_init(void) {
                 addr = allocate_pages(INITIAL_BH_PAGES);
                 if (addr == NULL)
 			return false;
-			
+
                 bh_maps[i].expired_bh = addr;
 		bh_maps[i].actual_bh_addresses[1] = addr;
 		bh_maps[i].current_pages[1] = INITIAL_BH_PAGES;
@@ -142,7 +142,7 @@ int insert_BH(int lid, void* msg, int size) {
 	needed_store = tag + sizeof(tag);
 	residual_store = (bh_maps[lid].live_bh == bh_maps[lid].actual_bh_addresses[0] ? bh_maps[lid].current_pages[0] : bh_maps[lid].current_pages[1])
 			 * PAGE_SIZE - bh_maps[lid].live_boundary;
-	
+
 
 	// Reallocate the live BH buffer. Don't touch the other buffer,
 	// as in this way the critical section is much shorter
@@ -197,15 +197,15 @@ void *get_BH(unsigned int lid) {
 	void *buff;
 	char *msg_addr;
 	int msg_offset;
-	
+
 
 	if(lid >= n_prc)
 		goto no_msg;
-	
+
 	spin_lock(&bh_read[lid]);
 
 	if(bh_maps[lid].expired_msgs <= 0 ) {
-	
+
 		spin_lock(&bh_write[lid]);
 		switch_bh(lid);
 		spin_unlock(&bh_write[lid]);
@@ -224,7 +224,7 @@ void *get_BH(unsigned int lid) {
 
 	msg_addr = bh_maps[lid].expired_bh + msg_offset;
 
-	memcpy(&msg_tag, msg_addr, sizeof(msg_tag)); 
+	memcpy(&msg_tag, msg_addr, sizeof(msg_tag));
 
 	buff = get_buffer(lid, msg_tag);
 
@@ -243,5 +243,5 @@ void *get_BH(unsigned int lid) {
 	return buff;
 
 no_msg:
-	return NULL;	
+	return NULL;
 }

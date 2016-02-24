@@ -19,7 +19,7 @@
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
 * @file allocator.c
-* @brief 
+* @brief
 * @author Francesco Quaglia
 */
 
@@ -47,7 +47,7 @@ static
 void **mem_areas;
 
 static inline int left_child(int idx) {
-    return ((idx << 1) + 1); 
+    return ((idx << 1) + 1);
 }
 
 static inline int right_child(int idx) {
@@ -58,8 +58,8 @@ static inline int parent(int idx) {
     return (((idx + 1) >> 1) - 1);
 }
 
-/** allocate a new buddy structure 
- * @param num_of_fragments number of fragments of the memory to be managed 
+/** allocate a new buddy structure
+ * @param num_of_fragments number of fragments of the memory to be managed
  * @return pointer to the allocated buddy structure */
 static struct _buddy *buddy_new(unsigned int num_of_fragments) {
     struct _buddy *self = NULL;
@@ -75,7 +75,7 @@ static struct _buddy *buddy_new(unsigned int num_of_fragments) {
     self = rsalloc(sizeof(struct _buddy) + 2 * num_of_fragments * sizeof(size_t));
     self->size = num_of_fragments;
     node_size = num_of_fragments * 2;
-    
+
     // initialize *longest* array for buddy structure
     int iter_end = num_of_fragments * 2 - 1;
     for (i = 0; i < iter_end; i++) {
@@ -95,12 +95,12 @@ static void buddy_destroy(struct _buddy *self) {
 /* choose the child with smaller longest value which is still larger
  * than *size* */
 static unsigned choose_better_child(struct _buddy *self, unsigned idx, size_t size) {
-    
+
     struct compound {
         size_t size;
         unsigned idx;
     } children[2];
-    
+
     children[0].idx = left_child(idx);
     children[0].size = self->longest[children[0].idx];
     children[1].idx = right_child(idx);
@@ -111,11 +111,11 @@ static unsigned choose_better_child(struct _buddy *self, unsigned idx, size_t si
     if (size > children[min_idx].size) {
         min_idx = 1 - min_idx;
     }
-    
+
     return children[min_idx].idx;
 }
 
-/** allocate *size* from a buddy system *self* 
+/** allocate *size* from a buddy system *self*
  * @return the offset from the beginning of memory to be managed */
 static int buddy_alloc(struct _buddy *self, size_t size) {
     if (self == NULL || self->size < size) {
@@ -191,7 +191,7 @@ void *pool_get_memory(unsigned int lid, size_t size) {
 	// The operation involves a fast positive integer round up
 	fragments = 1 + ((size - 1) / BUDDY_GRANULARITY);
 	displacement = buddy_alloc(buddies[lid], fragments) * BUDDY_GRANULARITY;
-	
+
 	if(displacement == -1)
 		return NULL;
 
@@ -201,7 +201,7 @@ void *pool_get_memory(unsigned int lid, size_t size) {
 
 void pool_release_memory(unsigned int lid, void *ptr) {
 	int displacement;
-	
+
 	displacement = (int)((char *)ptr - (char *)mem_areas[lid]);
 	buddy_free(buddies[lid], displacement);
 }
@@ -213,14 +213,14 @@ void allocator_fini(void) {
 		buddy_destroy(buddies[i]);
 		free_pages(mem_areas[i], TOTAL_MEMORY / PAGE_SIZE);
 	}
-	
+
 	rsfree(mem_areas);
 	rsfree(buddies);
 }
 
 bool allocator_init(void) {
 	unsigned int i;
-	
+
 	// These are a vector of pointers which are later initialized
 	buddies = rsalloc(sizeof(struct _buddy *) * n_prc);
 	mem_areas = rsalloc(sizeof(void *) * n_prc);
@@ -235,7 +235,7 @@ bool allocator_init(void) {
 	}
 
 	printf("done\n");
-	
+
 #ifdef HAVE_NUMA
 	numa_init();
 #endif
@@ -252,7 +252,7 @@ bool allocator_init(void) {
 
 
 char *allocate_pages(int num_pages) {
-	
+
         char *page;
 
         page = (char*)mmap((void*)NULL, num_pages * PAGE_SIZE, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, 0,0);

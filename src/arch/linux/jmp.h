@@ -49,7 +49,7 @@ typedef struct __exec_context_t {
 	unsigned long long r15;
 	unsigned long long rip;
 	unsigned long long flags;
-	
+
 	// Space for other registers
 	unsigned char others[512] __attribute__((aligned(16))); // fxsave wants 16-byte aligned memory
 } exec_context_t;

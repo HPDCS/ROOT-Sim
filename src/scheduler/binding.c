@@ -61,7 +61,7 @@ static __thread bool first_lp_binding = true;
 __thread LP_state **LPS_bound = NULL;
 
 /** TODO MN
- *  Each KLT has a binding towards some GLP. This is the structure used 
+ *  Each KLT has a binding towards some GLP. This is the structure used
  *  to keep track of GLPs currently being handled
  */
 #ifdef HAVE_GROUPS
@@ -363,12 +363,12 @@ static int compare_glp_cost(const void *a, const void *b) {
 **/
 int LP_change_group(GLP_state **GROUPS_global, unsigned int actual_lp,int n, unsigned int (*statistics)[n], bool force_change){
 	unsigned int group_index = statistics[actual_lp][1];
-		
+
 	if(force_change || LPS[actual_lp]->current_group != group_index){
-		
+
 		//Update old group VERIFICA
 		remove_lp_group(GROUPS_global[LPS[actual_lp]->current_group],actual_lp);
-					
+
 		//Update new group
 		insert_lp_group(GROUPS_global[group_index],actual_lp);
 	}
@@ -385,8 +385,8 @@ int LP_change_group(GLP_state **GROUPS_global, unsigned int actual_lp,int n, uns
 */
 static void analise_static_group(int n, unsigned int (*statistics)[n]){
 	unsigned int temp_max_access = 0, i=0, j=0;
-	ECS_stat *ECS_entry_temp;	
-	ECS_stat **actual_lp_table;	
+	ECS_stat *ECS_entry_temp;
+	ECS_stat **actual_lp_table;
 
 	for(i=0 ; i<n_prc ; i++){
 		statistics[i][0] = empty_value;
@@ -401,10 +401,10 @@ static void analise_static_group(int n, unsigned int (*statistics)[n]){
 			}
 			// Reset statistics ECS if the my lvt is bigger than last_access plus THRESHOLD
 			if(ECS_entry_temp->last_access + THRESHOLD_TIME_ECS < lvt(i)){
-				
+
 				ECS_entry_temp->last_access = lvt(i);
 				ECS_entry_temp->count_access = 0;
-			}	
+			}
 		}
 		// Reset statistics ECS of my new groupmate
 		if(statistics[i][0]!=empty_value){
@@ -413,8 +413,8 @@ static void analise_static_group(int n, unsigned int (*statistics)[n]){
                         ECS_entry_temp->count_access = 0;
 
 		}
-						
-		temp_max_access = 0;	
+
+		temp_max_access = 0;
 	}
 }
 
@@ -428,22 +428,22 @@ static void analise_static_group(int n, unsigned int (*statistics)[n]){
 static unsigned int clustering_groups(int n, unsigned int (*statistics)[n], unsigned int lid, unsigned int group){
 	if(statistics[lid][1] != empty_value)
 		return statistics[lid][1];
-	
+
 	if(group != empty_value)
                 statistics[lid][1] = group;
 	else
 		statistics[lid][1] = lid;
-		
+
 	if(statistics[lid][0] != empty_value){
 		statistics[lid][1] = clustering_groups(DIM_STAT_GROUP,statistics,statistics[lid][0],statistics[lid][1]);
 	}
-		
+
 	return statistics[lid][1];
 }
 
 /**
 //TODO MN
-* 
+*
 *
 * @author Nazzareno Marziale
 * @author Francesco Nobilia
@@ -452,12 +452,12 @@ static void check_num_group_over_core(int n, unsigned int (*statistics)[n]){
 	unsigned int i,count=0;
 	for(i=0;i<n_grp;i++)
 		if(new_GLPS[i]->tot_LP > 0) count++;
-	
+
 	if (count >= n_cores) return;
-	
+
 	for(i=0;i<n_prc;i++){
 		if(statistics[i][1]!=i && new_GLPS[i]->tot_LP == 0){
-			
+
 			//Update old group
 			remove_lp_group(new_GLPS[statistics[i][1]],i);
 
@@ -465,21 +465,21 @@ static void check_num_group_over_core(int n, unsigned int (*statistics)[n]){
 			insert_lp_group(new_GLPS[i],i);
 
 			statistics[i][1] = i;
-			new_group_LPS[i] = i;	
+			new_group_LPS[i] = i;
 			count++;
-			
+
 			printf("Move %d\n",i);
 		}
-		
+
 		if (count >= n_cores) return;
 	}
-	
+
 }
 
 
 /**
 //TODO MN
-* 
+*
 *
 * @author Nazzareno Marziale
 * @author Francesco Nobilia
@@ -497,23 +497,23 @@ static void set_group_bound(void){
 
 			for(j=0;j<temp_GLPS->tot_LP;j++){
 				temp_LP = temp_GLPS->local_LPS[j];
-				
+
 				if(list_next(temp_LP->bound)!=NULL){
 					result_evt = list_next(temp_LP->bound);
 				}
 				else{
 					result_evt = temp_LP->bound;
 				}
-				
+
 				if(temp_GLPS->initial_group_time->timestamp <= result_evt->timestamp){
 					update_IGT(temp_GLPS->initial_group_time,result_evt);
 					temp_GLPS->lvt = result_evt;
 				}
-				
+
 			}
 			if(D_EQUAL(temp_GLPS->initial_group_time->timestamp,-1.0) && temp_GLPS->tot_LP > 0)
 				rootsim_error(true,"Errore IGT");
-				
+
 			temp_GLPS->counter_rollback = 0;
 			temp_GLPS->counter_synch = 0;
 			temp_GLPS->counter_log = 0;
@@ -543,11 +543,11 @@ static void update_clustering_groups(void){
 	//Recursive function that update the clustering info
 	for(i=0; i<n_prc; i++)
 		clustering_groups(DIM_STAT_GROUP,statistics,i,empty_value);
-	
+
 	for(i=0; i<n_prc; i++){
 		new_group_LPS[i] = LP_change_group(new_GLPS, i, DIM_STAT_GROUP, statistics,false);
 	}
-	
+
 	//Check if the number of groups is at least the number of cores
 	check_num_group_over_core(DIM_STAT_GROUP,statistics);
 
@@ -569,11 +569,11 @@ static inline void GLP_knapsack(void) {
 
 	if(!master_thread())
 		return;
-	
+
 	// Clustering group
 //	if(need_clustering()){
 		update_clustering_groups();
-//	}	
+//	}
 
 	// Estimate the reference knapsack
 	for(i = 0; i < n_grp; i++) {
@@ -593,7 +593,7 @@ static inline void GLP_knapsack(void) {
 			assignments[j] += glp_cost[i];
 			new_GLPS_binding[i] = j;
 			j++;
-		
+
 			if(j==n_cores){
 				i++;
                         	break;
@@ -632,7 +632,7 @@ static inline void GLP_knapsack(void) {
 		}
 	}
 
-	//NOTE: Populating here the new_LPS_binging is not secure since there may be a WT that after the update of 
+	//NOTE: Populating here the new_LPS_binging is not secure since there may be a WT that after the update of
 	//      new_LPS_bingind moves a LP from one group towards another one
 	//      TODO in install_binding
 
@@ -655,7 +655,7 @@ static inline void GLP_knapsack(void) {
 }
 
 
-/** 
+/**
 //TODO MN
 * Send control message to groupmate in order to syncronize the start of group
 *
@@ -666,23 +666,23 @@ static void send_control_group_message(void) {
 	unsigned int i,j,lp_index = 0;
 	GLP_state *temp_GLPS;
 	LP_state **list;
-        msg_t control_msg;	
+        msg_t control_msg;
 
-		
+
 	for(i=0;i<n_grp;i++){
 		if(new_GLPS_binding[i] == tid){
 			temp_GLPS = new_GLPS[i];
 			list = temp_GLPS->local_LPS;
-		
+
 			// TODO This check is to avoid that a SYNCH_GROUP message has a timestamp
-			// bigger than the group end time. Check if it is possible to avoid this 
+			// bigger than the group end time. Check if it is possible to avoid this
 			// situation in another way.
 			if(temp_GLPS->initial_group_time->timestamp > future_end_group())
 				continue;
 
 			for(j=0;j<temp_GLPS->tot_LP;j++){
 				lp_index = list[j]->lid;
-				
+
 				// Diretcly place the control message in the target bottom half queue
 				bzero(&control_msg, sizeof(msg_t));
 				control_msg.sender = LidToGid(i);
@@ -693,11 +693,11 @@ static void send_control_group_message(void) {
 				control_msg.message_kind = positive;
 				control_msg.mark = generate_mark(i);
 				Send(&control_msg);
-			
+
 				if(lp_index == temp_GLPS->initial_group_time->receiver){
 					update_IGT(temp_GLPS->initial_group_time,&control_msg);
-				}		
-				PRINT_DEBUG_GLP_DETAIL{	
+				}
+				PRINT_DEBUG_GLP_DETAIL{
 					printf("SENDED SYNCH MESSAGE TO %d timestamp:%f FAG:%f \n",lp_index,temp_GLPS->initial_group_time->timestamp,future_end_group());
 				}
 
@@ -711,19 +711,19 @@ static void send_control_group_message(void) {
 				control_msg.message_kind = positive;
 				control_msg.mark = generate_mark(i);
 				Send(&control_msg);
-				
+
 				lp_index++;
 			}
-			lp_index=0;	
-		}	
+			lp_index=0;
+		}
 	}
-	
-	
+
+
 }
 
 
 
-/** 
+/**
 //TODO MN
 * Populates the LPS_bound according the group concept
 *
@@ -754,7 +754,7 @@ static void install_GLPS_binding(void) {
 	}
 }
 
-/** 
+/**
 //TODO MN
 * Copy the informations of new_GLPS into global GLPS
 *
@@ -763,7 +763,7 @@ static void install_GLPS_binding(void) {
 */
 static void switch_GLPS(void){
 	unsigned int i;
-	
+
 	for (i = 0; i < n_grp; i++) {
 		if(new_GLPS_binding[i] == tid){
 			GLPS[i]->id = new_GLPS[i]->id;
@@ -782,11 +782,11 @@ static void switch_GLPS(void){
 			GLPS[i]->from_last_ckpt = new_GLPS[i]->from_last_ckpt;
 			new_GLPS[i]->from_last_ckpt = 0;
 			GLPS[i]->ckpt_period = new_GLPS[i]->ckpt_period;
-			GLPS[i]->counter_synch = new_GLPS[i]->counter_synch;	
-			new_GLPS[i]->counter_synch = 0;	
-			GLPS[i]->counter_log = new_GLPS[i]->counter_log;	
+			GLPS[i]->counter_synch = new_GLPS[i]->counter_synch;
+			new_GLPS[i]->counter_synch = 0;
+			GLPS[i]->counter_log = new_GLPS[i]->counter_log;
 			new_GLPS[i]->counter_log = 0;
-		}	
+		}
 	}
 
 	for (i = 0; i < n_prc; i++)
@@ -838,7 +838,7 @@ void rebind_LPs(void) {
 				new_GLPS[i]->from_last_ckpt = 0;
 				new_GLPS[i]->ckpt_period = CKPT_PERIOD_GROUP;
 
-				
+
 			}
 
 			lp_cost = rsalloc(sizeof(struct lp_cost_id) * n_prc);
@@ -855,7 +855,7 @@ if(!gvt_stable()) return;
 	if(master_thread()) {
 
 		if(atomic_read(&worker_thread_reduction) == 0) {
-			
+
 			GLP_knapsack();
 
 			binding_acquire_phase++;
@@ -870,7 +870,7 @@ if(!gvt_stable()) return;
 
 	if(local_binding_acquire_phase < binding_acquire_phase) {
 		local_binding_acquire_phase = binding_acquire_phase;
-		
+
 		install_GLPS_binding();
 
 		#ifdef HAVE_PREEMPTION
@@ -886,14 +886,14 @@ if(!gvt_stable()) return;
 
 		send_control_group_message(); 	// RENDERLO PER THREAD
 
-		switch_GLPS();			
-			
-		/*	
+		switch_GLPS();
+
+		/*
 		unsigned int k = 0;
 		for(;k<n_prc_per_thread;k++)
 			printf("[tid:%d] LP:%d G:%d\n",tid,LPS_bound[k]->lid,LPS_bound[k]->current_group);
 		*/
-		
+
 	}
 #endif
 }
@@ -927,7 +927,7 @@ void rebind_LPs(void) {
 		// operations on LPs in isolation
 		LPS_bound = rsalloc(sizeof(LP_state *) * n_prc);
 		bzero(LPS_bound, sizeof(LP_state *) * n_prc);
-		
+
 		LPs_block_binding();
 
 		timer_start(rebinding_timer);
@@ -951,7 +951,7 @@ void rebind_LPs(void) {
 		}
 
 		if(atomic_read(&worker_thread_reduction) == 0) {
-			
+
 			LP_knapsack();
 
 			binding_acquire_phase++;
@@ -966,7 +966,7 @@ void rebind_LPs(void) {
 
 	if(local_binding_acquire_phase < binding_acquire_phase) {
 		local_binding_acquire_phase = binding_acquire_phase;
-		
+
 		install_binding();
 
 		#ifdef HAVE_PREEMPTION

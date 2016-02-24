@@ -75,8 +75,8 @@ void ECS(long long ds, unsigned long long hitted_object){
 	msg_t control_msg;
 	msg_hdr_t msg_hdr;
 
-	if(LPS[current_lp]->state == LP_STATE_SILENT_EXEC) 
-		rootsim_error(true,"----ERROR---- LP[%d] Hitted:%llu Timestamp:%f\n",current_lp,hitted_object,current_lvt);	
+	if(LPS[current_lp]->state == LP_STATE_SILENT_EXEC)
+		rootsim_error(true,"----ERROR---- LP[%d] Hitted:%llu Timestamp:%f\n",current_lp,hitted_object,current_lvt);
 
 	// do whatever you want, but you need to reopen access to the objects you cross-depend on before returning
 
@@ -98,8 +98,8 @@ void ECS(long long ds, unsigned long long hitted_object){
 	PRINT_DEBUG_GLP_DETAIL{
 		printf("LP[%d] hits %llu rende_mark:%llu LP_wait_on_rende:%llu\n",current_lp, hitted_object, current_evt->rendezvous_mark,LPS[current_lp]->wait_on_rendezvous);
 	}
-	
-	//Manage counter to cross-state 
+
+	//Manage counter to cross-state
 	ECS_stat* temp_update_access = LPS[current_lp]->ECS_stat_table[hitted_object];
 	if(!D_EQUAL(temp_update_access->last_access,-1.0) && ((current_lvt - temp_update_access->last_access) < THRESHOLD_TIME_ECS) )
 		temp_update_access->count_access++;
@@ -108,9 +108,9 @@ void ECS(long long ds, unsigned long long hitted_object){
 
 	temp_update_access->last_access = current_lvt;
 	//data structure that save the number of access and the last timestamp of the access
-	
+
 //	printf("LP:%d --> last_access:%f | count_access:%d \n",current_lp,temp_update_access->last_access,temp_update_access->count_access);
-	
+
 	#endif
 
 	// Diretcly place the control message in the target bottom half queue
@@ -146,9 +146,9 @@ void ECS(long long ds, unsigned long long hitted_object){
 	LPS[current_lp]->state = LP_STATE_WAIT_FOR_SYNCH;
 
 	#ifdef HAVE_GROUPS
-	GLP_state *current_group;	
+	GLP_state *current_group;
 	current_group = GLPS[LPS[current_lp]->current_group];
-	
+
 	if(check_start_group(current_lp) && verify_time_group(current_lvt)){
 		PRINT_DEBUG_GLP_DETAIL{
 			printf("GLP[%d] set state WAIT_FOR_SYNCH\n",LPS[current_lp]->current_group);
@@ -173,7 +173,7 @@ void ECS(long long ds, unsigned long long hitted_object){
 	// Store which LP we are waiting for synchronization. Upon reschedule, it is open immediately
 	LPS[current_lp]->ECS_index++;
 	LPS[current_lp]->ECS_synch_table[LPS[current_lp]->ECS_index] = hitted_object;
-	
+
 	Send(&control_msg);
 
 	// TODO: QUESTA RIGA E' COMMENTATA SOLTANTO PER UNO DEI TEST!!
@@ -186,7 +186,7 @@ void ECS(long long ds, unsigned long long hitted_object){
 // inserire qui tutte le api di schedulazione/deschedulazione
 
 void lp_alloc_thread_init(void) {
-	
+
         ioctl_fd = open("/dev/ktblmgr", O_RDONLY);
         if (ioctl_fd == -1) {
                 rootsim_error(true, "Error in opening special device file. ROOT-Sim is compiled for using the ktblmgr linux kernel module, which seems to be not loaded.");
@@ -201,7 +201,7 @@ void lp_alloc_thread_init(void) {
         lp_memory_ioctl_info.callback = callback_function;
 
 	ioctl(ioctl_fd, IOCTL_SET_VM_RANGE, &lp_memory_ioctl_info);
-	
+
 	/* required to manage the per-thread memory view */
 	pgd_ds = ioctl(ioctl_fd, IOCTL_GET_PGD);  //ioctl call
 }
@@ -219,7 +219,7 @@ bool present_ECS_table(unsigned int lid){
 
 
 void lp_alloc_schedule(void) {
-	
+
 	unsigned int i;
 	ioctl_info sched_info;
 
@@ -227,10 +227,10 @@ void lp_alloc_schedule(void) {
 
 	sched_info.ds = pgd_ds; // this is current
 	sched_info.count = LPS[current_lp]->ECS_index + 1; // it's a counter
-	
-	//TODO MN open group memory view only if lvt < GVT+deltaT	
+
+	//TODO MN open group memory view only if lvt < GVT+deltaT
 	#ifdef HAVE_GROUPS
-	LP_state **list;	
+	LP_state **list;
 	if(check_start_group(current_lp) && verify_time_group(lvt(current_lp))){
 		list = GLPS[LPS[current_lp]->current_group]->local_LPS;
         	for(i=0; i< GLPS[LPS[current_lp]->current_group]->tot_LP; i++){
@@ -240,15 +240,15 @@ void lp_alloc_schedule(void) {
 			}
 		}
 	}
-	#endif	
-	
-	sched_info.objects = LPS[current_lp]->ECS_synch_table; // pgd descriptor range from 0 to number threads - a subset of object ids 	
+	#endif
+
+	sched_info.objects = LPS[current_lp]->ECS_synch_table; // pgd descriptor range from 0 to number threads - a subset of object ids
 	//TODO MN
 	sched_info.objects_mmap_count = 0;
-	
-	sched_info.objects_mmap_count = sched_info.count;	
-	
-	sched_info.objects_mmap_pointers = rsalloc(sizeof(void *) * sched_info.objects_mmap_count);	
+
+	sched_info.objects_mmap_count = sched_info.count;
+
+	sched_info.objects_mmap_pointers = rsalloc(sizeof(void *) * sched_info.objects_mmap_count);
 	for(i=0;i<sched_info.count;i++) {
                 sched_info.objects_mmap_pointers[i] = get_base_pointer(sched_info.objects[i]);
 //		printf("lp_alloc_schedule - [%d] addr:%p\n",current_lp,sched_info.objects_mmap_pointers[i]);
@@ -257,7 +257,7 @@ void lp_alloc_schedule(void) {
 	/* passing into LP mode - here for the pgd_ds-th LP */
 	sched_info.count = current_lp;
 	ioctl(ioctl_fd,IOCTL_SCHEDULE_ON_PGD, &sched_info);
-	
+
 }
 
 
