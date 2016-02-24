@@ -133,6 +133,7 @@ case $host_os in
   cygwin*)
         AC_MSG_RESULT([yes, ${host_os}])
         AC_DEFINE([OS_WINDOWS])
+        AC_DEFINE([HAVE_CYGWIN])
 	;;
   mingw*)
         AC_MSG_RESULT([yes, ${host_os}])

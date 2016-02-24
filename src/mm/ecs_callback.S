@@ -26,7 +26,10 @@
 * @date December, 2015
 */
 
-.file "ecs_stub.S"
+.file "ecs_callback.S"
+
+#if defined(ARCH_X86_64) && defined(OS_LINUX)
+
 .extern ECS
 .extern LPS
 
@@ -111,3 +114,4 @@ rootsim_cross_state_dependency_handler:
 
 .size   rootsim_cross_state_dependency_handler, .-rootsim_cross_state_dependency_handler
 
+#endif /* defined(ARCH_X86_64) && defined(OS_LINUX) */

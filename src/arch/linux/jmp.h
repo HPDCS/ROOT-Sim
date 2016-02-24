@@ -25,8 +25,8 @@
 */
 
 #pragma once
-#ifndef _JMP_H
-#define _JMP_H
+
+#ifdef OS_LINUX
 
 /// This structure is used to maintain execution context for LPs' userspace threads
 typedef struct __exec_context_t {
@@ -67,5 +67,5 @@ __attribute__ ((__noreturn__)) void _long_jmp(exec_context_t *env, long long val
 
 #define long_jmp(env, val)	_long_jmp(env, val)
 
-#endif /* _JMP_H */
+#endif /* OS_LINUX */
 

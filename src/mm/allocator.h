@@ -46,8 +46,13 @@ struct _buddy {
 	size_t longest[1];
 };
 
-
-#define PAGE_SIZE (4*1<<10)
+#ifndef PAGE_SIZE
+ #if defined(ARCH_X86_64) || defined(ARCH_X86)
+   #define PAGE_SIZE (4*1<<10)
+ #else
+   #error Unable to determine page size
+ #endif
+#endif
 #define TOTAL_MEMORY 262144L * PAGE_SIZE // This should be power of 2 multiplied by a page size. This is 1GB per LP.
 #define BUDDY_GRANULARITY PAGE_SIZE	// This is the smallest chunk released by the buddy in bytes. TOTAL_MEMORY/BUDDY_GRANULARITY must be integer and a power of 2
 

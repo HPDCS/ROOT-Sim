@@ -28,8 +28,8 @@
 */
 
 #pragma once
-#ifndef __CROSS_STATE_H
-#define __CROSS_STATE
+
+#ifdef HAVE_CROSS_STATE
 
 #include <linux/ioctl.h>
 
@@ -96,5 +96,4 @@ typedef struct _ioctl_info{
 #define MASK_PTADDR 0x07FFFFFFFFFFF000
 #define MASK_PTCONT 0xF800000000000FFF
 
-#endif /* __CROSS_STATE_H */
-
+#endif /* HAVE_CROSS_STATE */
