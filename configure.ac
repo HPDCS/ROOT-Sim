@@ -154,7 +154,7 @@ esac
 AC_MSG_CHECKING([if assembler knows rdtsc instruction])
 
 AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[]], [[
-  do { 
+  do {
     unsigned int lo;
     unsigned int hi;
     __asm__ __volatile__ ("rdtsc" : "=a" (lo), "=d" (hi));
@@ -330,7 +330,19 @@ AS_IF([test "x$enable_ecs" != "xno"], [
 	then
 	        AC_DEFINE([HAVE_CROSS_STATE])
 		ac_have_cross_state=yes
-	fi	
+	fi
+])
+
+# LP Group Management
+AC_ARG_ENABLE([groups],
+AS_HELP_STRING([--disable-groups], [Disable LP Group Management (Enabled by default with ECS)]))
+
+AS_IF([test "x$enable_groups" != "xno"], [
+	if test "x$ac_on_linux" = "xyes" -a "x$ac_on_linux" = "xyes"
+	then
+	        AC_DEFINE([HAVE_GROUPS])
+		ac_have_groups=yes
+	fi
 ])
 
 
@@ -345,7 +357,7 @@ case $host_os in
 		# Are kernel headers installed?
 		AC_CHECK_HEADERS([linux/ioctl.h],
 			[ac_kernel_headers=yes])
-			
+
 		if test "x$ac_kernel_headers" = "xyes"
 		then
 			# Configure kernel module paths
@@ -504,20 +516,20 @@ else
 	then
 		numa_subsystem="${numa_subsystem}libnuma "
 	fi
-	
+
 	if test "x$numa_cv_numa_h" = "xno"
 	then
 		numa_subsystem="${numa_subsystem}numa.h "
 	fi
-	
-	if test "x$numactl" = "xno" 
+
+	if test "x$numactl" = "xno"
 	then
 		numa_subsystem="${numa_subsystem}numactl "
 	fi
-	
+
 	numa_subsystem="${numa_subsystem}not found)"
-	
-	if test "x$numa_cv_libnuma" = "xyes" -a "x$numa_cv_numa_h" = "xyes" -a "x$numactl" = "xyes" 
+
+	if test "x$numa_cv_libnuma" = "xyes" -a "x$numa_cv_numa_h" = "xyes" -a "x$numactl" = "xyes"
 	then
 		numa_subsystem="Disabled (manually excluded)"
 	fi
@@ -570,6 +582,21 @@ else
 fi
 
 
+# Compose the message regarding groups
+if test "x$ac_have_groups" = "xyes"
+then
+	ac_groups="Enabled by default with Event Cross State (use --disable-groups if not wanted)"
+else
+	ac_groups="Disabled"
+	if test "x$ac_have_cross_state" = "xyes"
+	then
+		ac_groups="${ac_groups} by the user"
+	else
+		ac_groups="${ac_groups} (requires Event Cross State)"
+	fi
+fi
+
+
 # Compose message to tell whether modules are disabled
 if test "x$ac_disable_modules" = "xyes"
 then
@@ -593,6 +620,7 @@ NUMA Subsystem................ : ${numa_subsystem}
 LP Preemption Support......... : ${ac_preemption}
 LP Rebinding.................. : ${ac_lp_rebinding}
 Event Cross State Management.. : ${ac_ecs}
+Group Management.............. : ${ac_groups}
 
 ${ac_modules}
 

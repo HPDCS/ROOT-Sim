@@ -137,7 +137,7 @@ typedef struct _LP_state {
 	unsigned int		wait_on_object;
 
 	//TODO MN
-	#ifdef HAVE_GLP_SCH_MODULE
+	#ifdef HAVE_GROUPS
 	unsigned int current_group;
 	ECS_stat ** ECS_stat_table;
 	msg_t *target_rollback;

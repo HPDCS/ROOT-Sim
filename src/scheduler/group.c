@@ -2,7 +2,7 @@
 #include <gvt/gvt.h>
 #include <statistics/statistics.h>
 
-#ifdef HAVE_GLP_SCH_MODULE
+#ifdef HAVE_GROUPS
 void insert_lp_group(GLP_state *current_group, unsigned int lid){
 	current_group->local_LPS[current_group->tot_LP] = LPS[lid];
         current_group->tot_LP++;

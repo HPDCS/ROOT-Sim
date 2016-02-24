@@ -169,7 +169,7 @@ void process_bottom_halves(void) {
 	unsigned int i;
 	unsigned int lid_receiver;
 
-	#ifdef HAVE_GLP_SCH_MODULE
+	#ifdef HAVE_GROUPS
 	simtime_t lvt_receiver;
 	#endif
 	
@@ -184,7 +184,7 @@ restart:
 						
 			lid_receiver = msg_to_process->receiver;
 			
-			#ifdef HAVE_GLP_SCH_MODULE
+			#ifdef HAVE_GROUPS
 			lvt_receiver = lvt(lid_receiver);
 			#endif
 	
@@ -248,7 +248,7 @@ restart:
 //								printf("straggler START antimessage mark %llu rmark %llu\n", matched_msg->mark, matched_msg->rendezvous_mark);
 //							}
 							
-							#ifdef HAVE_GLP_SCH_MODULE
+							#ifdef HAVE_GROUPS
 							PRINT_DEBUG_GLP{	
 								printf("RN Type:%d T:%f S:%d R:%d LVT:%f\n",
         	                                                	matched_msg->type,
@@ -276,7 +276,7 @@ restart:
 							LPS[lid_receiver]->state = LP_STATE_ROLLBACK;
 
 						}
-						#ifdef HAVE_GLP_SCH_MODULE
+						#ifdef HAVE_GROUPS
 	                                                check_rollback_group(matched_msg, lid_receiver, lvt_receiver, negative);	
 						#endif
 				
@@ -296,7 +296,7 @@ restart:
 					// Check if we've just inserted an out-of-order event
 					if(msg_to_process->timestamp < lvt(lid_receiver)) {
 						
-						#ifdef HAVE_GLP_SCH_MODULE
+						#ifdef HAVE_GROUPS
 						PRINT_DEBUG_GLP{
 							printf("RP Type:%d T:%f S:%d R:%d LVT:%f\n",
 								msg_to_process->type,
@@ -321,7 +321,7 @@ restart:
 						LPS[lid_receiver]->state = LP_STATE_ROLLBACK;
 						
 					}
-					#ifdef HAVE_GLP_SCH_MODULE
+					#ifdef HAVE_GROUPS
                                         	check_rollback_group(msg_to_process, lid_receiver, lvt_receiver, positive);
 					#endif
 

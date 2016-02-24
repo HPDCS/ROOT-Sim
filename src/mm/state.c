@@ -43,7 +43,7 @@
 #include <statistics/statistics.h>
 
 #include <scheduler/group.h>
-#ifdef HAVE_GLP_SCH_MODULE
+#ifdef HAVE_GROUPS
 #include <gvt/gvt.h>
 #endif
 
@@ -71,7 +71,7 @@ bool LogState(unsigned int lid) {
 	// Keep track of the invocations to LogState
 	LPS[lid]->from_last_ckpt++;
 
-	#ifdef HAVE_GLP_SCH_MODULE
+	#ifdef HAVE_GROUPS
 	GLPS[LPS[lid]->current_group]->from_last_ckpt++;
 	#endif
 
@@ -79,7 +79,7 @@ bool LogState(unsigned int lid) {
 		LPS[lid]->state_log_forced = false;
 		LPS[lid]->from_last_ckpt = 0;
 		
-		#ifdef HAVE_GLP_SCH_MODULE
+		#ifdef HAVE_GROUPS
 		GLPS[LPS[lid]->current_group]->from_last_ckpt = 0;
 		#endif
 
@@ -95,7 +95,7 @@ bool LogState(unsigned int lid) {
 			break;
 
 		case PERIODIC_STATE_SAVING:
-			#ifdef HAVE_GLP_SCH_MODULE
+			#ifdef HAVE_GROUPS
 			if(check_start_group(lid) && verify_time_group(lvt(lid))){
 				if(GLPS[LPS[lid]->current_group]->from_last_ckpt >= GLPS[LPS[lid]->current_group]->ckpt_period){
 					take_snapshot = true;
@@ -147,7 +147,7 @@ void RestoreState(unsigned int lid, state_t *restore_state) {
 	LPS[lid]->wait_on_rendezvous = 0;
 	LPS[lid]->wait_on_object = 0;
 	#endif
-	#ifdef HAVE_GLP_SCH_MODULE
+	#ifdef HAVE_GROUPS
 	GLP_state *current_group = GLPS[LPS[lid]->current_group];
 	current_group->counter_log = 0;
 	#endif
@@ -172,7 +172,7 @@ unsigned int silent_execution(unsigned int lid, void *state_buffer, msg_t *evt, 
 	unsigned int events = 0;
 	unsigned short int old_state;
 
-	#ifdef HAVE_GLP_SCH_MODULE
+	#ifdef HAVE_GROUPS
 	if(GLPS[LPS[lid]->current_group]->counter_rollback != 0)
 		printf("ERRORE SILENT\n");
 	#endif
@@ -236,7 +236,7 @@ void rollback(unsigned int lid) {
 		return;
 	}
 
-	#ifdef HAVE_GLP_SCH_MODULE
+	#ifdef HAVE_GROUPS
 	if(LPS[lid]->bound->timestamp < GLPS[LPS[lid]->current_group]->initial_group_time->timestamp && LPS[lid]->updated_counter){
 		printf("Inside error LP[%d]\n",lid);
 	}
@@ -250,7 +250,7 @@ void rollback(unsigned int lid) {
 
 	last_correct_event = LPS[lid]->bound;
 
-	#ifdef HAVE_GLP_SCH_MODULE
+	#ifdef HAVE_GROUPS
 	PRINT_DEBUG_GLP_DETAIL printf("[%d] last_corr: %p at %f\n",lid,last_correct_event, last_correct_event->timestamp);	
 	#endif
 
@@ -279,7 +279,7 @@ void rollback(unsigned int lid) {
 	last_restored_event = restore_state->last_event;
 //	PRINT_DEBUG_GLP_DETAIL	printf("[%d] last_restored_event:%p next:%p\n",lid,last_restored_event,list_next(last_restored_event));	
 
-	#ifdef HAVE_GLP_SCH_MODULE
+	#ifdef HAVE_GROUPS
 	if(!(check_start_group(lid) && verify_time_group(LPS[lid]->bound->timestamp))){
 		reprocessed_events = silent_execution(lid, LPS[lid]->current_base_pointer, last_restored_event, last_correct_event);
 /*		PRINT_DEBUG_GLP{
@@ -316,7 +316,7 @@ void rollback(unsigned int lid) {
 	// Control messages must be rolled back as well
 	rollback_control_message(lid, last_correct_event->timestamp);
 	
-	#ifdef HAVE_GLP_SCH_MODULE
+	#ifdef HAVE_GROUPS
 	PRINT_DEBUG_GLP{
 		printf("LP[%d] rollback at time:%f\n",lid,last_correct_event->timestamp);
 	}
@@ -413,7 +413,7 @@ void set_checkpoint_mode(int ckpt_mode) {
 void set_checkpoint_period(unsigned int lid, int period) {
 	LPS[lid]->ckpt_period = period;
 
-	#ifdef HAVE_GLP_SCH_MODULE
+	#ifdef HAVE_GROUPS
 	GLPS[lid]->ckpt_period = period;
 	#endif
 	

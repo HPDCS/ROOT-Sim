@@ -75,7 +75,7 @@ __thread msg_t *current_evt;
 __thread void *current_state;
 
 //TODO MN
-#ifdef HAVE_GLP_SCH_MODULE
+#ifdef HAVE_GROUPS
 /// Maintain groups' state 
 GLP_state **GLPS = NULL;
 #endif
@@ -118,7 +118,7 @@ void scheduler_init(void) {
 		LPS[i]->lid = i;
 	
 		//TODO MN
-		#ifdef HAVE_GLP_SCH_MODULE
+		#ifdef HAVE_GROUPS
 		// Allocate ECS_stat_table
 		LPS[i]->updated_counter = false;
 		LPS[i]->ECS_stat_table = rsalloc(n_grp * sizeof(ECS_stat *));
@@ -136,7 +136,7 @@ void scheduler_init(void) {
 	}
 
 	//TODO MN
-	#ifdef HAVE_GLP_SCH_MODULE
+	#ifdef HAVE_GROUPS
 	// Allocate GLPS control blocks
 	GLPS = rsalloc(n_grp * sizeof(GLP_state *));
 	for (i = 0; i < n_grp; i++) {
@@ -449,7 +449,7 @@ void activate_LP(unsigned int lp, simtime_t lvt, void *evt, void *state) {
 	current_evt = evt;
 	current_state = state;
 	
-	#ifdef HAVE_GLP_SCH_MODULE
+	#ifdef HAVE_GROUPS
 	if(LPS[current_lp]->target_rollback != NULL && LPS[current_lp]->state != LP_STATE_SILENT_EXEC && lvt < LPS[current_lp]->target_rollback->timestamp
 		&& GLPS[LPS[current_lp]->current_group]->state != GLP_STATE_SILENT_EXEC && check_start_group(current_lp) && verify_time_group(lvt)
 	)
@@ -524,7 +524,7 @@ bool check_rendevouz_request(unsigned int lid){
 
 
 
-#ifndef HAVE_GLP_SCH_MODULE
+#ifndef HAVE_GROUPS
 /**
 * This function checks wihch LP must be activated (if any),
 * and in turn activates it. This is used only to support forward execution.

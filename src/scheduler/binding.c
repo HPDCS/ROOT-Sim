@@ -64,7 +64,7 @@ __thread LP_state **LPS_bound = NULL;
  *  Each KLT has a binding towards some GLP. This is the structure used 
  *  to keep track of GLPs currently being handled
  */
-#ifdef HAVE_GLP_SCH_MODULE
+#ifdef HAVE_GROUPS
 static double *glp_cost;
 //For each group it tells us which will be the future core
 static unsigned int *new_GLPS_binding;
@@ -236,7 +236,7 @@ static void post_local_reduction(void) {
 	}
 }
 
-#ifndef HAVE_GLP_SCH_MODULE
+#ifndef HAVE_GROUPS
 static void install_binding(void) {
 	unsigned int i;
 
@@ -260,7 +260,7 @@ static void install_binding(void) {
 }
 #endif
 
-#ifdef HAVE_GLP_SCH_MODULE
+#ifdef HAVE_GROUPS
 /* -------------------------------------------------------------------- */
 /* -------------------START MANAGE GROUP------------------------------- */
 /* -------------------------------------------------------------------- */
@@ -907,7 +907,7 @@ void force_rebind_GLP(void){
 /* -------------------------------------------------------------------- */
 #endif
 
-#ifndef HAVE_GLP_SCH_MODULE
+#ifndef HAVE_GROUPS
 /**
 * This function is used to create a temporary binding between LPs and KLT.
 * The first time this function is called, each worker thread sets up its data

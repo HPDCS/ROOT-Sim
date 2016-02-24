@@ -138,7 +138,7 @@ static void *main_simulation_loop(void *arg) {
 				#endif
 				
 			/*	
-				#ifdef HAVE_GLP_SCH_MODULE
+				#ifdef HAVE_GROUPS
 				unsigned int j=0;
 				for(;j<n_grp;j++){
 					if(GLPS[j]->tot_LP != 0){

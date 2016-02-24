@@ -51,7 +51,7 @@
 #include <arch/linux/modules/cross_state_manager/cross_state_manager.h>
 #include <mm/allocator_ecs.h>
 
-#ifdef HAVE_GLP_SCH_MODULE
+#ifdef HAVE_GROUPS
 #include <gvt/gvt.h>
 #endif
 
@@ -94,7 +94,7 @@ void ECS(long long ds, unsigned long long hitted_object){
 		LPS[current_lp]->wait_on_rendezvous = current_evt->rendezvous_mark;
 	}
 
-#ifdef HAVE_GLP_SCH_MODULE
+#ifdef HAVE_GROUPS
 	PRINT_DEBUG_GLP_DETAIL{
 		printf("LP[%d] hits %llu rende_mark:%llu LP_wait_on_rende:%llu\n",current_lp, hitted_object, current_evt->rendezvous_mark,LPS[current_lp]->wait_on_rendezvous);
 	}
@@ -145,7 +145,7 @@ void ECS(long long ds, unsigned long long hitted_object){
 	// Block the execution of this LP
 	LPS[current_lp]->state = LP_STATE_WAIT_FOR_SYNCH;
 
-	#ifdef HAVE_GLP_SCH_MODULE
+	#ifdef HAVE_GROUPS
 	GLP_state *current_group;	
 	current_group = GLPS[LPS[current_lp]->current_group];
 	
@@ -229,7 +229,7 @@ void lp_alloc_schedule(void) {
 	sched_info.count = LPS[current_lp]->ECS_index + 1; // it's a counter
 	
 	//TODO MN open group memory view only if lvt < GVT+deltaT	
-	#ifdef HAVE_GLP_SCH_MODULE
+	#ifdef HAVE_GROUPS
 	LP_state **list;	
 	if(check_start_group(current_lp) && verify_time_group(lvt(current_lp))){
 		list = GLPS[LPS[current_lp]->current_group]->local_LPS;

@@ -103,7 +103,7 @@ static simtime_t *local_min;
 
 static simtime_t *local_min_barrier;
 
-#ifdef HAVE_GLP_SCH_MODULE
+#ifdef HAVE_GROUPS
 /// Variable to update the time for current group
 static __thread simtime_t last_time_group = -1.0;
 static bool updated_group = true;
@@ -228,7 +228,7 @@ simtime_t gvt_operations(void) {
 					break;
 				}
 
-				#ifdef HAVE_GLP_SCH_MODULE
+				#ifdef HAVE_GROUPS
 				if(LPS_bound[i]->state == LP_STATE_SILENT_EXEC && check_start_group(LPS_bound[i]->lid) && verify_time_group(LPS_bound[i]->bound->timestamp)) {
 					local_min[tid] = min(local_min[tid], LPS_bound[i]->target_rollback->timestamp);
 				} else {
@@ -265,7 +265,7 @@ simtime_t gvt_operations(void) {
 					break;
 				}
 
-				#ifdef HAVE_GLP_SCH_MODULE
+				#ifdef HAVE_GROUPS
 				if(LPS_bound[i]->state == LP_STATE_SILENT_EXEC && check_start_group(LPS_bound[i]->lid) && verify_time_group(LPS_bound[i]->bound->timestamp)) {
 					local_min[tid] = min(local_min[tid], LPS_bound[i]->target_rollback->timestamp);
 				} else {
@@ -331,7 +331,7 @@ simtime_t gvt_operations(void) {
 			local_min_barrier[tid] = INFTY;
 			atomic_dec(&counter_end);
 			last_gvt = adopted_last_gvt;
-			#ifdef HAVE_GLP_SCH_MODULE
+			#ifdef HAVE_GROUPS
 			if((last_time_group < last_gvt) && master_thread ()){
 				printf("LTG:%f /t last_gvt:%f\n",last_time_group,last_gvt);
 				updated_group = false;	
@@ -349,7 +349,7 @@ bool gvt_stable(void) {
 }
 
 //TODO MN
-#ifdef HAVE_GLP_SCH_MODULE
+#ifdef HAVE_GROUPS
 bool verify_time_group(simtime_t timestamp){	
 	//return (timestamp < last_time_group);
 	if(timestamp < last_time_group) return true;

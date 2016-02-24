@@ -21,7 +21,7 @@ unsigned int smallest_timestamp_first(void) {
 
 	// For each local process
 	for (i = 0; i < n_prc_per_thread; i++) {
-		#ifdef HAVE_GLP_SCH_MODULE
+		#ifdef HAVE_GROUPS
 		if(check_state_group(i))
 			continue;
 		
@@ -39,7 +39,7 @@ unsigned int smallest_timestamp_first(void) {
 			// The LP handles the suspended event as the next event
 			evt_time = LPS_bound[i]->bound->timestamp;
 		}
-		#ifdef HAVE_GLP_SCH_MODULE
+		#ifdef HAVE_GROUPS
 		//Due to rollback group in case of LP whitout next event that has to update the state of group
 		else if(LPS_bound[i]->state == LP_STATE_SILENT_EXEC && 
 			GLPS[LPS_bound[i]->current_group]->state == GLP_STATE_SILENT_EXEC && 
@@ -64,7 +64,7 @@ unsigned int smallest_timestamp_first(void) {
 	if(D_EQUAL(min_timestamp, -1)) {
 		return IDLE_PROCESS;
 	} else {
-		#ifdef HAVE_GLP_SCH_MODULE
+		#ifdef HAVE_GROUPS
 /*
 		if(!is_blocked_state(LPS[next]->state) && 
 			is_blocked_state(GLPS[LPS[next]->current_group]->state) && 
