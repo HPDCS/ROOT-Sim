@@ -39,9 +39,6 @@
 #include <mm/dymelor.h>
 #include <scheduler/group.h>
 
-extern  bool verify_time_group(simtime_t timestamp);
-
-
 // Defintion of GVT-reduction phases
 enum gvt_phases {phase_A, phase_send, phase_B, phase_aware, phase_end};
 

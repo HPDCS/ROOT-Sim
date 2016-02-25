@@ -337,8 +337,11 @@ then
 	AS_HELP_STRING([--disable-groups], [Disable LP Group Management (Enabled by default with ECS)]))
 
 	AS_IF([test "x$enable_groups" != "xno"], [
-		AC_DEFINE([HAVE_GROUPS])
-		ac_have_groups=yes
+		if test "x$ac_have_cross_state" = "xyes"
+		then
+			AC_DEFINE([HAVE_GROUPS])
+			ac_have_groups=yes
+		fi
 	])
 
 
