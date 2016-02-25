@@ -128,7 +128,7 @@ static void context_create_boot(void) {
 	context_start_func(context_start_arg);
 
 	// you should never reach this!
-	assert(0);
+	abort();
 }
 
 

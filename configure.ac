@@ -9,7 +9,7 @@ AC_USE_SYSTEM_EXTENSIONS
 
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 
-CFLAGS="-O3 -mno-red-zone -lm -U_FORTIFY_SOURCE"
+CFLAGS="-mno-red-zone -lm -U_FORTIFY_SOURCE"
 
 AC_ARG_ENABLE([profile],
     AS_HELP_STRING([--enable-profile], [Enable profiling the platform]))
@@ -283,8 +283,6 @@ ac_disable_modules=yes
 if test "x$ac_on_linux" = "xyes"
 then
 
-	echo "------------------------------> PASSING HERE"
-
 	# If our libtimestretch library is installed, then we can use Preemptive Time Warp
 	AC_CHECK_LIB(timestretch, ts_start, [libtimestretch=yes], [libtimestretch=no])
 	if test "x$libtimestretch" = "xyes" -a "x$enable_ult" != "xno"
@@ -437,6 +435,7 @@ AS_IF([test "x$enable_debug" = "xyes"], [
 
 ],[
 	AC_DEFINE([NDEBUG])
+	CFLAGS="-O3 $CFLAGS"
 ])
 
 

@@ -30,7 +30,6 @@
 
 #include <arch/atomic.h>
 
-#define HAVE_GROUPS
 #define THRESHOLD_TIME_ECS 30.0
 #define THRESHOLD_ACCESS_ECS 10
 #define DELTA_GROUP 40

@@ -251,7 +251,7 @@ static inline void statistics_flush_gvt_buffer(void) {
 	FILE *f;
 
 	f = get_file(STAT_PER_THREAD, GVT_STAT);
-	fprintf(f, gvt_buffer.buff);
+	fprintf(f, "%s", gvt_buffer.buff);
 	fflush(f);
 	gvt_buffer.pos = 0;
 	gvt_buffer.buff[0] = '\0';
