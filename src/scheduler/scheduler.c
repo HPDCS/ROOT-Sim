@@ -826,7 +826,9 @@ void schedule(void) {
         }
 
         if(resume_execution && !is_blocked_state(LPS[lid]->state)) {
+		#ifdef HAVE_CROSS_STATE
                 unblock_synchronized_objects(lid);
+                #endif
 
 		if(GLPS[LPS[lid]->current_group]->state == GLP_STATE_WAIT_FOR_LOG)
 			printf("log while another log\n");
