@@ -55,7 +55,8 @@ libdymelor_a_SOURCES = 	mm/checkpoints.c \
 			mm/unrecoverable.c \
 			mm/platform.c \
 			mm/dymelor.c \
-			mm/allocator.c \
+			mm/buddy.c \
 			mm/bh.c \
-			mm/numa.c
-			mm/allocator_ecs.c
+			mm/segment.c \
+			mm/numa.c \
+			mm/vma.c

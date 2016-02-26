@@ -37,7 +37,6 @@
 #include <queues/queues.h>
 #include <mm/state.h>
 #include <mm/dymelor.h>
-#include <mm/allocator.h>
 #include <mm/bh.h>
 #include <scheduler/scheduler.h>
 #include <communication/communication.h>

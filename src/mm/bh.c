@@ -32,8 +32,7 @@
 
 #include <arch/atomic.h>
 #include <mm/bh.h>
-#include <mm/allocator.h>
-#include <mm/dymelor.h>
+#include <mm/mm.h>
 #include <datatypes/list.h>
 
 

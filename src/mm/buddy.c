@@ -31,12 +31,8 @@
 #include <errno.h>
 
 #include <mm/dymelor.h>
-#include <mm/allocator.h>
-#include <mm/bh.h>
-#include <mm/numa.h>
+#include <mm/mm.h>
 
-
-#ifdef HAVE_PARALLEL_ALLOCATOR
 
 static struct _buddy **buddies;
 
@@ -122,6 +118,9 @@ static int buddy_alloc(struct _buddy *self, size_t size) {
         return -1;
     }
     size = POWEROF2(size);
+    
+    printf("Buddy is mapping the request to %d bytes of memory\n", size);
+    fflush(stdout);
 
     unsigned idx = 0;
     if (self->longest[idx] < size) {
@@ -186,6 +185,8 @@ static void buddy_free(struct _buddy *self, int offset) {
 void *pool_get_memory(unsigned int lid, size_t size) {
 	int displacement;
 	size_t fragments;
+	
+	printf("Requesting %d bytes of memory\n", size);
 
 	// Get a number of fragments to contain 'size' bytes
 	// The operation involves a fast positive integer round up
@@ -247,28 +248,4 @@ bool allocator_init(void) {
 	return true;
 }
 
-#endif /* HAVE_PARALLEL_ALLOCATOR */
-
-
-
-char *allocate_pages(int num_pages) {
-
-        char *page;
-
-        page = (char*)mmap((void*)NULL, num_pages * PAGE_SIZE, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, 0,0);
-
-	if (page == MAP_FAILED) {
-		page = NULL;
-	}
-
-	return page;
-}
-
-void free_pages(void *ptr, size_t length) {
-	int ret;
-
-	ret = munmap(ptr, length);
-	if(ret < 0)
-		perror("free_pages(): unable to deallocate memory");
-}
 
