@@ -103,7 +103,7 @@ void scheduler_init(void) {
 		LPS[i] = (LP_state *)rsalloc(sizeof(LP_state));
 		bzero(LPS[i], sizeof(LP_state));
 
-		// Allocate memory for the outgoing buffer 
+		// Allocate memory for the outgoing buffer
 		LPS[i]->outgoing_buffer.max_size = INIT_OUTGOING_MSG;
 		LPS[i]->outgoing_buffer.outgoing_msgs = rsalloc(sizeof(msg_t) * INIT_OUTGOING_MSG);
 	}
@@ -253,7 +253,7 @@ void initialize_LP(unsigned int lp) {
 
 	// Initially, every LP is ready
 	LPS[lp]->state = LP_STATE_READY;
-	
+
 	// There is no current state layout at the beginning
 	LPS[lp]->current_base_pointer = NULL;
 
@@ -432,20 +432,43 @@ void schedule(void) {
 	// No logical process found with events to be processed
 	if (lid == IDLE_PROCESS) {
 		statistics_post_lp_data(lid, STAT_IDLE_CYCLES, 1.0);
-      		return;
-    	}
+      	return;
+    }
 
 	// If we have to rollback
-    	if(LPS[lid]->state == LP_STATE_ROLLBACK) {
-		rollback(lid);
+    if(LPS[lid]->state == LP_STATE_ROLLBACK) {
 
-		// Discard any possible execution state related to a blocked execution
-		#ifdef ENABLE_ULT
-		memcpy(&LPS[lid]->context, &LPS[lid]->default_context, sizeof(LP_context_t));
-		#endif
+		if (has_cancelback_started()) {
+			// stylized_printf("LP cannot rollback in order to sync for Cancelback!\n", CYAN, true);
+		} else {
+			rollback(lid);
 
-		LPS[lid]->state = LP_STATE_READY;
-		send_outgoing_msgs(lid);
+			// Discard any possible execution state related to a blocked execution
+			#ifdef ENABLE_ULT
+			memcpy(&LPS[lid]->context, &LPS[lid]->default_context, sizeof(LP_context_t));
+			#endif
+
+			LPS[lid]->state = LP_STATE_READY;
+			send_outgoing_msgs(lid);
+		}
+
+		return;
+
+	} else if (LPS[lid]->state == LP_STATE_CANCELBACK) {
+
+        send_cancelback_messages(lid);
+
+		// LPS[lid]->state = LP_STATE_READY;
+		return;
+	
+	} else if (LPS[lid]->state == LP_STATE_SYNCH_FOR_CANCELBACK) {
+		
+		LPS[lid]->state = LPS[lid]->state_to_resume;
+		LPS[lid]->state_to_resume = 0;
+
+		if (LPS[lid]->state != LP_STATE_READY)
+			log_state_switch(lid);
+
 		return;
 	}
 
@@ -482,7 +505,7 @@ void schedule(void) {
 		resume_execution = true;
 	}
 	#endif
-	
+
 	// Schedule the LP user-level thread
 	LPS[lid]->state = LP_STATE_RUNNING;
 	activate_LP(lid, lvt(lid), event, state);

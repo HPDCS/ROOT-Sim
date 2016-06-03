@@ -163,7 +163,6 @@ void process_bottom_halves(void) {
 	unsigned int i;
 	unsigned int lid_receiver;
 	msg_t *msg_to_process;
-	msg_t *matched_msg;
 	list(msg_t) processing;
 
 	for(i = 0; i < n_prc_per_thread; i++) {
@@ -186,24 +185,37 @@ void process_bottom_halves(void) {
 
 				// It's an antimessage
 				case negative:
+				case negative_cb:
 
 					statistics_post_lp_data(msg_to_process->receiver, STAT_ANTIMESSAGE, 1.0);
 
 					// Find the message matching the antimessage
-					matched_msg = list_tail(LPS[lid_receiver]->queue_in);
-					while(matched_msg != NULL && matched_msg->mark != msg_to_process->mark) {
-						matched_msg = list_prev(matched_msg);
+                    msg_t *matched_in_msg = NULL;
+					msg_t* in_msg = list_tail(LPS[lid_receiver]->queue_in);
+					while(in_msg != NULL) {
+
+                        if (in_msg->mark == msg_to_process->mark) {
+                            matched_in_msg = in_msg;
+                            break;
+                        }
+
+						in_msg = list_prev(in_msg);
 					}
 
-					if(matched_msg == NULL) {
-						rootsim_error(false, "LP %d Received an antimessage with mark %llu at LP %u from LP %u, but no such mark found in the input queue!\n", LPS_bound[i]->lid, msg_to_process->mark, msg_to_process->receiver, msg_to_process->sender);
+					if(matched_in_msg == NULL) {
+						
+						if (has_cancelback_started())
+							stylized_printf("Cancelback started!\n", CYAN, true);
+						else
+							stylized_printf("Cancelback did not start!\n", CYAN, true);
+
+						rootsim_error(false, "LP %d Received an antimessage with mark \033[1;31m%llu\033[0m from LP %u, but no such mark found in the input queue!\n", LPS_bound[i]->lid, msg_to_process->mark, msg_to_process->sender);
 						printf("Message Content:"
 							"sender: %d\n"
 							"receiver: %d\n"
 							"type: %d\n"
 							"timestamp: %f\n"
 							"send time: %f\n"
-							"is antimessage %d\n"
 							"mark: %llu\n"
 							"rendezvous mark %llu\n",
 							msg_to_process->sender,
@@ -211,30 +223,107 @@ void process_bottom_halves(void) {
 							msg_to_process->type,
 							msg_to_process->timestamp,
 							msg_to_process->send_time,
-							msg_to_process->message_kind,
 							msg_to_process->mark,
 							msg_to_process->rendezvous_mark);
 						fflush(stdout);
-						abort();
+                        abort();
+
 					} else {
+						
+						// if (msg_to_process->message_kind == negative_cb)
+							// printf("LP %u received antimessage \033[1;31m%llu\033[0m from LP %u\n", lid_receiver, msg_to_process->mark, msg_to_process->sender);
 
-						// If the matched message is in the past, we have to rollback
-						if(matched_msg->timestamp <= lvt(lid_receiver)) {
-							LPS[lid_receiver]->bound = list_prev(matched_msg);
-							while ((LPS[lid_receiver]->bound != NULL) && LPS[lid_receiver]->bound->timestamp == msg_to_process->timestamp) {
-								LPS[lid_receiver]->bound = list_prev(LPS[lid_receiver]->bound);
+                        // If the matched message is in the past, we have to rollback
+                        if(matched_in_msg->timestamp <= lvt(lid_receiver)) {
+
+                            LPS[lid_receiver]->bound = list_prev(matched_in_msg);
+
+                            while (LPS[lid_receiver]->bound != NULL && LPS[lid_receiver]->bound->timestamp == msg_to_process->timestamp) {
+                                LPS[lid_receiver]->bound = list_prev(LPS[lid_receiver]->bound);
+                            }
+							
+							// if (msg_to_process->message_kind == negative_cb)
+							// 	printf("\033[1;35mNegative Cancelback message %llu causing LP %u to rollback\033[0m\n", msg_to_process->mark, LidToGid(lid_receiver));
+
+							if (msg_to_process->message_kind == negative_cb/* && LPS[lid_receiver]->state != LP_STATE_SYNCH_FOR_CANCELBACK*/) {
+                            	LPS[lid_receiver]->state = LP_STATE_SYNCH_FOR_CANCELBACK;
+								LPS[lid_receiver]->state_to_resume = LP_STATE_ROLLBACK;
+							} else if (LPS[lid_receiver]->state != LP_STATE_SYNCH_FOR_CANCELBACK) {
+								LPS[lid_receiver]->state = LP_STATE_ROLLBACK;
 							}
-							LPS[lid_receiver]->state = LP_STATE_ROLLBACK;
-						}
+                        }
 
-						// Delete the matched message
-						list_delete_by_content(LPS[lid_receiver]->queue_in, matched_msg);
-					}
+                        // Delete the matched message
+                        list_delete_by_content(LPS[lid_receiver]->queue_in, matched_in_msg);
+                    }
 
 					break;
 
-				// It's a positive message
-				case positive:
+				case positive_cb: ;
+
+                    // Added in order to support deletion of output messages in the Cancelback protocol
+                    msg_hdr_t* matched_out_msg = NULL;
+                    msg_hdr_t* out_msg = list_tail(LPS[lid_receiver]->queue_out);
+                    while(out_msg != NULL) {
+
+                        if (out_msg->mark == msg_to_process->mark) {
+                            matched_out_msg = out_msg;
+                            break;
+                        }
+
+						out_msg = list_prev(out_msg);
+					}
+
+					if(matched_out_msg == NULL) {
+
+						if (has_cancelback_started())
+							stylized_printf("Cancelback started!\n", CYAN, true);
+						else
+							stylized_printf("Cancelback did not start!\n", CYAN, true);
+
+                        rootsim_error(false, "LP %d Received a positive Cancelback message with mark \033[1;31m%llu\033[0m and send time \033[1;34m%f\033[0m (current LVT \033[1;34m%f\033[0m) from LP %u, but no such mark found in the output queue!\n", LPS_bound[i]->lid, msg_to_process->mark, msg_to_process->send_time, lvt(lid_receiver), msg_to_process->sender);
+						printf("Message Content:"
+							"sender: %d\n"
+							"receiver: %d\n"
+							"type: %d\n"
+							"timestamp: %f\n"
+							"send time: %f\n"
+							"mark: %llu\n"
+							"rendezvous mark %llu\n",
+							msg_to_process->sender,
+							msg_to_process->receiver,
+							msg_to_process->type,
+							msg_to_process->timestamp,
+							msg_to_process->send_time,
+							msg_to_process->mark,
+							msg_to_process->rendezvous_mark);
+						fflush(stdout);
+                        abort();
+
+					} else {
+
+						// printf("LP %u received Cancelback message \033[1;31m%llu\033[0m from LP %u\n", lid_receiver, msg_to_process->mark, msg_to_process->sender);
+
+                        // If the matched message is in the past, we have to rollback
+                        if(matched_out_msg->send_time <= lvt(lid_receiver)) {
+
+                            while (LPS[lid_receiver]->bound != NULL && LPS[lid_receiver]->bound->timestamp > msg_to_process->send_time) {
+                                LPS[lid_receiver]->bound = list_prev(LPS[lid_receiver]->bound);
+                            }
+
+							// printf("\033[1;35mPositive Cancelback message %llu causing LP %u to rollback\033[0m\n", msg_to_process->mark, LidToGid(lid_receiver));
+
+                            LPS[lid_receiver]->state = LP_STATE_SYNCH_FOR_CANCELBACK;
+							LPS[lid_receiver]->state_to_resume = LP_STATE_ROLLBACK;
+                        }
+
+                        // Delete the matched message
+                        list_delete_by_content(LPS[lid_receiver]->queue_out, matched_out_msg);
+                    }
+
+					break;
+
+                case positive:
 
 					msg_to_process = list_insert(LPS[lid_receiver]->queue_in, timestamp, msg_to_process);
 
@@ -244,16 +333,22 @@ void process_bottom_halves(void) {
 						while ((LPS[lid_receiver]->bound != NULL) && LPS[lid_receiver]->bound->timestamp == msg_to_process->timestamp) {
 							LPS[lid_receiver]->bound = list_prev(LPS[lid_receiver]->bound);
 						}
-						LPS[lid_receiver]->state = LP_STATE_ROLLBACK;
+
+						if (LPS[lid_receiver]->state != LP_STATE_SYNCH_FOR_CANCELBACK) {
+							LPS[lid_receiver]->state = LP_STATE_ROLLBACK;
+						}
 					}
-					break;
+
+                    break;
 
 				// It's a control message
 				case other:
+
 					// Check if it is an anti control message
 					if(!anti_control_message(msg_to_process)) {
 						goto expunge_msg;
 					}
+
 					break;
 
 				default:

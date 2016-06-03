@@ -80,8 +80,7 @@
 
 enum stat_levels {STATS_GLOBAL, STATS_PERF, STATS_LP, STATS_ALL};
 
-
-
+enum color {BLACK, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE};
 
 // Structure to keep track of (incremental) statistics
 struct stat_t {
@@ -109,6 +108,9 @@ extern void statistics_stop(int exit_code);
 extern inline void statistics_post_lp_data(unsigned int lid, unsigned int type, double data);
 extern inline void statistics_post_other_data(unsigned int type, double data);
 
+extern inline void stylized_printf(const char* s, int color, bool is_bold);
+extern inline void log_msg(const char* msg, ...);
+extern inline void log_state_switch(unsigned int lid);
 
 
 #endif /* _STATISTICS_H */

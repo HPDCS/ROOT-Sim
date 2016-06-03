@@ -50,30 +50,6 @@
 
 
 /**
-* This function checks the different possibilities for termination detection termination.
-*/
-static bool end_computing(void) {
-
-	// Did CCGS decide to terminate the simulation?
-	if(ccgs_can_halt_simulation()) {
-		return true;
-	}
-
-	// Termination detection based on passed (committed) simulation time
-	if(rootsim_config.simulation_time != 0 && (int)get_last_gvt() >= rootsim_config.simulation_time) {
-		return true;
-	}
-
-	// If some KLT has encountered an error condition, we neatly shut down the simulation
-	if(simulation_error()) {
-		return true;
-	}
-
-	return false;
-}
-
-
-/**
 * This function implements the main simulation loop
 *
 * @param arg This argument should be always set to NULL
@@ -94,6 +70,8 @@ static void *main_simulation_loop(void *arg) {
 	// Worker Threads synchronization barrier: they all should start working together
 	thread_barrier(&all_thread_barrier);
 
+	simtime_t old_time_barrier = -1;
+
 	while (!end_computing()) {
 
 		// Recompute the LPs-thread binding
@@ -110,7 +88,7 @@ static void *main_simulation_loop(void *arg) {
 		my_time_barrier = gvt_operations();
 
 		// Only a master thread on master kernel prints the time barrier
-		if (master_kernel() && master_thread () && D_DIFFER(my_time_barrier, -1.0)) {
+		if (master_kernel() && master_thread() && D_DIFFER(my_time_barrier, -1.0)) {
 			if (rootsim_config.verbose == VERBOSE_INFO || rootsim_config.verbose == VERBOSE_DEBUG) {
 				printf("TIME BARRIER %f\n", my_time_barrier);
 				fflush(stdout);

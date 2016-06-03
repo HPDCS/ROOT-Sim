@@ -30,6 +30,7 @@ librootsim_a_SOURCES =	main.c \
 			statistics/statistics.c \
 			gvt/gvt.c \
 			gvt/fossil.c \
+			gvt/cancelback.c \
 			gvt/ccgs.c \
 			communication/window.c \
 			communication/communication.c

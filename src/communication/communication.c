@@ -175,6 +175,11 @@ void send_antimessages(unsigned int lid, simtime_t after_simtime) {
 		msg.send_time = anti_msg->send_time;
 		msg.mark = anti_msg->mark;
 		msg.message_kind = negative;
+		
+		if (msg.sender != lid) {
+			rootsim_error(true, "LP %u sending a message for which it is not the sender!\n", lid);
+		}
+		
 
 		Send(&msg);
 
@@ -317,17 +322,15 @@ int messages_checking(void) {
 #endif
 
 
-
-
-
 /**
 *
 *
 * @author Francesco Quaglia
 */
+
 void insert_outgoing_msg(msg_t *msg) {
 
-	// If the model is generating many events at the same time, reallocate the outgoing buffer
+		// If the model is generating many events at the same time, reallocate the outgoing buffer
 	if(LPS[current_lp]->outgoing_buffer.size == LPS[current_lp]->outgoing_buffer.max_size){
 		LPS[current_lp]->outgoing_buffer.max_size *= 2;
 		LPS[current_lp]->outgoing_buffer.outgoing_msgs = rsrealloc(LPS[current_lp]->outgoing_buffer.outgoing_msgs, sizeof(msg_t) * LPS[current_lp]->outgoing_buffer.max_size);
@@ -343,7 +346,6 @@ void insert_outgoing_msg(msg_t *msg) {
 }
 
 
-
 void send_outgoing_msgs(unsigned int lid) {
 
 	register unsigned int i = 0;
@@ -351,6 +353,7 @@ void send_outgoing_msgs(unsigned int lid) {
 	msg_hdr_t msg_hdr;
 
 	for(i = 0; i < LPS[lid]->outgoing_buffer.size; i++) {
+
 		msg = &LPS[lid]->outgoing_buffer.outgoing_msgs[i];
 		Send(msg);
 

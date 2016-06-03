@@ -144,3 +144,20 @@ size_t getCurrentRSS(void)
 	return (size_t)0L;			/* Unsupported. */
 #endif
 }
+
+/**
+ * Get total physical memory available on the system.
+ */
+size_t getTotalPhysicalMemory() {
+
+#if defined(_WIN32)
+    MEMORYSTATUSEX status;
+    status.dwLength = sizeof(status);
+    GlobalMemoryStatusEx(&status);
+    return status.ullTotalPhys;
+#elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__gnu_linux__)
+    return (size_t)sysconf(_SC_PHYS_PAGES) * (size_t)sysconf(_SC_PAGESIZE);
+#else
+	return (size_t)0L; // Unsupported
+#endif
+}

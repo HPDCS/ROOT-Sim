@@ -210,7 +210,7 @@ char *__list_insert(void *li, unsigned int size, size_t key_position, void *data
 		l->tail = new_n;
 		goto insert_end;
 	}
-	
+
 //	printf("\nInserisco %f in %p\n", key, li);
 //	printf("prima: ");
 //	dump_l(l->head, key_position);
@@ -219,7 +219,7 @@ char *__list_insert(void *li, unsigned int size, size_t key_position, void *data
 	while(n != NULL && key < get_key(&n->data)) {
 		n = n->prev;
 	}
-		
+
 	// Insert correctly depending on the position
  	if(n == l->tail) { // tail
 		new_n->next = NULL;
@@ -237,10 +237,10 @@ char *__list_insert(void *li, unsigned int size, size_t key_position, void *data
 		n->next->prev = new_n;
 		n->next = new_n;
 	}
-	
+
 //	printf("dopo: ");
 //	dump_l(l->head, key_position);
-	
+
     insert_end:
 	l->size++;
 	assert(l->size == (size_before + 1));
@@ -537,28 +537,43 @@ unsigned int __list_trunc(void *li, double key, size_t key_position, unsigned sh
 
 	// Attempting to truncate an empty list?
 	if(l->size == 0) {
-		goto out;
-	}
 
-	if(direction == LIST_TRUNC_AFTER) {
+		goto out;
+
+	} else if (direction == LIST_TRUNC_BEFORE) {
+
+        n = l->head;
+        while(n != NULL && get_key(&n->data) < key) {
+            deleted++;
+                    n_adjacent = n->next;
+                    n->next = (void *)0xBAADF00D;
+                    n->prev = (void *)0xBAADF00D;
+                    rsfree(n);
+                    n = n_adjacent;
+        }
+        l->head = n;
+        if(l->head != NULL)
+            l->head->prev = NULL;
+
+    } else if (direction == LIST_TRUNC_AFTER) {
+
+        n = l->tail;
+        while(n != NULL && get_key(&n->data) > key) {
+            deleted++;
+                    n_adjacent = n->prev;
+                    n->next = (void *)0xBAADF00D;
+                    n->prev = (void *)0xBAADF00D;
+                    rsfree(n);
+                    n = n_adjacent;
+        }
+        if(n == l->head)
+            l->head->next = NULL;
+
+    } else {
+
 		printf("not implemented\n");
 		abort();
 	}
-
-
-	n = l->head;
-	while(n != NULL && get_key(&n->data) < key) {
-		deleted++;
-                n_adjacent = n->next;
-                n->next = (void *)0xBAADF00D;
-                n->prev = (void *)0xBAADF00D;
-                rsfree(n);
-                n = n_adjacent;
-	}
-	l->head = n;
-	if(l->head != NULL)
-		l->head->prev = NULL;
-
 
 	l->size -= deleted;
 	assert(l->size == (size_before - deleted));
@@ -566,3 +581,40 @@ unsigned int __list_trunc(void *li, double key, size_t key_position, unsigned sh
 	return deleted;
 }
 
+
+unsigned int __list_split_at(void* li, void* n_list, double key, size_t key_position) {
+
+    struct rootsim_list_node *n;
+	rootsim_list* l = (rootsim_list*)li;
+	rootsim_list* new_l = (rootsim_list*)n_list;
+	unsigned int kept = 1;
+
+	assert(l && n_list);
+	unsigned int size_before = l->size;
+
+	if(l->size == 0) {
+
+		goto out;
+
+	} else {
+
+        n = l->head;
+        while(n != NULL && get_key(&n->data) != key) {
+            n = n->next;
+            kept++;
+        }
+
+        new_l->head = n->next;
+        new_l->tail = l->tail;
+        new_l->size = size_before - kept;
+
+        l->tail = n;
+        l->tail->next = NULL;
+        l->size = kept;
+    }
+
+	l->size = kept;
+	assert(l->size == kept && new_l->size == (size_before - kept));
+    out:
+	return size_before - kept;
+}

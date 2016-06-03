@@ -316,7 +316,7 @@ void rootsim_error(bool fatal, const char *msg, ...) {
 	vsnprintf(buf, 1024, msg, args);
 	va_end(args);
 
-	fprintf(stderr, (fatal ? "[FATAL ERROR] " : "[WARNING] "));
+	fprintf(stderr, (fatal ? "\033[1m\033[31m[FATAL ERROR] \033[0m" : "\033[1m\033[31m[WARNING] \033[0m"));
 
 	fprintf(stderr, "%s", buf);\
 	fflush(stderr);
@@ -399,4 +399,27 @@ void distribute_lps_on_kernels(void) {
  */
 void initialization_complete(void) {
 	init_complete = true;
+}
+
+/**
+* This function checks the different possibilities for termination detection termination.
+*/
+bool end_computing(void) {
+
+	// Did CCGS decide to terminate the simulation?
+	if(ccgs_can_halt_simulation()) {
+		return true;
+	}
+
+	// Termination detection based on passed (committed) simulation time
+	if(rootsim_config.simulation_time != 0 && (int)get_last_gvt() >= rootsim_config.simulation_time) {
+		return true;
+	}
+
+	// If some KLT has encountered an error condition, we neatly shut down the simulation
+	if(simulation_error()) {
+		return true;
+	}
+
+	return false;
 }

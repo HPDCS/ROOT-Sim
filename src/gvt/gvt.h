@@ -35,13 +35,27 @@
 #include <ROOT-Sim.h>
 #include <mm/state.h>
 
-/* API from gvt.c */
+#define CANCELBACK_COOLDOWN         2
+#define CANCELBACK_MEM_THRESHOLD    0.25
+#define RAND() ((double)rand() / (double)RAND_MAX)
+
+
+/** API from gvt.c */
 extern void gvt_init(void);
 extern void gvt_fini(void);
 extern simtime_t gvt_operations(void);
 inline extern simtime_t get_last_gvt(void);
 
-/* API from fossil.c */
+/** API from fossil.c */
 extern void adopt_new_gvt(simtime_t, simtime_t);
+
+/** API from cancelback.c */
+extern bool attempt_cancelback(simtime_t);
+extern bool is_memory_limit_exceeded();
+extern inline void synch_for_cancelback();
+extern void send_cancelback_messages(unsigned int);
+extern bool is_cancelback_started();
+extern int num_unprocessed_msgs(unsigned int);
+extern inline size_t get_cancelback_threshold();
 
 #endif

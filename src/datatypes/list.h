@@ -125,8 +125,11 @@ struct rootsim_list {
 #define list_trunc_after(list, key_name, key_value) \
 		__list_trunc((list), (double)(key_value), my_offsetof((list), key_name), LIST_TRUNC_AFTER)
 
+/// Split list at a certain point.
+#define list_split_at(list, new_l, key_name, key_value) \
+        __list_split_at((list), (new_l), (double)(key_value), my_offsetof((list), key_name))
 
-// Get the size of the current list. Refer to <__list_delete>() for a more thorough documentation.
+/// Get the size of the current list. Refer to <__list_delete>() for a more thorough documentation.
 #define list_sizeof(list) ((struct rootsim_list *)list)->size
 
 

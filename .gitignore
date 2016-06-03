@@ -40,3 +40,5 @@ outputs/
 
 doxy.conf
 doxyfile.stamp
+
+/perf/

@@ -8,6 +8,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <dirent.h>
+#include <stdarg.h>
 
 
 #include <arch/thread.h>
@@ -22,6 +23,25 @@
 #include <core/timer.h>
 #include <mm/dymelor.h>
 #include <mm/malloc.h>
+
+
+#define _RESET   "\033[0m"
+#define _BLACK   "\033[30m"
+#define _RED     "\033[31m"
+#define _GREEN   "\033[32m"
+#define _YELLOW  "\033[33m"
+#define _BLUE    "\033[34m"
+#define _MAGENTA "\033[35m"
+#define _CYAN    "\033[36m"
+#define _WHITE   "\033[37m"
+#define _BLACK_BOLD   "\033[1m\033[30m"
+#define _RED_BOLD     "\033[1m\033[31m"
+#define _GREEN_BOLD   "\033[1m\033[32m"
+#define _YELLOW_BOLD  "\033[1m\033[33m"
+#define _BLUE_BOLD    "\033[1m\033[34m"
+#define _MAGENTA_BOLD "\033[1m\033[35m"
+#define _CYAN_BOLD    "\033[1m\033[36m"
+#define _WHITE_BOLD   "\033[1m\033[37m"
 
 
 /// This is a timer that start during the initialization of statistics subsystem and can be used to know the total simulation time
@@ -261,20 +281,20 @@ void statistics_stop(int exit_code) {
 
 
 	if(rootsim_config.serial) {
-		
+
 		// Stop timers
 		timer_start(simulation_finished);
 		total_time = timer_value_seconds(simulation_timer);
-		
+
 		sprintf(f_name, "%s/sequential_stats", rootsim_config.output_dir);
 		if ( (f = fopen(f_name, "w")) == NULL)  {
 			rootsim_error(true, "Cannot open %s\n", f_name);
 		}
-			
+
 		fprintf(f, "------------------------------------------------------------\n");
 		fprintf(f, "-------------------- SERIAL STATISTICS ---------------------\n");
 		fprintf(f, "------------------------------------------------------------\n\n");
-			
+
 		timer_tostring(simulation_timer, timer_string);
 		fprintf(f, "SIMULATION STARTED AT ..... : %s \n", 		timer_string);
 		timer_tostring(simulation_finished, timer_string);
@@ -300,9 +320,9 @@ void statistics_stop(int exit_code) {
 		}
 
 		fflush(f);
-	
+
 	} else { // Parallel simulation
-			
+
 		// Stop the simulation timer immediately to avoid considering the statistics reduction time
 		if (master_kernel() && master_thread()) {
 			timer_start(simulation_finished);
@@ -633,7 +653,7 @@ void statistics_fini(void) {
 inline void statistics_post_lp_data(unsigned int lid, unsigned int type, double data) {
 
 	if(rootsim_config.serial) {
-		
+
 		switch(type) {
 			case STAT_EVENT:
 				system_wide_stats.tot_events += 1.0;
@@ -642,11 +662,11 @@ inline void statistics_post_lp_data(unsigned int lid, unsigned int type, double 
 			case STAT_EVENT_TIME:
 				system_wide_stats.event_time += data;
 				break;
-				
+
 			default:
 				rootsim_error(true, "Wrong LP statistics post type: %d. Aborting...\n", type);
 		}
-		
+
 	} else {
 
 		switch(type) {
@@ -708,27 +728,27 @@ inline void statistics_post_lp_data(unsigned int lid, unsigned int type, double 
 
 inline void statistics_post_other_data(unsigned int type, double data) {
 	register unsigned int i;
-	
+
 	if(rootsim_config.serial) {
 		switch(type) {
 
 			case STAT_SIM_START:
 				statistics_start();
 				break;
-				
+
 			case STAT_GVT:
 				system_wide_stats.gvt_computations += 1.0;
 				system_wide_stats.memory_usage += (double)getCurrentRSS();
 				break;
-				
+
 			case STAT_GVT_TIME:
 				system_wide_stats.gvt_time = data;
 				break;
-			
+
 			default:
 				rootsim_error(true, "Wrong statistics post type: %d. Aborting...\n", type);
 		}
-			
+
 		return;
 	}
 
@@ -770,3 +790,129 @@ inline void statistics_post_other_data(unsigned int type, double data) {
 	}
 }
 
+inline void log_msg(const char* msg, ...) {
+
+	if (rootsim_config.verbose == VERBOSE_INFO ||
+		rootsim_config.verbose == VERBOSE_DEBUG) {
+
+        va_list args;
+        va_start(args, msg);
+
+		printf(msg, args);
+
+        va_end(args);
+
+        fflush(stdout);
+	}
+}
+
+inline void dump_msg(msg_t* msg, const char* hdr) {
+
+    if (rootsim_config.verbose == VERBOSE_INFO ||
+		rootsim_config.verbose == VERBOSE_DEBUG) {
+
+        printf( "%s\n"
+                "sender: %u\n"
+                "receiver: %u\n"
+                "type: %d\n"
+                "timestamp: %f\n"
+                "send time: %f\n"
+                "is antimessage %d\n"
+                "mark: %llu\n"
+                "rendezvous mark %llu\n",
+                hdr,
+                msg->sender,
+                msg->receiver,
+                msg->type,
+                msg->timestamp,
+                msg->send_time,
+                msg->message_kind,
+                msg->mark,
+                msg->rendezvous_mark);
+
+        fflush(stdout);
+    }
+}
+
+inline void stylized_printf(const char* s, int color, bool is_bold) {
+
+	switch(color) {
+		case BLACK:
+		if (is_bold) printf(_BLACK_BOLD"%s"_RESET, s);
+		else printf(_BLACK"%s"_RESET, s);
+		break;
+		case CYAN:
+		if (is_bold) printf(_CYAN_BOLD"%s"_RESET, s);
+		else printf(_CYAN"%s"_RESET, s);
+		break;
+		case MAGENTA:
+		if (is_bold) printf(_MAGENTA_BOLD"%s"_RESET, s);
+		else printf(_MAGENTA"%s"_RESET, s);
+		break;
+		case BLUE:
+		if (is_bold) printf(_BLUE_BOLD"%s"_RESET, s);
+		else printf(_BLUE"%s"_RESET, s);
+		break;
+		case RED:
+		if (is_bold) printf(_RED_BOLD"%s"_RESET, s);
+		else printf(_RED"%s"_RESET, s);
+		break;
+		case YELLOW:
+		if (is_bold) printf(_YELLOW_BOLD"%s"_RESET, s);
+		else printf(_YELLOW"%s"_RESET, s);
+		break;
+		case GREEN:
+		if (is_bold) printf(_GREEN_BOLD"%s"_RESET, s);
+		else printf(_GREEN"%s"_RESET, s);
+		break;
+		case WHITE:
+		if (is_bold) printf(_WHITE_BOLD"%s"_RESET, s);
+		else printf(_WHITE"%s"_RESET, s);
+		default:
+		break;
+	}
+
+	fflush(stdout);
+}
+
+void log_state_switch(unsigned int lid) {
+
+	if (LPS[lid] == NULL) {
+		rootsim_error(true, "Cannot log state of LP %u because its data is NULL!\n", lid);
+	}
+
+	switch(LPS[lid]->state) {
+	case LP_STATE_READY:
+	printf("LP %u switched to state \033[1m\033[36mLP_STATE_READY\033[0m\n", lid);
+	break;
+	case LP_STATE_RUNNING:
+	printf("LP %u switched to state \033[1m\033[36mLP_STATE_RUNNING\033[0m\n", lid);
+	break;
+	case LP_STATE_ROLLBACK:
+	printf("LP %u switched to state \033[1m\033[36mLP_STATE_ROLLBACK\033[0m\n", lid);
+	break;
+	case LP_STATE_CANCELBACK:
+	printf("LP %u switched to state \033[1m\033[36mLP_STATE_CANCELBACK\033[0m\n", lid);
+	break;
+	case LP_STATE_SILENT_EXEC:
+	printf("LP %u switched to state \033[1m\033[36mLP_STATE_SILENT_EXEC\033[0m\n", lid);
+	break;
+	case LP_STATE_READY_FOR_SYNCH:
+	printf("LP %u switched to state \033[1m\033[36mLP_STATE_READY_FOR_SYNCH\033[0m\n", lid);
+	break;
+	case LP_STATE_WAIT_FOR_SYNCH:
+	printf("LP %u switched to state \033[1m\033[36mLP_STATE_WAIT_FOR_SYNCH\033[0m\n", lid);
+	break;
+	case LP_STATE_WAIT_FOR_UNBLOCK:
+	printf("LP %u switched to state \033[1m\033[36mLP_STATE_WAIT_FOR_UNBLOCK\033[0m\n", lid);
+	break;
+	case LP_STATE_SYNCH_FOR_CANCELBACK:
+	printf("LP %u switched to state \033[1m\033[36mLP_STATE_SYNCH_FOR_CANCELBACK\033[0m\n", lid);
+	break;
+	default:
+	rootsim_error(true, "LP %u switched to state %hu which has not been recognized!\n", lid, &(LPS[lid]->state));
+	break;
+	}
+
+	fflush(stdout);
+}

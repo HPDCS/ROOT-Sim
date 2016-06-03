@@ -28,6 +28,7 @@
 
 #include <ROOT-Sim.h>
 #include <arch/thread.h>
+#include <limits.h>
 #include <gvt/gvt.h>
 #include <gvt/ccgs.h>
 #include <core/core.h>
@@ -71,6 +72,9 @@ static atomic_t counter_aware;
 /// How many threads have acquired the new GVT?
 static atomic_t counter_end;
 
+/// Keeps track of Cancelback cooldown
+static atomic_t counter_cancelback;
+
 /** Flag to start a new GVT reduction phase. Explicitly using an int here,
  *  because 'bool' could be compiler dependent, but we must know the size
  *  beforehand, because we're going to use CAS on this. Changing the type could
@@ -82,6 +86,11 @@ static volatile unsigned int GVT_flag = 0;
 /// Pointers to the barrier states of the bound LPs
 static state_t **time_barrier_pointer;
 
+/// This is the thread which will be assigned the task to start the Cancelback protocol
+static volatile unsigned int cancelback_tid = UINT_MAX;
+
+// Whether Cancelback was started during last iteration
+static volatile unsigned int cancelback_flag = 0;
 
 /** Keep track of the last computed gvt value. Its a per-thread variable
  * to avoid synchronization on it, but eventually all threads write here
@@ -105,6 +114,8 @@ static simtime_t *local_min;
 
 static simtime_t *local_min_barrier;
 
+/// Total number of pages available on the system
+static size_t tot_pages;
 
 /**
 * Initialization of the GVT subsystem
@@ -114,8 +125,18 @@ static simtime_t *local_min_barrier;
 void gvt_init(void) {
 	unsigned int i;
 
+	tot_pages = sysconf(_SC_PHYS_PAGES);
+	size_t cb_threshold = (size_t)(tot_pages * CANCELBACK_MEM_THRESHOLD);
+	printf("Total number of pages on system: %zu\nThreshold is %zu\n", tot_pages, cb_threshold);
+	
+	double page_size = sysconf(_SC_PAGESIZE) / 1000.0;
+	printf("Page size on this system: %f KB\n", page_size);
+
 	// This allows the first GVT phase to start
 	atomic_set(&counter_end, 0);
+
+	/// This allows to enable Cancelback trigger condition
+	atomic_set(&counter_cancelback, 0);
 
 	// Initialize the local minima
 	local_min = rsalloc(sizeof(simtime_t) * n_cores);
@@ -140,6 +161,12 @@ void gvt_fini(void){
 }
 
 
+inline size_t get_cancelback_threshold() {
+
+	return (size_t)(tot_pages * CANCELBACK_MEM_THRESHOLD);
+}
+
+
 /**
  * This function returns the last computed GVT value at each thread.
  * It can be safely used concurrently to keep track of the evolution of
@@ -150,6 +177,12 @@ inline simtime_t get_last_gvt(void) {
 	return last_gvt;
 }
 
+/**
+ * This function returns whether Cancelback started during the previous iteration
+ */
+inline bool has_cancelback_started() {
+	return cancelback_flag == 1;
+}
 
 
 /**
@@ -180,8 +213,8 @@ simtime_t gvt_operations(void) {
 	// This is different from the paper's pseudocode to reduce
 	// slightly the number of clock reads
 	if(GVT_flag == 0 && atomic_read(&counter_end) == 0) {
-		
-		
+
+
 		// When using ULT, creating stacks might require more time than
 		// the first gvt phase. In this case, we enter the GVT reduction
 		// before running INIT. This makes all the assumptions about the
@@ -282,6 +315,8 @@ simtime_t gvt_operations(void) {
 			if(atomic_read(&counter_aware) == 0) {
 				// The last one passing here, resets GVT flag
 				iCAS(&GVT_flag, 1, 0);
+				// Also, for convenience, the last one will start the Cancelback protocol, if needed
+				iCAS(&cancelback_tid, UINT_MAX, tid);
 			}
 
 			// Execute fossil collection and termination detection
@@ -292,6 +327,21 @@ simtime_t gvt_operations(void) {
 			// get_last_gvt()
 			adopt_new_gvt(new_gvt, new_min_barrier);
 			adopted_last_gvt = new_gvt;
+
+			if (tid == cancelback_tid) {
+				if (is_memory_limit_exceeded() && atomic_read(&counter_cancelback) == 0 && attempt_cancelback(adopted_last_gvt)) { // or last_gvt?
+					atomic_set(&counter_cancelback, CANCELBACK_COOLDOWN);
+					iCAS(&cancelback_flag, 0, 1);
+				} else {
+					iCAS(&cancelback_flag, 1, 0);
+				}
+
+				if (atomic_read(&counter_cancelback) > 0) {
+					atomic_dec(&counter_cancelback);
+					// Reset tid to invalid value
+					iCAS(&cancelback_tid, tid, UINT_MAX);
+				}
+			}
 
 			// Dump statistics
 			statistics_post_other_data(STAT_GVT, new_gvt);
@@ -320,4 +370,3 @@ simtime_t gvt_operations(void) {
 
 	return -1.0;
 }
-
