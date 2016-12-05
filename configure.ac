@@ -70,25 +70,19 @@ AC_CANONICAL_HOST
 AC_MSG_CHECKING([for a supported CPU])
 
 case "${host_cpu}" in
-
-# When we will resupport x86, uncomment these lines!
-
-     i?86)
-	AC_MSG_RESULT([yes, ${host_cpu}])
-	AC_DEFINE([ARCH_X86])
-	ARCH_MAX="x86"
-	;;
-
-     x86_64)
-        AC_MSG_RESULT([yes, ${host_cpu}])
-        AC_DEFINE([ARCH_X86_64])
-        ;;
-
-#     *)
-#        AC_MSG_RESULT([no, ${host_cpu}])
-#        AC_MSG_ERROR([Unsupported host architecture. Currently ROOT-Sim supports only x86_64 systems.])
-#        ;;
-
+	i?86)
+		AC_MSG_RESULT([yes, ${host_cpu}])
+		AC_DEFINE([ARCH_X86])
+		ARCH_MAX="x86"
+		;;
+	x86_64)
+		AC_MSG_RESULT([yes, ${host_cpu}])
+		AC_DEFINE([ARCH_X86_64])
+		;;
+	*)
+		AC_MSG_RESULT([no, ${host_cpu}])
+		AC_MSG_ERROR([Unsupported host architecture. Currently ROOT-Sim supports only x86_64 systems.])
+		;;
 esac
 
 
