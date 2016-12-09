@@ -71,8 +71,8 @@ build_cleanup()
 #rm $$.ld-data1
 #rm $$.ld-data2
 #rm $$.ld-final
-rm *.o
-rm *.o.rs
+rm ${SOURCES//.c/.o}
+rm ${SOURCES//.c/.o.rs}
 #rm branch-table
 #rm branch-table-light
 #rm offset-table-start-inc
