@@ -16,8 +16,7 @@ AC_ARG_ENABLE([profile],
 
 # Extra check flags
 AC_ARG_ENABLE(extra-checks,
-AC_HELP_STRING([--enable-exrta-checks],
-[Enable extra checks on models (kills performance!)]),
+AS_HELP_STRING([--enable-exrta-checks],[Enable extra checks on models (kills performance!)]),
 [enable_extra_checks=$enableval],[enable_extra_checks=no])
 AS_IF([test "x$enable_extra_checks" = "xyes"], [
 	AC_DEFINE([EXTRA_CHECKS])
@@ -61,25 +60,19 @@ AC_CANONICAL_HOST
 AC_MSG_CHECKING([for a supported CPU])
 
 case "${host_cpu}" in
-
-# When we will resupport x86, uncomment these lines!
-
-     i?86)
-	AC_MSG_RESULT([yes, ${host_cpu}])
-	AC_DEFINE([ARCH_X86])
-	ARCH_MAX="x86"
-	;;
-
-     x86_64)
-        AC_MSG_RESULT([yes, ${host_cpu}])
-        AC_DEFINE([ARCH_X86_64])
-        ;;
-
-#     *)
-#        AC_MSG_RESULT([no, ${host_cpu}])
-#        AC_MSG_ERROR([Unsupported host architecture. Currently ROOT-Sim supports only x86_64 systems.])
-#        ;;
-
+	i?86)
+		AC_MSG_RESULT([yes, ${host_cpu}])
+		AC_DEFINE([ARCH_X86])
+		ARCH_MAX="x86"
+		;;
+	x86_64)
+		AC_MSG_RESULT([yes, ${host_cpu}])
+		AC_DEFINE([ARCH_X86_64])
+		;;
+	*)
+		AC_MSG_RESULT([no, ${host_cpu}])
+		AC_MSG_ERROR([Unsupported host architecture. Currently ROOT-Sim supports only x86_64 systems.])
+		;;
 esac
 
 
