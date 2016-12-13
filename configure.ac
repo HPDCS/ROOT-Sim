@@ -5,7 +5,6 @@ AC_CONFIG_SRCDIR([src])
 AM_INIT_AUTOMAKE([-Wno-portability 1.10.1 -Wall foreign subdir-objects])
 
 AC_CONFIG_MACRO_DIR([m4])
-AC_USE_SYSTEM_EXTENSIONS
 
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 
@@ -39,6 +38,27 @@ AS_IF([test "x$enable_profile" = "xyes"], [
 	CFLAGS="-pg $CFLAGS"
 ])
 
+
+AC_ARG_WITH([mpi],
+            AS_HELP_STRING([--with-mpi], [compile with MPI (parallelization) support. Default: no]),
+            [],
+            [with_mpi=no])
+
+AS_IF([test x"$with_mpi" != xno],[
+	# Find a suitable MPI compiler: from CC and MPICC var or autodiscovery
+	# Test the choosen compiler for MPI support.
+	AX_PROG_CC_MPI(,,[AC_MSG_FAILURE([Couldn't find any MPI compiler. Be sure that CC env variable is not set to an incompatible compiler])])
+	AC_DEFINE([HAS_MPI])
+	CFLAGS="$CFLAGS -DHAS_MPI"
+],[
+	# MPI was not requested, force gcc compiler
+	AC_PROG_CC([gcc])
+])
+
+# be sure to call this macro after the AX_PROG_CC_MPI cause it is implicitely
+# overwriting the CC envar
+AC_USE_SYSTEM_EXTENSIONS
+
 #----------------------------------------------------------------------------
 # Check for languages
 #----------------------------------------------------------------------------
@@ -49,7 +69,7 @@ AC_LANG([C])
 # Checks for programs.
 #----------------------------------------------------------------------------
 m4_pattern_allow([AM_PROG_AR])
-AC_PROG_CC([gcc])
+
 AC_PROG_MAKE_SET
 AC_PROG_MKDIR_P
 AC_PROG_CC_C_O
@@ -491,6 +511,13 @@ else
 	ac_enable_ult="Disabled"
 fi
 
+# Compose the message regarding mpi
+if test x"$with_mpi" != xno
+then
+	enable_mpi="Enabled (compiler: $CC)"
+else
+	enable_mpi="Disable"
+fi
 
 # Compose the message regarding the Parallel Allocator
 if test "x$ac_have_parallel_allocator" = "xyes"
@@ -606,16 +633,14 @@ cat<<EOF
 
    * ROOT-Sim Configuration on Current Machine *
 
-CPU Architecture.............. : ${current_cpu}
-Operating System.............. : ${host_os}
-Debugging Support............. : ${enable_debug}
-User-Level Threads............ : ${ac_enable_ult}
-Parallel Allocator............ : ${ac_parallel_allocator}
-NUMA Subsystem................ : ${numa_subsystem}
-LP Preemption Support......... : ${ac_preemption}
-LP Rebinding.................. : ${ac_lp_rebinding}
-Event Cross State Management.. : ${ac_ecs}
-
-${ac_modules}
+CPU Architecture.......... : ${current_cpu}
+Operating System.......... : ${host_os}
+Debugging Support......... : ${enable_debug}
+MPI....................... : ${enable_mpi}
+User-Level Threads........ : ${ac_enable_ult}
+Parallel Allocator........ : ${ac_parallel_allocator}
+NUMA Subsystem............ : ${numa_subsystem}
+LP Preemption Support..... : ${ac_preemption}
+LP Rebinding.............. : ${ac_lp_rebinding}
 
 EOF
