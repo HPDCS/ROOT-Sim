@@ -199,8 +199,6 @@ extern unsigned int	kid,		/* Kernel ID for the local kernel */
 			*kernel;
 
 
-extern bool mpi_is_initialized;
-
 extern simulation_configuration rootsim_config;
 
 extern void ProcessEvent_light(unsigned int me, simtime_t now, int event_type, void *event_content, unsigned int size, void *state);

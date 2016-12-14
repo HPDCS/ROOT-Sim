@@ -77,9 +77,6 @@ void (**ProcessEvent)(unsigned int me, simtime_t now, int event_type, void *even
 /// Flag to notify all workers that there was an error
 static bool sim_error = false;
 
-/// This variable is used by rootsim_error to know whether fatal errors involve stopping MPI or not
-bool mpi_is_initialized = false;
-
 /// This flag tells whether we are exiting from the kernel of from userspace
 bool exit_silently_from_kernel = false;
 
@@ -238,24 +235,11 @@ void simulation_shutdown(int code) {
 
 	exit_silently_from_kernel = true;
 
-	if(mpi_is_initialized) {
-		comm_finalize();
-
-		// TODO: qui è necessario notificare agli altri kernel che c'è stato un errore ed è necessario fare lo shutdown
-		if(master_kernel()) {
-		}
-	}
-
 	statistics_stop(code);
 
 	if(!rootsim_config.serial) {
 
 		thread_barrier(&all_thread_barrier);
-
-		// All kernels must exit at the same time
-		if(n_ker > 1) {
-//			comm_barrier(MPI_COMM_WORLD);
-		}
 
 		if(master_thread()) {
 			statistics_fini();
