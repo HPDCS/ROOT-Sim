@@ -202,16 +202,6 @@ static inline void LP_knapsack(void) {
 		}
 	}
 
-	printf("NEW BINDING\n");
-	for(j = 0; j < n_cores; j++) {
-		printf("Thread %d: ", j);
-		for(i = 0; i < n_prc; i++) {
-			if(new_LPS_binding[i] == j)
-				printf("%d ", i);
-		}
-		printf("\n");
-	}
-
 }
 
 
