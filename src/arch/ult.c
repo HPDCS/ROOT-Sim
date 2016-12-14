@@ -111,6 +111,7 @@ void *get_ult_stack(unsigned int lid, size_t size) {
 *
 * @author Ralf Engelschall
 */
+static void context_create_boot(void) __attribute__ ((noreturn));
 static void context_create_boot(void) {
 
 	void (*context_start_func)(void *);
