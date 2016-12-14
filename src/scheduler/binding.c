@@ -150,7 +150,6 @@ static int compare_lp_cost(const void *a, const void *b) {
 static inline void LP_knapsack(void) {
 	register unsigned int i, j;
 	double reference_knapsack = 0;
-	double reference_lvt;
 	bool assigned;
 	double assignments[n_cores];
 
