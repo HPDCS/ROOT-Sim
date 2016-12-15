@@ -38,6 +38,10 @@
 #include <scheduler/process.h>
 #include <datatypes/list.h>
 #include <mm/dymelor.h>
+#ifdef HAS_MPI
+#include <communication/mpi.h>
+#endif
+
 
 /// This is the function pointer to correctly set ScheduleNewEvent API version, depending if we're running serially or parallelly
 void (* ScheduleNewEvent)(unsigned int gid_receiver, simtime_t timestamp, unsigned int event_type, void *event_content, unsigned int event_size);
@@ -57,12 +61,12 @@ void communication_init(void) {
 
 
 /**
-* This function finalizes the communication subsystem
-*
-* @author Roberto Vitali
-*
+* Finalizes the communication subsystem
 */
 void communication_fini(void) {
+	#ifdef HAS_MPI
+	mpi_finalize();
+	#endif
 }
 
 
