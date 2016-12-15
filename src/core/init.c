@@ -48,6 +48,9 @@
 #include <statistics/statistics.h>
 #include <lib/numerical.h>
 #include <serial/serial.h>
+#ifdef HAS_MPI
+#include <communication/mpi.h>
+#endif
 
 
 /// This variable keeps the executable's name
@@ -359,7 +362,15 @@ static int parse_cmd_line(int argc, char **argv) {
 */
 void SystemInit(int argc, char **argv) {
 
+	#ifdef HAS_MPI
+	mpi_init(&argc, &argv);
+
+	if(n_ker > MAX_KERNELS){
+		rootsim_error(true, "Too many kernels, maximum supported number is %u\n", MAX_KERNELS);
+	}
+	#else
 	n_ker = 1;
+	#endif
 
 	register int w;
 
