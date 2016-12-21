@@ -86,7 +86,6 @@ rm -f APP*.o
 #rm riferimenti
 #rm riferimenti-mon
 rm -f original
-echo "process done"
 }
 
 
@@ -269,6 +268,8 @@ check_term
 
 # Clean temporary files
 build_cleanup
+
+echo "process done"
 
 exit 0
 
