@@ -286,7 +286,7 @@ void process_bottom_halves(void) {
 	// preemptive scheme will not detect this, and some events could
 	// be in fact executed out of error.
 	#ifdef HAVE_PREEMPTION
-	reset_min_in_transit(tid);
+	reset_min_in_transit(local_tid);
 	#endif
 }
 

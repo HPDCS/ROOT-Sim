@@ -158,6 +158,10 @@ static int parse_cmd_line(int argc, char **argv) {
 					rootsim_error(true, "Demanding a non-positive number of cores\n");
 					return -1;
 				}
+
+				if(n_cores > MAX_THREADS_PER_KERNEL){
+					rootsim_error(true, "Too many threads, maximum supported number is %u\n", MAX_THREADS_PER_KERNEL);
+				}
 				break;
 
 			case OPT_OUTPUT_DIR:

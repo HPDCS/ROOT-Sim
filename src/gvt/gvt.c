@@ -218,14 +218,14 @@ simtime_t gvt_operations(void) {
 
 			for(i = 0; i < n_prc_per_thread; i++) {
 				if(LPS_bound[i]->bound == NULL) {
-					local_min[tid] = 0.0;
-					local_min_barrier[tid] = 0.0;
+					local_min[local_tid] = 0.0;
+					local_min_barrier[local_tid] = 0.0;
 					break;
 				}
 
-				local_min[tid] = min(local_min[tid], LPS_bound[i]->bound->timestamp);
+				local_min[local_tid] = min(local_min[local_tid], LPS_bound[i]->bound->timestamp);
 				tentative_barrier = find_time_barrier(LPS_bound[i]->lid, LPS_bound[i]->bound->timestamp);
-				local_min_barrier[tid] = min(local_min_barrier[tid], tentative_barrier->lvt);
+				local_min_barrier[local_tid] = min(local_min_barrier[local_tid], tentative_barrier->lvt);
 			}
 			my_phase = phase_send;	// Entering phase send
 			atomic_dec(&counter_A);	// Notify finalization of phase A
@@ -246,14 +246,14 @@ simtime_t gvt_operations(void) {
 
 			for(i = 0; i < n_prc_per_thread; i++) {
 				if(LPS_bound[i]->bound == NULL) {
-					local_min[tid] = 0.0;
-					local_min_barrier[tid] = 0.0;
+					local_min[local_tid] = 0.0;
+					local_min_barrier[local_tid] = 0.0;
 					break;
 				}
 
-				local_min[tid] = min(local_min[tid], LPS_bound[i]->bound->timestamp);
+				local_min[local_tid] = min(local_min[local_tid], LPS_bound[i]->bound->timestamp);
 				tentative_barrier = find_time_barrier(LPS_bound[i]->lid, LPS_bound[i]->bound->timestamp);
-				local_min_barrier[tid] = min(local_min_barrier[tid], tentative_barrier->lvt);
+				local_min_barrier[local_tid] = min(local_min_barrier[local_tid], tentative_barrier->lvt);
 			}
 
 			my_phase = phase_aware;
@@ -305,8 +305,8 @@ simtime_t gvt_operations(void) {
 
 			// Back to phase A for next GVT round
 			my_phase = phase_A;
-			local_min[tid] = INFTY;
-			local_min_barrier[tid] = INFTY;
+			local_min[local_tid] = INFTY;
+			local_min_barrier[local_tid] = INFTY;
 			atomic_dec(&counter_end);
 			last_gvt = adopted_last_gvt;
 		}

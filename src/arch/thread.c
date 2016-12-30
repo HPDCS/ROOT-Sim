@@ -33,6 +33,7 @@
 static tid_t os_tid;
 
 __thread unsigned int tid;
+__thread unsigned int local_tid;
 
 static unsigned int thread_counter = 0;
 
@@ -57,18 +58,18 @@ static void *__helper_create_thread(void *arg) {
 
 	// Get a unique local thread id...
 	unsigned int old_counter;
-	unsigned int local_tid;
+	unsigned int _local_tid;
 
 	while(true) {
 		old_counter = thread_counter;
-		local_tid = old_counter + 1;
-		if(iCAS(&thread_counter, old_counter, local_tid)) {
+		_local_tid = old_counter + 1;
+		if(iCAS(&thread_counter, old_counter, _local_tid)) {
 			break;
 		}
 	}
-
+	local_tid = _local_tid;
 	// ...and make it globally unique
-	tid = (kid << (sizeof(unsigned int) * 8 / 2)) | local_tid;
+	tid = to_global_tid(kid, _local_tid);
 
 
 	// Set the affinity on a CPU core, for increased performance
