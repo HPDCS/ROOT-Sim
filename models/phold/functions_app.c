@@ -64,15 +64,12 @@ void write_op(lp_state_type *state_ptr){
 	if (state_ptr->num_elementi == 0)
 		return;
 
-	int temp_size = 0;
-	long int temp_value;
+	unsigned int write_size, already_write = 0;
+	int start_idx, i;
+	buffers *pointers[num_buffers];
 
-        unsigned int write_size, already_write = 0;
-        int start_idx, i;
-        buffers *pointers[num_buffers];
-
-        for (i = 0; i < num_buffers; i++)
-                pointers[i] = state_ptr->head_buffs[i];
+	for (i = 0; i < num_buffers; i++)
+			pointers[i] = state_ptr->head_buffs[i];
 
 	write_size = (unsigned int)(write_distribution * state_ptr->total_size);
 

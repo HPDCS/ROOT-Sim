@@ -117,7 +117,7 @@ static int parse_cmd_line(int argc, char **argv) {
 	rootsim_config.verbose = VERBOSE_INFO;
 	rootsim_config.stats = STATS_ALL;
 	rootsim_config.serial = false;
-	
+
 	#ifdef HAVE_PREEMPTION
 	rootsim_config.disable_preemption = false;
 	#endif
@@ -295,7 +295,7 @@ static int parse_cmd_line(int argc, char **argv) {
 			case OPT_SERIAL:
 				rootsim_config.serial = true;
 				break;
-				
+
 			#ifdef HAVE_PREEMPTION
 			case OPT_PREEMPTION:
 				rootsim_config.disable_preemption = true;
