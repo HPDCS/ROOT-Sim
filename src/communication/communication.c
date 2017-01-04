@@ -366,7 +366,7 @@ void send_outgoing_msgs(unsigned int lid) {
 		msg_hdr.timestamp = msg->timestamp;
 		msg_hdr.send_time = msg->send_time;
 		msg_hdr.mark = msg->mark;
-		(void)list_insert(msg->sender, LPS[msg->sender]->queue_out, send_time, &msg_hdr);
+		(void)list_insert(msg->sender, LPS[GidToLid(msg->sender)]->queue_out, send_time, &msg_hdr);
 	}
 
 	LPS[lid]->outgoing_buffer.size = 0;
