@@ -22,9 +22,9 @@ AM_CONDITIONAL([DEBUG], [test x$enable_debug = xyes])
 CFLAGS_COMMON="-std=c99 -fno-omit-frame-pointer -ffloat-store -fno-common -fstrict-aliasing -fgnu89-inline -rdynamic -lm -U_FORTIFY_SOURCE"
 CFLAGS_WARNINGS="-Wall -Wextra -Wswitch-enum -Wcast-align -Wpointer-arith -Wstrict-overflow=5 -Wstrict-prototypes -Winline -Wundef -Wnested-externs -Wshadow -Wunreachable-code -Wfloat-equal -Wredundant-decls -Wold-style-definition"
 
-AM_COND_IF([DEBUG],
-		   [CFLAGS="-g3 -O0 $CFLAGS_COMMON $CFLAGS_WARNINGS"],
-		   [CFLAGS="-O3 $CFLAGS_COMMON"])
+AS_IF([test x$enable_debug = xyes],
+      [CFLAGS="-g3 -O0 $CFLAGS_COMMON $CFLAGS_WARNINGS"],
+      [CFLAGS="-O3 $CFLAGS_COMMON"])
 
 
 AC_ARG_ENABLE([profile],
