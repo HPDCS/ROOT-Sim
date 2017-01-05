@@ -35,7 +35,8 @@ void mpi_datatype_init(void){
 	MPI_Get_address(&msg->event_content, disp+6);
 	base = disp[0];
 	for (i=0; i < sizeof(disp)/sizeof(disp[0]); i++){
-		disp[i] = MPI_Aint_diff(disp[i], base);
+		// disp[i] = MPI_Aint_diff(disp[i], base);  /* Not supported on old MPI version */
+		disp[i] = disp[i] - base;
 	}
 	MPI_Type_create_struct(7, blocklen, disp, type, &msg_mpi_t);
 	MPI_Type_commit(&msg_mpi_t);
