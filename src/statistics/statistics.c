@@ -602,11 +602,11 @@ void statistics_init(void) {
 	// statistics from all threads
 	if(master_thread()) {
 		// Purge old output dir if present
-		_rmdir(rootsim_config.output_dir);
 		_mkdir(rootsim_config.output_dir);
 
 		for(i = 0; i < n_cores; i++) {
 			sprintf(thread_dir, "%s/thread_%d_%d/", rootsim_config.output_dir, kid, i);
+			_rmdir(thread_dir);
 			_mkdir(thread_dir);
 		}
 	}
