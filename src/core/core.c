@@ -30,6 +30,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include <limits.h>
 
 #include <arch/thread.h>
 #include <core/core.h>
@@ -144,7 +145,7 @@ void base_init(void) {
 			to_gid[n_prc] = i;
 			n_prc++;
 		} else if (kernel[i] < n_ker) { // If not
-			to_lid[i] = -1;
+			to_lid[i] = UINT_MAX;
 		} else { // Sanity check
 			rootsim_error(true, "Invalid mapping: there is no kernel %d!\n", kernel[i]);
 		}
