@@ -418,6 +418,9 @@ void SystemInit(int argc, char **argv) {
 			"Number of Logical Processes: %u\n"
 			"Output Statistics Directory: %s\n"
 			"Scheduler: %d\n"
+			#ifdef HAS_MPI
+			"MPI multithread support: %s\n"
+			#endif
 			"GVT Time Period: %.2f seconds\n"
 			"Checkpointing Type: %d\n"
 			"Checkpointing Period: %d\n"
@@ -432,6 +435,9 @@ void SystemInit(int argc, char **argv) {
 			n_prc_tot,
 			rootsim_config.output_dir,
 			rootsim_config.scheduler,
+			#ifdef HAS_MPI
+			((mpi_support_multithread)? "yes":"no"),
+			#endif
 			rootsim_config.gvt_time_period / 1000.0,
 			rootsim_config.checkpointing,
 			rootsim_config.ckpt_period,
