@@ -71,8 +71,9 @@ build_cleanup()
 #rm $$.ld-data1
 #rm $$.ld-data2
 #rm $$.ld-final
-rm ${SOURCES//.c/.o}
-rm ${SOURCES//.c/.o.rs}
+rm -f ${SOURCES//.c/.o}
+rm -f ${SOURCES//.c/.o.rs}
+rm -f APP*.o
 #rm branch-table
 #rm branch-table-light
 #rm offset-table-start-inc
@@ -84,8 +85,7 @@ rm ${SOURCES//.c/.o.rs}
 #rm padding-monitor.c
 #rm riferimenti
 #rm riferimenti-mon
-rm original
-echo "process done"
+rm -f original
 }
 
 
@@ -268,6 +268,8 @@ check_term
 
 # Clean temporary files
 build_cleanup
+
+echo "process done"
 
 exit 0
 

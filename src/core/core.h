@@ -56,12 +56,6 @@
 /// This defines an idle process (i.e., the fake process to be executed when no events are available)
 #define IDLE_PROCESS	UINT_MAX
 
-
-#define OUTPUT_DIR		"outputs"
-#define STAT_FILE		"execution_stats"
-#define LOCAL_STAT_FILE		"local_stats"
-
-
 /// Maximum number of kernels the distributed simulator can handle
 #define N_KER_MAX	128
 
