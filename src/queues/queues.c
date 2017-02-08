@@ -183,7 +183,7 @@ void process_bottom_halves(void) {
 
 		while((msg_to_process = (msg_t *)get_BH(LPS_bound[i]->lid)) != NULL) {
 
-			lid_receiver = msg_to_process->receiver;
+			lid_receiver = GidToLid(msg_to_process->receiver);
 
 			// TODO: reintegrare per ECS
 			//~ if(!receive_control_msg(msg_to_process)) {
@@ -229,6 +229,9 @@ void process_bottom_halves(void) {
 						// If the matched message is in the past, we have to rollback
 						if(matched_msg->timestamp <= lvt(lid_receiver)) {
 							LPS[lid_receiver]->bound = list_prev(matched_msg);
+							while ((LPS[lid_receiver]->bound != NULL) && LPS[lid_receiver]->bound->timestamp == msg_to_process->timestamp) {
+								LPS[lid_receiver]->bound = list_prev(LPS[lid_receiver]->bound);
+							}
 							LPS[lid_receiver]->state = LP_STATE_ROLLBACK;
 						}
 
@@ -248,6 +251,9 @@ void process_bottom_halves(void) {
 					// Check if we've just inserted an out-of-order event
 					if(msg_to_process->timestamp < lvt(lid_receiver)) {
 						LPS[lid_receiver]->bound = list_prev(msg_to_process);
+						while ((LPS[lid_receiver]->bound != NULL) && LPS[lid_receiver]->bound->timestamp == msg_to_process->timestamp) {
+							LPS[lid_receiver]->bound = list_prev(LPS[lid_receiver]->bound);
+						}
 						LPS[lid_receiver]->state = LP_STATE_ROLLBACK;
 					}
 					break;

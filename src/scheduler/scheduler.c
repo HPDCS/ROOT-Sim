@@ -321,7 +321,7 @@ void initialize_worker_thread(void) {
 			type: INIT,
 			timestamp: 0.0,
 			send_time: 0.0,
-			mark: generate_mark(LidToGid(LPS_bound[t]->lid)),
+			mark: generate_mark(LPS_bound[t]->lid),
 			size: model_parameters.size,
 			message_kind: positive,
 		};

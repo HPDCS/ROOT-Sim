@@ -38,7 +38,6 @@
 /// Counter for the invocations of adopt_new_gvt. This is used to determine whether a consistent state must be reconstructed
 static unsigned long long snapshot_cycles;
 
-
 /**
 * Determine which snapshots in the state queue can be free'd because are placed before the current time barrier.
 *
@@ -85,13 +84,10 @@ void fossil_collection(unsigned int lid, simtime_t time_barrier) {
 *
 * @author Francesco Quaglia
 */
-simtime_t adopt_new_gvt(simtime_t new_gvt) {
-
+void adopt_new_gvt(simtime_t new_gvt, simtime_t new_min_barrier) {
 	register unsigned int i;
 
 	state_t *time_barrier_pointer[n_prc_per_thread];
-	simtime_t local_time_barrier = INFTY;
-	simtime_t lp_time_barrier;
 	bool compute_snapshot;
 
 	// Snapshot should be recomputed only periodically
@@ -100,23 +96,13 @@ simtime_t adopt_new_gvt(simtime_t new_gvt) {
 
 	// Precompute the time barrier for each process
 	for (i = 0; i < n_prc_per_thread; i++) {
-
-		time_barrier_pointer[i] = find_time_barrier(LPS_bound[i]->lid, new_gvt);
-
-		if(time_barrier_pointer[i] == NULL)
-			lp_time_barrier = 0.0;
-		else
-			lp_time_barrier = time_barrier_pointer[i]->lvt;
-		if (lp_time_barrier > -1) {
-			local_time_barrier = min(local_time_barrier, lp_time_barrier);
-		}
+		time_barrier_pointer[i] = find_time_barrier(LPS_bound[i]->lid, new_min_barrier);
 	}
 
 	// If needed, call the CCGS subsystem
 	if(compute_snapshot) {
 		ccgs_compute_snapshot(time_barrier_pointer, new_gvt);
 	}
-
 
 	for(i = 0; i < n_prc_per_thread; i++) {
 
@@ -129,7 +115,5 @@ simtime_t adopt_new_gvt(simtime_t new_gvt) {
 		// Actually release memory buffer allocated by the LPs and then released via free() calls
 		clean_buffers_on_gvt(LPS_bound[i]->lid, time_barrier_pointer[i]->lvt);
 	}
-
-	return local_time_barrier;
 }
 

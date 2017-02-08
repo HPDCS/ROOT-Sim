@@ -66,12 +66,6 @@ unsigned int *to_lid;
 /// Used to map a local id to a global id
 unsigned int *to_gid;
 
-/// Number of logical processes handled by a kernel instance
-unsigned int n_prc_per_kernel[N_KER_MAX];
-
-/// Used to map global ids to local ids in one kernel instance's scope
-unsigned int *kernel_lid_to_gid[N_KER_MAX];
-
 /// This global variable holds the configuration for the current simulation
 simulation_configuration rootsim_config;
 
@@ -138,9 +132,6 @@ void base_init(void) {
 	to_lid = (unsigned int *)rsalloc(sizeof(unsigned int) * n_prc_tot);
 	to_gid = (unsigned int *)rsalloc(sizeof(unsigned int) * n_prc_tot);
 
-	for(i = 0; i < N_KER_MAX; i++)
-		kernel_lid_to_gid[i] = (unsigned int *)rsalloc(sizeof(unsigned int) * n_prc_tot);
-
 	for (i = 0; i < n_prc_tot; i++) {
 
 		if (rootsim_config.snapshot == FULL_SNAPSHOT) {
@@ -157,12 +148,7 @@ void base_init(void) {
 		} else { // Sanity check
 			rootsim_error(true, "Invalid mapping: there is no kernel %d!\n", kernel[i]);
 		}
-
-		// TODO: questo modo di assegnare le risorse è un po' malato... n_prc_per_kernel di fatto serve solo qui!!!!
-		kernel_lid_to_gid[kernel[i]][n_prc_per_kernel[kernel[i]]] = i;
-		n_prc_per_kernel[kernel[i]]++;
 	}
-
 
 	// TODO: questo va rimesso a posto quando ci rilanciamo sul distribuito
 	for (i = n_prc; i < n_prc_tot; i++) {
@@ -183,12 +169,7 @@ void base_init(void) {
 */
 // TODO: controllare cosa serve davvero qui
 void base_fini(void){
-	unsigned int i;
 	rsfree(kernel);
-
-	for(i = 0; i < N_KER_MAX; i++) {
-		rsfree(kernel_lid_to_gid[i]);
-	}
 	rsfree(to_gid);
 	rsfree(to_lid);
 	rsfree(OnGVT);

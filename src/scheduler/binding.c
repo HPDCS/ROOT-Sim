@@ -150,7 +150,6 @@ static int compare_lp_cost(const void *a, const void *b) {
 static inline void LP_knapsack(void) {
 	register unsigned int i, j;
 	double reference_knapsack = 0;
-	double reference_lvt;
 	bool assigned;
 	double assignments[n_cores];
 
@@ -201,16 +200,6 @@ static inline void LP_knapsack(void) {
 			new_LPS_binding[i] = j;
 			j = (j + 1) % n_cores;
 		}
-	}
-
-	printf("NEW BINDING\n");
-	for(j = 0; j < n_cores; j++) {
-		printf("Thread %d: ", j);
-		for(i = 0; i < n_prc; i++) {
-			if(new_LPS_binding[i] == j)
-				printf("%d ", i);
-		}
-		printf("\n");
 	}
 
 }

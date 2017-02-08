@@ -145,6 +145,8 @@ void ParallelScheduleNewEvent(unsigned int gid_receiver, simtime_t timestamp, un
 * @author Francesco Quaglia
 *
 * @param lid The Logical Process Id
+*
+* @todo One shot scan of the list
 */
 void send_antimessages(unsigned int lid, simtime_t after_simtime) {
 	msg_hdr_t *anti_msg,
@@ -160,11 +162,15 @@ void send_antimessages(unsigned int lid, simtime_t after_simtime) {
 	while(anti_msg != NULL && anti_msg->send_time > after_simtime)
 		anti_msg = list_prev(anti_msg);
 
-	// The next event is the first event with a sendtime > after_simtime, if any
-	if(anti_msg == NULL)
+	// The next event is the first event with a sendtime > after_simtime, if any.
+	// Explicitly consider the case in which all anti messages should be sent.
+	if(anti_msg == NULL && list_head(LPS[lid]->queue_out)->send_time <= after_simtime) {
 		return;
-
-	anti_msg = list_next(anti_msg);
+	} else if (anti_msg == NULL && list_head(LPS[lid]->queue_out)->send_time > after_simtime) {
+		anti_msg = list_head(LPS[lid]->queue_out);
+	} else {
+		anti_msg = list_next(anti_msg);
+	}
 
 	// Now send all antimessages
 	while(anti_msg != NULL) {
@@ -360,7 +366,7 @@ void send_outgoing_msgs(unsigned int lid) {
 		msg_hdr.timestamp = msg->timestamp;
 		msg_hdr.send_time = msg->send_time;
 		msg_hdr.mark = msg->mark;
-		(void)list_insert(msg->sender, LPS[msg->sender]->queue_out, send_time, &msg_hdr);
+		(void)list_insert(msg->sender, LPS[GidToLid(msg->sender)]->queue_out, send_time, &msg_hdr);
 	}
 
 	LPS[lid]->outgoing_buffer.size = 0;

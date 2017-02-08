@@ -12,21 +12,27 @@ m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 
 
 # Debugging symbols or not?
-CFLAGS="-O3 -lm -U_FORTIFY_SOURCE"
 AC_ARG_ENABLE([debug],
     AS_HELP_STRING([--enable-debug], [Enable debugging of the platform]))
 
-AS_IF([test "x$enable_debug" = "xyes"], [
-	CFLAGS="-g3 -Wall -Wextra -O0 -Wswitch-enum -Wcast-align -Wpointer-arith -Wstrict-overflow=5 -Wstrict-prototypes -Winline -Wundef -Wnested-externs -Wshadow -Wunreachable-code -Wfloat-equal -Wredundant-decls -Wold-style-definition -std=c99 -fno-omit-frame-pointer -ffloat-store -fno-common -fstrict-aliasing -fgnu89-inline -rdynamic -lm"
-])
+AM_CONDITIONAL([DEBUG], [test x$enable_debug = xyes])
+
+
+# Setup compilation flags
+CFLAGS_COMMON="-std=c99 -fno-omit-frame-pointer -ffloat-store -fno-common -fstrict-aliasing -fgnu89-inline -rdynamic -lm -U_FORTIFY_SOURCE"
+CFLAGS_WARNINGS="-Wall -Wextra -Wswitch-enum -Wcast-align -Wpointer-arith -Wstrict-overflow=5 -Wstrict-prototypes -Winline -Wundef -Wnested-externs -Wshadow -Wunreachable-code -Wfloat-equal -Wredundant-decls -Wold-style-definition"
+
+AS_IF([test x$enable_debug = xyes],
+      [CFLAGS="-g3 -O0 $CFLAGS_COMMON $CFLAGS_WARNINGS"],
+      [CFLAGS="-O3 $CFLAGS_COMMON"])
+
 
 AC_ARG_ENABLE([profile],
     AS_HELP_STRING([--enable-profile], [Enable profiling the platform]))
 
 # Extra check flags
 AC_ARG_ENABLE(extra-checks,
-AC_HELP_STRING([--enable-exrta-checks],
-[Enable extra checks on models (kills performance!)]),
+AS_HELP_STRING([--enable-exrta-checks],[Enable extra checks on models (kills performance!)]),
 [enable_extra_checks=$enableval],[enable_extra_checks=no])
 AS_IF([test "x$enable_extra_checks" = "xyes"], [
 	AC_DEFINE([EXTRA_CHECKS])
@@ -70,25 +76,19 @@ AC_CANONICAL_HOST
 AC_MSG_CHECKING([for a supported CPU])
 
 case "${host_cpu}" in
-
-# When we will resupport x86, uncomment these lines!
-
-     i?86)
-	AC_MSG_RESULT([yes, ${host_cpu}])
-	AC_DEFINE([ARCH_X86])
-	ARCH_MAX="x86"
-	;;
-
-     x86_64)
-        AC_MSG_RESULT([yes, ${host_cpu}])
-        AC_DEFINE([ARCH_X86_64])
-        ;;
-
-#     *)
-#        AC_MSG_RESULT([no, ${host_cpu}])
-#        AC_MSG_ERROR([Unsupported host architecture. Currently ROOT-Sim supports only x86_64 systems.])
-#        ;;
-
+	i?86)
+		AC_MSG_RESULT([yes, ${host_cpu}])
+		AC_DEFINE([ARCH_X86])
+		ARCH_MAX="x86"
+		;;
+	x86_64)
+		AC_MSG_RESULT([yes, ${host_cpu}])
+		AC_DEFINE([ARCH_X86_64])
+		;;
+	*)
+		AC_MSG_RESULT([no, ${host_cpu}])
+		AC_MSG_ERROR([Unsupported host architecture. Currently ROOT-Sim supports only x86_64 systems.])
+		;;
 esac
 
 
@@ -390,7 +390,7 @@ fi
 # Compose the message regarding the Parallel Allocator
 if test "x$ac_have_parallel_allocator" = "xyes"
 then
-	ac_parallel_allocator="Enabled (By default, use --disable-parallel-allocator if not wanted)"
+	ac_parallel_allocator="Enabled (By default, use --disable-allocator if not wanted)"
 else
 	ac_parallel_allocator="Disabled (manually excluded)"
 fi
