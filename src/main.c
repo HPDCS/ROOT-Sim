@@ -101,7 +101,7 @@ static void *main_simulation_loop(void *arg) {
 	initialize_worker_thread();
 
 	// Notify the statistics subsystem that we are now starting the actual simulation
-	if(master_thread()) {
+	if(master_kernel() && master_thread()) {
 		statistics_post_other_data(STAT_SIM_START, 1.0);
 		printf("****************************\n"
 		       "*    Simulation Started    *\n"
