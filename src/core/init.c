@@ -357,6 +357,9 @@ static int parse_cmd_line(int argc, char **argv) {
 * @param argv array of parameters passed at command line
 */
 void SystemInit(int argc, char **argv) {
+
+	n_ker = 1;
+
 	register int w;
 
 	// Parse the argument passed at command line, to initialize the internal configuration
@@ -428,13 +431,7 @@ void SystemInit(int argc, char **argv) {
 			rootsim_config.set_seed);
 	}
 
-	// Master Kernel initializes some variables, which are then passed to other kernel instances
-	if (master_kernel()) {
-		n_ker = 1;
-		distribute_lps_on_kernels();
-	} else { // Slave kernels
-		kernel = (unsigned int *)rsalloc(sizeof(unsigned int)*(n_prc_tot));
-	}
+	distribute_lps_on_kernels();
 
 	// Initialize ROOT-Sim subsystems.
 	// All init routines are executed serially (there is no notion of threads in there)
