@@ -92,12 +92,12 @@ static int parse_cmd_line(int argc, char **argv) {
 	int c;
 	int option_index;
 
-    	if(argc < 2) {
+	if(argc < 2){
 		usage(argv);
-    	}
+	}
 
-    	// Keep track of the program name
-    	program_name = argv[0];
+	// Keep track of the program name
+	program_name = argv[0];
 
 	// Store the predefined values, before reading any overriding one
 	rootsim_config.output_dir = DEFAULT_OUTPUT_DIR;
@@ -318,10 +318,13 @@ static int parse_cmd_line(int argc, char **argv) {
 		#undef parseIntLimits
 	}
 
+	if(!rootsim_config.serial && n_cores == 0){
+		rootsim_error(true, "Number of cores was not provided \"--np\"\n");
+	}
+
 	if(!rootsim_config.serial && n_prc_tot < n_cores) {
 		rootsim_error(true, "Requested a simulation run with %u LPs and %u worker threads: the mapping is not possible. Aborting...\n", n_prc_tot, n_cores);
 	}
-
 
 	if (!rootsim_config.serial && rootsim_config.snapshot == INVALID_SNAPSHOT)
 		rootsim_config.snapshot = FULL_SNAPSHOT; // TODO: in the future, default to AUTONOMIC_
