@@ -82,7 +82,7 @@ void fossil_collection(unsigned int lid, simtime_t time_barrier) {
 *
 * @author Francesco Quaglia
 */
-void adopt_new_gvt(simtime_t new_gvt, simtime_t new_min_barrier) {
+void adopt_new_gvt(simtime_t new_gvt) {
 	register unsigned int i;
 
 	state_t *time_barrier_pointer[n_prc_per_thread];
@@ -94,7 +94,7 @@ void adopt_new_gvt(simtime_t new_gvt, simtime_t new_min_barrier) {
 
 	// Precompute the time barrier for each process
 	for (i = 0; i < n_prc_per_thread; i++) {
-		time_barrier_pointer[i] = find_time_barrier(LPS_bound[i]->lid, new_min_barrier);
+		time_barrier_pointer[i] = find_time_barrier(LPS_bound[i]->lid, new_gvt);
 	}
 
 	// If needed, call the CCGS subsystem
