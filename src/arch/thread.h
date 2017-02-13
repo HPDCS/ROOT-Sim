@@ -32,12 +32,29 @@
 #include <arch/atomic.h>
 #include <arch/os.h>
 
+
+
+
+/* The global tid is obtained by concatenating of the `kid` and the `local_tid`
+ * and is stored into an unsigned int. Since we are using half of the unsigned int
+ * for each part we have that the total number of kernels and
+ * the number of threads per kernel must be less then (2^HALF_UINT_BITS - 1)
+ */
+#define HALF_UINT_BITS (sizeof(unsigned int)*8/2)
+
+#define MAX_KERNELS ((1 << HALF_UINT_BITS) - 1)
+#define MAX_THREADS_PER_KERNEL ((1 << HALF_UINT_BITS) - 1)
+
+#define to_global_tid(kid, local_tid) ( (kid << HALF_UINT_BITS) | local_tid )
+#define to_local_tid(global_tid) ( global_tid & ((1 << HALF_UINT_BITS)-1) )
+
+
 /// This macro expands to true if the current KLT is the master thread for the local kernel
-#define master_thread() ((tid & ((1 << sizeof(unsigned int) * 8 / 2)-1)) == 0)
+#define master_thread() (local_tid == 0)
 
 
 /// This macro tells on what core the current thread is running
-#define running_core() (tid & 0x0ffff)
+#define running_core() (local_tid)
 
 
 /// This structure is used to call the thread creation helper function
@@ -53,6 +70,7 @@ struct _helper_thread {
 void create_threads(unsigned short int n, void *(*start_routine)(void*), void *arg);
 
 extern __thread unsigned int tid;
+extern __thread unsigned int local_tid;
 
 /// Thread barrier definition
 typedef struct {
