@@ -269,6 +269,7 @@ void process_bottom_halves(void) {
 					//~ }
 					//~ break;
 
+				case other:
 				default:
 					rootsim_error(true, "Received a message which is neither positive nor negative. Aborting...\n");
 			}
