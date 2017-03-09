@@ -66,6 +66,8 @@ enum thread_phases {
 // is a per-thread variable.
 timer gvt_timer;
 
+timer gvt_round_timer;
+
 
 #ifdef HAS_MPI
 static unsigned int init_kvt_tkn;
@@ -293,6 +295,8 @@ simtime_t gvt_operations(void) {
 		if (start_new_gvt() &&
 			iCAS(&current_GVT_round, my_GVT_round, my_GVT_round + 1)) {
 
+			timer_start(gvt_round_timer);
+
 			#ifdef HAS_MPI
 			//inform all the other kernels about the new gvt
 			if(master_kernel()){
@@ -400,6 +404,9 @@ simtime_t gvt_operations(void) {
 #ifdef HAS_MPI
 	if( kernel_phase == kphase_gvt_redux && gvt_redux_completed() ){
 		if(iCAS(&commit_gvt_tkn, 1, 0)){
+			int gvt_round_time = timer_value_micro(gvt_round_timer);
+			statistics_post_other_data(STAT_GVT_ROUND_TIME, gvt_round_time);
+
 			new_gvt = last_reduced_gvt();
 			kernel_phase = kphase_fossil;
 		}
