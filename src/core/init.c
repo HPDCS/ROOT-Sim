@@ -414,6 +414,7 @@ void SystemInit(int argc, char **argv) {
 		 printf("****************************\n"
 			"*  ROOT-Sim Configuration  *\n"
 			"****************************\n"
+			"Kernels: %u\n"
 			"Cores: %ld available, %d used\n"
 			"Number of Logical Processes: %u\n"
 			"Output Statistics Directory: %s\n"
@@ -430,6 +431,7 @@ void SystemInit(int argc, char **argv) {
 			"Check Termination Mode: %d\n"
 			"Blocking GVT: %d\n"
 			"Set Seed: %ld\n",
+			n_ker,
 			get_cores(),
 			n_cores,
 			n_prc_tot,
