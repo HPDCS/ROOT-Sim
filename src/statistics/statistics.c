@@ -513,6 +513,10 @@ void statistics_stop(int exit_code) {
 			fprintf(f, "IDLE CYCLES................ : %.0f\n",		system_wide_stats.idle_cycles);
 			fprintf(f, "LAST COMMITTED GVT ........ : %f\n",		get_last_gvt());
 			fprintf(f, "NUMBER OF GVT REDUCTIONS... : %.0f\n",		system_wide_stats.gvt_computations);
+			
+			fprintf(f, "MIN GVT ROUND TIME......... : %.2f us\n",    system_wide_stats.gvt_round_time_min);
+			fprintf(f, "MAX GVT ROUND TIME......... : %.2f us\n",	system_wide_stats.gvt_round_time_max);
+			fprintf(f, "AVERAGE GVT ROUND TIME..... : %.2f us\n",	system_wide_stats.gvt_round_time / system_wide_stats.gvt_computations);
 			fprintf(f, "SIMULATION TIME SPEED...... : %.2f units per GVT\n",system_wide_stats.simtime_advancement);
 			fprintf(f, "AVERAGE MEMORY USAGE....... : %s\n",		format_size(system_wide_stats.memory_usage / system_wide_stats.gvt_computations));
 			fprintf(f, "PEAK MEMORY USAGE.......... : %s\n",		format_size(getPeakRSS()));
@@ -641,6 +645,11 @@ void statistics_init(void) {
 	bzero(lp_stats_gvt, n_prc * sizeof(struct stat_t));
 	thread_stats = rsalloc(n_cores * sizeof(struct stat_t));
 	bzero(thread_stats, n_cores * sizeof(struct stat_t));
+
+
+	system_wide_stats.gvt_round_time_min = INFTY;
+	system_wide_stats.gvt_round_time_max = 0;
+	system_wide_stats.gvt_round_time = 0;
 }
 
 
@@ -834,6 +843,16 @@ void statistics_post_other_data(unsigned int type, double data) {
 				lp_stats_gvt[lid].exponential_event_time = keep_exponential_event_time;
 			}
 			break;
+			
+
+		case STAT_GVT_ROUND_TIME:
+			if(data < system_wide_stats.gvt_round_time_min)
+				system_wide_stats.gvt_round_time_min = data;
+			if(data > system_wide_stats.gvt_round_time_max)
+				system_wide_stats.gvt_round_time_max = data;
+			system_wide_stats.gvt_round_time += data;
+			break;
+
 
 		default:
 			rootsim_error(true, "Wrong statistics post type: %d. Aborting...\n", type);
