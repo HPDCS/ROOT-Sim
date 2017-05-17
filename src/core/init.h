@@ -32,13 +32,14 @@
 #define OPT_STATS		19
 #define OPT_SEED		20
 #define OPT_SERIAL		21
+#define OPT_NO_CORE_BINDING	22
 
 #ifdef HAVE_PREEMPTION
-#define OPT_PREEMPTION		22
+#define OPT_PREEMPTION		23
 #endif
 
 #ifdef HAVE_PARALLEL_ALLOCATOR
-#define OPT_ALLOCATOR		23
+#define OPT_ALLOCATOR		24
 #endif
 
 // TODO: a vector of vector with text name of numerical options, which should be used for parsing options and for displaying names
@@ -68,6 +69,7 @@ static char *opt_desc[] = {
 	"Level of detail in the output statistics",
 	"Manually specify the initial random seed",
 	"Run a serial simulation (using Calendar Queues)",
+	"Disable the binding of threads to specific phisical processing cores",
 
 #ifdef HAVE_PREEMPTION
 	"Disable Preemptive Time Warp",
@@ -104,6 +106,8 @@ static struct option long_options[] = {
 	{"seed",		required_argument,	0, OPT_SEED},
 	{"serial",		no_argument,		0, OPT_SERIAL},
 	{"sequential",		no_argument,		0, OPT_SERIAL},
+	{"no-core-binding",	no_argument,		0, OPT_NO_CORE_BINDING},
+
 	
 #ifdef HAVE_PREEMPTION
 	{"no-preemption",	no_argument,		0, OPT_PREEMPTION},

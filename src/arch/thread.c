@@ -73,7 +73,8 @@ static void *__helper_create_thread(void *arg) {
 
 
 	// Set the affinity on a CPU core, for increased performance
-	set_affinity(local_tid);
+	if(rootsim_config.core_binding)
+		set_affinity(local_tid);
 
 	// Now get into the real thread's entry point
 	real_arg->start_routine(real_arg->arg);
