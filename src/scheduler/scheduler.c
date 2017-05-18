@@ -58,7 +58,7 @@ LP_state **LPS = NULL;
 /// This is used to keep track of how many LPs were bound to the current KLT
 __thread unsigned int n_prc_per_thread;
 
-/// This global variable tells the simulator what is the LP currently being scheduled on the current worker thread
+/// This global variable tells the simulator what is the local id of the LP currently being scheduled on the current worker thread
 __thread unsigned int current_lp;
 
 /// This global variable tells the simulator what is the LP currently being scheduled on the current worker thread
@@ -191,7 +191,7 @@ static void LP_main_loop(void *args) {
 
 		#ifdef EXTRA_CHECKS
 		if(current_evt->size > 0) {
-			hash1 = XXH64(current_evt->event_content, current_evt->size, current_lp);
+			hash1 = XXH64(current_evt->event_content, current_evt->size, LidToGid(current_lp));
 		}
 		#endif
 
@@ -207,11 +207,11 @@ static void LP_main_loop(void *args) {
 
 		#ifdef EXTRA_CHECKS
 		if(current_evt->size > 0) {
-			hash2 = XXH64(current_evt->event_content, current_evt->size, current_lp);
+			hash2 = XXH64(current_evt->event_content, current_evt->size, LidToGid(current_lp));
 		}
 
 		if(hash1 != hash2) {
-                        rootsim_error(true, "Error, LP %d has modified the payload of event %d during its processing. Aborting...\n", current_lp, current_evt->type);
+                        rootsim_error(true, "Error, LP %d has modified the payload of event %d during its processing. Aborting...\n", LidToGid(current_lp), current_evt->type);
 		}
 		#endif
 

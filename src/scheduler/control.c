@@ -167,7 +167,7 @@ bool receive_control_msg(msg_t *msg) {
 				LPS[msg->receiver]->state = LP_STATE_READY;
 				LPS[msg->receiver]->wait_on_rendezvous = 0;
 			}
-			current_lp = msg->receiver;
+			current_lp = GidToLid(msg->receiver);
 			current_lvt = msg->timestamp;
 			force_LP_checkpoint(current_lp);
 			LogState(current_lp);
