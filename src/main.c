@@ -156,9 +156,10 @@ static void *main_simulation_loop(void *arg) {
 */
 int main(int argc, char **argv) {
 
-	set_affinity(0);
-
 	SystemInit(argc, argv);
+	
+	if(rootsim_config.core_binding)
+		set_affinity(0);
 
 	if(rootsim_config.serial) {
 		serial_simulation();
