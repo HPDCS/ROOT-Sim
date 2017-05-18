@@ -174,7 +174,7 @@ static int parse_cmd_line(int argc, char **argv) {
 				if(strcmp(optarg, "stf") == 0) {
 					rootsim_config.scheduler = SMALLEST_TIMESTAMP_FIRST;
 				} else {
-					rootsim_error(true, "Invalid argument for scheduler parameter");
+					rootsim_error(true, "Invalid argument for scheduler parameter\n");
 					return -1;
 				}
 				break;
@@ -224,7 +224,7 @@ static int parse_cmd_line(int argc, char **argv) {
 				} else if(strcmp(optarg, "incremental") == 0) {
 					rootsim_config.check_termination_mode = INCR_CKTRM;
 				} else {
-					rootsim_error(true, "Invalid argument for cktrm_mode");
+					rootsim_error(true, "Invalid argument for cktrm_mode\n");
 					return -1;
 				}
 				break;
@@ -251,7 +251,7 @@ static int parse_cmd_line(int argc, char **argv) {
 				} else if(strcmp(optarg, "circular") == 0) {
 					rootsim_config.lps_distribution = LP_DISTRIBUTION_CIRCULAR;
 				} else {
-					rootsim_error(true, "Invalid argument for lps_distribution");
+					rootsim_error(true, "Invalid argument for lps_distribution\n");
 					return -1;
 				}
 				break;
@@ -272,7 +272,7 @@ static int parse_cmd_line(int argc, char **argv) {
 				} else if(strcmp(optarg, "no") == 0) {
 					rootsim_config.verbose = VERBOSE_NO;
 				} else {
-					rootsim_error(true, "Invalid argument for verbose");
+					rootsim_error(true, "Invalid argument for verbose\n");
 					return -1;
 				}
 				break;
@@ -287,7 +287,7 @@ static int parse_cmd_line(int argc, char **argv) {
 				} else if(strcmp(optarg, "global") == 0) {
 					rootsim_config.stats = STATS_GLOBAL;
 				} else {
-					rootsim_error(true, "Invalid argument for stats");
+					rootsim_error(true, "Invalid argument for stats\n");
 					return -1;
 				}
 				break;
