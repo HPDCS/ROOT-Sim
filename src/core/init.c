@@ -315,7 +315,6 @@ static int parse_cmd_line(int argc, char **argv) {
 			case -1:
 			case '?':
 			default:
-				rootsim_error(false, "Invalid options: %s", optarg);
 				break;
 		}
 
