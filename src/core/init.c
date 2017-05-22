@@ -457,8 +457,8 @@ void SystemInit(int argc, char **argv) {
 	base_init();
 	statistics_init();
 	scheduler_init();
-	communication_init();
 	dymelor_init();
+	communication_init();
 	gvt_init();
 	numerical_init();
 
