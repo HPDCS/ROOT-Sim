@@ -47,6 +47,7 @@
 #endif
 
 #include <serial/serial.h>
+#include <communication/mpi.h>
 
 
 #define _INIT_FROM_MAIN
@@ -105,6 +106,10 @@ static void *main_simulation_loop(void *arg) {
 	// Do the initial (local) LP binding, then execute INIT at all (local) LPs
 	initialize_worker_thread();
 
+	#ifdef HAS_MPI
+	syncronize_all();
+	#endif
+
 	// Notify the statistics subsystem that we are now starting the actual simulation
 	if(master_kernel() && master_thread()) {
 		statistics_post_other_data(STAT_SIM_START, 1.0);
@@ -118,9 +123,12 @@ static void *main_simulation_loop(void *arg) {
 		// Recompute the LPs-thread binding
 		rebind_LPs();
 
+		#ifdef HAS_MPI
 		// Check whether we have new ingoing messages sent by remote instances
-		// and then process bottom halves
-//		messages_checking();
+		receive_remote_msgs();
+		prune_outgoing_queues();
+		#endif
+		// Forward the messages from the kernel incoming message queue to the destination LPs
 		process_bottom_halves();
 
 		// Activate one LP and process one event. Send messages produced during the events' execution
@@ -141,6 +149,9 @@ static void *main_simulation_loop(void *arg) {
 			}
 		}
 
+		#ifdef HAS_MPI
+		collect_termination();
+		#endif
 	}
 
 	// If we're exiting due to an error, we neatly shut down the simulation

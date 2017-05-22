@@ -37,20 +37,28 @@
 //#include <scheduler/binding.h> // this is for force_rebind_GLP
 #include <statistics/statistics.h>
 #include <mm/dymelor.h>
+#include <communication/mpi.h>
+#include <communication/gvt.h>
 
 enum kernel_phases {
-    kphase_start,
-    kphase_kvt,
-    kphase_fossil,
-    kphase_idle
+	kphase_start,
+#ifdef HAS_MPI
+	kphase_white_msg_redux,
+#endif
+	kphase_kvt,
+#ifdef HAS_MPI
+	kphase_gvt_redux,
+#endif
+	kphase_fossil,
+	kphase_idle
 };
 
 enum thread_phases {
-    tphase_A,
-    tphase_send,
-    tphase_B,
-    tphase_aware,
-    tphase_idle
+	tphase_A,
+	tphase_send,
+	tphase_B,
+	tphase_aware,
+	tphase_idle
 };
 
 // Timer to know when we have to start GVT computation.
@@ -59,6 +67,10 @@ enum thread_phases {
 timer gvt_timer;
 
 
+#ifdef HAS_MPI
+static unsigned int init_kvt_tkn;
+static unsigned int commit_gvt_tkn;
+#endif
 
 /* Data shared across threads */
 
@@ -140,6 +152,18 @@ void gvt_init(void) {
 * @author Alessandro Pellegrini
 */
 void gvt_fini(void){
+#ifdef HAS_MPI
+	if((kernel_phase == kphase_idle && !master_thread() && gvt_init_pending()) ||
+		kernel_phase == kphase_start){
+		join_white_msg_redux();
+		wait_white_msg_redux();
+		join_gvt_redux(-1.0);
+	}
+	else if(kernel_phase == kphase_white_msg_redux || kernel_phase == kphase_kvt){
+		wait_white_msg_redux();
+		join_gvt_redux(-1.0);
+	}
+#endif
 }
 
 
@@ -158,6 +182,10 @@ simtime_t GVT_phases(void){
 	register unsigned int i;
 
 	if(thread_phase == tphase_A) {
+		#ifdef HAS_MPI
+		// Check whether we have new ingoing messages sent by remote instances
+		receive_remote_msgs();
+		#endif
 		process_bottom_halves();
 
 		for(i = 0; i < n_prc_per_thread; i++) {
@@ -173,6 +201,10 @@ simtime_t GVT_phases(void){
 	}
 
 	if(thread_phase == tphase_send && atomic_read(&counter_A) == 0) {
+		#ifdef HAS_MPI
+		// Check whether we have new ingoing messages sent by remote instances
+		receive_remote_msgs();
+		#endif
 		process_bottom_halves();
 		schedule();
 		thread_phase = tphase_B;
@@ -181,6 +213,10 @@ simtime_t GVT_phases(void){
 	}
 
 	if(thread_phase == tphase_B && atomic_read(&counter_send) == 0) {
+		#ifdef HAS_MPI
+		// Check whether we have new ingoing messages sent by remote instances
+		receive_remote_msgs();
+		#endif
 		process_bottom_halves();
 
 		for(i = 0; i < n_prc_per_thread; i++) {
@@ -191,6 +227,13 @@ simtime_t GVT_phases(void){
 
 			local_min[local_tid] = min(local_min[local_tid], LPS_bound[i]->bound->timestamp);
 		}
+
+		#ifdef HAS_MPI
+		// WARNING: local thread cannot send any remote
+		// message between the two following calls
+		exit_red_phase();
+		local_min[local_tid] = min(local_min[local_tid], min_outgoing_red_msg[local_tid]);
+		#endif
 
 		thread_phase = tphase_aware;
 		atomic_dec(&counter_B);
@@ -206,6 +249,19 @@ simtime_t GVT_phases(void){
 	}
 
 	return -1.0;
+}
+
+
+bool start_new_gvt(void){
+#ifdef HAS_MPI
+	if(!master_kernel()){
+		//Check if we received a new GVT init msg
+		return gvt_init_pending();
+	}
+#endif
+
+	// Has enough time passed since the last GVT reduction?
+	return timer_value_milli(gvt_timer) > (int)rootsim_config.gvt_time_period;
 }
 
 
@@ -234,20 +290,29 @@ simtime_t gvt_operations(void) {
 	// slightly the number of clock reads
 	if( kernel_phase == kphase_idle ) {
 
-		// When using ULT, creating stacks might require more time than
-		// the first gvt phase. In this case, we enter the GVT reduction
-		// before running INIT. This makes all the assumptions about the
-		// fact that bound is not null fail, and everything here inevitably
-		// crashes. This is a sanity check for this.
+		if (start_new_gvt() &&
+			iCAS(&current_GVT_round, my_GVT_round, my_GVT_round + 1)) {
 
-		// Has enough time passed since the last GVT reduction?
-		if( timer_value_milli(gvt_timer) > (int)rootsim_config.gvt_time_period &&
-			iCAS(&current_GVT_round, my_GVT_round, my_GVT_round + 1) ){
+			#ifdef HAS_MPI
+			//inform all the other kernels about the new gvt
+			if(master_kernel()){
+				broadcast_gvt_init(current_GVT_round);
+			}else{
+				gvt_init_clear();
+			}
+			#endif
 
 			// Reduce the current CCGS termination detection
 			ccgs_reduce_termination();
 
 			/* kernel GVT round setup */
+
+			#ifdef HAS_MPI
+			flush_white_msg_recv();
+
+			init_kvt_tkn = 1;
+			commit_gvt_tkn = 1;
+			#endif
 
 			init_completed_tkn = 1;
 			commit_kvt_tkn = 1;
@@ -277,18 +342,38 @@ simtime_t gvt_operations(void) {
 		// Keep track of this update
 		my_GVT_round = current_GVT_round;
 
+		#ifdef HAS_MPI
+		enter_red_phase();
+		#endif
+
 		local_min[local_tid] = INFTY;
 
 		thread_phase = tphase_A;
 		atomic_dec(&counter_initialized);
-
 		if(atomic_read(&counter_initialized) == 0){
 			if(iCAS(&init_completed_tkn, 1, 0)){
+				#ifdef HAS_MPI
+				join_white_msg_redux();
+				kernel_phase = kphase_white_msg_redux;
+				#else
 				kernel_phase = kphase_kvt;
+				#endif
 			}
 		}
 		return -1.0;
 	}
+
+
+#ifdef HAS_MPI
+	if( kernel_phase == kphase_white_msg_redux && white_msg_redux_completed() && all_white_msg_received() ){
+		if(iCAS(&init_kvt_tkn, 1, 0)){
+			flush_white_msg_sent();
+			kernel_phase = kphase_kvt;
+		}
+		return -1.0;
+	}
+#endif
+
 
 	/* KVT phase:
 	 * make all the threads agree on a common virtual time for this kernel */
@@ -296,12 +381,32 @@ simtime_t gvt_operations(void) {
 		simtime_t kvt = GVT_phases();
 		if( D_DIFFER(kvt, -1.0) ){
 			if( iCAS(&commit_kvt_tkn, 1, 0)){
+
+				#ifdef HAS_MPI
+				join_gvt_redux(kvt);
+				kernel_phase = kphase_gvt_redux;
+
+				#else
 				new_gvt = kvt;
 				kernel_phase = kphase_fossil;
+
+				#endif
 			}
 		}
 		return -1.0;
 	}
+
+
+#ifdef HAS_MPI
+	if( kernel_phase == kphase_gvt_redux && gvt_redux_completed() ){
+		if(iCAS(&commit_gvt_tkn, 1, 0)){
+			new_gvt = last_reduced_gvt();
+			kernel_phase = kphase_fossil;
+		}
+		return -1.0;
+	}
+#endif
+
 
 	/* GVT adoption phase:
 	 * the last agreed GVT needs to be adopted by every thread */

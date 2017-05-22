@@ -72,7 +72,7 @@ enum _control_msgs {
 #define MSG_NEW_GVT		52 /// Master notifies the new GVT
 #define MSG_TIME_BARRIER	53 /// Slaves communicate their maximum time barrier
 #define MSG_SNAPSHOT		54 /// Retrieve termination result
-
+#define MSG_FINI			55
 
 
 #define INIT_OUTGOING_MSG	10

@@ -128,6 +128,9 @@
 
 typedef enum {positive, negative, control} message_kind_t;
 
+#ifdef HAS_MPI
+typedef unsigned char phase_colour;
+#endif
 
 /* The MPI datatype msg_mpi_t depends on the order of this struct. */
 
@@ -136,6 +139,9 @@ typedef struct _msg_t {
 	// Kernel's information
 	unsigned int   		sender;
 	unsigned int   		receiver;
+#ifdef HAS_MPI
+	phase_colour	colour;
+#endif
 	int   			type;
 	message_kind_t		message_kind;
 	simtime_t		timestamp;
