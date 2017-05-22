@@ -20,6 +20,7 @@
 *	 a schedule-hook module allowing running a custom function each time a thread is cpu rescheduled
 * @author Francesco Quaglia
 * @author Alessandro Pellegrini
+* @author Emanuele De Santis
 *
 * @date October 15, 2015
 */
@@ -43,15 +44,17 @@
 #include <linux/vmalloc.h>
 #include <linux/preempt.h>
 #include <asm/atomic.h>
+#include "ld.h"
+#include "lend.h"
 //#include <asm/page.h>
 //#include <asm/cacheflush.h>
 //#include <asm/apic.h>
 
 // This gives access to read_cr0() and write_cr0()
 #if LINUX_VERSION_CODE > KERNEL_VERSION(3,3,0)
-    #include <asm/switch_to.h>
+	#include <asm/switch_to.h>
 #else
-    #include <asm/system.h>
+	#include <asm/system.h>
 #endif
 #ifndef X86_CR0_WP
 #define X86_CR0_WP 0x00010000
@@ -59,7 +62,7 @@
 
 // This macro was added in kernel 3.5
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3,5,0)
-    #define APIC_EOI_ACK 0x0 /* Docs say 0 for future compat. */
+	#define APIC_EOI_ACK 0x0 /* Docs say 0 for future compat. */
 #endif
 
 #include "schedule-hook.h"
@@ -82,9 +85,7 @@ unsigned int audit_counter = 0;
 #define PERMISSION_MASK (S_IRUSR | S_IRGRP | S_IROTH)
 module_param(audit_counter, int, PERMISSION_MASK);
 
-int safe_guard = 1;
-
-static int bytes_to_patch_in_schedule = 4;
+static int bytes_to_patch_in_schedule = 5;
 
 static atomic_t synch_leave;
 static atomic_t synch_enter;
@@ -92,11 +93,8 @@ static atomic_t synch_enter;
 atomic_t count ;
 atomic_t reference_count ;
 ulong phase = 0;//this is used to implement a phase based retry protocol for umounting this module
-//module_param(phase, ulong, PERMISSION_MASK);
-
 
 static void synchronize_all_slaves(void *);
-//static void *prepare_self_patch(void);
 static void schedule_hook_cleanup(void);
 static int schedule_hook_init(void);
 static void schedule_unpatch(void);
@@ -104,12 +102,14 @@ static int schedule_patch(void);
 static void print_bytes(char *str, unsigned char *ptr, size_t s);
 static int check_patch_compatibility(void);
 extern void schedule_hook(void);
+extern void schedule_hook_2(void);
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Alessandro Pellegrini <pellegrini@dis.uniroma1.it>, Francesco Quaglia <quaglia@dis.uniroma1.it>");
 MODULE_DESCRIPTION("Run time patch of the Linux kernel scheduler for supporting the execution of a generic custom function upon thread reschedule");
 module_init(schedule_hook_init);
-module_exit(schedule_hook_cleanup);
+module_exit(schedule_unpatch);
+//module_exit(schedule_hook_cleanup);
 
 
 /* MODULE VARIABLES */
@@ -118,9 +118,28 @@ static unsigned char finish_task_switch_original_bytes[6];
 void *finish_task_switch = (void *)FTS_ADDR;
 void *finish_task_switch_next = (void *)FTS_ADDR_NEXT;
 
+typedef struct backup{
+	char bytes[128];
+	void* init_addr;
+	unsigned short int len;
+} backup_t;
+
+backup_t* b;
+
+unsigned short int backup_count=0;
+
+typedef struct instr {
+		void* ptr;
+		unsigned char bytecode[16];
+		short unsigned int size;
+} instr_t;
+
+
 // These are set in hook.S
 extern void schedule_hook_end(void);
 extern void schedule_hook_patch_point(void);
+extern void schedule_hook_patch_point_2(void);
+
 
 static void synchronize_all_slaves(void *info) {
 	(void)info;
@@ -132,8 +151,6 @@ static void synchronize_all_slaves(void *info) {
 	preempt_enable();
 	printk(KERN_DEBUG "%s: cpu %d leaving synchronize_all_slaves\n", KBUILD_MODNAME, smp_processor_id());
 }
-
-int dummycount = 0;
 
 #define synchronize_all() do { \
 		printk("cpu %d asking from unpreemptive synchronization\n", smp_processor_id()); \
@@ -160,39 +177,6 @@ static void print_bytes(char *str, unsigned char *ptr, size_t s) {
 		printk(KERN_CONT "%02x ", ptr[i]);
 	printk(KERN_CONT "\n");
 }
-
-/*
-static void schedule_hook(void) {
-
-
-	// This is used as a presence counter
-	atomic_inc(&count);
-
-	DEBUG_SCHEDULE_HOOK{
-		watch_dog++; // the counter is shared but there is no need for atomicity - the reset will anyhow take place
-		if (watch_dog >= 0x000000000000fff){
-			audit_counter++;
-			//printk(KERN_EMERG "%s: watch dog trigger for thread %d (group leader is %d) CPU-id is %d\n", KBUILD_MODNAME, current->pid, current->tgid, smp_processor_id());
-			watch_dog = 0;
-		}
-	}
-
-	// Call a hooked function if such a function has been registered in the module parameter
-	if(the_hook) {
-//		((void (*)(void))the_hook)();
-		__asm__ __volatile__ ("nop");
-	}
-
-	atomic_dec(&count);
-
-	// This gives us space for self patching. There are 5 bytes rather than 4, because
-	// we might have to copy here 3 pop instructions, one two-bytes long and the other
-	// one byte long.
-	__asm__ __volatile__ ("nop; nop; nop; nop; nop; nop");
-	return;
-}
-*/
-
 
 static int check_patch_compatibility(void) {
 	unsigned char *ptr;
@@ -273,7 +257,7 @@ static int check_patch_compatibility(void) {
 
 	return 0;
 
-    failed:
+	failed:
 
 	printk(KERN_NOTICE "%s: magic check on bytes ", KBUILD_MODNAME);
 	printk(KERN_CONT "%02x %02x %02x %02x %02x failed.\n",
@@ -293,125 +277,141 @@ static int schedule_patch(void) {
 	int pos = 0;
 	long displacement;
 	int ret = 0;
-//	unsigned char *ptr;
 	unsigned long cr0;
 	unsigned char bytes_to_redirect[6];
 	int schedule_hook_length;
+	int i=0;
+	int j;
+	void * temp;
 
-	printk(KERN_DEBUG "%s: start patching the schedule function...\n", KBUILD_MODNAME);
+	instr_t* v=(instr_t*) kmalloc(((unsigned char*)(finish_task_switch_next)-(unsigned char*)(finish_task_switch))*sizeof(instr_t), GFP_KERNEL);
+	if(!v){
+		printk("Errore 1\n");
+		return 0;
+	}
+	memset(v, 0, ((unsigned char*)(finish_task_switch_next)-(unsigned char*)(finish_task_switch))*sizeof(instr_t));
 
-	// check_patch_compatibility overrides the content of finish_task_switch_next
-	// as it is adjusted to the first byte after the ret instruction of finish_task_switch.
-	// Additionally, bytes is set to the number of bytes required to correctly
-	// patch the end of finish_task_switch.
-	ret = check_patch_compatibility();
-	if(ret)
-		goto out;
 
-	// Backup the final bytes of finish_task_switch, for later unmounting and finalization of the patch
-	memcpy(finish_task_switch_original_bytes, finish_task_switch_next - bytes_to_patch_in_schedule, bytes_to_patch_in_schedule);
-	print_bytes("made a backup of bytes", finish_task_switch_original_bytes, bytes_to_patch_in_schedule);
+	b=(backup_t*) kmalloc(20*sizeof(backup_t), GFP_KERNEL); //this size is the maximum number of return this module can handle
+	if(!b){
+		printk("Errore 2\n");
+		return 0;
+	}
+	memset(b, 0, 20*sizeof(backup_t));
 
-	// Compute the displacement for the jump to be placed at the end of the schedule function
-	displacement = ((long)schedule_hook - (long)finish_task_switch_next);
+	//instr_t* v will contain all the instructions between finish_task_switch and finish_task_switch_next
+	temp=(void*)finish_task_switch; // copy of finish_task_switch for ld
 
-	if(displacement != (long)(int)displacement) {
-		printk(KERN_NOTICE "%s: Error: displacement out of bounds, I cannot hijack the schedule function postamble\n", KBUILD_MODNAME);
-		ret = -1;
-		goto out;
-	} else {
-		printk(KERN_INFO "%s: finish_task_switch postamble is at %p (pointing to byte %02x), schedule_hook is at %p, the displacement for the jump is %lx bytes\n",
-				KBUILD_MODNAME, finish_task_switch_next, *((unsigned char *)finish_task_switch_next), schedule_hook, displacement);
+	while (temp<finish_task_switch_next){
+		int size=length_disasm(temp, MODE_X64);
+		v[i].size=size;
+		v[i].ptr=(void*)((char*)(temp));
+		memcpy(v[i].bytecode, (unsigned char*)(temp), size);
+		i++;
+		temp=((unsigned char*)(temp))+size;
+	}
+	//instr_t* v populated successfully
+	print_bytes("finish_task_switch before patch", finish_task_switch, finish_task_switch_next-finish_task_switch);
+
+	for (j=0; j<i; j++){
+		print_bytes("instruction:", v[j].bytecode, v[j].size);
+		//printk("\t address: %p\n", v[j].ptr);
 	}
 
-	// Assemble the actual jump. Thanks to little endianess, we must manually swap bytes
-	pos = 0;
-	bytes_to_redirect[pos++] = 0xe9;
-	bytes_to_redirect[pos++] = (unsigned char)(displacement & 0xff);
-	bytes_to_redirect[pos++] = (unsigned char)(displacement >> 8 & 0xff);
-	bytes_to_redirect[pos++] = (unsigned char)(displacement >> 16 & 0xff);
-	bytes_to_redirect[pos++] = (unsigned char)(displacement >> 24 & 0xff);
-
-	if(bytes_to_patch_in_schedule > 4)
-		bytes_to_redirect[pos++] = 0x90; // Fill it with a nop, after the jump, to make the instrumentation cleaner
-
-	print_bytes("assembled jump is", bytes_to_redirect, 5);
-
-	// Find the correct place where to store backed up bytes from the original schedule function.
-	// This is starting exactly at the ret (0xc3) instruction at the end of
-	// schedule_hook. We start from the function after it, and for safety we check whether
-	// there is enough space or not.
-
-	//print_bytes("schedule_hook before prepare self patch", (unsigned char *)schedule_hook, 600);
-/*	printk("%s: upon calling prepare_self_patch",KBUILD_MODNAME) ;
-	ptr = (unsigned char *)prepare_self_patch();
-	if(ptr == NULL) {
-		ret = -1;
-		goto out;
-	}
-*/
-//	printk("%s: upon succesfully returning from prepare_self_patch", KBUILD_MODNAME);
-//	printk(KERN_DEBUG "schedule hook is at %p, patch point is at %p, hook length is %d\n", schedule_hook, hook_patch_point, hook_length);
-	schedule_hook_length = (int)(schedule_hook_end - schedule_hook);
-
-	// Synchronize threads. We force all other kernel threads to enter a synchronization function,
-	// disable preemption, do the patching and then we can all continue happily
-	synchronize_all();
-
-	// Now do the actual patching. Clear CR0.WP to disable memory protection.
+	//disable memory protection
 	cr0 = read_cr0();
 	write_cr0(cr0 & ~X86_CR0_WP);
 
+	//HERE FIND 0XC3 PREVIOUS INSTRUCTIONS, BACKUP THEM INTO AN ARRAY AND PATCH SCHEDULE
+	print_bytes("finish_task_switch_next before self patching", (unsigned char *)finish_task_switch, finish_task_switch_next-finish_task_switch);
+	for (j=0; j<i; j++){
+		if (v[j].size==1 && v[j].bytecode[0]==0xc3){ //return found
+			printk(KERN_DEBUG "%s: return found at address %p, offset %p\n", KBUILD_MODNAME, (unsigned char*)v[j].ptr, (void*)(v[j].ptr-finish_task_switch));
+			int k=0;
+			int count=1;
+			do{
+				k+=v[j-count].size;
+				count++;
+			}while(k<5);
+			count--;
+			print_bytes("upper bound instruction: ", v[j-count].bytecode, v[j-count].size);
+			void* upper_bound=v[j-count].ptr;
+			void* lower_bound=v[j].ptr;
+			int size=lower_bound-upper_bound;
+			printk(KERN_DEBUG "%s: size=%d\n", KBUILD_MODNAME, size);
+			b[backup_count].init_addr=upper_bound;
+			b[backup_count].len=size;
+			memcpy(b[backup_count].bytes, upper_bound, size);
+			print_bytes("Backup bytes: ", b[backup_count].bytes, size);
 
-	// Patch the end of our schedule_hook to execute final bytes of finish_task_switch
-	print_bytes("hook before patch", (unsigned char *)schedule_hook, schedule_hook_length);
-	memcpy(schedule_hook_patch_point, finish_task_switch_original_bytes, bytes_to_patch_in_schedule);
-	print_bytes("hook after  patch", (unsigned char *)schedule_hook, schedule_hook_length);
+			//Assemble JMP
+			displacement=((long)((long)schedule_hook+(long)backup_count*((long)schedule_hook_2-(long)schedule_hook))-(long)upper_bound)-5;
+			//displacement=((long)schedule_hook-(long)finish_task_switch_next);
+			pos = 0;
+			bytes_to_redirect[pos++] = 0xe9;
+			bytes_to_redirect[pos++] = (unsigned char)(displacement & 0xff);
+			bytes_to_redirect[pos++] = (unsigned char)(displacement >> 8 & 0xff);
+			bytes_to_redirect[pos++] = (unsigned char)(displacement >> 16 & 0xff);
+			bytes_to_redirect[pos++] = (unsigned char)(displacement >> 24 & 0xff);
 
-/*	printk(KERN_DEBUG "%s: The patching will go from %p to %p, the following bytes will be patched: ", KBUILD_MODNAME, (unsigned char *)finish_task_switch_next - bytes_to_patch_in_schedule, (unsigned char *)finish_task_switch_next);
-	for(pos = 0; pos < bytes_to_patch_in_schedule; pos++) {
-		printk(KERN_CONT "%02x ", ((unsigned char *)finish_task_switch_next - bytes_to_patch_in_schedule)[pos]);
+			print_bytes("assembled jump is", bytes_to_redirect, 5);
+
+			backup_count++;
+
+			//Patch schedule()
+			//if (backup_count!=-1)
+				memcpy(upper_bound, bytes_to_redirect, 5);
+		}
 	}
-	printk(KERN_CONT " with the following bytes: ");
-	for(pos = 0; pos < bytes_to_patch_in_schedule; pos++) {
-		printk(KERN_CONT "%02x ", bytes_to_redirect[pos]);
-	}
-	printk(KERN_CONT "\n");
-*/
-	// Patch finish_task_switch to jump, at the end, to schedule_hook
-//	print_bytes("finish_task_switch_next before self patching", (unsigned char *)finish_task_switch_next - bytes_to_patch_in_schedule, 64);
-//	memcpy((unsigned char *)finish_task_switch_next - bytes_to_patch_in_schedule, bytes_to_redirect, bytes_to_patch_in_schedule);
-//	print_bytes("finish_task_switch_next after self patching", (unsigned char *)finish_task_switch_next - bytes_to_patch_in_schedule, 64);
 
-	// Re-enable memory protection
+	print_bytes("schedule after patch: ", finish_task_switch, finish_task_switch_next-finish_task_switch);
+
+	//here all bytes are backed-up
+
+	int patch_size=schedule_hook_2-schedule_hook_patch_point;
+	int patch_offset=schedule_hook_patch_point_2-schedule_hook_patch_point;
+	printk(KERN_DEBUG "%s: schedule_hook is at address %p\n", KBUILD_MODNAME, schedule_hook);
+	print_bytes("schedule_hook_patch_point: ", schedule_hook_patch_point, patch_size);
+
+	//patch schedule_hook_patch_point
+
+	for (j=0; j<backup_count; j++){
+		memcpy(schedule_hook_patch_point+j*patch_offset, b[j].bytes, b[j].len);
+		print_bytes("schedule_hook_patch_point after patch: ", schedule_hook+j*(schedule_hook_2-schedule_hook), (schedule_hook_2-schedule_hook));
+	}
 	write_cr0(cr0);
-
-	unsynchronize_all();
-
-	printk(KERN_INFO "%s: schedule function correctly patched...\n", KBUILD_MODNAME);
-
-    out:
-	return ret;
+	kfree(v);
+	return 0;
+	out:
+	return 0;
 }
 
 
 static void schedule_unpatch(void) {
+
 	unsigned long cr0;
 
 	synchronize_all();
 	printk(KERN_DEBUG "%s: restoring standard schedule function...\n", KBUILD_MODNAME);
 
+
 	// To unpatch, simply place back original bytes of finish_task_switch
 	cr0 = read_cr0();
 	write_cr0(cr0 & ~X86_CR0_WP);
 
+
 	// Restore original bytes of finish_task_switch postamble
-	memcpy((char *)finish_task_switch_next - bytes_to_patch_in_schedule, (char *)finish_task_switch_original_bytes, bytes_to_patch_in_schedule);
+	int i;
+	for (i=0; i<backup_count; i++){
+		memcpy(b[i].init_addr, b[i].bytes, b[i].len);
+	}
 
 	write_cr0(cr0);
-
+	kfree(b);
+	print_bytes("Schedule after restore: ", finish_task_switch, finish_task_switch_next-finish_task_switch);
 	printk(KERN_INFO "%s: standard schedule function correctly restored...\n", KBUILD_MODNAME);
 	unsynchronize_all();
+	return;
 }
 
 
@@ -426,12 +426,9 @@ static int schedule_hook_init(void) {
 
 	ret = schedule_patch();
 
-	if(ret)
-		goto failed_patch;
-
 	return 0;
 
-    failed_patch:
+	failed_patch:
 
 	return ret;
 }
@@ -467,98 +464,8 @@ retry_needed:
 			break;
 	}
 
-	//smp_call_function((smp_call_func_t)synchronize_all_slaves,NULL,1);
 
 	printk(KERN_DEBUG "%s: module umount run by cpu %d\n",KBUILD_MODNAME,smp_processor_id());
-
 	printk(KERN_INFO "%s: module unmounted successfully\n", KBUILD_MODNAME);
 
 }
-
-/*
-static void *prepare_self_patch(void) {
-	unsigned char *next = NULL;
-	// All functions in this module, except schedule_hook. This array must be NULL-terminated.
-	// Read the comment above function prototypes for an explanation
-	void *functions[] = {	synchronize_all_slaves,
-				prepare_self_patch,
-				schedule_hook_cleanup,
-				schedule_hook_init,
-				schedule_unpatch,
-				schedule_patch,
-				print_bytes,
-				check_patch_compatibility,
-				NULL};
-	void *curr_f;
-	int i = 0;
-	unsigned char *ret_insn;
-	unsigned long cr0;
-
-
-
-	curr_f = functions[0];
-	while(curr_f != NULL) {
-		curr_f = functions[i++];
-
-		if((long)curr_f > (long)schedule_hook) {
-
-			if(next == NULL || (long)curr_f < (long)next)
-				next = curr_f;
-		}
-	}
-
-	// if ptr == NULL, then schedule_hook is last function in the kernel module. Attempt to scan backwards from the end
-	// of the page, as nothing more should be present in this module's pages.
-	if(next == NULL) {
-		printk(KERN_DEBUG "%s: schedule_hook is likely the last function of the module. ", KBUILD_MODNAME);
-		printk(KERN_DEBUG "%s: Scanning from the end of the page\n", KBUILD_MODNAME);
-
-		next = (unsigned char *)schedule_hook + 4096;
-		next = (unsigned char*)((ulong) next & 0xfffffffffffff000);
-		next--; // This should work even in schedule_hook crosses the boundary of a page
-
-	}
-
-	// We now look for the ret instruction. Some care must be taken here. We assume before the ret
-	// there is at least one nop, which should be true by construction of the inline assembly in schedule_hook
-	while((long)next >= (long)schedule_hook) {
-		if(*next == 0xc3) {
-			if(*(next-1) == 0x58 || *(next-1) == 0x59 || *(next-1) == 0x5a || *(next-1) == 0x5b ||
-			   *(next-1) == 0x5c || *(next-1) == 0x5d || *(next-1) == 0x5d || *(next-1) == 0x5f ||
-			    *(next-1) == 0x90 )
-				break;
-		}
-		next--;
-	}
-
-	printk(KERN_DEBUG "%s: Identified ret instruction byte %02x at address %p in prepare_self_patch\n", KBUILD_MODNAME, *next, next);
-
-	// Did we have luck?
-	if((long)next == (long)schedule_hook) {
-		ret_insn = NULL;
-		goto out;
-	} else {
-		ret_insn = next;
-	}
-
-	// Now scan backwards until we find the last nop that we have placed in our code
-	while(*next != 0x90)
-		next--;
-
-	print_bytes("before self patching", next - (bytes_to_patch_in_schedule  - 1), ret_insn - next + (bytes_to_patch_in_schedule  - 1));
-
-	// Move backwars anything from here to the ret instruction.
-	// This gives us space to insert the backed up bytes
-	cr0 = read_cr0();
-	write_cr0(cr0 & ~X86_CR0_WP);
-	memcpy(next - (bytes_to_patch_in_schedule  - 1), next + 1, ret_insn - next - 1);
-	write_cr0(cr0);
-
-	print_bytes("after self patching", next - (bytes_to_patch_in_schedule  - 1), ret_insn - next + (bytes_to_patch_in_schedule  - 1));
-
-	// We have moved everything behind, which gives us space for finalizing the patch
-	ret_insn -= bytes_to_patch_in_schedule;
-    out:
-	return ret_insn;
-}
-*/
