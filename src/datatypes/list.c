@@ -117,17 +117,23 @@ char *__list_insert_head(unsigned int lid, void *li, unsigned int size, void *da
 */
 char *__list_insert_tail(unsigned int lid, void *li, unsigned int size, void *data) {
 
-	rootsim_list *l = (rootsim_list *)li;
-
-	assert(l);
-	size_t size_before = l->size;
-
 	struct rootsim_list_node *new_n;
 
 	// Create the new node and populate the entry
 	new_n = umalloc(lid, sizeof(struct rootsim_list_node) + size);
 	bzero(new_n, sizeof(struct rootsim_list_node) + size);
 	memcpy(&new_n->data, data, size);
+
+	return __list_insert_tail_by_node(li, new_n);
+}
+
+
+char *__list_insert_tail_by_node(void *li, struct rootsim_list_node* new_n) {
+
+	rootsim_list *l = (rootsim_list *)li;
+
+	assert(l);
+	size_t size_before = l->size;
 
 	// Is the list empty?
 	if(l->size == 0) {
