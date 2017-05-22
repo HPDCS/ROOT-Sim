@@ -108,16 +108,20 @@ int insert_BH(int sobj, void* msg, int size) {
 	int offset;
 
 
-	if( (sobj<0) || sobj >= handled_sobjs) goto bad_insert;
+	if( (sobj<0) || sobj >= handled_sobjs)
+		rootsim_error(true, "BH insert failed: sobj %d does not exists (max = %d)\n", sobj, handled_sobjs);
 
-	if( (size<=0) || size > MAX_MSG_SIZE) goto bad_insert;
+	if( (size<=0) || size > MAX_MSG_SIZE)
+		rootsim_error(true, "BH insert failed: bad message size\n");
 
-	if( msg == NULL ) goto bad_insert;
+	if( msg == NULL )
+		rootsim_error(true, "BH insert failed: msg is NULL\n");
 
 
 	pthread_spin_lock(&bh_write[sobj]);
 
 	if(bhmaps[sobj].live_boundary >= BH_SIZE) {
+		rootsim_error(true, "insert BH failed: max BH size reached\n");
 		pthread_spin_unlock(&bh_write[sobj]);
 		goto bad_insert;
 	}
@@ -128,6 +132,7 @@ int insert_BH(int sobj, void* msg, int size) {
 	residual_store = BH_SIZE - bhmaps[sobj].live_boundary;
 	
 	if( residual_store < needed_store ){ 
+		rootsim_error(true, "insert BH failed: not enough space\n");
 		pthread_spin_unlock(&bh_write[sobj]);
 		goto bad_insert;
 	}
