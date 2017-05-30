@@ -303,6 +303,7 @@ static int parse_cmd_line(int argc, char **argv) {
 
 			case OPT_NO_CORE_BINDING:
 				rootsim_config.core_binding = false;
+				break;
 
 			#ifdef HAVE_PREEMPTION
 			case OPT_PREEMPTION:
