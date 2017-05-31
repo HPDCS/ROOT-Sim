@@ -40,6 +40,28 @@ static struct _bhmap *bh_maps;
 static spinlock_t *bh_write;
 static spinlock_t *bh_read;
 
+static char *allocate_pages(int num_pages) {
+
+        char *page;
+
+        page = (char*)mmap((void*)NULL, num_pages * PAGE_SIZE, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, 0,0);
+
+	if (page == MAP_FAILED) {
+		page = NULL;
+	}
+
+	return page;
+}
+
+static void free_pages(void *ptr, size_t length) {
+	int ret;
+
+	ret = munmap(ptr, length);
+	if(ret < 0)
+		perror("free_pages(): unable to deallocate memory");
+}
+
+
 
 static void switch_bh(int lid){
 

@@ -212,7 +212,7 @@ void allocator_fini(void) {
 	unsigned int i;
 	for (i = 0; i < n_prc; i++) {
 		buddy_destroy(buddies[i]);
-		free_pages(mem_areas[i], TOTAL_MEMORY / PAGE_SIZE);
+		free_pages(mem_areas[i], PER_LP_PREALLOCATED_MEMORY / PAGE_SIZE);
 	}
 
 	rsfree(mem_areas);
@@ -229,8 +229,8 @@ bool allocator_init(void) {
 	printf("Initializing LP memory allocator... ");
 
 	for (i = 0; i < n_prc; i++){
-		buddies[i] = buddy_new(TOTAL_MEMORY / BUDDY_GRANULARITY);
-		mem_areas[i] = allocate_pages(TOTAL_MEMORY / PAGE_SIZE);
+		buddies[i] = buddy_new(PER_LP_PREALLOCATED_MEMORY / BUDDY_GRANULARITY);
+		mem_areas[i] = get_base_pointer(i);
 		if(mem_areas[i] == NULL)
 			rootsim_error(true, "Unable to initialize memory for LP %d. Aborting...\n",i);
 	}

@@ -46,9 +46,9 @@
 #define NUM_DAEMONS 32
 
 /* these are required for move_pages - we use max-sized static memory for latency optimization */
-static char *pages[TOTAL_MEMORY / PAGE_SIZE];
-static int   nodes[TOTAL_MEMORY / PAGE_SIZE];
-static int   status[TOTAL_MEMORY / PAGE_SIZE];
+static char *pages[PER_LP_PREALLOCATED_MEMORY / PAGE_SIZE];
+static int   nodes[PER_LP_PREALLOCATED_MEMORY / PAGE_SIZE];
+static int   status[PER_LP_PREALLOCATED_MEMORY / PAGE_SIZE];
 static int *numa_nodes;
 static map_move *moves;
 
@@ -59,7 +59,7 @@ void move_lid(int lid, unsigned numa_node) {
 	int i;
 	char *segment_addr;
 
-	pagecount = TOTAL_MEMORY / PAGE_SIZE;
+	pagecount = PER_LP_PREALLOCATED_MEMORY / PAGE_SIZE;
 	segment_addr = mem_areas[lid];
 
 	for (i = 0; i < pagecount; i++){

@@ -26,8 +26,6 @@
 
 #include <mm/mm.h>
 
-#ifdef HAVE_CROSS_STATE
-
 #include <mm/ecs.h>
 #include <arch/linux/modules/cross_state_manager/cross_state_manager.h>
 #include <fcntl.h>
@@ -53,7 +51,7 @@ char *get_memory_ecs(unsigned int sobj, size_t size) {
 	return return_value;
 }
 
-int allocator_ecs_init(unsigned int sobjs) {
+int segment_allocator_init(unsigned int sobjs) {
 	unsigned int y;
 	char* addr;
 	unsigned long init_addr;
@@ -61,21 +59,32 @@ int allocator_ecs_init(unsigned int sobjs) {
 	size_t size = PER_LP_PREALLOCATED_MEMORY / 2;
 	int allocation_counter, pml4_index;
 
+	#ifdef HAVE_CROSS_STATE
 	ioctl_fd = open("/dev/ktblmgr", O_RDONLY);
 	if (ioctl_fd == -1) {
 			rootsim_error(true, "Error in opening special device file. ROOT-Sim is compiled for using the ktblmgr linux kernel module, which seems to be not loaded.");
 	}
+	#endif
 
 	//ioctl(ioctl_fd, IOCTL_PGD_PRINT);
 
-	if( (sobjs > MAX_LPs) )
-                return INVALID_SOBJS_COUNT_AECS;
-
 	y=0;
-//	pml4_index = 9;
+	// TODO: questo codice nasceva con la vecchia versione del modulo
+	// in cui era tutto quanto cablato. Ora c'è la versione del modulo
+	// che restituisce l'indice della PML4. E' ancora da verificare se
+	// questa modifica ha senso o no.
+	// Gli ifdef qui sono messi solo per far funzionare tutto in entrambi
+	// i casi (con o senza ECS). Andrebbe reingegnerizzato un po'...
+
+	#ifndef HAVE_CROSS_STATE
+	pml4_index = 9;
+	#endif
 	while(y<num_mmap){
+		#ifdef HAVE_CROSS_STATE
 		pml4_index = ioctl(ioctl_fd, IOCTL_GET_FREE_PML4);
-//		pml4_index++;
+		#else
+		pml4_index++;
+		#endif
 		init_addr =(ulong) pml4_index;
 		init_addr = init_addr << 39;
 		allocation_counter = 0;
@@ -118,7 +127,7 @@ int allocator_ecs_init(unsigned int sobjs) {
 	return SUCCESS_AECS;
 }
 
-void allocator_ecs_fini(unsigned int sobjs){
+void segment_allocator_fini(unsigned int sobjs){
 	unsigned int i;
 	int return_value;
 	for(i=0;i<sobjs;i++){
@@ -133,4 +142,3 @@ void allocator_ecs_fini(unsigned int sobjs){
 
 }
 
-#endif /* HAVE_CROSS_STATE */

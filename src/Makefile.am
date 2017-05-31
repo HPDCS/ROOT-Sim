@@ -57,5 +57,4 @@ libdymelor_a_SOURCES = 	mm/checkpoints.c \
 			mm/buddy.c \
 			mm/bh.c \
 			mm/segment.c \
-			mm/numa.c \
-			mm/vma.c
+			mm/numa.c 

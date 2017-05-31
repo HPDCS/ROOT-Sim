@@ -51,14 +51,9 @@ struct _buddy {
    #error Unable to determine page size
  #endif
 #endif
-#define TOTAL_MEMORY 262144L * PAGE_SIZE // This should be power of 2 multiplied by a page size. This is 1GB per LP.
-#define BUDDY_GRANULARITY PAGE_SIZE	// This is the smallest chunk released by the buddy in bytes. TOTAL_MEMORY/BUDDY_GRANULARITY must be integer and a power of 2
+#define PER_LP_PREALLOCATED_MEMORY 262144L * PAGE_SIZE // This should be power of 2 multiplied by a page size. This is 1GB per LP.
+#define BUDDY_GRANULARITY PAGE_SIZE	// This is the smallest chunk released by the buddy in bytes. PER_LP_PREALLOCATED_MEMORY/BUDDY_GRANULARITY must be integer and a power of 2
 
-
-extern bool allocator_init(void);
-extern void allocator_fini(void);
-extern char *allocate_pages(int num_pages);
-extern void free_pages(void *ptr, size_t length);
 
 
 #ifdef HAVE_NUMA
@@ -71,8 +66,6 @@ typedef struct _lp_mem_region{
 	char* brk;
 }lp_mem_region;
 
-#define PER_LP_PREALLOCATED_MEMORY	512*512*4096 // Allow 1 GB of virtual space per LP
-
 #define SUCCESS_AECS                  0
 #define FAILURE_AECS                 -1
 #define INVALID_SOBJS_COUNT_AECS     -99
@@ -80,7 +73,8 @@ typedef struct _lp_mem_region{
 #define INVALID_SOBJ_ID_AECS         -97
 #define MDT_RELEASE_FAILURE_AECS     -96
 
-int allocator_ecs_init(unsigned int);
-void allocator_ecs_fini(unsigned int);
-char* get_memory_ecs(unsigned int, size_t);
-void* get_base_pointer(unsigned int);
+extern bool allocator_init(void);
+extern void allocator_fini(void);
+extern int segment_allocator_init(unsigned int);
+extern void segment_allocator_fini(unsigned int);
+extern void* get_base_pointer(unsigned int);
