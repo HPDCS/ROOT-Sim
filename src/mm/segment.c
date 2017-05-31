@@ -24,11 +24,13 @@
 * @author Francesco Quaglia
 */
 
-
 #include <mm/mm.h>
 
 #ifdef HAVE_CROSS_STATE
 
+#include <mm/ecs.h>
+#include <arch/linux/modules/cross_state_manager/cross_state_manager.h>
+#include <fcntl.h>
 static lp_mem_region mem_region[MAX_LPs];
 static int ioctl_fd;
 

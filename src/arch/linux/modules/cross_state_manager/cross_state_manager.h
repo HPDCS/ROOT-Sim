@@ -27,9 +27,9 @@
 * @date November 15, 2013
 */
 
-#pragma once
+//#pragma once
 
-#ifdef HAVE_CROSS_STATE
+//#ifdef HAVE_CROSS_STATE  //EXPLICITLY COMMENTED!!!
 
 #include <linux/ioctl.h>
 
@@ -39,6 +39,8 @@
 #define SIBLING_PGD 128 // max number of concurrent memory views (concurrent root-sim worker threads on a node)
 #define MAX_CROSS_STATE_DEPENDENCIES 1024 // max number of cross-state dependencied per LP at each event
 
+#ifndef IOCTL_STRUCT
+#define IOCTL_STRUCT
 
 typedef struct _ioctl_info{
 	int ds;
@@ -54,6 +56,7 @@ typedef struct _ioctl_info{
         int objects_mmap_count;
 } ioctl_info;
 
+#endif
 
 
 // Setup all ioctl commands
@@ -96,4 +99,4 @@ typedef struct _ioctl_info{
 #define MASK_PTADDR 0x07FFFFFFFFFFF000
 #define MASK_PTCONT 0xF800000000000FFF
 
-#endif /* HAVE_CROSS_STATE */
+//#endif /* HAVE_CROSS_STATE */

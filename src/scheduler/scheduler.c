@@ -532,7 +532,6 @@ bool check_rendevouz_request(unsigned int lid){
 * @author Alessandro Pellegrini
 */
 void schedule(void) {
-
 	unsigned int lid;
 	msg_t *event;
 	void *state;

@@ -41,7 +41,7 @@
 
 #include <core/core.h>
 //#include <mm/malloc.h>
-#include <mm/allocator.h>
+//#include <mm/allocator.h> COMMENTED BY MATTEO
 #include <mm/dymelor.h>
 #include <scheduler/scheduler.h>
 #include <scheduler/process.h>
@@ -49,7 +49,7 @@
 
 //TODO MN
 #include <arch/linux/modules/cross_state_manager/cross_state_manager.h>
-#include <mm/allocator_ecs.h>
+//#include <mm/allocator_ecs.h> COMMENTED BY MATTEO
 
 #ifdef HAVE_GROUPS
 #include <gvt/gvt.h>
@@ -69,7 +69,7 @@ static __thread int pgd_ds;
 // Declared in ecsstub.S
 extern void rootsim_cross_state_dependency_handler(void);
 
-void ECS(long long ds, unsigned long long hitted_object) __attribute__((__used__));
+void ECS(long long ds, unsigned long long hitted_object)__attribute__((__used__));
 void ECS(long long ds, unsigned long long hitted_object){
 	(void)ds;
 	msg_t control_msg;
