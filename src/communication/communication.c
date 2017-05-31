@@ -184,16 +184,6 @@ void send_antimessages(unsigned int lid, simtime_t after_simtime) {
 
 	// Now send all antimessages
 	while(anti_msg != NULL) {
-//		#ifdef HAVE_GROUPS
-//		PRINT_DEBUG_GLP_DETAIL{
-//			printf("ANTIMSG type: %d S:%d R:%d mark:%llu T:%f ST: %f\n", anti_msg->type, anti_msg->sender, anti_msg->receiver,anti_msg->mark,anti_msg->timestamp, anti_msg->send_time);
-//		}
-//		#endif
-
-//		if(anti_msg->type == RENDEZVOUS_START) {
-//			printf("Sending a START antimessage from %d to %d at %f RM: %llu\n", anti_msg->sender, anti_msg->receiver, anti_msg->timestamp, anti_msg->rendezvous_mark);
-//		}
-
 		bzero(&msg, sizeof(msg_t));
 		msg.sender = anti_msg->sender;
 		msg.receiver = anti_msg->receiver;

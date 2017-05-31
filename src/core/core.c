@@ -60,10 +60,6 @@ unsigned int n_prc_tot;
 /// Number of logical processes hosted by the current kernel instance
 unsigned int n_prc;
 
-//TODO MN
-/// Number of groups of logial processes hosted by the current kernel instance
-unsigned int n_grp;
-
 /// Used to map a global id to a local id
 unsigned int *to_lid;
 
@@ -166,10 +162,6 @@ void base_init(void) {
 		kernel_lid_to_gid[kernel[i]][n_prc_per_kernel[kernel[i]]] = i;
 		n_prc_per_kernel[kernel[i]]++;
 	}
-
-	// TODO MN
-	n_grp = n_prc;
-
 
 	// TODO: questo va rimesso a posto quando ci rilanciamo sul distribuito
 	for (i = n_prc; i < n_prc_tot; i++) {

@@ -27,9 +27,9 @@
 * @date November 15, 2013
 */
 
-//#pragma once
+#pragma once
 
-//#ifdef HAVE_CROSS_STATE  //EXPLICITLY COMMENTED!!!
+#ifdef HAVE_CROSS_STATE  
 
 #include <linux/ioctl.h>
 
@@ -99,4 +99,4 @@ typedef struct _ioctl_info{
 #define MASK_PTADDR 0x07FFFFFFFFFFF000
 #define MASK_PTCONT 0xF800000000000FFF
 
-//#endif /* HAVE_CROSS_STATE */
+#endif /* HAVE_CROSS_STATE */

@@ -43,7 +43,7 @@ char *get_memory_ecs(unsigned int sobj, size_t size) {
 
 	if((local_mem_region.brk + size) - local_mem_region.base_pointer > PER_LP_PREALLOCATED_MEMORY) {
 		printf("Error no enough memory");
-		//TODO MN future managment of more memory
+		//TODO Here assign a new stock to the LP
 		return MAP_FAILED;
 	}
 

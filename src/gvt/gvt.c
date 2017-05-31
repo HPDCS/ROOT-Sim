@@ -37,7 +37,6 @@
 #include <scheduler/binding.h> // this is for force_rebind_GLP
 #include <statistics/statistics.h>
 #include <mm/dymelor.h>
-#include <scheduler/group.h>
 
 // Defintion of GVT-reduction phases
 enum gvt_phases {phase_A, phase_send, phase_B, phase_aware, phase_end};
@@ -99,12 +98,6 @@ static __thread unsigned int my_GVT_round = 0;
 static simtime_t *local_min;
 
 static simtime_t *local_min_barrier;
-
-#ifdef HAVE_GROUPS
-/// Variable to update the time for current group
-static __thread simtime_t last_time_group = -1.0;
-static bool updated_group = true;
-#endif
 
 /**
 * Initialization of the GVT subsystem
@@ -225,15 +218,7 @@ simtime_t gvt_operations(void) {
 					break;
 				}
 
-				#ifdef HAVE_GROUPS
-				if(LPS_bound[i]->state == LP_STATE_SILENT_EXEC && check_start_group(LPS_bound[i]->lid) && verify_time_group(LPS_bound[i]->bound->timestamp)) {
-					local_min[tid] = min(local_min[tid], LPS_bound[i]->target_rollback->timestamp);
-				} else {
-					local_min[tid] = min(local_min[tid], LPS_bound[i]->bound->timestamp);
-				}
-				#else
-					local_min[tid] = min(local_min[tid], LPS_bound[i]->bound->timestamp);
-				#endif
+				local_min[tid] = min(local_min[tid], LPS_bound[i]->bound->timestamp);
 
 				tentative_barrier = find_time_barrier(LPS_bound[i]->lid, LPS_bound[i]->bound->timestamp);
 				local_min_barrier[tid] = min(local_min_barrier[tid], tentative_barrier->lvt);
@@ -262,15 +247,7 @@ simtime_t gvt_operations(void) {
 					break;
 				}
 
-				#ifdef HAVE_GROUPS
-				if(LPS_bound[i]->state == LP_STATE_SILENT_EXEC && check_start_group(LPS_bound[i]->lid) && verify_time_group(LPS_bound[i]->bound->timestamp)) {
-					local_min[tid] = min(local_min[tid], LPS_bound[i]->target_rollback->timestamp);
-				} else {
-					local_min[tid] = min(local_min[tid], LPS_bound[i]->bound->timestamp);
-				}
-				#else
-					local_min[tid] = min(local_min[tid], LPS_bound[i]->bound->timestamp);
-				#endif
+				local_min[tid] = min(local_min[tid], LPS_bound[i]->bound->timestamp);
 				tentative_barrier = find_time_barrier(LPS_bound[i]->lid, LPS_bound[i]->bound->timestamp);
 				local_min_barrier[tid] = min(local_min_barrier[tid], tentative_barrier->lvt);
 			}
@@ -328,13 +305,6 @@ simtime_t gvt_operations(void) {
 			local_min_barrier[tid] = INFTY;
 			atomic_dec(&counter_end);
 			last_gvt = adopted_last_gvt;
-			#ifdef HAVE_GROUPS
-			if((last_time_group < last_gvt) && master_thread ()){
-				printf("LTG:%f /t last_gvt:%f\n",last_time_group,last_gvt);
-				updated_group = false;
-				force_rebind_GLP();
-			}
-			#endif
 		}
 	}
 
@@ -344,34 +314,4 @@ simtime_t gvt_operations(void) {
 bool gvt_stable(void) {
 	return (my_phase == phase_A);
 }
-
-//TODO MN
-#ifdef HAVE_GROUPS
-bool verify_time_group(simtime_t timestamp){	
-	//return (timestamp < last_time_group);
-	if(timestamp < last_time_group) return true;
-	else return false;
-}
-
-
-bool need_clustering(void){
-	if(!updated_group){
-		printf("last_time_group: %f\n",last_time_group);
-		updated_group = true;
-		return updated_group;
-	}
-
-	return false;
-}
-
-void update_last_time_group(void){
-	last_time_group = last_gvt + get_delta_group();
-}
-
-simtime_t future_end_group(void){
-	return last_gvt + get_delta_group();
-}
-#endif
-
-
 

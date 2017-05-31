@@ -136,48 +136,6 @@ static void *main_simulation_loop(void *arg) {
 				#else
 				printf("TIME BARRIER %f\n", my_time_barrier);
 				#endif
-			/*	
-				#ifdef HAVE_GROUPS
-				unsigned int j=0;
-				for(;j<n_grp;j++){
-					if(GLPS[j]->tot_LP != 0){
-						if(GLPS[j]->lvt != NULL && GLPS[j]->tot_LP > 1){
-							printf("GLP[%d]->state: %d \tsyn_c:%d r_c:%d sil_c:%d  \t lvt:%f VTG:%d \t",
-								j,
-								GLPS[j]->state,
-								GLPS[j]->counter_synch,
-								GLPS[j]->counter_rollback,
-								GLPS[j]->counter_silent_ex,
-								GLPS[j]->lvt->timestamp,
-								verify_time_group(GLPS[j]->lvt->timestamp)
-							      );
-						unsigned int i;
-						LP_state **list = GLPS[j]->local_LPS;
-						for(i=0;i<GLPS[j]->tot_LP;i++){
-
-							printf("%d ",list[i]->lid);
-						}
-						printf("\n");
-						}
-					}
-
-				}
-
-
-				for(j=0;j<n_prc;j++){
-					printf("LP[%d]:%d \t CSG:%d \t T:%f B_S:%d\n",
-						j,
-						LPS[j]->state,
-						check_start_group(j),
-						LPS[j]->bound->timestamp,
-						LPS[j]->bound->sender
-					      );
-
-					if (LPS[j]->target_rollback != NULL)
-						printf("R_T:%f N_E:%f \n",LPS[j]->target_rollback->timestamp,next_event_timestamp(j));
-				}
-				#endif
-				*/
 
 				fflush(stdout);
 			}

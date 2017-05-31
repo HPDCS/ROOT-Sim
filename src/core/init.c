@@ -103,7 +103,6 @@ static int parse_cmd_line(int argc, char **argv) {
 	rootsim_config.output_dir = DEFAULT_OUTPUT_DIR;
 	rootsim_config.backtrace = false;
 	rootsim_config.gvt_time_period = 1000;
-//	rootsim_config.gvt_time_period = 10; //TODO MN DEBUG
 	rootsim_config.scheduler = SMALLEST_TIMESTAMP_FIRST;
 	rootsim_config.checkpointing = INVALID_STATE_SAVING;
 	rootsim_config.ckpt_period = 10;

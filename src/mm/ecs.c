@@ -51,11 +51,6 @@
 #include <arch/linux/modules/cross_state_manager/cross_state_manager.h>
 //#include <mm/allocator_ecs.h> COMMENTED BY MATTEO
 
-#ifdef HAVE_GROUPS
-#include <gvt/gvt.h>
-#endif
-
-
 void (*callback_function)(void);
 
 /// This variable keeps track of information needed by the Linux Kernel Module for activating cross-LP memory accesses
@@ -94,25 +89,6 @@ void ECS(long long ds, unsigned long long hitted_object){
 		LPS[current_lp]->wait_on_rendezvous = current_evt->rendezvous_mark;
 	}
 
-#ifdef HAVE_GROUPS
-	PRINT_DEBUG_GLP_DETAIL{
-		printf("LP[%d] hits %llu rende_mark:%llu LP_wait_on_rende:%llu\n",current_lp, hitted_object, current_evt->rendezvous_mark,LPS[current_lp]->wait_on_rendezvous);
-	}
-
-	//Manage counter to cross-state
-	ECS_stat* temp_update_access = LPS[current_lp]->ECS_stat_table[hitted_object];
-	if(!D_EQUAL(temp_update_access->last_access,-1.0) && ((current_lvt - temp_update_access->last_access) < THRESHOLD_TIME_ECS) )
-		temp_update_access->count_access++;
-	else
-		temp_update_access->count_access = 1;
-
-	temp_update_access->last_access = current_lvt;
-	//data structure that save the number of access and the last timestamp of the access
-
-//	printf("LP:%d --> last_access:%f | count_access:%d \n",current_lp,temp_update_access->last_access,temp_update_access->count_access);
-
-	#endif
-
 	// Diretcly place the control message in the target bottom half queue
 	bzero(&control_msg, sizeof(msg_t));
 	control_msg.sender = LidToGid(current_lp);
@@ -144,29 +120,6 @@ void ECS(long long ds, unsigned long long hitted_object){
 
 	// Block the execution of this LP
 	LPS[current_lp]->state = LP_STATE_WAIT_FOR_SYNCH;
-
-	#ifdef HAVE_GROUPS
-	GLP_state *current_group;
-	current_group = GLPS[LPS[current_lp]->current_group];
-
-	if(check_start_group(current_lp) && verify_time_group(current_lvt)){
-		PRINT_DEBUG_GLP_DETAIL{
-			printf("GLP[%d] set state WAIT_FOR_SYNCH\n",LPS[current_lp]->current_group);
-		}
-		current_group->state = GLP_STATE_WAIT_FOR_SYNCH;
-	}
-	else{
-		PRINT_DEBUG_GLP_DETAIL{
-			printf("Not update LP:%d G[%d] G-STATE:%d ECS CSG:%d VTG:%d \n",
-			current_lp,
-			LPS[current_lp]->current_group,
-			current_group->state,
-			check_start_group(current_lp),
-			verify_time_group(current_lvt));
-		}
-	}
-
-	#endif
 
 	LPS[current_lp]->wait_on_object = LidToGid(hitted_object);
 
@@ -228,24 +181,7 @@ void lp_alloc_schedule(void) {
 	sched_info.ds = pgd_ds; // this is current
 	sched_info.count = LPS[current_lp]->ECS_index + 1; // it's a counter
 
-	//TODO MN open group memory view only if lvt < GVT+deltaT
-	#ifdef HAVE_GROUPS
-	LP_state **list;
-	if(check_start_group(current_lp) && verify_time_group(lvt(current_lp))){
-		list = GLPS[LPS[current_lp]->current_group]->local_LPS;
-        	for(i=0; i< GLPS[LPS[current_lp]->current_group]->tot_LP; i++){
-                	if(list[i]->lid != current_lp && !present_ECS_table(list[i]->lid)){
-        			LPS[current_lp]->ECS_synch_table[sched_info.count] = list[i]->lid;
-				sched_info.count++;
-			}
-		}
-	}
-	#endif
-
 	sched_info.objects = LPS[current_lp]->ECS_synch_table; // pgd descriptor range from 0 to number threads - a subset of object ids
-	//TODO MN
-	sched_info.objects_mmap_count = 0;
-
 	sched_info.objects_mmap_count = sched_info.count;
 
 	sched_info.objects_mmap_pointers = rsalloc(sizeof(void *) * sched_info.objects_mmap_count);

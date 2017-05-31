@@ -64,7 +64,6 @@ extern bool anti_control_message(msg_t * msg);
 
 #ifdef  HAVE_CROSS_STATE
 extern void unblock_synchronized_objects(unsigned int);
-extern unsigned int get_first_LP(void);
 #endif
 
 

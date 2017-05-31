@@ -45,6 +45,5 @@ extern msg_t *advance_to_next_event(unsigned int);
 extern void insert_bottom_half(msg_t *msg);
 extern void process_bottom_halves(void);
 extern unsigned long long generate_mark(unsigned int);
-extern msg_t *list_get_node_timestamp(simtime_t, unsigned int);
 
 #endif /* _QUEUES_H */

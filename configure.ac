@@ -269,7 +269,6 @@ AS_IF([test "x$enable_allocator" != "xno"], [
 ac_preemption=no
 ac_have_numa=no
 ac_have_cross_state=no
-ac_have_groups=no
 ac_kernel_headers=no
 ac_disable_modules=yes
 
@@ -324,19 +323,6 @@ then
 		AC_DEFINE([HAVE_CROSS_STATE])
 		ac_have_cross_state=yes
 	])
-
-	# LP Group Management
-	AC_ARG_ENABLE([groups],
-	AS_HELP_STRING([--disable-groups], [Disable LP Group Management (Enabled by default with ECS)]))
-
-	AS_IF([test "x$enable_groups" != "xno"], [
-		if test "x$ac_have_cross_state" = "xyes"
-		then
-			AC_DEFINE([HAVE_GROUPS])
-			ac_have_groups=yes
-		fi
-	])
-
 
 	# Test for linux headers, to compile kernel modules
 	ac_kernel_headers=no
@@ -587,21 +573,6 @@ else
 fi
 
 
-# Compose the message regarding groups
-if test "x$ac_have_groups" = "xyes"
-then
-	ac_groups="Enabled by default with Event Cross State (use --disable-groups if not wanted)"
-else
-	ac_groups="Disabled"
-	if test "x$ac_have_cross_state" = "xyes"
-	then
-		ac_groups="${ac_groups} by the user"
-	else
-		ac_groups="${ac_groups} (requires Event Cross State)"
-	fi
-fi
-
-
 # Compose message to tell whether modules are disabled
 if test "x$ac_disable_modules" = "xyes"
 then
@@ -631,7 +602,6 @@ NUMA Subsystem................ : ${numa_subsystem}
 LP Preemption Support......... : ${ac_preemption}
 LP Rebinding.................. : ${ac_lp_rebinding}
 Event Cross State Management.. : ${ac_ecs}
-Group Management.............. : ${ac_groups}
 
 ${ac_modules}
 

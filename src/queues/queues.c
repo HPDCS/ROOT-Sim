@@ -168,10 +168,6 @@ void process_bottom_halves(void) {
 	unsigned int i;
 	unsigned int lid_receiver;
 
-	#ifdef HAVE_GROUPS
-	simtime_t lvt_receiver;
-	#endif
-
 	msg_t *msg_to_process;
 	msg_t *matched_msg;
 
@@ -182,10 +178,6 @@ restart:
 		while((msg_to_process = (msg_t *)get_BH(LPS_bound[i]->lid)) != NULL) {
 
 			lid_receiver = msg_to_process->receiver;
-
-			#ifdef HAVE_GROUPS
-			lvt_receiver = lvt(lid_receiver);
-			#endif
 
 			if(msg_to_process->timestamp < get_last_gvt())
 				printf("ERRORE\n");
@@ -247,19 +239,6 @@ restart:
 //								printf("straggler START antimessage mark %llu rmark %llu\n", matched_msg->mark, matched_msg->rendezvous_mark);
 //							}
 
-							#ifdef HAVE_GROUPS
-							PRINT_DEBUG_GLP{	
-								printf("RN Type:%d T:%f S:%d R:%d LVT:%f\n",
-        	                                                	matched_msg->type,
-                	                                        	matched_msg->timestamp,
-									matched_msg->sender,
-                                	                        	lid_receiver,
-									lvt(lid_receiver)
-                                        	               	       );
-							}
-							reset_synch_counter(lid_receiver);
-							#endif
-
 							LPS[lid_receiver]->bound = list_prev(matched_msg);
 							while ((LPS[lid_receiver]->bound != NULL) &&
 								D_EQUAL(LPS[lid_receiver]->bound->timestamp, msg_to_process->timestamp)) {
@@ -275,10 +254,6 @@ restart:
 							LPS[lid_receiver]->state = LP_STATE_ROLLBACK;
 
 						}
-						#ifdef HAVE_GROUPS
-	                                                check_rollback_group(matched_msg, lid_receiver, lvt_receiver, negative);	
-						#endif
-
 
 						// Delete the matched message
 						list_delete_by_content(matched_msg->sender, LPS[lid_receiver]->queue_in, matched_msg);
@@ -295,19 +270,6 @@ restart:
 					// Check if we've just inserted an out-of-order event
 					if(msg_to_process->timestamp < lvt(lid_receiver)) {
 
-						#ifdef HAVE_GROUPS
-						PRINT_DEBUG_GLP{
-							printf("RP Type:%d T:%f S:%d R:%d LVT:%f\n",
-								msg_to_process->type,
-								msg_to_process->timestamp,
-                                                        	msg_to_process->sender,
-								lid_receiver,
-								lvt(lid_receiver)
-							       );
-						}
-						reset_synch_counter(lid_receiver);
-						#endif
-
 						LPS[lid_receiver]->bound = list_prev(msg_to_process);
 						while ((LPS[lid_receiver]->bound != NULL) &&
 							D_EQUAL(LPS[lid_receiver]->bound->timestamp, msg_to_process->timestamp)) {
@@ -320,9 +282,6 @@ restart:
 						LPS[lid_receiver]->state = LP_STATE_ROLLBACK;
 
 					}
-					#ifdef HAVE_GROUPS
-                                        	check_rollback_group(msg_to_process, lid_receiver, lvt_receiver, positive);
-					#endif
 
 					break;
 
@@ -378,21 +337,3 @@ unsigned long long generate_mark(unsigned int lid) {
 	return (unsigned long long)( ((k1 + k2) * (k1 + k2 + 1) / 2) + k2 );
 }
 
-
-
-//TODO MN
-//Giving a timestamp and lid of LP; it has to return the message with the maximum timestamp lesser than timestamp
-msg_t *list_get_node_timestamp(simtime_t timestamp, unsigned int lid){
-	msg_t *prev = LPS[lid]->bound;
-	while(list_prev(prev)!=NULL && prev->timestamp >= timestamp ){
-		PRINT_DEBUG_GLP_DETAIL{
-			printf("[%d] list_get_node_timestamp timestamp:%f\n",lid,prev->timestamp);
-		}
-		prev = list_prev(prev);
-	}
-	//LPS[lid]->bound = prev;
-		PRINT_DEBUG_GLP_DETAIL{
-			printf("[%d] list_get_node_timestamp SELECTED timestamp:%f\n",lid,prev->timestamp);
-		}
-	return prev;
-}
