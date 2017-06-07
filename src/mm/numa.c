@@ -36,10 +36,10 @@
 #include <numa.h>
 #include <arch/atomic.h>
 #include <core/core.h>
-#include <mm/allocator.h>
 #include <mm/dymelor.h>
 #include <mm/numa.h>
 #include <scheduler/process.h>
+#include <mm/mm.h>
 
 
 //#define NUM_DAEMONS n_cores

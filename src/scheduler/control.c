@@ -276,9 +276,9 @@ bool process_control_msg(msg_t *msg) {
 			LPS[msg->receiver]->state = LP_STATE_READY;
 			break;*/
 
-		case NULL_LOG_MESSAGE:
-//			printf("[%d] process NULL_LOG_MESSAGE log-counter:%d \n",msg->receiver,GLPS[LPS[msg->receiver]->current_group]->counter_log);
-			break;
+		/* case NULL_LOG_MESSAGE: */
+/* //			printf("[%d] process NULL_LOG_MESSAGE log-counter:%d \n",msg->receiver,GLPS[LPS[msg->receiver]->current_group]->counter_log); */
+		/* 	break; */
 
 		default:
 			rootsim_error(true, "Trying to handle a control message which is meaningless at schedule time: %d\n", msg->type);

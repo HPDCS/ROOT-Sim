@@ -35,7 +35,9 @@ static int ioctl_fd;
 void *get_base_pointer(unsigned int sobj) {
 	return (void*) mem_region[sobj].base_pointer;
 }
-
+void *get_brk(unsigned int sobj){
+  return (void*) mem_region[sobj].brk;
+}
 char *get_memory_ecs(unsigned int sobj, size_t size) {
 	lp_mem_region local_mem_region = mem_region[sobj];
 
@@ -106,11 +108,10 @@ int segment_allocator_init(unsigned int sobjs) {
 			// Keep track of the per-LP allocated memory
 			if(y % 2 == 0){
 				mem_region[y/2].base_pointer = mem_region[y/2].brk = addr;
-//				printf("LP[%d] address:%p\n",y/2,addr);
+				//printf("LP[%d] address:%p\n",y/2,addr);
 			}
 
 			allocation_counter++;
-
 			if(allocation_counter == (512*2)){
 				y++;
 				break;

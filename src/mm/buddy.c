@@ -35,12 +35,12 @@
 
 
 static struct _buddy **buddies;
-
 // This vector is accessed by the numa.c module to migrate pages
 #ifndef HAVE_NUMA
 static
 #endif
 void **mem_areas;
+int * displacements;
 
 static inline int left_child(int idx) {
     return ((idx << 1) + 1);
@@ -54,6 +54,22 @@ static inline int parent(int idx) {
     return (((idx + 1) >> 1) - 1);
 }
 
+void* get_pages(unsigned int lid){
+  void * old_bs = mem_areas[lid]; //get the base pointer of allocated memory,by the segment, for LP @lid
+  int displacement = displacements[lid]; //get offset to current max memory address allocated by buddy
+  void* curr_bs = (void *)((char *)old_bs + displacement);
+
+  int num_pages = displacement/PAGE_SIZE; //page size is the same of buddy granularity
+  printf("\nLP[%d] allocated %d pages\n",lid,num_pages);
+
+  void * curr_addr=old_bs;
+  void* brk = get_brk(lid);
+  while (curr_addr != curr_bs){
+    curr_addr = (void *)((char *)curr_addr + BUDDY_GRANULARITY); //TODO: save those addresses to be returned.
+    num_pages--;//debugging
+    printf("\n\tDisplaced base address is: %p brk is: %p current page address is: %p remaining pages: %d\n",old_bs,brk,curr_addr,num_pages);
+  }
+}
 /** allocate a new buddy structure
  * @param num_of_fragments number of fragments of the memory to be managed
  * @return pointer to the allocated buddy structure */
@@ -118,7 +134,7 @@ static int buddy_alloc(struct _buddy *self, size_t size) {
         return -1;
     }
     size = POWEROF2(size);
-    
+
     printf("Buddy is mapping the request to %d bytes of memory\n", size);
     fflush(stdout);
 
@@ -185,19 +201,26 @@ static void buddy_free(struct _buddy *self, int offset) {
 void *pool_get_memory(unsigned int lid, size_t size) {
 	int displacement;
 	size_t fragments;
-	
-	printf("Requesting %d bytes of memory\n", size);
+
+  printf("Requesting %d bytes of memory\n", size);
 
 	// Get a number of fragments to contain 'size' bytes
 	// The operation involves a fast positive integer round up
 	fragments = 1 + ((size - 1) / BUDDY_GRANULARITY);
 	displacement = buddy_alloc(buddies[lid], fragments) * BUDDY_GRANULARITY;
-
 	if(displacement == -1)
 		return NULL;
 
-	return (void *)((char *)mem_areas[lid] + displacement);
+  if(displacements[lid] < displacement){
+    /* printf("max displacement: %d\n",displacement); */
+    displacements[lid] = displacement;
+  }
+  /* if(lid==0) */
+  /*   printf("\ndisplacement of LP[%d] is:%d \n\n",lid, displacements[lid]); */
+  printf("LP[%d] new base pointer is : %p, old base pointer is: %p, displacement is: %d\n",lid, (void *)((char *)mem_areas[lid] + displacement),mem_areas[lid],displacement);
+  return (void *)((char *)mem_areas[lid] + displacement);
 }
+
 
 
 void pool_release_memory(unsigned int lid, void *ptr) {
@@ -205,11 +228,23 @@ void pool_release_memory(unsigned int lid, void *ptr) {
 
 	displacement = (int)((char *)ptr - (char *)mem_areas[lid]);
 	buddy_free(buddies[lid], displacement);
+
+  if(displacements[lid] > displacement)
+    displacements[lid] = displacement;
+}
+
+void free_pages(void *ptr, size_t length) {
+	int ret;
+
+	ret = munmap(ptr, length);
+	if(ret < 0)
+		perror("free_pages(): unable to deallocate memory");
 }
 
 
 void allocator_fini(void) {
 	unsigned int i;
+  /* get_pages(0); */
 	for (i = 0; i < n_prc; i++) {
 		buddy_destroy(buddies[i]);
 		free_pages(mem_areas[i], PER_LP_PREALLOCATED_MEMORY / PAGE_SIZE);
@@ -225,13 +260,15 @@ bool allocator_init(void) {
 	// These are a vector of pointers which are later initialized
 	buddies = rsalloc(sizeof(struct _buddy *) * n_prc);
 	mem_areas = rsalloc(sizeof(void *) * n_prc);
+  displacements = rsalloc(sizeof(int) *n_prc);
+  printf("Initializing LP memory allocator... ");
 
-	printf("Initializing LP memory allocator... ");
+  segment_allocator_init(n_prc); //ADDED BY MATTEO.
 
-	for (i = 0; i < n_prc; i++){
+  for (i = 0; i < n_prc; i++){
 		buddies[i] = buddy_new(PER_LP_PREALLOCATED_MEMORY / BUDDY_GRANULARITY);
 		mem_areas[i] = get_base_pointer(i);
-		if(mem_areas[i] == NULL)
+    if(mem_areas[i] == NULL)
 			rootsim_error(true, "Unable to initialize memory for LP %d. Aborting...\n",i);
 	}
 
