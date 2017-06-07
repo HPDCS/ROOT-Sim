@@ -29,7 +29,7 @@
 
 #pragma once
 
-#ifdef HAVE_CROSS_STATE  
+//#ifdef HAVE_CROSS_STATE
 
 #include <linux/ioctl.h>
 
@@ -49,6 +49,7 @@ typedef struct _ioctl_info{
 	unsigned int count;
 	unsigned int *objects;
 	unsigned mapped_processes;
+
 	ulong callback;
 //TODO MN
 	void** objects_mmap_pointers;
@@ -57,7 +58,6 @@ typedef struct _ioctl_info{
 } ioctl_info;
 
 #endif
-
 
 // Setup all ioctl commands
 #define IOCTL_INIT_PGD _IO(CROSS_STATE_IOCTL_MAGIC, 0)
@@ -99,4 +99,4 @@ typedef struct _ioctl_info{
 #define MASK_PTADDR 0x07FFFFFFFFFFF000
 #define MASK_PTCONT 0xF800000000000FFF
 
-#endif /* HAVE_CROSS_STATE */
+//#endif /* HAVE_CROSS_STATE */

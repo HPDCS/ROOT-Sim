@@ -7,7 +7,7 @@ initdir = @sysconfdir@/init.d
 
 udev_DATA = cross_state_manager/83-cross_state_manager.rules
 
-FLAGS="-DHAVE_CROSS_STATE"
+FLAGS=-DHAVE_CROSS_STATE
 
 # Put the list of kernel modules to be built here.
 # Then, modify install, uninstall, and clean hooks to 
@@ -30,7 +30,7 @@ intercept.ko: intercept/intercept_page_fault.c intercept/my_page_fault.c
 	cp cross_state_manager/Module.symvers intercept/
 	$(MAKE) -C $(KERNEL_SRC) M=$(abs_srcdir)/intercept/ CFLAGS="" EXTRA_FLAGS="$(FLAGS)"
 
-schedule-hook.ko: schedule-hook/schedule-hook.c schedule-hook/hook.S
+schedule-hook.ko: schedule-hook/schedule.c schedule-hook/hook.S schedule-hook/ld.c
 	$(MAKE) -C $(KERNEL_SRC) M=$(abs_srcdir)/schedule-hook/ CFLAGS="" EXTRA_CFLAGS="$(FLAGS) \
 											-DFTS_ADDR=$(FTS_ADDR)\
 	       										-DFTS_ADDR_NEXT=$(FTS_ADDR_NEXT)"

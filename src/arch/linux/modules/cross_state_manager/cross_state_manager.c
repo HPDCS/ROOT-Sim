@@ -645,7 +645,7 @@ bridging_from_get_pgd:
                         return 0;
                 break;
 
-	case IOCTL_SYNC_SLAVES:
+/*	case IOCTL_SYNC_SLAVES:
 
 		break;
 
@@ -656,7 +656,7 @@ bridging_from_get_pgd:
 	case IOCTL_UNSCHEDULE_CURRENT:
 
 		break;
-
+*/
 	default:
 		ret = -EINVAL;
 	}
