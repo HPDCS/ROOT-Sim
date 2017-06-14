@@ -534,7 +534,7 @@ void schedule(void) {
 	LPS[lid]->state = LP_STATE_RUNNING;
 	activate_LP(lid, lvt(lid), event, state);
 
-
+  printf("LP[%d] state %d: ",lid, LPS[lid]->state);
 	if(!is_blocked_state(LPS[lid]->state)) {
 		LPS[lid]->state = LP_STATE_READY;
 		send_outgoing_msgs(lid);

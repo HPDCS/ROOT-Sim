@@ -78,15 +78,15 @@ int segment_allocator_init(unsigned int sobjs) {
 	// Gli ifdef qui sono messi solo per far funzionare tutto in entrambi
 	// i casi (con o senza ECS). Andrebbe reingegnerizzato un po'...
 
-	#ifndef HAVE_CROSS_STATE
+//	#ifndef HAVE_CROSS_STATE
 	pml4_index = 9;
-	#endif
+//	#endif
 	while(y<num_mmap){
-		#ifdef HAVE_CROSS_STATE
-		pml4_index = ioctl(ioctl_fd, IOCTL_GET_FREE_PML4);
-		#else
+//		#ifdef HAVE_CROSS_STATE
+//		pml4_index = ioctl(ioctl_fd, IOCTL_GET_FREE_PML4);
+//		#else
 		pml4_index++;
-		#endif
+//		#endif
 		init_addr =(ulong) pml4_index;
 		init_addr = init_addr << 39;
 		allocation_counter = 0;

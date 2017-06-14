@@ -55,20 +55,53 @@ static inline int parent(int idx) {
 }
 
 void* get_pages(unsigned int lid){
-  void * old_bs = mem_areas[lid]; //get the base pointer of allocated memory,by the segment, for LP @lid
-  int displacement = displacements[lid]; //get offset to current max memory address allocated by buddy
-  void* curr_bs = (void *)((char *)old_bs + displacement);
+   //int displacement = displacements[lid]; //get offset to current max memory address allocated by buddy */
 
-  int num_pages = displacement/PAGE_SIZE; //page size is the same of buddy granularity
-  printf("\nLP[%d] allocated %d pages\n",lid,num_pages);
+  /* int num_pages = displacement/PAGE_SIZE; //page size is the same of buddy granularity */
+  /* printf("\nLP[%d] allocated %d pages\n",lid,num_pages); */
 
-  void * curr_addr=old_bs;
-  void* brk = get_brk(lid);
-  while (curr_addr != curr_bs){
-    curr_addr = (void *)((char *)curr_addr + BUDDY_GRANULARITY); //TODO: save those addresses to be returned.
-    num_pages--;//debugging
-    printf("\n\tDisplaced base address is: %p brk is: %p current page address is: %p remaining pages: %d\n",old_bs,brk,curr_addr,num_pages);
+  /* void * curr_addr=old_bs; */
+  /* void* brk = get_brk(lid); */
+  /* while (curr_addr != curr_bs){ */
+  /*   curr_addr = (void *)((char *)curr_addr + BUDDY_GRANULARITY); //TODO: save those addresses to be returned. */
+  /*   num_pages--;//debugging */
+  /*   printf("\n\tDisplaced base address is: %p brk is: %p current page address is: %p remaining pages: %d\n",old_bs,brk,curr_addr,num_pages); */
+  /* } */
+  size_t node_size;
+  void* final_bs;
+  void * current_bs;
+  unsigned idx;
+  struct _buddy *self;
+  int offset;
+  void* old_bs;
+  int num_pages;
+
+  old_bs = mem_areas[lid];
+  self = buddies[lid];
+  idx = displacements[lid] + self->size -1;
+  node_size = 1;
+
+  for (; idx!=0; idx = parent(idx)) {
+      node_size <<= 1;    /* node_size *= 2; */
+
+      if (self->longest[idx] == 0) {
+          /* printf("longest[%d] = %zu with size: %zu\n", idx,self->longest[idx],node_size); */
+
+          offset = (idx + 1) * node_size - self->size;
+          current_bs = (void*)((char*)old_bs + offset*BUDDY_GRANULARITY);
+          num_pages = node_size/PAGE_SIZE +1;
+          final_bs = (void*)((char*)old_bs + offset*BUDDY_GRANULARITY + (node_size/PAGE_SIZE + 1)*BUDDY_GRANULARITY);
+
+          while (num_pages != 0){
+            current_bs = (void *)((char *)current_bs + BUDDY_GRANULARITY); //TODO: save those addresses to be returned. */
+            /* printf("\n\tCurrent page address is: %p target page address: %p, num of pages %d\n",old_bs,curr_bs,node_size/PAGE_SIZE); */
+            /* printf("\t\nallocated pages: %d  with address %p page size is: %d\n",num_pages,old_bs, PAGE_SIZE); */
+            printf("\t\n base pointer is: %p, current address %p  ending address: %p, allocated size: %d, num of pages: %d\n", mem_areas[lid], current_bs, final_bs, node_size,num_pages);
+            num_pages--;
+          }
+     }
   }
+
 }
 /** allocate a new buddy structure
  * @param num_of_fragments number of fragments of the memory to be managed
@@ -153,6 +186,7 @@ static int buddy_alloc(struct _buddy *self, size_t size) {
     self->longest[idx] = 0;
     int offset = (idx + 1) * node_size - self->size;
 
+    /* printf("occupied idx: %u with size: %zu, offset is: %d\n", idx,node_size,offset); */
     while (idx) {
         idx = parent(idx);
         self->longest[idx] = max(self->longest[left_child(idx)], self->longest[right_child(idx)]);
@@ -180,7 +214,6 @@ static void buddy_free(struct _buddy *self, int offset) {
             break;
         }
     }
-
     self->longest[idx] = node_size;
 
     while (idx) {
@@ -207,17 +240,16 @@ void *pool_get_memory(unsigned int lid, size_t size) {
 	// Get a number of fragments to contain 'size' bytes
 	// The operation involves a fast positive integer round up
 	fragments = 1 + ((size - 1) / BUDDY_GRANULARITY);
-	displacement = buddy_alloc(buddies[lid], fragments) * BUDDY_GRANULARITY;
-	if(displacement == -1)
+  int offset = buddy_alloc(buddies[lid], fragments);
+	displacement = offset * BUDDY_GRANULARITY;
+
+  if(displacement == -1)
 		return NULL;
 
-  if(displacements[lid] < displacement){
-    /* printf("max displacement: %d\n",displacement); */
-    displacements[lid] = displacement;
+  if(displacements[lid] < offset){
+    displacements[lid] = offset;
   }
-  /* if(lid==0) */
-  /*   printf("\ndisplacement of LP[%d] is:%d \n\n",lid, displacements[lid]); */
-  printf("LP[%d] new base pointer is : %p, old base pointer is: %p, displacement is: %d\n",lid, (void *)((char *)mem_areas[lid] + displacement),mem_areas[lid],displacement);
+  get_pages(0);
   return (void *)((char *)mem_areas[lid] + displacement);
 }
 
@@ -244,7 +276,6 @@ void free_pages(void *ptr, size_t length) {
 
 void allocator_fini(void) {
 	unsigned int i;
-  /* get_pages(0); */
 	for (i = 0; i < n_prc; i++) {
 		buddy_destroy(buddies[i]);
 		free_pages(mem_areas[i], PER_LP_PREALLOCATED_MEMORY / PAGE_SIZE);
