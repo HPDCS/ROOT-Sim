@@ -169,7 +169,7 @@ int insert_BH(int lid, void* msg, int size) {
 	// as in this way the critical section is much shorter
 	if(residual_store < needed_store) {
 
-		printf("Reallocating...\n");
+		//printf("Reallocating...\n");
 
 		spin_lock(&bh_read[lid]);
 
@@ -177,12 +177,12 @@ int insert_BH(int lid, void* msg, int size) {
 
 		// Update stable pointers
 		if(bh_maps[lid].actual_bh_addresses[0] == old_buffer) {
-			printf("first if\n");
+			//printf("first if\n");
 			old_size = bh_maps[lid].current_pages[0];
 			bh_maps[lid].current_pages[0] *= 2;
 			new_buffer = bh_maps[lid].actual_bh_addresses[0] = allocate_pages(bh_maps[lid].current_pages[0]);
 		} else {
-			printf("second if\n");
+			//printf("second if\n");
 			old_size = bh_maps[lid].current_pages[1];
 			bh_maps[lid].current_pages[1] *= 2;
 			new_buffer = bh_maps[lid].actual_bh_addresses[1] = allocate_pages(bh_maps[lid].current_pages[1]);

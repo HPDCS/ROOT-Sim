@@ -62,7 +62,7 @@ static double do_random(void) {
 	*seed2 = 18000u * (*seed2 & 0xFFFFu) + (*seed2 >> 16u);
 
 	// The magic number below is 1/(2^32 + 2).
-    	// The result is strictly between 0 and 1.
+ 	// The result is strictly between 0 and 1.
 	return (((*seed1 << 16u) + (*seed1 >> 16u) + *seed2) + 1.0) * 2.328306435454494e-10;
 
 }

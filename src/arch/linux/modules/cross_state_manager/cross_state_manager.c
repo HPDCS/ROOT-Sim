@@ -260,6 +260,8 @@ int rs_ktblmgr_release(struct inode *inode, struct file *filp) {
 	void **temp;
 	void *address;
 
+	return;
+
 //	printk("closing the special device file ktblmgr\n");
 
 
@@ -284,7 +286,7 @@ int rs_ktblmgr_release(struct inode *inode, struct file *filp) {
 				printk("temp is %p\n", temp);
 				address = (void *)__va(temp);
 				if(address!=NULL){
-					//__free_pages(address, 0);
+					__free_pages(address, 0);
 					printk("would free address at %p\n", address);
 				}
 				pgd_entry[pml4] = ancestor_pml4[pml4];
