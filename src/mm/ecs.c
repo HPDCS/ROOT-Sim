@@ -148,50 +148,53 @@ void lp_alloc_thread_init(void) {
         ioctl(ioctl_fd, IOCTL_SET_ANCESTOR_PGD);  //ioctl call
 
         lp_memory_ioctl_info.ds = -1;
+        lp_memory_ioctl_info.addr = get_base_pointer(0); // LP 0 is the first allocated one, and it's memory stock starts from the beginning of the PML4
         lp_memory_ioctl_info.mapped_processes = n_prc;
 
         callback_function =  rootsim_cross_state_dependency_handler;
         lp_memory_ioctl_info.callback = callback_function;
 
-	ioctl(ioctl_fd, IOCTL_SET_VM_RANGE, &lp_memory_ioctl_info);
+        ioctl(ioctl_fd, IOCTL_SET_VM_RANGE, &lp_memory_ioctl_info);
 
-	/* required to manage the per-thread memory view */
-	pgd_ds = ioctl(ioctl_fd, IOCTL_GET_PGD);  //ioctl call
+      	/* required to manage the per-thread memory view */
+      	pgd_ds = ioctl(ioctl_fd, IOCTL_GET_PGD);  //ioctl call
 }
 
-bool present_ECS_table(unsigned int lid){
-	unsigned int i;
-	unsigned int *table = LPS[current_lp]->ECS_synch_table;
+/* void lp_alloc_schedule(void) { */
 
-	for(i=0;i<(LPS[current_lp]->ECS_index + 1);i++){
-		if(table[i] == lid)	return true;
-	}
+/* 	unsigned int i; */
+/* 	ioctl_info sched_info; */
 
-	return false;
-}
+/* 	bzero(&sched_info, sizeof(ioctl_info)); */
+
+/* 	sched_info.ds = pgd_ds; // this is current */
+/* 	sched_info.count = LPS[current_lp]->ECS_index + 1; // it's a counter */
+
+/* 	sched_info.objects = LPS[current_lp]->ECS_synch_table; // pgd descriptor range from 0 to number threads - a subset of object ids */
+/* 	sched_info.objects_mmap_count = sched_info.count; */
+
+/* 	sched_info.objects_mmap_pointers = rsalloc(sizeof(void *) * sched_info.objects_mmap_count); */
+/* 	for(i=0;i<sched_info.count;i++) { */
+/*                 sched_info.objects_mmap_pointers[i] = get_base_pointer(sched_info.objects[i]); */
+/* //		printf("lp_alloc_schedule - [%d] addr:%p\n",current_lp,sched_info.objects_mmap_pointers[i]); */
+/*         } */
+
+/* 	/1* passing into LP mode - here for the pgd_ds-th LP *1/ */
+/* 	sched_info.count = current_lp; */
+/* 	ioctl(ioctl_fd,IOCTL_SCHEDULE_ON_PGD, &sched_info); */
+
+/* } */
 
 
 void lp_alloc_schedule(void) {
 
-	unsigned int i;
 	ioctl_info sched_info;
-
-	bzero(&sched_info, sizeof(ioctl_info));
-
+	
 	sched_info.ds = pgd_ds; // this is current
 	sched_info.count = LPS[current_lp]->ECS_index + 1; // it's a counter
-
-	sched_info.objects = LPS[current_lp]->ECS_synch_table; // pgd descriptor range from 0 to number threads - a subset of object ids
-	sched_info.objects_mmap_count = sched_info.count;
-
-	sched_info.objects_mmap_pointers = rsalloc(sizeof(void *) * sched_info.objects_mmap_count);
-	for(i=0;i<sched_info.count;i++) {
-                sched_info.objects_mmap_pointers[i] = get_base_pointer(sched_info.objects[i]);
-//		printf("lp_alloc_schedule - [%d] addr:%p\n",current_lp,sched_info.objects_mmap_pointers[i]);
-        }
+	sched_info.objects = LPS[current_lp]->ECS_synch_table; // pgd descriptor range from 0 to number threads - a subset of object ids 
 
 	/* passing into LP mode - here for the pgd_ds-th LP */
-	sched_info.count = current_lp;
 	ioctl(ioctl_fd,IOCTL_SCHEDULE_ON_PGD, &sched_info);
 
 }

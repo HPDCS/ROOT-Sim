@@ -30,7 +30,7 @@
 * 			     patching
 */
 
-#ifdef HAVE_CROSS_STATE
+//#ifdef HAVE_CROSS_STATE
 
 #define EXPORT_SYMTAB
 #include <linux/module.h>
@@ -77,9 +77,15 @@ module_exit(rs_ktblmgr_cleanup);
 
 
 /* MODULE VARIABLES */
-extern (*rootsim_pager)(struct task_struct *tsk); 
-extern void rootsim_load_cr3(ulong addr); 
+//extern (*rootsim_pager)(struct task_struct *tsk); 
+//extern void rootsim_load_cr3(ulong addr); 
+void (*rootsim_pager)(void)=0x0;
 
+static inline void rootsim_load_cr3(pgd_t *pgdir) {
+	__asm__ __volatile__ ("mov %0, %%cr3"
+			      :
+			      : "r" (__pa(pgdir)));
+}
 /// Device major number
 static int major;
 
@@ -271,15 +277,15 @@ int rs_ktblmgr_release(struct inode *inode, struct file *filp) {
 
 			for (i=0; i<involved_pml4; i++){
 			
-//			 	printk("\tPML4 ENTRY FOR CLOSE DEVICE IS %d\n",pml4);
+			 	printk("\tPML4 ENTRY FOR CLOSE DEVICE IS %d\n",pml4);
 
-			
 				temp = pgd_entry[pml4];
-				
 				temp = (void *)((ulong) temp & 0xfffffffffffff000);	
+				printk("temp is %p\n", temp);
 				address = (void *)__va(temp);
 				if(address!=NULL){
-					__free_pages(address, 0);
+					//__free_pages(address, 0);
+					printk("would free address at %p\n", address);
 				}
 				pgd_entry[pml4] = ancestor_pml4[pml4];
 
@@ -672,10 +678,10 @@ back_to_pgd_release:
 
 
 			pml4 = (int)PML4(((ioctl_info*)arg)->addr);
-			//printk("LOGGING CHANGE VIEW INVOLVING %u PROCESSES AND %d PML4 ENTRIES STARTING FROM ENTRY %d\n",((ioctl_info*)arg)->mapped_processes,involved_pml4,pml4);
+			printk("LOGGING CHANGE VIEW INVOLVING %u PROCESSES AND %d PML4 ENTRIES STARTING FROM ENTRY %d (address %p)\n",((ioctl_info*)arg)->mapped_processes,involved_pml4,pml4, ((ioctl_info*)arg)->addr);
 			restore_pml4 = pml4;
 			restore_pml4_entries = involved_pml4;
-//			printk("LOGGING METADATA OF CHANGE VIEW INVOLVING %u PROCESSES AND %d PML4 ENTRIES STARTING FROM ENTRY %d\n",((ioctl_info*)arg)->mapped_processes,restore_pml4_entries,restore_pml4);
+			//printk("LOGGING METADATA OF CHANGE VIEW INVOLVING %u PROCESSES AND %d PML4 ENTRIES STARTING FROM ENTRY %d\n",((ioctl_info*)arg)->mapped_processes,restore_pml4_entries,restore_pml4);
 
 
 			flush_cache_all(); /* to make new range visible across multiple runs */
@@ -1136,4 +1142,4 @@ static void rs_ktblmgr_cleanup(void) {
 
 }
 
-#endif	/* HAVE_CROSS_STATE */
+//#endif	/* HAVE_CROSS_STATE */

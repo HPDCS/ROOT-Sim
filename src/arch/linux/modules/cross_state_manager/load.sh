@@ -36,7 +36,7 @@ check_addr error_entry $ADDR_ERROR_ENTRY
 ADDR_ERROR_EXIT=`get_addr "error_exit"`
 check_addr error_exit $ADDR_ERROR_EXIT
 
-sudo insmod cross_state_manager.ko\
+sudo modprobe cross_state_manager\
     addr_dft_page_fault=$ADDR_PAGE_FAULT\
     addr_dft_do_page_fault=$ADDR_DO_PAGE_FAULT\
     addr_pv_irq_ops=$ADDR_PV_IRQ_OPS\

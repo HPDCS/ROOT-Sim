@@ -3,12 +3,12 @@ module="rs_ktblmgr"
 device="ktblmgr"
 mode="777"
 
-modprobe schedule-hook
-modprobe cross_state_manager
+sudo modprobe schedule-hook
+sudo modprobe cross_state_manager
 
 cd intercept
 ./load.sh
-# cat /sys/module/cross_state_manager/parameters/rootsim_pager_hook > /sys/module/schedule_hook/parameters/the_hook
+ #cat /sys/module/cross_state_manager/parameters/rootsim_pager_hook > /sys/module/schedule_hook/parameters/the_hook
 
 # remove stale nodes
 sudo rm -f /dev/${device}

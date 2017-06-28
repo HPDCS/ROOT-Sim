@@ -92,12 +92,12 @@ static int parse_cmd_line(int argc, char **argv) {
 	int c;
 	int option_index;
 
-    	if(argc < 2) {
+	if(argc < 2){
 		usage(argv);
-    	}
+	}
 
-    	// Keep track of the program name
-    	program_name = argv[0];
+	// Keep track of the program name
+	program_name = argv[0];
 
 	// Store the predefined values, before reading any overriding one
 	rootsim_config.output_dir = DEFAULT_OUTPUT_DIR;
@@ -117,6 +117,7 @@ static int parse_cmd_line(int argc, char **argv) {
 	rootsim_config.verbose = VERBOSE_INFO;
 	rootsim_config.stats = STATS_ALL;
 	rootsim_config.serial = false;
+	rootsim_config.core_binding = true;
 
 	#ifdef HAVE_PREEMPTION
 	rootsim_config.disable_preemption = false;
@@ -158,6 +159,10 @@ static int parse_cmd_line(int argc, char **argv) {
 					rootsim_error(true, "Demanding a non-positive number of cores\n");
 					return -1;
 				}
+
+				if(n_cores > MAX_THREADS_PER_KERNEL){
+					rootsim_error(true, "Too many threads, maximum supported number is %u\n", MAX_THREADS_PER_KERNEL);
+				}
 				break;
 
 			case OPT_OUTPUT_DIR:
@@ -170,7 +175,7 @@ static int parse_cmd_line(int argc, char **argv) {
 				if(strcmp(optarg, "stf") == 0) {
 					rootsim_config.scheduler = SMALLEST_TIMESTAMP_FIRST;
 				} else {
-					rootsim_error(true, "Invalid argument for scheduler parameter");
+					rootsim_error(true, "Invalid argument for scheduler parameter\n");
 					return -1;
 				}
 				break;
@@ -220,7 +225,7 @@ static int parse_cmd_line(int argc, char **argv) {
 				} else if(strcmp(optarg, "incremental") == 0) {
 					rootsim_config.check_termination_mode = INCR_CKTRM;
 				} else {
-					rootsim_error(true, "Invalid argument for cktrm_mode");
+					rootsim_error(true, "Invalid argument for cktrm_mode\n");
 					return -1;
 				}
 				break;
@@ -247,7 +252,7 @@ static int parse_cmd_line(int argc, char **argv) {
 				} else if(strcmp(optarg, "circular") == 0) {
 					rootsim_config.lps_distribution = LP_DISTRIBUTION_CIRCULAR;
 				} else {
-					rootsim_error(true, "Invalid argument for lps_distribution");
+					rootsim_error(true, "Invalid argument for lps_distribution\n");
 					return -1;
 				}
 				break;
@@ -268,7 +273,7 @@ static int parse_cmd_line(int argc, char **argv) {
 				} else if(strcmp(optarg, "no") == 0) {
 					rootsim_config.verbose = VERBOSE_NO;
 				} else {
-					rootsim_error(true, "Invalid argument for verbose");
+					rootsim_error(true, "Invalid argument for verbose\n");
 					return -1;
 				}
 				break;
@@ -283,7 +288,7 @@ static int parse_cmd_line(int argc, char **argv) {
 				} else if(strcmp(optarg, "global") == 0) {
 					rootsim_config.stats = STATS_GLOBAL;
 				} else {
-					rootsim_error(true, "Invalid argument for stats");
+					rootsim_error(true, "Invalid argument for stats\n");
 					return -1;
 				}
 				break;
@@ -295,6 +300,9 @@ static int parse_cmd_line(int argc, char **argv) {
 			case OPT_SERIAL:
 				rootsim_config.serial = true;
 				break;
+
+			case OPT_NO_CORE_BINDING:
+				rootsim_config.core_binding = false;
 
 			#ifdef HAVE_PREEMPTION
 			case OPT_PREEMPTION:
@@ -311,17 +319,19 @@ static int parse_cmd_line(int argc, char **argv) {
 			case -1:
 			case '?':
 			default:
-				rootsim_error(false, "Invalid options: %s", optarg);
 				break;
 		}
 
 		#undef parseIntLimits
 	}
 
+	if(!rootsim_config.serial && n_cores == 0){
+		rootsim_error(true, "Number of cores was not provided \"--np\"\n");
+	}
+
 	if(!rootsim_config.serial && n_prc_tot < n_cores) {
 		rootsim_error(true, "Requested a simulation run with %u LPs and %u worker threads: the mapping is not possible. Aborting...\n", n_prc_tot, n_cores);
 	}
-
 
 	if (!rootsim_config.serial && rootsim_config.snapshot == INVALID_SNAPSHOT)
 		rootsim_config.snapshot = FULL_SNAPSHOT; // TODO: in the future, default to AUTONOMIC_
@@ -347,6 +357,9 @@ static int parse_cmd_line(int argc, char **argv) {
 * @param argv array of parameters passed at command line
 */
 void SystemInit(int argc, char **argv) {
+
+	n_ker = 1;
+
 	register int w;
 
 	// Parse the argument passed at command line, to initialize the internal configuration
@@ -418,13 +431,7 @@ void SystemInit(int argc, char **argv) {
 			rootsim_config.set_seed);
 	}
 
-	// Master Kernel initializes some variables, which are then passed to other kernel instances
-	if (master_kernel()) {
-		n_ker = 1;
-		distribute_lps_on_kernels();
-	} else { // Slave kernels
-		kernel = (unsigned int *)rsalloc(sizeof(unsigned int)*(n_prc_tot));
-	}
+	distribute_lps_on_kernels();
 
 	// Initialize ROOT-Sim subsystems.
 	// All init routines are executed serially (there is no notion of threads in there)

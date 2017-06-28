@@ -48,7 +48,7 @@ struct rootsim_list_node {
 typedef struct rootsim_list rootsim_list;
 /// This structure defines a generic list.
 struct rootsim_list {
-	unsigned int size;
+	size_t size;
 	struct rootsim_list_node *head;
 	struct rootsim_list_node *tail;
 	atomic_t counter;

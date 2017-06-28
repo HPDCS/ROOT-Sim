@@ -60,10 +60,10 @@ struct _buddy {
 extern void **mem_areas;
 #endif
 
+// TODO: no need to keep a structure anymore...
 // This is for the segment allocator
 typedef struct _lp_mem_region{
 	char* base_pointer;
-	char* brk;
 }lp_mem_region;
 
 #define SUCCESS_AECS                  0

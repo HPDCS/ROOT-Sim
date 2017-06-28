@@ -271,9 +271,6 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 
 
 bool OnGVT(unsigned int me, lp_state_type *snapshot) {
-
-	if(me == 16) printf("me %d - complete calls are %d\n",me,snapshot->complete_calls);
-
 	if (snapshot->complete_calls < complete_calls)
 		return false;
 	return true;

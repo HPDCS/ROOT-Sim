@@ -51,10 +51,10 @@ typedef struct _ioctl_info{
 	unsigned mapped_processes;
 
 	ulong callback;
-//TODO MN
-	void** objects_mmap_pointers;
-        int* objects_mmap_sizes;
-        int objects_mmap_count;
+/* //TODO MN */
+/* 	void** objects_mmap_pointers; */
+/*         int* objects_mmap_sizes; */
+/*         int objects_mmap_count; */
 } ioctl_info;
 
 #endif

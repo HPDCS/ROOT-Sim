@@ -30,6 +30,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include <limits.h>
 
 #include <arch/thread.h>
 #include <core/core.h>
@@ -66,12 +67,6 @@ unsigned int *to_lid;
 /// Used to map a local id to a global id
 unsigned int *to_gid;
 
-/// Number of logical processes handled by a kernel instance
-unsigned int n_prc_per_kernel[N_KER_MAX];
-
-/// Used to map global ids to local ids in one kernel instance's scope
-unsigned int *kernel_lid_to_gid[N_KER_MAX];
-
 /// This global variable holds the configuration for the current simulation
 simulation_configuration rootsim_config;
 
@@ -81,9 +76,6 @@ void (**ProcessEvent)(unsigned int me, simtime_t now, int event_type, void *even
 
 /// Flag to notify all workers that there was an error
 static bool sim_error = false;
-
-/// This variable is used by rootsim_error to know whether fatal errors involve stopping MPI or not
-bool mpi_is_initialized = false;
 
 /// This flag tells whether we are exiting from the kernel of from userspace
 bool exit_silently_from_kernel = false;
@@ -138,9 +130,6 @@ void base_init(void) {
 	to_lid = (unsigned int *)rsalloc(sizeof(unsigned int) * n_prc_tot);
 	to_gid = (unsigned int *)rsalloc(sizeof(unsigned int) * n_prc_tot);
 
-	for(i = 0; i < N_KER_MAX; i++)
-		kernel_lid_to_gid[i] = (unsigned int *)rsalloc(sizeof(unsigned int) * n_prc_tot);
-
 	for (i = 0; i < n_prc_tot; i++) {
 
 		if (rootsim_config.snapshot == FULL_SNAPSHOT) {
@@ -153,14 +142,10 @@ void base_init(void) {
 			to_gid[n_prc] = i;
 			n_prc++;
 		} else if (kernel[i] < n_ker) { // If not
-			to_lid[i] = -1;
+			to_lid[i] = UINT_MAX;
 		} else { // Sanity check
 			rootsim_error(true, "Invalid mapping: there is no kernel %d!\n", kernel[i]);
 		}
-
-		// TODO: questo modo di assegnare le risorse è un po' malato... n_prc_per_kernel di fatto serve solo qui!!!!
-		kernel_lid_to_gid[kernel[i]][n_prc_per_kernel[kernel[i]]] = i;
-		n_prc_per_kernel[kernel[i]]++;
 	}
 
 	// TODO: questo va rimesso a posto quando ci rilanciamo sul distribuito
@@ -182,12 +167,7 @@ void base_init(void) {
 */
 // TODO: controllare cosa serve davvero qui
 void base_fini(void){
-	unsigned int i;
 	rsfree(kernel);
-
-	for(i = 0; i < N_KER_MAX; i++) {
-		rsfree(kernel_lid_to_gid[i]);
-	}
 	rsfree(to_gid);
 	rsfree(to_lid);
 	rsfree(OnGVT);
@@ -255,24 +235,11 @@ void simulation_shutdown(int code) {
 
 	exit_silently_from_kernel = true;
 
-	if(mpi_is_initialized) {
-		comm_finalize();
-
-		// TODO: qui è necessario notificare agli altri kernel che c'è stato un errore ed è necessario fare lo shutdown
-		if(master_kernel()) {
-		}
-	}
-
 	statistics_stop(code);
 
 	if(!rootsim_config.serial) {
 
 		thread_barrier(&all_thread_barrier);
-
-		// All kernels must exit at the same time
-		if(n_ker > 1) {
-//			comm_barrier(MPI_COMM_WORLD);
-		}
 
 		if(master_thread()) {
 			statistics_fini();

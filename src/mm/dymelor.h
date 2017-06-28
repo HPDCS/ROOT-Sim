@@ -47,7 +47,8 @@
  **************************************/
 
 
-
+//ADDED BY MAT 0x00000200000000000
+#define LP_PREALLOCATION_INITIAL_ADDRESS	(void *)0x0000008000000000
 #define MASK 0x00000001		// Mask used to check, set and unset bits
 
 

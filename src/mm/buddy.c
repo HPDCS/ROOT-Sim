@@ -279,10 +279,12 @@ void allocator_fini(void) {
 	for (i = 0; i < n_prc; i++) {
 		buddy_destroy(buddies[i]);
 		free_pages(mem_areas[i], PER_LP_PREALLOCATED_MEMORY / PAGE_SIZE);
+//    segment_allocator_fini(i);
 	}
 
 	rsfree(mem_areas);
 	rsfree(buddies);
+
 }
 
 bool allocator_init(void) {

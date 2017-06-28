@@ -38,9 +38,20 @@
 #include <statistics/statistics.h>
 #include <mm/dymelor.h>
 
-// Defintion of GVT-reduction phases
-enum gvt_phases {phase_A, phase_send, phase_B, phase_aware, phase_end};
+enum kernel_phases {
+    kphase_start,
+    kphase_kvt,
+    kphase_fossil,
+    kphase_idle
+};
 
+enum thread_phases {
+    tphase_A,
+    tphase_send,
+    tphase_B,
+    tphase_aware,
+    tphase_idle
+};
 
 // Timer to know when we have to start GVT computation.
 // Each thread could start the GVT reduction phase, so this
@@ -50,6 +61,17 @@ timer gvt_timer;
 
 
 /* Data shared across threads */
+
+static volatile enum kernel_phases kernel_phase = kphase_idle;
+
+static unsigned int init_completed_tkn;
+static unsigned int commit_kvt_tkn;
+static unsigned int idle_tkn;
+
+static atomic_t counter_initialized;
+static atomic_t counter_kvt;
+static atomic_t counter_finalized;
+
 
 /// To be used with CAS to determine who is starting the next GVT reduction phase
 static volatile unsigned int current_GVT_round = 0;
@@ -63,20 +85,6 @@ static atomic_t counter_send;
 /// How many threads have left phase B?
 static atomic_t counter_B;
 
-/// How many threads are aware that the GVT reduction is over?
-static atomic_t counter_aware;
-
-/// How many threads have acquired the new GVT?
-static atomic_t counter_end;
-
-/** Flag to start a new GVT reduction phase. Explicitly using an int here,
- *  because 'bool' could be compiler dependent, but we must know the size
- *  beforehand, because we're going to use CAS on this. Changing the type could
- *  entail an undefined behaviour. 'false' and 'true' are usually int's (or can be
- *  converted to them by the compiler), so everything should work here.
- */
-static volatile unsigned int GVT_flag = 0;
-
 /** Keep track of the last computed gvt value. Its a per-thread variable
  * to avoid synchronization on it, but eventually all threads write here
  * the same exact value.
@@ -86,10 +94,12 @@ static volatile unsigned int GVT_flag = 0;
  * termination upon reaching a certain simulation time value.
  */
 static __thread simtime_t last_gvt = 0.0;
-static __thread simtime_t adopted_last_gvt = 0.0;
+
+// last agreed KVT
+static volatile simtime_t new_gvt = 0.0;
 
 /// What is my phase? All threads start in the initial phase
-static __thread enum gvt_phases my_phase = phase_A;
+static __thread enum thread_phases thread_phase = tphase_idle;
 
 /// Per-thread GVT round counter
 static __thread unsigned int my_GVT_round = 0;
@@ -108,7 +118,7 @@ void gvt_init(void) {
 	unsigned int i;
 
 	// This allows the first GVT phase to start
-	atomic_set(&counter_end, 0);
+	atomic_set(&counter_finalized, 0);
 
 	// Initialize the local minima
 	local_min = rsalloc(sizeof(simtime_t) * n_cores);
@@ -144,6 +154,60 @@ inline simtime_t get_last_gvt(void) {
 }
 
 
+simtime_t GVT_phases(void){
+	register unsigned int i;
+
+	if(thread_phase == tphase_A) {
+		process_bottom_halves();
+
+		for(i = 0; i < n_prc_per_thread; i++) {
+			if(LPS_bound[i]->bound == NULL) {
+				local_min[local_tid] = 0.0;
+				break;
+			}
+			local_min[local_tid] = min(local_min[local_tid], LPS_bound[i]->bound->timestamp);
+		}
+		thread_phase = tphase_send;     // Entering phase send
+		atomic_dec(&counter_A);	// Notify finalization of phase A
+		return -1.0;
+	}
+
+	if(thread_phase == tphase_send && atomic_read(&counter_A) == 0) {
+		process_bottom_halves();
+		schedule();
+		thread_phase = tphase_B;
+		atomic_dec(&counter_send);
+		return  -1.0;
+	}
+
+	if(thread_phase == tphase_B && atomic_read(&counter_send) == 0) {
+		process_bottom_halves();
+
+		for(i = 0; i < n_prc_per_thread; i++) {
+			if(LPS_bound[i]->bound == NULL) {
+				local_min[local_tid] = 0.0;
+				break;
+			}
+
+			local_min[local_tid] = min(local_min[local_tid], LPS_bound[i]->bound->timestamp);
+		}
+
+		thread_phase = tphase_aware;
+		atomic_dec(&counter_B);
+
+		if(atomic_read(&counter_B) == 0){
+			simtime_t agreed_vt = INFTY;
+			for(i = 0; i < n_cores; i++) {
+				agreed_vt = min(local_min[i], agreed_vt);
+			}
+			return agreed_vt;
+		}
+		return  -1.0;
+	}
+
+	return -1.0;
+}
+
 
 /**
 * This is the entry point from the main simulation loop to the GVT subsystem.
@@ -164,16 +228,11 @@ inline simtime_t get_last_gvt(void) {
 * 	  different threads here).
 */
 simtime_t gvt_operations(void) {
-	register unsigned int i;
-	simtime_t new_gvt;
-	simtime_t new_min_barrier;
-	state_t *tentative_barrier;
 
 	// GVT reduction initialization.
 	// This is different from the paper's pseudocode to reduce
 	// slightly the number of clock reads
-	if(GVT_flag == 0 && atomic_read(&counter_end) == 0) {
-
+	if( kernel_phase == kphase_idle ) {
 
 		// When using ULT, creating stacks might require more time than
 		// the first gvt phase. In this case, we enter the GVT reduction
@@ -182,136 +241,95 @@ simtime_t gvt_operations(void) {
 		// crashes. This is a sanity check for this.
 
 		// Has enough time passed since the last GVT reduction?
-		if ( timer_value_milli(gvt_timer) > (int)rootsim_config.gvt_time_period &&
-		    iCAS(&current_GVT_round, my_GVT_round, my_GVT_round + 1)) {
+		if( timer_value_milli(gvt_timer) > (int)rootsim_config.gvt_time_period &&
+			iCAS(&current_GVT_round, my_GVT_round, my_GVT_round + 1) ){
 
 			// Reduce the current CCGS termination detection
 			ccgs_reduce_termination();
 
-			// Reset atomic counters and make all threads compute the GVT
+			/* kernel GVT round setup */
+
+			init_completed_tkn = 1;
+			commit_kvt_tkn = 1;
+			idle_tkn = 1;
+
+			atomic_set(&counter_initialized, n_cores);
+			atomic_set(&counter_kvt, n_cores);
+			atomic_set(&counter_finalized, n_cores);
+
 			atomic_set(&counter_A, n_cores);
 			atomic_set(&counter_send, n_cores);
 			atomic_set(&counter_B, n_cores);
-			atomic_set(&counter_aware, n_cores);
-			atomic_set(&counter_end, n_cores);
-			GVT_flag = 1;
+
+			kernel_phase = kphase_start;
 
 			timer_restart(gvt_timer);
 		}
 	}
 
 
-	if(GVT_flag == 1) {
+	/* Thread setup phase:
+	 * each thread needs to setup its own local context
+	 * before to partecipate to the new GVT round */
+	if( kernel_phase == kphase_start && thread_phase == tphase_idle ){
 
-		if(my_phase == phase_A) {
+		// Someone has modified the GVT round (possibly me).
+		// Keep track of this update
+		my_GVT_round = current_GVT_round;
 
-			// Someone has modified the GVT round (possibly me).
-			// Keep track of this update
-			my_GVT_round = current_GVT_round;
+		local_min[local_tid] = INFTY;
 
-			process_bottom_halves();
+		thread_phase = tphase_A;
+		atomic_dec(&counter_initialized);
 
-			for(i = 0; i < n_prc_per_thread; i++) {
-				if(LPS_bound[i]->bound == NULL) {
-					local_min[tid] = 0.0;
-					local_min_barrier[tid] = 0.0;
-					break;
-				}
-
-				local_min[tid] = min(local_min[tid], LPS_bound[i]->bound->timestamp);
-
-				tentative_barrier = find_time_barrier(LPS_bound[i]->lid, LPS_bound[i]->bound->timestamp);
-				local_min_barrier[tid] = min(local_min_barrier[tid], tentative_barrier->lvt);
+		if(atomic_read(&counter_initialized) == 0){
+			if(iCAS(&init_completed_tkn, 1, 0)){
+				kernel_phase = kphase_kvt;
 			}
-			my_phase = phase_send;	// Entering phase send
-			atomic_dec(&counter_A);	// Notify finalization of phase A
-			return -1.0;
 		}
+		return -1.0;
+	}
 
-
-		if(my_phase == phase_send && atomic_read(&counter_A) == 0) {
-			process_bottom_halves();
-			schedule();
-			my_phase = phase_B;
-			atomic_dec(&counter_send);
-			return  -1.0;
-		}
-
-		if(my_phase == phase_B && atomic_read(&counter_send) == 0) {
-			process_bottom_halves();
-
-			for(i = 0; i < n_prc_per_thread; i++) {
-				if(LPS_bound[i]->bound == NULL) {
-					local_min[tid] = 0.0;
-					local_min_barrier[tid] = 0.0;
-					break;
-				}
-
-				local_min[tid] = min(local_min[tid], LPS_bound[i]->bound->timestamp);
-				tentative_barrier = find_time_barrier(LPS_bound[i]->lid, LPS_bound[i]->bound->timestamp);
-				local_min_barrier[tid] = min(local_min_barrier[tid], tentative_barrier->lvt);
+	/* KVT phase:
+	 * make all the threads agree on a common virtual time for this kernel */
+	if( kernel_phase == kphase_kvt && thread_phase != tphase_aware ) {
+		simtime_t kvt = GVT_phases();
+		if( D_DIFFER(kvt, -1.0) ){
+			if( iCAS(&commit_kvt_tkn, 1, 0)){
+				new_gvt = kvt;
+				kernel_phase = kphase_fossil;
 			}
-
-			my_phase = phase_aware;
-			atomic_dec(&counter_B);
-			return  -1.0;
 		}
+		return -1.0;
+	}
 
+	/* GVT adoption phase:
+	 * the last agreed GVT needs to be adopted by every thread */
+	if( kernel_phase == kphase_fossil && thread_phase == tphase_aware ){
 
-		if(my_phase == phase_aware && atomic_read(&counter_B) == 0) {
-			new_gvt = INFTY;
-			new_min_barrier = INFTY;
+		// Execute fossil collection and termination detection
+		// Each thread stores the last computed value in last_gvt,
+		// while the return value is the gvt only for the master
+		// thread. To check for termination based on simulation time,
+		// this variable must be explicitly inspected using
+		// get_last_gvt()
+		adopt_new_gvt(new_gvt);
 
-			for(i = 0; i < n_cores; i++) {
-				new_gvt = min(local_min[i], new_gvt);
-				new_min_barrier = min(local_min_barrier[i], new_min_barrier);
+		// Dump statistics
+		statistics_post_other_data(STAT_GVT, new_gvt);
+
+		last_gvt = new_gvt;
+
+		thread_phase = tphase_idle;
+		atomic_dec(&counter_finalized);
+
+		if(atomic_read(&counter_finalized) == 0){
+			if(iCAS(&idle_tkn, 1, 0)){
+				kernel_phase = kphase_idle;
 			}
-
-			atomic_dec(&counter_aware);
-
-			if(atomic_read(&counter_aware) == 0) {
-				// The last one passing here, resets GVT flag
-				iCAS(&GVT_flag, 1, 0);
-			}
-
-			// Execute fossil collection and termination detection
-			// Each thread stores the last computed value in last_gvt,
-			// while the return value is the gvt only for the master
-			// thread. To check for termination based on simulation time,
-			// this variable must be explicitly inspected using
-			// get_last_gvt()
-			adopt_new_gvt(new_gvt, new_min_barrier);
-			adopted_last_gvt = new_gvt;
-
-			// Dump statistics
-			statistics_post_other_data(STAT_GVT, new_gvt);
-
-			my_phase = phase_end;
-
-			return last_gvt;
 		}
-
-
-	} else {
-
-		// GVT flag is not set. We check whether we can reset the
-		// internal thread's state, waiting for the beginning of a
-		// new phase.
-		if(my_phase == phase_end) {
-
-			// Back to phase A for next GVT round
-			my_phase = phase_A;
-			local_min[tid] = INFTY;
-			local_min_barrier[tid] = INFTY;
-			atomic_dec(&counter_end);
-			last_gvt = adopted_last_gvt;
-		}
+		return last_gvt;
 	}
 
 	return -1.0;
 }
-
-bool gvt_stable(void) {
-	return (my_phase == phase_A);
-}
-

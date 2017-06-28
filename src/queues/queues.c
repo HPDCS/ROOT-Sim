@@ -177,7 +177,7 @@ restart:
 
 		while((msg_to_process = (msg_t *)get_BH(LPS_bound[i]->lid)) != NULL) {
 
-			lid_receiver = msg_to_process->receiver;
+			lid_receiver = GidToLid(msg_to_process->receiver);
 
 			if(msg_to_process->timestamp < get_last_gvt())
 				printf("ERRORE\n");
@@ -197,7 +197,7 @@ restart:
 				// It's an antimessage
 				case negative:
 
-					statistics_post_lp_data(msg_to_process->receiver, STAT_ANTIMESSAGE, 1.0);
+					statistics_post_lp_data(lid_receiver, STAT_ANTIMESSAGE, 1.0);
 
 					// Find the message matching the antimessage
 					matched_msg = list_tail(LPS[lid_receiver]->queue_in);
@@ -241,14 +241,8 @@ restart:
 
 							LPS[lid_receiver]->bound = list_prev(matched_msg);
 							while ((LPS[lid_receiver]->bound != NULL) &&
-								D_EQUAL(LPS[lid_receiver]->bound->timestamp, msg_to_process->timestamp)) {
-								if(list_prev(LPS[lid_receiver]->bound) == NULL) {
-									printf("WTF\n");
-									fflush(stdout);
-                                        				break;
-								}
-
-								LPS[lid_receiver]->bound = list_prev(LPS[lid_receiver]->bound);
+							       D_EQUAL(LPS[lid_receiver]->bound->timestamp, msg_to_process->timestamp)){
+                LPS[lid_receiver]->bound = list_prev(LPS[lid_receiver]->bound);
 							}
 
 							LPS[lid_receiver]->state = LP_STATE_ROLLBACK;
@@ -272,10 +266,7 @@ restart:
 
 						LPS[lid_receiver]->bound = list_prev(msg_to_process);
 						while ((LPS[lid_receiver]->bound != NULL) &&
-							D_EQUAL(LPS[lid_receiver]->bound->timestamp, msg_to_process->timestamp)) {
-							if(list_prev(LPS[lid_receiver]->bound) == NULL)
-                                       				break;
-
+						  D_EQUAL(LPS[lid_receiver]->bound->timestamp, msg_to_process->timestamp)){
 							LPS[lid_receiver]->bound = list_prev(LPS[lid_receiver]->bound);
 						}
 
@@ -309,7 +300,7 @@ restart:
 	// preemptive scheme will not detect this, and some events could
 	// be in fact executed out of order.
 	#ifdef HAVE_PREEMPTION
-	reset_min_in_transit(tid);
+	reset_min_in_transit(local_tid);
 	#endif
 }
 

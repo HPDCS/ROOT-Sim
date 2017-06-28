@@ -192,7 +192,7 @@ char *__list_insert(unsigned int lid, void *li, unsigned int size, size_t key_po
 *           by the list. This is used to maintain the list ordered.
 * @param data a pointer to the data buffer to be inserted into the list.
 *
-* @return a pointer to the newly-allocated copy of the payload into the list.
+* @return a pointer to the payload of the node just linked to the list.
 *           This is different from the container node, which is not exposed to the caller.
 */
 char *__list_place(unsigned int lid, void *li, size_t key_position, struct rootsim_list_node *new_n) {

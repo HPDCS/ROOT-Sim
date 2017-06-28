@@ -106,7 +106,7 @@ static void *main_simulation_loop(void *arg) {
 	initialize_worker_thread();
 
 	// Notify the statistics subsystem that we are now starting the actual simulation
-	if(master_thread()) {
+	if(master_kernel() && master_thread()) {
 		statistics_post_other_data(STAT_SIM_START, 1.0);
 		printf("****************************\n"
 		       "*    Simulation Started    *\n"
@@ -163,8 +163,10 @@ static void *main_simulation_loop(void *arg) {
 */
 int main(int argc, char **argv) {
 
-	set_affinity(0);
 	SystemInit(argc, argv);
+
+	if(rootsim_config.core_binding)
+		set_affinity(0);
 
         if(rootsim_config.serial) {
 		serial_simulation();

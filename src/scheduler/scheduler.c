@@ -62,7 +62,7 @@ LP_state **LPS = NULL;
 /// This is used to keep track of how many LPs were bound to the current KLT
 __thread unsigned int n_prc_per_thread;
 
-/// This global variable tells the simulator what is the LP currently being scheduled on the current worker thread
+/// This global variable tells the simulator what is the local id of the LP currently being scheduled on the current worker thread
 __thread unsigned int current_lp;
 
 /// This global variable tells the simulator what is the LP currently being scheduled on the current worker thread
@@ -195,7 +195,7 @@ static void LP_main_loop(void *args) {
 
 		#ifdef EXTRA_CHECKS
 		if(current_evt->size > 0) {
-			hash1 = XXH64(current_evt->event_content, current_evt->size, current_lp);
+			hash1 = XXH64(current_evt->event_content, current_evt->size, LidToGid(current_lp));
 		}
 		#endif
 
@@ -216,11 +216,11 @@ static void LP_main_loop(void *args) {
 
 		#ifdef EXTRA_CHECKS
 		if(current_evt->size > 0) {
-			hash2 = XXH64(current_evt->event_content, current_evt->size, current_lp);
+			hash2 = XXH64(current_evt->event_content, current_evt->size, LidToGid(current_lp));
 		}
 
 		if(hash1 != hash2) {
-                        rootsim_error(true, "Error, LP %d has modified the payload of event %d during its processing. Aborting...\n", current_lp, current_evt->type);
+                        rootsim_error(true, "Error, LP %d has modified the payload of event %d during its processing. Aborting...\n", LidToGid(current_lp), current_evt->type);
 		}
 		#endif
 
@@ -330,7 +330,7 @@ void initialize_worker_thread(void) {
 			type: INIT,
 			timestamp: 0.0,
 			send_time: 0.0,
-			mark: generate_mark(LidToGid(LPS_bound[t]->lid)),
+			mark: generate_mark(LPS_bound[t]->lid),
 			size: model_parameters.size,
 			message_kind: positive,
 		};
@@ -534,7 +534,7 @@ void schedule(void) {
 	LPS[lid]->state = LP_STATE_RUNNING;
 	activate_LP(lid, lvt(lid), event, state);
 
-  printf("LP[%d] state %d: ",lid, LPS[lid]->state);
+  //printf("LP[%d] state %d: ",lid, LPS[lid]->state);
 	if(!is_blocked_state(LPS[lid]->state)) {
 		LPS[lid]->state = LP_STATE_READY;
 		send_outgoing_msgs(lid);

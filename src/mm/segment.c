@@ -35,9 +35,8 @@ static int ioctl_fd;
 void *get_base_pointer(unsigned int sobj) {
 	return (void*) mem_region[sobj].base_pointer;
 }
-void *get_brk(unsigned int sobj){
-  return (void*) mem_region[sobj].brk;
-}
+
+/*
 char *get_memory_ecs(unsigned int sobj, size_t size) {
 	lp_mem_region local_mem_region = mem_region[sobj];
 
@@ -52,7 +51,7 @@ char *get_memory_ecs(unsigned int sobj, size_t size) {
 	mem_region[sobj] = local_mem_region;
 	return return_value;
 }
-
+*/
 int segment_allocator_init(unsigned int sobjs) {
 	unsigned int y;
 	char* addr;
@@ -71,17 +70,11 @@ int segment_allocator_init(unsigned int sobjs) {
 	//ioctl(ioctl_fd, IOCTL_PGD_PRINT);
 
 	y=0;
-	// TODO: questo codice nasceva con la vecchia versione del modulo
-	// in cui era tutto quanto cablato. Ora c'è la versione del modulo
-	// che restituisce l'indice della PML4. E' ancora da verificare se
-	// questa modifica ha senso o no.
-	// Gli ifdef qui sono messi solo per far funzionare tutto in entrambi
-	// i casi (con o senza ECS). Andrebbe reingegnerizzato un po'...
 
 //	#ifndef HAVE_CROSS_STATE
 	pml4_index = 9;
 //	#endif
-	while(y<num_mmap){
+	while(y < num_mmap){
 //		#ifdef HAVE_CROSS_STATE
 //		pml4_index = ioctl(ioctl_fd, IOCTL_GET_FREE_PML4);
 //		#else
@@ -107,7 +100,7 @@ int segment_allocator_init(unsigned int sobjs) {
 
 			// Keep track of the per-LP allocated memory
 			if(y % 2 == 0){
-				mem_region[y/2].base_pointer = mem_region[y/2].brk = addr;
+				mem_region[y/2].base_pointer = addr;
 				//printf("LP[%d] address:%p\n",y/2,addr);
 			}
 
@@ -137,7 +130,7 @@ void segment_allocator_fini(unsigned int sobjs){
 			printf("ERROR on release value:%d\n",return_value);
 			break;
 		}
-		mem_region[i].base_pointer = mem_region[i].brk = NULL;
+		mem_region[i].base_pointer = NULL;
 	}
 	close(ioctl_fd);
 

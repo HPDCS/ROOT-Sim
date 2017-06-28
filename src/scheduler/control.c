@@ -207,8 +207,13 @@ bool receive_control_msg(msg_t *msg) {
 //				printf("(%d) matched mark %llu from %d\n",msg->receiver, msg->rendezvous_mark, msg->sender);
 
 				LPS[msg->receiver]->wait_on_rendezvous = 0;
-				LPS[msg->receiver]->wait_on_object = 0;
-				LPS[msg->receiver]->state = LP_STATE_READY;
+			
+			current_lp = GidToLid(msg->receiver);
+			current_lvt = msg->timestamp;
+			force_LP_checkpoint(current_lp);
+			LogState(current_lp);
+			current_lvt = INFTY;
+			current_lp = IDLE_PROCESS;
 
 				current_lp = msg->receiver;
 				current_lvt = msg->timestamp;

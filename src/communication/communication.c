@@ -92,18 +92,18 @@ void ParallelScheduleNewEvent(unsigned int gid_receiver, simtime_t timestamp, un
 
 	// Check whether the destination LP is out of range
 	if(gid_receiver > n_prc_tot - 1) {	// It's unsigned, so no need to check whether it's < 0
-		rootsim_error(false, "Warning: the destination LP %d is out of range. The event has been ignored\n", gid_receiver);
+		rootsim_error(false, "Warning: the destination LP %u is out of range. The event has been ignored\n", gid_receiver);
 		goto out;
 	}
 
 	// Check if the associated timestamp is negative
 	if(timestamp < lvt(current_lp)) {
-		rootsim_error(true, "LP %d is trying to generate an event (type %d) to %d in the past! (Current LVT = %f, generated event's timestamp = %f) Aborting...\n", current_lp, event_type, gid_receiver, lvt(current_lp), timestamp);
+		rootsim_error(true, "LP %u is trying to generate an event (type %d) to %u in the past! (Current LVT = %f, generated event's timestamp = %f) Aborting...\n", current_lp, event_type, gid_receiver, lvt(current_lp), timestamp);
 	}
 
         // Check if the event type is mapped to an internal control message
         if(event_type >= MIN_VALUE_CONTROL) {
-                rootsim_error(true, "LP %d is generating an event with type %d which is a reserved type. Switch event type to a value less than %d. Aborting...\n", current_lp, event_type, MIN_VALUE_CONTROL);
+                rootsim_error(true, "LP %u is generating an event with type %d which is a reserved type. Switch event type to a value less than %d. Aborting...\n", current_lp, event_type, MIN_VALUE_CONTROL);
         }
 
 
@@ -377,7 +377,7 @@ void send_outgoing_msgs(unsigned int lid) {
 		msg_hdr.timestamp = msg->timestamp;
 		msg_hdr.send_time = msg->send_time;
 		msg_hdr.mark = msg->mark;
-		(void)list_insert(msg->sender, LPS[msg->sender]->queue_out, send_time, &msg_hdr);
+		(void)list_insert(lid, LPS[lid]->queue_out, send_time, &msg_hdr);
 	}
 
 	LPS[lid]->outgoing_buffer.size = 0;
