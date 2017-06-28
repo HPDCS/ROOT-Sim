@@ -96,12 +96,9 @@ void deallocation(unsigned int me, lp_state_type *pointer, int ch, simtime_t lvt
 		RESET_CHANNEL(pointer, ch);
 		free(c->sir_data);
 
-//		printf("(%d) deallocation %d at %f\n", me, c->channel_id, lvt);
-
 		free(c);
 	} else {
 		printf("(%d) Unable to deallocate on %p, channel is %d at time %f\n", me, c, ch, lvt);
-		fflush(stdout);
 		abort();
 	}
 	return;

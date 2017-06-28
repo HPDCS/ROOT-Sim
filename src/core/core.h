@@ -126,7 +126,7 @@
 /// Macro to "legitimately" pun a type
 #define UNION_CAST(x, destType) (((union {__typeof__(x) a; destType b;})x).b)
 
-typedef enum {positive, negative, other} message_kind_t;
+typedef enum {positive, negative, control} message_kind_t;
 
 /// Message Type definition
 typedef struct _msg_t {

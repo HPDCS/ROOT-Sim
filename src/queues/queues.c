@@ -147,7 +147,6 @@ msg_t *advance_to_next_event(unsigned int lid) {
 void insert_bottom_half(msg_t *msg) {
 
 	unsigned int lid = GidToLid(msg->receiver);
-
 	insert_BH(lid, msg, sizeof(msg_t));
 	#ifdef HAVE_PREEMPTION
 	update_min_in_transit(LPS[lid]->worker_thread, msg->timestamp);
@@ -178,6 +177,25 @@ restart:
 		while((msg_to_process = (msg_t *)get_BH(LPS_bound[i]->lid)) != NULL) {
 
 			lid_receiver = GidToLid(msg_to_process->receiver);
+
+						/*printf("Message Content:"
+							"sender: %d\n"
+							"receiver: %d\n"
+							"type: %d\n"
+							"timestamp: %f\n"
+							"send time: %f\n"
+							"is antimessage %d\n"
+							"mark: %llu\n"
+							"rendezvous mark %llu\n\n",
+							msg_to_process->sender,
+							msg_to_process->receiver,
+							msg_to_process->type,
+							msg_to_process->timestamp,
+							msg_to_process->send_time,
+							msg_to_process->message_kind,
+							msg_to_process->mark,
+							msg_to_process->rendezvous_mark);
+						fflush(stdout);*/
 
 			if(msg_to_process->timestamp < get_last_gvt())
 				printf("ERRORE\n");
@@ -211,7 +229,7 @@ restart:
 
 					if(matched_msg == NULL) {
 						rootsim_error(false, "LP %d Received an antimessage with mark %llu at LP %u from LP %u, but no such mark found in the input queue!\n", LPS_bound[i]->lid, msg_to_process->mark, msg_to_process->receiver, msg_to_process->sender);
-						printf("Message Content:"
+						/*printf("Message Content:"
 							"sender: %d\n"
 							"receiver: %d\n"
 							"type: %d\n"
@@ -228,7 +246,7 @@ restart:
 							msg_to_process->message_kind,
 							msg_to_process->mark,
 							msg_to_process->rendezvous_mark);
-						fflush(stdout);
+						fflush(stdout);*/
 						abort();
 					} else {
 
@@ -246,6 +264,9 @@ restart:
 							}
 
 							LPS[lid_receiver]->state = LP_STATE_ROLLBACK;
+
+              printf("%llu - Process %d set to STATE_ROLLBACK due to msg from %d at time %f type %d (antimessage)\n", CLOCK_READ(), lid_receiver, msg_to_process->sender, msg_to_process->timestamp, msg_to_process->type);
+              fflush(stdout);
 
 						}
 
@@ -271,13 +292,15 @@ restart:
 						}
 
 						LPS[lid_receiver]->state = LP_STATE_ROLLBACK;
+              printf("%llu - Process %d set to STATE_ROLLBACK due to msg from %d at time %f type %d (straggler)\n", CLOCK_READ(), lid_receiver, msg_to_process->sender, msg_to_process->timestamp, msg_to_process->type);
+              fflush(stdout);
 
 					}
 
 					break;
 
 				// It's a control message
-				case other:
+				case control:
 
 					// Check if it is an anti control message
 					if(!anti_control_message(msg_to_process)) {

@@ -34,7 +34,7 @@
 #include <core/timer.h>
 #include <scheduler/process.h>
 #include <scheduler/scheduler.h> // this is for n_prc_per_thread
-#include <scheduler/binding.h> // this is for force_rebind_GLP
+//#include <scheduler/binding.h> // this is for force_rebind_GLP
 #include <statistics/statistics.h>
 #include <mm/dymelor.h>
 

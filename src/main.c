@@ -137,6 +137,11 @@ static void *main_simulation_loop(void *arg) {
 				printf("TIME BARRIER %f\n", my_time_barrier);
 				#endif
 
+        int xzy;
+        for(xzy = 0; xzy < n_prc_tot; xzy++) {
+          printf("LP %d in state %d\n", xzy, LPS[xzy]->state);
+        }
+
 				fflush(stdout);
 			}
 		}

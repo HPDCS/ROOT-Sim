@@ -27,7 +27,6 @@ void SerialSetState(void * state) {
 
 void SerialScheduleNewEvent(unsigned int rcv, simtime_t stamp, unsigned int event_type, void *event_content, unsigned int event_size) {
 	msg_t *event;
-
 	// Sanity checks
 	if(stamp < current_lvt) {
 		rootsim_error(true, "LP %d is trying to send events in the past. Current time: %f, scheduled time: %f\n", current_lp, current_lvt, stamp);

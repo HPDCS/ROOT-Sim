@@ -396,7 +396,7 @@ void activate_LP(unsigned int lp, simtime_t lvt, void *evt, void *state) {
 //		enable_preemption();
 //	#endif
 
-//	printf(" LP %d current_evt->timestap:%f\n",lp,current_evt->timestamp);
+  //	printf(" LP %d current_evt->timestap:%f\n",lp,current_evt->timestamp);
 	#ifdef HAVE_CROSS_STATE
 	// Activate memory view for the current LP
 	lp_alloc_schedule();
@@ -405,9 +405,9 @@ void activate_LP(unsigned int lp, simtime_t lvt, void *evt, void *state) {
 	//printf("Schedule %d\n",lp);
 	//printf("LP[%d] state: %lu\n",lp,LPS[lp]->state);
 	if(is_blocked_state(LPS[lp]->state)){
-		printf("wait_on_rendezvoud:%llu tid:%d wait_object:%d \n ",LPS[lp]->wait_on_rendezvous,tid,LPS[lp]->wait_on_object);
+		printf("lp %u in state %u wait_on_rendezvous:%llu tid:%d wait_object:%d \n ",lp,LPS[lp]->state,LPS[lp]->wait_on_rendezvous,tid,LPS[lp]->wait_on_object);
 		rootsim_error(true, "Critical condition: LP[%d] has a wrong state -> %d. Aborting...\n", lp,LPS[lp]->state);
-	}
+  }
 
 	#ifdef ENABLE_ULT
 	context_switch(&kernel_context, &LPS[lp]->context);
@@ -438,7 +438,7 @@ void activate_LP(unsigned int lp, simtime_t lvt, void *evt, void *state) {
 
 
 bool check_rendevouz_request(unsigned int lid){
-	msg_t *temp_mess;
+	msg_t *temp_mess;;
 
 	if(LPS[lid]->state != LP_STATE_WAIT_FOR_SYNCH)
 		return false;
@@ -447,7 +447,7 @@ bool check_rendevouz_request(unsigned int lid){
 
 	if(LPS[lid]->bound != NULL && list_next(LPS[lid]->bound) != NULL){
 		temp_mess = list_next(LPS[lid]->bound);
-		printf("\t \t Randezvous_mark: %llu LPS[%d]->wait_on_rendezvous:%llu\n",temp_mess->rendezvous_mark, lid,LPS[lid]->wait_on_rendezvous);
+		//printf("\t \t Randezvous_mark: %llu LPS[%d]->wait_on_rendezvous:%llu\n",temp_mess->rendezvous_mark, lid,LPS[lid]->wait_on_rendezvous);
 		return temp_mess->type == RENDEZVOUS_START && LPS[lid]->wait_on_rendezvous > temp_mess->rendezvous_mark;
 	}
 
@@ -482,29 +482,28 @@ void schedule(void) {
 			lid = smallest_timestamp_first();
 	}
 
-	// No logical process found with events to be processed
+  // No logical process found with events to be processed
 	if (lid == IDLE_PROCESS) {
-		statistics_post_lp_data(lid, STAT_IDLE_CYCLES, 1.0);
-      		return;
+      statistics_post_lp_data(lid, STAT_IDLE_CYCLES, 1.0);
+      return;
     	}
 
 
 	// If we have to rollback
-    	if(LPS[lid]->state == LP_STATE_ROLLBACK) {
-		rollback(lid);
+  if(LPS[lid]->state == LP_STATE_ROLLBACK) {
+    rollback(lid);
+    LPS[lid]->state = LP_STATE_READY;
+    send_outgoing_msgs(lid);
 
-		LPS[lid]->state = LP_STATE_READY;
-		send_outgoing_msgs(lid);
+    return;
+  }
 
-		return;
-	}
-
-	if(!is_blocked_state(LPS[lid]->state) && LPS[lid]->state != LP_STATE_READY_FOR_SYNCH){
-		event = advance_to_next_event(lid);
-	}
-	else {
-		event = LPS[lid]->bound;
-	}
+  if(!is_blocked_state(LPS[lid]->state) && LPS[lid]->state != LP_STATE_READY_FOR_SYNCH){
+    event = advance_to_next_event(lid);
+  }
+  else {
+    event = LPS[lid]->bound;
+  }
 
 
 	// Sanity check: if we get here, it means that lid is a LP which has
@@ -522,17 +521,19 @@ void schedule(void) {
 	state = LPS[lid]->current_base_pointer;
 
 	#ifdef HAVE_CROSS_STATE
+
 	// In case we are resuming an interrupted execution, we keep track of this.
 	// If at the end of the scheduling the LP is not blocked, we can unblokc all the remote objects
-	if(LPS[lid]->state == LP_STATE_READY_FOR_SYNCH) {
-		resume_execution = true;
+	//if(LPS[lid]->state == LP_STATE_READY_FOR_SYNCH) {
+	if(is_blocked_state(LPS[lid]->state)) { // == LP_STATE_READY_FOR_SYNCH) {
+    resume_execution = true;
 	}
 	#endif
 
-
 	// Schedule the LP user-level thread
 	LPS[lid]->state = LP_STATE_RUNNING;
-	activate_LP(lid, lvt(lid), event, state);
+  printf("LP %d about to run event type %d at %f mark %d rm %d\n", lid, event->type, lvt(lid), event->mark, event->rendezvous_mark);
+  activate_LP(lid, lvt(lid), event, state);
 
   //printf("LP[%d] state %d: ",lid, LPS[lid]->state);
 	if(!is_blocked_state(LPS[lid]->state)) {
