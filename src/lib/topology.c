@@ -15,6 +15,7 @@ unsigned int FindReceiver(int topology) {
 	unsigned int ret;
  	double u;
 	bool invalid = false;
+	unsigned int sender = LidToGid(current_lp);
 
  	// These must be unsigned. They are not checked for negative (wrong) values,
  	// but they would overflow, and are caught by a different check.
@@ -37,12 +38,12 @@ unsigned int FindReceiver(int topology) {
 		case TOPOLOGY_HEXAGON:
 
 			// Convert linear coords to hexagonal coords
-			x = current_lp % edge;
-			y = current_lp / edge;
+			x = sender % edge;
+			y = sender / edge;
 
 			// Very simple case!
 			if(n_prc_tot == 1) {
-				receiver = current_lp;
+				receiver = sender;
 				break;
 			}
 
@@ -99,12 +100,12 @@ unsigned int FindReceiver(int topology) {
 		case TOPOLOGY_SQUARE:
 
 			// Convert linear coords to square coords
-			x = current_lp % edge;
-			y = current_lp / edge;
+			x = sender % edge;
+			y = sender / edge;
 
 			// Very simple case!
 			if(n_prc_tot == 1) {
-				receiver = current_lp;
+				receiver = sender;
 				break;
 			}
 
@@ -148,12 +149,12 @@ unsigned int FindReceiver(int topology) {
 		case TOPOLOGY_TORUS:
 		
 			// Convert linear coords to square coords
-			x = current_lp % edge;
-			y = current_lp / edge;
+			x = sender % edge;
+			y = sender / edge;
 
 			// Very simple case!
 			if(n_prc_tot == 1) {
-				receiver = current_lp;
+				receiver = sender;
 				break;
 			}
 			
@@ -208,9 +209,9 @@ unsigned int FindReceiver(int topology) {
 			u = Random();
 
 			if (u < 0.5) {
-				receiver = current_lp - 1;
+				receiver = sender - 1;
 			} else {
-				receiver= current_lp + 1;
+				receiver= sender + 1;
 			}
 
    			if (receiver == -1) {
@@ -228,7 +229,7 @@ unsigned int FindReceiver(int topology) {
 
 		case TOPOLOGY_RING:
 
-			receiver= current_lp + 1;
+			receiver= sender + 1;
 
 			if ((unsigned int)receiver == n_prc_tot) {
 				receiver = 0;
@@ -239,7 +240,7 @@ unsigned int FindReceiver(int topology) {
 
 		case TOPOLOGY_STAR:
 
-			if (current_lp == 0) {
+			if (sender == 0) {
 				receiver = (int)(n_prc_tot * Random());
 			} else {
 				receiver = 0;
@@ -263,6 +264,7 @@ unsigned int FindReceiver(int topology) {
 int GetReceiver(int topology, int direction) {
 	int receiver = -1;
 	unsigned int x, y, nx, ny;
+	unsigned int sender = LidToGid(current_lp);
 
 	switch_to_platform_mode();
 
@@ -282,12 +284,12 @@ int GetReceiver(int topology, int direction) {
 		case TOPOLOGY_HEXAGON:
 
 			// Convert linear coords to hexagonal coords
-			x = current_lp % edge;
-			y = current_lp / edge;
+			x = sender % edge;
+			y = sender / edge;
 
 			// Very simple case!
 			if(n_prc_tot == 1) {
-				receiver = current_lp;
+				receiver = sender;
 				break;
 			}
 	
@@ -331,12 +333,12 @@ int GetReceiver(int topology, int direction) {
 		case TOPOLOGY_SQUARE:
 
 			// Convert linear coords to square coords
-			x = current_lp % edge;
-			y = current_lp / edge;
+			x = sender % edge;
+			y = sender / edge;
 
 			// Very simple case!
 			if(n_prc_tot == 1) {
-				receiver = current_lp;
+				receiver = sender;
 				break;
 			}
 
@@ -370,12 +372,12 @@ int GetReceiver(int topology, int direction) {
 			
 		case TOPOLOGY_TORUS:
 			// Convert linear coords to square coords
-			x = current_lp % edge;
-			y = current_lp / edge;
+			x = sender % edge;
+			y = sender / edge;
 
 			// Very simple case!
 			if(n_prc_tot == 1) {
-				receiver = current_lp;
+				receiver = sender;
 				break;
 			}
 
@@ -414,9 +416,9 @@ int GetReceiver(int topology, int direction) {
 		case TOPOLOGY_BIDRING:
 
 			if(direction == DIRECTION_W)
-				receiver = current_lp - 1;
+				receiver = sender - 1;
 			else if(direction == DIRECTION_E)
-				receiver = current_lp + 1;
+				receiver = sender + 1;
 			else
 				goto out;
 
@@ -433,7 +435,7 @@ int GetReceiver(int topology, int direction) {
 		case TOPOLOGY_RING:
 
 			if(direction == DIRECTION_E)
-				receiver= current_lp + 1;
+				receiver= sender + 1;
 			else
 				goto out;
 

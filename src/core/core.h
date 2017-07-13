@@ -60,7 +60,7 @@
 #define N_KER_MAX	128
 
 /// Maximum number of LPs the simulator will handle
-#define MAX_LPs		8192		// This is 2^20
+#define MAX_LPs		16384		// This is 2^14
 
 /// Maximum event size (in bytes)
 #define MAX_EVENT_SIZE	1120
@@ -176,6 +176,7 @@ typedef struct _simulation_configuration {
 	enum stat_levels stats;		/// Produce performance statistic file (default STATS_ALL)
 	bool serial;			// If the simulation must be run serially
 	seed_type set_seed;		/// The master seed to be used in this run
+	bool core_binding;		/// Bind threads to specific core ( reduce context switches and cache misses )
 
 #ifdef HAVE_PREEMPTION
 	bool disable_preemption;	/// If compiled for preemptive Time Warp, it can be disabled at runtime
@@ -197,8 +198,6 @@ extern unsigned int	kid,		/* Kernel ID for the local kernel */
 			n_prc,		/* Number of LPs hosted by the current kernel instance */
 			*kernel;
 
-
-extern bool mpi_is_initialized;
 
 extern simulation_configuration rootsim_config;
 

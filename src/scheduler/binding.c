@@ -97,9 +97,9 @@ static inline void LPs_block_binding(void) {
 	while (i < n_prc) {
 		j = 0;
 		while (j < buf1) {
-			if(offset == tid) {
+			if(offset == local_tid) {
 				LPS_bound[n_prc_per_thread++] = LPS[i];
-				LPS[i]->worker_thread = tid;
+				LPS[i]->worker_thread = local_tid;
 			}
 			i++;
 			j++;
@@ -227,16 +227,16 @@ static void install_binding(void) {
 	n_prc_per_thread = 0;
 
 	for(i = 0; i < n_prc; i++) {
-		if(new_LPS_binding[i] == tid) {
+		if(new_LPS_binding[i] == local_tid) {
 			LPS_bound[n_prc_per_thread++] = LPS[i];
 
-			if(tid != LPS[i]->worker_thread) {
+			if(local_tid != LPS[i]->worker_thread) {
 
 				#ifdef HAVE_NUMA
 				move_request(i, get_numa_node(running_core()));
 				#endif
 
-				LPS[i]->worker_thread = tid;
+				LPS[i]->worker_thread = local_tid;
 			}
 		}
 	}
@@ -299,7 +299,7 @@ void rebind_LPs(void) {
 		install_binding();
 
 		#ifdef HAVE_PREEMPTION
-		reset_min_in_transit(tid);
+		reset_min_in_transit(local_tid);
 		#endif
 
 		if(thread_barrier(&all_thread_barrier)) {
