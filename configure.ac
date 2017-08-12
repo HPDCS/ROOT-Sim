@@ -130,6 +130,20 @@ AC_SUBST([CFLAGS])
 AC_SUBST([CC])
 
 
+#----------------------------------------------------------------------------
+# Checks for doxygen, if asked to
+#----------------------------------------------------------------------------
+AC_ARG_WITH([doxygen],
+  [AS_HELP_STRING([--with-doxygen], [use doxygen to generate ROOT-Sim documentation.])],
+  [AC_CHECK_PROG([DOXYGEN], [doxygen], [doxygen])
+  case "$withval" in
+    yes) test -z "$DOXYGEN" && AC_MSG_ERROR([doxygen not found.]) ;;
+    no) DOXYGEN="" ;;
+    *)   AC_MSG_ERROR([Bad value ${withval} for --with-doxygen.]) ;;
+  esac])
+AM_CONDITIONAL([HAVE_DOXYGEN], [test -n "$DOXYGEN"])
+
+
 
 #----------------------------------------------------------------------------
 # Check for Operating System
@@ -157,6 +171,51 @@ case $host_os in
         AC_MSG_ERROR([Your platform is not currently supported])
         ;;
 esac
+
+
+
+#----------------------------------------------------------------------------
+# MPI checks
+#----------------------------------------------------------------------------
+# Do we have a useable MPI setup on the primary and/or secondary targets?
+# On Linux, by default, assumes mpicc and -m32/-m64
+# Note: this is a kludge in that it assumes the specified mpicc 
+# understands -m32/-m64 regardless of what is specified using
+# --with-mpicc=.
+MPI_CC="mpicc"
+
+
+
+AC_ARG_WITH(mpicc,
+  [AS_HELP_STRING([--with-mpicc=ARG], [use ARG as MPI-2 Compliant compiler.])],
+   MPI_CC=$withval
+)
+AC_SUBST(MPI_CC)
+
+
+
+## See if MPI_CC works 
+ac_mpi_found=no
+AC_MSG_CHECKING([for an MPI2-compliant C compiler and mpi.h])
+saved_CC=$CC
+OMPI_CC=gcc
+CC=$MPI_CC
+AC_LINK_IFELSE([AC_LANG_PROGRAM([[
+#include <mpi.h>
+#include <stdio.h>
+]], [[
+  int ni, na, nd, comb;
+  int r = MPI_Init(NULL,NULL);
+  r |= MPI_Type_get_envelope( MPI_INT, &ni, &na, &nd, &comb );
+  r |= MPI_Finalize();
+  return r;
+]])], [
+AC_MSG_RESULT([yes, $MPI_CC])
+ac_mpi_found=yes
+], [
+AC_MSG_RESULT([no])
+])
+CC=$saved_CC
 
 
 
@@ -261,6 +320,21 @@ AC_MSG_RESULT([no])
 #----------------------------------------------------------------------------
 
 
+# Disable MPI. This can be used only on a single parallel machine
+
+AC_ARG_ENABLE([mpi],
+    AS_HELP_STRING([--disable-mpi], [Disable User-Level Threads for LP scheduling]))
+
+AS_IF([test "x$enable_mpi" != "xno"], [
+  if test "x$ac_mpi_found" = "xyes"
+  then
+	AC_DEFINE([HAVE_MPI])
+	ac_have_mpi=yes
+	CC=$MPI_CC
+  fi
+])
+
+
 # Disable ULT. Everything is run in the same context, in the same stack
 
 AC_ARG_ENABLE([ult],
@@ -355,7 +429,7 @@ AC_MSG_RESULT([ok])
 
 # Generate Makefiles for all these subfolders
 #AC_OUTPUT
-AC_CONFIG_FILES([Makefile man/Makefile scripts/Makefile src/Makefile])
+AC_CONFIG_FILES([Makefile doc/Makefile doc/doxy.conf man/Makefile scripts/Makefile src/Makefile])
 AC_OUTPUT
 
 
@@ -488,6 +562,22 @@ else
 fi
 
 
+# Compose the message regarding MPI
+if test "x$ac_have_mpi" = "xyes"
+then
+	ac_mpi="Enabled using ${CC} (by default, use --disable-mpi if not wanted, --with-mpicc=ARG to change compiler)"
+else
+	ac_mpi="Disabled"
+	if test "x$ac_mpi_found" = "xno"
+	then
+		ac_mpi="${ac_mpi} (couldn't find/use the '${MPI_CC}' MPI compiler)"
+	else
+		ac_mpi="${ac_mpi} (disabled by the user)"
+	fi
+fi
+
+
+
 
 cat<<EOF
 
@@ -504,5 +594,6 @@ NUMA Subsystem............ : ${numa_subsystem}
 LP Preemption Support..... : ${ac_preemption}
 LP Rebinding.............. : ${ac_lp_rebinding}
 
+ROOT-Sim will be installed to: ${prefix}
 
 EOF

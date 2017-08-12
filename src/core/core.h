@@ -63,7 +63,7 @@
 #define MAX_LPs		16384		// This is 2^14
 
 /// Maximum event size (in bytes)
-#define MAX_EVENT_SIZE	128
+#define MAX_EVENT_SIZE	1120
 
 
 // XXX: this should be moved somewhere else...

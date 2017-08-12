@@ -163,7 +163,7 @@ fi
 # If partial compilation is invoked, simply call the compiler.
 # -c is actually included into CFLAGS
 if [[ $PARTIAL = 1 ]]; then
-	$CC $CFLAGS $SOURCES -DOnGVT=OnGVT_light -DProcessEvent=ProcessEvent_light -o $OUTNAME
+	OMPI_CC=gcc $CC $CFLAGS $SOURCES -DOnGVT=OnGVT_light -DProcessEvent=ProcessEvent_light -o $OUTNAME
 	exit 0
 fi
 
@@ -186,7 +186,7 @@ for f in $SOURCES; do
 	if [ "${f: -2:2}" = ".o" ]; then
 		mv $f $f.rs
 	else
-		$CC $CFLAGS -c $f -DOnGVT=OnGVT_light -DProcessEvent=ProcessEvent_light -o ${f/.c/.o.rs}
+		OMPI_CC=gcc $CC $CFLAGS -c $f -DOnGVT=OnGVT_light -DProcessEvent=ProcessEvent_light -o ${f/.c/.o.rs}
 	fi
 	check_term
 done
