@@ -26,7 +26,7 @@
 */
 
 #include <mm/dymelor.h>
-#include <mm/allocator.h>
+#include <mm/mm.h>
 #include <scheduler/scheduler.h>
 
 
@@ -38,7 +38,7 @@
 *
 */
 void dymelor_init(void) {
-	allocator_init(n_prc);
+	allocator_init();
 	recoverable_init();
 	unrecoverable_init();
 }
@@ -56,6 +56,7 @@ void dymelor_init(void) {
 void dymelor_fini(void){
 	recoverable_fini();
 	unrecoverable_fini();
+	allocator_fini();
 }
 
 
@@ -162,19 +163,13 @@ void malloc_state_init(bool recoverable, malloc_state *state) {
 * @return The new size
 */
 static size_t compute_size(size_t size){
-
-	// TODO: cambiare in qualcosa del tipo:
-	// size = (size + sizeof(size_t) + (align_to - 1)) & ~ (align_to - 1);
-
 	// Account for the space needed to keep the pointer to the malloc area
 	size += sizeof(long long);
-
 	size_t size_new;
 
-	size_new = MIN_CHUNK_SIZE;
-
-	while(size_new < size)
-		size_new *= 2;
+	size_new = POWEROF2(size);
+	if(size_new < MIN_CHUNK_SIZE)
+		size_new = MIN_CHUNK_SIZE;
 
 	return size_new;
 }
@@ -209,14 +204,17 @@ static void find_next_free(malloc_area *m_area){
 
 
 void *do_malloc(unsigned int lid, malloc_state *mem_pool, size_t size) {
-	
+
 	malloc_area *m_area, *prev_area;
 	void *ptr;
 	int bitmap_blocks, num_chunks;
 	size_t area_size;
 	bool is_recoverable;
-
 	int j;
+
+	#ifndef HAVE_PARALLEL_ALLOCATOR
+	(void)lid;
+	#endif
 
 	size = compute_size(size);
 
@@ -241,7 +239,7 @@ void *do_malloc(unsigned int lid, malloc_state *mem_pool, size_t size) {
 
 		if(mem_pool->num_areas == mem_pool->max_num_areas){
 
-			malloc_area *tmp;
+			malloc_area *tmp = NULL;
 
 			if ((mem_pool->max_num_areas << 1) > MAX_LIMIT_NUM_AREAS)
 				return NULL;
@@ -288,25 +286,27 @@ void *do_malloc(unsigned int lid, malloc_state *mem_pool, size_t size) {
 		area_size = sizeof(malloc_area *) + bitmap_blocks * BLOCK_SIZE * 2 + num_chunks * size;
 
 		#ifdef HAVE_PARALLEL_ALLOCATOR
+		//insert is recoverable in pool_get_memory (was in GLP)
 		m_area->self_pointer = (malloc_area *)pool_get_memory(lid, area_size);
 		#else
 		m_area->self_pointer = rsalloc(area_size);
+    bzero(m_area->self_pointer, area_size);
 		#endif
 
 		if(m_area->self_pointer == NULL){
+			printf("Is recoverable: ");
+			printf(is_recoverable ? "true\n" : "false\n");
 			rootsim_error(true, "DyMeLoR: error allocating space\n");
 		}
 
 		m_area->dirty_chunks = 0;
-		bzero(m_area->self_pointer, area_size);
-		
 		*(unsigned long long *)(m_area->self_pointer) = (unsigned long long)m_area;
 
 		m_area->use_bitmap = (unsigned int *)((char *)m_area->self_pointer + sizeof(malloc_area *));
 
 		m_area->dirty_bitmap = (unsigned int*)((char *)m_area->use_bitmap + bitmap_blocks * BLOCK_SIZE);
-		
-		m_area->area = (void *)((char*)m_area->use_bitmap + bitmap_blocks * BLOCK_SIZE * 2);	
+
+		m_area->area = (void *)((char*)m_area->use_bitmap + bitmap_blocks * BLOCK_SIZE * 2);
 	}
 
 	if(m_area->area == NULL) {
@@ -357,6 +357,10 @@ void *do_malloc(unsigned int lid, malloc_state *mem_pool, size_t size) {
 
 	// Keep track of the malloc_area which this chunk belongs to
 	*(unsigned long long *)ptr = (unsigned long long)m_area->self_pointer;
+
+	//printf("[%d] Ptr:%p \t size:%lu \t result:%p \n",lid,ptr,sizeof(long long),(void*)((char*)ptr + sizeof(long long)));
+
+
 	return (void*)((char*)ptr + sizeof(long long));
 }
 
@@ -366,7 +370,9 @@ void *do_malloc(unsigned int lid, malloc_state *mem_pool, size_t size) {
 // TODO: multiple checks on m_area->is_recoverable. The code should be refactored
 // TODO: lid non necessario qui
 void do_free(unsigned int lid, malloc_state *mem_pool, void *ptr) {
-	
+
+	(void)lid;
+
 	malloc_area * m_area;
 	int idx, bitmap_blocks;
 	size_t chunk_size;
@@ -425,7 +431,7 @@ void do_free(unsigned int lid, malloc_state *mem_pool, void *ptr) {
 		}
 
 		m_area->state_changed = 1;
-		
+
 		m_area->last_access = current_lvt;
 	}
 

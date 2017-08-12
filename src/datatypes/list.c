@@ -160,7 +160,7 @@ void dump_l(struct rootsim_list_node *n, size_t key_position) {
 
 char *__list_insert(unsigned int lid, void *li, unsigned int size, size_t key_position, void *data) {
 	struct rootsim_list_node *new_n;
-	
+
 	new_n = list_allocate_node(lid, size);
 	bzero(new_n, sizeof(struct rootsim_list_node) + size);
 	memcpy(&new_n->data, data, size);
@@ -196,6 +196,7 @@ char *__list_insert(unsigned int lid, void *li, unsigned int size, size_t key_po
 *           This is different from the container node, which is not exposed to the caller.
 */
 char *__list_place(unsigned int lid, void *li, size_t key_position, struct rootsim_list_node *new_n) {
+	(void)lid;
 
 	rootsim_list *l = (rootsim_list *)li;
 
@@ -421,6 +422,7 @@ char *__list_extract_by_content(unsigned int lid, void *li, unsigned int size, v
 	n->next = (void *)0xDEADC0DE;
 	n->prev = (void *)0xDEADC0DE;
 //	bzero(n->data, size);
+	memset(n->data, 0xe9, size);
 	ufree(lid, n);
 
 	l->size--;
@@ -575,12 +577,12 @@ void *list_allocate_node(unsigned int lid, size_t size) {
 
 void *list_allocate_node_buffer(unsigned int lid, size_t size) {
 	char *ptr;
-	
+
 	ptr = list_allocate_node(lid, size);
 
 	if(ptr == NULL)
 		return NULL;
-		
+
 	return (void *)(ptr + sizeof(struct rootsim_list_node));
 }
 

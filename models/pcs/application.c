@@ -11,6 +11,8 @@ unsigned int complete_calls = COMPLETE_CALLS;
 
 #define DUMMY_TA 500
 
+double ran;
+
 
 void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_type *event_content, unsigned int size, void *ptr) {
 	unsigned int w;
@@ -99,10 +101,10 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 			ScheduleNewEvent(me, timestamp, START_CALL, NULL, 0);
 
 			// If needed, start the first fading recheck
-//			if (state->fading_recheck) {
+			//if (state->fading_recheck) {
 				timestamp = (simtime_t) (FADING_RECHECK_FREQUENCY * Random());
 				ScheduleNewEvent(me, timestamp, FADING_RECHECK, NULL, 0);
-//			}
+		//	}
 
 			break;
 
@@ -120,6 +122,8 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 				new_event_content.channel = allocation(state);
 				new_event_content.from = me;
 				new_event_content.sent_at = now;
+
+//				printf("(%d) allocation %d at %f\n", me, new_event_content.channel, now);
 
 				// Determine call duration
 				switch (DURATION_DISTRIBUTION) {
@@ -200,12 +204,24 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 			deallocation(me, state, event_content->channel, now);
 
 			new_event_content.call_term_time =  event_content->call_term_time;
+      new_event_content.dummy = &(state->dummy);
+      new_event_content.from = me;
 			ScheduleNewEvent(event_content->cell, now, HANDOFF_RECV, &new_event_content, sizeof(new_event_content));
 			break;
 
-        	case HANDOFF_RECV:
+		case HANDOFF_RECV:
 			state->arriving_handoffs++;
 			state->arriving_calls++;
+
+      ran = Random();
+      printf("Generated random sample %f\n", ran);
+
+			if(me == 1 && ran < 0.3 && event_content->from == 2){//&& state->dummy_flag == false) {
+        //printf("Starting synch with %d\n", event_content->from);
+        fflush(stdout);
+				*(event_content->dummy) = 1;
+				state->dummy_flag = true;
+			}
 
 			if (state->channel_counter == 0)
 				state->blocked_on_handoff++;
@@ -214,6 +230,8 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 
 				new_event_content.channel = allocation(state);
 				new_event_content.call_term_time = event_content->call_term_time;
+
+//				printf("(%d) allocation %d at %f\n", me, new_event_content.channel, now);
 
 				switch (CELL_CHANGE_DISTRIBUTION) {
 					case UNIFORM:

@@ -42,7 +42,6 @@
 #include <mm/dymelor.h>
 #include <statistics/statistics.h>
 
-
 /// Function pointer to switch between the parallel and serial version of SetState
 void (*SetState)(void *new_state);
 
@@ -55,21 +54,24 @@ void (*SetState)(void *new_state);
 *
 * @param lid The Light Process Identifier
 */
-void LogState(unsigned int lid) {
+bool LogState(unsigned int lid) {
 
 	bool take_snapshot = false;
 	state_t new_state; // If inserted, list API makes a copy of this
 
 	if(is_blocked_state(LPS[lid]->state)) {
-		return;
+		//printf("avoidedd saving state %llu of LP %u\n",LPS[lid]->state,lid);
+    return take_snapshot;
 	}
 
 	// Keep track of the invocations to LogState
 	LPS[lid]->from_last_ckpt++;
 
 	if(LPS[lid]->state_log_forced) {
+    printf("(forced) ");
 		LPS[lid]->state_log_forced = false;
 		LPS[lid]->from_last_ckpt = 0;
+
 		take_snapshot = true;
 		goto skip_switch;
 	}
@@ -97,12 +99,15 @@ void LogState(unsigned int lid) {
 	// Shall we take a log?
 	if (take_snapshot) {
 
+    printf("LP %d taking snapshot at %f, bound with mark %llu rm %llu\n",
+          lid, lvt(lid), LPS[lid]->bound->mark, LPS[lid]->bound->rendezvous_mark);
+    fflush(stdout);
+
 		// Take a log and set the associated LVT
 		new_state.log = log_state(lid);
 		new_state.lvt = lvt(lid);
 		new_state.last_event = LPS[lid]->bound;
 		new_state.state = LPS[lid]->state;
-
 		// We take as the buffer state the last one associated with a SetState() call, if any
 		new_state.base_pointer = LPS[lid]->current_base_pointer;
 
@@ -110,6 +115,8 @@ void LogState(unsigned int lid) {
 		(void)list_insert_tail(lid, LPS[lid]->queue_states, &new_state);
 
 	}
+
+	return take_snapshot;
 }
 
 
@@ -117,6 +124,12 @@ void RestoreState(unsigned int lid, state_t *restore_state) {
 	log_restore(lid, restore_state);
 	LPS[lid]->current_base_pointer = restore_state->base_pointer;
 	LPS[lid]->state = restore_state->state;
+  //printf("ROLLBACKING LP %d TO STATE %llu\n",lid,LPS[lid]->state);
+  #ifdef HAVE_CROSS_STATE
+	LPS[lid]->ECS_index = 0;
+	LPS[lid]->wait_on_rendezvous = 0;
+	LPS[lid]->wait_on_object = 0;
+	#endif
 }
 
 
@@ -141,6 +154,9 @@ unsigned int silent_execution(unsigned int lid, void *state_buffer, msg_t *evt, 
 	old_state = LPS[lid]->state;
 	LPS[lid]->state = LP_STATE_SILENT_EXEC;
 
+//  printf("%llu - LP %d starting silent execution from %f to %f\n", CLOCK_READ(), lid, evt->timestamp, final_evt->timestamp);
+//  fflush(stdout);
+
 	// This is true if the restored state was taken after the new bound
 	if(evt == final_evt)
 		goto out;
@@ -151,21 +167,25 @@ unsigned int silent_execution(unsigned int lid, void *state_buffer, msg_t *evt, 
 	// Reprocess events. Outgoing messages are explicitly discarded, as this part of
 	// the simulation has been already executed at least once
 	while(evt != NULL && evt != final_evt) {
+//    printf("%llu - LP %d reprocessing evt %d at %f\n", CLOCK_READ(), lid, evt->type, evt->timestamp);
+    fflush(stdout);
 
-		if(!reprocess_control_msg(evt)) {
-			evt = list_next(evt);
-			continue;
-		}
+	  if(!reprocess_control_msg(evt)) {
+		  	evt = list_next(evt);
+			  continue;
+  		}
 
-		events++;
-
-		activate_LP(lid, evt->timestamp, evt, state_buffer);
+     events++;
+//  	printf("[%d] Old_state: %lu\n",lid,old_state);
+//    printf("EVT timestamp %f, FINALEVT timestamp %f, current time %f\n",evt->timestamp, final_evt->timestamp,lvt(lid));
+//		printf("while silent executing calling activate_lp for LP %u in state %u..\n",lid,LPS[lid]->state);
+    activate_LP(lid, evt->timestamp, evt, state_buffer);
 		evt = list_next(evt);
 	}
 
     out:
-	LPS[lid]->state = old_state;
-	return events;
+      LPS[lid]->state = old_state;
+      return events;
 }
 
 
@@ -182,7 +202,6 @@ unsigned int silent_execution(unsigned int lid, void *state_buffer, msg_t *evt, 
 * @param lid The Logical Process Id
 */
 void rollback(unsigned int lid) {
-
 	state_t *restore_state, *s;
 	msg_t *last_correct_event;
 	msg_t *last_restored_event;
@@ -195,6 +214,9 @@ void rollback(unsigned int lid) {
 		return;
 	}
 
+  printf("%llu - LP %d rolling back\n", CLOCK_READ(), lid);
+  fflush(stdout);
+
 	// Discard any possible execution state related to a blocked execution
 	#ifdef ENABLE_ULT
 	memcpy(&LPS[lid]->context, &LPS[lid]->default_context, sizeof(LP_context_t));
@@ -203,8 +225,7 @@ void rollback(unsigned int lid) {
 	statistics_post_lp_data(lid, STAT_ROLLBACK, 1.0);
 
 	last_correct_event = LPS[lid]->bound;
-
-	// Send antimessages
+  // Send antimessages
 	send_antimessages(lid, last_correct_event->timestamp);
 
 	// Find the state to be restored, and prune the wrongly computed states
@@ -216,16 +237,21 @@ void rollback(unsigned int lid) {
 		s->last_event = (void *)0xDEADC0DE;
 		list_delete_by_content(lid, LPS[lid]->queue_states, s);
 	}
-
 	// Restore the simulation state and correct the state base pointer
 	RestoreState(lid, restore_state);
 
 	last_restored_event = restore_state->last_event;
-	reprocessed_events = silent_execution(lid, LPS[lid]->current_base_pointer, last_restored_event, last_correct_event);
+  printf("While rollbacking,%d last restored event has ts: %f mark: %llu, rv mark: %llu\n",lid,last_restored_event->timestamp,last_restored_event->mark, last_restored_event->rendezvous_mark);
+  reprocessed_events = silent_execution(lid, LPS[lid]->current_base_pointer, last_restored_event, last_correct_event);
 	statistics_post_lp_data(lid, STAT_SILENT, (double)reprocessed_events);
 
+  // TODO: silent execution resets the LP state to the previous
+  // value, so it should be the last function to be called within rollback()
 	// Control messages must be rolled back as well
 	rollback_control_message(lid, last_correct_event->timestamp);
+
+  printf("%llu - LP %d rollback complete\n", CLOCK_READ(), lid);
+  fflush(stdout);
 }
 
 

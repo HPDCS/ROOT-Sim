@@ -108,7 +108,6 @@ static struct option long_options[] = {
 	{"sequential",		no_argument,		0, OPT_SERIAL},
 	{"no-core-binding",	no_argument,		0, OPT_NO_CORE_BINDING},
 
-	
 #ifdef HAVE_PREEMPTION
 	{"no-preemption",	no_argument,		0, OPT_PREEMPTION},
 #endif

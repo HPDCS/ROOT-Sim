@@ -1,0 +1,2 @@
+# chardev device
+KERNEL=="cross_state_manager", MODE="0644"

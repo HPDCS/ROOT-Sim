@@ -62,7 +62,7 @@ extern bool reprocess_control_msg(msg_t *);
 extern void rollback_control_message(unsigned int, simtime_t);
 extern bool anti_control_message(msg_t * msg);
 
-#ifdef  HAVE_LINUX_KERNEL_MAP_MODULE
+#ifdef  HAVE_CROSS_STATE
 extern void unblock_synchronized_objects(unsigned int);
 #endif
 

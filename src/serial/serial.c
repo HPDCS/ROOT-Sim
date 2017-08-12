@@ -27,7 +27,6 @@ void SerialSetState(void * state) {
 
 void SerialScheduleNewEvent(unsigned int rcv, simtime_t stamp, unsigned int event_type, void *event_content, unsigned int event_size) {
 	msg_t *event;
-
 	// Sanity checks
 	if(stamp < current_lvt) {
 		rootsim_error(true, "LP %d is trying to send events in the past. Current time: %f, scheduled time: %f\n", current_lp, current_lvt, stamp);
@@ -139,7 +138,7 @@ void serial_simulation(void) {
                         rootsim_error(true, "Error, LP %d has modified the payload of event %d during its processing. Aborting...\n", current_lp, event->type);
                 }
                 #endif
-		
+
 		current_lp = IDLE_PROCESS;
 
 		// Termination detection can happen only after the state is initialized

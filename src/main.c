@@ -35,12 +35,17 @@
 #include <core/core.h>
 #include <arch/thread.h>
 #include <statistics/statistics.h>
-#include <gvt/gvt.h>
 #include <gvt/ccgs.h>
 #include <scheduler/binding.h>
 #include <scheduler/scheduler.h>
 #include <scheduler/process.h>
+#include <gvt/gvt.h>
 #include <mm/dymelor.h>
+
+#ifdef HAVE_CROSS_STATE
+#include <mm/ecs.h>
+#endif
+
 #include <serial/serial.h>
 
 
@@ -93,7 +98,7 @@ static void *main_simulation_loop(void *arg) {
 
 	simtime_t my_time_barrier = -1.0;
 
-	#ifdef HAVE_LINUX_KERNEL_MAP_MODULE
+	#ifdef HAVE_CROSS_STATE
 	lp_alloc_thread_init();
 	#endif
 
@@ -131,9 +136,16 @@ static void *main_simulation_loop(void *arg) {
 				#else
 				printf("TIME BARRIER %f\n", my_time_barrier);
 				#endif
+
+        int xzy;
+        for(xzy = 0; xzy < n_prc_tot; xzy++) {
+          printf("LP %d in state %d\n", xzy, LPS[xzy]->state);
+        }
+
 				fflush(stdout);
 			}
 		}
+
 	}
 
 	// If we're exiting due to an error, we neatly shut down the simulation
@@ -157,11 +169,11 @@ static void *main_simulation_loop(void *arg) {
 int main(int argc, char **argv) {
 
 	SystemInit(argc, argv);
-	
+
 	if(rootsim_config.core_binding)
 		set_affinity(0);
 
-	if(rootsim_config.serial) {
+        if(rootsim_config.serial) {
 		serial_simulation();
 	} else {
 

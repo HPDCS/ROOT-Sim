@@ -6,6 +6,7 @@ install:
   - sudo apt-get install -qq automake pkg-config build-essential libtool automake autoconf m4 libnuma-dev numactl
 
 before_script:
+  - sudo chmod -R 644 /boot/
   - sudo ldconfig
   - autoupdate
   - m4 --version

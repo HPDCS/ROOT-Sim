@@ -247,11 +247,11 @@ static char *format_size(double size) {
 }
 
 
-static inline statistics_flush_gvt_buffer(void) {
+static inline void statistics_flush_gvt_buffer(void) {
 	FILE *f;
 
 	f = get_file(STAT_PER_THREAD, GVT_STAT);
-	fprintf(f, gvt_buffer.buff);
+	fprintf(f, "%s", gvt_buffer.buff);
 	fflush(f);
 	gvt_buffer.pos = 0;
 	gvt_buffer.buff[0] = '\0';
@@ -330,7 +330,7 @@ void statistics_stop(int exit_code) {
 			timer_start(simulation_finished);
 			total_time = timer_value_seconds(simulation_timer);
 		}
-		
+
 		/* Finish flushing GVT statistics */
 		statistics_flush_gvt_buffer();
 
@@ -566,7 +566,7 @@ static inline void statistics_flush_gvt(double gvt) {
 	// If we are using a higher level of statistics, buffer data and eventually dump on file
 	if(rootsim_config.stats == STATS_PERF || rootsim_config.stats == STATS_LP || rootsim_config.stats ==  STATS_ALL) {
 
-		snprintf(gvt_line, 512, "%f\t%f\t%d\t%d\n\0", exec_time, gvt, committed, cumulated);
+		snprintf(gvt_line, 512, "%f\t%f\t%d\t%d\n", exec_time, gvt, committed, cumulated);
 		gvt_line_len = strlen(gvt_line);
 
 		if(gvt_buffer.pos + gvt_line_len > GVT_BUFF_SIZE - 2) {

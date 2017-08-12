@@ -82,10 +82,9 @@ void communication_fini(void) {
 */
 void ParallelScheduleNewEvent(unsigned int gid_receiver, simtime_t timestamp, unsigned int event_type, void *event_content, unsigned int event_size) {
 	msg_t event;
-
 	switch_to_platform_mode();
 
-	// In Silent execution, we do not send again already sent messages
+  // In Silent execution, we do not send again already sent messages
 	if(LPS[current_lp]->state == LP_STATE_SILENT_EXEC) {
 		return;
 	}
@@ -101,10 +100,10 @@ void ParallelScheduleNewEvent(unsigned int gid_receiver, simtime_t timestamp, un
 		rootsim_error(true, "LP %u is trying to generate an event (type %d) to %u in the past! (Current LVT = %f, generated event's timestamp = %f) Aborting...\n", current_lp, event_type, gid_receiver, lvt(current_lp), timestamp);
 	}
 
-        // Check if the event type is mapped to an internal control message
-        if(event_type >= MIN_VALUE_CONTROL) {
-                rootsim_error(true, "LP %u is generating an event with type %d which is a reserved type. Switch event type to a value less than %d. Aborting...\n", current_lp, event_type, MIN_VALUE_CONTROL);
-        }
+  // Check if the event type is mapped to an internal control message
+  if(event_type >= MIN_VALUE_CONTROL) {
+          rootsim_error(true, "LP %u is generating an event with type %d which is a reserved type. Switch event type to a value less than %d. Aborting...\n", current_lp, event_type, MIN_VALUE_CONTROL);
+  }
 
 
 	// Copy all the information into the event structure
@@ -120,6 +119,8 @@ void ParallelScheduleNewEvent(unsigned int gid_receiver, simtime_t timestamp, un
 
 	if(event.type == RENDEZVOUS_START) {
 		event.rendezvous_mark = current_evt->rendezvous_mark;
+		printf("RENDEZVOUS_START mark=%llu\n",event.rendezvous_mark);
+		fflush(stdout);
 	}
 
 	if(event_size > MAX_EVENT_SIZE) {
@@ -134,6 +135,8 @@ void ParallelScheduleNewEvent(unsigned int gid_receiver, simtime_t timestamp, un
 
     out:
 	switch_to_application_mode();
+
+	//printf("--------------- SEND new event LP-sender:%d LP-receiver:%d type:%d\n",LidToGid(current_lp),gid_receiver,event.type);
 }
 
 
@@ -154,14 +157,19 @@ void send_antimessages(unsigned int lid, simtime_t after_simtime) {
 
 	msg_t msg;
 
+//	printf("send_antimessages lid: %d after: %f\n", lid, after_simtime);
+
 	if (list_empty(LPS[lid]->queue_out))
 		return;
 
 	// Get the first message header with a timestamp <= after_simtime
 	anti_msg = list_tail(LPS[lid]->queue_out);
-	while(anti_msg != NULL && anti_msg->send_time > after_simtime)
+//	printf("\tlid: %d %f (tail)\n", lid, (anti_msg != NULL ? anti_msg->timestamp : -1.0));
+//	while(anti_msg != NULL && anti_msg->send_time > after_simtime) {
+	while(anti_msg != NULL && anti_msg->send_time > after_simtime){
 		anti_msg = list_prev(anti_msg);
-
+		//printf("\tlid: %d %f\n", lid, (anti_msg != NULL ? anti_msg->timestamp : -1.0));
+	}
 	// The next event is the first event with a sendtime > after_simtime, if any.
 	// Explicitly consider the case in which all anti messages should be sent.
 	if(anti_msg == NULL && list_head(LPS[lid]->queue_out)->send_time <= after_simtime) {
@@ -172,16 +180,36 @@ void send_antimessages(unsigned int lid, simtime_t after_simtime) {
 		anti_msg = list_next(anti_msg);
 	}
 
+  //printf("\t lid: %d, anti msg type: %d\n",lid,anti_msg->type);
 	// Now send all antimessages
 	while(anti_msg != NULL) {
 		bzero(&msg, sizeof(msg_t));
 		msg.sender = anti_msg->sender;
 		msg.receiver = anti_msg->receiver;
+		msg.type = anti_msg->type;
 		msg.timestamp = anti_msg->timestamp;
 		msg.send_time = anti_msg->send_time;
 		msg.mark = anti_msg->mark;
 		msg.message_kind = negative;
-
+    //printf("what the fuck am i sending?%d\n",anti_msg->type);
+    /* printf("Message Content:" */
+							/* "sender: %d\n" */
+							/* "receiver: %d\n" */
+							/* "type: %d\n" */
+							/* "timestamp: %f\n" */
+							/* "send time: %f\n" */
+							/* "is antimessage %d\n" */
+							/* "mark: %llu\n" */
+							/* "rendezvous mark %llu\n\n", */
+							/* msg.sender, */
+							/* msg.receiver, */
+							/* msg.type, */
+							/* msg.timestamp, */
+							/* msg.send_time, */
+							/* msg.message_kind, */
+							/* msg.mark, */
+							/* msg.rendezvous_mark); */
+						/* fflush(stdout); */
 		Send(&msg);
 
 		// Remove the already sent antimessage from output queue
@@ -228,6 +256,29 @@ int comm_finalize(void) {
 * @author Francesco Quaglia
 */
 void Send(msg_t *msg) {
+
+/*
+						printf("Message Content:"
+							"sender: %d\n"
+							"receiver: %d\n"
+							"type: %d\n"
+							"timestamp: %f\n"
+							"send time: %f\n"
+							"is antimessage %d\n"
+							"mark: %llu\n"
+							"rendezvous mark %llu\n\n",
+							msg->sender,
+							msg->receiver,
+							msg->type,
+							msg->timestamp,
+							msg->send_time,
+							msg->message_kind,
+							msg->mark,
+							msg->rendezvous_mark);
+						fflush(stdout);
+*/
+  //if(msg->type < 0 && msg->message_kind == 1)
+   // printf("sender %d receiver % d antimessage %d randezvous mark %llu msg type %d\n",msg->sender, msg->receiver,msg->message_kind,msg->rendezvous_mark,msg->type);
 	// Check whether the message recepient is local or remote
 	if(GidToKernel(msg->receiver) == kid) { // is local
 		insert_bottom_half(msg);
@@ -307,7 +358,8 @@ int messages_checking(void) {
 		// Receive the message
 	    	(void)comm_recv((char*)&msg, sizeof(msg_t), MPI_CHAR, MPI_ANY_SOURCE, MSG_EVENT, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
-		// For GVT Operations
+		// For GVT Operations:0
+    //
 		gvt_messages_rcvd[GidToKernel(msg.sender)] += 1;
 
 
@@ -357,15 +409,19 @@ void send_outgoing_msgs(unsigned int lid) {
 	msg_hdr_t msg_hdr;
 
 	for(i = 0; i < LPS[lid]->outgoing_buffer.size; i++) {
-		msg = &LPS[lid]->outgoing_buffer.outgoing_msgs[i];
+		msg = &(LPS[lid]->outgoing_buffer.outgoing_msgs[i]);
 		Send(msg);
 
 		// Register the message in the sender's output queue, for antimessage management
+    bzero(&msg_hdr, sizeof(msg_hdr_t));
 		msg_hdr.sender = msg->sender;
 		msg_hdr.receiver = msg->receiver;
 		msg_hdr.timestamp = msg->timestamp;
 		msg_hdr.send_time = msg->send_time;
 		msg_hdr.mark = msg->mark;
+    msg_hdr.type = msg->type; //ADDED BY MATTEO
+    msg_hdr.rendezvous_mark = msg->rendezvous_mark;
+    //printf("sending msg header with type %d\n",msg->type);
 		(void)list_insert(lid, LPS[lid]->queue_out, send_time, &msg_hdr);
 	}
 

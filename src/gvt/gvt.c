@@ -34,9 +34,9 @@
 #include <core/timer.h>
 #include <scheduler/process.h>
 #include <scheduler/scheduler.h> // this is for n_prc_per_thread
+//#include <scheduler/binding.h> // this is for force_rebind_GLP
 #include <statistics/statistics.h>
 #include <mm/dymelor.h>
-
 
 enum kernel_phases {
     kphase_start,
@@ -52,7 +52,6 @@ enum thread_phases {
     tphase_aware,
     tphase_idle
 };
-
 
 // Timer to know when we have to start GVT computation.
 // Each thread could start the GVT reduction phase, so this
@@ -109,7 +108,6 @@ static __thread unsigned int my_GVT_round = 0;
 static simtime_t *local_min;
 
 static simtime_t *local_min_barrier;
-
 
 /**
 * Initialization of the GVT subsystem

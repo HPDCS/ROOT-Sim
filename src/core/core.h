@@ -63,7 +63,8 @@
 #define MAX_LPs		16384		// This is 2^14
 
 /// Maximum event size (in bytes)
-#define MAX_EVENT_SIZE	128
+//#define MAX_EVENT_SIZE	128
+#define MAX_EVENT_SIZE	600
 
 
 // XXX: this should be moved somewhere else...
@@ -125,7 +126,7 @@
 /// Macro to "legitimately" pun a type
 #define UNION_CAST(x, destType) (((union {__typeof__(x) a; destType b;})x).b)
 
-typedef enum {positive, negative, other} message_kind_t;
+typedef enum {positive, negative, control} message_kind_t;
 
 /// Message Type definition
 typedef struct _msg_t {
@@ -149,6 +150,10 @@ typedef struct _msg_hdr_t {
 	// Kernel's information
 	unsigned int   		sender;
 	unsigned int   		receiver;
+	// TODO: non serve davvero, togliere
+	int   			type;
+	unsigned long long	rendezvous_mark;	/// Unique identifier of the message, used for rendez-vous event
+	// TODO: fine togliere
 	simtime_t		timestamp;
 	simtime_t		send_time;
 	unsigned long long	mark;

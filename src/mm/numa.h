@@ -18,19 +18,35 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file bh-manager.h
-* @brief 
+* @file numa.h
+* @brief This module implements all the NUMA-oriented facilities of ROOT-Sim
 * @author Francesco Quaglia
 */
 
 #pragma once
+#ifndef _MAPMOVE_H
+#define _MAPMOVE_H
 
-#include <core/core.h>
+#ifdef HAVE_NUMA
 
-#define MAX_MSG_SIZE sizeof(msg_t)
-#define BH_PAGES	2000
-#define BH_SIZE      	(BH_PAGES * PAGE_SIZE) //this is in bytes
+#include <stdbool.h>
 
-void *get_buffer(int, int);
-void switch_bh(int);
+#define SLEEP_PERIOD 3 //this is defined in seconds
+#define NUMA_NODES   8 //numer of handled numa nodes
+
+#define unlikelynew(x)  (x!=-1)
+
+void numa_init(void);
+void numa_move_request(int, int);
+
+
+int verify(int);
+bool is_moving(void);
+int get_numa_node(int);
+void move_sobj(int, unsigned);
+void move_segment(unsigned);
+
+#endif /* HAVE_NUMA */
+
+#endif /* _MAPMOVE_H */
 

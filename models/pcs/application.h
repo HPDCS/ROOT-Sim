@@ -9,9 +9,9 @@
 
 
 #define CHECK_FADING_TIME	10
-#define COMPLETE_CALLS		500
+#define COMPLETE_CALLS		5000
 #ifndef TA
-#define TA			0.6
+#define TA			0.16
 #endif
 #define TA_DURATION		120
 #define CHANNELS_PER_CELL	1000
@@ -59,6 +59,7 @@ typedef struct _event_content_type {
 	simtime_t sent_at; // Simulation time at which the call was handed off
 	int channel; // Channel to be freed in case of END_CALL
 	simtime_t   call_term_time; // Termination time of the call (used mainly in HANDOFF_RECV)
+  int *dummy;
 } event_content_type;
 
 #define CROSS_PATH_GAIN		0.00000000000005
@@ -109,6 +110,8 @@ typedef struct _lp_state_type{
 
 	unsigned int *channel_state;
 	struct _channel *channels;
+	int dummy;
+	bool dummy_flag;
 } lp_state_type;
 
 

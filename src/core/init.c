@@ -437,6 +437,7 @@ void SystemInit(int argc, char **argv) {
 	// Initialize ROOT-Sim subsystems.
 	// All init routines are executed serially (there is no notion of threads in there)
 	// and the order of invocation can matter!
+
 	base_init();
 	statistics_init();
 	scheduler_init();
@@ -448,9 +449,5 @@ void SystemInit(int argc, char **argv) {
 	// This call tells the simulation engine that the sequential initial simulation is complete
 	initialization_complete();
 }
-
-
-
-
 
 
