@@ -60,13 +60,17 @@ static __thread bool first_lp_binding = true;
  */
 __thread LP_state **LPS_bound = NULL;
 
-static int binding_acquire_phase = 0;
-static __thread int local_binding_acquire_phase = 0;
 
 static unsigned int *new_LPS_binding;
 static timer rebinding_timer;
+
+#ifdef HAVE_LP_REBINDING
+static int binding_acquire_phase = 0;
+static __thread int local_binding_acquire_phase = 0;
+
 static int binding_phase = 0;
 static __thread int local_binding_phase = 0;
+#endif
 
 static atomic_t worker_thread_reduction;
 
@@ -196,6 +200,7 @@ static inline void LP_knapsack(void) {
 	}
 }
 
+#ifdef HAVE_LP_REBINDING
 
 static void post_local_reduction(void) {
 	unsigned int i;
@@ -233,6 +238,7 @@ static void install_binding(void) {
 	}
 }
 
+#endif
 
 
 /**
