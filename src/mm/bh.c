@@ -33,6 +33,7 @@
 #include <arch/atomic.h>
 #include <mm/bh.h>
 #include <mm/mm.h>
+#include <mm/dymelor.h>
 #include <datatypes/list.h>
 
 

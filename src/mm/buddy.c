@@ -32,6 +32,7 @@
 
 #include <mm/dymelor.h>
 #include <mm/mm.h>
+#include <mm/bh.h>
 
 
 static struct _buddy **buddies;
