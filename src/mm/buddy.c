@@ -70,7 +70,6 @@ void *get_pages(unsigned int lid){
   /* } */
   size_t node_size;
   void *current_bs;
-//  void *final_bs;
   unsigned idx;
   struct _buddy *self;
   int offset;
@@ -86,18 +85,13 @@ void *get_pages(unsigned int lid){
       node_size <<= 1;    /* node_size *= 2; */
 
       if (self->longest[idx] == 0) {
-          /* printf("longest[%d] = %zu with size: %zu\n", idx,self->longest[idx],node_size); */
 
           offset = (idx + 1) * node_size - self->size;
           current_bs = (void*)((char*)old_bs + offset*BUDDY_GRANULARITY);
           num_pages = node_size/PAGE_SIZE +1;
-//          final_bs = (void*)((char*)old_bs + offset*BUDDY_GRANULARITY + (node_size/PAGE_SIZE + 1)*BUDDY_GRANULARITY);
 
           while (num_pages != 0){
             current_bs = (void *)((char *)current_bs + BUDDY_GRANULARITY); //TODO: save those addresses to be returned. */
-            /* printf("\n\tCurrent page address is: %p target page address: %p, num of pages %d\n",old_bs,curr_bs,node_size/PAGE_SIZE); */
-            /* printf("\t\nallocated pages: %d  with address %p page size is: %d\n",num_pages,old_bs, PAGE_SIZE); */
-            //printf("\t\n base pointer is: %p, current address %p  ending address: %p, allocated size: %d, num of pages: %d\n", mem_areas[lid], current_bs, final_bs, node_size,num_pages);
             num_pages--;
           }
      }
@@ -171,14 +165,8 @@ static long long buddy_alloc(struct _buddy *self, size_t size) {
     }
     size = POWEROF2(size);
 
-    //if(size > 15000000)
-    //  printf("Buddy is mapping the request to %d bytes of memory\n", size);
-    fflush(stdout);
-
     unsigned idx = 0;
     if (self->longest[idx] < size) {
-    //    printf("NON C'HO MEMORIAAAAA\n");
-        fflush(stdout);
         return -1;
     }
 
@@ -192,8 +180,6 @@ static long long buddy_alloc(struct _buddy *self, size_t size) {
     self->longest[idx] = 0;
     int offset = (idx + 1) * node_size - self->size;
 
-    //if(size > 15000000)
- //     printf("occupied idx: %u with size: %zu, offset is: %d\n", idx,node_size,offset);
     while (idx) {
         idx = parent(idx);
         self->longest[idx] = max(self->longest[left_child(idx)], self->longest[right_child(idx)]);
@@ -239,41 +225,24 @@ static void buddy_free(struct _buddy *self, int offset) {
 }
 
 void *pool_get_memory(unsigned int lid, size_t size) {
-	long long offset, 
-            displacement;
+	long long offset,
+		displacement;
 	size_t fragments;
-
-  //printf("Requesting %d bytes of memory\n", size);
 
 	// Get a number of fragments to contain 'size' bytes
 	// The operation involves a fast positive integer round up
 	fragments = 1 + ((size - 1) / BUDDY_GRANULARITY);
-  offset = buddy_alloc(buddies[lid], fragments);
+	offset = buddy_alloc(buddies[lid], fragments);
 	displacement = offset * BUDDY_GRANULARITY;
 
-  if(offset == -1)
+	if(offset == -1)
 		return NULL;
 
-/*
-  void * ptr = (void *)((char *)mem_areas[lid] + displacement);
-  printf("(%d)[%d] pool_get_memory returns %p\n", tid, lid, ptr);
-  if(ptr < 0x50000000000 || 1) {
-    printf("\tsize: %lu\n", size);
-    printf("\tfragments: %lu\n", fragments);
-    printf("\toffset: %llu\n", offset);
-    printf("\tdisplacement: %llu\n", displacement);
-    printf("\tdisplacements[%d]: %llu\n", lid, displacements[lid]);
-    printf("\tmem_areas[%d]: %p\n", lid, mem_areas[lid]);
-  }
-*/
-  //if(size > 15000000)
-  //  abort();
+	if(displacements[lid] < offset){
+		displacements[lid] = offset;
+	}
 
-  if(displacements[lid] < offset){
-    displacements[lid] = offset;
-  }
-
-  return (void *)((char *)mem_areas[lid] + displacement);
+	return (void *)((char *)mem_areas[lid] + displacement);
 }
 
 
@@ -316,20 +285,17 @@ bool allocator_init(void) {
 	// These are a vector of pointers which are later initialized
 	buddies = rsalloc(sizeof(struct _buddy *) * n_prc);
 	mem_areas = rsalloc(sizeof(void *) * n_prc);
-  displacements = rsalloc(sizeof(long long) *n_prc);
-  //printf("Initializing LP memory allocator... ");
+	displacements = rsalloc(sizeof(long long) *n_prc);
 
-  segment_allocator_init(n_prc); //ADDED BY MATTEO.
+	segment_allocator_init(n_prc); //ADDED BY MATTEO.
 
-  for (i = 0; i < n_prc; i++){
-    displacements[i] = 0;
+	for (i = 0; i < n_prc; i++){
+		displacements[i] = 0;
 		buddies[i] = buddy_new(PER_LP_PREALLOCATED_MEMORY / BUDDY_GRANULARITY);
 		mem_areas[i] = get_base_pointer(i);
-    if(mem_areas[i] == NULL)
+		if(mem_areas[i] == NULL)
 			rootsim_error(true, "Unable to initialize memory for LP %d. Aborting...\n",i);
 	}
-
-	//printf("done\n");
 
 #ifdef HAVE_NUMA
 	numa_init();
@@ -341,5 +307,3 @@ bool allocator_init(void) {
 
 	return true;
 }
-
-

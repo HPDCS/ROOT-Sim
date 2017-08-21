@@ -40,18 +40,13 @@
 
 
 #include <core/core.h>
-#include <core/timer.h>
-//#include <mm/malloc.h>
-//#include <mm/allocator.h> COMMENTED BY MATTEO
 #include <mm/dymelor.h>
 #include <mm/mm.h>
 #include <scheduler/scheduler.h>
 #include <scheduler/process.h>
 #include <arch/ult.h>
 
-//TODO MN
 #include <arch/linux/modules/cross_state_manager/cross_state_manager.h>
-//#include <mm/allocator_ecs.h> COMMENTED BY MATTEO
 
 void (*callback_function)(void);
 
@@ -72,14 +67,10 @@ void ECS(long long ds, unsigned long long hitted_object){
 	msg_t control_msg;
 	msg_hdr_t msg_hdr;
 
-
-  //printf("LP %d synching with LP %d at time %f\n", current_lp, hitted_object, current_lvt);
-  fflush(stdout);
-
-
 	if(LPS[current_lp]->state == LP_STATE_SILENT_EXEC) {
-		rootsim_error(true,"%llu - ----ERROR---- ECS in Silent Execution LP[%d] Hit:%llu Timestamp:%f\n",CLOCK_READ(), current_lp,hitted_object,current_lvt);
-  }
+		rootsim_error(true,"%llu - ----ERROR---- ECS in Silent Execution LP[%d] Hit:%llu Timestamp:%f\n",
+			CLOCK_READ(), current_lp,hitted_object,current_lvt);
+ }
 
 	// do whatever you want, but you need to reopen access to the objects you cross-depend on before returning
 
@@ -101,30 +92,23 @@ void ECS(long long ds, unsigned long long hitted_object){
 	bzero(&control_msg, sizeof(msg_t));
 	control_msg.sender = LidToGid(current_lp);
 	control_msg.receiver = LidToGid(hitted_object);
-  control_msg.type = RENDEZVOUS_START;
+	control_msg.type = RENDEZVOUS_START;
 	control_msg.timestamp = current_lvt;
 	control_msg.send_time = current_lvt;
 	control_msg.message_kind = positive;
 	control_msg.rendezvous_mark = current_evt->rendezvous_mark;
 	control_msg.mark = generate_mark(current_lp);
 
-	printf("ECS_stub lp %d in state %d sends to lp %d START with mark %llu for event with mark %llu and timestamp %f\n", current_lp, LPS[current_lp]->state, hitted_object, control_msg.rendezvous_mark, current_evt->mark,current_evt->timestamp);
-
 	// This message must be stored in the output queue as well, in case this LP rollbacks
 	bzero(&msg_hdr, sizeof(msg_hdr_t));
 	msg_hdr.sender = control_msg.sender;
 	msg_hdr.receiver = control_msg.receiver;
-  msg_hdr.type = RENDEZVOUS_START;
+	msg_hdr.type = RENDEZVOUS_START;
 	msg_hdr.timestamp = control_msg.timestamp;
 	msg_hdr.send_time = control_msg.send_time;
 	msg_hdr.mark = control_msg.mark;
 	msg_hdr.rendezvous_mark = control_msg.rendezvous_mark;
 	(void)list_insert(current_lp, LPS[current_lp]->queue_out, send_time, &msg_hdr);
-
-	/*fprintf(stdout, "placing a START message in output queue from %d to %d at %f sendtime %f mark %llu rendezvous %llu\n",
-			msg_hdr.sender, msg_hdr.receiver, msg_hdr.timestamp, msg_hdr.send_time, msg_hdr.mark, msg_hdr.rendezvous_mark
-		);*/
-
 
 	// Block the execution of this LP
 	LPS[current_lp]->state = LP_STATE_WAIT_FOR_SYNCH;
@@ -139,33 +123,34 @@ void ECS(long long ds, unsigned long long hitted_object){
 	long_jmp(&kernel_context, kernel_context.rax);
 }
 
+
 // inserire qui tutte le api di schedulazione/deschedulazione
 
 void lp_alloc_thread_init(void) {
-		void *ptr;
+	void *ptr;
 
-        ioctl_fd = open("/dev/ktblmgr", O_RDONLY);
-        if (ioctl_fd == -1) {
-                rootsim_error(true, "Error in opening special device file. ROOT-Sim is compiled for using the ktblmgr linux kernel module, which seems to be not loaded.");
-        }
+	ioctl_fd = open("/dev/ktblmgr", O_RDONLY);
+	if (ioctl_fd == -1) {
+		rootsim_error(true, "Error in opening special device file. ROOT-Sim is compiled for using the ktblmgr linux kernel module, which seems to be not loaded.");
+	}
 
-        ioctl(ioctl_fd, IOCTL_SET_ANCESTOR_PGD);  //ioctl call
+	ioctl(ioctl_fd, IOCTL_SET_ANCESTOR_PGD);  //ioctl call
 
-        lp_memory_ioctl_info.ds = -1;
-        ptr = get_base_pointer(0); // LP 0 is the first allocated one, and it's memory stock starts from the beginning of the PML4
-        lp_memory_ioctl_info.addr = ptr;
-        lp_memory_ioctl_info.mapped_processes = n_prc;
+	lp_memory_ioctl_info.ds = -1;
+	ptr = get_base_pointer(0); // LP 0 is the first allocated one, and it's memory stock starts from the beginning of the PML4
+	lp_memory_ioctl_info.addr = ptr;
+	lp_memory_ioctl_info.mapped_processes = n_prc;
 
-        callback_function =  rootsim_cross_state_dependency_handler;
-        lp_memory_ioctl_info.callback = callback_function;
+	callback_function =  rootsim_cross_state_dependency_handler;
+	lp_memory_ioctl_info.callback = callback_function;
 
-        // TODO: this function is called by each worker thread. Does calling SET_VM_RANGE cause
-        // a memory leak into kernel space?
+	// TODO: this function is called by each worker thread. Does calling SET_VM_RANGE cause
+  // a memory leak into kernel space?
 
-        ioctl(ioctl_fd, IOCTL_SET_VM_RANGE, &lp_memory_ioctl_info);
+	ioctl(ioctl_fd, IOCTL_SET_VM_RANGE, &lp_memory_ioctl_info);
 
-      	/* required to manage the per-thread memory view */
-      	pgd_ds = ioctl(ioctl_fd, IOCTL_GET_PGD);  //ioctl call
+	/* required to manage the per-thread memory view */
+	pgd_ds = ioctl(ioctl_fd, IOCTL_GET_PGD);  //ioctl call
 }
 
 /* void lp_alloc_schedule(void) { */
@@ -197,11 +182,11 @@ void lp_alloc_thread_init(void) {
 void lp_alloc_schedule(void) {
 
 	ioctl_info sched_info;
-  bzero(&sched_info, sizeof(ioctl_info));
-	
+	bzero(&sched_info, sizeof(ioctl_info));
+
 	sched_info.ds = pgd_ds; // this is current
 	sched_info.count = LPS[current_lp]->ECS_index + 1; // it's a counter
-	sched_info.objects = LPS[current_lp]->ECS_synch_table; // pgd descriptor range from 0 to number threads - a subset of object ids 
+	sched_info.objects = LPS[current_lp]->ECS_synch_table; // pgd descriptor range from 0 to number threads - a subset of object ids
 
 	/* passing into LP mode - here for the pgd_ds-th LP */
 	ioctl(ioctl_fd,IOCTL_SCHEDULE_ON_PGD, &sched_info);
@@ -215,8 +200,6 @@ void lp_alloc_deschedule(void) {
 	/* reaccessing their state will give rise to traps (if not scheduled again) */
 	ioctl(ioctl_fd,IOCTL_UNSCHEDULE_ON_PGD, pgd_ds);
 }
-
-
 
 
 void lp_alloc_thread_fini(void) {

@@ -54,8 +54,6 @@ void fossil_collection(unsigned int lid, simtime_t time_barrier) {
 	msg_t *last_kept_event;
 	double committed_events;
 
-//  printf("Fossil Collection for LP %d\n", lid);
-
 	// State list must be handled differently, as nodes point to malloc'd
 	// nodes. We therefore manually scan the list and free the memory.
 	while( (state = list_head(LPS[lid]->queue_states)) != NULL && state->lvt < time_barrier) {
