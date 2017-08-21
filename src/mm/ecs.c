@@ -142,7 +142,7 @@ void lp_alloc_thread_init(void) {
 	lp_memory_ioctl_info.mapped_processes = n_prc;
 
 	callback_function =  rootsim_cross_state_dependency_handler;
-	lp_memory_ioctl_info.callback = callback_function;
+	lp_memory_ioctl_info.callback = (ulong) callback_function;
 
 	// TODO: this function is called by each worker thread. Does calling SET_VM_RANGE cause
   // a memory leak into kernel space?
