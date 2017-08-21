@@ -290,7 +290,7 @@ void *do_malloc(unsigned int lid, malloc_state *mem_pool, size_t size) {
 		m_area->self_pointer = (malloc_area *)pool_get_memory(lid, area_size);
 		#else
 		m_area->self_pointer = rsalloc(area_size);
-    bzero(m_area->self_pointer, area_size);
+		bzero(m_area->self_pointer, area_size);
 		#endif
 
 		if(m_area->self_pointer == NULL){
