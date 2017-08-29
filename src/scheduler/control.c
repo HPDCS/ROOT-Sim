@@ -49,7 +49,6 @@ void unblock_synchronized_objects(unsigned int lid) {
 		control_msg.message_kind = positive;
 		control_msg.rendezvous_mark = LPS[lid]->wait_on_rendezvous;
 		Send(&control_msg);
-
 	}
 
 	LPS[lid]->wait_on_rendezvous = 0;
@@ -79,17 +78,15 @@ void rollback_control_message(unsigned int lid, simtime_t simtime) {
 		// Control antimessage
 		bzero(&control_antimessage, sizeof(msg_t));
 		control_antimessage.type = RENDEZVOUS_ROLLBACK;
-    control_antimessage.sender = msg->receiver;
-    control_antimessage.receiver = msg->sender;
-    control_antimessage.timestamp = msg->timestamp;
-    control_antimessage.send_time = msg->send_time;
+		control_antimessage.sender = msg->receiver;
+		control_antimessage.receiver = msg->sender;
+		control_antimessage.timestamp = msg->timestamp;
+		control_antimessage.send_time = msg->send_time;
 		control_antimessage.rendezvous_mark = msg->rendezvous_mark;
-    control_antimessage.message_kind = control;
+		control_antimessage.message_kind = control;
 
-    Send(&control_antimessage);
-    printf("Sending RENDEZVOUS_ROLLBACK for %llu STATE OF RECEIVER (%d) IS %llu, OF SENDER (%d) IS %llu\n",msg->rendezvous_mark,msg->sender,LPS[msg->sender]->state,msg->receiver,LPS[msg->receiver]->state);
-		//LPS[msg->sender] = LP_STATE_READY;
-    msg_prev = list_prev(msg);
+		Send(&control_antimessage);
+		msg_prev = list_prev(msg);
 		list_delete_by_content(lid, LPS[lid]->rendezvous_queue, msg);
 		msg = msg_prev;
 	}
@@ -97,16 +94,14 @@ void rollback_control_message(unsigned int lid, simtime_t simtime) {
 
 // return false if the antimessage is recognized (and processed) as a control antimessage
 bool anti_control_message(msg_t * msg) {
-	#ifndef HAVE_CROSS_STATE
+#ifndef HAVE_CROSS_STATE
 	(void)msg;
-	#else
+#else
 	msg_t *old_rendezvous ;
 
 	if(msg->type == RENDEZVOUS_ROLLBACK) {
 
 		unsigned int lid_receiver = msg->receiver;
-    printf("LP %d received an anti control message from LP %d with mark %llu in state: %d\n",msg->receiver,msg->sender,msg->rendezvous_mark,LPS[msg->receiver]->state);
-    fflush(stdout);
 		//Check if a relative message exists
 		//TODO non serve andare indietro più del tempo di rendezvous_rollback (VERO!!! Ma in quel caso devo uscire dal ciclo con old_rendezvous == NULL per cadere nell'if successivo)
 		old_rendezvous = list_tail(LPS[lid_receiver]->queue_in);
@@ -123,14 +118,14 @@ bool anti_control_message(msg_t * msg) {
 
 			//Set LP->bound to the message that caused ECS
 			LPS[lid_receiver]->bound = list_prev(old_rendezvous);
-      while (LPS[lid_receiver]->bound != NULL && LPS[lid_receiver]->bound->timestamp >= old_rendezvous->timestamp) {
-//        if(list_prev(LPS[lid_receiver]->bound) == NULL) {
-//          break;
-//        }
+			while (LPS[lid_receiver]->bound != NULL && LPS[lid_receiver]->bound->timestamp >= old_rendezvous->timestamp) {
+				//        if(list_prev(LPS[lid_receiver]->bound) == NULL) {
+				//          break;
+				//        }
 				LPS[lid_receiver]->bound = list_prev(LPS[lid_receiver]->bound);
-      }
+			}
 
-      LPS[lid_receiver]->state = LP_STATE_ROLLBACK;
+			LPS[lid_receiver]->state = LP_STATE_ROLLBACK;
 		}
 
 		old_rendezvous->rendezvous_mark = 0;
@@ -145,7 +140,7 @@ bool anti_control_message(msg_t * msg) {
 
 		return false;
 	}
-	#endif
+#endif
 
 	return true;
 }
@@ -167,77 +162,40 @@ bool receive_control_msg(msg_t *msg) {
 		return true;
 	}
 
-  printf("LP %d processing a control message %d\n", msg->receiver, msg->type);
-  fflush(stdout);
-
-	#ifdef  HAVE_CROSS_STATE
+#ifdef  HAVE_CROSS_STATE
 	switch(msg->type) {
-//	  msg_t control_msg;
 
 		case RENDEZVOUS_START:
 			return true;
 
 		case RENDEZVOUS_ACK:
-
-			//printf("(%d) matched mark:%llu WOR:%llu state:%d from %d\n",msg->receiver, msg->rendezvous_mark,LPS[msg->receiver]->wait_on_rendezvous, LPS[msg->receiver]->state, msg->sender);
-
-			if(	LPS[msg->receiver]->state == LP_STATE_ROLLBACK ||LPS[msg->receiver]->state == LP_STATE_SILENT_EXEC) {
-			  printf("LP %d is rollbacking/silentexec and received an ACK for rendezvous %llu. Discarding...\n",msg->receiver,msg->rendezvous_mark);
-        fflush(stdout);
-        break;
+			if(LPS[msg->receiver]->state == LP_STATE_ROLLBACK ||
+					LPS[msg->receiver]->state == LP_STATE_SILENT_EXEC) {
+				break;
 			}
 			if(LPS[msg->receiver]->wait_on_rendezvous == msg->rendezvous_mark) {
 				LPS[msg->receiver]->state = LP_STATE_READY_FOR_SYNCH;
-        printf("LP %d received ack from LP %d for rendezvous %llu\n",msg->receiver,msg->sender,msg->rendezvous_mark);
-        fflush(stdout);
 			}
 
 			break;
 
 		case RENDEZVOUS_UNBLOCK:
-
-      printf("---------> %llu - LP %d unblocking after ECS\n", CLOCK_READ(), msg->receiver);
-      fflush(stdout);
-
-      if(	LPS[msg->receiver]->state == LP_STATE_ROLLBACK ||
-				LPS[msg->receiver]->state == LP_STATE_SILENT_EXEC
-			)  {
-				printf("%llu - (%d) discarding mark %llu\n",CLOCK_READ(), msg->receiver, msg->rendezvous_mark);
-        fflush(stdout);
+			if(LPS[msg->receiver]->state == LP_STATE_ROLLBACK ||
+				LPS[msg->receiver]->state == LP_STATE_SILENT_EXEC)  {
 				break;
 			}
 
 			if(LPS[msg->receiver]->wait_on_rendezvous == msg->rendezvous_mark) {
-
-				//printf("%llu - (%d) matched mark %llu from %d\n",CLOCK_READ(), msg->receiver, msg->rendezvous_mark, msg->sender);
-        printf("LP %d being unblocked by LP %d\n",msg->receiver,msg->sender);
-        fflush(stdout);
 				LPS[msg->receiver]->wait_on_rendezvous = 0;
-        LPS[msg->receiver]->state = LP_STATE_READY;
-
+				LPS[msg->receiver]->state = LP_STATE_READY;
 			}
-       else {
-				printf("%llu - (%d) wait on rendezvous: %llu - mark: %llu - unblock from %d\n",CLOCK_READ(), msg->receiver, LPS[msg->receiver]->wait_on_rendezvous, msg->rendezvous_mark, msg->sender);
-			}
-        current_lp = GidToLid(msg->receiver);
-        //current_lp = msg->receiver;
-  			current_lvt = msg->timestamp;
-			  force_LP_checkpoint(current_lp);
-		  	LogState(current_lp);
-	  		current_lvt = INFTY;
-  			current_lp = IDLE_PROCESS;
-        printf("%llu - Lp %d has taken a snapshot, after concluding ECS at time %f\n", CLOCK_READ(), msg->receiver, msg->timestamp);
-
-        fflush(stdout);
-
-				/* current_lp = msg->receiver; */
-				/* current_lvt = msg->timestamp; */
-				/* force_LP_checkpoint(current_lp); */
-
-				/* LogState(current_lp); */
-
-				/* current_lvt = INFTY; */
-				/* current_lp = IDLE_PROCESS; */
+			
+			current_lp = GidToLid(msg->receiver);
+			current_lvt = msg->timestamp;
+			force_LP_checkpoint(current_lp);
+			LogState(current_lp);
+			current_lvt = INFTY;
+			current_lp = IDLE_PROCESS;
 
 			break;
 
@@ -248,7 +206,7 @@ bool receive_control_msg(msg_t *msg) {
 			rootsim_error(true, "Trying to handle a control message which is meaningless at receive time: %d\n", msg->type);
 
 	}
-	#endif
+#endif
 
 	return false;
 }
@@ -257,15 +215,15 @@ bool receive_control_msg(msg_t *msg) {
 // return true if must be passed to the LP
 bool process_control_msg(msg_t *msg) {
 
-	#ifdef HAVE_CROSS_STATE
+#ifdef HAVE_CROSS_STATE
 	msg_t control_msg;
-	#endif
+#endif
 
 	if(msg->type < MIN_VALUE_CONTROL || msg->type > MAX_VALUE_CONTROL) {
 		return true;
 	}
 
-	#ifdef HAVE_CROSS_STATE
+#ifdef HAVE_CROSS_STATE
 	switch(msg->type) {
 
 		case RENDEZVOUS_START:
@@ -274,7 +232,7 @@ bool process_control_msg(msg_t *msg) {
 			LPS[msg->receiver]->wait_on_rendezvous = msg->rendezvous_mark;
 
 			LPS[msg->receiver]->state = LP_STATE_WAIT_FOR_UNBLOCK;
-      bzero(&control_msg, sizeof(msg_t));
+			bzero(&control_msg, sizeof(msg_t));
 			control_msg.sender = msg->receiver;
 			control_msg.receiver = msg->sender;
 			control_msg.type = RENDEZVOUS_ACK;
@@ -284,29 +242,13 @@ bool process_control_msg(msg_t *msg) {
 			control_msg.rendezvous_mark = msg->rendezvous_mark;
 			Send(&control_msg);
 
-      printf("LP %d is ACKing a rendezvous toward LP %d with mark %llu\n",control_msg.sender,control_msg.receiver,control_msg.rendezvous_mark);
-      fflush(stdout);
 			break;
-/* //TODO MN DEBUG case RENDEZVOUS_ACK and UNBLOCK  was noted */
-/* 		case RENDEZVOUS_ACK: */
-/*       LPS[msg->receiver]->state = LP_STATE_READY_FOR_SYNCH; */
-/* 			printf("WTF??\n"); */
-/*       return true; */
-
-/* 		case RENDEZVOUS_UNBLOCK: */
-/*       LPS[msg->receiver]->state = LP_STATE_READY; */
-/*       printf("WTF??\n"); */
-/* 			break; */
-
-		/* case NULL_LOG_MESSAGE: */
-/* //			printf("[%d] process NULL_LOG_MESSAGE log-counter:%d \n",msg->receiver,GLPS[LPS[msg->receiver]->current_group]->counter_log); */
-		/* 	break; */
 
 		default:
 			rootsim_error(true, "Trying to handle a control message which is meaningless at schedule time: %d\n", msg->type);
 
 	}
-	#endif
+#endif
 
 	return false;
 }

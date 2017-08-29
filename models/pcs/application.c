@@ -204,8 +204,8 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 			deallocation(me, state, event_content->channel, now);
 
 			new_event_content.call_term_time =  event_content->call_term_time;
-      new_event_content.dummy = &(state->dummy);
-      new_event_content.from = me;
+			new_event_content.dummy = &(state->dummy);
+			new_event_content.from = me;
 			ScheduleNewEvent(event_content->cell, now, HANDOFF_RECV, &new_event_content, sizeof(new_event_content));
 			break;
 
@@ -213,12 +213,9 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 			state->arriving_handoffs++;
 			state->arriving_calls++;
 
-      ran = Random();
-      printf("Generated random sample %f\n", ran);
+			ran = Random();
 
 			if(me == 1 && ran < 0.3 && event_content->from == 2){//&& state->dummy_flag == false) {
-        //printf("Starting synch with %d\n", event_content->from);
-        fflush(stdout);
 				*(event_content->dummy) = 1;
 				state->dummy_flag = true;
 			}
@@ -231,7 +228,6 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 				new_event_content.channel = allocation(state);
 				new_event_content.call_term_time = event_content->call_term_time;
 
-//				printf("(%d) allocation %d at %f\n", me, new_event_content.channel, now);
 
 				switch (CELL_CHANGE_DISTRIBUTION) {
 					case UNIFORM:
@@ -244,7 +240,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 						break;
 					default:
 						handoff_time = now+
-			    			(simtime_t) (5 * Random());
+						(simtime_t) (5 * Random());
 				}
 
 				if(new_event_content.call_term_time < handoff_time ) {
@@ -259,7 +255,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 			break;
 
 
-		case FADING_RECHECK:
+				case FADING_RECHECK:
 
 /*
 			if(state->check_fading)

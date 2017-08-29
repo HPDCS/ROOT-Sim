@@ -178,25 +178,6 @@ restart:
 
 			lid_receiver = GidToLid(msg_to_process->receiver);
 
-						/*printf("Message Content:"
-							"sender: %d\n"
-							"receiver: %d\n"
-							"type: %d\n"
-							"timestamp: %f\n"
-							"send time: %f\n"
-							"is antimessage %d\n"
-							"mark: %llu\n"
-							"rendezvous mark %llu\n\n",
-							msg_to_process->sender,
-							msg_to_process->receiver,
-							msg_to_process->type,
-							msg_to_process->timestamp,
-							msg_to_process->send_time,
-							msg_to_process->message_kind,
-							msg_to_process->mark,
-							msg_to_process->rendezvous_mark);
-						fflush(stdout);*/
-
 			if(msg_to_process->timestamp < get_last_gvt())
 				printf("ERRORE\n");
 
@@ -229,7 +210,7 @@ restart:
 
 					if(matched_msg == NULL) {
 						rootsim_error(false, "LP %d Received an antimessage with mark %llu at LP %u from LP %u, but no such mark found in the input queue!\n", LPS_bound[i]->lid, msg_to_process->mark, msg_to_process->receiver, msg_to_process->sender);
-						/*printf("Message Content:"
+						printf("Message Content:"
 							"sender: %d\n"
 							"receiver: %d\n"
 							"type: %d\n"
@@ -246,7 +227,7 @@ restart:
 							msg_to_process->message_kind,
 							msg_to_process->mark,
 							msg_to_process->rendezvous_mark);
-						fflush(stdout);*/
+						fflush(stdout);
 						abort();
 					} else {
 
@@ -258,15 +239,12 @@ restart:
 //							}
 
 							LPS[lid_receiver]->bound = list_prev(matched_msg);
-							while ((LPS[lid_receiver]->bound != NULL) &&
-							       D_EQUAL(LPS[lid_receiver]->bound->timestamp, msg_to_process->timestamp)){
-                LPS[lid_receiver]->bound = list_prev(LPS[lid_receiver]->bound);
+							while((LPS[lid_receiver]->bound != NULL) &&
+									D_EQUAL(LPS[lid_receiver]->bound->timestamp, msg_to_process->timestamp)){
+								LPS[lid_receiver]->bound = list_prev(LPS[lid_receiver]->bound);
 							}
 
 							LPS[lid_receiver]->state = LP_STATE_ROLLBACK;
-
-              printf("%llu - Process %d set to STATE_ROLLBACK due to msg from %d at time %f type %d (antimessage)\n", CLOCK_READ(), lid_receiver, msg_to_process->sender, msg_to_process->timestamp, msg_to_process->type);
-              fflush(stdout);
 
 						}
 
@@ -286,15 +264,12 @@ restart:
 					if(msg_to_process->timestamp < lvt(lid_receiver)) {
 
 						LPS[lid_receiver]->bound = list_prev(msg_to_process);
-						while ((LPS[lid_receiver]->bound != NULL) &&
-						  D_EQUAL(LPS[lid_receiver]->bound->timestamp, msg_to_process->timestamp)){
+						while((LPS[lid_receiver]->bound != NULL) &&
+								D_EQUAL(LPS[lid_receiver]->bound->timestamp, msg_to_process->timestamp)){
 							LPS[lid_receiver]->bound = list_prev(LPS[lid_receiver]->bound);
 						}
 
 						LPS[lid_receiver]->state = LP_STATE_ROLLBACK;
-              printf("%llu - Process %d set to STATE_ROLLBACK due to msg from %d at time %f type %d (straggler)\n", CLOCK_READ(), lid_receiver, msg_to_process->sender, msg_to_process->timestamp, msg_to_process->type);
-              fflush(stdout);
-
 					}
 
 					break;
