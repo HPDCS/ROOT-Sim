@@ -90,6 +90,7 @@ rootsim_cross_state_dependency_handler:
 //	movq 40(%rsp), %rsi
 	movq 40(%rsp), %rdi
 	movq 48(%rsp), %rsi
+	movq 88(%rsp), %rdx
 	call ECS
 
 	add $8, %rsp

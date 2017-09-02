@@ -45,6 +45,7 @@
 #include <scheduler/scheduler.h>
 #include <scheduler/process.h>
 #include <arch/ult.h>
+#include <arch/x86.h>
 
 #include <arch/linux/modules/cross_state_manager/cross_state_manager.h>
 
@@ -61,16 +62,22 @@ static __thread int pgd_ds;
 // Declared in ecsstub.S
 extern void rootsim_cross_state_dependency_handler(void);
 
-void ECS(long long ds, unsigned long long hitted_object)__attribute__((__used__));
-void ECS(long long ds, unsigned long long hitted_object){
+void ECS(long long ds, unsigned long long hitted_object, unsigned char *prev_instr)__attribute__((__used__));
+void ECS(long long ds, unsigned long long hitted_object, unsigned char *prev_instr){
 	(void)ds;
 	msg_t control_msg;
 	msg_hdr_t msg_hdr;
 
 	if(LPS[current_lp]->state == LP_STATE_SILENT_EXEC) {
 		rootsim_error(true,"%llu - ----ERROR---- ECS in Silent Execution LP[%d] Hit:%llu Timestamp:%f\n",
-			CLOCK_READ(), current_lp,hitted_object,current_lvt);
- }
+		CLOCK_READ(), current_lp,hitted_object,current_lvt);
+	}
+
+	//prepare data structures to get disassembled instruction 
+	insn_info_x86 *instr = (insn_info_x86*) rsalloc(sizeof(insn_info_x86));
+	//call disassembler
+	x86_disassemble_instruction(prev_instr,0,instr,0);
+	printf("l'istruzione è: %s, lunga %lu, verranno scritti/letti %lu bytes\n",instr->mnemonic,instr->insn_size,instr->span);
 
 	// do whatever you want, but you need to reopen access to the objects you cross-depend on before returning
 

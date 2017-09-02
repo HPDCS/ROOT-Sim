@@ -48,7 +48,8 @@ librootsim_a_SOURCES =	main.c \
 			communication/wnd.c\
 			communication/communication.c\
 			communication/gvt.c\
-			communication/mpi.c
+			communication/mpi.c\
+			arch/parse-x86.c
 
 libwrapperl_a_SOURCES = lib-wrapper/wrapper.c
 
