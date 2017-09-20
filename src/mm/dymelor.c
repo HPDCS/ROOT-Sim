@@ -204,7 +204,6 @@ static void find_next_free(malloc_area *m_area){
 
 
 void *do_malloc(unsigned int lid, malloc_state *mem_pool, size_t size) {
-
 	malloc_area *m_area, *prev_area;
 	void *ptr;
 	int bitmap_blocks, num_chunks;
@@ -372,6 +371,7 @@ void *do_malloc(unsigned int lid, malloc_state *mem_pool, size_t size) {
 void do_free(unsigned int lid, malloc_state *mem_pool, void *ptr) {
 
 	(void)lid;
+	
 
 	malloc_area * m_area;
 	int idx, bitmap_blocks;

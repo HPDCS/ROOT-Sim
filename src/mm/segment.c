@@ -29,99 +29,57 @@
 #include <mm/ecs.h>
 #include <arch/linux/modules/cross_state_manager/cross_state_manager.h>
 #include <fcntl.h>
-static lp_mem_region mem_region[MAX_LPs];
-static int ioctl_fd;
 
-void *get_base_pointer(unsigned int sobj) {
-	return (void*) mem_region[sobj].base_pointer;
+#ifdef HAVE_CROSS_STATE
+static int ioctl_fd = -2;
+#endif 
+
+//TODO: document this magic! This is related to the pml4 index intialized in the ECS kernel module
+static unsigned char *init_address = (unsigned char *)(10LL << 39);
+
+void *get_base_pointer(unsigned int gid){
+//	printf("get base pointer for lid % d (gid %d) returns: %p\n",GidToLid(gid),gid,init_address + PER_LP_PREALLOCATED_MEMORY * gid);
+	return init_address + PER_LP_PREALLOCATED_MEMORY * gid;
 }
 
-/*
-char *get_memory_ecs(unsigned int sobj, size_t size) {
-	lp_mem_region local_mem_region = mem_region[sobj];
+void *get_segment(unsigned int lid) {
+	int i;
+	void *the_address;
 
-	if((local_mem_region.brk + size) - local_mem_region.base_pointer > PER_LP_PREALLOCATED_MEMORY) {
-		printf("Error no enough memory");
-		//TODO Here assign a new stock to the LP
-		return MAP_FAILED;
-	}
-
-	char* return_value = local_mem_region.brk;
-	local_mem_region.brk += size;
-	mem_region[sobj] = local_mem_region;
-	return return_value;
-}
-*/
-int segment_allocator_init(unsigned int sobjs) {
-	unsigned int y;
-	char* addr;
-	unsigned long init_addr;
-	unsigned int num_mmap = sobjs * 2;
-	size_t size = PER_LP_PREALLOCATED_MEMORY / 2;
-	int allocation_counter, pml4_index;
+	void *mmapped[NUM_MMAP];
 
 	#ifdef HAVE_CROSS_STATE
-	ioctl_fd = open("/dev/ktblmgr", O_RDONLY);
-	if (ioctl_fd == -1) {
-			rootsim_error(true, "Error in opening special device file. ROOT-Sim is compiled for using the ktblmgr linux kernel module, which seems to be not loaded.");
+	if(ioctl_fd == -2) {
+		ioctl_fd = open("/dev/ktblmgr", O_RDONLY);
+		if (ioctl_fd == -1) {
+				rootsim_error(true, "Error in opening special device file. ROOT-Sim is compiled for using the ECS linux kernel module, which seems to be not loaded.");
+		}
 	}
 	#endif
 
-	//ioctl(ioctl_fd, IOCTL_PGD_PRINT);
+	// Addresses are determined in the same way across all kernel instances
+	the_address = init_address + PER_LP_PREALLOCATED_MEMORY * LidToGid(lid);
 
-	y=0;
-
-//	#ifndef HAVE_CROSS_STATE
-	pml4_index = 9;
-//	#endif
-	while(y < num_mmap){
-//		#ifdef HAVE_CROSS_STATE
-//		pml4_index = ioctl(ioctl_fd, IOCTL_GET_FREE_PML4);
-//		#else
-		pml4_index++;
-//		#endif
-		init_addr =(ulong) pml4_index;
-		init_addr = init_addr << 39;
-		allocation_counter = 0;
-
-		printf("pml4_idx: %d\n", pml4_index);
-
-		for(; y < num_mmap; y++) {
-
-			// map memory
-			addr = mmap((void*)init_addr,size,PROT_READ|PROT_WRITE,MAP_PRIVATE|MAP_ANONYMOUS|MAP_FIXED,0,0);
-			if(addr == MAP_FAILED) {
-				printf("NOOOOOOOOOOOOOOOOOOOOOOOOO!\n");
-				abort();
-			}
-			// Access the memory in write mode to force the kernel to create the page table entries
-			addr[0] = 'x';
-			addr[1] = addr[0];
-
-			// Keep track of the per-LP allocated memory
-			if(y % 2 == 0){
-				mem_region[y/2].base_pointer = addr;
-				//printf("LP[%d] address:%p\n",y/2,addr);
-			}
-
-			allocation_counter++;
-			if(allocation_counter == (512*2)){
-				y++;
-				break;
-			}
-
-
-			init_addr += size;
+	for(i = 0; i < NUM_MMAP; i++) {
+		mmapped[i] = mmap(the_address, MAX_MMAP, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS|MAP_FIXED, 0, 0);
+		if(mmapped[i] == MAP_FAILED) {
+			rootsim_error(true, "Unable to mmap LPs memory\n");
+			return NULL;
 		}
-
-
-
+		if(i%2 == 0)
+			printf("base pointer of lid %d (global %d) on kernel %d is %p\n",lid,LidToGid(lid),kid,mmapped[i]);
+		// Access the memory in write mode to force the kernel to create the page table entries
+		*((char *)mmapped[i]) = 'x';
 	}
 
-	return SUCCESS_AECS;
+	return mmapped[0];
 }
 
-void segment_allocator_fini(unsigned int sobjs){
+/*
+ * TODO: this should reconstruct the addresses similarly to what is done in get_segment. Anyhow, this is called at simulation shutdown and doesn't cause much harm if it's not called.
+ */
+/*
+ * void segment_allocator_fini(unsigned int sobjs){
 	unsigned int i;
 	int return_value;
 	for(i=0;i<sobjs;i++){
@@ -135,4 +93,5 @@ void segment_allocator_fini(unsigned int sobjs){
 	close(ioctl_fd);
 
 }
+*/
 

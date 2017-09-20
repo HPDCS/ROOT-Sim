@@ -115,6 +115,7 @@ static struct _buddy *buddy_new(unsigned int num_of_fragments) {
 
     // Alloacte an array to represent a complete binary tree
     self = rsalloc(sizeof(struct _buddy) + 2 * num_of_fragments * sizeof(size_t));
+	bzero(self, sizeof(struct _buddy) + 2 * num_of_fragments * sizeof(size_t));
     self->size = num_of_fragments;
     node_size = num_of_fragments * 2;
 
@@ -160,13 +161,16 @@ static unsigned choose_better_child(struct _buddy *self, unsigned idx, size_t si
 /** allocate *size* from a buddy system *self*
  * @return the offset from the beginning of memory to be managed */
 static long long buddy_alloc(struct _buddy *self, size_t size) {
-    if (self == NULL || self->size < size) {
+
+	if (self == NULL || self->size < size) {
+		rootsim_error(true,"size is %u < %u\n",self->size,size);
         return -1;
     }
     size = POWEROF2(size);
 
     unsigned idx = 0;
     if (self->longest[idx] < size) {
+		rootsim_error(true,"self->longest %u < %u\n",self->longest[idx],size);
         return -1;
     }
 
@@ -225,6 +229,11 @@ static void buddy_free(struct _buddy *self, int offset) {
 }
 
 void *pool_get_memory(unsigned int lid, size_t size) {
+
+	/*if(lid>=n_prc){
+		rootsim_error(true,"trying to allocate mem for lid %d LidToGid %d, kid is %d and GidToKernel %d",lid,GidToLid(lid),kid,GidToKernel(lid));
+	}*/
+
 	long long offset,
 		displacement;
 	size_t fragments;
@@ -269,6 +278,7 @@ void free_pages(void *ptr, size_t length) {
 void allocator_fini(void) {
 	unsigned int i;
 	for (i = 0; i < n_prc; i++) {
+		
 		buddy_destroy(buddies[i]);
 		free_pages(mem_areas[i], PER_LP_PREALLOCATED_MEMORY / PAGE_SIZE);
 //    segment_allocator_fini(i);
@@ -285,14 +295,17 @@ bool allocator_init(void) {
 	// These are a vector of pointers which are later initialized
 	buddies = rsalloc(sizeof(struct _buddy *) * n_prc);
 	mem_areas = rsalloc(sizeof(void *) * n_prc);
-	displacements = rsalloc(sizeof(long long) *n_prc);
+	displacements = rsalloc(sizeof(long long) * n_prc);
 
-	segment_allocator_init(n_prc); //ADDED BY MATTEO.
+	//printf("num mmap: %lld\n", NUM_MMAP);
+	//fflush(stdout);
 
 	for (i = 0; i < n_prc; i++){
 		displacements[i] = 0;
 		buddies[i] = buddy_new(PER_LP_PREALLOCATED_MEMORY / BUDDY_GRANULARITY);
-		mem_areas[i] = get_base_pointer(i);
+		//printf("Invoking get_segment(%d)\n", i);
+		//fflush(stdout);
+		mem_areas[i] = get_segment(i);
 		if(mem_areas[i] == NULL)
 			rootsim_error(true, "Unable to initialize memory for LP %d. Aborting...\n",i);
 	}

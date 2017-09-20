@@ -46,14 +46,15 @@ struct _buddy {
 
 #ifndef PAGE_SIZE
  #if defined(ARCH_X86_64) || defined(ARCH_X86)
-   #define PAGE_SIZE (4*1<<10)
+   #define PAGE_SIZE (4<<10)
  #else
    #error Unable to determine page size
  #endif
 #endif
-#define PER_LP_PREALLOCATED_MEMORY 262144L * PAGE_SIZE // This should be power of 2 multiplied by a page size. This is 1GB per LP.
+#define PER_LP_PREALLOCATED_MEMORY (262144L * PAGE_SIZE) // This should be power of 2 multiplied by a page size. This is 1GB per LP.
 #define BUDDY_GRANULARITY PAGE_SIZE	// This is the smallest chunk released by the buddy in bytes. PER_LP_PREALLOCATED_MEMORY/BUDDY_GRANULARITY must be integer and a power of 2
-
+#define MAX_MMAP	(131072L * PAGE_SIZE) // This is the maximum amount of memory that a single mmap() call is able to serve. TODO: this should be checked within configure.ac
+#define NUM_MMAP	PER_LP_PREALLOCATED_MEMORY / MAX_MMAP
 
 
 #ifdef HAVE_NUMA
@@ -75,6 +76,5 @@ typedef struct _lp_mem_region{
 
 extern bool allocator_init(void);
 extern void allocator_fini(void);
-extern int segment_allocator_init(unsigned int);
-extern void segment_allocator_fini(unsigned int);
-extern void* get_base_pointer(unsigned int);
+extern void *get_segment(unsigned int i);
+void *get_base_pointer(unsigned int gid);

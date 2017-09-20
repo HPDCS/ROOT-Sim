@@ -112,6 +112,9 @@ void receive_remote_msgs(void){
 			rootsim_error(true, "MPI_Recv did not complete correctly");
 			return;
 		}
+
+		//printf("Inserting a remote message for LP %d\n", msg.receiver);
+
 		insert_bottom_half(&msg);
 	}
 
@@ -266,8 +269,9 @@ void syncronize_all(void){
  * Wrapper of MPI_Init call
  */
 void mpi_init(int *argc, char ***argv){
-	int mpi_thread_lvl_provided;
-	MPI_Init_thread(argc, argv, MPI_THREAD_MULTIPLE, &mpi_thread_lvl_provided);
+	int mpi_thread_lvl_provided = 0;
+//	MPI_Init_thread(NULL, NULL, MPI_THREAD_MULTIPLE, &mpi_thread_lvl_provided);
+	MPI_Init_thread(NULL, NULL, MPI_THREAD_SERIALIZED, &mpi_thread_lvl_provided);
 
 	mpi_support_multithread = true;
 	if(mpi_thread_lvl_provided < MPI_THREAD_MULTIPLE){
@@ -279,6 +283,8 @@ void mpi_init(int *argc, char ***argv){
 		}
 		mpi_support_multithread = false;
 	}
+
+		mpi_support_multithread = false;
 
 	spinlock_init(&mpi_lock);
 

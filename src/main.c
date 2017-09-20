@@ -118,8 +118,7 @@ static void *main_simulation_loop(void *arg) {
 		       "****************************\n");
 	}
 
-	while (!end_computing()) {
-
+		while (!end_computing()) {
 		// Recompute the LPs-thread binding
 		rebind_LPs();
 
@@ -174,7 +173,14 @@ static void *main_simulation_loop(void *arg) {
 */
 int main(int argc, char **argv) {
 
+	int i = 0;
+	printf("PID %d ready for attach\n", getpid());
+	fflush(stdout);
+	//while (0 == i)
+	//	sleep(5);
+		
 	SystemInit(argc, argv);
+
 
 	if(rootsim_config.core_binding)
 		set_affinity(0);

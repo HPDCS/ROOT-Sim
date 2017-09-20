@@ -223,7 +223,8 @@ char *__list_place(unsigned int lid, void *li, size_t key_position, struct roots
 	}
 
 	n = l->tail;
-	while(n != NULL && key < get_key(&n->data)) {
+	while(n != NULL && 
+			key < get_key(&n->data)) {
 		n = n->prev;
 	}
 
@@ -425,9 +426,9 @@ char *__list_extract_by_content(unsigned int lid, void *li, unsigned int size, v
 		content = umalloc(lid, size);
 		memcpy(content, &n->data, size);
 	}
-	n->next = (void *)0xDEADC0DE;
+	n->next = (void *)0xBEEFC0DE;
 	n->prev = (void *)0xDEADC0DE;
-//	bzero(n->data, size);
+	//bzero(n->data, size);
 	memset(n->data, 0xe9, size);
 	ufree(lid, n);
 

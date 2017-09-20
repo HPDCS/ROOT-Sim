@@ -319,7 +319,7 @@ void initialize_worker_thread(void) {
 	// Initialize the LP control block for each locally hosted LP
 	// and schedule the special INIT event
 	for (t = 0; t < n_prc_per_thread; t++) {
-
+		printf("kid %d initializing lp %d, LidToGid %d, LPS[t]->lid %d\n",kid,LPS_bound[t]->lid,LidToGid(LPS_bound[t]->lid),LPS[t]->lid);
 		// Create user level thread for the current LP and initialize LP control block
 		initialize_LP(LPS_bound[t]->lid);
 
@@ -534,6 +534,14 @@ void schedule(void) {
 	}
 
 
+	int i = 0;
+	char hostname[256];
+	gethostname(hostname, sizeof(hostname));
+	//printf("PID %d on %s ready for attach\n", getpid(), hostname);
+	fflush(stdout);
+	//while (0 == i)
+	//	sleep(5);
+	
 #ifdef HAVE_CROSS_STATE
 	if(resume_execution && !is_blocked_state(LPS[lid]->state)) {
 		unblock_synchronized_objects(lid);
@@ -542,7 +550,6 @@ void schedule(void) {
 		force_LP_checkpoint(lid);
 	}
 #endif
-
 
 	// Log the state, if needed
 	LogState(lid);

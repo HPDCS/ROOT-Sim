@@ -209,6 +209,7 @@ void rollback(unsigned int lid) {
 	statistics_post_lp_data(lid, STAT_ROLLBACK, 1.0);
 
 	last_correct_event = LPS[lid]->bound;
+
 	// Send antimessages
 	send_antimessages(lid, last_correct_event->timestamp);
 
@@ -218,7 +219,7 @@ void rollback(unsigned int lid) {
 		s = restore_state;
 		restore_state = list_prev(restore_state);
 		log_delete(s->log);
-		s->last_event = (void *)0xDEADC0DE;
+		s->last_event = (void *)0xBABEBEEF;
 		list_delete_by_content(lid, LPS[lid]->queue_states, s);
 	}
 	// Restore the simulation state and correct the state base pointer

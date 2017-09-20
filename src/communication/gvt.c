@@ -25,10 +25,10 @@ atomic_t white_1_msg_recv;
 
 /* number of white message sent from this kernel
    to all the others during the last white phase */
-atomic_t* white_msg_sent;
+atomic_t *white_msg_sent;
 
 // temporary structure used for the MPI collective
-static int* white_msg_sent_buff;
+static int *white_msg_sent_buff;
 /* number of expected white message to be received by this kernel
    before to partecipate to the next GVT agreement */
 static int expected_white_msg;
@@ -43,7 +43,7 @@ spinlock_t gvt_reduction_lock;
 simtime_t local_vt_buff;
 simtime_t reduced_gvt;
 
-MPI_Request* gvt_init_reqs;
+MPI_Request *gvt_init_reqs;
 unsigned int gvt_init_round;
 
 
@@ -237,8 +237,10 @@ void flush_white_msg_sent(void){
 
 
 void broadcast_gvt_init(unsigned int round){
-	gvt_init_round = round;
 	unsigned int i;
+
+	gvt_init_round = round;
+
 	for(i = 0; i < n_ker; i++){
 		if(i==kid)
 			continue;
@@ -247,7 +249,7 @@ void broadcast_gvt_init(unsigned int round){
 					"because the old init request is still pending\n");
 		}
 		lock_mpi();
-		MPI_Isend(&gvt_init_round, 1, MPI_UNSIGNED, i, MSG_NEW_GVT, MPI_COMM_WORLD, &gvt_init_reqs[i]);
+		MPI_Isend((const void *)&gvt_init_round, 1, MPI_UNSIGNED, i, MSG_NEW_GVT, MPI_COMM_WORLD, &gvt_init_reqs[i]);
 		unlock_mpi();
 	}
 }
