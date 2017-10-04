@@ -215,8 +215,10 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 
 			ran = Random();
 
-			if(me == 1 && ran < 0.3 && event_content->from == 2){//&& state->dummy_flag == false) {
-				//*(event_content->dummy) = 1;
+			if(me == 1 && ran < 1 && event_content->from == 2){//&& state->dummy_flag == false) {
+				printf("%d about to synch on ECS\n", me);
+				fflush(stdout);
+				*(event_content->dummy) = 1;
 				state->dummy_flag = true;
 			}
 

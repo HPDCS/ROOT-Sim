@@ -10,9 +10,6 @@
 #include <linux/sched.h>
 #include <linux/moduleparam.h>
 
-// XXX
-#define CONFIG_X86_64
-
 #define  X86_TRAP_PF  14
 //PGFAULT_NR is the interrupt number of page fault. It is platform specific.
 #if defined(CONFIG_X86_64)
@@ -61,11 +58,8 @@ static int check_parameters(void){
 typedef void (*do_page_fault_t)(struct pt_regs*, unsigned long);
 
 void my_do_page_fault(struct pt_regs* regs, unsigned long error_code){
-    struct task_struct * task = current;
     int discriminate;
-   // printk(KERN_INFO "my_virt_drv: page fault detected in process %lu.\n", (unsigned long)task->pid);
     discriminate = root_sim_page_fault(regs,error_code);
-//    discriminate = 0;
     if(!discriminate){
     ((do_page_fault_t)addr_dft_do_page_fault)(regs, error_code);
     }
