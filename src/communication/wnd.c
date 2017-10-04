@@ -3,16 +3,6 @@
 #include <communication/wnd.h>
 #include <communication/mpi.h>
 
-/* TODO
-* the implementation of the linked list used in this module (src/datatypes/list.h)
-* requires to specify a lid in order to optimize memory access in a NUMA architecture.
-* The linked lists used here need to be accessed by all the threads on the current kernel,
-* Thus it does not make sense to specify a specific lid.
-*  A fake lid is used as temporary fix!
-*/
-#define FAKE_LID 0
-
-
 outgoing_queue* outgoing_queues;
 int n_queues = 0;
 
@@ -25,7 +15,7 @@ void outgoing_window_init(void){
 	for(i=0; i<n_queues; i++){
 		oq = outgoing_queues+i;
 		spinlock_init(&(oq->lock));
-		oq->queue = new_list(FAKE_LID, outgoing_msg);
+		oq->queue = new_list(GENERIC_LIST, outgoing_msg);
 	}
 }
 
@@ -41,7 +31,7 @@ void outgoing_window_finalize(void){
 
 
 outgoing_msg* allocate_outgoing_msg(void){
-	return (outgoing_msg*) list_allocate_node_buffer(FAKE_LID, sizeof(outgoing_msg));
+	return (outgoing_msg*) list_allocate_node_buffer(GENERIC_LIST, sizeof(outgoing_msg));
 }
 
 
@@ -71,7 +61,7 @@ int prune_outgoing_queue(outgoing_queue* oq){
 	// head ( the entry with the minimum timestamp ) and delete them
 	// if they have been already delivered
 	while(msg != NULL && is_msg_delivered(msg)){
-		list_delete_by_content(FAKE_LID, oq->queue, msg);
+		list_delete_by_content(GENERIC_LIST, oq->queue, msg);
 		pruned++;
 		msg = list_head(oq->queue);
 	}

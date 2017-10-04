@@ -34,8 +34,20 @@
 #include <assert.h>
 
 #include <core/core.h>
-
 #include <arch/atomic.h>
+
+// The basic implementation of the list is such that each node of any list is allocated in
+// a separate memory region which is associated with a LP.
+// There are some points of the code where this is not the case. In particular, each worker
+// thread might have the need to handle per-thread lists.
+// If the lid passed to all list-library function is specified as GENERIC_LIST, the library
+// falls back to generic memory, thus the nodes are not associated with any LP.
+// BEWARE: The implementation of the generic list provided by this submodule IS NOT THREAD SAFE!
+// This is because LPs are handled in data separation.
+// In case this facility is used to handle a list which is shared across different worker threads,
+// then accesses to the list must be protected within critical sections.
+
+#define GENERIC_LIST IDLE_PROCESS
 
 /// This is the encapsulating structure of a list node. Any payload can be contained by this.
 struct rootsim_list_node {
@@ -68,7 +80,11 @@ struct rootsim_list {
  *  \endcode
  */
 #define new_list(lid, type)	(type *)({ \
-				void *__lmptr = (void *)umalloc((lid), sizeof(struct rootsim_list));\
+				void *__lmptr; \
+				if((lid) == GENERIC_LIST) \
+					__lmptr = (void *)rsalloc(sizeof(struct rootsim_list)); \
+				else \
+					__lmptr = (void *)umalloc((lid), sizeof(struct rootsim_list));\
 				bzero(__lmptr, sizeof(struct rootsim_list));\
 				__lmptr;\
 			})

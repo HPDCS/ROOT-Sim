@@ -18,15 +18,13 @@
 * hijacker; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file instruction.h
-* @brief Abstraction of an assembly instruction is somewhat machine-independent way
+* @file parse-x86.c
+* @brief Module to disassemble x86 machine instructions
 * @author Alessandro Pellegrini
+* @author Simone Economo
 * @author Fernando Visca
 * @author Alice Porfirio
 */
-
-// TODO: cambiare le fprintf() con herror()
-
 
 #include <stdio.h>
 #include <string.h>
@@ -1153,11 +1151,12 @@ void esc_0f_opcode(struct disassembly_state *state) {
 	// Controlla se è un escape opcode
 	if(table[opcode].instruction == NULL) { // È un escape opcode
 		// Controllo di sicurezza
-		if(table[opcode].esc_function == NULL)
-			//hinternal();
-			printf("errore");
-		else
+		if(table[opcode].esc_function == NULL) {
+			fprintf(stderr, "%s:%d: Errore interno\n", __FILE__, __LINE__);
+			abort();
+		} else {
 			table[opcode].esc_function(state);
+		}
 	} else { // Istruzione normale
 	}
 }
@@ -3474,6 +3473,10 @@ void grp_7(struct disassembly_state *state) { /* opcode 0F01 */
 	lower_bits = state->modrm & 0x07;
 	mod_76 = (state->modrm >> 6) & 0x03;
 
+	// TODO: mod_76 dovrà essere reintrodotto prima o poi, quando questo modulo verrà esteso oltre le SSE2
+	(void)mod_76;
+	(void)lower_bits;
+
 	/*if(mod_76 == 11b && encoding != 100b && encoding |= 110b) {	// [FV] In realtà queste potremmo non gestirle...
 		switch(encoding) {
 			case 000b:
@@ -4024,8 +4027,12 @@ void format_addr_a (struct disassembly_state *state, enum addr_method addr, enum
 
 		// Memorizza l'indirizzo assoluto
 		state->instrument->addr = segment;
+
+		// TODO: ricontrollare a cosa serviva qui offset...
+		(void)offset;
 	} else {
-		//hinternal();
+		fprintf(stderr, "%s:%d: Errore interno\n", __FILE__, __LINE__);
+		abort();
 	}
 }
 
@@ -4217,10 +4224,6 @@ void format_addr_g (struct disassembly_state *state, enum addr_method addr, enum
 		reg_field |= 0x08;
 	}
 
-	// TODO: reg_field mantiene il codice del registro, a questo punto
-	// potremmo aggiungere un campo che ne tiene traccia per l'emissione
-	// dell'istruzione assembly inversa
-
 	switch(op) {
 		case OP_B: /* 8 */
 			reg_size = REG_SIZE_8;
@@ -4262,8 +4265,19 @@ void format_addr_g (struct disassembly_state *state, enum addr_method addr, enum
 			break;
 	}
 
-  // [SE] Hack terribile per ottenere il codice del registro destinazione
-  state->instrument->reg_dest = reg_field;
+	// TODO: reg_field mantiene il codice del registro, a questo punto
+	// potremmo aggiungere un campo che ne tiene traccia per l'emissione
+	// dell'istruzione assembly inversa
+	//
+	// TODO: (2) Questa cosa scritta qui sopra è quando ha implementato Simone
+	// qui sotto
+	//
+	// Il campo reg_size può essere usato per discriminare la dimensione del
+	// registro e quindi impostare il nome del registro correttamente
+	(void)reg_size;
+
+	// [SE] Hack terribile per ottenere il codice del registro destinazione
+	state->instrument->reg_dest = reg_field;
 }
 
 /* format_addr_i
@@ -4787,9 +4801,10 @@ void format_addr_r (struct disassembly_state *state, enum addr_method addr, enum
 	(void)addr;
 
 	// Viene usato soltanto da OP_D
-	if(op != OP_D)
-		//hinternal();
-		printf("errore");
+	if(op != OP_D) {
+		fprintf(stderr, "%s:%d: Errore interno\n", __FILE__, __LINE__);
+		abort();
+	}
 
 	// Identifica il registro
 	char reg = state->modrm & 0x07;
@@ -5096,9 +5111,10 @@ void x86_disassemble_instruction (unsigned char *text, unsigned long *pos, insn_
 		} else if(p_is_group4(opcode)) { /* address size override prefix */
 			if(!state.prefix[3]) // Ignora prefissi addizionali
 				state.prefix[3] = opcode;
-		} else // mmm...
-			//hinternal();
-			printf("errore");
+		} else { // mmm...
+			fprintf(stderr, "%s:%d: Errore interno\n", __FILE__, __LINE__);
+			abort();
+		}
 
 	}
 
@@ -5136,11 +5152,12 @@ void x86_disassemble_instruction (unsigned char *text, unsigned long *pos, insn_
 	// Controlla opcode di escape
 	if(table[opcode].instruction == NULL) { // byte di escape
 		// Controllo di sicurezza
-		if(table[opcode].esc_function == NULL)
-			//hinternal();
-			printf("errore");
-		else
+		if(table[opcode].esc_function == NULL) {
+			fprintf(stderr, "%s:%d: Errore interno\n", __FILE__, __LINE__);
+			abort();
+		} else {
 			table[opcode].esc_function(&state);
+		}
 	} else { // Istruzione normale
 	}
 
@@ -5154,8 +5171,8 @@ void x86_disassemble_instruction (unsigned char *text, unsigned long *pos, insn_
 				else if(state.prefix[1] == 0x3e) { // branch taken
 				}
 				else { 	// invalid branch hint
-					//hinternal();
-					printf("errore");
+					fprintf(stderr, "%s:%d: Errore interno\n", __FILE__, __LINE__);
+					abort();
 				}
 			}
 			state.prefix[1] = 0;

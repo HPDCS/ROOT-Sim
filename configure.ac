@@ -17,11 +17,13 @@ AM_CONDITIONAL([DEBUG], [test x$enable_debug = xyes])
 
 # Setup compilation flags
 CFLAGS_COMMON="-std=c99 -fno-omit-frame-pointer -ffloat-store -fno-common -fstrict-aliasing -fgnu89-inline -rdynamic -lm -U_FORTIFY_SOURCE"
-CFLAGS_WARNINGS="-Wall -Wextra -Wswitch-enum -Wcast-align -Wpointer-arith -Wstrict-overflow=5 -Wstrict-prototypes -Winline -Wundef -Wnested-externs -Wshadow -Wunreachable-code -Wfloat-equal -Wredundant-decls -Wold-style-definition"
+CFLAGS_WARNINGS="-Wall -Wextra -Wcast-align -Wpointer-arith -Wstrict-overflow=5 -Wstrict-prototypes -Winline -Wundef -Wnested-externs -Wshadow -Wunreachable-code -Wfloat-equal -Wredundant-decls -Wold-style-definition -Wno-switch-enum"
 
 AS_IF([test x$enable_debug = xyes],
       [CFLAGS="-g3 -O0 $CFLAGS_COMMON $CFLAGS_WARNINGS"],
-      [CFLAGS="-O3 $CFLAGS_COMMON"])
+      [CFLAGS="-O3 $CFLAGS_COMMON"]
+      AC_DEFINE([NDEBUG]))
+
 
 AC_ARG_ENABLE([profile],
     AS_HELP_STRING([--enable-profile], [Enable profiling the platform]))
@@ -430,28 +432,6 @@ AC_SUBST([cc_lddata1_lines], [$(wc -l scripts/ld-data1 | sed 's,\ .*,,g')])
 AC_SUBST([cc_lddata2_lines], [$(wc -l scripts/ld-data2 | sed 's,\ .*,,g')])
 AC_SUBST([cc_ldfinal_lines], [$(wc -l scripts/ld-final | sed 's,\ .*,,g')])
 AC_MSG_RESULT([ok])
-
-
-
-#-------------------------------
-# Debugging support
-#-------------------------------
-AC_ARG_ENABLE([debug],
-    AS_HELP_STRING([--enable-debug], [Enable debugging of the platform]))
-
-AS_IF([test "x$enable_debug" = "xyes"], [
-	CFLAGS="$CFLAGS -g3 -Wall -Wextra -O0 -Wswitch-enum -Wcast-align -Wpointer-arith -Wstrict-overflow=5 -Wstrict-prototypes -Winline -Wundef -Wnested-externs -Wshadow -Wunreachable-code -Wfloat-equal -Wredundant-decls -Wold-style-definition -std=c99 -fno-omit-frame-pointer -ffloat-store -fno-common -fstrict-aliasing -fgnu89-inline -lm"
-
-	if test "x$ac_on_linux" = "xyes"
-	then
-		# Support for the backtrace module on Linux in case of debugging
-		CFLAGS="$CFLAGS -rdynamic"
-	fi
-
-],[
-	AC_DEFINE([NDEBUG])
-	CFLAGS="-O3 $CFLAGS"
-])
 
 
 # Generate Makefiles for all these subfolders

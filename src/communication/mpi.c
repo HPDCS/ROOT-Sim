@@ -1,3 +1,28 @@
+/**
+*                       Copyright (C) 2008-2015 HPDCS Group
+*                       http://www.dis.uniroma1.it/~hpdcs
+*
+*
+* This file is part of ROOT-Sim (ROme OpTimistic Simulator).
+*
+* ROOT-Sim is free software; you can redistribute it and/or modify it under the
+* terms of the GNU General Public License as published by the Free Software
+* Foundation; either version 3 of the License, or (at your option) any later
+* version.
+*
+* ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
+* WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+* A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+*
+* You should have received a copy of the GNU General Public License along with
+* ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
+* 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+*
+* @file mpi.c
+* @brief MPI support module
+* @author Tommaso Tocci
+*/
+
 #ifdef HAS_MPI
 
 
@@ -18,15 +43,15 @@ bool mpi_support_multithread;
 spinlock_t mpi_lock;
 
 // control access to the message receiving routine
-spinlock_t msgs_lock;
+static spinlock_t msgs_lock;
 
 MPI_Datatype msg_mpi_t;
 
 // counter of the kernels that have already reached the
 // termination condition. Must be updated through the collect_termination() function.
-unsigned int terminated = 0;
-MPI_Request *termination_reqs;
-spinlock_t msgs_fini;
+static unsigned int terminated = 0;
+static MPI_Request *termination_reqs;
+static spinlock_t msgs_fini;
 
 
 /*
@@ -270,8 +295,8 @@ void syncronize_all(void){
  */
 void mpi_init(int *argc, char ***argv){
 	int mpi_thread_lvl_provided = 0;
-//	MPI_Init_thread(NULL, NULL, MPI_THREAD_MULTIPLE, &mpi_thread_lvl_provided);
-	MPI_Init_thread(NULL, NULL, MPI_THREAD_SERIALIZED, &mpi_thread_lvl_provided);
+//	MPI_Init_thread(argc, argv, MPI_THREAD_MULTIPLE, &mpi_thread_lvl_provided);
+	MPI_Init_thread(argc, argv, MPI_THREAD_SERIALIZED, &mpi_thread_lvl_provided);
 
 	mpi_support_multithread = true;
 	if(mpi_thread_lvl_provided < MPI_THREAD_MULTIPLE){

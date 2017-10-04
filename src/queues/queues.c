@@ -185,7 +185,7 @@ restart:
 
 			// Handle control messages
 			if(!receive_control_msg(msg_to_process)) {
-				printf("Control lid:%d type:%lu timestamp:%f\n",msg_to_process->receiver,msg_to_process->type,msg_to_process->timestamp);
+				printf("Control lid:%d type:%d timestamp:%f\n",msg_to_process->receiver,msg_to_process->type,msg_to_process->timestamp);
 				list_deallocate_node_buffer(lid_receiver, msg_to_process);
 				goto restart;
 //				continue;
