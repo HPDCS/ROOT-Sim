@@ -67,7 +67,7 @@ void ECS(long long ds, unsigned long long hitted_object, unsigned char *prev_ins
 	(void)ds;
 	msg_t control_msg;
 	msg_hdr_t msg_hdr;
-	
+
 	if(LPS[current_lp]->state == LP_STATE_SILENT_EXEC) {
 		rootsim_error(true,"%llu - ----ERROR---- ECS in Silent Execution LP[%d] Hit:%llu Timestamp:%f\n",
 		CLOCK_READ(), current_lp,hitted_object,current_lvt);
@@ -100,7 +100,7 @@ void ECS(long long ds, unsigned long long hitted_object, unsigned char *prev_ins
 	// Diretcly place the control message in the target bottom half queue
 	bzero(&control_msg, sizeof(msg_t));
 	control_msg.sender = LidToGid(current_lp);
-	control_msg.receiver = LidToGid(hitted_object);
+	control_msg.receiver = hitted_object;
 	control_msg.type = RENDEZVOUS_START;
 	control_msg.timestamp = current_lvt;
 	control_msg.send_time = current_lvt;
@@ -121,7 +121,7 @@ void ECS(long long ds, unsigned long long hitted_object, unsigned char *prev_ins
 
 	// Block the execution of this LP
 	LPS[current_lp]->state = LP_STATE_WAIT_FOR_SYNCH;
-	LPS[current_lp]->wait_on_object = LidToGid(hitted_object);
+	LPS[current_lp]->wait_on_object = hitted_object;
 
 	// Store which LP we are waiting for synchronization. Upon reschedule, it is open immediately
 	LPS[current_lp]->ECS_index++;
