@@ -29,6 +29,9 @@
 #include <mm/ecs.h>
 #include <arch/linux/modules/cross_state_manager/cross_state_manager.h>
 #include <fcntl.h>
+#include <sys/types.h>
+
+#define __NR_OPEN 2
 
 #ifdef HAVE_CROSS_STATE
 static int ioctl_fd = -2;
@@ -42,23 +45,23 @@ void *get_base_pointer(unsigned int gid){
 	return init_address + PER_LP_PREALLOCATED_MEMORY * gid;
 }
 
-void *get_segment(unsigned int lid) {
+void *get_segment(unsigned int gid) {
 	int i;
 	void *the_address;
 
 	void *mmapped[NUM_MMAP];
 
 	#ifdef HAVE_CROSS_STATE
-	if(ioctl_fd == -2) {
-		ioctl_fd = open("/dev/ktblmgr", O_RDONLY);
-		if (ioctl_fd == -1) {
+	/*if(ioctl_fd == -2) {
+		ioctl_fd = manual_open("/dev/ktblmgr", O_RDONLY);
+		if (ioctl_fd <= -1) {
 				rootsim_error(true, "Error in opening special device file. ROOT-Sim is compiled for using the ECS linux kernel module, which seems to be not loaded.");
 		}
-	}
+	}*/
 	#endif
 
 	// Addresses are determined in the same way across all kernel instances
-	the_address = init_address + PER_LP_PREALLOCATED_MEMORY * LidToGid(lid);
+	the_address = init_address + PER_LP_PREALLOCATED_MEMORY * gid;
 
 	for(i = 0; i < NUM_MMAP; i++) {
 		mmapped[i] = mmap(the_address, MAX_MMAP, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS|MAP_FIXED, 0, 0);
@@ -67,7 +70,7 @@ void *get_segment(unsigned int lid) {
 			return NULL;
 		}
 		if(i%2 == 0) {
-			printf("base pointer of lid %d (global %d) on kernel %d is %p\n",lid,LidToGid(lid),kid,mmapped[i]);
+			printf("base pointer of gid %d on kernel %d is %p\n", gid, kid, mmapped[i]);
 		}
 		// Access the memory in write mode to force the kernel to create the page table entries
 		*((char *)mmapped[i]) = 'x';

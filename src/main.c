@@ -142,10 +142,18 @@ static void *main_simulation_loop(void *arg) {
 				printf("TIME BARRIER %f - %d preemptions - %d in platform mode - %d would preempt\n", my_time_barrier, atomic_read(&preempt_count), atomic_read(&overtick_platform), atomic_read(&would_preempt));
 				#else
 				printf("TIME BARRIER %f\n", my_time_barrier);
+
+
 				#endif
 
 				fflush(stdout);
 			}
+		}
+		if(my_time_barrier != -1.0) {
+				int i;
+				for(i = 0; i < n_prc_per_thread; i++) {
+					printf("LP %d in state %d\n", LidToGid(LPS_bound[i]->lid), LPS_bound[i]->state);
+				}
 		}
 
 		#ifdef HAS_MPI
@@ -176,8 +184,8 @@ int main(int argc, char **argv) {
 	int i = 0;
 	printf("PID %d ready for attach\n", getpid());
 	fflush(stdout);
-	//while (0 == i)
-	//	sleep(5);
+//	while (0 == i)
+//		sleep(5);
 		
 	SystemInit(argc, argv);
 

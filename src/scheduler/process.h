@@ -36,6 +36,7 @@
 
 #include <mm/state.h>
 #include <mm/dymelor.h>
+#include <mm/ecs.h>
 #include <datatypes/list.h>
 #include <scheduler/scheduler.h>
 #include <arch/ult.h>
@@ -49,10 +50,11 @@
 
 #define LP_STATE_READY				0x00001
 #define LP_STATE_RUNNING			0x00002
-#define LP_STATE_ROLLBACK			0x00004
-#define LP_STATE_SILENT_EXEC		0x00008
+#define LP_STATE_RUNNING_ECS		0x00004
+#define LP_STATE_ROLLBACK			0x00008
+#define LP_STATE_SILENT_EXEC		0x00010
 #define LP_STATE_SUSPENDED			0x01010
-#define LP_STATE_READY_FOR_SYNCH	0x00011
+#define LP_STATE_READY_FOR_SYNCH	0x00011	// This should be a blocked state! Check schedule() and stf()
 #define LP_STATE_WAIT_FOR_SYNCH		0x01001
 #define LP_STATE_WAIT_FOR_UNBLOCK	0x01002
 

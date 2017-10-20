@@ -13,9 +13,10 @@ unsigned int complete_calls = COMPLETE_CALLS;
 
 double ran;
 
-
 void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_type *event_content, unsigned int size, void *ptr) {
 	unsigned int w;
+
+	//printf("%d executing %d at %f\n", me, event_type, now);
 
 	event_content_type new_event_content;
 
@@ -206,7 +207,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 			new_event_content.call_term_time =  event_content->call_term_time;
 			new_event_content.dummy = &(state->dummy);
 			new_event_content.from = me;
-			ScheduleNewEvent(event_content->cell, now, HANDOFF_RECV, &new_event_content, sizeof(new_event_content));
+			ScheduleNewEvent(event_content->cell, now+0.000001, HANDOFF_RECV, &new_event_content, sizeof(new_event_content));
 			break;
 
 		case HANDOFF_RECV:
@@ -215,11 +216,16 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 
 			ran = Random();
 
-			if(me == 1 && ran < 1 && event_content->from == 2){//&& state->dummy_flag == false) {
-				printf("%d about to synch on ECS\n", me);
+#define MAX_ECS 2
+
+			if(state->ecs_count < MAX_ECS && me == 1 && ran < 0.02 && event_content->from == 2){//&& state->dummy_flag == false) {
+			//if(state->ecs_count < MAX_ECS && me == 2 && ran < 0.2 && event_content->from == 3){//&& state->dummy_flag == false) {
+				printf("%d about to synch on ECS, accessing %p\n", me, event_content->dummy);
 				fflush(stdout);
+				state->ecs_count++;
 				*(event_content->dummy) = 1;
 				state->dummy_flag = true;
+				printf("%d executed ECS, accessing %p\n", me, event_content->dummy);
 			}
 
 			if (state->channel_counter == 0)

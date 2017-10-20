@@ -41,7 +41,6 @@ static struct _buddy **buddies;
 static
 #endif
 void **mem_areas;
-long long *displacements;
 
 static inline int left_child(int idx) {
     return ((idx << 1) + 1);
@@ -55,51 +54,6 @@ static inline int parent(int idx) {
     return (((idx + 1) >> 1) - 1);
 }
 
-void *get_pages(unsigned int lid){
-   //int displacement = displacements[lid]; //get offset to current max memory address allocated by buddy */
-
-  /* int num_pages = displacement/PAGE_SIZE; //page size is the same of buddy granularity */
-  /* printf("\nLP[%d] allocated %d pages\n",lid,num_pages); */
-
-  /* void * curr_addr=old_bs; */
-  /* void* brk = get_brk(lid); */
-  /* while (curr_addr != curr_bs){ */
-  /*   curr_addr = (void *)((char *)curr_addr + BUDDY_GRANULARITY); //TODO: save those addresses to be returned. */
-  /*   num_pages--;//debugging */
-  /*   printf("\n\tDisplaced base address is: %p brk is: %p current page address is: %p remaining pages: %d\n",old_bs,brk,curr_addr,num_pages); */
-  /* } */
-  size_t node_size;
-  void *current_bs;
-  unsigned idx;
-  struct _buddy *self;
-  int offset;
-  void* old_bs;
-  int num_pages;
-
-  old_bs = mem_areas[lid];
-  self = buddies[lid];
-  idx = displacements[lid] + self->size -1;
-  node_size = 1;
-
-  for (; idx!=0; idx = parent(idx)) {
-      node_size <<= 1;    /* node_size *= 2; */
-
-      if (self->longest[idx] == 0) {
-
-          offset = (idx + 1) * node_size - self->size;
-          current_bs = (void*)((char*)old_bs + offset*BUDDY_GRANULARITY);
-          num_pages = node_size/PAGE_SIZE +1;
-
-          while (num_pages != 0){
-            current_bs = (void *)((char *)current_bs + BUDDY_GRANULARITY); //TODO: save those addresses to be returned. */
-            num_pages--;
-          }
-     }
-  }
-
-  return NULL; // TODO: finish to implement this function
-
-}
 /** allocate a new buddy structure
  * @param num_of_fragments number of fragments of the memory to be managed
  * @return pointer to the allocated buddy structure */
@@ -247,10 +201,6 @@ void *pool_get_memory(unsigned int lid, size_t size) {
 	if(offset == -1)
 		return NULL;
 
-	if(displacements[lid] < offset){
-		displacements[lid] = offset;
-	}
-
 	return (void *)((char *)mem_areas[lid] + displacement);
 }
 
@@ -262,8 +212,6 @@ void pool_release_memory(unsigned int lid, void *ptr) {
 	displacement = (int)((char *)ptr - (char *)mem_areas[lid]);
 	buddy_free(buddies[lid], displacement);
 
-  if(displacements[lid] > displacement)
-    displacements[lid] = displacement;
 }
 
 void free_pages(void *ptr, size_t length) {
@@ -295,19 +243,31 @@ bool allocator_init(void) {
 	// These are a vector of pointers which are later initialized
 	buddies = rsalloc(sizeof(struct _buddy *) * n_prc);
 	mem_areas = rsalloc(sizeof(void *) * n_prc);
-	displacements = rsalloc(sizeof(long long) * n_prc);
 
 	//printf("num mmap: %lld\n", NUM_MMAP);
 	//fflush(stdout);
 
-	for (i = 0; i < n_prc; i++){
+	// we loop over all gid's to let the underlying kernel module
+	// mmap memory for all distributed LPs
+	for (i = 0; i < n_prc_tot; i++){
+		if(GidToKernel(i) == kid) {
+			// TODO: we should tread mem_areas as gid's as well, to
+			// reclaim memory at the end of the simulation.
+			printf("allocating memory for gid %d with lid %d  whose kernel is %d\n",i,GidToLid(i),GidToKernel(i));
+			mem_areas[GidToLid(i)] = get_segment(i);
+			buddies[GidToLid(i)] = buddy_new(PER_LP_PREALLOCATED_MEMORY / BUDDY_GRANULARITY);
+			continue;
+		} else {
+			(void)get_segment(i);
+		}
+		/*
 		displacements[i] = 0;
 		buddies[i] = buddy_new(PER_LP_PREALLOCATED_MEMORY / BUDDY_GRANULARITY);
 		//printf("Invoking get_segment(%d)\n", i);
 		//fflush(stdout);
 		mem_areas[i] = get_segment(i);
 		if(mem_areas[i] == NULL)
-			rootsim_error(true, "Unable to initialize memory for LP %d. Aborting...\n",i);
+			rootsim_error(true, "Unable to initialize memory for LP %d. Aborting...\n",i);*/
 	}
 
 #ifdef HAVE_NUMA

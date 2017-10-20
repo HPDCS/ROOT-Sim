@@ -98,7 +98,8 @@ void send_remote_msg(const msg_t* msg){
 	out_msg->msg.colour = threads_phase_colour[local_tid];
 	unsigned int dest = GidToKernel(msg->receiver);
 
-	register_outgoing_msg(&(out_msg->msg));
+	if(count_as_white(msg->type)) 
+		register_outgoing_msg(&(out_msg->msg));
 
 	lock_mpi();
 	MPI_Isend(&(out_msg->msg), 1, msg_mpi_t, dest, MSG_EVENT, MPI_COMM_WORLD, &(out_msg->req));
@@ -295,8 +296,7 @@ void syncronize_all(void){
  */
 void mpi_init(int *argc, char ***argv){
 	int mpi_thread_lvl_provided = 0;
-//	MPI_Init_thread(argc, argv, MPI_THREAD_MULTIPLE, &mpi_thread_lvl_provided);
-	MPI_Init_thread(argc, argv, MPI_THREAD_SERIALIZED, &mpi_thread_lvl_provided);
+	MPI_Init_thread(NULL, NULL, MPI_THREAD_MULTIPLE, &mpi_thread_lvl_provided);
 
 	mpi_support_multithread = true;
 	if(mpi_thread_lvl_provided < MPI_THREAD_MULTIPLE){
@@ -308,8 +308,6 @@ void mpi_init(int *argc, char ***argv){
 		}
 		mpi_support_multithread = false;
 	}
-
-		mpi_support_multithread = false;
 
 	spinlock_init(&mpi_lock);
 

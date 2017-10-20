@@ -296,7 +296,7 @@ void initialize_LP(unsigned int lp) {
 	#ifdef HAVE_CROSS_STATE
 	// No read/write dependencies open so far for the LP. The current lp is always opened
 	LPS[lp]->ECS_index = 0;
-	LPS[lp]->ECS_synch_table[0] = lp;
+	LPS[lp]->ECS_synch_table[0] = LidToGid(lp); // LidToGid for distributed ECS
 	#endif
 
 	// Create user thread
@@ -483,6 +483,8 @@ void schedule(void) {
 		return;
 	}
 
+//	if(lid == 1 && LPS[lid]->state != LP_STATE_READY)
+//		printf("state of lid 1 is %d\n",LPS[lid]->state);
 
 	// If we have to rollback
 	if(LPS[lid]->state == LP_STATE_ROLLBACK) {
@@ -518,14 +520,19 @@ void schedule(void) {
 #ifdef HAVE_CROSS_STATE
 	// In case we are resuming an interrupted execution, we keep track of this.
 	// If at the end of the scheduling the LP is not blocked, we can unblock all the remote objects
-	if(is_blocked_state(LPS[lid]->state)) {
+
+	if(is_blocked_state(LPS[lid]->state) || LPS[lid]->state == LP_STATE_READY_FOR_SYNCH) {
 		resume_execution = true;
 	}
 #endif
 
 
 	// Schedule the LP user-level thread
-	LPS[lid]->state = LP_STATE_RUNNING;
+	if(LPS[lid]->state == LP_STATE_READY_FOR_SYNCH)
+		LPS[lid]->state = LP_STATE_RUNNING_ECS;
+	else
+		LPS[lid]->state = LP_STATE_RUNNING;
+	
 	activate_LP(lid, lvt(lid), event, state);
 
 	if(!is_blocked_state(LPS[lid]->state)) {
@@ -535,6 +542,8 @@ void schedule(void) {
 
 #ifdef HAVE_CROSS_STATE
 	if(resume_execution && !is_blocked_state(LPS[lid]->state)) {
+		printf("ECS event is finished mark %d !!!\n", LPS[lid]->wait_on_rendezvous);
+		fflush(stdout);
 		unblock_synchronized_objects(lid);
 
 		// This is to avoid domino effect when relying on rendezvous messages

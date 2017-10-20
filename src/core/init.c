@@ -361,6 +361,7 @@ static int parse_cmd_line(int argc, char **argv) {
 * @param argv array of parameters passed at command line
 */
 void SystemInit(int argc, char **argv) {
+	register int w;
 
 	#ifdef HAS_MPI
 	mpi_init(&argc, &argv);
@@ -372,7 +373,10 @@ void SystemInit(int argc, char **argv) {
 	n_ker = 1;
 	#endif
 
-	register int w;
+	// Early initialization of ECS subsystem if needed
+	#ifdef HAVE_CROSS_STATE
+	ecs_init();
+	#endif
 
 	// Parse the argument passed at command line, to initialize the internal configuration
 	w = parse_cmd_line(argc, argv);

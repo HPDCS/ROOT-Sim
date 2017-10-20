@@ -30,9 +30,12 @@
 #include <unistd.h>
 #include <stddef.h>
 #include <string.h>
+#include <signal.h>
+#include <sys/mman.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <sys/types.h>
 
 #if defined(OS_LINUX)
 #include <stropts.h>
@@ -49,6 +52,8 @@
 
 #include <arch/linux/modules/cross_state_manager/cross_state_manager.h>
 
+#define __NR_OPEN 2
+
 void (*callback_function)(void);
 
 /// This variable keeps track of information needed by the Linux Kernel Module for activating cross-LP memory accesses
@@ -62,17 +67,61 @@ static __thread int pgd_ds;
 // Declared in ecsstub.S
 extern void rootsim_cross_state_dependency_handler(void);
 
-void ECS(long long ds, unsigned long long hitted_object, unsigned char *prev_instr)__attribute__((__used__));
-void ECS(long long ds, unsigned long long hitted_object, unsigned char *prev_instr){
+void ecs_fault_handler_on_segment(int signal, siginfo_t *info, void *context) {
+	unsigned long i=0;
+	unsigned long j;
+
+	const ucontext_t *con = (ucontext_t *)context;
+	long long target_address = (long long)info->si_addr;
+	unsigned char *faulting_insn = (unsigned char *)con->uc_mcontext.gregs[REG_RIP];
+	void *target_pages;
+	unsigned int page_count;
+	unsigned long span;
+	insn_info_x86 insn_disasm;
+
+	(void)signal;
+
+	printf("Faulting instruction is at %p, accessing %p\n", faulting_insn, target_address);
+	fflush(stdout); 
+
+	x86_disassemble_instruction(faulting_insn, &i, &insn_disasm, DATA_64 | ADDR_64);
+
+	printf("\tbytes: ");
+	for(j = 0; j < i; j++) {
+		printf("%02x ", insn_disasm.insn[j]);
+	}
+	printf("\n");
+	printf("\tis a memory-%s instruction\n", (IS_MEMRD(&insn_disasm) ? "read" : "write" ));
+	printf("\tit %sa string instruction\n", (IS_STRING(&insn_disasm) ? "" : "not "));
+
+	if(!IS_STRING(&insn_disasm)) {
+		span = insn_disasm.span;
+	} else {
+		span = insn_disasm.span * con->uc_mcontext.gregs[REG_RCX];
+	}
+	printf("\tspanned memory area: %lu\n\n", span);
+
+	target_pages = (void *)(target_address & (~((long long)PAGE_SIZE-1)));
+	page_count = ((target_address + span) & (~((long long)PAGE_SIZE-1))) - (long long)target_pages + 1;
+
+	printf("\trequesting %d page%s starting from page at VA %p\n", page_count, (page_count > 1 ? "s" : ""), target_pages);
+
+        mprotect(info->si_addr, 1, PROT_READ | PROT_WRITE);
+	*(char *)(info->si_addr) = 'x';
+}
+
+void ECS(long long ds, unsigned long long hitted_object, unsigned char *prev_instr) __attribute__((__used__));
+void ECS(long long ds, unsigned long long hitted_object, unsigned char *prev_instr) {
 	(void)ds;
 	msg_t control_msg;
 	msg_hdr_t msg_hdr;
 
 	if(LPS[current_lp]->state == LP_STATE_SILENT_EXEC) {
-		rootsim_error(true,"%llu - ----ERROR---- ECS in Silent Execution LP[%d] Hit:%llu Timestamp:%f\n",
-		CLOCK_READ(), current_lp,hitted_object,current_lvt);
+		rootsim_error(true,"----ERROR---- ECS in Silent Execution LP[%d] Hit:%llu Timestamp:%f\n",
+		current_lp, hitted_object, current_lvt);
 	}
 
+	
 	//prepare data structures to get disassembled instruction 
 	//insn_info_x86 *instr = (insn_info_x86*) rsalloc(sizeof(insn_info_x86));
 	//unsigned long i = 0;
@@ -84,7 +133,7 @@ void ECS(long long ds, unsigned long long hitted_object, unsigned char *prev_ins
 	// do whatever you want, but you need to reopen access to the objects you cross-depend on before returning
 
 	// Generate a Rendez-Vous Mark
-	// if it is presente already another synchronization event we do not need to generate another mark
+	// if it is present already another synchronization event we do not need to generate another mark
 
 	if(LPS[current_lp]->wait_on_rendezvous != 0 && LPS[current_lp]->wait_on_rendezvous != current_evt->rendezvous_mark) {
 		printf("muori male\n");
@@ -95,6 +144,7 @@ void ECS(long long ds, unsigned long long hitted_object, unsigned char *prev_ins
 	if(LPS[current_lp]->wait_on_rendezvous == 0) {
 		current_evt->rendezvous_mark = generate_mark(current_lp);
 		LPS[current_lp]->wait_on_rendezvous = current_evt->rendezvous_mark;
+		printf("gid %d starting a rendezvous at time %f with mark %d with LP %d on ds %d\n", LidToGid(current_lp), current_lvt, LPS[current_lp]->wait_on_rendezvous, hitted_object, ds); 
 	}
 
 	// Diretcly place the control message in the target bottom half queue
@@ -127,24 +177,38 @@ void ECS(long long ds, unsigned long long hitted_object, unsigned char *prev_ins
 	LPS[current_lp]->ECS_index++;
 	LPS[current_lp]->ECS_synch_table[LPS[current_lp]->ECS_index] = hitted_object;
 	Send(&control_msg);
-
+	
 	// Give back control to the simulation kernel's user-level thread
 	long_jmp(&kernel_context, kernel_context.rax);
 }
 
 
-// inserire qui tutte le api di schedulazione/deschedulazione
-
-void lp_alloc_thread_init(void) {
-	void *ptr;
-
-	ioctl_fd = open("/dev/ktblmgr", O_RDONLY);
-	if (ioctl_fd == -1) {
+void ecs_init(void) {
+	ioctl_fd = manual_open("/dev/ktblmgr", O_RDONLY);
+	if (ioctl_fd <= -1) {
 		rootsim_error(true, "Error in opening special device file. ROOT-Sim is compiled for using the ktblmgr linux kernel module, which seems to be not loaded.");
 	}
 
-	ioctl(ioctl_fd, IOCTL_SET_ANCESTOR_PGD);  //ioctl call
+	struct sigaction act;
+        sigset_t set;
 
+        sigfillset(&set);
+        sigdelset(&set,SIGSEGV);
+        sigdelset(&set,SIGINT);
+
+        act.sa_sigaction = ecs_fault_handler_on_segment;
+        act.sa_mask =  set;
+        act.sa_flags = SA_SIGINFO;
+        act.sa_restorer = NULL;
+        sigaction(SIGSEGV,&act,NULL);
+}
+
+// inserire qui tutte le api di schedulazione/deschedulazione
+void lp_alloc_thread_init(void) {
+	void *ptr;
+
+	int ret;
+	ret = manual_ioctl(ioctl_fd, IOCTL_SET_ANCESTOR_PGD,NULL);  //ioctl call
 	lp_memory_ioctl_info.ds = -1;
 	ptr = get_base_pointer(0); // LP 0 is the first allocated one, and it's memory stock starts from the beginning of the PML4
 	lp_memory_ioctl_info.addr = ptr;
@@ -155,11 +219,11 @@ void lp_alloc_thread_init(void) {
 
 	// TODO: this function is called by each worker thread. Does calling SET_VM_RANGE cause
   // a memory leak into kernel space?
-
-	ioctl(ioctl_fd, IOCTL_SET_VM_RANGE, &lp_memory_ioctl_info);
+	// TODO: Yes it does! And there could be some issues when unmounting as well!
+	manual_ioctl(ioctl_fd, IOCTL_SET_VM_RANGE, &lp_memory_ioctl_info);
 
 	/* required to manage the per-thread memory view */
-	pgd_ds = ioctl(ioctl_fd, IOCTL_GET_PGD);  //ioctl call
+	pgd_ds = manual_ioctl(ioctl_fd, IOCTL_GET_PGD,NULL);  //ioctl call
 }
 
 /* void lp_alloc_schedule(void) { */
@@ -193,7 +257,7 @@ void lp_alloc_schedule(void) {
 	ioctl_info sched_info;
 	bzero(&sched_info, sizeof(ioctl_info));
 
-	sched_info.ds = pgd_ds; // this is current
+	sched_info.ds = pgd_ds;
 	sched_info.count = LPS[current_lp]->ECS_index + 1; // it's a counter
 	sched_info.objects = LPS[current_lp]->ECS_synch_table; // pgd descriptor range from 0 to number threads - a subset of object ids
 
@@ -207,10 +271,22 @@ void lp_alloc_deschedule(void) {
 	/* stepping back into non-LP mode */
 	/* all previously scheduled (memory opened) LPs are also unscheduled by default */
 	/* reaccessing their state will give rise to traps (if not scheduled again) */
-	ioctl(ioctl_fd,IOCTL_UNSCHEDULE_ON_PGD, pgd_ds);
+	ioctl(ioctl_fd,IOCTL_UNSCHEDULE_ON_PGD, (void *)pgd_ds);
 }
 
 
 void lp_alloc_thread_fini(void) {
+}
+
+void setup_ecs_on_segment(msg_t *msg) {
+	void *base_ptr;
+
+	if(GidToKernel(msg->sender) == kid)
+		return;
+
+	// ECS on a remote LP: mprotect the whole segment
+	base_ptr = get_base_pointer(msg->sender);
+	printf("Setting up mprotect for LP %d base ptr %p size %d MB\n", msg->sender, base_ptr, PER_LP_PREALLOCATED_MEMORY / 1024 / 1024);
+	mprotect(base_ptr + PAGE_SIZE, PER_LP_PREALLOCATED_MEMORY - PAGE_SIZE , PROT_NONE);
 }
 #endif

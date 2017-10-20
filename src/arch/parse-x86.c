@@ -5088,8 +5088,8 @@ void x86_disassemble_instruction (unsigned char *text, unsigned long *pos, insn_
 	   che non sono prefissi, pertanto bisogna rinviare la gestione dei prefissi
 	   quanto più possibile... */
 	while(true) {
-		//printf("x86.c_POS: %02x\n", state.text[state.pos]);
 		opcode = state.text[state.pos++]; // Legge l'opcode
+//		printf("x86.c_POS: %02x byte: %#02x\n", state.text[state.pos]-1, opcode);
 
 		if(!is_prefix(opcode)) break; // I prefissi SSE sono anche prefissi normali (con significato diverso)
 

@@ -50,12 +50,9 @@
 #include <asm/cacheflush.h>
 #include <linux/uaccess.h>
 
-
 #include "cross_state_manager.h"
 
-//#define SIBLING_PGD 128
 #define AUXILIARY_FRAMES 256
-
 
 #if LINUX_VERSION_CODE <= KERNEL_VERSION(2,6,25)
 #error Unsupported Kernel Version
@@ -77,15 +74,12 @@ module_exit(rs_ktblmgr_cleanup);
 
 
 /* MODULE VARIABLES */
-//extern (*rootsim_pager)(struct task_struct *tsk); 
-//extern void rootsim_load_cr3(ulong addr); 
 void (*rootsim_pager)(void)=0x0;
 
 static inline void rootsim_load_cr3(pgd_t *pgdir) {
-	__asm__ __volatile__ ("mov %0, %%cr3"
-			      :
-			      : "r" (__pa(pgdir)));
+	__asm__ __volatile__ ("mov %0, %%cr3" :: "r" (__pa(pgdir)));
 }
+
 /// Device major number
 static int major;
 
@@ -118,7 +112,6 @@ void **ancestor_pml4;
 int restore_pml4;  /* starting entry of pml4 for release operations of shadow pdp tables */
 int restore_pml4_entries; /* entries of the pml4 involvrd in release operations of shadow pdp tables */
 int mapped_processes; /* number of processes (application objects) mapped onto the special segment */
-//int involved_pml4;
 
 ulong callback;
 
@@ -133,16 +126,14 @@ static DEVICE_ATTR(multimap, S_IRUSR|S_IRGRP|S_IROTH, NULL, NULL);
 
 /// File operations for the module
 struct file_operations fops = {
-	open:	rs_ktblmgr_open,
-	unlocked_ioctl:rs_ktblmgr_ioctl,
-	compat_ioctl:rs_ktblmgr_ioctl, // Nothing strange is passed, so 32 bits programs should work out of the box. Never tested, yet.
-	release:rs_ktblmgr_release
+	open: rs_ktblmgr_open,
+	unlocked_ioctl: rs_ktblmgr_ioctl,
+	compat_ioctl: rs_ktblmgr_ioctl, // Nothing strange is passed, so 32 bits programs should work out of the box. Never tested, yet.
+	release: rs_ktblmgr_release
 };
-
 
 /// This is to access the actual flush_tlb_all using a kernel proble
 void (*flush_tlb_all_lookup)(void) = NULL;
-
 
 int root_sim_page_fault(struct pt_regs* regs, long error_code){
  	void *target_address;
@@ -159,75 +150,40 @@ int root_sim_page_fault(struct pt_regs* regs, long error_code){
 
 	target_address = (void *)read_cr2();
 
-
 	/* discriminate whether this is a classical fault or a root-sim proper fault */
 
 	for(i=0;i<SIBLING_PGD;i++) {
 		if ((root_sim_processes[i])==(current->pid)) {
 
-			if((PML4(target_address)<restore_pml4) || (PML4(target_address))>=(restore_pml4+restore_pml4_entries)) return 0; /* a fault outside the root-sim object zone - it needs to be handeld by the traditional fault manager */
+			if((PML4(target_address)<restore_pml4) || (PML4(target_address))>=(restore_pml4+restore_pml4_entries))
+				return 0; /* a fault outside the root-sim object zone - it needs to be handeld by the traditional fault manager */
 
 			my_pgd =(void **)pgd_addr[i];
 			my_pdp =(void *)my_pgd[PML4(target_address)];
 			my_pdp = __va((ulong)my_pdp & 0xfffffffffffff000);
-			if((void *)my_pdp[PDP(target_address)] != NULL)
+			if((void *)my_pdp[PDP(target_address)] != NULL) {
 				return 0; /* faults at lower levels than PDP - need to be handled by traditional fault manager */
+			}
 
-#ifdef ON_FAULT_OPEN
-			ancestor_pdp =(void *) ancestor_pml4[PML4(target_address)];
-			ancestor_pdp = __va((ulong)ancestor_pdp & 0xfffffffffffff000);
-			my_pdp[PDP(target_address)] = ancestor_pdp[PDP(target_address)];
-//			printk("\tthread %d - root-sim is opening the access to the address %p (loading the mask %p into the page table)\n",current->pid,target_address, (void *)ancestor_pdp[PDP(target_address)]);
-
-			//PATCH cr3 = (void *)__pa(current->mm->pgd);
-			rootsim_load_cr3(pgd_addr[i]);
-		//	cr3 = (void *)__pa(pgd_addr[i]);
-		//	asm volatile("movq %%CR3, %%rax; andq $0x0fff,%%rax; movq %0, %%rbx; orq %%rbx,%%rax; movq %%rax,%%CR3"::"m" (cr3));
-/* to be improved with selective tlb invalidation */
-
-			return 1;
-
-#else
 			rs_ktblmgr_ioctl(NULL,IOCTL_UNSCHEDULE_ON_PGD,(int)i);
+			hitted_object = (PML4(target_address) - restore_pml4) * 512 + PDP(target_address) ;
 
-#endif
-			hitted_object = (PML4(target_address) - restore_pml4)*512 + PDP(target_address) ;
-			
-
+			// Pass required parameters to userland
 			auxiliary_stack_pointer = regs->sp;
 			auxiliary_stack_pointer--;
-			//printk("stack management information : reg->sp is %p - auxiliary sp is %p\n",regs->sp,auxiliary_stack_pointer);
 		        copy_to_user((void *)auxiliary_stack_pointer,(void *)&regs->ip,8);	
 			auxiliary_stack_pointer--;
 		        copy_to_user((void *)auxiliary_stack_pointer,(void *)&hitted_object,8);	
 			auxiliary_stack_pointer--;
 		        copy_to_user((void *)auxiliary_stack_pointer,(void *)&i,8);	
-//			printk("stack management information : reg->sp is %p - auxiliary sp is %p - hitted objectr is %u - pgd descriptor is %u\n",regs->sp,auxiliary_stack_pointer,hitted_object,i);
 			regs->sp = auxiliary_stack_pointer;
 			regs->ip = callback;
-
 
 			return 1;
 		}
 	}
+
 	return 0;
-
-	if (!target_pdp_entry){ /* root-sim fault - open access and notify */
-//		printk("root-sim fault at address %p (pml4 is %d - PDP is %d)\n",target_address,(int)PML4(target_address),(int)PDP(target_address));
-
-		
-		ancestor_pdp =(void *) ancestor_pml4[PML4(target_address)];
-		my_pdp[PDP(target_address)] = ancestor_pdp[PDP(target_address)]; /* access opened */
-	        return 1;	
-	}
-	else{ /* classical fault - just push the fault to the original handler */
-		//original_fault_handler(vma,vmf);
-		return 0;
-
-	}
-
-//	return 0;
-
 }
 
 EXPORT_SYMBOL(root_sim_page_fault);
@@ -240,11 +196,9 @@ int rs_ktblmgr_open(struct inode *inode, struct file *filp) {
 		return -EACCES;
 	}
 
-	return 0;
-
-//skip blocking
 	// Only one access at a time
 	if (!mutex_trylock(&rs_ktblmgr_mutex)) {
+		printk(KERN_INFO "%s: Trying to open an already-opened special device file\n", KBUILD_MODNAME);
 		return -EBUSY;
 	}
 
@@ -260,23 +214,21 @@ int rs_ktblmgr_release(struct inode *inode, struct file *filp) {
 	void **temp;
 	void *address;
 
-	return;
-
-//	printk("closing the special device file ktblmgr\n");
-
-
-//	mutex_unlock(&rs_ktblmgr_mutex);
-
 	/* already logged by ancestor set */
 	pml4 = restore_pml4; 
 	involved_pml4 = restore_pml4_entries;
 
 	for (j=0;j<SIBLING_PGD;j++){
+
+
+		original_view[j] = NULL;
+		continue;
+
+		// SOme super bug down here!
+
 		if(original_view[j]!=NULL){ /* need to recover memory used for PDPs that have not been deallocated */
 
-
 			pgd_entry = (void **)pgd_addr[i];
-
 			for (i=0; i<involved_pml4; i++){
 			
 			 	printk("\tPML4 ENTRY FOR CLOSE DEVICE IS %d\n",pml4);
@@ -286,7 +238,7 @@ int rs_ktblmgr_release(struct inode *inode, struct file *filp) {
 				printk("temp is %p\n", temp);
 				address = (void *)__va(temp);
 				if(address!=NULL){
-					__free_pages(address, 0);
+			//		__free_pages(address, 0); // TODO: there's a bug here! We leak memory instead! :-)
 					printk("would free address at %p\n", address);
 				}
 				pgd_entry[pml4] = ancestor_pml4[pml4];
@@ -296,378 +248,154 @@ int rs_ktblmgr_release(struct inode *inode, struct file *filp) {
 		}// enf if != NULL
 	}// end for j
 
+	mutex_unlock(&rs_ktblmgr_mutex);
+
 	return 0;
 }
-
-
-static void print_bits(unsigned long long number) {
-	unsigned long long mask = 0x8000000000000000; // 64 bit
-	char digit;
-
-	while(mask) {
-		digit = ((mask & number) ? '1' : '0');
-//		printk("%c", digit);
-		mask >>= 1 ;
-	}
-//	printk("\n");
-}
-
 
 static long rs_ktblmgr_ioctl(struct file *filp, unsigned int cmd, unsigned long arg) {
 
 	int ret = 0;
-	int i,j,z;
+	int i;
 	void **my_pgd;
 	void **my_pdp;
-	void **ancestor_pdp;
-	void *cr3;
 	void **pgd_entry;
-	void **source_pgd_entry;
 	void *pdp_entry;
 	void *pde_entry;
 	void *pte_entry;
 	void **temp;
-	void **temp1;
-	void **temp2;
 	int descriptor;
 	struct vm_area_struct *mmap;
 	void *address;
-	int pml4, pdp;
+	int pml4;
 	int involved_pml4;
-	void *source_pdp;
 	int scheduled_object;
+	void **ancestor_pdp;
 	int *scheduled_objects;
 	int scheduled_objects_count;
 	int object_to_close;
-	//ulong aux;
-
-	char* aux;
-	char* aux1;
 
 	switch (cmd) {
 
-	case IOCTL_INIT_PGD:
-//		printk(KERN_INFO "Correctly received an INIT_PGD code\n");
-//		printk("int is %d - %d - %d %d %d\n",sizeof(int),sizeof(struct mm_struct),sizeof(struct vm_area_struct),sizeof(struct rb_root),sizeof(struct vm_area_struct));
-//		printk("base  is %ul - field is %ul - diff is %ul \n",(ulong)(&current->mm->mmap),(ulong)(&current->mm->faultstamp),(ulong)(&current->mm->faultstamp)- (ulong)(&current->mm->mmap));
-//		printk("base  is %ul - field is %ul - diff is %ul \n",(ulong)(&current->mm->mmap),(ulong)(&current->mm->pgd),(ulong)(&current->mm->pgd)- (ulong)(&current->mm->mmap));
-//		printk("base  is %p - field is %p - diff is NA \n",(&current->mm->mmap),(&current->mm->total_vm));
-		break;
-
-
-	case IOCTL_REGISTER_THREAD:
-	
-		root_sim_processes[arg] = current->pid;
-
-		//flush_cache_all();
-/*
-		for(i=0;i<SIBLING_PGD;i++){
-			if (root_sim_processes[i]==-1) {
-				root_sim_processes[i]=current->pid;
-				break;
-			}
-		}
-*/
-
-		/* audit */
-//		printk("LIST OF ROOT SIM PROCESSES AFTER REGISTERING\n");
-//		for(i=0;i<SIBLING_PGD;i++) printk("%d  ",root_sim_processes[i]);
-//		printk("\n");
-		break;
-
-	case IOCTL_DEREGISTER_THREAD:
-
-/*
-		flush_cache_all();
-		for(i=0;i<SIBLING_PGD;i++){
-			if (root_sim_processes[i]==current->pid) {
-				root_sim_processes[i]=-1;
-				break;
-			}
-		}
-*/
-
-		root_sim_processes[arg] = -1;
-		/* audit */
-//		printk("LIST OF ROOT SIM PROCESSES AFTER DEREGISTERING\n");
-//		for(i=0;i<SIBLING_PGD;i++) printk("%d  ",root_sim_processes[i]);
-//		printk("\n");
-		break;
-
-	case IOCTL_SET_ANCESTOR_PGD:
-		//flush_cache_all();
-		ancestor_pml4 = (void **)current->mm->pgd;
-//		printk("ANCESTOR PML4 SET - ADDRESS IS %p\n",ancestor_pml4);
-		break;
-
-	case IOCTL_GET_PGD:
-		//flush_cache_all();
-		mutex_lock(&pgd_get_mutex);
-		for (i = 0; i < SIBLING_PGD; i++) {
-			if (original_view[i] == NULL) {
-				//memcpy(mm_struct_addr[i], current->mm, sizeof(struct mm_struct));
-				memcpy((void *)pgd_addr[i], (void *)(current->mm->pgd), 4096);
-				original_view[i] = current->mm;
-				descriptor = i;
-				ret = descriptor;
-				//flush_cache_all();
-				//break;
-				goto pgd_get_done;
-			}
-		}
-		ret = -1;
-		pgd_get_done:
-		mutex_unlock(&pgd_get_mutex);
-goto bridging_from_get_pgd;
-		break;
-
-	case IOCTL_RELEASE_PGD:
-		//flush_cache_all();
-goto bridging_from_pgd_release;
-back_to_pgd_release:
-		rootsim_load_cr3(current->mm->pgd);
-		if (original_view[arg] != NULL) {
-			original_view[arg] = NULL;
-			ret = 0;
+		case IOCTL_SET_ANCESTOR_PGD:
+			ancestor_pml4 = (void **)current->mm->pgd;
 			break;
-		}
-		else{
-//			printk("bad pgd release\n");
-		}
 
-		break;
+		case IOCTL_GET_PGD:
+			descriptor = -1;
+			mutex_lock(&pgd_get_mutex);
+			for (i = 0; i < SIBLING_PGD; i++) {
+				if (original_view[i] == NULL) {
+					memcpy((void *)pgd_addr[i], (void *)(current->mm->pgd), 4096);
+					original_view[i] = current->mm;
+					descriptor = i;
+					goto pgd_get_done;
+				}
+			}
 
-	case IOCTL_SCHEDULE_ON_PGD:	
-		//flush_cache_all();
-		descriptor = ((ioctl_info*)arg)->ds;
-		//scheduled_object = ((ioctl_info*)arg)->id;
-		scheduled_objects_count = ((ioctl_info*)arg)->count;
-		scheduled_objects = ((ioctl_info*)arg)->objects;
+		    pgd_get_done:
+			ret = descriptor; // Return -1 if no PGD is available
+			mutex_unlock(&pgd_get_mutex);
 
-		//scheduled_object = ((ioctl_info*)arg)->id;
-		if (original_view[descriptor] != NULL) { //sanity check
+			// If a valid descriptor is found, make a copy of the PGD entries
+			if(descriptor != -1) {
+				flush_cache_all();
 
-			for(i=0;i<scheduled_objects_count;i++){
-
-			//scheduled_object = TODO COPY FROM USER;
-		        copy_from_user((void *)&scheduled_object,(void *)&scheduled_objects[i],sizeof(int));	
-			open_index[descriptor]++;
-			currently_open[descriptor][open_index[descriptor]]=scheduled_object;
-			//loadCR3 with pgd[arg]
+				/* already logged by ancestor set */
+				pml4 = restore_pml4; 
+				involved_pml4 = restore_pml4_entries;
+	
+				pgd_entry = (void **)pgd_addr[descriptor];
+	
+				for (i = 0; i < involved_pml4; i++) {
+				
+					address = (void *)__get_free_pages(GFP_KERNEL, 0); /* allocate and reset new PDP */
+					memset(address,0,4096);
+				
+					temp = pgd_entry[pml4];
 			
-			pml4 = restore_pml4 + OBJECT_TO_PML4(scheduled_object);
-			my_pgd =(void **) pgd_addr[descriptor];
-			my_pdp =(void *) my_pgd[pml4];
-			my_pdp = __va((ulong)my_pdp & 0xfffffffffffff000);
+					temp = (void *)((ulong) temp & 0x0000000000000fff);	
+					address = (void *)__pa(address);
+					temp = (void *)((ulong)address | (ulong)temp);
+					pgd_entry[pml4] = temp;
 
-			ancestor_pdp =(void *) ancestor_pml4[pml4];
-			ancestor_pdp = __va((ulong)ancestor_pdp & 0xfffffffffffff000);
-
-			/* actual opening of the PDP entry */
-			my_pdp[OBJECT_TO_PDP(scheduled_object)] = ancestor_pdp[OBJECT_TO_PDP(scheduled_object)];
-			}// end for 
-
-			/* actual change of the view on memory */
-			root_sim_processes[descriptor] = current->pid;
-			rootsim_load_cr3(pgd_addr[descriptor]);
-			ret = 0;
-		}else{
-			 ret = -1;
-		}
-		break;
-
-
-	case IOCTL_UNSCHEDULE_ON_PGD:	
-
-		//flush_cache_all();
-		descriptor = arg;
-
-		if ((original_view[descriptor] != NULL) && (current->mm->pgd != NULL)) { //sanity check
-
-			root_sim_processes[descriptor] = -1;
-			rootsim_load_cr3(current->mm->pgd);
-
-			for(i=open_index[descriptor];i>=0;i--){
-
-				object_to_close = currently_open[descriptor][i];
-	
+					pml4++;
+				}
+			}
 			
-				pml4 = restore_pml4 + OBJECT_TO_PML4(object_to_close);
-//				printk("UNSCHEDULE: closing pml4 %d - object %d\n",pml4,object_to_close);
-	//			continue;
-				my_pgd =(void **)pgd_addr[descriptor];
-				my_pdp =(void *)my_pgd[pml4];
-				my_pdp = __va((ulong)my_pdp & 0xfffffffffffff000);
+			break;
+
+	 	case IOCTL_SCHEDULE_ON_PGD:	
+			//flush_cache_all();
+			descriptor = ((ioctl_info*)arg)->ds;
+			//scheduled_object = ((ioctl_info*)arg)->id;
+			scheduled_objects_count = ((ioctl_info*)arg)->count;
+			scheduled_objects = ((ioctl_info*)arg)->objects;
+
+			//scheduled_object = ((ioctl_info*)arg)->id;
+			if (original_view[descriptor] != NULL) { //sanity check
+
+				for(i = 0; i < scheduled_objects_count; i++) {
+
+					//scheduled_object = TODO COPY FROM USER;
+			        	copy_from_user((void *)&scheduled_object,(void *)&scheduled_objects[i],sizeof(int));	
+					open_index[descriptor]++;
+					currently_open[descriptor][open_index[descriptor]]=scheduled_object;
+
+					//loadCR3 with pgd[arg]
+					pml4 = restore_pml4 + OBJECT_TO_PML4(scheduled_object);
+					my_pgd =(void **) pgd_addr[descriptor];
+					my_pdp =(void *) my_pgd[pml4];
+					my_pdp = __va((ulong)my_pdp & 0xfffffffffffff000);
+
+					ancestor_pdp =(void *) ancestor_pml4[pml4];
+					ancestor_pdp = __va((ulong)ancestor_pdp & 0xfffffffffffff000);
+
+					/* actual opening of the PDP entry */
+					my_pdp[OBJECT_TO_PDP(scheduled_object)] = ancestor_pdp[OBJECT_TO_PDP(scheduled_object)];
+				}// end for 
+
+				/* actual change of the view on memory */
+				root_sim_processes[descriptor] = current->pid;
+				rootsim_load_cr3(pgd_addr[descriptor]);
+				ret = 0;
+			} else {
+				 ret = -1;
+			}
+			break;
 
 
-				/* actual closure of the PDP entry */
+		case IOCTL_UNSCHEDULE_ON_PGD:	
+
+			descriptor = arg;
+
+			if ((original_view[descriptor] != NULL) && (current->mm->pgd != NULL)) { //sanity check
+
+				root_sim_processes[descriptor] = -1;
+				rootsim_load_cr3(current->mm->pgd);
+
+				for(i=open_index[descriptor];i>=0;i--){
+
+					object_to_close = currently_open[descriptor][i];
 	
-				my_pdp[OBJECT_TO_PDP(object_to_close)] = NULL;
+					pml4 = restore_pml4 + OBJECT_TO_PML4(object_to_close);
+					my_pgd =(void **)pgd_addr[descriptor];
+					my_pdp =(void *)my_pgd[pml4];
+					my_pdp = __va((ulong)my_pdp & 0xfffffffffffff000);
+	
+					/* actual closure of the PDP entry */
+	
+					my_pdp[OBJECT_TO_PDP(object_to_close)] = NULL;
+				}
+				open_index[descriptor] = -1;
+				ret = 0;
+			} else {
+				ret = -1;
 			}
-			open_index[descriptor] = -1;
-			ret = 0;
-		}else{
-			ret = -1;
-		}
 
-		break;
-
-	case IOCTL_INSTALL_PGD:	
-	//	flush_cache_all();
-		if (original_view[arg] != NULL) {
-
-			//loadCR3 with pgd[arg]
-			root_sim_processes[arg] = current->pid;
-			rootsim_load_cr3(pgd_addr[arg]);
-			ret = 0;
 			break;
 
-
-			current->mm = mm_struct_addr[arg];
-			current->active_mm = original_view[arg]; /* 30-1-2014 */
-			atomic_inc(&original_view[arg]->mm_count); /* 30-1-2014 */
-			current->mm->pgd = (void *)(pgd_addr[arg]);
-
-//			printk("mm->pgd is %p -- cr3 is %p -- PA(pgd) is %p",(void *)current->mm->pgd,(void *)cr3,(void *)__pa(current->mm->pgd));
-			flush_cache_all();
-			cr3 = (void *)__pa(current->mm->pgd);
-			asm volatile("movq %%CR3, %%rax; andq $0x0fff,%%rax; movq %0, %%rbx; orq %%rbx,%%rax; movq %%rax,%%CR3"::"m" (cr3));
-			//flush_tlb_all_lookup();
-			ret = 0;
-			break;
-		}
-		else{
-		 	printk("bad pgd install\n");
-		}
-
-		break;
-
-	case IOCTL_GET_INFO_PGD:
-//		printk("--------------------------------\n");	
-//		printk("mm is  %p --  mm->pgd is %p -- PA(pgd) is %p\n",(void *)current->mm,(void *)current->mm->pgd,(void *)__pa(current->mm->pgd));
-//		printk("PRINTING THE WHOLE PGD (non-NULL entries)\n");	
-		pgd_entry = (void **)current->mm->pgd;
-		for(i=0;i<512;i++){
-			if (*(pgd_entry + i) != NULL){
-//				printk("\tentry \t%d \t- value \t%p\n",i,(void *)(*(pgd_entry+i)));	
-			//printk("\tentry \t%d \t- value \t%X\n",i,current->mm->pgd[i]);	
-			}
-		}	
-
-		break;
-
-	case IOCTL_GET_INFO_VMAREA:
-		mmap = current->mm->mmap;
-//		printk("--------------------------------\n");	
-
-//		printk("PRINTING THE WHOLE VMAREA LIST\n");	
-	//	pgd_entry = (void **)current->mm->pgd;
-		for(i=0;mmap;i++){
-			//if (*(pgd_entry + i) != NULL){
-//			printk("\t VMAREA entry \t%d - start = \t%p - end = \t%p - ops addr = \t%p\n",i,(void *)mmap->vm_start,(void *)mmap->vm_end,(void *)mmap->vm_ops);	
-			mmap = mmap->vm_next;
-			//printk("\tentry \t%d \t- value \t%X\n",i,current->mm->pgd[i]);	
-		//	}
-
-		}	
-
-		break;
-
-
-	case IOCTL_GET_CR_REGISTERS:
-		asm volatile("movq %%CR0, %0":"=r" (cr3));
-//		printk("CR0 = ");
-		print_bits((unsigned long long)cr3);
-		
-		asm volatile("\nmovq %%CR2, %0":"=r" (cr3));
-//		printk("CR2 = ");
-		print_bits((unsigned long long)cr3);
-		
-		asm volatile("\nmovq %%CR3, %0":"=r" (cr3));
-//		printk("CR3 = ");
-		print_bits((unsigned long long)cr3);
-		
-		asm volatile("\nmovq %%CR4, %0":"=r" (cr3));
-//		printk("CR4 = ");
-		print_bits((unsigned long long)cr3);
-
-		break;
-
-
-	case IOCTL_UNINSTALL_PGD:
-	//	flush_cache_all();
-		if(current->mm != NULL){
-			root_sim_processes[arg] = -1;
-			rootsim_load_cr3(current->mm->pgd);
-		}
-	//		cr3 = (void *)__pa(current->mm->pgd);
-	//		asm volatile("movq %%CR3, %%rax; andq $0x0fff,%%rax; movq %0, %%rbx; orq %%rbx,%%rax; movq %%rax,%%CR3"::"m" (cr3));
-			//flush_tlb_all_lookup();
-			ret = 0;
-			break;
-		if (original_view[arg] != NULL) {
-//			printk("uninstalling the view - auditing the content of current and restore mm tables\n");
-			aux = (char*)current->mm;
-			aux1 = (char*)original_view[arg];
-//			for(i=0;i<sizeof(struct mm_struct);i++) {
-//				if (aux[i] != aux1[i]) printk("position %d - found %X  %X\n",i,aux[i],aux1[i]);
-//			}
-//			printk("vm_counts are : %d (current)  %d (original)\n",current->mm->mm_count,original_view[arg]->mm_count);
-//			printk("printing current and original aux vectors\n");
-//			for(i=0;i<AT_VECTOR_SIZE;i++){
-//				printk("%ul ",current->mm->saved_auxv[i]);
-//			}
-//			printk("\n");
-//			for(i=0;i<AT_VECTOR_SIZE;i++){
-//				printk("%ul ",original_view[arg]->saved_auxv[i]);
-//			}
-//			printk("\n");
-//			printk("contexts are : %d (current) - %d (original)\n",current->mm->context.size,original_view[arg]->context.size);
-//			printk("compare on contexts is : %d\n",memcmp((char*)&current->mm->context,(char*)&original_view[arg]->context,sizeof(mm_context_t)));
-//			printk("compare on cpu mask is : %d\n",memcmp((char*)&current->mm->cpu_vm_mask,(char*)&original_view[arg]->cpu_vm_mask,sizeof(cpumask_t)));
-//			printk("compare on PML4 is : %d\n",memcmp((char*)current->mm->pgd,(char*)original_view[arg]->pgd,4096));
-			//printk("vm_counts are : %d (current)  %d (original)\n",(struct mm_struct*)aux->mm_count,(struct mm_struct*)aux1->mm_count);
-
-/*
-			printk("LOGGING CURRENT PML4\n");
-			pgd_entry=(void *)current->mm->pgd;
-			for (i=0;i<512;i++){
-				if((void *)pgd_entry[i]) printk("entry %i  is  %p\n",i,(void *)pgd_entry[i]);
-			}
-			printk("LOGGING CURRENT PML4\n");
-			pgd_entry=(void *)current->mm->pgd;
-			for (i=0;i<512;i++){
-				if((void *)pgd_entry[i]) printk("entry %i  is  %p\n",i,(void *)pgd_entry[i]);
-			}
-*/
-
-//			printk("\nDONE FIRST\n");
-//			aux = (char*)original_view[arg];
-//			for(i=0;i<sizeof(struct mm_struct);i++) printk("%X",aux[i]);
-			printk("\n");
-			current->mm = original_view[arg];
-			atomic_dec(&original_view[arg]->mm_count); /* 30-1-2014 */
-//			current->active_mm = original_view[arg]; /* 30-1-2014 */
-			//atomic_inc(&(current->mm->mm_count));
-
-			cr3 = (void *)__pa(current->mm->pgd);
-			asm volatile("movq %%CR3, %%rax; andq $0x0fff,%%rax; movq %0, %%rbx; orq %%rbx,%%rax; movq %%rax,%%CR3"::"m" (cr3));
-
-//			asm volatile("movq %%CR3, %%rax; andq $0x0fff,%%rax; movq %0, %%rbx; orq %%rbx,%%rax; movq %%rax,%%CR3"::"m" (current->mm->pgd):"rax","rbx");
-			//asm volatile("movq %0,%%rax; movq %%rax,%%CR3"::"m" (current->mm->pgd):"rax");
-			//flush_tlb_all_lookup();
-			//current->mm->pgd = pgd_addr[arg];
-			//memcpy(mm_struct_addr[i], current->mm, sizeof(struct mm_struct));
-			//memcpy((void *)pgd_addr[i] ,(void *)(current->mm->pgd), 4096);
-			//original_view[arg] = NULL;
-			//descriptor = i;
-			ret = 0;
-			break;
-		}
-//		printk("bad pgd install\n");
-		break;
-
-	case IOCTL_SET_VM_RANGE:
+		case IOCTL_SET_VM_RANGE:
 
 			flush_cache_all(); /* to make new range visible across multiple runs */
 			
@@ -677,292 +405,19 @@ back_to_pgd_release:
 
 			callback = ((ioctl_info*)arg)->callback;
 
-
-
 			pml4 = (int)PML4(((ioctl_info*)arg)->addr);
 			printk("LOGGING CHANGE VIEW INVOLVING %u PROCESSES AND %d PML4 ENTRIES STARTING FROM ENTRY %d (address %p)\n",((ioctl_info*)arg)->mapped_processes,involved_pml4,pml4, ((ioctl_info*)arg)->addr);
 			restore_pml4 = pml4;
 			restore_pml4_entries = involved_pml4;
-			//printk("LOGGING METADATA OF CHANGE VIEW INVOLVING %u PROCESSES AND %d PML4 ENTRIES STARTING FROM ENTRY %d\n",((ioctl_info*)arg)->mapped_processes,restore_pml4_entries,restore_pml4);
-
 
 			flush_cache_all(); /* to make new range visible across multiple runs */
 
-		break;
+			ret = 0;
 
-	case IOCTL_CHANGE_MODE_VMAREA:
-			
-		mmap = current->mm->mmap;
-//		printk("--------------------------------\n");	
-//		printk("FINDING VMAREA CONTAINIG ADDRESS %p FOR CHANGING ACCESS MODE\n",(void *)arg);
-		//printk("PRINTING THE WHOLE VMAREA LIST\n");	
-		//pgd_entry = (void **)current->mm->pgd;
-		for(i=0;mmap;i++){
-			//if (*(pgd_entry + i) != NULL){
-			if (((void *)arg >= (void *)mmap->vm_start) && ((void *)(arg)<=(void *)mmap->vm_end)){
-//				printk("\tFOUND TARGET VMAREA entry \t%d - start = \t%p - end = \t%p\n",i,(void *)mmap->vm_start,(void *)mmap->vm_end);	
-				goto redirect;
-
-			}
-//			printk("\t VMAREA entry \t%d - start = \t%p - end = \t%p\n",i,(void *)mmap->vm_start,(void *)mmap->vm_end);	
-			mmap = mmap->vm_next;
-			//printk("\tentry \t%d \t- value \t%X\n",i,current->mm->pgd[i]);	
-		//	}
-
-		}	
-redirect:
-
-		/* logging current snapshot and redirecting the vmarea to auxiliary vmarea ops table */
-		changed_mode_mmap = mmap;
-		//original_vm_ops = mmap->vm_ops;
-		//memcpy(&mmap->vm_ops,&auxiliary_vm_ops_table,sizeof(struct vm_operations_struct));
-		//mmap->vm_ops = &auxiliary_vm_ops_table;
-		//original_fault_handler = auxiliary_vm_ops_table.fault;
-		//auxiliary_vm_ops_table.fault = root_sim_fault_handler;
-		//mmap->
-		//mmap->
-	
-		break;
-
-	case IOCTL_TRACE_VMAREA:
-			
-		mmap = current->mm->mmap;
-//		printk("--------------------------------\n");	
-//		printk("FINDING VMAREA CONTAINIG ADDRESS %p\n",(void *)arg);
-		//printk("PRINTING THE WHOLE VMAREA LIST\n");	
-		//pgd_entry = (void **)current->mm->pgd;
-		for(i=0;mmap && (i<128);i++){
-			//if (*(pgd_entry + i) != NULL){
-			if (((void *)arg >= (void *)mmap->vm_start) && ((void *)(arg)<=(void *)mmap->vm_end)){
-//				printk("\tFOUND TARGET VMAREA entry \t%d - start = \t%p - end = \t%p\n",i,(void *)mmap->vm_start,(void *)mmap->vm_end);	
-				goto secondlevel;
-
-			}
-//			printk("\t VMAREA entry \t%d - start = \t%p - end = \t%p\n",i,(void *)mmap->vm_start,(void *)mmap->vm_end);	
-			mmap = mmap->vm_next;
-			//printk("\tentry \t%d \t- value \t%X\n",i,current->mm->pgd[i]);	
-		//	}
-
-		}	
-	
-		if(!mmap){
-//			printk("ERROR IN TRACING VMAREA\n");
 			break;
-		}
 
-secondlevel:
-		pgd_entry = (void *)current->mm->pgd;
-	
-		address = (void *)mmap->vm_start;
-
-		for ( ; PML4(address) <= PML4((void *)mmap->vm_end) ; ){
-
-			pdp_entry = (void *)pgd_entry[(int)PML4(address)];
-			pdp_entry = (void *)((ulong) pdp_entry & 0xfffffffffffff000);
-//			printk("\tPL4 TRACED ENTRY IS %d - value is %p - address is  %p\n",(int)PML4(address),pgd_entry[(int)PML4(address)],pdp_entry);
-			if(pdp_entry != NULL){
-				pdp_entry = __va(pdp_entry);
-		
-				temp = (void *)pdp_entry;
-
-//					printk("\tPRINTING PDP (non-null entries) and the chain of PDE/PTE related entries\n");	
-				for(i=0;i<512;i++){
-				//	print_bits((unsigned long long)temp[i]);
-					if ((temp[i]) != NULL){
-//						printk("\t\tentry \t%d \t- value \t%p -- address is  %p\n",i,(void *)(temp[i]),(void *)((ulong) temp[i] & 0xfffffffffffff000));	
-
-					//internal loop om PDE entries
-				}
-			}	
-			}
-
-			address = PML4_PLUS_ONE(address);
-		}
-		break;
-
-		for ( ; PML4(address) <= PML4((void *)mmap->vm_end) ; ){
-
-			pdp_entry = (void *)pgd_entry[(int)PML4(address)];
-			pdp_entry = (void *)((ulong) pdp_entry & 0xfffffffffffff000);
-//			printk("\tPL4 TRACED ENTRY IS %d - value is %p - address is  %p\n",(int)PML4(address),pgd_entry[(int)PML4(address)],pdp_entry);
-			//pdp_entry = (void *)GET_ADDRESS(pdp_entry);
-			//pdp_entry = pdp_entry >> 12; 
-			//pdp_entry = pdp_entry << 12; 
-			//printk("\tADDRES IN PL4 TRACED ENTRY IS %p\n",pdp_entry);
-			pdp_entry = __va(pdp_entry);
-		
-			temp = (void **)pdp_entry;
-
-//			printk("\tPRINTING PDP (non-null entries) and the chain of PDE/PTE related entries\n");	
-			for(i=0;i<512;i++){
-			//	print_bits((unsigned long long)temp[i]);
-				if ((temp[i]) != NULL){
-//					printk("\t\tentry \t%d \t- value \t%p -- address is  %p\n",i,(void *)(temp[i]),(void *)((ulong) temp[i] & 0xfffffffffffff000));	
-
-					//internal loop om PDE entries
-				
-					pde_entry = (void *)((ulong) temp[i] & 0xfffffffffffff000);  
-					//printk("\t\t\tADDRES IN PDE TRACED ENTRY IS %p\n",pde_entry);
-					pde_entry = __va(pde_entry);
-					temp1 = (void **)pde_entry;
-
-//					printk("\t\tPDE TRACED ENTRIES\n");
-
-					for(j=0;j<512;j++){
-						if ((temp1[j]) != NULL){
-//						printk("\t\t\tentry \t%d \t- value \t%p - address is  %p\n",j,(void *)(temp1[j]),(void *)((ulong) temp1[j] & 0xfffffffffffff000));	
-						//printk("\t\t\tPDP TRACED ENTRY is %d\n",j);
-
-						//now tracing the PTE
-//						printk("\t\t\tPTE TRACED ENTRIES\n");
-						pte_entry = (void *)((ulong) temp1[j] & 0xfffffffffffff000);  
-						//printk("\t\t\t\tADDRES IN PTE TRACED ENTRY IS %p\n",pte_entry);
-						pte_entry = __va(pte_entry);
-						temp2 = (void **)pte_entry;
-				//		printk("\t\t\t\tentry \t%d \t- value \t%p - address is  %p\n",j,(void *)(temp1[j]),(ulong) temp1[j] & 0xfffffffffffff000);	
-
-						for(z=0;z<512;z++){
-							if ((temp2[z]) != NULL){
-//							printk("\t\t\t\tentry \t%d \t - value \t%p - address is %p\n",z,(void *)(temp2[z]),(void *)((ulong) temp2[z] & 0xfffffffffffff000));	
-							//printk("\t\t\tPDP TRACED ENTRY is %d\n",i);
-							} // end if temp2
-						}// end for z
-
-				   	}// end if temp1
-
-				}// end for j
-
-					//printk("\tentry \t%d \t- value \t%X\n",i,current->mm->pgd[i]);	
-				} // end if temp
-			}// end for i	
-
-			address = PML4_PLUS_ONE(address);
-
-		}// end lopp pn PML4	
-		
-
-
-		break;
-
-
-bridging_from_get_pgd:
-		arg = ret;
-	case IOCTL_CHANGE_VIEW:
-
-			flush_cache_all();
-			//involved_pml4 = (((ioctl_info*)arg)->mapped_processes) >> 9; 
-			//if ( (unsigned)((ioctl_info*)arg)->mapped_processes & 0x00000000000001ff ) involved_pml4++;
-
-
-
-//			pml4 = PML4(((ioctl_info*)arg)->addr);
-
-			/* already logged by ancestro set */
-			pml4 = restore_pml4; 
-			involved_pml4 = restore_pml4_entries;
-
-		// patch	pgd_entry = (void **)current->mm->pgd;
-			pgd_entry = (void **)pgd_addr[arg];
-//		printk("CHANGE VIEW INVOLVING %u PROCESSES AND %d PML4 ENTRIES STARTING FROM ENTRY %d\n",mapped_processes,involved_pml4,pml4);
-
-	//		break;
-
-			for (i=0; i<involved_pml4; i++){
-			
-//			 	printk("\tPML4 ENTRY FOR CHANGE VIEW IS %d\n",pml4);
-
-				address = (void *)__get_free_pages(GFP_KERNEL, 0); /* allocate and reset new PDP */
-				memset(address,0,4096);
-			
-				temp = pgd_entry[pml4];
-//				printk("changing this value %p\n",temp);
-				
-				temp = (void *)((ulong) temp & 0x0000000000000fff);	
-				address = (void *)__pa(address);
-				temp = (void *)((ulong)address | (ulong)temp);
-	//			temp1 = pgd_entry[pml4];
-				pgd_entry[pml4] = temp;
-	//			pgd_entry[pml4] = temp1;
-
-				pml4++;
-
-			}
-			
-	//		rootsim_load_cr3(pgd_addr[arg]);
-			//cr3 = (void *)__pa(current->mm->pgd);
-			//asm volatile("movq %%CR3, %%rax; andq $0x0fff,%%rax; movq %0, %%rbx; orq %%rbx,%%rax; movq %%rax,%%CR3"::"m" (cr3)); /* flush the TLB - to be optimized with selective invalidation */
-
-		break;
-
-bridging_from_pgd_release:
-
-	case IOCTL_RESTORE_VIEW:
-
-	//		flush_cache_all();
-
-			/* already logged by ancestor set */
-			pml4 = restore_pml4; 
-			involved_pml4 = restore_pml4_entries;
-
-			// PATCH pgd_entry = (void **)current->mm->pgd;
-			pgd_entry = (void **)pgd_addr[arg];
-//		printk("RESTORE VIEW INVOLVING %u PROCESSES AND %d PML4 ENTRIES STARTING FROM ENTRY %d\n",mapped_processes,involved_pml4,pml4);
-
-	//		break;
-
-			for (i=0; i<involved_pml4; i++){
-			
-//			 	printk("\tPML4 ENTRY FOR RESTORE VIEW IS %d\n",pml4);
-
-				//address = (void *)__get_free_pages(GFP_KERNEL, 0); /* allocate and reset new PDP */
-				//memset(address,0,1024);
-			
-				temp = pgd_entry[pml4];
-//				printk("changing this value %p\n",temp);
-				
-// TO PATCH IMMEDIATELY
-				//temp = (void *)((ulong) temp & 0x0000000000000fff);	
-				temp = (void *)((ulong) temp & 0xfffffffffffff000);	
-				address = (void *)__va(temp);
-				if(address!=NULL){
-					__free_pages(address, 0);
-				}
-				//temp = (void *)((ulong)address | (ulong)temp);
-				pgd_entry[pml4] = ancestor_pml4[pml4];
-
-				pml4++;
-
-			}
-
-/*
-			if(flag){
-goto back_to_close;
-			}
-*/
-			
-
-	//		rootsim_load_cr3(pgd_addr[arg]);
-			//cr3 = (void *)__pa(current->mm->pgd);
-			//asm volatile("movq %%CR3, %%rax; andq $0x0fff,%%rax; movq %0, %%rbx; orq %%rbx,%%rax; movq %%rax,%%CR3"::"m" (cr3)); /* flush the TLB - to be optimized with selective invalidation */
-
-goto back_to_pgd_release;
-
-		break;
-
-	case IOCTL_SYNC_SLAVES:
-
-		break;
-
-	case IOCTL_SCHEDULE_ID:
-		
-		break;
-
-	case IOCTL_UNSCHEDULE_CURRENT:
-
-		break;
-
-	default:
-		ret = -EINVAL;
+		default:
+			ret = -EINVAL;
 	}
 
 	return ret;
@@ -971,7 +426,7 @@ goto back_to_pgd_release;
 
 
 
-void foo(struct task_struct *tsk) {
+void the_pager(struct task_struct *tsk) {
 	int i;
 	void *cr3;
 
@@ -1000,7 +455,7 @@ static int rs_ktblmgr_init(void) {
 	struct kprobe kp;
 
 
-	rootsim_pager = foo;
+	rootsim_pager = the_pager;
 	//rootsim_pager(NULL);
 
 	mutex_init(&pgd_get_mutex);

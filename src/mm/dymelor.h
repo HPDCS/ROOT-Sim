@@ -242,7 +242,7 @@ extern inline void *rsrealloc(void *, size_t);
 extern inline void *rscalloc(size_t, size_t);
 
 
-
+extern void ecs_init(void);
 
 extern malloc_state **recoverable_state;
 
