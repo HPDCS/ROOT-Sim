@@ -59,9 +59,15 @@ typedef struct _ioctl_info{
 
 #endif
 
+typedef struct _fault_info_t {
+	long long rcx;
+	long long rip;
+	long long target_address;
+} fault_info_t;
+
 // Setup all ioctl commands
 #define IOCTL_INIT_PGD _IO(CROSS_STATE_IOCTL_MAGIC, 0)
-#define IOCTL_GET_PGD _IO(CROSS_STATE_IOCTL_MAGIC, 1)
+#define IOCTL_GET_PGD _IOW(CROSS_STATE_IOCTL_MAGIC, 1, void *)
 #define IOCTL_RELEASE_PGD _IOW(CROSS_STATE_IOCTL_MAGIC, 2 , int)
 #define IOCTL_INSTALL_PGD _IOW(CROSS_STATE_IOCTL_MAGIC, 3 , int)
 #define IOCTL_UNINSTALL_PGD _IOW(CROSS_STATE_IOCTL_MAGIC, 4 , int)

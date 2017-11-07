@@ -64,16 +64,19 @@ static int ioctl_fd;
 /// Per Worker-Thread Memory View
 static __thread int pgd_ds;
 
+/// Per Worker-Thread Fault Info Structure
+static __thread fault_info_t fault_info;
+
 // Declared in ecsstub.S
 extern void rootsim_cross_state_dependency_handler(void);
 
-void ecs_fault_handler_on_segment(int signal, siginfo_t *info, void *context) {
+void ecs_fault_handler_on_segment(int signal) {
 	unsigned long i=0;
 	unsigned long j;
 
-	const ucontext_t *con = (ucontext_t *)context;
-	long long target_address = (long long)info->si_addr;
-	unsigned char *faulting_insn = (unsigned char *)con->uc_mcontext.gregs[REG_RIP];
+	// target_address is filled by the ROOT-Sim fault handler at kernel level before triggering the signal
+	long long target_address = fault_info.target_address;
+	unsigned char *faulting_insn = fault_info.rip;
 	void *target_pages;
 	unsigned int page_count;
 	long long span;
@@ -97,7 +100,7 @@ void ecs_fault_handler_on_segment(int signal, siginfo_t *info, void *context) {
 	if(!IS_STRING(&insn_disasm)) {
 		span = insn_disasm.span;
 	} else {
-		span = insn_disasm.span * con->uc_mcontext.gregs[REG_RCX];
+		span = insn_disasm.span * fault_info.rcx;
 	}
 	printf("\tspanned memory area: %lu\n\n", span);
 
@@ -106,8 +109,8 @@ void ecs_fault_handler_on_segment(int signal, siginfo_t *info, void *context) {
 
 	printf("\trequesting %d page%s starting from page at VA %p\n", page_count, (page_count > 1 ? "s" : ""), target_pages);
 
-        mprotect(info->si_addr, 1, PROT_READ | PROT_WRITE);
-	*(char *)(info->si_addr) = 'x';
+        mprotect(target_address, 1, PROT_READ | PROT_WRITE);
+	*(char *)(target_address) = 'x';
 }
 
 void ECS(long long ds, unsigned long long hitted_object, unsigned char *prev_instr) __attribute__((__used__));
@@ -189,18 +192,9 @@ void ecs_init(void) {
 		rootsim_error(true, "Error in opening special device file. ROOT-Sim is compiled for using the ktblmgr linux kernel module, which seems to be not loaded.");
 	}
 
-	struct sigaction act;
-        sigset_t set;
-
-        sigfillset(&set);
-        sigdelset(&set,SIGSEGV);
-        sigdelset(&set,SIGINT);
-
-        act.sa_sigaction = ecs_fault_handler_on_segment;
-        act.sa_mask =  set;
-        act.sa_flags = SA_SIGINFO;
-        act.sa_restorer = NULL;
-        sigaction(SIGSEGV,&act,NULL);
+	if(signal(SIGSEGV, ecs_fault_handler_on_segment) == SIG_ERR) {
+		rootsim_error(true, "Unable to setup page fault handler. Aborting the simulation.\n");
+	}
 }
 
 // inserire qui tutte le api di schedulazione/deschedulazione
@@ -223,34 +217,8 @@ void lp_alloc_thread_init(void) {
 	manual_ioctl(ioctl_fd, IOCTL_SET_VM_RANGE, &lp_memory_ioctl_info);
 
 	/* required to manage the per-thread memory view */
-	pgd_ds = manual_ioctl(ioctl_fd, IOCTL_GET_PGD,NULL);  //ioctl call
+	pgd_ds = manual_ioctl(ioctl_fd, IOCTL_GET_PGD, &fault_info);  //ioctl call
 }
-
-/* void lp_alloc_schedule(void) { */
-
-/* 	unsigned int i; */
-/* 	ioctl_info sched_info; */
-
-/* 	bzero(&sched_info, sizeof(ioctl_info)); */
-
-/* 	sched_info.ds = pgd_ds; // this is current */
-/* 	sched_info.count = LPS[current_lp]->ECS_index + 1; // it's a counter */
-
-/* 	sched_info.objects = LPS[current_lp]->ECS_synch_table; // pgd descriptor range from 0 to number threads - a subset of object ids */
-/* 	sched_info.objects_mmap_count = sched_info.count; */
-
-/* 	sched_info.objects_mmap_pointers = rsalloc(sizeof(void *) * sched_info.objects_mmap_count); */
-/* 	for(i=0;i<sched_info.count;i++) { */
-/*                 sched_info.objects_mmap_pointers[i] = get_base_pointer(sched_info.objects[i]); */
-/* //		printf("lp_alloc_schedule - [%d] addr:%p\n",current_lp,sched_info.objects_mmap_pointers[i]); */
-/*         } */
-
-/* 	/1* passing into LP mode - here for the pgd_ds-th LP *1/ */
-/* 	sched_info.count = current_lp; */
-/* 	ioctl(ioctl_fd,IOCTL_SCHEDULE_ON_PGD, &sched_info); */
-
-/* } */
-
 
 void lp_alloc_schedule(void) {
 
@@ -290,3 +258,4 @@ void setup_ecs_on_segment(msg_t *msg) {
 	mprotect(base_ptr + PAGE_SIZE, PER_LP_PREALLOCATED_MEMORY - PAGE_SIZE , PROT_NONE);
 }
 #endif
+

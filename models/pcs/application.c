@@ -229,9 +229,9 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 //				printf("event content dummy is %c\n",event_content->dummy);
 	//			*(event_content->dummy) = dum;
 				__asm__ __volatile__("cld\n\t"
-			                 "rep ; movsb"
+			                 "rep ; movsw"
 	                       : "=D" (event_content->dummy), "=S" (event_content->dummy)
-	                       : "c" (2*4096), "D" (event_content->dummy), "S" (event_content->dummy)
+	                       : "c" (4096), "D" (event_content->dummy), "S" (event_content->dummy)
 	                       : "memory");
 				//memcpy(event_content->dummy->v,dum.v,sizeof(char)*2*4096);
 				//printf("%d executed ECS, accessing %p\n", me, event_content->dummy);

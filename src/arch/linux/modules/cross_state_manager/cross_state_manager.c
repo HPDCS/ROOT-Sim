@@ -103,6 +103,7 @@ int stack_index = AUXILIARY_FRAMES - 1;
 void * auxiliary_frames[AUXILIARY_FRAMES];
 
 int root_sim_processes[SIBLING_PGD]={[0 ... (SIBLING_PGD-1)] = -1};
+fault_info_t *root_sim_fault_info[SIBLING_PGD]={[0 ... (SIBLING_PGD-1)] = -1};
 
 //#define MAX_CROSS_STATE_DEPENDENCIES 1024
 int currently_open[SIBLING_PGD][MAX_CROSS_STATE_DEPENDENCIES];
@@ -154,6 +155,15 @@ int root_sim_page_fault(struct pt_regs* regs, long error_code){
 
 	for(i=0;i<SIBLING_PGD;i++) {
 		if ((root_sim_processes[i])==(current->pid)) {
+
+			// Post information about the fault: this is required in case the fault
+			// is related to a memory protection fault. In this way, the userspace
+			// signal handler which will be called due to the following return 0
+			// will let the handler compute for how many pages we need to get a lease.
+			root_sim_fault_info[i]->rcx = regs->cx;
+			root_sim_fault_info[i]->rip = regs->ip;
+			root_sim_fault_info[i]->target_address = target_address;
+
 
 			if((PML4(target_address)<restore_pml4) || (PML4(target_address))>=(restore_pml4+restore_pml4_entries))
 				return 0; /* a fault outside the root-sim object zone - it needs to be handeld by the traditional fault manager */
@@ -288,6 +298,7 @@ static long rs_ktblmgr_ioctl(struct file *filp, unsigned int cmd, unsigned long 
 				if (original_view[i] == NULL) {
 					memcpy((void *)pgd_addr[i], (void *)(current->mm->pgd), 4096);
 					original_view[i] = current->mm;
+					root_sim_fault_info[i] = (fault_info_t *)arg;
 					descriptor = i;
 					goto pgd_get_done;
 				}
