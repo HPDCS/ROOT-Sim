@@ -53,7 +53,9 @@
 	((unsigned int*)(((lp_state_type*)P)->channel_state))[(int)((int)I / BITS)],	\
 	((int)I % BITS)) )
 
-
+typedef struct _dummy{
+	char v[2*4096];
+} dummy_t;
 // Message exchanged among LPs
 typedef struct _event_content_type {
 	int cell; // The destination cell of an event
@@ -61,7 +63,8 @@ typedef struct _event_content_type {
 	simtime_t sent_at; // Simulation time at which the call was handed off
 	int channel; // Channel to be freed in case of END_CALL
 	simtime_t   call_term_time; // Termination time of the call (used mainly in HANDOFF_RECV)
-	int *dummy;
+	dummy_t *dummy;
+	
 } event_content_type;
 
 #define CROSS_PATH_GAIN		0.00000000000005
@@ -114,7 +117,7 @@ typedef struct _lp_state_type{
 
 	unsigned int *channel_state;
 	struct _channel *channels;
-	int dummy;
+	dummy_t dummy;
 	bool dummy_flag;
 } lp_state_type;
 

@@ -205,8 +205,8 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 			deallocation(me, state, event_content->channel, now);
 
 			new_event_content.call_term_time =  event_content->call_term_time;
-			new_event_content.dummy = &(state->dummy);
 			new_event_content.from = me;
+			new_event_content.dummy = &(state->dummy);
 			ScheduleNewEvent(event_content->cell, now+0.000001, HANDOFF_RECV, &new_event_content, sizeof(new_event_content));
 			break;
 
@@ -220,13 +220,22 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 
 			if(state->ecs_count < MAX_ECS && me == 1 && ran < 0.02 && event_content->from == 2){//&& state->dummy_flag == false) {
 			//if(state->ecs_count < MAX_ECS && me == 2 && ran < 0.2 && event_content->from == 3){//&& state->dummy_flag == false) {
-				printf("%d about to synch on ECS, accessing %p\n", me, event_content->dummy);
+				//printf("%d about to synch on ECS, accessing %p\n", me, event_content->dummy);
+				printf("%d about to synch on ECS\n", me);
 				fflush(stdout);
-				state->ecs_count++;
-				*(event_content->dummy) = 1;
-				state->dummy_flag = true;
-				printf("%d executed ECS, accessing %p\n", me, event_content->dummy);
-			}
+	//			dummy_t dum;
+				//state->ecs_count++;
+				//state->dummy_flag = true;
+//				printf("event content dummy is %c\n",event_content->dummy);
+	//			*(event_content->dummy) = dum;
+				__asm__ __volatile__("cld\n\t"
+			                 "rep ; movsb"
+	                       : "=D" (event_content->dummy), "=S" (event_content->dummy)
+	                       : "c" (2*4096), "D" (event_content->dummy), "S" (event_content->dummy)
+	                       : "memory");
+				//memcpy(event_content->dummy->v,dum.v,sizeof(char)*2*4096);
+				//printf("%d executed ECS, accessing %p\n", me, event_content->dummy);
+			}			
 
 			if (state->channel_counter == 0)
 				state->blocked_on_handoff++;

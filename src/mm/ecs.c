@@ -76,7 +76,7 @@ void ecs_fault_handler_on_segment(int signal, siginfo_t *info, void *context) {
 	unsigned char *faulting_insn = (unsigned char *)con->uc_mcontext.gregs[REG_RIP];
 	void *target_pages;
 	unsigned int page_count;
-	unsigned long span;
+	long long span;
 	insn_info_x86 insn_disasm;
 
 	(void)signal;
@@ -91,7 +91,7 @@ void ecs_fault_handler_on_segment(int signal, siginfo_t *info, void *context) {
 		printf("%02x ", insn_disasm.insn[j]);
 	}
 	printf("\n");
-	printf("\tis a memory-%s instruction\n", (IS_MEMRD(&insn_disasm) ? "read" : "write" ));
+	printf("\tis a memory-%s instruction (mnemonic: %s)\n", (IS_MEMRD(&insn_disasm) ? "read" : "write" ),insn_disasm.mnemonic);
 	printf("\tit %sa string instruction\n", (IS_STRING(&insn_disasm) ? "" : "not "));
 
 	if(!IS_STRING(&insn_disasm)) {
@@ -102,7 +102,7 @@ void ecs_fault_handler_on_segment(int signal, siginfo_t *info, void *context) {
 	printf("\tspanned memory area: %lu\n\n", span);
 
 	target_pages = (void *)(target_address & (~((long long)PAGE_SIZE-1)));
-	page_count = ((target_address + span) & (~((long long)PAGE_SIZE-1))) - (long long)target_pages + 1;
+	page_count = ((target_address + span) & (~((long long)PAGE_SIZE-1)))/PAGE_SIZE - (long long)target_pages/PAGE_SIZE + 1;
 
 	printf("\trequesting %d page%s starting from page at VA %p\n", page_count, (page_count > 1 ? "s" : ""), target_pages);
 
