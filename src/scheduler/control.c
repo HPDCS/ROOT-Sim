@@ -35,29 +35,6 @@
 #include <datatypes/list.h>
 #include <gvt/gvt.h>
 
-#ifdef HAVE_CROSS_STATE
-void unblock_synchronized_objects(unsigned int lid) {
-	unsigned int i;
-	msg_t control_msg;
-
-	for(i = 1; i <= LPS[lid]->ECS_index; i++) {
-		bzero(&control_msg, sizeof(msg_t));
-		control_msg.sender = LidToGid(lid);
-		control_msg.receiver = LPS[lid]->ECS_synch_table[i];
-		control_msg.type = RENDEZVOUS_UNBLOCK;
-		control_msg.timestamp = lvt(lid);
-		control_msg.send_time = lvt(lid);
-		control_msg.message_kind = positive;
-		control_msg.rendezvous_mark = LPS[lid]->wait_on_rendezvous;
-		Send(&control_msg);
-	}
-
-	LPS[lid]->wait_on_rendezvous = 0;
-	LPS[lid]->ECS_index = 0;
-}
-#endif
-
-
 // Questa funzione serve a mandare in rollback qualcuno che mi
 // aveva mandato un RENDEZVOUS_START. Viene invocata da rollback()
 // e simtime è il tempo del bound, quindi il tempo dell'ultimo evento
@@ -160,6 +137,7 @@ bool reprocess_control_msg(msg_t *msg) {
 
 // return true if the event must not be filtered here
 bool receive_control_msg(msg_t *msg) {
+	
 	if(msg->type < MIN_VALUE_CONTROL || msg->type > MAX_VALUE_CONTROL) {
 		return true;
 	}
@@ -170,6 +148,22 @@ bool receive_control_msg(msg_t *msg) {
 
 		case RENDEZVOUS_START:
 			return true;
+
+		case RENDEZVOUS_GET_PAGE:
+			ecs_send_pages(msg);
+			break;
+
+		case RENDEZVOUS_PAGE_WRITE_BACK:
+		case RENDEZVOUS_GET_PAGE_ACK:
+			if(LPS[lid_receiver]->state == LP_STATE_ROLLBACK ||
+					LPS[lid_receiver]->state == LP_STATE_SILENT_EXEC) {
+				break;
+			}
+			if(LPS[lid_receiver]->wait_on_rendezvous == msg->rendezvous_mark) {
+				ecs_install_pages(msg);
+				LPS[lid_receiver]->state = LP_STATE_READY_FOR_SYNCH;
+			}
+			break;
 
 		case RENDEZVOUS_ACK:
 			if(LPS[lid_receiver]->state == LP_STATE_ROLLBACK ||

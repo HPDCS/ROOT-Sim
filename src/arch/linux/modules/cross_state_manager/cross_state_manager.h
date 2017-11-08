@@ -51,10 +51,6 @@ typedef struct _ioctl_info{
 	unsigned mapped_processes;
 
 	ulong callback;
-/* //TODO MN */
-/* 	void** objects_mmap_pointers; */
-/*         int* objects_mmap_sizes; */
-/*         int objects_mmap_count; */
 } ioctl_info;
 
 #endif
@@ -63,6 +59,7 @@ typedef struct _fault_info_t {
 	long long rcx;
 	long long rip;
 	long long target_address;
+	unsigned long target_gid;
 } fault_info_t;
 
 // Setup all ioctl commands

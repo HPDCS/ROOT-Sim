@@ -48,17 +48,18 @@
 #define LP_STACK_SIZE	4194304	// 4 MB
 
 
-#define LP_STATE_READY				0x00001
-#define LP_STATE_RUNNING			0x00002
+#define LP_STATE_READY			0x00001
+#define LP_STATE_RUNNING		0x00002
 #define LP_STATE_RUNNING_ECS		0x00004
-#define LP_STATE_ROLLBACK			0x00008
+#define LP_STATE_ROLLBACK		0x00008
 #define LP_STATE_SILENT_EXEC		0x00010
-#define LP_STATE_SUSPENDED			0x01010
+#define LP_STATE_SUSPENDED		0x01010
 #define LP_STATE_READY_FOR_SYNCH	0x00011	// This should be a blocked state! Check schedule() and stf()
 #define LP_STATE_WAIT_FOR_SYNCH		0x01001
 #define LP_STATE_WAIT_FOR_UNBLOCK	0x01002
+#define LP_STATE_WAIT_FOR_DATA		0x01004
 
-#define BLOCKED_STATE				0x01000
+#define BLOCKED_STATE			0x01000
 #define is_blocked_state(state)	(bool)(state & BLOCKED_STATE)
 
 

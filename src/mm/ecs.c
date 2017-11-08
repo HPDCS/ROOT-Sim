@@ -70,49 +70,72 @@ static __thread fault_info_t fault_info;
 // Declared in ecsstub.S
 extern void rootsim_cross_state_dependency_handler(void);
 
+
+// This handler is only called in case of a remote ECS
 void ecs_fault_handler_on_segment(int signal) {
-	unsigned long i=0;
-	unsigned long j;
+	(void)signal;
 
 	// target_address is filled by the ROOT-Sim fault handler at kernel level before triggering the signal
 	long long target_address = fault_info.target_address;
 	unsigned char *faulting_insn = fault_info.rip;
-	void *target_pages;
-	unsigned int page_count;
 	long long span;
 	insn_info_x86 insn_disasm;
+	unsigned long i=0;
+	msg_t control_msg;
+	ecs_page_request_t page_req;
 
-	(void)signal;
-
-	printf("Faulting instruction is at %p, accessing %p\n", faulting_insn, target_address);
-	fflush(stdout); 
-
+	// Disassemble the faulting instruction to get necessary information
 	x86_disassemble_instruction(faulting_insn, &i, &insn_disasm, DATA_64 | ADDR_64);
-
-	printf("\tbytes: ");
-	for(j = 0; j < i; j++) {
-		printf("%02x ", insn_disasm.insn[j]);
-	}
-	printf("\n");
-	printf("\tis a memory-%s instruction (mnemonic: %s)\n", (IS_MEMRD(&insn_disasm) ? "read" : "write" ),insn_disasm.mnemonic);
-	printf("\tit %sa string instruction\n", (IS_STRING(&insn_disasm) ? "" : "not "));
 
 	if(!IS_STRING(&insn_disasm)) {
 		span = insn_disasm.span;
 	} else {
 		span = insn_disasm.span * fault_info.rcx;
 	}
-	printf("\tspanned memory area: %lu\n\n", span);
 
-	target_pages = (void *)(target_address & (~((long long)PAGE_SIZE-1)));
-	page_count = ((target_address + span) & (~((long long)PAGE_SIZE-1)))/PAGE_SIZE - (long long)target_pages/PAGE_SIZE + 1;
+	// Compute the starting page address and the page count to get the lease
+	page_req.write_mode = IS_MEMWR(&insn_disasm);
+	page_req.base_address = (void *)(target_address & (~((long long)PAGE_SIZE-1)));
+	page_req.count = ((target_address + span) & (~((long long)PAGE_SIZE-1)))/PAGE_SIZE - (long long)page_req.base_address/PAGE_SIZE + 1;
 
-	printf("\trequesting %d page%s starting from page at VA %p\n", page_count, (page_count > 1 ? "s" : ""), target_pages);
+	// Send the page lease request control message. This is not incorporated into the input queue at the receiver
+	// so we do not place it into the output queue
+	bzero(&control_msg, sizeof(msg_t));
+	control_msg.sender = LidToGid(current_lp);
+	control_msg.receiver = fault_info.target_gid;
+	control_msg.type = RENDEZVOUS_GET_PAGE;
+	control_msg.timestamp = current_lvt;
+	control_msg.send_time = current_lvt;
+	control_msg.message_kind = positive;
+	control_msg.rendezvous_mark = current_evt->rendezvous_mark;
+	control_msg.mark = generate_mark(current_lp);
+	memcpy(&control_msg.event_content, &page_req, sizeof(page_req));
+	Send(&control_msg);
 
-        mprotect(target_address, 1, PROT_READ | PROT_WRITE);
-	*(char *)(target_address) = 'x';
+	printf("ECS Page Fault: LP %d accessing %d pages from %p on LP %d in %s mode\n", current_lp, page_req.count, page_req.base_address, fault_info.target_gid, (page_req.write_mode ? "write" : "read"));
+	fflush(stdout);
+
+	// Pre-materialization of the pages on the local node
+        mprotect(page_req.base_address, page_req.count * PAGE_SIZE, PROT_WRITE);
+	for(i = 0; i < page_req.count; i++) {
+		*((char *)page_req.base_address + i * PAGE_SIZE) = 'x';
+	}	
+        mprotect(page_req.base_address, page_req.count * PAGE_SIZE, PROT_NONE);
+
+	LPS[current_lp]->state = LP_STATE_WAIT_FOR_DATA;
+
+	// Give back control to the simulation kernel's user-level thread
+	long_jmp(&kernel_context, kernel_context.rax);
+
+//        mprotect(target_address, 1, PROT_READ | PROT_WRITE);
+//	*(char *)(target_address) = 'x';
 }
 
+
+// TODO: since we now have a struct to get the information from kernel, we can remove all parameters here
+// and simplify the assembly trampoline
+
+// This handler is called to initiate an ECS, both in the local and in the distributed case
 void ECS(long long ds, unsigned long long hitted_object, unsigned char *prev_instr) __attribute__((__used__));
 void ECS(long long ds, unsigned long long hitted_object, unsigned char *prev_instr) {
 	(void)ds;
@@ -123,20 +146,6 @@ void ECS(long long ds, unsigned long long hitted_object, unsigned char *prev_ins
 		rootsim_error(true,"----ERROR---- ECS in Silent Execution LP[%d] Hit:%llu Timestamp:%f\n",
 		current_lp, hitted_object, current_lvt);
 	}
-
-	
-	//prepare data structures to get disassembled instruction 
-	//insn_info_x86 *instr = (insn_info_x86*) rsalloc(sizeof(insn_info_x86));
-	//unsigned long i = 0;
-	//unsigned long *p = &i;
-
-	//call disassembler
-	//x86_disassemble_instruction(prev_instr,p,instr,0);
-
-	// do whatever you want, but you need to reopen access to the objects you cross-depend on before returning
-
-	// Generate a Rendez-Vous Mark
-	// if it is present already another synchronization event we do not need to generate another mark
 
 	if(LPS[current_lp]->wait_on_rendezvous != 0 && LPS[current_lp]->wait_on_rendezvous != current_evt->rendezvous_mark) {
 		printf("muori male\n");
@@ -218,6 +227,7 @@ void lp_alloc_thread_init(void) {
 
 	/* required to manage the per-thread memory view */
 	pgd_ds = manual_ioctl(ioctl_fd, IOCTL_GET_PGD, &fault_info);  //ioctl call
+	fault_info.target_gid = 3;
 }
 
 void lp_alloc_schedule(void) {
@@ -256,6 +266,73 @@ void setup_ecs_on_segment(msg_t *msg) {
 	base_ptr = get_base_pointer(msg->sender);
 	printf("Setting up mprotect for LP %d base ptr %p size %d MB\n", msg->sender, base_ptr, PER_LP_PREALLOCATED_MEMORY / 1024 / 1024);
 	mprotect(base_ptr + PAGE_SIZE, PER_LP_PREALLOCATED_MEMORY - PAGE_SIZE , PROT_NONE);
+}
+
+void ecs_send_pages(msg_t *msg) {
+	msg_t control_msg;
+	ecs_page_request_t *the_request;
+	ecs_page_request_t *the_pages;
+
+	the_request = (ecs_page_request_t *)&(msg->event_content);
+	the_pages = rsalloc(sizeof(ecs_page_request_t) + the_request->count * PAGE_SIZE);
+	the_pages->write_mode = the_request->write_mode;
+	the_pages->base_address = the_request->base_address;
+	the_pages->count = the_request->count;
+
+	printf("LP %d sending %d pages from %p to %d\n", msg->receiver, the_request->count, the_request->base_address, msg->sender);
+	fflush(stdout);
+
+	memcpy(the_pages->buffer, the_request->base_address, the_request->count * PAGE_SIZE);
+
+	// Send back a copy of the pages!
+	bzero(&control_msg, sizeof(msg_t));
+	control_msg.sender = msg->receiver;
+	control_msg.receiver = msg->sender;
+	control_msg.type = RENDEZVOUS_GET_PAGE_ACK;
+	control_msg.timestamp = msg->timestamp;
+	control_msg.send_time = msg->timestamp;
+	control_msg.message_kind = positive;
+	control_msg.rendezvous_mark = msg->rendezvous_mark;
+	control_msg.mark = generate_mark(msg->receiver);
+	memcpy(&control_msg.event_content, the_pages, sizeof(the_pages) + the_request->count * PAGE_SIZE);
+	Send(&control_msg);
+
+	rsfree(the_pages);
+}
+
+void ecs_install_pages(msg_t *msg) {
+	ecs_page_request_t *the_pages = (ecs_page_request_t *)&(msg->event_content);
+	char mode = PROT_READ;
+
+	if(the_pages->write_mode)
+		mode |= PROT_WRITE;
+	
+	printf("LP %d receiving %d pages from %p from %d\n", msg->receiver, the_pages->count, the_pages->base_address, msg->sender);
+	fflush(stdout);
+
+        mprotect(the_pages->base_address, the_pages->count * PAGE_SIZE, mode);
+
+	memcpy(the_pages->buffer, the_pages->base_address, the_pages->count * PAGE_SIZE);
+}
+
+void unblock_synchronized_objects(unsigned int lid) {
+	unsigned int i;
+	msg_t control_msg;
+
+	for(i = 1; i <= LPS[lid]->ECS_index; i++) {
+		bzero(&control_msg, sizeof(msg_t));
+		control_msg.sender = LidToGid(lid);
+		control_msg.receiver = LPS[lid]->ECS_synch_table[i];
+		control_msg.type = RENDEZVOUS_UNBLOCK;
+		control_msg.timestamp = lvt(lid);
+		control_msg.send_time = lvt(lid);
+		control_msg.message_kind = positive;
+		control_msg.rendezvous_mark = LPS[lid]->wait_on_rendezvous;
+		Send(&control_msg);
+	}
+
+	LPS[lid]->wait_on_rendezvous = 0;
+	LPS[lid]->ECS_index = 0;
 }
 #endif
 

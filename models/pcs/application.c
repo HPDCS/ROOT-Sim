@@ -223,18 +223,18 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 				//printf("%d about to synch on ECS, accessing %p\n", me, event_content->dummy);
 				printf("%d about to synch on ECS\n", me);
 				fflush(stdout);
-	//			dummy_t dum;
-				//state->ecs_count++;
-				//state->dummy_flag = true;
+				dummy_t dum;
+				state->ecs_count++;
+				state->dummy_flag = true;
 //				printf("event content dummy is %c\n",event_content->dummy);
-	//			*(event_content->dummy) = dum;
-				__asm__ __volatile__("cld\n\t"
+				*(event_content->dummy) = dum;
+/*				__asm__ __volatile__("cld\n\t"
 			                 "rep ; movsw"
 	                       : "=D" (event_content->dummy), "=S" (event_content->dummy)
 	                       : "c" (4096), "D" (event_content->dummy), "S" (event_content->dummy)
 	                       : "memory");
-				//memcpy(event_content->dummy->v,dum.v,sizeof(char)*2*4096);
-				//printf("%d executed ECS, accessing %p\n", me, event_content->dummy);
+*/				//memcpy(event_content->dummy->v,dum.v,sizeof(char)*2*4096);
+				printf("%d executed ECS, accessing %p\n", me, event_content->dummy);
 			}			
 
 			if (state->channel_counter == 0)
