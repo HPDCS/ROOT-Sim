@@ -91,14 +91,14 @@ bool is_request_completed(MPI_Request* req){
  *
  * This function is thread-safe.
  */
-void send_remote_msg(const msg_t *msg){
+void send_remote_msg(msg_t *msg){
 	outgoing_msg *out_msg = allocate_outgoing_msg();
 	out_msg->msg = msg;
 	out_msg->msg->colour = threads_phase_colour[local_tid];
 	unsigned int dest = GidToKernel(msg->receiver);
 
 	if(count_as_white(msg->type)) 
-		register_outgoing_msg(&(out_msg->msg));
+		register_outgoing_msg(out_msg->msg);
 
 	// Check if the message buffer is from the slab. In this case
 	// we can send it using the msg_mpi_t. On the other hand, we need
@@ -352,7 +352,7 @@ void syncronize_all(void){
  */
 void mpi_init(int *argc, char ***argv){
 	int mpi_thread_lvl_provided = 0;
-	MPI_Init_thread(NULL, NULL, MPI_THREAD_MULTIPLE, &mpi_thread_lvl_provided);
+	MPI_Init_thread(argc, argv, MPI_THREAD_MULTIPLE, &mpi_thread_lvl_provided);
 
 	mpi_support_multithread = true;
 	if(mpi_thread_lvl_provided < MPI_THREAD_MULTIPLE){

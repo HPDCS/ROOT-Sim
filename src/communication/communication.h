@@ -126,7 +126,7 @@ extern void hdr_to_msg(msg_hdr_t *hdr, msg_t *msg);
 extern void msg_release(msg_t *msg);
 
 #ifndef NDEBUG
-extern bool validate_msg(msg_t *msg);
+extern void validate_msg(msg_t *msg);
 #else
 #define validate_msg(msg)
 #endif

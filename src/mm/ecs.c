@@ -77,7 +77,7 @@ void ecs_fault_handler_on_segment(int signal) {
 
 	// target_address is filled by the ROOT-Sim fault handler at kernel level before triggering the signal
 	long long target_address = fault_info.target_address;
-	unsigned char *faulting_insn = fault_info.rip;
+	unsigned char *faulting_insn = (unsigned char *)fault_info.rip;
 	long long span;
 	insn_info_x86 insn_disasm;
 	unsigned long i=0;
@@ -101,11 +101,11 @@ void ecs_fault_handler_on_segment(int signal) {
 	// Send the page lease request control message. This is not incorporated into the input queue at the receiver
 	// so we do not place it into the output queue
 	bzero(&control_msg, sizeof(msg_t));
-	pack_msg(&control_msg, LidToGid(current_lp), fault_info.target_gid, RENDEZVOUS_GET_PAGE, current_lvt, current_lvt, &page_req, sizeof(page_req));
+	pack_msg(&control_msg, LidToGid(current_lp), fault_info.target_gid, RENDEZVOUS_GET_PAGE, current_lvt, current_lvt, sizeof(page_req), &page_req);
 	control_msg->rendezvous_mark = current_evt->rendezvous_mark;
 	Send(control_msg);
 
-	printf("ECS Page Fault: LP %d accessing %d pages from %p on LP %d in %s mode\n", current_lp, page_req.count, page_req.base_address, fault_info.target_gid, (page_req.write_mode ? "write" : "read"));
+	printf("ECS Page Fault: LP %d accessing %d pages from %p on LP %lu in %s mode\n", current_lp, page_req.count, (void *)page_req.base_address, fault_info.target_gid, (page_req.write_mode ? "write" : "read"));
 	fflush(stdout);
 
 	// Pre-materialization of the pages on the local node
@@ -129,6 +129,7 @@ void ecs_fault_handler_on_segment(int signal) {
 void ECS(long long ds, unsigned long long hitted_object, unsigned char *prev_instr) __attribute__((__used__));
 void ECS(long long ds, unsigned long long hitted_object, unsigned char *prev_instr) {
 	(void)ds;
+	(void)prev_instr;
 	msg_t *control_msg;
 	msg_hdr_t msg_hdr;
 
@@ -146,7 +147,7 @@ void ECS(long long ds, unsigned long long hitted_object, unsigned char *prev_ins
 	if(LPS[current_lp]->wait_on_rendezvous == 0) {
 		current_evt->rendezvous_mark = generate_mark(current_lp);
 		LPS[current_lp]->wait_on_rendezvous = current_evt->rendezvous_mark;
-		printf("gid %d starting a rendezvous at time %f with mark %d with LP %d on ds %d\n", LidToGid(current_lp), current_lvt, LPS[current_lp]->wait_on_rendezvous, hitted_object, ds); 
+		printf("gid %d starting a rendezvous at time %f with mark %llu with LP %llu on ds %lld\n", LidToGid(current_lp), current_lvt, LPS[current_lp]->wait_on_rendezvous, hitted_object, ds); 
 	}
 
 	// Prepare the control message to synchronize the two LPs
@@ -187,8 +188,8 @@ void ecs_init(void) {
 void lp_alloc_thread_init(void) {
 	void *ptr;
 
-	int ret;
-	ret = manual_ioctl(ioctl_fd, IOCTL_SET_ANCESTOR_PGD,NULL);  //ioctl call
+	// TODO: test ioctl return value
+	manual_ioctl(ioctl_fd, IOCTL_SET_ANCESTOR_PGD,NULL);  //ioctl call
 	lp_memory_ioctl_info.ds = -1;
 	ptr = get_base_pointer(0); // LP 0 is the first allocated one, and it's memory stock starts from the beginning of the PML4
 	lp_memory_ioctl_info.addr = ptr;
@@ -241,8 +242,8 @@ void setup_ecs_on_segment(msg_t *msg) {
 
 	// ECS on a remote LP: mprotect the whole segment
 	base_ptr = get_base_pointer(msg->sender);
-	printf("Setting up mprotect for LP %d base ptr %p size %d MB\n", msg->sender, base_ptr, PER_LP_PREALLOCATED_MEMORY / 1024 / 1024);
-	mprotect(base_ptr + PAGE_SIZE, PER_LP_PREALLOCATED_MEMORY - PAGE_SIZE , PROT_NONE);
+	printf("Setting up mprotect for LP %d base ptr %p size %ld MB\n", msg->sender, base_ptr, PER_LP_PREALLOCATED_MEMORY / 1024 / 1024);
+	mprotect((char *)base_ptr + PAGE_SIZE, PER_LP_PREALLOCATED_MEMORY - PAGE_SIZE , PROT_NONE);
 }
 
 void ecs_send_pages(msg_t *msg) {

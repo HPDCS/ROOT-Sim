@@ -53,7 +53,7 @@ void inter_kernel_comm_init(void);
 void inter_kernel_comm_finalize(void);
 void mpi_finalize(void);
 void syncronize_all(void);
-void send_remote_msg(const msg_t* msg);
+void send_remote_msg(msg_t* msg);
 bool pending_msgs(int tag);
 void receive_remote_msgs(void);
 bool is_request_completed(MPI_Request* req);

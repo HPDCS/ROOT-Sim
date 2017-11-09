@@ -351,7 +351,7 @@ unsigned int mark_to_gid(unsigned long long mark) {
 	return (int)x;
 }
 
-bool validate_msg(msg_t *msg) {
+void validate_msg(msg_t *msg) {
 	assert(msg->sender <= n_prc_tot);
 	assert(msg->receiver <= n_prc_tot);
 	assert(msg->message_kind == positive || msg->message_kind == negative || msg->message_kind == control);

@@ -149,12 +149,6 @@ static void *main_simulation_loop(void *arg) {
 				fflush(stdout);
 			}
 		}
-		if(my_time_barrier != -1.0) {
-				int i;
-				for(i = 0; i < n_prc_per_thread; i++) {
-					printf("LP %d in state %d\n", LidToGid(LPS_bound[i]->lid), LPS_bound[i]->state);
-				}
-		}
 
 		#ifdef HAS_MPI
 		collect_termination();
@@ -180,11 +174,9 @@ static void *main_simulation_loop(void *arg) {
 * @return Exit code
 */
 int main(int argc, char **argv) {
-
-	int i = 0;
 	printf("PID %d ready for attach\n", getpid());
 	fflush(stdout);
-	//while (0 == i) 	sleep(5);
+	// int i = 0; while (0 == i) sleep(5);
 		
 	SystemInit(argc, argv);
 

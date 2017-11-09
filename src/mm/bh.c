@@ -194,7 +194,11 @@ void *get_BH(unsigned int lid) {
 		goto leave;
 	}
 
-	msg = bh_maps[lid].expired_bh[bh_maps[lid].expired_read++];
+	msg = bh_maps[lid].expired_bh[bh_maps[lid].expired_read];
+	bh_maps[lid].expired_bh[bh_maps[lid].expired_read] = (msg_t *)0xDEADB00B;
+	bh_maps[lid].expired_read++;
+
+	validate_msg(msg);
 
 	// TODO: we should reorganize the msg list so as to keep pointers, to avoid this copy
 	buff = get_buffer(lid, sizeof(msg_t) + msg->size);

@@ -31,12 +31,6 @@
 #include <fcntl.h>
 #include <sys/types.h>
 
-#define __NR_OPEN 2
-
-#ifdef HAVE_CROSS_STATE
-static int ioctl_fd = -2;
-#endif 
-
 //TODO: document this magic! This is related to the pml4 index intialized in the ECS kernel module
 static unsigned char *init_address = (unsigned char *)(10LL << 39);
 
@@ -50,15 +44,6 @@ void *get_segment(unsigned int gid) {
 	void *the_address;
 
 	void *mmapped[NUM_MMAP];
-
-	#ifdef HAVE_CROSS_STATE
-	/*if(ioctl_fd == -2) {
-		ioctl_fd = manual_open("/dev/ktblmgr", O_RDONLY);
-		if (ioctl_fd <= -1) {
-				rootsim_error(true, "Error in opening special device file. ROOT-Sim is compiled for using the ECS linux kernel module, which seems to be not loaded.");
-		}
-	}*/
-	#endif
 
 	// Addresses are determined in the same way across all kernel instances
 	the_address = init_address + PER_LP_PREALLOCATED_MEMORY * gid;
@@ -74,7 +59,7 @@ void *get_segment(unsigned int gid) {
 		}
 		// Access the memory in write mode to force the kernel to create the page table entries
 		*((char *)mmapped[i]) = 'x';
-		the_address += MAX_MMAP;
+		the_address = (char *)the_address + MAX_MMAP;
 	}
 
 	return mmapped[0];

@@ -520,7 +520,7 @@ void schedule(void) {
 
 #ifdef HAVE_CROSS_STATE
 	if(resume_execution && !is_blocked_state(LPS[lid]->state)) {
-		printf("ECS event is finished mark %d !!!\n", LPS[lid]->wait_on_rendezvous);
+		printf("ECS event is finished mark %llu !!!\n", LPS[lid]->wait_on_rendezvous);
 		fflush(stdout);
 		unblock_synchronized_objects(lid);
 
