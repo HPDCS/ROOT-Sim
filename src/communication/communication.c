@@ -284,7 +284,11 @@ void send_outgoing_msgs(unsigned int lid) {
 
 
 msg_t *get_msg_from_slab(void) {
-	return (msg_t *)slab_alloc(&msg_slab);
+	msg_t *msg = (msg_t *)slab_alloc(&msg_slab);
+	#ifndef NDEBUG
+	bzero(&msg, SLAB_MSG_SIZE);
+	#endif
+	return msg;
 }
 
 
