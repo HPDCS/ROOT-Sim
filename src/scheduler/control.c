@@ -42,8 +42,7 @@
 // Ogni volta che ricevo un RENDEZVOUS_START da un altro processo
 // copio il messaggio nella rendezvous_queue.
 void rollback_control_message(unsigned int lid, simtime_t simtime) {
-	msg_t control_antimessage;
-
+	msg_t *control_antimessage;
 	msg_t *msg, *msg_prev;
 
 	if(list_empty(LPS[lid]->rendezvous_queue)) {
@@ -54,17 +53,10 @@ void rollback_control_message(unsigned int lid, simtime_t simtime) {
 	while(msg != NULL && msg->timestamp > simtime) {
 
 		// Control antimessage
-		bzero(&control_antimessage, sizeof(msg_t));
-		control_antimessage.type = RENDEZVOUS_ROLLBACK;
-		control_antimessage.sender = msg->receiver;
-		control_antimessage.receiver = msg->sender;
-		control_antimessage.timestamp = msg->timestamp;
-		control_antimessage.send_time = msg->send_time;
-		control_antimessage.rendezvous_mark = msg->rendezvous_mark;
-		control_antimessage.message_kind = control;
-
-		Send(&control_antimessage);
-//		printf("Sending RENDEZVOUS_ROLLBACK for %llu STATE OF RECEIVER (%d) IS %llu, OF SENDER (%d) IS %llu\n",msg->rendezvous_mark,msg->sender,LPS[msg->sender]->state,msg->receiver,LPS[lid_receiver]->state);
+		pack_msg(&control_antimessage, msg->receiver, msg->sender, RENDEZVOUS_ROLLBACK, msg->timestamp, msg->send_time, 0, NULL);
+		control_antimessage->rendezvous_mark = msg->rendezvous_mark;
+		control_antimessage->message_kind = control;
+		Send(control_antimessage);
 		msg_prev = list_prev(msg);
 		list_delete_by_content(lid, LPS[lid]->rendezvous_queue, msg);
 		msg = msg_prev;
@@ -214,7 +206,7 @@ bool receive_control_msg(msg_t *msg) {
 bool process_control_msg(msg_t *msg) {
 
 #ifdef HAVE_CROSS_STATE
-	msg_t control_msg;
+	msg_t *control_msg;
 #endif
 
 	if(msg->type < MIN_VALUE_CONTROL || msg->type > MAX_VALUE_CONTROL) {
@@ -232,15 +224,11 @@ bool process_control_msg(msg_t *msg) {
 			LPS[lid_receiver]->wait_on_rendezvous = msg->rendezvous_mark;
 
 			LPS[lid_receiver]->state = LP_STATE_WAIT_FOR_UNBLOCK;
-			bzero(&control_msg, sizeof(msg_t));
-			control_msg.sender = msg->receiver;
-			control_msg.receiver = msg->sender;
-			control_msg.type = RENDEZVOUS_ACK;
-			control_msg.timestamp = msg->timestamp;
-			control_msg.send_time = msg->timestamp;
-			control_msg.message_kind = positive;
-			control_msg.rendezvous_mark = msg->rendezvous_mark;
-			Send(&control_msg);
+			
+			pack_msg(&control_msg, msg->receiver, msg->sender, RENDEZVOUS_ACK, msg->timestamp, msg->timestamp, 0, NULL);
+			control_msg->message_kind = positive;
+			control_msg->rendezvous_mark = msg->rendezvous_mark;
+			Send(control_msg);
 
 			break;
 

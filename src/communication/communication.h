@@ -40,6 +40,9 @@
 #define WINDOW_DIMENSION	50
 
 
+#define SLAB_MSG_SIZE		512
+
+
 
 /// Number of slots used by MPI for buffering messages
 #define SLOTS	100000
@@ -85,7 +88,7 @@ enum _control_msgs {
 
 /// This structure is used by the communication subsystem to handle outgoing messages
 typedef struct _outgoing_t {
-	msg_t *outgoing_msgs;
+	msg_t **outgoing_msgs;
 	unsigned int size;
 	unsigned int max_size;
 	simtime_t *min_in_transit;
@@ -118,6 +121,8 @@ extern int messages_checking(void);
 extern void insert_outgoing_msg(msg_t *msg);
 extern void send_outgoing_msgs(unsigned int);
 extern void send_antimessages(unsigned int, simtime_t);
+extern void communication_fini_thread(void);
+extern void communication_init_thread(void);
 
 /* In window.c */
 extern void windows_init(void);
@@ -126,5 +131,11 @@ extern void receive_ack(void);
 extern void send_forced_ack(void);
 extern simtime_t local_min_timestamp(void);
 extern void start_ack_timer(void);
+
+
+extern void pack_msg(msg_t **msg, unsigned int sender, unsigned int receiver, int type, simtime_t timestamp, simtime_t send_time, size_t size, void *payload);
+extern void msg_to_hdr(msg_hdr_t *hdr, msg_t *msg);
+extern void hdr_to_msg(msg_hdr_t *hdr, msg_t *msg);
+extern void msg_release(msg_t *msg);
 
 #endif

@@ -184,7 +184,7 @@ int main(int argc, char **argv) {
 	int i = 0;
 	printf("PID %d ready for attach\n", getpid());
 	fflush(stdout);
-	while (0 == i) 	sleep(5);
+	//while (0 == i) 	sleep(5);
 		
 	SystemInit(argc, argv);
 

@@ -30,16 +30,13 @@
 #include <core/core.h>
 
 struct _bhmap {
-	char		*live_bh;		// address of the live bottom half for the sobj
-	char		*expired_bh;		// address of the expired bottom half
-	unsigned int	live_msgs;		// number of messages currently present inthe the live bottom half
-	unsigned int	live_offset;		// offset of the oldest undelivered msg from the expired pool
-	size_t		live_boundary;		// memory occupancy (in bytes) of live messages
-	unsigned int	expired_msgs;		// number of messages currently present in the live bottom half
-	unsigned int	expired_offset;		// offset of the oldest undelivered msg from the expired pool
-	unsigned int	expired_boundary;	// memory occupancy (in bytes) of live messages
-	char		*actual_bh_addresses[2];// these are the stable pointers used for bottom half buffers' migration across numa nodes
-	size_t		current_pages[2];	// The amount of pages allocated in the corresponding entry of the actual_bh_addessess vector
+	msg_t		**live_bh;		
+	msg_t		**expired_bh;		
+	unsigned int	live_written;		
+	unsigned int	expired_read;		
+	unsigned int	expired_last_written;	
+	msg_t		**actual_bh_addresses[2];
+	size_t		current_pages[2];	
 };
 
 #define MAX_MSG_SIZE sizeof(msg_t)
@@ -47,7 +44,7 @@ struct _bhmap {
 
 extern bool BH_init(void);
 extern void BH_fini(void);
-extern int insert_BH(int sobj, void* msg, int size);
+extern int insert_BH(int sobj, msg_t* msg);
 extern void *get_BH(unsigned int sobj);
 
 #endif /* _BH_H */

@@ -26,6 +26,7 @@ librootsim_a_SOURCES =	main.c \
 			datatypes/array.c \
 			datatypes/list.c \
 			datatypes/calqueue.c \
+			datatypes/slab.c \
 			mm/state.c \
 			mm/ecs.c \
 			mm/ecs_callback.S \

@@ -81,7 +81,7 @@ void ecs_fault_handler_on_segment(int signal) {
 	long long span;
 	insn_info_x86 insn_disasm;
 	unsigned long i=0;
-	msg_t control_msg;
+	msg_t *control_msg;
 	ecs_page_request_t page_req;
 
 	// Disassemble the faulting instruction to get necessary information
@@ -101,16 +101,9 @@ void ecs_fault_handler_on_segment(int signal) {
 	// Send the page lease request control message. This is not incorporated into the input queue at the receiver
 	// so we do not place it into the output queue
 	bzero(&control_msg, sizeof(msg_t));
-	control_msg.sender = LidToGid(current_lp);
-	control_msg.receiver = fault_info.target_gid;
-	control_msg.type = RENDEZVOUS_GET_PAGE;
-	control_msg.timestamp = current_lvt;
-	control_msg.send_time = current_lvt;
-	control_msg.message_kind = positive;
-	control_msg.rendezvous_mark = current_evt->rendezvous_mark;
-	control_msg.mark = generate_mark(current_lp);
-	memcpy(&control_msg.event_content, &page_req, sizeof(page_req));
-	Send(&control_msg);
+	pack_msg(&control_msg, LidToGid(current_lp), fault_info.target_gid, RENDEZVOUS_GET_PAGE, current_lvt, current_lvt, &page_req, sizeof(page_req));
+	control_msg->rendezvous_mark = current_evt->rendezvous_mark;
+	Send(control_msg);
 
 	printf("ECS Page Fault: LP %d accessing %d pages from %p on LP %d in %s mode\n", current_lp, page_req.count, page_req.base_address, fault_info.target_gid, (page_req.write_mode ? "write" : "read"));
 	fflush(stdout);
@@ -126,9 +119,6 @@ void ecs_fault_handler_on_segment(int signal) {
 
 	// Give back control to the simulation kernel's user-level thread
 	long_jmp(&kernel_context, kernel_context.rax);
-
-//        mprotect(target_address, 1, PROT_READ | PROT_WRITE);
-//	*(char *)(target_address) = 'x';
 }
 
 
@@ -139,7 +129,7 @@ void ecs_fault_handler_on_segment(int signal) {
 void ECS(long long ds, unsigned long long hitted_object, unsigned char *prev_instr) __attribute__((__used__));
 void ECS(long long ds, unsigned long long hitted_object, unsigned char *prev_instr) {
 	(void)ds;
-	msg_t control_msg;
+	msg_t *control_msg;
 	msg_hdr_t msg_hdr;
 
 	if(LPS[current_lp]->state == LP_STATE_SILENT_EXEC) {
@@ -159,26 +149,13 @@ void ECS(long long ds, unsigned long long hitted_object, unsigned char *prev_ins
 		printf("gid %d starting a rendezvous at time %f with mark %d with LP %d on ds %d\n", LidToGid(current_lp), current_lvt, LPS[current_lp]->wait_on_rendezvous, hitted_object, ds); 
 	}
 
-	// Diretcly place the control message in the target bottom half queue
-	bzero(&control_msg, sizeof(msg_t));
-	control_msg.sender = LidToGid(current_lp);
-	control_msg.receiver = hitted_object;
-	control_msg.type = RENDEZVOUS_START;
-	control_msg.timestamp = current_lvt;
-	control_msg.send_time = current_lvt;
-	control_msg.message_kind = positive;
-	control_msg.rendezvous_mark = current_evt->rendezvous_mark;
-	control_msg.mark = generate_mark(current_lp);
+	// Prepare the control message to synchronize the two LPs
+	pack_msg(&control_msg, LidToGid(current_lp), hitted_object, RENDEZVOUS_START, current_lvt, current_lvt, 0, NULL);
+	control_msg->rendezvous_mark = current_evt->rendezvous_mark;
+	control_msg->mark = generate_mark(current_lp);
 
 	// This message must be stored in the output queue as well, in case this LP rollbacks
-	bzero(&msg_hdr, sizeof(msg_hdr_t));
-	msg_hdr.sender = control_msg.sender;
-	msg_hdr.receiver = control_msg.receiver;
-	msg_hdr.type = RENDEZVOUS_START;
-	msg_hdr.timestamp = control_msg.timestamp;
-	msg_hdr.send_time = control_msg.send_time;
-	msg_hdr.mark = control_msg.mark;
-	msg_hdr.rendezvous_mark = control_msg.rendezvous_mark;
+	msg_to_hdr(&msg_hdr, control_msg);
 	(void)list_insert(current_lp, LPS[current_lp]->queue_out, send_time, &msg_hdr);
 
 	// Block the execution of this LP
@@ -188,7 +165,7 @@ void ECS(long long ds, unsigned long long hitted_object, unsigned char *prev_ins
 	// Store which LP we are waiting for synchronization. Upon reschedule, it is open immediately
 	LPS[current_lp]->ECS_index++;
 	LPS[current_lp]->ECS_synch_table[LPS[current_lp]->ECS_index] = hitted_object;
-	Send(&control_msg);
+	Send(control_msg);
 	
 	// Give back control to the simulation kernel's user-level thread
 	long_jmp(&kernel_context, kernel_context.rax);
@@ -269,7 +246,7 @@ void setup_ecs_on_segment(msg_t *msg) {
 }
 
 void ecs_send_pages(msg_t *msg) {
-	msg_t control_msg;
+	msg_t *control_msg;
 	ecs_page_request_t *the_request;
 	ecs_page_request_t *the_pages;
 
@@ -285,17 +262,9 @@ void ecs_send_pages(msg_t *msg) {
 	memcpy(the_pages->buffer, the_request->base_address, the_request->count * PAGE_SIZE);
 
 	// Send back a copy of the pages!
-	bzero(&control_msg, sizeof(msg_t));
-	control_msg.sender = msg->receiver;
-	control_msg.receiver = msg->sender;
-	control_msg.type = RENDEZVOUS_GET_PAGE_ACK;
-	control_msg.timestamp = msg->timestamp;
-	control_msg.send_time = msg->timestamp;
-	control_msg.message_kind = positive;
-	control_msg.rendezvous_mark = msg->rendezvous_mark;
-	control_msg.mark = generate_mark(msg->receiver);
-	memcpy(&control_msg.event_content, the_pages, sizeof(the_pages) + the_request->count * PAGE_SIZE);
-	Send(&control_msg);
+	pack_msg(&control_msg, msg->receiver, msg->sender, RENDEZVOUS_GET_PAGE_ACK, msg->timestamp, msg->timestamp, 0, NULL);
+	control_msg->rendezvous_mark = msg->rendezvous_mark;
+	Send(control_msg);
 
 	rsfree(the_pages);
 }
@@ -317,18 +286,12 @@ void ecs_install_pages(msg_t *msg) {
 
 void unblock_synchronized_objects(unsigned int lid) {
 	unsigned int i;
-	msg_t control_msg;
+	msg_t *control_msg;
 
 	for(i = 1; i <= LPS[lid]->ECS_index; i++) {
-		bzero(&control_msg, sizeof(msg_t));
-		control_msg.sender = LidToGid(lid);
-		control_msg.receiver = LPS[lid]->ECS_synch_table[i];
-		control_msg.type = RENDEZVOUS_UNBLOCK;
-		control_msg.timestamp = lvt(lid);
-		control_msg.send_time = lvt(lid);
-		control_msg.message_kind = positive;
-		control_msg.rendezvous_mark = LPS[lid]->wait_on_rendezvous;
-		Send(&control_msg);
+		pack_msg(&control_msg, LidToGid(lid), LPS[lid]->ECS_synch_table[i], RENDEZVOUS_UNBLOCK, lvt(lid), lvt(lid), 0, NULL);
+		control_msg->rendezvous_mark = LPS[lid]->wait_on_rendezvous;
+		Send(control_msg);
 	}
 
 	LPS[lid]->wait_on_rendezvous = 0;

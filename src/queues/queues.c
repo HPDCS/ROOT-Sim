@@ -148,7 +148,7 @@ msg_t *advance_to_next_event(unsigned int lid) {
 void insert_bottom_half(msg_t *msg) {
 
 	unsigned int lid = GidToLid(msg->receiver);
-	insert_BH(lid, msg, sizeof(msg_t));
+	insert_BH(lid, msg);
 	#ifdef HAVE_PREEMPTION
 	update_min_in_transit(LPS[lid]->worker_thread, msg->timestamp);
 	#endif
@@ -180,8 +180,6 @@ restart:
 			
 			if(msg_to_process->timestamp < get_last_gvt())
 				printf("ERRORE\n");
-
-//			printf("\t \t receiver:%d sender:%d type:%d timestamp:%f\n",lid_receiver, msg_to_process->sender, msg_to_process->type, msg_to_process->timestamp);
 
 			// Handle control messages
 			if(!receive_control_msg(msg_to_process)) {

@@ -62,11 +62,6 @@
 /// Maximum number of LPs the simulator will handle
 #define MAX_LPs		16384		// This is 2^14
 
-/// Maximum event size (in bytes)
-//#define MAX_EVENT_SIZE	128
-#define MAX_EVENT_SIZE	600
-
-
 // XXX: this should be moved somewhere else...
 #define VERBOSE_INFO	1700
 #define VERBOSE_DEBUG	1701
@@ -139,18 +134,18 @@ typedef struct _msg_t {
 	// Kernel's information
 	unsigned int   		sender;
 	unsigned int   		receiver;
-#ifdef HAS_MPI
-	phase_colour	colour;
-#endif
+	#ifdef HAS_MPI
+	phase_colour		colour;
+	#endif
 	int   			type;
 	message_kind_t		message_kind;
 	simtime_t		timestamp;
 	simtime_t		send_time;
 	unsigned long long	mark;	/// Unique identifier of the message, used for antimessages
 	unsigned long long	rendezvous_mark;	/// Unique identifier of the message, used for rendez-vous events
-	// Application informations
+	// Model data
 	int size;
-	unsigned char event_content[MAX_EVENT_SIZE];
+	unsigned char event_content[];
 } msg_t;
 
 

@@ -122,6 +122,8 @@ char *GetParameterString(void *args, char *name) {
 
 
 bool IsParameterPresent(void *args, char *name) {
+	// TODO: There is a serious bug with the new no-copy message system...
+	return false;
 	return (seek_param(args, name) != -1);
 }
 

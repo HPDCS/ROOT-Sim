@@ -390,7 +390,7 @@ void SystemInit(int argc, char **argv) {
 	while (argv[w] != NULL && (argv[w][0] == '\0' || argv[w][0] == ' ')) {
 		w++;
 	}
-	model_parameters.size = argc - w;
+	model_parameters.size = argc - w + sizeof(char *);
 	model_parameters.arguments = &argv[w];
 
 	// Initialize the backtrace handler if required

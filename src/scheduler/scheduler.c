@@ -39,6 +39,7 @@
 #include <scheduler/scheduler.h>
 #include <scheduler/stf.h>
 #include <mm/state.h>
+#include <communication/communication.h>
 
 #define _INIT_FROM_MAIN
 #include <core/init.h>
@@ -86,18 +87,6 @@ void scheduler_init(void) {
 
 	register unsigned int i;
 
-	// TODO: implementare con delle broadcast!!
-/*	if(n_ker > 1) {
-		if (master_kernel()) {
-			for (i = 1; i < n_ker; i++) {
-				comm_send(&rootsim_config.scheduler, sizeof(rootsim_config.scheduler), MPI_CHAR, i, MSG_INIT_MPI, MPI_COMM_WORLD);
-			}
-		} else {
-			comm_recv(&rootsim_config.scheduler, sizeof(rootsim_config.scheduler), MPI_CHAR, 0, MSG_INIT_MPI, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-		}
-	}
-*/
-
 	// Allocate LPS control blocks
 	LPS = (LP_state **)rsalloc(n_prc * sizeof(LP_state *));
 	for (i = 0; i < n_prc; i++) {
@@ -106,7 +95,7 @@ void scheduler_init(void) {
 
 		// Allocate memory for the outgoing buffer
 		LPS[i]->outgoing_buffer.max_size = INIT_OUTGOING_MSG;
-		LPS[i]->outgoing_buffer.outgoing_msgs = rsalloc(sizeof(msg_t) * INIT_OUTGOING_MSG);
+		LPS[i]->outgoing_buffer.outgoing_msgs = rsalloc(sizeof(msg_t *) * INIT_OUTGOING_MSG);
 
 		// That's the only sequentially executed place where we can set the lid
 		LPS[i]->lid = i;
@@ -308,6 +297,9 @@ void initialize_LP(unsigned int lp) {
 
 void initialize_worker_thread(void) {
 	register unsigned int t;
+	msg_t *init_event;
+
+	communication_init_thread();
 
 	// Divide LPs among worker threads, for the first time here
 	rebind_LPs();
@@ -324,24 +316,10 @@ void initialize_worker_thread(void) {
 		initialize_LP(LPS_bound[t]->lid);
 
 		// Schedule an INIT event to the newly instantiated LP
-		msg_t init_event = {
-			sender: LidToGid(LPS_bound[t]->lid),
-			receiver: LidToGid(LPS_bound[t]->lid),
-			type: INIT,
-			timestamp: 0.0,
-			send_time: 0.0,
-			mark: generate_mark(LPS_bound[t]->lid),
-			size: model_parameters.size,
-			message_kind: positive,
-		};
+		pack_msg(&init_event, LidToGid(LPS_bound[t]->lid), LidToGid(LPS_bound[t]->lid), INIT, 0.0, 0.0, model_parameters.size, model_parameters.arguments);
+	        init_event->mark = generate_mark(LPS_bound[t]->lid);
 
-
-		// Copy the relevant string pointers to the INIT event payload
-		if(model_parameters.size > 0) {
-			memcpy(init_event.event_content, model_parameters.arguments, model_parameters.size * sizeof(char *));
-		}
-
-		(void)list_insert_head(LPS_bound[t]->lid, LPS_bound[t]->queue_in, &init_event);
+		(void)list_insert_head(LPS_bound[t]->lid, LPS_bound[t]->queue_in, init_event);
 		LPS_bound[t]->state_log_forced = true;
 	}
 	// Worker Threads synchronization barrier: they all should start working together

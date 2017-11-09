@@ -32,10 +32,6 @@ void SerialScheduleNewEvent(unsigned int rcv, simtime_t stamp, unsigned int even
 		rootsim_error(true, "LP %d is trying to send events in the past. Current time: %f, scheduled time: %f\n", current_lp, current_lvt, stamp);
 	}
 
-	if(event_size > MAX_EVENT_SIZE) {
-		rootsim_error(true, "Trying to schedule an event too large. Maximum size is %d, requested is %d. Recompile changing MAX_EVENT_SIZE\n", MAX_EVENT_SIZE, event_size);
-	}
-
 	// Populate the message data structure
 	event = rsalloc(sizeof(msg_t));
 	bzero(event, sizeof(msg_t));
