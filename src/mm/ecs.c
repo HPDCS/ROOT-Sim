@@ -226,7 +226,7 @@ void lp_alloc_deschedule(void) {
 	/* stepping back into non-LP mode */
 	/* all previously scheduled (memory opened) LPs are also unscheduled by default */
 	/* reaccessing their state will give rise to traps (if not scheduled again) */
-	ioctl(ioctl_fd,IOCTL_UNSCHEDULE_ON_PGD, (void *)pgd_ds);
+	ioctl(ioctl_fd,IOCTL_UNSCHEDULE_ON_PGD, pgd_ds);
 }
 
 

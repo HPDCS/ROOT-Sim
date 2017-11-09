@@ -91,19 +91,32 @@ bool is_request_completed(MPI_Request* req){
  *
  * This function is thread-safe.
  */
-void send_remote_msg(const msg_t* msg){
-	outgoing_msg* out_msg = allocate_outgoing_msg();
-	// message copy
-	out_msg->msg = *msg;
-	out_msg->msg.colour = threads_phase_colour[local_tid];
+void send_remote_msg(const msg_t *msg){
+	outgoing_msg *out_msg = allocate_outgoing_msg();
+	out_msg->msg = msg;
+	out_msg->msg->colour = threads_phase_colour[local_tid];
 	unsigned int dest = GidToKernel(msg->receiver);
 
 	if(count_as_white(msg->type)) 
 		register_outgoing_msg(&(out_msg->msg));
 
-	lock_mpi();
-	MPI_Isend(&(out_msg->msg), 1, msg_mpi_t, dest, MSG_EVENT, MPI_COMM_WORLD, &(out_msg->req));
-	unlock_mpi();
+	// Check if the message buffer is from the slab. In this case
+	// we can send it using the msg_mpi_t. On the other hand, we need
+	// to send a header telling the size of the message to be received
+	// at the other endpoint.
+	if(0 && sizeof(msg_t) + msg->size <= SLAB_MSG_SIZE) {
+		lock_mpi();
+		MPI_Isend(&(out_msg->msg), 1, msg_mpi_t, dest, MSG_EVENT, MPI_COMM_WORLD, &(out_msg->req));
+		unlock_mpi();
+	} else {
+		unsigned int size = sizeof(msg_t) + msg->size;
+		lock_mpi();
+		// We don't keep the header in the list, as the following two messages can be considered
+		// as just one.
+		MPI_Send(&size, 1, MPI_UNSIGNED, dest, MSG_EVENT_LARGER, MPI_COMM_WORLD);
+		MPI_Isend(out_msg->msg, size, MPI_UNSIGNED_CHAR, dest, MSG_EVENT_LARGER, MPI_COMM_WORLD, &(out_msg->req));
+		unlock_mpi();
+	}
 
 	// Keep the message in the outgoing queue until it will be delivered
 	store_outgoing_msg(out_msg, dest);
@@ -120,29 +133,72 @@ void send_remote_msg(const msg_t* msg){
  * This function is thread-safe.
  */
 void receive_remote_msgs(void){
+	int res = 0;
+	int size;
+	msg_t *msg;
+	MPI_Status status;
+	bool found_msg = true;
+
 	/* - `pending_msgs` and `MPI_Recv` need to be in the same critical section.
 	 *    I could start an MPI_Recv with an empty incoming queue.
 	 * - `MPI_Recv` and `insert_bottom_half` need to be in the same critical section.
 	 *    messages need to be inserted in arrival order into the BH
 	 */
-	if(!spin_trylock(&msgs_lock)) return;
+	if(!spin_trylock(&msgs_lock))
+		return;
 
-	int res;
-	msg_t msg;
+	while(found_msg) {
+		found_msg = false;
 
-	while(pending_msgs(MSG_EVENT)){
-		lock_mpi();
-		res = MPI_Recv(&msg, 1, msg_mpi_t, MPI_ANY_SOURCE, MSG_EVENT, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-		unlock_mpi();
-		if(res != 0){
-			rootsim_error(true, "MPI_Recv did not complete correctly");
-			return;
+		// Try to receive a fixed-size message
+		if(pending_msgs(MSG_EVENT)) {
+			found_msg = true;
+
+			// We get the buffer from the slab allocator
+			msg = get_msg_from_slab();
+
+			// Receive the message
+			lock_mpi();
+			res = MPI_Recv(msg, 1, msg_mpi_t, MPI_ANY_SOURCE, MSG_EVENT, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+			unlock_mpi();
+			if(res != 0)
+				goto out;
+
+			validate_msg(msg);
 		}
 
-		//printf("Inserting a remote message for LP %d\n", msg.receiver);
+		// Try to receive a variable-size message
+		if(pending_msgs(MSG_EVENT_LARGER)) {
+			found_msg = true;
 
-		insert_bottom_half(&msg);
+			// First, get the size and identify the source
+			lock_mpi();
+                        res = MPI_Recv(&size, 1, MPI_UNSIGNED, MPI_ANY_SOURCE, MSG_EVENT_LARGER, MPI_COMM_WORLD, &status);
+                        unlock_mpi();
+			if(res != 0)
+				goto out;
+
+			// Now get the actual message, matching the source of the header
+			if(size + sizeof(msg_t) <= SLAB_MSG_SIZE)
+				msg = get_msg_from_slab();
+			else
+				msg = rsalloc(size);
+			lock_mpi();
+                        res = MPI_Recv(msg, size, MPI_UNSIGNED_CHAR, status.MPI_SOURCE, MSG_EVENT_LARGER, MPI_COMM_WORLD, &status);
+                        unlock_mpi();
+                        if(res != 0)
+				goto out;
+
+			validate_msg(msg);
+		}
+	
+		if(found_msg)
+			insert_bottom_half(msg);
 	}
+
+    out:
+	if(res != 0)
+		rootsim_error(true, "MPI_Recv did not complete correctly");
 
 	spin_unlock(&msgs_lock);
 }
@@ -246,7 +302,7 @@ void mpi_datatype_init(void){
                           MPI_CHAR};
 
 
-	int blocklen[7] = {2, 1, 2, 2, 2, 1, MAX_EVENT_SIZE};
+	int blocklen[7] = {2, 1, 2, 2, 2, 1, SLAB_MSG_SIZE};
 	MPI_Aint disp[7];
 
 	MPI_Get_address(msg, disp);
@@ -303,7 +359,7 @@ void mpi_init(int *argc, char ***argv){
 		//MPI do not support thread safe api call
 		if(mpi_thread_lvl_provided < MPI_THREAD_SERIALIZED){
 			// MPI do not even support serialized threaded call we cannot continue
-			rootsim_error(true, "The MPI implementation do not support threads "
+			rootsim_error(true, "The MPI implementation does not support threads "
 			                    "[current thread level support: %d]\n", mpi_thread_lvl_provided);
 		}
 		mpi_support_multithread = false;

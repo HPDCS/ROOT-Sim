@@ -14,7 +14,7 @@
 
 typedef struct _outgoing_msg {
 	MPI_Request req;
-	msg_t msg;
+	msg_t *msg;
 } outgoing_msg;
 
 

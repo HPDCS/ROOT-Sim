@@ -66,7 +66,8 @@ enum _control_msgs {
 // Message Codes for PVM
 #define MSG_INIT_MPI		200
 #define MSG_EVENT		2
-#define MSG_ACKNOWLEDGE		3
+#define MSG_EVENT_LARGER	3
+//#define MSG_ACKNOWLEDGE		3
 #define MSG_GVT			10
 #define MSG_UNLOCK		11
 #define MSG_GO_TO_FINAL_BARRIER	12
@@ -94,21 +95,6 @@ typedef struct _outgoing_t {
 	simtime_t *min_in_transit;
 } outgoing_t;
 
-
-/** @todo Document this structure */
-typedef struct _window {
-	int msg_number;
-	simtime_t min_timestamp;
-} window;
-
-
-/** @todo Document this structure */
-typedef struct _wnd_buffer {
-	unsigned int first_wnd;
-	unsigned int next_wnd;
-	window wnd_buffer[WND_BUFFER_LENGTH];
-} wnd_buffer;
-
 extern void ParallelScheduleNewEvent(unsigned int, simtime_t, unsigned int, void *, unsigned int);
 
 /* Functions invoked by other modules */
@@ -133,9 +119,16 @@ extern simtime_t local_min_timestamp(void);
 extern void start_ack_timer(void);
 
 
+extern msg_t *get_msg_from_slab(void);
 extern void pack_msg(msg_t **msg, unsigned int sender, unsigned int receiver, int type, simtime_t timestamp, simtime_t send_time, size_t size, void *payload);
 extern void msg_to_hdr(msg_hdr_t *hdr, msg_t *msg);
 extern void hdr_to_msg(msg_hdr_t *hdr, msg_t *msg);
 extern void msg_release(msg_t *msg);
+
+#ifndef NDEBUG
+extern bool validate_msg(msg_t *msg);
+#else
+#define validate_msg(msg)
+#endif
 
 #endif

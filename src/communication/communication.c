@@ -283,13 +283,17 @@ void send_outgoing_msgs(unsigned int lid) {
 }
 
 
+msg_t *get_msg_from_slab(void) {
+	return (msg_t *)slab_alloc(&msg_slab);
+}
+
 
 // TODO: si può generare qua dentro la marca, perché si usa sempre il sender. Occhio al gid/lid!!!!
 void pack_msg(msg_t **msg, unsigned int sender, unsigned int receiver, int type, simtime_t timestamp, simtime_t send_time, size_t size, void *payload) {
 
 	// Check if we can rely on a slab to initialize the message
 	if(sizeof(msg_t) + size <= SLAB_MSG_SIZE) {
-		*msg = (msg_t *)slab_alloc(&msg_slab);
+		*msg = get_msg_from_slab();
 	} else {
 		*msg = rsalloc(sizeof(msg_t) + size);
 	}
@@ -335,4 +339,26 @@ void msg_release(msg_t *msg) {
 		rsfree(msg);
 	}
 }
+
+#ifndef NDEBUG
+unsigned int mark_to_gid(unsigned long long mark) {
+	double z = (double)mark;
+        double w = floor( (sqrt( 8 * z + 1) - 1) / 2.0);
+        double t = ( w*w + w ) / 2.0;
+        double y = z - t;
+        double x = w - y;
+
+	return (int)x;
+}
+
+bool validate_msg(msg_t *msg) {
+	assert(msg->sender <= n_prc_tot);
+	assert(msg->receiver <= n_prc_tot);
+	assert(msg->message_kind == positive || msg->message_kind == negative || msg->message_kind == control);
+	assert(mark_to_gid(msg->mark) <= n_prc_tot);
+	assert(mark_to_gid(msg->rendezvous_mark) <= n_prc_tot);
+	assert(msg->type < MAX_VALUE_CONTROL);
+}
+#endif
+
 

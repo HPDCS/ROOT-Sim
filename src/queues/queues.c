@@ -146,8 +146,10 @@ msg_t *advance_to_next_event(unsigned int lid) {
 * @param msg The message to be added into some LP's bottom half.
 */
 void insert_bottom_half(msg_t *msg) {
-
 	unsigned int lid = GidToLid(msg->receiver);
+
+	validate_msg(msg);
+
 	insert_BH(lid, msg);
 	#ifdef HAVE_PREEMPTION
 	update_min_in_transit(LPS[lid]->worker_thread, msg->timestamp);

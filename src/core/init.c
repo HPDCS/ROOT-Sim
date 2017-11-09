@@ -44,7 +44,6 @@
 #include <scheduler/scheduler.h>
 #include <mm/state.h>
 #include <mm/dymelor.h>
-#include <core/backtrace.h>
 #include <statistics/statistics.h>
 #include <lib/numerical.h>
 #include <serial/serial.h>
@@ -104,7 +103,6 @@ static int parse_cmd_line(int argc, char **argv) {
 
 	// Store the predefined values, before reading any overriding one
 	rootsim_config.output_dir = DEFAULT_OUTPUT_DIR;
-	rootsim_config.backtrace = false;
 	rootsim_config.gvt_time_period = 1000;
 	rootsim_config.scheduler = SMALLEST_TIMESTAMP_FIRST;
 	rootsim_config.checkpointing = INVALID_STATE_SAVING;
@@ -260,10 +258,6 @@ static int parse_cmd_line(int argc, char **argv) {
 				}
 				break;
 
-			case OPT_BACKTRACE:
-				rootsim_config.backtrace = true;
-				break;
-
 			case OPT_DETERMINISTIC_SEED:
 				rootsim_config.deterministic_seed = true;
 				break;
@@ -392,11 +386,6 @@ void SystemInit(int argc, char **argv) {
 	}
 	model_parameters.size = argc - w + sizeof(char *);
 	model_parameters.arguments = &argv[w];
-
-	// Initialize the backtrace handler if required
-	if(rootsim_config.backtrace && master_kernel() && master_thread()) {
-		INIT_BACKTRACE();
-	}
 
 	// If we're going to run a serial simulation, configure the simulation to support it
 	if(rootsim_config.serial) {
