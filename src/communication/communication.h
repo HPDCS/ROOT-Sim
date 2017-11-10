@@ -124,6 +124,7 @@ extern void pack_msg(msg_t **msg, unsigned int sender, unsigned int receiver, in
 extern void msg_to_hdr(msg_hdr_t *hdr, msg_t *msg);
 extern void hdr_to_msg(msg_hdr_t *hdr, msg_t *msg);
 extern void msg_release(msg_t *msg);
+extern void dump_msg_content(msg_t *msg);
 
 #ifndef NDEBUG
 extern void validate_msg(msg_t *msg);

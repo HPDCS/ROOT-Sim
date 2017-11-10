@@ -67,7 +67,7 @@ void communication_init(void) {
 
 
 void communication_init_thread(void) {
-	slab_init(&msg_slab, SLAB_MSG_SIZE);
+	slab_init(&msg_slab, SLAB_MSG_SIZE); 
 }
 
 void communication_fini_thread(void) {
@@ -155,10 +155,8 @@ void ParallelScheduleNewEvent(unsigned int gid_receiver, simtime_t timestamp, un
 * @todo One shot scan of the list
 */
 void send_antimessages(unsigned int lid, simtime_t after_simtime) {
-	msg_hdr_t *anti_msg,
-		  *anti_msg_next;
-
-	msg_t msg;
+	msg_hdr_t *anti_msg, *anti_msg_next;
+	msg_t *msg;
 
 //	printf("send_antimessages lid: %d after: %f\n", lid, after_simtime);
 
@@ -182,9 +180,10 @@ void send_antimessages(unsigned int lid, simtime_t after_simtime) {
 
 	// now send all antimessages
 	while(anti_msg != NULL) {
-		hdr_to_msg(anti_msg, &msg);
-		msg.message_kind = negative;
-		Send(&msg);
+		msg = get_msg_from_slab();
+		hdr_to_msg(anti_msg, msg);
+		msg->message_kind = negative;
+		Send(msg);
 
 		// Remove the already sent antimessage from output queue
 		anti_msg_next = list_next(anti_msg);
@@ -251,7 +250,6 @@ void insert_outgoing_msg(msg_t *msg) {
 		LPS[current_lp]->outgoing_buffer.outgoing_msgs = rsrealloc(LPS[current_lp]->outgoing_buffer.outgoing_msgs, sizeof(msg_t *) * LPS[current_lp]->outgoing_buffer.max_size);
 	}
 
-	// message structure was declared on stack in schedulenewevent: make a copy!
 	LPS[current_lp]->outgoing_buffer.outgoing_msgs[LPS[current_lp]->outgoing_buffer.size++] = msg;
 
 	// store the minimum timestamp of outgoing messages
@@ -270,13 +268,14 @@ void send_outgoing_msgs(unsigned int lid) {
 
 	for(i = 0; i < LPS[lid]->outgoing_buffer.size; i++) {
 		msg = LPS[lid]->outgoing_buffer.outgoing_msgs[i];
+		msg_to_hdr(&msg_hdr, msg);
+
+//		dump_msg_content(msg);
+
 		Send(msg);
 
 		// register the message in the sender's output queue, for antimessage management
-		msg_to_hdr(&msg_hdr, msg);
 		(void)list_insert(lid, LPS[lid]->queue_out, send_time, &msg_hdr);
-
-		msg_release(msg);
 	}
 
 	LPS[lid]->outgoing_buffer.size = 0;
@@ -286,7 +285,7 @@ void send_outgoing_msgs(unsigned int lid) {
 msg_t *get_msg_from_slab(void) {
 	msg_t *msg = (msg_t *)slab_alloc(&msg_slab);
 	#ifndef NDEBUG
-	bzero(&msg, SLAB_MSG_SIZE);
+	bzero(msg, SLAB_MSG_SIZE);
 	#endif
 	return msg;
 }
@@ -298,11 +297,11 @@ void pack_msg(msg_t **msg, unsigned int sender, unsigned int receiver, int type,
 	// Check if we can rely on a slab to initialize the message
 	if(sizeof(msg_t) + size <= SLAB_MSG_SIZE) {
 		*msg = get_msg_from_slab();
+		bzero(*msg, SLAB_MSG_SIZE);
 	} else {
 		*msg = rsalloc(sizeof(msg_t) + size);
+		bzero(*msg, sizeof(msg_t) + size);
 	}
-
-	bzero(*msg, sizeof(msg_t) + size);
 
 	(*msg)->sender = sender;
 	(*msg)->receiver = receiver;
@@ -314,9 +313,14 @@ void pack_msg(msg_t **msg, unsigned int sender, unsigned int receiver, int type,
 
 	if(payload != NULL && size > 0)
 		memcpy((*msg)->event_content, payload, size);
+
+	validate_msg(*msg);
 }
 
 void msg_to_hdr(msg_hdr_t *hdr, msg_t *msg) {
+	bzero(hdr, sizeof(msg_hdr_t));
+	validate_msg(msg);
+
 	hdr->sender = msg->sender;
 	hdr->receiver = msg->receiver;
 	hdr->type = msg->type;
@@ -327,6 +331,8 @@ void msg_to_hdr(msg_hdr_t *hdr, msg_t *msg) {
 }
 
 void hdr_to_msg(msg_hdr_t *hdr, msg_t *msg) {
+	bzero(msg, sizeof(msg_t));
+
 	msg->sender = hdr->sender;
 	msg->receiver = hdr->receiver;
 	msg->type = hdr->type;
@@ -334,6 +340,8 @@ void hdr_to_msg(msg_hdr_t *hdr, msg_t *msg) {
 	msg->timestamp = hdr->timestamp;
 	msg->send_time = hdr->send_time;
 	msg->mark = hdr->mark;
+
+	validate_msg(msg);
 }
 
 void msg_release(msg_t *msg) {
@@ -342,6 +350,19 @@ void msg_release(msg_t *msg) {
 	} else {
 		rsfree(msg);
 	}
+}
+
+void dump_msg_content(msg_t *msg) {
+	printf("\tsender: %lu\n", msg->sender);
+	printf("\treceiver: %lu\n", msg->sender);
+	printf("\tcolour: %d\n", msg->colour);
+	printf("\ttype: %d\n", msg->type);
+	printf("\tmessage_kind: %d\n", msg->message_kind);
+	printf("\ttimestamp: %f\n", msg->timestamp);
+	printf("\tsend_time: %f\n", msg->send_time);
+	printf("\tmark: %llu\n", msg->mark);
+	printf("\trendezvous_mark: %llu\n", msg->rendezvous_mark);
+	printf("\tsize: %llu\n", msg->size);
 }
 
 #ifndef NDEBUG

@@ -25,6 +25,7 @@
 
 #ifdef HAS_MPI
 
+#include <communication/communication.h>
 #include <communication/wnd.h>
 #include <communication/mpi.h>
 
@@ -80,12 +81,14 @@ int prune_outgoing_queue(outgoing_queue* oq){
 
 	spin_lock(&(oq->lock));
 
-	outgoing_msg* msg = list_head(oq->queue);
+	outgoing_msg *msg = list_head(oq->queue);
 
 	// check all the outgoing messages in the queue starting from the
 	// head ( the entry with the minimum timestamp ) and delete them
 	// if they have been already delivered
-	while(msg != NULL && is_msg_delivered(msg)){
+	while(msg != NULL && is_msg_delivered(msg)) {
+		msg_release(msg->msg);
+
 		list_delete_by_content(GENERIC_LIST, oq->queue, msg);
 		pruned++;
 		msg = list_head(oq->queue);

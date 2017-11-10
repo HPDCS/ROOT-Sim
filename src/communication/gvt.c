@@ -292,14 +292,14 @@ simtime_t last_reduced_gvt(void){
 }
 
 
-void register_outgoing_msg(const msg_t* msg){
+void register_outgoing_msg(const msg_t* msg) {
 	unsigned int dst_kid = GidToKernel(msg->receiver);
 
 	if(dst_kid == kid) return;
 
-	if(is_red_colour(msg->colour)){
+	if(is_red_colour(msg->colour)) {
 		min_outgoing_red_msg[local_tid] = min(min_outgoing_red_msg[local_tid], msg->timestamp);
-	}else{
+	} else {
 		atomic_inc(&white_msg_sent[dst_kid]);
 	}
 }

@@ -104,9 +104,9 @@ void send_remote_msg(msg_t *msg){
 	// we can send it using the msg_mpi_t. On the other hand, we need
 	// to send a header telling the size of the message to be received
 	// at the other endpoint.
-	if(0 && sizeof(msg_t) + msg->size <= SLAB_MSG_SIZE) {
+	if(sizeof(msg_t) + msg->size <= SLAB_MSG_SIZE) {
 		lock_mpi();
-		MPI_Isend(&(out_msg->msg), 1, msg_mpi_t, dest, MSG_EVENT, MPI_COMM_WORLD, &(out_msg->req));
+		MPI_Isend(out_msg->msg, 1, msg_mpi_t, dest, MSG_EVENT, MPI_COMM_WORLD, &(out_msg->req));
 		unlock_mpi();
 	} else {
 		unsigned int size = sizeof(msg_t) + msg->size;
