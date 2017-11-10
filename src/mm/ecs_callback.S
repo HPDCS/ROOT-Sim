@@ -49,10 +49,6 @@
 #    |---------------------|
 #    |        RAX          |
 #    |---------------------|
-#    |  WORKER THREAD ID   |  -> Placed by kernel module
-#    |---------------------|
-#    |      TARGET LP      |  -> Placed by kernel module
-#    |---------------------|
 #    |   RETURN ADDRESS    |  -> Placed by kernel module
 #    |---------------------|
 #
@@ -86,11 +82,7 @@ rootsim_cross_state_dependency_handler:
 	push %rbp
 	mov %rsp, %rbp
 
-//	movq 32(%rsp), %rdi
 //	movq 40(%rsp), %rsi
-	movq 40(%rsp), %rdi
-	movq 48(%rsp), %rsi
-	movq 88(%rsp), %rdx
 	call ECS
 
 	add $8, %rsp

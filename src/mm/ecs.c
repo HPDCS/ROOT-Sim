@@ -72,8 +72,7 @@ extern void rootsim_cross_state_dependency_handler(void);
 
 
 // This handler is only called in case of a remote ECS
-void ecs_fault_handler_on_segment(int signal) {
-	(void)signal;
+void ecs_secondary(void) {
 
 	// target_address is filled by the ROOT-Sim fault handler at kernel level before triggering the signal
 	long long target_address = fault_info.target_address;
@@ -121,37 +120,16 @@ void ecs_fault_handler_on_segment(int signal) {
 	long_jmp(&kernel_context, kernel_context.rax);
 }
 
-
-// TODO: since we now have a struct to get the information from kernel, we can remove all parameters here
-// and simplify the assembly trampoline
-
-// This handler is called to initiate an ECS, both in the local and in the distributed case
-void ECS(long long ds, unsigned long long hitted_object, unsigned char *prev_instr) __attribute__((__used__));
-void ECS(long long ds, unsigned long long hitted_object, unsigned char *prev_instr) {
-	(void)ds;
-	(void)prev_instr;
+void ecs_initiate(void) {
 	msg_t *control_msg;
 	msg_hdr_t msg_hdr;
 
-	if(LPS[current_lp]->state == LP_STATE_SILENT_EXEC) {
-		rootsim_error(true,"----ERROR---- ECS in Silent Execution LP[%d] Hit:%llu Timestamp:%f\n",
-		current_lp, hitted_object, current_lvt);
-	}
-
-	if(LPS[current_lp]->wait_on_rendezvous != 0 && LPS[current_lp]->wait_on_rendezvous != current_evt->rendezvous_mark) {
-		printf("muori male\n");
-		fflush(stdout);
-		abort();
-	}
-
-	if(LPS[current_lp]->wait_on_rendezvous == 0) {
-		current_evt->rendezvous_mark = generate_mark(current_lp);
-		LPS[current_lp]->wait_on_rendezvous = current_evt->rendezvous_mark;
-		printf("gid %d starting a rendezvous at time %f with mark %llu with LP %llu on ds %lld\n", LidToGid(current_lp), current_lvt, LPS[current_lp]->wait_on_rendezvous, hitted_object, ds); 
-	}
+	// Generate a unique mark for this ECS
+	current_evt->rendezvous_mark = generate_mark(current_lp);
+	LPS[current_lp]->wait_on_rendezvous = current_evt->rendezvous_mark;
 
 	// Prepare the control message to synchronize the two LPs
-	pack_msg(&control_msg, LidToGid(current_lp), hitted_object, RENDEZVOUS_START, current_lvt, current_lvt, 0, NULL);
+	pack_msg(&control_msg, LidToGid(current_lp), fault_info.target_gid, RENDEZVOUS_START, current_lvt, current_lvt, 0, NULL);
 	control_msg->rendezvous_mark = current_evt->rendezvous_mark;
 	control_msg->mark = generate_mark(current_lp);
 
@@ -161,26 +139,59 @@ void ECS(long long ds, unsigned long long hitted_object, unsigned char *prev_ins
 
 	// Block the execution of this LP
 	LPS[current_lp]->state = LP_STATE_WAIT_FOR_SYNCH;
-	LPS[current_lp]->wait_on_object = hitted_object;
+	LPS[current_lp]->wait_on_object = fault_info.target_gid;
 
 	// Store which LP we are waiting for synchronization. Upon reschedule, it is open immediately
 	LPS[current_lp]->ECS_index++;
-	LPS[current_lp]->ECS_synch_table[LPS[current_lp]->ECS_index] = hitted_object;
+	LPS[current_lp]->ECS_synch_table[LPS[current_lp]->ECS_index] = fault_info.target_gid;
 	Send(control_msg);
 	
 	// Give back control to the simulation kernel's user-level thread
 	long_jmp(&kernel_context, kernel_context.rax);
 }
 
+// This handler is called to initiate an ECS, both in the local and in the distributed case
+void ECS(void) __attribute__((__used__));
+void ECS(void) {
+	unsigned int i;
+
+	// ECS cannot happen in silent execution, as we take a log after the completion
+	// of an event which involves one or multiple ecs
+	if(LPS[current_lp]->state == LP_STATE_SILENT_EXEC) {
+		rootsim_error(true,"----ERROR---- ECS in Silent Execution LP[%d] Hit:%llu Timestamp:%f\n",
+		current_lp, fault_info.target_gid, current_lvt);
+	}
+
+	// Sanity check: we cannot run an ECS with an old mark after a rollback
+	if(LPS[current_lp]->wait_on_rendezvous != 0 && LPS[current_lp]->wait_on_rendezvous != current_evt->rendezvous_mark) {
+		printf("muori male\n");
+		fflush(stdout);
+		abort();
+	}
+
+	// If we do not have a rendezvous mark, this is the first fault ever associated with the current event
+	if(LPS[current_lp]->wait_on_rendezvous == 0) {
+		ecs_initiate();
+		return;  // This return will be executed upon context restore
+	}
+
+	// If we are synchronizing with a new LP, we have to initiate the protocol with it.
+	// Otherwise, we are in the case of a distributed ECS and we have to get a page lease.
+	for(i = 0; i < 	LPS[current_lp]->ECS_index; i++) {
+		if(LPS[current_lp]->ECS_synch_table[i] == fault_info.target_gid) {
+			ecs_secondary();
+			return;  // This return will be executed upon context restore
+		}
+	}
+
+	// Then, we're initiating an ECS with a new LP
+	ecs_initiate();	
+}
 
 void ecs_init(void) {
 	ioctl_fd = manual_open("/dev/ktblmgr", O_RDONLY);
 	if (ioctl_fd <= -1) {
 		rootsim_error(true, "Error in opening special device file. ROOT-Sim is compiled for using the ktblmgr linux kernel module, which seems to be not loaded.");
-	}
-
-	if(signal(SIGSEGV, ecs_fault_handler_on_segment) == SIG_ERR) {
-		rootsim_error(true, "Unable to setup page fault handler. Aborting the simulation.\n");
 	}
 }
 

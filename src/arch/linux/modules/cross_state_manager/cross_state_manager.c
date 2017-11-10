@@ -183,11 +183,7 @@ int root_sim_page_fault(struct pt_regs* regs, long error_code){
 			// Pass required parameters to userland
 			auxiliary_stack_pointer = regs->sp;
 			auxiliary_stack_pointer--;
-		        copy_to_user((void *)auxiliary_stack_pointer,(void *)&regs->ip,8);	
-			auxiliary_stack_pointer--;
-		        copy_to_user((void *)auxiliary_stack_pointer,(void *)&hitted_object,8);	
-			auxiliary_stack_pointer--;
-		        copy_to_user((void *)auxiliary_stack_pointer,(void *)&i,8);	
+		    copy_to_user((void *)auxiliary_stack_pointer,(void *)&regs->ip,8);	
 			regs->sp = auxiliary_stack_pointer;
 			regs->ip = callback;
 
