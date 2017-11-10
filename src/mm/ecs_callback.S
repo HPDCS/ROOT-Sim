@@ -41,10 +41,6 @@
 # This is the organization of the stack after the various push:
 #
 #    _______________________
-#    |        RDI          |
-#    |---------------------|
-#    |        RSI          |
-#    |---------------------|
 #    |       FLAGS         |
 #    |---------------------|
 #    |        RAX          |
@@ -65,9 +61,6 @@ rootsim_cross_state_dependency_handler:
 	# Force checking 
 	movq $1, %rax
 
-	pushq %rsi
-	pushq %rdi
-
 	# Access to context field of LPS[current_lp]
 	movl %fs:current_lp@tpoff, %edi
 	movq LPS(%rip), %rsi
@@ -82,17 +75,11 @@ rootsim_cross_state_dependency_handler:
 	push %rbp
 	mov %rsp, %rbp
 
-//	movq 40(%rsp), %rsi
 	call ECS
 
-	add $8, %rsp
 	pop %rbp
 	
-
      .dont:
-
-	popq %rdi
-	popq %rsi
 
 	# Restore FLAGS
 	popq %rax
@@ -100,9 +87,6 @@ rootsim_cross_state_dependency_handler:
 	sahf
 
 	popq %rax
-
-	
-	addq $16, %rsp
 	ret
 
 .size   rootsim_cross_state_dependency_handler, .-rootsim_cross_state_dependency_handler

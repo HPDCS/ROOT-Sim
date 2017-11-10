@@ -172,7 +172,7 @@ void ECS(void) {
 	// If we do not have a rendezvous mark, this is the first fault ever associated with the current event
 	if(LPS[current_lp]->wait_on_rendezvous == 0) {
 		ecs_initiate();
-		return;  // This return will be executed upon context restore
+		return;  // This return will never be executed, as we save the context in the assembly trampoline
 	}
 
 	// If we are synchronizing with a new LP, we have to initiate the protocol with it.
@@ -180,7 +180,7 @@ void ECS(void) {
 	for(i = 0; i < 	LPS[current_lp]->ECS_index; i++) {
 		if(LPS[current_lp]->ECS_synch_table[i] == fault_info.target_gid) {
 			ecs_secondary();
-			return;  // This return will be executed upon context restore
+			return;  // This return will never be executed, as we save the context in the assembly trampoline
 		}
 	}
 

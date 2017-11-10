@@ -176,7 +176,7 @@ static void *main_simulation_loop(void *arg) {
 int main(int argc, char **argv) {
 	printf("PID %d ready for attach\n", getpid());
 	fflush(stdout);
-	// int i = 0; while (0 == i) sleep(5);
+	 int i = 0; while (0 == i) sleep(5);
 		
 	SystemInit(argc, argv);
 
