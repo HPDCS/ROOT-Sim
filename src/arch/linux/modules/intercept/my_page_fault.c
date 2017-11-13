@@ -43,7 +43,9 @@ module_param(addr_error_exit, ulong, S_IRUGO);
     printk(KERN_INFO "my_virt_drv: %s=0x%lx\n", #x, x);\
 }while(0)
 
-extern int root_sim_page_fault(struct pt_regs* regs, long error_code);
+typedef void (*do_page_fault_t)(struct pt_regs*, unsigned long);
+
+extern void root_sim_page_fault(struct pt_regs* regs, long error_code, do_page_fault_t kernel_handler);
 
 static int check_parameters(void){
     int is_any_unset = 0;
@@ -55,14 +57,10 @@ static int check_parameters(void){
     return is_any_unset;
 }
 
-typedef void (*do_page_fault_t)(struct pt_regs*, unsigned long);
-
 void my_do_page_fault(struct pt_regs* regs, unsigned long error_code){
-    int discriminate;
-    discriminate = root_sim_page_fault(regs,error_code);
-    if(!discriminate){
-    ((do_page_fault_t)addr_dft_do_page_fault)(regs, error_code);
-    }
+    // We call the ROOT-Sim page fault handler. Warning: if we have to call the
+    // original kernel handler, this must be done prior to returning!!!!
+    root_sim_page_fault(regs, error_code, addr_dft_do_page_fault);
 }
 
 asmlinkage void my_page_fault(void);

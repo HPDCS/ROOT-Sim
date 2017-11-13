@@ -107,13 +107,6 @@ void ecs_secondary(void) {
 	printf("ECS Page Fault: LP %d accessing %d pages from %p on LP %lu in %s mode\n", current_lp, page_req.count, (void *)page_req.base_address, fault_info.target_gid, (page_req.write_mode ? "write" : "read"));
 	fflush(stdout);
 
-	// Pre-materialization of the pages on the local node
-        mprotect(page_req.base_address, page_req.count * PAGE_SIZE, PROT_WRITE);
-	for(i = 0; i < page_req.count; i++) {
-		*((char *)page_req.base_address + i * PAGE_SIZE) = 'x';
-	}	
-        mprotect(page_req.base_address, page_req.count * PAGE_SIZE, PROT_NONE);
-
 	LPS[current_lp]->state = LP_STATE_WAIT_FOR_DATA;
 
 	// Give back control to the simulation kernel's user-level thread
@@ -123,6 +116,7 @@ void ecs_secondary(void) {
 void ecs_initiate(void) {
 	msg_t *control_msg;
 	msg_hdr_t msg_hdr;
+	ioctl_info sched_info;
 
 	// Generate a unique mark for this ECS
 	current_evt->rendezvous_mark = generate_mark(current_lp);
@@ -145,7 +139,14 @@ void ecs_initiate(void) {
 	LPS[current_lp]->ECS_index++;
 	LPS[current_lp]->ECS_synch_table[LPS[current_lp]->ECS_index] = fault_info.target_gid;
 	Send(control_msg);
-	
+
+	// In case of a remote ECS, protect the memory
+	if(GidToKernel(fault_info.target_gid) != kid) {
+		bzero(&sched_info, sizeof(ioctl_info));
+		sched_info.base_address = get_base_pointer(fault_info.target_gid);
+		ioctl(ioctl_fd, IOCTL_PROTECT_REMOTE_LP, &sched_info);
+	}
+
 	// Give back control to the simulation kernel's user-level thread
 	long_jmp(&kernel_context, kernel_context.rax);
 }
@@ -153,8 +154,6 @@ void ecs_initiate(void) {
 // This handler is called to initiate an ECS, both in the local and in the distributed case
 void ECS(void) __attribute__((__used__));
 void ECS(void) {
-	unsigned int i;
-
 	// ECS cannot happen in silent execution, as we take a log after the completion
 	// of an event which involves one or multiple ecs
 	if(LPS[current_lp]->state == LP_STATE_SILENT_EXEC) {
@@ -169,23 +168,25 @@ void ECS(void) {
 		abort();
 	}
 
-	// If we do not have a rendezvous mark, this is the first fault ever associated with the current event
-	if(LPS[current_lp]->wait_on_rendezvous == 0) {
-		ecs_initiate();
-		return;  // This return will never be executed, as we save the context in the assembly trampoline
-	}
+	switch(fault_info.fault_type) {
 
-	// If we are synchronizing with a new LP, we have to initiate the protocol with it.
-	// Otherwise, we are in the case of a distributed ECS and we have to get a page lease.
-	for(i = 0; i < 	LPS[current_lp]->ECS_index; i++) {
-		if(LPS[current_lp]->ECS_synch_table[i] == fault_info.target_gid) {
+		case ECS_MAJOR_FAULT:
+			ecs_initiate();
+			break;
+
+		case ECS_MINOR_FAULT:
+			// TODO: gestire qui la read/write list!!!!
 			ecs_secondary();
-			return;  // This return will never be executed, as we save the context in the assembly trampoline
-		}
-	}
+			break;
 
-	// Then, we're initiating an ECS with a new LP
-	ecs_initiate();	
+		case ECS_CHANGE_PAGE_PRIVILEGE:
+			// TODO: gestire qui la write list!!!!
+			break;
+
+		default:
+			rootsim_error(true, "%s:%d: Impossible condition! Aborting...\n", __FILE__,  __LINE__);
+			return;
+	}
 }
 
 void ecs_init(void) {
@@ -245,18 +246,6 @@ void lp_alloc_deschedule(void) {
 void lp_alloc_thread_fini(void) {
 }
 
-void setup_ecs_on_segment(msg_t *msg) {
-	void *base_ptr;
-
-	if(GidToKernel(msg->sender) == kid)
-		return;
-
-	// ECS on a remote LP: mprotect the whole segment
-	base_ptr = get_base_pointer(msg->sender);
-	printf("Setting up mprotect for LP %d base ptr %p size %ld MB\n", msg->sender, base_ptr, PER_LP_PREALLOCATED_MEMORY / 1024 / 1024);
-	mprotect((char *)base_ptr + PAGE_SIZE, PER_LP_PREALLOCATED_MEMORY - PAGE_SIZE , PROT_NONE);
-}
-
 void ecs_send_pages(msg_t *msg) {
 	msg_t *control_msg;
 	ecs_page_request_t *the_request;
@@ -283,17 +272,19 @@ void ecs_send_pages(msg_t *msg) {
 
 void ecs_install_pages(msg_t *msg) {
 	ecs_page_request_t *the_pages = (ecs_page_request_t *)&(msg->event_content);
-	char mode = PROT_READ;
+	ioctl_info sched_info;
+	bzero(&sched_info, sizeof(ioctl_info));
 
-	if(the_pages->write_mode)
-		mode |= PROT_WRITE;
-	
 	printf("LP %d receiving %d pages from %p from %d\n", msg->receiver, the_pages->count, the_pages->base_address, msg->sender);
 	fflush(stdout);
 
-        mprotect(the_pages->base_address, the_pages->count * PAGE_SIZE, mode);
-
+	sched_info.base_address = the_pages->base_address;
+	sched_info.page_count = the_pages->count;
+	sched_info.write_mode = the_pages->write_mode;
+	
 	memcpy(the_pages->buffer, the_pages->base_address, the_pages->count * PAGE_SIZE);
+
+	ioctl(ioctl_fd, IOCTL_SET_PAGE_PRIVILEGE, &sched_info);
 }
 
 void unblock_synchronized_objects(unsigned int lid) {

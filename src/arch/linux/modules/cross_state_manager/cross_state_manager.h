@@ -51,42 +51,35 @@ typedef struct _ioctl_info{
 	unsigned mapped_processes;
 
 	ulong callback;
+
+	void *base_address;
+	int page_count;
+	int write_mode;
 } ioctl_info;
 
 #endif
+
+
+#define ECS_MAJOR_FAULT	0
+#define ECS_MINOR_FAULT	1
+#define ECS_CHANGE_PAGE_PRIVILEGE	2
 
 typedef struct _fault_info_t {
 	long long rcx;
 	long long rip;
 	long long target_address;
 	unsigned long target_gid;
+	unsigned char fault_type;
 } fault_info_t;
 
 // Setup all ioctl commands
-#define IOCTL_INIT_PGD _IO(CROSS_STATE_IOCTL_MAGIC, 0)
 #define IOCTL_GET_PGD _IOW(CROSS_STATE_IOCTL_MAGIC, 1, void *)
-#define IOCTL_RELEASE_PGD _IOW(CROSS_STATE_IOCTL_MAGIC, 2 , int)
-#define IOCTL_INSTALL_PGD _IOW(CROSS_STATE_IOCTL_MAGIC, 3 , int)
-#define IOCTL_UNINSTALL_PGD _IOW(CROSS_STATE_IOCTL_MAGIC, 4 , int)
-#define IOCTL_GET_INFO_PGD _IO(CROSS_STATE_IOCTL_MAGIC, 5)
-#define IOCTL_GET_INFO_VMAREA _IO(CROSS_STATE_IOCTL_MAGIC, 6)
-#define IOCTL_GET_CR_REGISTERS _IO(CROSS_STATE_IOCTL_MAGIC, 7)
-#define IOCTL_TRACE_VMAREA _IOW(CROSS_STATE_IOCTL_MAGIC, 8 , void*)
-#define IOCTL_CHANGE_VIEW _IOW(CROSS_STATE_IOCTL_MAGIC, 10 , int)
-#define IOCTL_SYNC_SLAVES _IO(CROSS_STATE_IOCTL_MAGIC, 11)
-#define IOCTL_SCHEDULE_ID _IOW(CROSS_STATE_IOCTL_MAGIC, 12, int)
-#define IOCTL_UNSCHEDULE_CURRENT _IO(CROSS_STATE_IOCTL_MAGIC, 13)
-#define IOCTL_CHANGE_MODE_VMAREA _IOW(CROSS_STATE_IOCTL_MAGIC, 14 , void *)
-#define IOCTL_SET_ANCESTOR_PGD _IO(CROSS_STATE_IOCTL_MAGIC, 15 )
-#define IOCTL_SET_VM_RANGE _IOW(CROSS_STATE_IOCTL_MAGIC, 16 , ioctl_info *)
-#define IOCTL_REGISTER_THREAD _IOW(CROSS_STATE_IOCTL_MAGIC, 17 , int )
-#define IOCTL_DEREGISTER_THREAD _IOW(CROSS_STATE_IOCTL_MAGIC, 18  , int)
-#define IOCTL_RESTORE_VIEW _IOW(CROSS_STATE_IOCTL_MAGIC, 19 , int)
-#define IOCTL_SCHEDULE_ON_PGD _IOW(CROSS_STATE_IOCTL_MAGIC, 21 , ioctl_info *)
-#define IOCTL_UNSCHEDULE_ON_PGD _IOW(CROSS_STATE_IOCTL_MAGIC, 22 , int)
-#define IOCTL_GET_FREE_PML4 _IO(CROSS_STATE_IOCTL_MAGIC, 23)
-#define IOCTL_PGD_PRINT _IO(CROSS_STATE_IOCTL_MAGIC, 24)
-
+#define IOCTL_SET_ANCESTOR_PGD _IO(CROSS_STATE_IOCTL_MAGIC, 2)
+#define IOCTL_SET_VM_RANGE _IOW(CROSS_STATE_IOCTL_MAGIC, 3, ioctl_info *)
+#define IOCTL_SCHEDULE_ON_PGD _IOW(CROSS_STATE_IOCTL_MAGIC, 4, ioctl_info *)
+#define IOCTL_UNSCHEDULE_ON_PGD _IOW(CROSS_STATE_IOCTL_MAGIC, 5, int)
+#define IOCTL_SET_PAGE_PRIVILEGE _IOW(CROSS_STATE_IOCTL_MAGIC, 6, int)
+#define IOCTL_PROTECT_REMOTE_LP _IOW(CROSS_STATE_IOCTL_MAGIC, 7, int)
 
 // Macros to access subportions of an address
 #define PML4(addr) (((long long)(addr) >> 39) & 0x1ff)

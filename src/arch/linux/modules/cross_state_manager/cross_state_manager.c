@@ -58,6 +58,12 @@
 #error Unsupported Kernel Version
 #endif
 
+#define SET_BIT(p,n) ((*(long long *)p) |= (1LL << (n)))
+#define CLR_BIT(p,n) ((*(long long *)p) &= ~((1LL) << (n)))
+#define GET_BIT(p,n) ((*(long long *)p) & (1LL << (n)))
+
+// Type to access original fault handler
+typedef void (*do_page_fault_t)(struct pt_regs*, unsigned long);
 
 /* FUNCTION PROTOTYPES */
 static int rs_ktblmgr_init(void);
@@ -72,13 +78,8 @@ MODULE_DESCRIPTION("ROOT-Sim Multiple Page Table Kernel Module");
 module_init(rs_ktblmgr_init);
 module_exit(rs_ktblmgr_cleanup);
 
-
 /* MODULE VARIABLES */
-void (*rootsim_pager)(void)=0x0;
-
-static inline void rootsim_load_cr3(pgd_t *pgdir) {
-	__asm__ __volatile__ ("mov %0, %%cr3" :: "r" (__pa(pgdir)));
-}
+void (*rootsim_pager)(void)=NULL;
 
 /// Device major number
 static int major;
@@ -136,62 +137,217 @@ struct file_operations fops = {
 /// This is to access the actual flush_tlb_all using a kernel proble
 void (*flush_tlb_all_lookup)(void) = NULL;
 
-int root_sim_page_fault(struct pt_regs* regs, long error_code){
+static inline void rootsim_load_cr3(pgd_t *pgdir) {
+	__asm__ __volatile__ ("mov %0, %%cr3" :: "r" (__pa(pgdir)));
+}
+
+static void set_pte_sticky_flags(ioctl_info *info) {
+	void **pgd;
+	void **pdp;
+	void **pde;
+	void **pte;
+	int i,j;
+
+	pgd = (void **)current->mm->pgd;
+	pdp = (void **)pgd[PML4(info->base_address)];
+	pde = (void **)pdp[PDP(info->base_address)];
+
+	for(i = 0; i < 512; i++) {
+		pte = (void **)pde[i];
+
+		if(pte != NULL) {
+			for(j = 0; i < 512; j++) {
+				if(pte[j] != NULL) {
+					if(GET_BIT(pte[j], 0)) {
+						CLR_BIT(pte[j], 0);
+						SET_BIT(pte[j], 9);
+					}
+				}
+			}
+		}
+	}
+}
+
+static int get_pte_sticky_bit(void *target_address) {
+	void **pgd;
+	void **pdp;
+	void **pde;
+	void **pte;
+	void *page;
+
+	pgd = (void **)current->mm->pgd;
+	pdp = (void **)pgd[PML4(target_address)];
+	pde = (void **)pdp[PDP(target_address)];
+	pte = (void **)pde[PDE(target_address)];
+	page = (void *)pte[PTE(target_address)];
+
+	return GET_BIT(page, 9);
+}
+
+static int get_presence_bit(void *target_address) {
+	void **pgd;
+	void **pdp;
+	void **pde;
+	void **pte;
+	void *page;
+
+	pgd = (void **)current->mm->pgd;
+	pdp = (void **)pgd[PML4(target_address)];
+	pde = (void **)pdp[PDP(target_address)];
+	pte = (void **)pde[PDE(target_address)];
+	page = (void *)pte[PTE(target_address)];
+
+	return GET_BIT(page, 0);
+}
+
+static void set_presence_bit(void *target_address) {
+	void **pgd;
+	void **pdp;
+	void **pde;
+	void **pte;
+	void *page;
+
+	pgd = (void **)current->mm->pgd;
+	pdp = (void **)pgd[PML4(target_address)];
+	pde = (void **)pdp[PDP(target_address)];
+	pte = (void **)pde[PDE(target_address)];
+	page = (void *)pte[PTE(target_address)];
+
+	if(GET_BIT(page, 9)) {
+		SET_BIT(page, 0);
+	}
+}
+
+static void set_page_privilege(ioctl_info *info) {
+        void **pgd;
+        void **pdp;
+        void **pde;
+        void **pte;
+        void *page;
+	int i, j;
+
+	void *base_address = info->base_address;
+	void *final_address = info->base_address + info->count * PAGE_SIZE;
+
+        pgd = (void **)current->mm->pgd;
+        pdp = (void **)pgd[PML4(info->base_address)];
+        pde = (void **)pdp[PDP(info->base_address)];
+
+	for(i = PDE(base_address); i <= PDE(final_address); i++) {
+		pte = (void **)pde[i];
+
+		for(j = 0; j < 512; j++) {
+			page = (void *)pte[j];
+			
+			if(info->write_mode) {
+				SET_BIT(page, 1);
+			} else {
+				CLR_BIT(page, 1);
+			}
+		}
+	}
+}
+
+static void set_single_page_privilege(ioctl_info *info) {
+        void **pgd;
+        void **pdp;
+        void **pde;
+        void **pte;
+        void *page;
+
+        pgd = (void **)current->mm->pgd;
+        pdp = (void **)pgd[PML4(info->base_address)];
+        pde = (void **)pdp[PDP(info->base_address)];
+        pte = (void **)pde[PDE(info->base_address)];
+        page = (void *)pte[PTE(info->base_address)];
+
+        if(info->write_mode) {
+                SET_BIT(page, 1);
+        } else {
+		CLR_BIT(page, 1);
+	}
+}
+
+
+// WARNING: the last parameter is the original kernel fault handler. We have to call it in this function
+// if needed, prior to returning. Failing to do so correctly can hang the system!
+void root_sim_page_fault(struct pt_regs* regs, long error_code, do_page_fault_t kernel_handler) {
  	void *target_address;
 	void **my_pgd;
 	void **my_pdp;
-	void **target_pdp_entry;
-	void **ancestor_pdp;
 	ulong i;
-	void *cr3;
 	ulong *auxiliary_stack_pointer;
-	ulong hitted_object;
+	ioctl_info info;
 
-	if(current->mm == NULL) return 0;  /* this is a kernel thread - not a rootsim thread */
+	if(current->mm == NULL) {
+		/* this is a kernel thread - not a rootsim thread */
+		kernel_handler(regs, error_code);
+		return;
+	}
 
 	target_address = (void *)read_cr2();
 
 	/* discriminate whether this is a classical fault or a root-sim proper fault */
+	for(i = 0; i < SIBLING_PGD; i++) {
+		if (root_sim_processes[i] == current->pid) {
 
-	for(i=0;i<SIBLING_PGD;i++) {
-		if ((root_sim_processes[i])==(current->pid)) {
+			if(PML4(target_address) < restore_pml4 || PML4(target_address) >= restore_pml4 + restore_pml4_entries) {
+				/* a fault outside the root-sim object zone - it needs to be handeld by the traditional fault manager */
+				kernel_handler(regs, error_code);
+				return;
+			}
 
-			if((PML4(target_address)<restore_pml4) || (PML4(target_address))>=(restore_pml4+restore_pml4_entries))
-				return 0; /* a fault outside the root-sim object zone - it needs to be handeld by the traditional fault manager */
-
-			// The faulting address determines the gid of the LP whose state we are accessing	
-			hitted_object = (PML4(target_address) - restore_pml4) * 512 + PDP(target_address) ;
-
-			// Post information about the fault: this is required in case the fault
-			// is related to a memory protection fault. In this way, the userspace
-			// signal handler which will be called due to the following return 0
-			// will let the handler compute for how many pages we need to get a lease.
-			root_sim_fault_info[i]->rcx = regs->cx;
-			root_sim_fault_info[i]->rip = regs->ip;
-			root_sim_fault_info[i]->target_address = (long long)target_address;
-			root_sim_fault_info[i]->target_gid = hitted_object;
-
+			// Compute the address of the PDP entry associated with the faulting address. It's content
+			// will discriminate whether this is a first invocation of ECS or not for the running event.
 			my_pgd =(void **)pgd_addr[i];
 			my_pdp =(void *)my_pgd[PML4(target_address)];
 			my_pdp = __va((ulong)my_pdp & 0xfffffffffffff000);
-			if((void *)my_pdp[PDP(target_address)] != NULL) {
-				return 0; /* faults at lower levels than PDP - need to be handled by traditional fault manager */
+
+			// Post information about the fault. We fill this structure which is used by the
+			// userland handler to keep up with the ECS (distributed) protocol. We fill as much
+			// information as possible that we can get from kernel space.
+			// TODO: COPY TO USER
+			root_sim_fault_info[i]->rcx = regs->cx;
+			root_sim_fault_info[i]->rip = regs->ip;
+			root_sim_fault_info[i]->target_address = (long long)target_address;
+			root_sim_fault_info[i]->target_gid = (PML4(target_address) - restore_pml4) * 512 + PDP(target_address);
+
+			if(my_pdp[PDP(target_address)] == NULL) {
+				// First activation of ECS targeting a new LP
+				root_sim_fault_info[i]->fault_type = ECS_MAJOR_FAULT;
+				rs_ktblmgr_ioctl(NULL, IOCTL_UNSCHEDULE_ON_PGD, (int)i);
+			} else {
+				if(get_pte_sticky_bit(target_address) != 0) {
+					// ECS secondary fault on a remote page
+					root_sim_fault_info[i]->fault_type = ECS_MINOR_FAULT;
+					set_presence_bit(target_address);
+				} else {
+					if(get_presence_bit(target_address) == 0) {
+						kernel_handler(regs, error_code);
+					} else {
+						root_sim_fault_info[i]->fault_type = ECS_CHANGE_PAGE_PRIVILEGE;
+
+						info.base_address = (void *)((long long)target_address & (~(PAGE_SIZE-1)));
+						info.page_count = 1;
+						info.write_mode = 1;
+
+						set_single_page_privilege(&info);
+					}
+				}
 			}
 
-			rs_ktblmgr_ioctl(NULL,IOCTL_UNSCHEDULE_ON_PGD,(int)i);
-
-			// Pass required parameters to userland
-			auxiliary_stack_pointer = regs->sp;
+			// Pass the address of the faulting instruction to userland
+			auxiliary_stack_pointer = (ulong *)regs->sp;
 			auxiliary_stack_pointer--;
-		    copy_to_user((void *)auxiliary_stack_pointer,(void *)&regs->ip,8);	
-			regs->sp = auxiliary_stack_pointer;
+			copy_to_user((void *)auxiliary_stack_pointer,(void *)&regs->ip,8);	
+			regs->sp = (long)auxiliary_stack_pointer;
 			regs->ip = callback;
 
-			return 1;
+			return;
 		}
 	}
 
-	return 0;
+	kernel_handler(regs, error_code);
 }
 
 EXPORT_SYMBOL(root_sim_page_fault);
@@ -216,7 +372,7 @@ int rs_ktblmgr_open(struct inode *inode, struct file *filp) {
 
 int rs_ktblmgr_release(struct inode *inode, struct file *filp) {
       	int i,j;
-	int pml4, pdp;
+	int pml4;
 	int involved_pml4;
 	void **pgd_entry;
 	void **temp;
@@ -261,19 +417,15 @@ int rs_ktblmgr_release(struct inode *inode, struct file *filp) {
 	return 0;
 }
 
-static long rs_ktblmgr_ioctl(struct file *filp, unsigned int cmd, unsigned long arg) {
 
+static long rs_ktblmgr_ioctl(struct file *filp, unsigned int cmd, unsigned long arg) {
 	int ret = 0;
 	int i;
 	void **my_pgd;
 	void **my_pdp;
 	void **pgd_entry;
-	void *pdp_entry;
-	void *pde_entry;
-	void *pte_entry;
 	void **temp;
 	int descriptor;
-	struct vm_area_struct *mmap;
 	void *address;
 	int pml4;
 	int involved_pml4;
@@ -346,7 +498,7 @@ static long rs_ktblmgr_ioctl(struct file *filp, unsigned int cmd, unsigned long 
 
 				for(i = 0; i < scheduled_objects_count; i++) {
 
-					//scheduled_object = TODO COPY FROM USER;
+					//scheduled_object = TODO COPY FROM USER check return value
 			        	copy_from_user((void *)&scheduled_object,(void *)&scheduled_objects[i],sizeof(int));	
 					open_index[descriptor]++;
 					currently_open[descriptor][open_index[descriptor]]=scheduled_object;
@@ -422,7 +574,16 @@ static long rs_ktblmgr_ioctl(struct file *filp, unsigned int cmd, unsigned long 
 			flush_cache_all(); /* to make new range visible across multiple runs */
 
 			ret = 0;
+			break;
 
+		case IOCTL_SET_PAGE_PRIVILEGE:
+			set_page_privilege((ioctl_info *)arg);
+
+			ret = 0;
+			break;
+
+		case IOCTL_PROTECT_REMOTE_LP:
+			set_pte_sticky_flags((ioctl_info *)arg);
 			break;
 
 		default:
@@ -435,23 +596,16 @@ static long rs_ktblmgr_ioctl(struct file *filp, unsigned int cmd, unsigned long 
 
 
 
-void the_pager(struct task_struct *tsk) {
+void the_pager(void) {
 	int i;
-	void *cr3;
 
 	if(current->mm != NULL){
 		for(i=0;i<SIBLING_PGD;i++){	
 			if ((root_sim_processes[i])==(current->pid)){	
-	//		if(current->mm != NULL){
-	//			rootsim_load_cr3(current->mm->pgd);
 				rootsim_load_cr3(pgd_addr[i]);
-//				printk("flushing thread cr3 onto the original PML4\n");
-//				printk("flushing thread cr3 onto the sibling PML4\n");
 			}
 		}
 	}
-	//printk("OK\n");
-	//rootsim_pager = NULL;
 }
 
 
