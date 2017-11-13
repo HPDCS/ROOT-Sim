@@ -116,7 +116,6 @@ void ecs_secondary(void) {
 void ecs_initiate(void) {
 	msg_t *control_msg;
 	msg_hdr_t msg_hdr;
-	ioctl_info sched_info;
 
 	// Generate a unique mark for this ECS
 	current_evt->rendezvous_mark = generate_mark(current_lp);
@@ -135,17 +134,10 @@ void ecs_initiate(void) {
 	LPS[current_lp]->state = LP_STATE_WAIT_FOR_SYNCH;
 	LPS[current_lp]->wait_on_object = fault_info.target_gid;
 
-	// Store which LP we are waiting for synchronization. Upon reschedule, it is open immediately
+	// Store which LP we are waiting for synchronization.
 	LPS[current_lp]->ECS_index++;
 	LPS[current_lp]->ECS_synch_table[LPS[current_lp]->ECS_index] = fault_info.target_gid;
 	Send(control_msg);
-
-	// In case of a remote ECS, protect the memory
-	if(GidToKernel(fault_info.target_gid) != kid) {
-		bzero(&sched_info, sizeof(ioctl_info));
-		sched_info.base_address = get_base_pointer(fault_info.target_gid);
-		ioctl(ioctl_fd, IOCTL_PROTECT_REMOTE_LP, &sched_info);
-	}
 
 	// Give back control to the simulation kernel's user-level thread
 	long_jmp(&kernel_context, kernel_context.rax);
@@ -168,6 +160,8 @@ void ECS(void) {
 		abort();
 	}
 
+	printf("Entro nell'ECS handler per un fault di tipo %d\n", fault_info.fault_type);
+
 	switch(fault_info.fault_type) {
 
 		case ECS_MAJOR_FAULT:
@@ -181,6 +175,7 @@ void ECS(void) {
 
 		case ECS_CHANGE_PAGE_PRIVILEGE:
 			// TODO: gestire qui la write list!!!!
+			lp_alloc_schedule(); // We moved to the original view in the kernel module: we do not unschedule the LP here
 			break;
 
 		default:
@@ -231,7 +226,6 @@ void lp_alloc_schedule(void) {
 
 	/* passing into LP mode - here for the pgd_ds-th LP */
 	ioctl(ioctl_fd,IOCTL_SCHEDULE_ON_PGD, &sched_info);
-
 }
 
 
@@ -242,6 +236,20 @@ void lp_alloc_deschedule(void) {
 	ioctl(ioctl_fd,IOCTL_UNSCHEDULE_ON_PGD, pgd_ds);
 }
 
+void setup_ecs_on_segment(msg_t *msg) {
+	ioctl_info sched_info;
+
+	printf("Eseguo setup_ecs_on_segment per il messaggio:\n");
+	dump_msg_content(msg);
+
+	// In case of a remote ECS, protect the memory
+	if(GidToKernel(msg->sender) != kid) {
+		printf("Mi sincronizzo con un LP remoto e proteggo la memoria\n");
+		bzero(&sched_info, sizeof(ioctl_info));
+		sched_info.base_address = get_base_pointer(msg->sender);
+		ioctl(ioctl_fd, IOCTL_PROTECT_REMOTE_LP, &sched_info);
+	}
+}
 
 void lp_alloc_thread_fini(void) {
 }

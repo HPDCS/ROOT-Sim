@@ -58,9 +58,10 @@
 #error Unsupported Kernel Version
 #endif
 
-#define SET_BIT(p,n) (*((long long *)&p) |= (1LL << (n)))
-#define CLR_BIT(p,n) (*((long long *)&p) &= ~((1LL) << (n)))
-#define GET_BIT(p,n) (*((long long *)&p) & (1LL << (n)))
+
+#define SET_BIT(p,n) ((*(ulong *)(p)) |= (1LL << (n)))
+#define CLR_BIT(p,n) ((*(ulong *)(p)) &= ~((1LL) << (n)))
+#define GET_BIT(p,n) ((*(ulong *)(p)) & (1LL << (n)))
 
 // Type to access original fault handler
 typedef void (*do_page_fault_t)(struct pt_regs*, unsigned long);
@@ -141,6 +142,20 @@ static inline void rootsim_load_cr3(pgd_t *pgdir) {
 	__asm__ __volatile__ ("mov %0, %%cr3" :: "r" (__pa(pgdir)));
 }
 
+static void set_single_pte_sticky_flag(void *target_address) {
+        void **pgd;
+        void **pdp;
+        void **pde;
+        void **pte;
+
+        pgd = (void **)current->mm->pgd;
+        pdp = (void **)__va((ulong)pgd[PML4(target_address)] & 0xfffffffffffff000);
+        pde = (void **)__va((ulong)pdp[PDP(target_address)] & 0xfffffffffffff000);
+        pte = (void **)__va((ulong)pde[PDE(target_address)] & 0xfffffffffffff000);
+
+        SET_BIT(&pte[PTE(target_address)], 9);
+}
+
 static void set_pte_sticky_flags(ioctl_info *info) {
 	void **pgd;
 	void **pdp;
@@ -149,18 +164,21 @@ static void set_pte_sticky_flags(ioctl_info *info) {
 	int i,j;
 
 	pgd = (void **)current->mm->pgd;
-	pdp = (void **)pgd[PML4(info->base_address)];
-	pde = (void **)pdp[PDP(info->base_address)];
+	pdp = (void **)__va((ulong)pgd[PML4(info->base_address)] & 0xfffffffffffff000);
+	pde = (void **)__va((ulong)pdp[PDP(info->base_address)] & 0xfffffffffffff000);
+
+	// This marks a LP as remote
+	SET_BIT(&pdp[PDP(info->base_address)], 11);
 
 	for(i = 0; i < 512; i++) {
-		pte = (void **)pde[i];
+		pte = (void **)__va((ulong)pde[i] & 0xfffffffffffff000);
 
 		if(pte != NULL) {
 			for(j = 0; i < 512; j++) {
 				if(pte[j] != NULL) {
-					if(GET_BIT(pte[j], 0)) {
-						CLR_BIT(pte[j], 0);
-						SET_BIT(pte[j], 9);
+					if(GET_BIT(&pte[j], 0)) {
+						CLR_BIT(&pte[j], 0);
+						SET_BIT(&pte[j], 9);
 					}
 				}
 			}
@@ -168,18 +186,31 @@ static void set_pte_sticky_flags(ioctl_info *info) {
 	}
 }
 
+// is pdp!
+static int get_pde_sticky_bit(void *target_address) {
+	void **pgd;
+	void **pdp;
+
+	pgd = (void **)current->mm->pgd;
+	pdp = (void **)__va((ulong)pgd[PML4(target_address)] & 0xfffffffffffff000);
+
+	return GET_BIT(&pdp[PDP(target_address)], 11);
+}
+
 static int get_pte_sticky_bit(void *target_address) {
 	void **pgd;
 	void **pdp;
 	void **pde;
-	void **pte;
 
 	pgd = (void **)current->mm->pgd;
-	pdp = (void **)pgd[PML4(target_address)];
-	pde = (void **)pdp[PDP(target_address)];
-	pte = (void **)pde[PDE(target_address)];
+        pdp = (void **)__va((ulong)pgd[PML4(target_address)] & 0xfffffffffffff000);
+        pde = (void **)__va((ulong)pdp[PDP(target_address)] & 0xfffffffffffff000);
 
-	return GET_BIT(pte[PTE(target_address)], 9);
+	if(pde[PDE(target_address)] == NULL) {
+		return 0;
+	}
+
+	return GET_BIT(&pde[PDE(target_address)], 9);
 }
 
 static int get_presence_bit(void *target_address) {
@@ -189,11 +220,17 @@ static int get_presence_bit(void *target_address) {
 	void **pte;
 
 	pgd = (void **)current->mm->pgd;
-	pdp = (void **)pgd[PML4(target_address)];
-	pde = (void **)pdp[PDP(target_address)];
-	pte = (void **)pde[PDE(target_address)];
+        pdp = (void **)__va((ulong)pgd[PML4(target_address)] & 0xfffffffffffff000);
+        pde = (void **)__va((ulong)pdp[PDP(target_address)] & 0xfffffffffffff000);
 
-	return GET_BIT(pte[PTE(target_address)], 0);
+
+	if(pde[PDE(target_address)] == NULL) {
+		return 0;
+	}
+
+	pte = (void **)__va((ulong)pde[PDE(target_address)] & 0xfffffffffffff000);
+
+	return GET_BIT(&pte[PTE(target_address)], 0);
 }
 
 static void set_presence_bit(void *target_address) {
@@ -201,16 +238,16 @@ static void set_presence_bit(void *target_address) {
 	void **pdp;
 	void **pde;
 	void **pte;
-	void *page;
 
 	pgd = (void **)current->mm->pgd;
-	pdp = (void **)pgd[PML4(target_address)];
-	pde = (void **)pdp[PDP(target_address)];
-	pte = (void **)pde[PDE(target_address)];
-	page = (void *)pte[PTE(target_address)];
+	pdp = (void **)__va((ulong)pgd[PML4(target_address)] & 0xfffffffffffff000);
+        pde = (void **)__va((ulong)pdp[PDP(target_address)] & 0xfffffffffffff000);
+	pte = (void **)__va((ulong)pde[PDE(target_address)] & 0xfffffffffffff000);
 
-	if(GET_BIT(pte[PTE(target_address)], 9)) {
-		SET_BIT(pte[PTE(target_address)], 0);
+	if(GET_BIT(&pte[PTE(target_address)], 9)) {
+		SET_BIT(&pte[PTE(target_address)], 0);
+	} else {
+		printk("Oh, guarda che sto dentro all'else!!!!\n");
 	}
 }
 
@@ -219,25 +256,24 @@ static void set_page_privilege(ioctl_info *info) {
         void **pdp;
         void **pde;
         void **pte;
-        void *page;
 	int i, j;
 
 	void *base_address = info->base_address;
 	void *final_address = info->base_address + info->count * PAGE_SIZE;
 
         pgd = (void **)current->mm->pgd;
-        pdp = (void **)pgd[PML4(info->base_address)];
-        pde = (void **)pdp[PDP(info->base_address)];
+	pdp = (void **)__va((ulong)pgd[PML4(info->base_address)] & 0xfffffffffffff000);
+        pde = (void **)__va((ulong)pdp[PDP(info->base_address)] & 0xfffffffffffff000);
 
 	for(i = PDE(base_address); i <= PDE(final_address); i++) {
-		pte = (void **)pde[i];
+		pte = (void **)__va((ulong)pde[i] & 0xfffffffffffff000);
 
 		for(j = 0; j < 512; j++) {
 			
 			if(info->write_mode) {
-				SET_BIT(pte[j], 1);
+				SET_BIT(&pte[j], 1);
 			} else {
-				CLR_BIT(pte[j], 1);
+				CLR_BIT(&pte[j], 1);
 			}
 		}
 	}
@@ -250,14 +286,14 @@ static void set_single_page_privilege(ioctl_info *info) {
         void **pte;
 
         pgd = (void **)current->mm->pgd;
-        pdp = (void **)pgd[PML4(info->base_address)];
-        pde = (void **)pdp[PDP(info->base_address)];
-        pte = (void **)pde[PDE(info->base_address)];
+	pdp = (void **)__va((ulong)pgd[PML4(info->base_address)] & 0xfffffffffffff000);
+        pde = (void **)__va((ulong)pdp[PDP(info->base_address)] & 0xfffffffffffff000);
+	pte = (void **)__va((ulong)pde[PDE(info->base_address)] & 0xfffffffffffff000);
 
         if(info->write_mode) {
-                SET_BIT(pte[PTE(info->base_address)], 1);
+                SET_BIT(&pte[PTE(info->base_address)], 1);
         } else {
-		CLR_BIT(pte[PTE(info->base_address)], 1);
+		CLR_BIT(&pte[PTE(info->base_address)], 1);
 	}
 }
 
@@ -278,11 +314,13 @@ void root_sim_page_fault(struct pt_regs* regs, long error_code, do_page_fault_t 
 		return;
 	}
 
-	target_address = (void *)read_cr2();
-
 	/* discriminate whether this is a classical fault or a root-sim proper fault */
 	for(i = 0; i < SIBLING_PGD; i++) {
 		if (root_sim_processes[i] == current->pid) {
+
+			printk("Trovato processo");
+
+			target_address = (void *)read_cr2();
 
 			if(PML4(target_address) < restore_pml4 || PML4(target_address) >= restore_pml4 + restore_pml4_entries) {
 				/* a fault outside the root-sim object zone - it needs to be handeld by the traditional fault manager */
@@ -305,18 +343,23 @@ void root_sim_page_fault(struct pt_regs* regs, long error_code, do_page_fault_t 
 			root_sim_fault_info[i]->target_address = (long long)target_address;
 			root_sim_fault_info[i]->target_gid = (PML4(target_address) - restore_pml4) * 512 + PDP(target_address);
 
-			if(my_pdp[PDP(target_address)] == NULL) {
+			if((ulong)my_pdp[PDP(target_address)] == NULL) {
 				// First activation of ECS targeting a new LP
 				root_sim_fault_info[i]->fault_type = ECS_MAJOR_FAULT;
-				rs_ktblmgr_ioctl(NULL, IOCTL_UNSCHEDULE_ON_PGD, (int)i);
 			} else {
 				if(get_pte_sticky_bit(target_address) != 0) {
+				    secondary:
 					// ECS secondary fault on a remote page
 					root_sim_fault_info[i]->fault_type = ECS_MINOR_FAULT;
 					set_presence_bit(target_address);
 				} else {
 					if(get_presence_bit(target_address) == 0) {
 						kernel_handler(regs, error_code);
+						if(get_pde_sticky_bit(target_address)) {
+							set_single_pte_sticky_flag(target_address);
+							goto secondary;
+						}
+						return;
 					} else {
 						root_sim_fault_info[i]->fault_type = ECS_CHANGE_PAGE_PRIVILEGE;
 
@@ -325,14 +368,19 @@ void root_sim_page_fault(struct pt_regs* regs, long error_code, do_page_fault_t 
 						info.write_mode = 1;
 
 						set_single_page_privilege(&info);
+
+						// we're on the parallel view here
+						rootsim_load_cr3(pgd_addr[i]);
 					}
 				}
 			}
 
+			rs_ktblmgr_ioctl(NULL, IOCTL_UNSCHEDULE_ON_PGD, (int)i);
+
 			// Pass the address of the faulting instruction to userland
 			auxiliary_stack_pointer = (ulong *)regs->sp;
 			auxiliary_stack_pointer--;
-			copy_to_user((void *)auxiliary_stack_pointer,(void *)&regs->ip,8);	
+			copy_to_user((void *)auxiliary_stack_pointer, (void *)&regs->ip, 8);	
 			regs->sp = (long)auxiliary_stack_pointer;
 			regs->ip = callback;
 
