@@ -58,9 +58,9 @@
 #error Unsupported Kernel Version
 #endif
 
-#define SET_BIT(p,n) ((*(long long *)p) |= (1LL << (n)))
-#define CLR_BIT(p,n) ((*(long long *)p) &= ~((1LL) << (n)))
-#define GET_BIT(p,n) ((*(long long *)p) & (1LL << (n)))
+#define SET_BIT(p,n) (*((long long *)&p) |= (1LL << (n)))
+#define CLR_BIT(p,n) (*((long long *)&p) &= ~((1LL) << (n)))
+#define GET_BIT(p,n) (*((long long *)&p) & (1LL << (n)))
 
 // Type to access original fault handler
 typedef void (*do_page_fault_t)(struct pt_regs*, unsigned long);
@@ -173,15 +173,13 @@ static int get_pte_sticky_bit(void *target_address) {
 	void **pdp;
 	void **pde;
 	void **pte;
-	void *page;
 
 	pgd = (void **)current->mm->pgd;
 	pdp = (void **)pgd[PML4(target_address)];
 	pde = (void **)pdp[PDP(target_address)];
 	pte = (void **)pde[PDE(target_address)];
-	page = (void *)pte[PTE(target_address)];
 
-	return GET_BIT(page, 9);
+	return GET_BIT(pte[PTE(target_address)], 9);
 }
 
 static int get_presence_bit(void *target_address) {
@@ -189,15 +187,13 @@ static int get_presence_bit(void *target_address) {
 	void **pdp;
 	void **pde;
 	void **pte;
-	void *page;
 
 	pgd = (void **)current->mm->pgd;
 	pdp = (void **)pgd[PML4(target_address)];
 	pde = (void **)pdp[PDP(target_address)];
 	pte = (void **)pde[PDE(target_address)];
-	page = (void *)pte[PTE(target_address)];
 
-	return GET_BIT(page, 0);
+	return GET_BIT(pte[PTE(target_address)], 0);
 }
 
 static void set_presence_bit(void *target_address) {
@@ -213,8 +209,8 @@ static void set_presence_bit(void *target_address) {
 	pte = (void **)pde[PDE(target_address)];
 	page = (void *)pte[PTE(target_address)];
 
-	if(GET_BIT(page, 9)) {
-		SET_BIT(page, 0);
+	if(GET_BIT(pte[PTE(target_address)], 9)) {
+		SET_BIT(pte[PTE(target_address)], 0);
 	}
 }
 
@@ -237,12 +233,11 @@ static void set_page_privilege(ioctl_info *info) {
 		pte = (void **)pde[i];
 
 		for(j = 0; j < 512; j++) {
-			page = (void *)pte[j];
 			
 			if(info->write_mode) {
-				SET_BIT(page, 1);
+				SET_BIT(pte[j], 1);
 			} else {
-				CLR_BIT(page, 1);
+				CLR_BIT(pte[j], 1);
 			}
 		}
 	}
@@ -253,18 +248,16 @@ static void set_single_page_privilege(ioctl_info *info) {
         void **pdp;
         void **pde;
         void **pte;
-        void *page;
 
         pgd = (void **)current->mm->pgd;
         pdp = (void **)pgd[PML4(info->base_address)];
         pde = (void **)pdp[PDP(info->base_address)];
         pte = (void **)pde[PDE(info->base_address)];
-        page = (void *)pte[PTE(info->base_address)];
 
         if(info->write_mode) {
-                SET_BIT(page, 1);
+                SET_BIT(pte[PTE(info->base_address)], 1);
         } else {
-		CLR_BIT(page, 1);
+		CLR_BIT(pte[PTE(info->base_address)], 1);
 	}
 }
 
@@ -442,6 +435,9 @@ static long rs_ktblmgr_ioctl(struct file *filp, unsigned int cmd, unsigned long 
 			break;
 
 		case IOCTL_GET_PGD:
+
+			printk("Entering IOCTL_GET_PGD\n");
+
 			descriptor = -1;
 			mutex_lock(&pgd_get_mutex);
 			for (i = 0; i < SIBLING_PGD; i++) {
@@ -483,6 +479,7 @@ static long rs_ktblmgr_ioctl(struct file *filp, unsigned int cmd, unsigned long 
 					pml4++;
 				}
 			}
+			printk("Leaving IOCTL_GET_PGD\n");
 			
 			break;
 

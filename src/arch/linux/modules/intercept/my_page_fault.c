@@ -60,7 +60,7 @@ static int check_parameters(void){
 void my_do_page_fault(struct pt_regs* regs, unsigned long error_code){
     // We call the ROOT-Sim page fault handler. Warning: if we have to call the
     // original kernel handler, this must be done prior to returning!!!!
-    root_sim_page_fault(regs, error_code, addr_dft_do_page_fault);
+    root_sim_page_fault(regs, error_code, (do_page_fault_t)addr_dft_do_page_fault);
 }
 
 asmlinkage void my_page_fault(void);

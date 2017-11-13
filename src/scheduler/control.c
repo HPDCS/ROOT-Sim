@@ -163,7 +163,6 @@ bool receive_control_msg(msg_t *msg) {
 				break;
 			}
 			if(LPS[lid_receiver]->wait_on_rendezvous == msg->rendezvous_mark) {
-				setup_ecs_on_segment(msg);
 				LPS[lid_receiver]->state = LP_STATE_READY_FOR_SYNCH;
 			}
 
