@@ -29,22 +29,28 @@
 
 #include <core/core.h>
 
-struct _bhmap {
-	msg_t		**live_bh;		
-	msg_t		**expired_bh;		
-	unsigned int	live_written;		
-	unsigned int	expired_read;		
-	unsigned int	expired_last_written;	
-	msg_t		**actual_bh_addresses[2];
-	size_t		current_pages[2];	
+struct _map {
+	msg_t		* volatile *buffer;
+	volatile unsigned int	size;
+	volatile unsigned int	written;
+	volatile unsigned int	read;
 };
 
-#define MAX_MSG_SIZE sizeof(msg_t)
-#define INITIAL_BH_PAGES	10
+struct _bhmap {
+	struct _map	* volatile maps[2];
+	spinlock_t	read_lock;
+	spinlock_t	write_lock;
+};
+
+// These are used to simplify reading the code
+#define M_WRITE	0
+#define M_READ	1
+
+#define INITIAL_BH_SIZE 1024
 
 extern bool BH_init(void);
 extern void BH_fini(void);
-extern int insert_BH(int sobj, msg_t* msg);
-extern void *get_BH(unsigned int sobj);
+extern void insert_BH(int, msg_t *);
+extern void *get_BH(unsigned int);
 
 #endif /* _BH_H */

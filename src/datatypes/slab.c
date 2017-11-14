@@ -13,20 +13,6 @@
 
 #include <mm/mm.h>
 
-#define SLAB_DUMP_COLOURED
-
-#ifdef SLAB_DUMP_COLOURED
-# define GRAY(s)   "\033[1;30m" s "\033[0m"
-# define RED(s)    "\033[0;31m" s "\033[0m"
-# define GREEN(s)  "\033[0;32m" s "\033[0m"
-# define YELLOW(s) "\033[1;33m" s "\033[0m"
-#else
-# define GRAY(s)   s
-# define RED(s)    s
-# define GREEN(s)  s
-# define YELLOW(s) s
-#endif
-
 #define SLOTS_ALL_ZERO ((uint64_t) 0)
 #define SLOTS_FIRST ((uint64_t) 1)
 #define FIRST_FREE_SLOT(s) ((size_t) __builtin_ctzll(s))

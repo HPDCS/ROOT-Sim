@@ -143,6 +143,7 @@ typedef struct _msg_t {
 	simtime_t		send_time;
 	unsigned long long	mark;	/// Unique identifier of the message, used for antimessages
 	unsigned long long	rendezvous_mark;	/// Unique identifier of the message, used for rendez-vous events
+	int			alloc_tid; // TODO: this should be moved into an external container, to avoid transmitting it!
 	// Model data
 	int size;
 	unsigned char event_content[];

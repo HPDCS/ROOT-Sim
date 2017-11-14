@@ -39,12 +39,13 @@
 #include <datatypes/list.h>
 #include <datatypes/slab.h>
 #include <mm/dymelor.h>
+#include <arch/atomic.h>
 #ifdef HAS_MPI
 #include <communication/mpi.h>
 #endif
 
-
-static __thread struct slab_chain msg_slab;
+static struct slab_chain *msg_slab;
+static spinlock_t *slab_lock;
 
 
 /// This is the function pointer to correctly set ScheduleNewEvent API version, depending if we're running serially or parallelly
@@ -60,18 +61,27 @@ void (* ScheduleNewEvent)(unsigned int gid_receiver, simtime_t timestamp, unsign
 * @author Roberto Vitali
 */
 void communication_init(void) {
+	int i;
+
 	#ifdef HAS_MPI
 	inter_kernel_comm_init();
 	#endif
+
+	msg_slab = rsalloc(n_cores * sizeof(*msg_slab));
+	slab_lock = rsalloc(n_cores * sizeof(*slab_lock));
+
+	for(i = 0; i < n_cores; i++) {
+		spinlock_init(&slab_lock[i]);
+	}
 }
 
 
 void communication_init_thread(void) {
-	slab_init(&msg_slab, SLAB_MSG_SIZE); 
+	slab_init(&msg_slab[local_tid], SLAB_MSG_SIZE); 
 }
 
 void communication_fini_thread(void) {
-	slab_destroy(&msg_slab);
+	slab_destroy(&msg_slab[local_tid]);
 }
 
 
@@ -83,6 +93,9 @@ void communication_fini(void) {
 	inter_kernel_comm_finalize();
 	mpi_finalize();
 	#endif
+
+	rsfree(msg_slab);
+	rsfree(slab_lock);
 }
 
 
@@ -183,6 +196,9 @@ void send_antimessages(unsigned int lid, simtime_t after_simtime) {
 		msg = get_msg_from_slab();
 		hdr_to_msg(anti_msg, msg);
 		msg->message_kind = negative;
+
+//		dump_msg_content(msg);
+
 		Send(msg);
 
 		// Remove the already sent antimessage from output queue
@@ -272,6 +288,8 @@ void send_outgoing_msgs(unsigned int lid) {
 
 //		dump_msg_content(msg);
 
+//		printf("send %p\n", msg);
+
 		Send(msg);
 
 		// register the message in the sender's output queue, for antimessage management
@@ -283,10 +301,13 @@ void send_outgoing_msgs(unsigned int lid) {
 
 
 msg_t *get_msg_from_slab(void) {
-	msg_t *msg = (msg_t *)slab_alloc(&msg_slab);
+	spin_lock(&slab_lock[local_tid]);
+	msg_t *msg = (msg_t *)slab_alloc(&msg_slab[local_tid]);
+	spin_unlock(&slab_lock[local_tid]);
 	#ifndef NDEBUG
 	bzero(msg, SLAB_MSG_SIZE);
 	#endif
+	msg->alloc_tid = local_tid;
 	return msg;
 }
 
@@ -297,10 +318,8 @@ void pack_msg(msg_t **msg, unsigned int sender, unsigned int receiver, int type,
 	// Check if we can rely on a slab to initialize the message
 	if(sizeof(msg_t) + size <= SLAB_MSG_SIZE) {
 		*msg = get_msg_from_slab();
-		bzero(*msg, SLAB_MSG_SIZE);
 	} else {
 		*msg = rsalloc(sizeof(msg_t) + size);
-		bzero(*msg, sizeof(msg_t) + size);
 	}
 
 	(*msg)->sender = sender;
@@ -318,7 +337,6 @@ void pack_msg(msg_t **msg, unsigned int sender, unsigned int receiver, int type,
 }
 
 void msg_to_hdr(msg_hdr_t *hdr, msg_t *msg) {
-	bzero(hdr, sizeof(msg_hdr_t));
 	validate_msg(msg);
 
 	hdr->sender = msg->sender;
@@ -331,8 +349,6 @@ void msg_to_hdr(msg_hdr_t *hdr, msg_t *msg) {
 }
 
 void hdr_to_msg(msg_hdr_t *hdr, msg_t *msg) {
-	bzero(msg, sizeof(msg_t));
-
 	msg->sender = hdr->sender;
 	msg->receiver = hdr->receiver;
 	msg->type = hdr->type;
@@ -340,13 +356,18 @@ void hdr_to_msg(msg_hdr_t *hdr, msg_t *msg) {
 	msg->timestamp = hdr->timestamp;
 	msg->send_time = hdr->send_time;
 	msg->mark = hdr->mark;
-
-	validate_msg(msg);
 }
 
 void msg_release(msg_t *msg) {
 	if(sizeof(msg_t) + msg->size <= SLAB_MSG_SIZE) {
-		slab_free(&msg_slab, msg);
+		int thr = msg->alloc_tid;
+
+		spin_lock(&slab_lock[thr]);
+		#ifndef NDEBUG
+		bzero(msg, sizeof(msg_t) + msg->size);
+		#endif
+		slab_free(&msg_slab[thr], msg);
+		spin_unlock(&slab_lock[thr]);
 	} else {
 		rsfree(msg);
 	}
@@ -355,7 +376,9 @@ void msg_release(msg_t *msg) {
 void dump_msg_content(msg_t *msg) {
 	printf("\tsender: %lu\n", msg->sender);
 	printf("\treceiver: %lu\n", msg->sender);
+	#ifdef HAS_MPI
 	printf("\tcolour: %d\n", msg->colour);
+	#endif
 	printf("\ttype: %d\n", msg->type);
 	printf("\tmessage_kind: %d\n", msg->message_kind);
 	printf("\ttimestamp: %f\n", msg->timestamp);

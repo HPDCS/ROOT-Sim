@@ -26,188 +26,138 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/mman.h>
-#include <errno.h>
-#include <pthread.h>
 
 #include <arch/atomic.h>
 #include <communication/communication.h>
+#include <datatypes/list.h>
 #include <mm/bh.h>
 #include <mm/mm.h>
 #include <mm/dymelor.h>
-#include <datatypes/list.h>
 
 
 static struct _bhmap *bh_maps;
-static spinlock_t *bh_write;
-static spinlock_t *bh_read;
 
-static char *allocate_pages(int num_pages) {
+static void switch_bh(int lid) {
+	struct _map * volatile swap;
 
-        char *page;
+	bh_maps[lid].maps[M_WRITE]->read = 0;
+	bh_maps[lid].maps[M_READ]->written = 0;
 
-        page = (char*)mmap((void*)NULL, num_pages * PAGE_SIZE, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, 0,0);
-
-	if (page == MAP_FAILED) {
-		page = NULL;
-	}
-
-	return page;
+	swap = bh_maps[lid].maps[M_WRITE];
+	bh_maps[lid].maps[M_WRITE] = bh_maps[lid].maps[M_READ];
+	bh_maps[lid].maps[M_READ] = swap;
 }
-
-static void free_pages(void *ptr, size_t length) {
-	int ret;
-
-	ret = munmap(ptr, length);
-	if(ret < 0)
-		perror("free_pages(): unable to deallocate memory");
-}
-
-
-
-static void switch_bh(int lid){
-	msg_t **addr;
-
-	bh_maps[lid].expired_read = 0;
-	bh_maps[lid].expired_last_written = bh_maps[lid].live_written;
-
-	bh_maps[lid].live_written = 0;
-
-	addr = bh_maps[lid].expired_bh;
-	bh_maps[lid].expired_bh = bh_maps[lid].live_bh;
-	bh_maps[lid].live_bh = addr;
-}
-
-
-static void *get_buffer(int lid, int size) {
-	return list_allocate_node_buffer(lid, size);
-}
-
-
 
 void BH_fini(void) {
 	unsigned int i;
 
 	for (i = 0; i < n_prc; i++) {
-		free_pages(bh_maps[i].actual_bh_addresses[0], bh_maps[i].current_pages[0]);
-		free_pages(bh_maps[i].actual_bh_addresses[1], bh_maps[i].current_pages[1]);
+		rsfree((void *)bh_maps[i].maps[M_WRITE]->buffer);
+		rsfree((void *)bh_maps[i].maps[M_READ]->buffer);
+		rsfree(bh_maps[i].maps[M_WRITE]);
+		rsfree(bh_maps[i].maps[M_READ]);
 	}
 
 	rsfree(bh_maps);
-	rsfree(bh_write);
-	rsfree(bh_read);
 }
 
 
 bool BH_init(void) {
         unsigned int i;
-        msg_t **addr;
 
         bh_maps = rsalloc(sizeof(struct _bhmap) * n_prc);
-        bh_write = rsalloc(sizeof(atomic_t) * n_prc);
-	bh_read = rsalloc(sizeof(atomic_t) * n_prc);
+	bzero(bh_maps, sizeof(struct _bhmap) * n_prc);
 
         for (i = 0; i < n_prc; i++) {
-		bzero(&bh_maps[i], sizeof(struct _bhmap));
+		bh_maps[i].maps[M_READ] = rsalloc(sizeof(struct _map));
+		bh_maps[i].maps[M_WRITE] = rsalloc(sizeof(struct _map));
 
-                addr = (msg_t **)allocate_pages(INITIAL_BH_PAGES);
-                if (addr == NULL)
+		if(bh_maps[i].maps[M_READ] == NULL || bh_maps[i].maps[M_WRITE] == NULL)
 			return false;
 
-                bh_maps[i].live_bh = addr;
-		bh_maps[i].actual_bh_addresses[0] = addr;
-		bh_maps[i].current_pages[0] = INITIAL_BH_PAGES;
+		bh_maps[i].maps[M_READ]->buffer = rsalloc(INITIAL_BH_SIZE * sizeof(msg_t *));
+		bh_maps[i].maps[M_READ]->size = INITIAL_BH_SIZE;
+		bh_maps[i].maps[M_READ]->written = 0;
+		bh_maps[i].maps[M_READ]->read = 0;
 
+		bh_maps[i].maps[M_WRITE]->buffer = rsalloc(INITIAL_BH_SIZE * sizeof(msg_t *));
+		bh_maps[i].maps[M_WRITE]->size = INITIAL_BH_SIZE;
+		bh_maps[i].maps[M_WRITE]->written = 0;
+		bh_maps[i].maps[M_WRITE]->read = 0;
 
-                addr = (msg_t **)allocate_pages(INITIAL_BH_PAGES);
-                if (addr == NULL)
+		if(bh_maps[i].maps[M_READ]->buffer == NULL || bh_maps[i].maps[M_WRITE]->buffer == NULL)
 			return false;
 
-                bh_maps[i].expired_bh = addr;
-		bh_maps[i].actual_bh_addresses[1] = addr;
-		bh_maps[i].current_pages[1] = INITIAL_BH_PAGES;
-
-		spinlock_init(&bh_write[i]);
-		spinlock_init(&bh_read[i]);
+		spinlock_init(&bh_maps[i].read_lock);
+		spinlock_init(&bh_maps[i].write_lock);
 	}
 
         return true;
 }
 
 
-int insert_BH(int lid, msg_t *msg) {
-	msg_t **old_buffer, **new_buffer;
-	unsigned int old_size;
-
-	spin_lock(&bh_write[lid]);
-
-	unsigned int available_space = (bh_maps[lid].live_bh == bh_maps[lid].actual_bh_addresses[0] ? bh_maps[lid].current_pages[0] : bh_maps[lid].current_pages[1]) * PAGE_SIZE;
+void insert_BH(int lid, msg_t *msg) {
+	spin_lock(&bh_maps[lid].write_lock);
 
 	// Reallocate the live BH buffer. Don't touch the other buffer,
 	// as in this way the critical section is much shorter
-	if(bh_maps[lid].live_written * sizeof(msg_t *) >= available_space) {
+	if(bh_maps[lid].maps[M_WRITE]->written == bh_maps[lid].maps[M_WRITE]->size) {
+		spin_lock(&bh_maps[lid].read_lock);
 
-		spin_lock(&bh_read[lid]);
+		// TODO: the realloc causes a bug!
+		// In some way, it's making the memory map incoherent...
+		abort();
 
-		old_buffer = bh_maps[lid].live_bh;
+		bh_maps[lid].maps[M_WRITE]->size *= 2;
+		bh_maps[lid].maps[M_WRITE]->buffer = rsrealloc((void *)bh_maps[lid].maps[M_WRITE]->buffer, bh_maps[lid].maps[M_WRITE]->size);
+		if(bh_maps[lid].maps[M_WRITE]->buffer == NULL)
+			abort();
 
-		// Update stable pointers
-		if(bh_maps[lid].actual_bh_addresses[0] == old_buffer) {
-			old_size = bh_maps[lid].current_pages[0];
-			bh_maps[lid].current_pages[0] *= 2;
-			new_buffer = bh_maps[lid].actual_bh_addresses[0] = (msg_t **)allocate_pages(bh_maps[lid].current_pages[0]);
-		} else {
-			old_size = bh_maps[lid].current_pages[1];
-			bh_maps[lid].current_pages[1] *= 2;
-			new_buffer = bh_maps[lid].actual_bh_addresses[1] = (msg_t **)allocate_pages(bh_maps[lid].current_pages[1]);
-		}
-
-		bh_maps[lid].live_bh = new_buffer;
-
-		memcpy(new_buffer, old_buffer, bh_maps[lid].live_written * sizeof(msg_t *));
-
-		spin_unlock(&bh_read[lid]);
-
-		free_pages(old_buffer, old_size);
+		spin_unlock(&bh_maps[lid].read_lock);
 	}
 
-	bh_maps[lid].live_bh[bh_maps[lid].live_written++] = msg;
+	validate_msg(msg);
 
-	spin_unlock(&bh_write[lid]);
+	int index = bh_maps[lid].maps[M_WRITE]->written++;
+	bh_maps[lid].maps[M_WRITE]->buffer[index] = msg;
 
-	return true; // TODO: pointless...
+	spin_unlock(&bh_maps[lid].write_lock);
 }
 
 void *get_BH(unsigned int lid) {
 	msg_t *msg;
 	void *buff = NULL;
 
-	spin_lock(&bh_read[lid]);
+	spin_lock(&bh_maps[lid].read_lock);
 
-	if(bh_maps[lid].expired_read == bh_maps[lid].expired_last_written) {
-		spin_lock(&bh_write[lid]);
+	if(bh_maps[lid].maps[M_READ]->read == bh_maps[lid].maps[M_READ]->written) {
+		spin_lock(&bh_maps[lid].write_lock);
 		switch_bh(lid);
-		spin_unlock(&bh_write[lid]);
+		spin_unlock(&bh_maps[lid].write_lock);
 	}
 
-	if(bh_maps[lid].expired_read == bh_maps[lid].expired_last_written) {
+	if(bh_maps[lid].maps[M_READ]->read == bh_maps[lid].maps[M_READ]->written) {
 		goto leave;
 	}
 
-	msg = bh_maps[lid].expired_bh[bh_maps[lid].expired_read];
-	bh_maps[lid].expired_bh[bh_maps[lid].expired_read] = (msg_t *)0xDEADB00B;
-	bh_maps[lid].expired_read++;
+	int index = bh_maps[lid].maps[M_READ]->read++;
+	msg = bh_maps[lid].maps[M_READ]->buffer[index];
 
+	#ifndef NDEBUG
+	bh_maps[lid].maps[M_READ]->buffer[index] = (void *)0xDEADB00B;
+	#endif
+	
 	validate_msg(msg);
 
 	// TODO: we should reorganize the msg list so as to keep pointers, to avoid this copy
-	buff = get_buffer(lid, sizeof(msg_t) + msg->size);
-	memcpy(buff, msg, sizeof(msg_t) + msg->size);
+	size_t size = sizeof(msg_t) + msg->size;
+	buff = list_allocate_node_buffer(lid, size);
+	memcpy(buff, msg, size);
 
 	// TODO: this should be removed according to the previous TODO in this function
 	msg_release(msg);
 
     leave:
-	spin_unlock(&bh_read[lid]);
+	spin_unlock(&bh_maps[lid].read_lock);
 	return buff;
 }
