@@ -54,7 +54,7 @@
 	((int)I % BITS)) )
 
 typedef struct _dummy{
-	char v[2*4096];
+	char v[64];
 } dummy_t;
 // Message exchanged among LPs
 typedef struct _event_content_type {

@@ -92,20 +92,21 @@ void ecs_secondary(void) {
 		span = insn_disasm.span * fault_info.rcx;
 	}
 
+	
+
 	// Compute the starting page address and the page count to get the lease
 	page_req.write_mode = IS_MEMWR(&insn_disasm);
 	page_req.base_address = (void *)(target_address & (~((long long)PAGE_SIZE-1)));
 	page_req.count = ((target_address + span) & (~((long long)PAGE_SIZE-1)))/PAGE_SIZE - (long long)page_req.base_address/PAGE_SIZE + 1;
 
+	printf("ECS Page Fault: LP %d accessing %d pages from %p on LP %lu in %s mode\n", current_lp, page_req.count, (void *)page_req.base_address, fault_info.target_gid, (page_req.write_mode ? "write" : "read"));
+	fflush(stdout);
+
 	// Send the page lease request control message. This is not incorporated into the input queue at the receiver
 	// so we do not place it into the output queue
-	bzero(&control_msg, sizeof(msg_t));
 	pack_msg(&control_msg, LidToGid(current_lp), fault_info.target_gid, RENDEZVOUS_GET_PAGE, current_lvt, current_lvt, sizeof(page_req), &page_req);
 	control_msg->rendezvous_mark = current_evt->rendezvous_mark;
 	Send(control_msg);
-
-	printf("ECS Page Fault: LP %d accessing %d pages from %p on LP %lu in %s mode\n", current_lp, page_req.count, (void *)page_req.base_address, fault_info.target_gid, (page_req.write_mode ? "write" : "read"));
-	fflush(stdout);
 
 	LPS[current_lp]->state = LP_STATE_WAIT_FOR_DATA;
 
@@ -282,18 +283,25 @@ void ecs_send_pages(msg_t *msg) {
 void ecs_install_pages(msg_t *msg) {
 	ecs_page_request_t *the_pages = (ecs_page_request_t *)&(msg->event_content);
 	ioctl_info sched_info;
-	bzero(&sched_info, sizeof(ioctl_info));
 
 	printf("LP %d receiving %d pages from %p from %d\n", msg->receiver, the_pages->count, the_pages->base_address, msg->sender);
 	fflush(stdout);
 
+	memcpy(the_pages->base_address, the_pages->buffer, the_pages->count * PAGE_SIZE);
+
+	printf("Completed the installation of the page copying %d bytes\n", the_pages->count * PAGE_SIZE);
+	fflush(stdout);
+
+	bzero(&sched_info, sizeof(ioctl_info));
 	sched_info.base_address = the_pages->base_address;
 	sched_info.page_count = the_pages->count;
 	sched_info.write_mode = the_pages->write_mode;
-	
-	memcpy(the_pages->buffer, the_pages->base_address, the_pages->count * PAGE_SIZE);
 
-	ioctl(ioctl_fd, IOCTL_SET_PAGE_PRIVILEGE, &sched_info);
+	// TODO: se accedo in write non devo fare questa chiamata!
+//	ioctl(ioctl_fd, IOCTL_SET_PAGE_PRIVILEGE, &sched_info);
+
+	printf("Completato il setup dei privilegi\n");
+	fflush(stdout);
 }
 
 void unblock_synchronized_objects(unsigned int lid) {

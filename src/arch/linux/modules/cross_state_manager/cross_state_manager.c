@@ -268,7 +268,13 @@ static void set_page_privilege(ioctl_info *info) {
 	for(i = PDE(base_address); i <= PDE(final_address); i++) {
 		pte = (void **)__va((ulong)pde[i] & 0xfffffffffffff000);
 
+		if(pte == NULL)
+			continue;
+
 		for(j = 0; j < 512; j++) {
+
+			if(pte[j] == 0)
+				continue;
 			
 			if(info->write_mode) {
 				SET_BIT(&pte[j], 1);
@@ -318,8 +324,6 @@ void root_sim_page_fault(struct pt_regs* regs, long error_code, do_page_fault_t 
 	for(i = 0; i < SIBLING_PGD; i++) {
 		if (root_sim_processes[i] == current->pid) {
 
-			printk("Trovato processo");
-
 			target_address = (void *)read_cr2();
 
 			if(PML4(target_address) < restore_pml4 || PML4(target_address) >= restore_pml4 + restore_pml4_entries) {
@@ -344,18 +348,23 @@ void root_sim_page_fault(struct pt_regs* regs, long error_code, do_page_fault_t 
 			root_sim_fault_info[i]->target_gid = (PML4(target_address) - restore_pml4) * 512 + PDP(target_address);
 
 			if((ulong)my_pdp[PDP(target_address)] == NULL) {
+				printk("ECS Major Fault at %p\n", target_address);
 				// First activation of ECS targeting a new LP
 				root_sim_fault_info[i]->fault_type = ECS_MAJOR_FAULT;
 			} else {
 				if(get_pte_sticky_bit(target_address) != 0) {
+					printk("ECS Minor Fault (1) at %p\n", target_address);
+				// First activation of ECS targeting a new LP
 				    secondary:
 					// ECS secondary fault on a remote page
 					root_sim_fault_info[i]->fault_type = ECS_MINOR_FAULT;
 					set_presence_bit(target_address);
 				} else {
 					if(get_presence_bit(target_address) == 0) {
+						printk("Materializing page for %p\n", target_address);
 						kernel_handler(regs, error_code);
 						if(get_pde_sticky_bit(target_address)) {
+							printk("ECS Minor Fault (2) at %p\n", target_address);
 							set_single_pte_sticky_flag(target_address);
 							goto secondary;
 						}
@@ -374,6 +383,8 @@ void root_sim_page_fault(struct pt_regs* regs, long error_code, do_page_fault_t 
 					}
 				}
 			}
+
+			printk("Activating userspace handler\n");
 
 			rs_ktblmgr_ioctl(NULL, IOCTL_UNSCHEDULE_ON_PGD, (int)i);
 
