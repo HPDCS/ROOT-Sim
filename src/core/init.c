@@ -392,7 +392,7 @@ void SystemInit(int argc, char **argv) {
 		SetState = SerialSetState;
 		ScheduleNewEvent = SerialScheduleNewEvent;
 		numerical_init();
-		dymelor_init();
+		//dymelor_init();
 		statistics_init();
 		serial_init(argc, model_parameters.arguments, model_parameters.size);
 		return;
