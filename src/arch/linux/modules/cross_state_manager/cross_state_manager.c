@@ -174,7 +174,7 @@ static void set_pte_sticky_flags(ioctl_info *info) {
 		pte = (void **)__va((ulong)pde[i] & 0xfffffffffffff000);
 
 		if(pte != NULL) {
-			for(j = 0; i < 512; j++) {
+			for(j = 0; j < 512; j++) {
 				if(pte[j] != NULL) {
 					if(GET_BIT(&pte[j], 0)) {
 						CLR_BIT(&pte[j], 0);

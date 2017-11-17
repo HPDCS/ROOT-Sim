@@ -271,7 +271,8 @@ void ecs_send_pages(msg_t *msg) {
 	memcpy(the_pages->buffer, the_request->base_address, the_request->count * PAGE_SIZE);
 
 	// Send back a copy of the pages!
-	pack_msg(&control_msg, msg->receiver, msg->sender, RENDEZVOUS_GET_PAGE_ACK, msg->timestamp, msg->timestamp, 0, NULL);
+	pack_msg(&control_msg, msg->receiver, msg->sender, RENDEZVOUS_GET_PAGE_ACK, msg->timestamp, msg->timestamp, sizeof(ecs_page_request_t)+the_pages->count * PAGE_SIZE, the_pages);
+
 	control_msg->rendezvous_mark = msg->rendezvous_mark;
 	Send(control_msg);
 
