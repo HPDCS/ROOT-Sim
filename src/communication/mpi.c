@@ -302,7 +302,7 @@ void mpi_datatype_init(void){
                           MPI_CHAR};
 
 
-	int blocklen[7] = {2, 1, 2, 2, 2, 1, SLAB_MSG_SIZE};
+	int blocklen[7] = {2, 1, 2, 2, 2, 1, SLAB_MSG_SIZE - 10};
 	MPI_Aint disp[7];
 
 	MPI_Get_address(msg, disp);
