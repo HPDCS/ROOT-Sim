@@ -308,7 +308,7 @@ msg_t *get_msg_from_slab(void) {
 	msg_t *msg = (msg_t *)slab_alloc(&msg_slab[local_tid]);
 	spin_unlock(&slab_lock[local_tid]);
 	#ifndef NDEBUG
-	bzero(msg, SLAB_MSG_SIZE);
+	bzero(msg, SLAB_MSG_SIZE-8);
 	#endif
 	msg->alloc_tid = local_tid;
 	return msg;

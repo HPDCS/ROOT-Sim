@@ -54,10 +54,10 @@ void *get_segment(unsigned int gid) {
 			rootsim_error(true, "Unable to mmap LPs memory\n");
 			return NULL;
 		}
-		if(i%2 == 0) {
+/*		if(i%2 == 0) {
 			printf("base pointer of gid %d on kernel %d is %p\n", gid, kid, mmapped[i]);
 		}
-		// Access the memory in write mode to force the kernel to create the page table entries
+*/		// Access the memory in write mode to force the kernel to create the page table entries
 		*((char *)mmapped[i]) = 'x';
 		the_address = (char *)the_address + MAX_MMAP;
 	}

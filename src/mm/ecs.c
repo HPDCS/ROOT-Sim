@@ -99,7 +99,7 @@ void ecs_secondary(void) {
 	page_req.base_address = (void *)(target_address & (~((long long)PAGE_SIZE-1)));
 	page_req.count = ((target_address + span) & (~((long long)PAGE_SIZE-1)))/PAGE_SIZE - (long long)page_req.base_address/PAGE_SIZE + 1;
 
-	printf("ECS Page Fault: LP %d accessing %d pages from %p on LP %lu in %s mode\n", current_lp, page_req.count, (void *)page_req.base_address, fault_info.target_gid, (page_req.write_mode ? "write" : "read"));
+//	printf("ECS Page Fault: LP %d accessing %d pages from %p on LP %lu in %s mode\n", current_lp, page_req.count, (void *)page_req.base_address, fault_info.target_gid, (page_req.write_mode ? "write" : "read"));
 	fflush(stdout);
 
 	// Send the page lease request control message. This is not incorporated into the input queue at the receiver
@@ -161,7 +161,7 @@ void ECS(void) {
 		abort();
 	}
 
-	printf("Entro nell'ECS handler per un fault di tipo %d\n", fault_info.fault_type);
+//	printf("Entro nell'ECS handler per un fault di tipo %d\n", fault_info.fault_type);
 
 	switch(fault_info.fault_type) {
 
@@ -241,8 +241,8 @@ void lp_alloc_deschedule(void) {
 void setup_ecs_on_segment(msg_t *msg) {
 	ioctl_info sched_info;
 
-	printf("Eseguo setup_ecs_on_segment per il messaggio:\n");
-	dump_msg_content(msg);
+//	printf("Eseguo setup_ecs_on_segment per il messaggio:\n");
+//	dump_msg_content(msg);
 
 	// In case of a remote ECS, protect the memory
 	if(GidToKernel(msg->sender) != kid) {

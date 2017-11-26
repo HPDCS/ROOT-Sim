@@ -253,7 +253,7 @@ bool allocator_init(void) {
 		if(GidToKernel(i) == kid) {
 			// TODO: we should tread mem_areas as gid's as well, to
 			// reclaim memory at the end of the simulation.
-			printf("allocating memory for gid %d with lid %d  whose kernel is %d\n",i,GidToLid(i),GidToKernel(i));
+			//printf("allocating memory for gid %d with lid %d  whose kernel is %d\n",i,GidToLid(i),GidToKernel(i));
 			mem_areas[GidToLid(i)] = get_segment(i);
 			buddies[GidToLid(i)] = buddy_new(PER_LP_PREALLOCATED_MEMORY / BUDDY_GRANULARITY);
 			continue;

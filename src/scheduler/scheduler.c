@@ -311,7 +311,7 @@ void initialize_worker_thread(void) {
 	// Initialize the LP control block for each locally hosted LP
 	// and schedule the special INIT event
 	for (t = 0; t < n_prc_per_thread; t++) {
-		printf("kid %d initializing lp %d, LidToGid %d, LPS[t]->lid %d\n",kid,LPS_bound[t]->lid,LidToGid(LPS_bound[t]->lid),LPS[t]->lid);
+//		printf("kid %d initializing lp %d, LidToGid %d, LPS[t]->lid %d\n",kid,LPS_bound[t]->lid,LidToGid(LPS_bound[t]->lid),LPS[t]->lid);
 		// Create user level thread for the current LP and initialize LP control block
 		initialize_LP(LPS_bound[t]->lid);
 
