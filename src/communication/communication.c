@@ -243,6 +243,9 @@ int comm_finalize(void) {
 * @author francesco quaglia
 */
 void Send(msg_t *msg) {
+
+	validate_msg(msg);
+
 	#ifdef HAS_MPI
 	// Check whether the message recepient kernel is remote
 	if(GidToKernel(msg->receiver) != kid){
@@ -332,8 +335,6 @@ void pack_msg(msg_t **msg, unsigned int sender, unsigned int receiver, int type,
 
 	if(payload != NULL && size > 0)
 		memcpy((*msg)->event_content, payload, size);
-
-	validate_msg(*msg);
 }
 
 void msg_to_hdr(msg_hdr_t *hdr, msg_t *msg) {

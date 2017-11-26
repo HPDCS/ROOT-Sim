@@ -186,6 +186,7 @@ void ECS(void) {
 }
 
 void ecs_init(void) {
+	printf("Invocation of ECS Init\n");
 	ioctl_fd = manual_open("/dev/ktblmgr", O_RDONLY);
 	if (ioctl_fd <= -1) {
 		rootsim_error(true, "Error in opening special device file. ROOT-Sim is compiled for using the ktblmgr linux kernel module, which seems to be not loaded.");
@@ -273,7 +274,7 @@ void ecs_send_pages(msg_t *msg) {
 
 	// Send back a copy of the pages!
 	pack_msg(&control_msg, msg->receiver, msg->sender, RENDEZVOUS_GET_PAGE_ACK, msg->timestamp, msg->timestamp, sizeof(ecs_page_request_t)+the_pages->count * PAGE_SIZE, the_pages);
-
+	control_msg->mark = generate_mark(GidToLid(msg->receiver));
 	control_msg->rendezvous_mark = msg->rendezvous_mark;
 	Send(control_msg);
 
