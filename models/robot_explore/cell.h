@@ -1,6 +1,6 @@
 
 
-#define OBSTACLE_PROB	0.1
+#define OBSTACLE_PROB	0.01
 
 
 #define KEEP_ALIVE	103
@@ -21,7 +21,8 @@ void CellProcessEvent(int me, simtime_t now, int event_type, void *event_content
 		case INIT:
 			pointer = malloc(sizeof(cell_state_type));
 			if(pointer == NULL) {
-				rootsim_error(true, "Error allocating cell %d state!\n", me);
+				fprintf(stderr, "Error allocating cell %d state!\n", me);
+				abort();
 			}
 			SetState(pointer);
 
@@ -29,7 +30,7 @@ void CellProcessEvent(int me, simtime_t now, int event_type, void *event_content
 
 			state = (cell_state_type *)pointer;
 
-//			state->has_obstacles = true;
+			state->has_obstacles = true;
 			// Set the values for neighbours. If one is non valid, then set it to -1
 			for(i = 0; i < 6; i++) {
 				if(isValidNeighbour(me, i)) {
@@ -65,7 +66,7 @@ void CellProcessEvent(int me, simtime_t now, int event_type, void *event_content
 	}
 }
 
-CellOnGVT(unsigned int me, cell_state_type *state) {
+bool CellOnGVT(unsigned int me, cell_state_type *state) {
 	int i;
 
 //	printf("Presence bitmap for %d: ", me);

@@ -22,7 +22,8 @@ bool isValidNeighbour(unsigned int sender, unsigned int neighbour) {
 
 	// Sanity check!
 	if(edge * edge != num_cells) {
-		rootsim_error(true, "Hexagonal map wrongly specified!\n");
+		fprintf(stderr, "Hexagonal map wrongly specified!\n");
+		abort();
 	}
 
 	// Get the neighbour value
@@ -76,7 +77,8 @@ unsigned int GetNeighbourId(unsigned int sender, unsigned int neighbour) {
 
 	// Sanity check!
 	if(edge * edge != num_cells) {
-		rootsim_error(true, "Hexagonal map wrongly specified!\n");
+		fprintf(stderr, "Hexagonal map wrongly specified!\n");
+		abort();
 	}
 
 	switch(neighbour) {

@@ -24,7 +24,7 @@ void ProcessEvent(int me, simtime_t now, int event_type, void *event_content, in
 		if(num_cells >= n_prc_tot) {
 			rootsim_error(true, "With %d cells I need at least %d LPs\n", num_cells, num_cells + 1);
 		}*/
-		num_cells = 64;
+		num_cells = 4096;
 	}
 
 
