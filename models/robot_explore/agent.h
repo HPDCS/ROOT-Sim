@@ -1,4 +1,4 @@
-
+#include <strings.h>
 #include <math.h>
 #include <limits.h>
 
@@ -15,10 +15,12 @@ static unsigned int map_hexagon_to_linear(unsigned int x, unsigned int y) {
 
 	// Sanity checks
 	if(edge * edge != num_cells) {
-		rootsim_error(true, "Hexagonal map wrongly specified!\n");
+		fprintf(stderr, "Hexagonal map wrongly specified!\n");
+		abort();
 	}
 	if(x > edge || y > edge) {
-		rootsim_error(true, "Coordinates (%u, %u) are higher than maximum (%u, %u)\n", x, y, edge, edge);
+		fprintf(stderr, "Coordinates (%u, %u) are higher than maximum (%u, %u)\n", x, y, edge, edge);
+		abort();
 	}
 
 	return y * edge + x;
@@ -135,7 +137,7 @@ static double a_star(agent_state_type *state, unsigned int current_cell, unsigne
 
 			// Is this the target?
 			if(current_cell == state->target_cell) {
-//				printf("TROVATO! current cell %d target %d\n", current_cell, state->target_cell);
+				printf("TROVATO! current cell %d target %d\n", current_cell, state->target_cell);
 				*good_direction = i;
 				return 0.0;
 			}
@@ -174,12 +176,12 @@ static unsigned int compute_my_direction(agent_state_type *state) {
 
 	bzero(state->a_star_map, BITMAP_SIZE(num_cells));
 
-//	printf("A* from %d to %d: ", state->current_cell, state->target_cell);
+	printf("A* from %d to %d: ", state->current_cell, state->target_cell);
 
 	a_star(state, state->current_cell, &good_direction);
 
-//	printf("\n");
-/*	unsigned int x1, y1;
+	printf("\n");
+	unsigned int x1, y1;
 	unsigned int x2, y2;
 	double min_distance = INFTY;
 	double distance;
@@ -202,7 +204,8 @@ static unsigned int compute_my_direction(agent_state_type *state) {
 			}
 		}
 	}
-*/
+
+	printf("Going into direction %s from cell %d\n", direction_name(good_direction), state->current_cell);
 	return good_direction;
 }
 
@@ -228,7 +231,7 @@ static unsigned int closest_frontier(agent_state_type *state, unsigned int curr_
 
 			// A frontier is marked as non visited, but has at least
 			// one visited cell around it, with no obstacle in between
-/*			is_reachable = false;
+			is_reachable = false;
 			for(j = 0; j < 6; j++) {
 				if(isValidNeighbour(i, j) &&
 				   state->visit_map[GetNeighbourId(i, j)].visited &&
@@ -238,14 +241,14 @@ static unsigned int closest_frontier(agent_state_type *state, unsigned int curr_
 			}
 
 			if(is_reachable) {
-*/				map_linear_to_hexagon(i, &x, &y);
+				map_linear_to_hexagon(i, &x, &y);
 				distance = sqrt((curr_x - x)*(curr_x - x) + (curr_y - y)*(curr_y - y));
 
 				if(distance < min_distance) {
 					min_distance = distance;
 					target = i;
 				}
-//			}
+			}
 		}
 	}
 
@@ -267,7 +270,8 @@ void AgentProcessEvent(int me, simtime_t now, int event_type, event_content_type
 		case INIT:
 			pointer = malloc(sizeof(agent_state_type));
 			if(pointer == NULL) {
-				rootsim_error(true, "Error allocating agent %d state!\n", me - num_cells);
+				fprintf(stderr, "Error allocating agent %d state!\n", me - num_cells);
+				abort();
 			}
 			SetState(pointer);
 
@@ -352,9 +356,9 @@ void AgentProcessEvent(int me, simtime_t now, int event_type, event_content_type
 						break;
 					}
 				}
-			}// else {
-			//	 state->target_cell = closest_frontier(state, state->current_cell, -1);
-			//}
+			} else {
+				 state->target_cell = closest_frontier(state, state->current_cell, -1);
+			}
 
 			// With some (tiny) randomness, forget where we are heading to!
 			if(Random() < 0.01) {
@@ -375,12 +379,12 @@ void AgentProcessEvent(int me, simtime_t now, int event_type, event_content_type
 			// If computed direction is UINT_MAX, then there is no path to the target.
 			// Just take a random direction
 			if(!isValidNeighbour(state->current_cell, state->direction)) {
-//				printf("%d at time %f is in %d reaching %d but no path found\n", me, now, state->current_cell, state->target_cell);
-//				printf("Neighbours of %d: ", state->target_cell);
-//				for(i = 0; i < 6; i ++) {
-//					printf("%d, ", ((cell_state_type *)states[state->target_cell])->neighbours[i]);
-//				}
-//				printf("\n");
+				printf("%d at time %f is in %d reaching %d but no path found\n", me, now, state->current_cell, state->target_cell);
+				printf("Neighbours of %d: ", state->target_cell);
+				for(i = 0; i < 6; i ++) {
+					printf("%d, ", ((cell_state_type *)states[state->target_cell])->neighbours[i]);
+				}
+				printf("\n");
 				do {
 					state->direction = RandomRange(0, 5);
 				} while(!isValidNeighbour(state->current_cell, state->direction));
@@ -388,7 +392,6 @@ void AgentProcessEvent(int me, simtime_t now, int event_type, event_content_type
 
 //			printf("ha direzione %s, ", direction_name(state->direction));
 			fflush(stdout);
-
 
 			// We can now mooooove!
 			new_event.cell = GetNeighbourId(state->current_cell, state->direction);
