@@ -33,7 +33,8 @@ void SerialScheduleNewEvent(unsigned int rcv, simtime_t stamp, unsigned int even
 	}
 
 	// Populate the message data structure
-	event = rsalloc(sizeof(msg_t));
+	size_t size = sizeof(msg_t) + event_size;
+	event = rsalloc(size);
 	bzero(event, sizeof(msg_t));
 	event->sender = current_lp;
 	event->receiver = rcv;
