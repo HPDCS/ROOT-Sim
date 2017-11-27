@@ -37,6 +37,11 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
 	switch(event) {
 
 			case INIT: // must be ALWAYS implemented
+			
+				if(n_prc_tot < TOT_REG + 1) {
+					printf("You must use at least %d LPs\n", TOT_REG + 1);
+					abort();
+				}
 		
 				if(is_agent(me)){
 					agent = (lp_agent_t *)malloc(sizeof(lp_agent_t));

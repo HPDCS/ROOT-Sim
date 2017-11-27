@@ -4,20 +4,13 @@
 #include "application.h"
 
 unsigned int get_tot_regions(void){
-	#ifdef ECS_TEST
-		unsigned int tot_region,check_value;
+	unsigned int check_value = sqrt(TOT_REG);
 
-		tot_region = n_prc_tot * PERC_REGION;
-		check_value = sqrt(tot_region);
-
-		if(check_value * check_value != tot_region) {
-		       printf("Hexagonal map wrongly specified!\n");
-		}
-			
-		return tot_region;
-	#else
-		return TOT_REG;
-	#endif
+	if(check_value * check_value != TOT_REG) {
+		   printf("Hexagonal map wrongly specified!\n");
+	}
+		
+	return TOT_REG;
 }
 
 unsigned int get_tot_agents(void){

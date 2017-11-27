@@ -3,9 +3,9 @@
 
 #include <stdbool.h>
 
-//#define ECS_TEST
+#define ECS_TEST
 
-#define DESTINATION 		1		//Message used by Region to communicate to the Agent the next destination
+#define DESTINATION 	1		//Message used by Region to communicate to the Agent the next destination
 #define ENTER 			2		//Message used by Agent for communicating its arrival	
 #define EXIT			3		//Message useb by Agent for communicating its exit
 #define PING			4		//Keep alive of Region
@@ -16,15 +16,8 @@
 
 #define EXCHANGE		88
 
-#ifdef ECS_TEST
-	#define PERC_REGION		0.90		//Fraction of LPs that states regions 
-	#define DIM_ARRAY		114 
-#else
-	#define TOT_REG			900		//Number of LPs that states regions
-	#define DIM_ARRAY		114 
-//	#define TOT_REG			961		//Test with 1068 LP
-//	#define DIM_ARRAY		122 
-#endif
+#define TOT_REG			64
+#define DIM_ARRAY		TOT_REG 
  
 #define DELAY 			120		//Expeted value for the delay function
 #define DELAY_PING 		250		//Expeted value for the delay function
