@@ -1,3 +1,4 @@
+#pragma once
 #include <ROOT-Sim.h>
 
 #include <stdbool.h>
@@ -17,6 +18,7 @@
 
 #ifdef ECS_TEST
 	#define PERC_REGION		0.90		//Fraction of LPs that states regions 
+	#define DIM_ARRAY		114 
 #else
 	#define TOT_REG			900		//Number of LPs that states regions
 	#define DIM_ARRAY		114 
