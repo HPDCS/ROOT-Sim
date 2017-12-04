@@ -308,6 +308,7 @@ ac_have_numa=no
 ac_have_cross_state=no
 ac_kernel_headers=no
 ac_disable_modules=yes
+ac_system_map=no
 
 if test "x$ac_on_linux" = "xyes"
 then
@@ -342,24 +343,15 @@ then
 			#
 
 		AC_ARG_ENABLE([numa],
-		AS_HELP_STRING([--disable-numa], [Disable NUMA subsystem on NUMA machines (enabled by default)]))
+		AS_HELP_STRING([--enable-numa], [Enable NUMA subsystem on NUMA machines]))
 
-		AS_IF([test "x$enable_numa" != "xno"], [
+		AS_IF([test "x$enable_numa" = "xno"], [
 			AC_DEFINE([HAVE_NUMA])
 			ac_have_numa=yes
 			CFLAGS="$CFLAGS -lnuma"
 		])
 	fi
 
-
-	# Event Cross State dependency manager
-	AC_ARG_ENABLE([ecs],
-	AS_HELP_STRING([--disable-ecs], [Disable Event Cross-State Management (Enabled by default on linux)]))
-
-	AS_IF([test "x$enable_ecs" != "xno"], [
-		AC_DEFINE([HAVE_CROSS_STATE])
-		ac_have_cross_state=yes
-	])
 
 	# Test for linux headers, to compile kernel modules
 	ac_kernel_headers=no
@@ -380,40 +372,58 @@ then
 	# were already installed. Using the --disable-modules won't compile nor try to
 	# install any module.
 	AC_ARG_ENABLE([modules],
-		AS_HELP_STRING([--disable-modules], [Disable compilation/installation of kernel modules]))
+		AS_HELP_STRING([--enable-modules], [Enable compilation/installation of kernel modules]))
 
-	ac_disable_modules=no
-	AS_IF([test "x$enable_modules" = "xno"], [
-		ac_disable_modules=yes
-		ac_kernel_headers=no
+	AS_IF([test "x$enable_modules" = "xyes"], [
+		ac_disable_modules=no
+		ac_kernel_headers=yes
 	])
+
+
+	# Check if System.map is available. Some kernel modules require access to special symbols
+	# which are not exported, but are available in System.map.
+	AC_CHECK_FILE("/boot/System.map", [ac_system_map=yes])
 
 	# Per-module checks. To be run only if we are on Linux and kernel headers are available
 	if test "x$ac_kernel_headers" = "xyes"
 	then
 
-		# Get finish_task_switch in the current kernel
-		AC_MSG_CHECKING([for finish_task_switch in the current kernel])
-		fts_line=$($GREP -n finish_task_switch /boot/System.map-$(uname -r) | $SED 's/:.*//')
-		finish_task_switch=$($SED "${fts_line}q;d" /boot/System.map-$(uname -r) | $SED 's/ .*//')
-		if test -z "$finish_task_switch"; then
+		# Here go modules which require System.map
+		if test "x$ac_system_map" = "xyes"
+		then
+
+			# Get finish_task_switch in the current kernel
+			AC_MSG_CHECKING([for finish_task_switch in the current kernel])
+			fts_line=$($GREP -n finish_task_switch /boot/System.map-$(uname -r) | $SED 's/:.*//')
+			finish_task_switch=$($SED "${fts_line}q;d" /boot/System.map-$(uname -r) | $SED 's/ .*//')
+			if test -z "$finish_task_switch"; then
 				AC_MSG_ERROR([Address of finish_task_switch not found in kernel map])
-		fi
-		AC_MSG_RESULT([found at 0x$finish_task_switch])
-		AC_SUBST([FTS_ADDR], [0x$finish_task_switch])
+			fi
+			AC_MSG_RESULT([found at 0x$finish_task_switch])
+			AC_SUBST([FTS_ADDR], [0x$finish_task_switch])
 
-		# Get function after finish_task_switch in the current kernel
-		AC_MSG_CHECKING([the address of function next to finish_task_switch in the current kernel])
-		let fts_line=$fts_line+1
-		finish_task_switch_next=$($SED "${fts_line}q;d" /boot/System.map-$(uname -r) | $SED 's/ .*//')
-		if test -z "$finish_task_switch_next"; then
-				AC_MSG_ERROR([Address of function aftr finish_task_switch not found in kernel map])
-		fi
-		AC_MSG_RESULT([found at 0x$finish_task_switch_next])
-		AC_SUBST([FTS_ADDR_NEXT], [0x$finish_task_switch_next])
+			# Get function after finish_task_switch in the current kernel
+			AC_MSG_CHECKING([the address of function next to finish_task_switch in the current kernel])
+			let fts_line=$fts_line+1
+			finish_task_switch_next=$($SED "${fts_line}q;d" /boot/System.map-$(uname -r) | $SED 's/ .*//')
+			if test -z "$finish_task_switch_next"; then
+				AC_MSG_ERROR([Address of function after finish_task_switch not found in kernel map])
+			fi
+			AC_MSG_RESULT([found at 0x$finish_task_switch_next])
+			AC_SUBST([FTS_ADDR_NEXT], [0x$finish_task_switch_next])
 
+		fi # closes the System.map modules check
 
 	fi # closes the global Linux kernel headers availability check
+
+	# Event Cross State dependency manager
+	AC_ARG_ENABLE([ecs],
+	AS_HELP_STRING([--enable-ecs], [Enable Event Cross-State Management]))
+
+	AS_IF([test "x$enable_ecs" = "xyes"], [
+		AC_DEFINE([HAVE_CROSS_STATE])
+		ac_have_cross_state=yes
+	])
 
 fi # Closes che global check for Linux availability
 
@@ -578,16 +588,24 @@ fi
 # Compose the message regarding ECS
 if test "x$ac_have_cross_state" = "xyes"
 then
-	ac_ecs="Enabled by default on linux (use --disable-ecs if not wanted)"
+	ac_ecs="Enabled)"
 else
 	ac_ecs="Disabled"
 	if test "x$ac_on_linux" = "xyes"
 	then
-		if test "x$ac_kernel_headers" = "xyes"
+		if test "x$ac_disable_modules" = "xno"
 		then
-			ac_ecs="${ac_ecs} by the user"
+			if test "x$ac_kernel_headers" = "xno"
+			then
+				ac_ecs="${ac_ecs} (Linux Headers not found)"
+			fi
+
+			if test "x$ac_system_map" = "xno"
+			then
+				ac_ecs="${ac_ecs} (System.map not present)"
+			fi
 		else
-			ac_ecs="${ac_ecs} (linux kernel headers not found)"
+			ac_ecs="${ac_ecs} (Requires Linux Kernel Modules)"
 		fi
 	else
 		ac_ecs="${ac_ecs} (requires linux)"
@@ -596,17 +614,16 @@ fi
 
 
 # Compose message to tell whether modules are disabled
+ac_modules="Enabled"
 if test "x$ac_disable_modules" = "xyes"
 then
-	ac_modules="Kernel modules compilation/installation disabled"
+	ac_modules="Disabled"
 	if test "x$ac_on_linux" = "xyes"
 	then
-		ac_modules="${ac_modules} via --disable-modules"
+		ac_modules="${ac_modules} (enable with --enable-modules)"
 	else
 		ac_modules="${ac_modules} on a non-Linux system"
 	fi
-else
-	ac_modules="Kernel modules will be compiled and installed (disable via --disable-modules)"
 fi
 
 
@@ -624,8 +641,7 @@ Parallel Allocator........ : ${ac_parallel_allocator}
 NUMA Subsystem............ : ${numa_subsystem}
 LP Preemption Support..... : ${ac_preemption}
 LP Rebinding.............. : ${ac_lp_rebinding}
+Linux Kernel Modules...... : ${ac_modules}
 Event Cross State......... : ${ac_ecs}
-
-${ac_modules}
 
 EOF
