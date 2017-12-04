@@ -8,6 +8,7 @@ AC_CONFIG_MACRO_DIR([m4])
 
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 
+
 # Debugging symbols or not?
 AC_ARG_ENABLE([debug],
     AS_HELP_STRING([--enable-debug], [Enable debugging of the platform]))
@@ -41,6 +42,7 @@ AS_IF([test "x$enable_profile" = "xyes"], [
 ])
 
 
+# MPI flags
 AC_ARG_WITH([mpi],
             AS_HELP_STRING([--with-mpi], [compile with MPI (parallelization) support. Default: no]),
             [],
@@ -49,7 +51,7 @@ AC_ARG_WITH([mpi],
 AS_IF([test x"$with_mpi" != xno],[
 	# Find a suitable MPI compiler: from CC and MPICC var or autodiscovery
 	# Test the choosen compiler for MPI support.
-	AX_PROG_CC_MPI(,,[AC_MSG_FAILURE([Couldn't find any MPI compiler. Be sure that CC env variable is not set to an incompatible compiler])])
+	AX_PROG_CC_MPI(,,[AC_MSG_FAILURE(["Couldn't find any MPI compiler. Be sure that CC env variable is not set to an incompatible compiler"])])
 	AC_DEFINE([HAS_MPI])
 	CFLAGS="$CFLAGS -DHAS_MPI"
 ],[
@@ -57,9 +59,10 @@ AS_IF([test x"$with_mpi" != xno],[
 	AC_PROG_CC([gcc])
 ])
 
-# be sure to call this macro after the AX_PROG_CC_MPI cause it is implicitely
-# overwriting the CC envar
+
+# Don't move this before AX_PROG_CC_MPI as it clashed with that macro
 AC_USE_SYSTEM_EXTENSIONS
+
 
 #----------------------------------------------------------------------------
 # Check for languages
@@ -162,7 +165,6 @@ case $host_os in
         AC_MSG_ERROR([Your platform is not currently supported])
         ;;
 esac
-
 
 
 
@@ -496,7 +498,7 @@ if test x"$with_mpi" != xno
 then
 	enable_mpi="Enabled (compiler: $CC)"
 else
-	enable_mpi="Disable"
+	enable_mpi="Disabled (enable with --with-mpi)"
 fi
 
 # Compose the message regarding the Parallel Allocator
@@ -622,5 +624,7 @@ Parallel Allocator........ : ${ac_parallel_allocator}
 NUMA Subsystem............ : ${numa_subsystem}
 LP Preemption Support..... : ${ac_preemption}
 LP Rebinding.............. : ${ac_lp_rebinding}
+
+${ac_modules}
 
 EOF
