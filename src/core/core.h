@@ -122,7 +122,7 @@
 
 typedef enum {positive, negative, control} message_kind_t;
 
-#ifdef HAS_MPI
+#ifdef HAVE_MPI
 typedef unsigned char phase_colour;
 #endif
 
@@ -133,7 +133,7 @@ typedef struct _msg_t {
 	// Kernel's information
 	unsigned int   		sender;
 	unsigned int   		receiver;
-	#ifdef HAS_MPI
+	#ifdef HAVE_MPI
 	phase_colour		colour;
 	#endif
 	int   			type;

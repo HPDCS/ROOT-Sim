@@ -52,8 +52,8 @@ AS_IF([test x"$with_mpi" != xno],[
 	# Find a suitable MPI compiler: from CC and MPICC var or autodiscovery
 	# Test the choosen compiler for MPI support.
 	AX_PROG_CC_MPI(,,[AC_MSG_FAILURE(["Couldn't find any MPI compiler. Be sure that CC env variable is not set to an incompatible compiler"])])
-	AC_DEFINE([HAS_MPI])
-	CFLAGS="$CFLAGS -DHAS_MPI"
+	AC_DEFINE([HAVE_MPI])
+	CFLAGS="$CFLAGS -DHAVE_MPI"
 ],[
 	# MPI was not requested, force gcc compiler
 	AC_PROG_CC([gcc])
@@ -624,6 +624,7 @@ Parallel Allocator........ : ${ac_parallel_allocator}
 NUMA Subsystem............ : ${numa_subsystem}
 LP Preemption Support..... : ${ac_preemption}
 LP Rebinding.............. : ${ac_lp_rebinding}
+Event Cross State......... : ${ac_ecs}
 
 ${ac_modules}
 

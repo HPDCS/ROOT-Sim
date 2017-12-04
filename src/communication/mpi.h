@@ -26,7 +26,7 @@
 #ifndef _MPI_H_
 #define _MPI_H_
 
-#ifdef HAS_MPI
+#ifdef HAVE_MPI
 
 
 #include <stdbool.h>
@@ -60,5 +60,5 @@ bool all_kernels_terminated(void);
 void broadcast_termination(void);
 void collect_termination(void);
 
-#endif /* HAS_MPI */
+#endif /* HAVE_MPI */
 #endif /* _MPI_H_ */

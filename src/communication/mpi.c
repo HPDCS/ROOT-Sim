@@ -22,7 +22,7 @@
 * @author Tommaso Tocci
 */
 
-#ifdef HAS_MPI
+#ifdef HAVE_MPI
 
 
 #include <communication/mpi.h>
@@ -399,4 +399,4 @@ void mpi_finalize(void){
 }
 
 
-#endif /* HAS_MPI */
+#endif /* HAVE_MPI */

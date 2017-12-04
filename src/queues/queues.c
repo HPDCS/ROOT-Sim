@@ -213,7 +213,7 @@ restart:
 							"sender: %d\n"
 							"receiver: %d\n"
 							"type: %d\n"
-							#ifdef HAS_MPI
+							#ifdef HAVE_MPI
 							"red_colored: %u\n"
 							#endif
 							"timestamp: %f\n"
@@ -224,7 +224,7 @@ restart:
 							msg_to_process->sender,
 							msg_to_process->receiver,
 							msg_to_process->type,
-							#ifdef HAS_MPI
+							#ifdef HAVE_MPI
 							msg_to_process->colour,
 							#endif
 							msg_to_process->timestamp,
@@ -253,7 +253,7 @@ restart:
 
 						}
 
-#ifdef HAS_MPI
+#ifdef HAVE_MPI
 						register_incoming_msg(msg_to_process);
 #endif
 						// Delete the matched message
@@ -279,7 +279,7 @@ restart:
 
 						LPS[lid_receiver]->state = LP_STATE_ROLLBACK;
 					}
-#ifdef HAS_MPI
+#ifdef HAVE_MPI
 					register_incoming_msg(msg_to_process);
 #endif
 					break;

@@ -27,7 +27,7 @@
 #ifndef _DISTRIBUTED_GVT_H_
 #define _DISTRIBUTED_GVT_H_
 
-#ifdef HAS_MPI
+#ifdef HAVE_MPI
 
 #include <core/core.h>
 
@@ -65,5 +65,5 @@ simtime_t last_reduced_gvt(void);
 void register_incoming_msg(const msg_t*);
 void register_outgoing_msg(const msg_t*);
 
-#endif /* HAS_MPI */
+#endif /* HAVE_MPI */
 #endif /* _COMM_GVT_H_ */

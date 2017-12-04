@@ -39,7 +39,7 @@
 #include <datatypes/slab.h>
 #include <mm/dymelor.h>
 #include <arch/atomic.h>
-#ifdef HAS_MPI
+#ifdef HAVE_MPI
 #include <communication/mpi.h>
 #endif
 
@@ -62,7 +62,7 @@ void (* ScheduleNewEvent)(unsigned int gid_receiver, simtime_t timestamp, unsign
 void communication_init(void) {
 	int i;
 
-	#ifdef HAS_MPI
+	#ifdef HAVE_MPI
 	inter_kernel_comm_init();
 	#endif
 
@@ -88,7 +88,7 @@ void communication_fini_thread(void) {
 * Finalizes the communication subsystem
 */
 void communication_fini(void) {
-	#ifdef HAS_MPI
+	#ifdef HAVE_MPI
 	inter_kernel_comm_finalize();
 	mpi_finalize();
 	#endif
@@ -245,7 +245,7 @@ void Send(msg_t *msg) {
 
 	validate_msg(msg);
 
-	#ifdef HAS_MPI
+	#ifdef HAVE_MPI
 	// Check whether the message recepient kernel is remote
 	if(GidToKernel(msg->receiver) != kid){
 		send_remote_msg(msg);
@@ -376,7 +376,7 @@ void msg_release(msg_t *msg) {
 void dump_msg_content(msg_t *msg) {
 	printf("\tsender: %lu\n", msg->sender);
 	printf("\treceiver: %lu\n", msg->sender);
-	#ifdef HAS_MPI
+	#ifdef HAVE_MPI
 	printf("\tcolour: %d\n", msg->colour);
 	#endif
 	printf("\ttype: %d\n", msg->type);

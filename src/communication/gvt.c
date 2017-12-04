@@ -22,7 +22,7 @@
 * @author Tommaso Tocci
 */
 
-#ifdef HAS_MPI
+#ifdef HAVE_MPI
 
 
 #include <communication/communication.h>

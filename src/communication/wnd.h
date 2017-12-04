@@ -27,7 +27,7 @@
 #ifndef _WND_H_
 #define _WND_H_
 
-#ifdef HAS_MPI
+#ifdef HAVE_MPI
 
 
 #include <mpi.h>
@@ -61,5 +61,5 @@ simtime_t min_timestamp_outgoing_msgs(void);
 size_t outgoing_queues_size(void);
 
 
-#endif /* HAS_MPI */
+#endif /* HAVE_MPI */
 #endif /* _WND_H_ */

@@ -105,7 +105,7 @@ static void *main_simulation_loop(void *arg) {
 	// Do the initial (local) LP binding, then execute INIT at all (local) LPs
 	initialize_worker_thread();
 
-	#ifdef HAS_MPI
+	#ifdef HAVE_MPI
 	syncronize_all();
 	#endif
 
@@ -121,7 +121,7 @@ static void *main_simulation_loop(void *arg) {
 		// Recompute the LPs-thread binding
 		rebind_LPs();
 
-		#ifdef HAS_MPI
+		#ifdef HAVE_MPI
 		// Check whether we have new ingoing messages sent by remote instances
 		receive_remote_msgs();
 		prune_outgoing_queues();
@@ -149,7 +149,7 @@ static void *main_simulation_loop(void *arg) {
 			}
 		}
 
-		#ifdef HAS_MPI
+		#ifdef HAVE_MPI
 		collect_termination();
 		#endif
 	}

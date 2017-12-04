@@ -46,7 +46,7 @@
 #include <statistics/statistics.h>
 #include <lib/numerical.h>
 #include <serial/serial.h>
-#ifdef HAS_MPI
+#ifdef HAVE_MPI
 #include <communication/mpi.h>
 #endif
 
@@ -356,7 +356,7 @@ static int parse_cmd_line(int argc, char **argv) {
 void SystemInit(int argc, char **argv) {
 	register int w;
 
-	#ifdef HAS_MPI
+	#ifdef HAVE_MPI
 	mpi_init(&argc, &argv);
 
 	if(n_ker > MAX_KERNELS){
@@ -411,7 +411,7 @@ void SystemInit(int argc, char **argv) {
 			"Number of Logical Processes: %u\n"
 			"Output Statistics Directory: %s\n"
 			"Scheduler: %d\n"
-			#ifdef HAS_MPI
+			#ifdef HAVE_MPI
 			"MPI multithread support: %s\n"
 			#endif
 			"GVT Time Period: %.2f seconds\n"
@@ -429,7 +429,7 @@ void SystemInit(int argc, char **argv) {
 			n_prc_tot,
 			rootsim_config.output_dir,
 			rootsim_config.scheduler,
-			#ifdef HAS_MPI
+			#ifdef HAVE_MPI
 			((mpi_support_multithread)? "yes":"no"),
 			#endif
 			rootsim_config.gvt_time_period / 1000.0,

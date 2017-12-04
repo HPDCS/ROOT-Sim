@@ -46,7 +46,7 @@ static bool lps_termination[MAX_LPs];
 
 
 inline bool ccgs_can_halt_simulation(void) {
-	#ifdef HAS_MPI
+	#ifdef HAVE_MPI
 	return (ccgs_completed_simulation && all_kernels_terminated());
 	#else
 	return ccgs_completed_simulation;
@@ -64,7 +64,7 @@ void ccgs_reduce_termination(void) {
 		termination &= lps_termination[i];
 	}
 
-	#ifdef HAS_MPI
+	#ifdef HAVE_MPI
 	/* If terminated locally check for global termination
 	 * All other kernel need to terminated
 	 */
