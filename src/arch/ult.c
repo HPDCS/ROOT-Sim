@@ -190,12 +190,6 @@ void context_create(LP_context_t *context, void (*entry_point)(void *), void *ar
 
 #elif defined(OS_WINDOWS) || defined(OS_CYGWIN)
 
-
-#if !defined(ARCH_X86) && !defined(ARCH_X86_64)
-#error Are you really running Cygwin on non-x86 architecture?!
-#endif
-
-
 void context_create(LP_context_t *context, void (*entry_point)(void *), void *args, void *stack, size_t stack_size) {
 
 	(void)stack;

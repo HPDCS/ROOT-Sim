@@ -25,7 +25,7 @@
 
 .file "jmp.S"
 
-#if defined(ARCH_X86_64) && defined(OS_LINUX)
+#ifdef OS_LINUX
 
 .text
 
@@ -160,4 +160,4 @@ _long_jmp:
 	
 .size   _long_jmp, .-_long_jmp
 
-#endif /* defined(ARCH_X86_64) && defined(OS_LINUX) */
+#endif /* OS_LINUX */

@@ -98,14 +98,8 @@ AC_CANONICAL_HOST
 AC_MSG_CHECKING([for a supported CPU])
 
 case "${host_cpu}" in
-	i?86)
-		AC_MSG_RESULT([yes, ${host_cpu}])
-		AC_DEFINE([ARCH_X86])
-		ARCH_MAX="x86"
-		;;
 	x86_64)
 		AC_MSG_RESULT([yes, ${host_cpu}])
-		AC_DEFINE([ARCH_X86_64])
 		;;
 	*)
 		AC_MSG_RESULT([no, ${host_cpu}])

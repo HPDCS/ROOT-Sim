@@ -30,7 +30,7 @@
 .extern preempt
 .extern return_from_kernel
 
-#if defined(HAVE_PREEMPTION) && ( defined(ARCH_X86) || defined(ARCH_X86_64) )
+#ifdef HAVE_PREEMPTION
 
 .text
 .globl preempt_callback
@@ -50,7 +50,6 @@ preempt_callback:
 	push %rdi
 	push %rsi
 
-#ifdef ARCH_X86_64
 	push %r8
 	push %r9
 	push %r10
@@ -59,7 +58,6 @@ preempt_callback:
 	push %r13
 	push %r14
 	push %r15
-#endif
 
 	subq $16, %rsp
 	movsd %xmm0, (%rsp)
@@ -73,7 +71,6 @@ preempt_callback:
 	movsd (%rsp), %xmm0
 	addq $16, %rsp
 
-#ifdef ARCH_X86_64
 	pop %r15
 	pop %r14
 	pop %r13
@@ -82,7 +79,6 @@ preempt_callback:
 	pop %r10
 	pop %r9
 	pop %r8
-#endif
 
 	pop %rsi
 	pop %rdi
@@ -100,4 +96,4 @@ preempt_callback:
 
 .size   preempt_callback, .-preempt_callback
 
-#endif /* defined(HAVE_PREEMPT) and ( defined(ARCH_X86) or defined(ARCH_X86_64) ) */
+#endif /* HAVE_PREEMPT */

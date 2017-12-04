@@ -35,13 +35,7 @@
 #include <valgrind/helgrind.h>
 #endif
 
-
-
 //#define SPINLOCK_GIVES_COUNT
-
-
-
-#if defined(ARCH_X86) || defined(ARCH_X86_64)
 
 /// Atomic counter definition
 typedef struct { volatile int count; } atomic_t;
@@ -50,45 +44,25 @@ typedef struct { volatile int count; } atomic_t;
 typedef struct { volatile unsigned int lock; } spinlock_t;
 
 
-
-inline bool CAS_x86(volatile uint64_t *ptr, uint64_t oldVal, uint64_t newVal);
-inline bool iCAS_x86(volatile uint32_t *ptr, uint32_t oldVal, uint32_t newVal);
-inline int atomic_test_and_set_x86(int *);
-inline int atomic_test_and_reset_x86(int *);
-inline void atomic_add_x86(atomic_t *, int);
-inline void atomic_sub_x86(atomic_t *, int);
-inline void atomic_inc_x86(atomic_t *);
-inline void atomic_dec_x86(atomic_t *);
-inline int atomic_inc_and_test_x86(atomic_t *v);
-inline bool spin_trylock_x86(spinlock_t *s);
-inline void spin_unlock_x86(spinlock_t *s);
+inline bool CAS(volatile uint64_t *ptr, uint64_t oldVal, uint64_t newVal);
+inline bool iCAS(volatile uint32_t *ptr, uint32_t oldVal, uint32_t newVal);
+inline int atomic_test_and_set(int *);
+inline int atomic_test_and_reset(int *);
+inline void atomic_add(atomic_t *, int);
+inline void atomic_sub(atomic_t *, int);
+inline void atomic_inc(atomic_t *);
+inline void atomic_dec(atomic_t *);
+inline int atomic_inc_and_test(atomic_t *v);
+inline bool spin_trylock(spinlock_t *s);
+inline void spin_unlock(spinlock_t *s);
 
 #ifdef SPINLOCK_GIVES_COUNT
-inline unsigned int spin_lock_x86(spinlock_t *s);
+inline unsigned int spin_lock(spinlock_t *s);
 #else
-inline void spin_lock_x86(spinlock_t *s);
+inline void spin_lock(spinlock_t *s);
 #endif
-
-
-#define CAS			CAS_x86
-#define iCAS			iCAS_x86
-#define atomic_test_and_set	atomic_test_and_set_x86
-#define atomic_test_and_reset	atomic_test_and_reset_x86
-#define atomic_add		atomic_add_x86
-#define atomic_sub		atomic_sub_x86
-#define atomic_dec		atomic_dec_x86
-#define atomic_inc		atomic_inc_x86
-#define atomic_inc_and_test	atomic_inc_and_test_x86
-#define spin_lock		spin_lock_x86
-#define spin_trylock		spin_trylock_x86
-#define spin_unlock		spin_unlock_x86
 
 #define LOCK "lock; "
-
-#else
-#error Currently supporting only x86/x86_64
-#endif
-
 
 /// Read operation on an atomic counter
 #define atomic_read(v)		((v)->count)
@@ -104,9 +78,6 @@ inline void spin_lock_x86(spinlock_t *s);
 /* #else */
  #define spinlock_init(s)	plain_spinlock_init(s) 
 /* #endif */
-
-
-
 
 #endif /* __ROOTSIM_ATOMIC_H */
 

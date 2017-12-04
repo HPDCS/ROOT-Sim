@@ -26,9 +26,6 @@
 
 
 // Do not compile anything here if we're not on an x86 machine!
-#if defined(ARCH_X86) || defined(ARCH_X86_64)
-
-#define printf(...)
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -47,7 +44,7 @@
 *
 * @ret true if the CAS succeeded, false otherwise
 */
-inline bool CAS_x86(volatile uint64_t *ptr, uint64_t oldVal, uint64_t newVal) {
+inline bool CAS(volatile uint64_t *ptr, uint64_t oldVal, uint64_t newVal) {
 	unsigned long res = 0;
 
 	__asm__ __volatile__(
@@ -75,7 +72,7 @@ inline bool CAS_x86(volatile uint64_t *ptr, uint64_t oldVal, uint64_t newVal) {
 *
 * @ret true if the CAS succeeded, false otherwise
 */
-inline bool iCAS_x86(volatile uint32_t *ptr, uint32_t oldVal, uint32_t newVal) {
+inline bool iCAS(volatile uint32_t *ptr, uint32_t oldVal, uint32_t newVal) {
 	unsigned long res = 0;
 
 	__asm__ __volatile__(
@@ -101,7 +98,7 @@ inline bool iCAS_x86(volatile uint32_t *ptr, uint32_t oldVal, uint32_t newVal) {
 *
 * @ret true if the int value has been set, false otherwise
 */
-inline int atomic_test_and_set_x86(int *b) {
+inline int atomic_test_and_set(int *b) {
     int result = 0;
 
 	__asm__  __volatile__ (
@@ -126,7 +123,7 @@ inline int atomic_test_and_set_x86(int *b) {
 *
 * @ret true if the int value has been reset, false otherwise
 */
-inline int atomic_test_and_reset_x86(int *b) {
+inline int atomic_test_and_reset(int *b) {
 	int result = 0;
 
 	__asm__  __volatile__ (
@@ -151,7 +148,7 @@ inline int atomic_test_and_reset_x86(int *b) {
 * @param v the atomic counter which is the destination of the operation
 * @param i how much must be added
 */
-inline void atomic_add_x86(atomic_t *v, int i) {
+inline void atomic_add(atomic_t *v, int i) {
 	__asm__ __volatile__(
 		LOCK "addl %1,%0"
 		: "=m" (v->count)
@@ -169,7 +166,7 @@ inline void atomic_add_x86(atomic_t *v, int i) {
 * @param v the atomic counter which is the destination of the operation
 * @param i how much must be subtracted
 */
-inline void atomic_sub_x86(atomic_t *v, int i) {
+inline void atomic_sub(atomic_t *v, int i) {
 	__asm__ __volatile__(
 		LOCK "subl %1,%0"
 		: "=m" (v->count)
@@ -186,7 +183,7 @@ inline void atomic_sub_x86(atomic_t *v, int i) {
 *
 * @param v the atomic counter which is the destination of the operation
 */
-inline void atomic_inc_x86(atomic_t *v) {
+inline void atomic_inc(atomic_t *v) {
 	__asm__ __volatile__(
 		LOCK "incl %0"
 		: "=m" (v->count)
@@ -204,7 +201,7 @@ inline void atomic_inc_x86(atomic_t *v) {
 *
 * @param v the atomic counter which is the destination of the operation
 */
-inline void atomic_dec_x86(atomic_t *v) {
+inline void atomic_dec(atomic_t *v) {
 	__asm__ __volatile__(
 		LOCK "decl %0"
 		: "=m" (v->count)
@@ -224,7 +221,7 @@ inline void atomic_dec_x86(atomic_t *v) {
 *
 * @return true if the counter became zero
 */
-inline int atomic_inc_and_test_x86(atomic_t *v) {
+inline int atomic_inc_and_test(atomic_t *v) {
 	unsigned char c = 0;
 
 	__asm__ __volatile__(
@@ -254,8 +251,6 @@ inline unsigned int spin_lock(spinlock_t *s) {
 
         int count = -1;
 
-		//printf("TID %d locking on %p\n", tid, s);
-
         __asm__ __volatile__(
                 "1:\n\t"
                 "movl $1,%%eax\n\t"
@@ -278,8 +273,7 @@ inline unsigned int spin_lock(spinlock_t *s) {
 
 #else
 
-inline void spin_lock_x86(spinlock_t *s) {
-		//printf("TID %d locking on %p\n", local_tid, s);
+inline void spin_lock(spinlock_t *s) {
 
 		if(local_tid > 100) {
 			printf("WTFFFFFFFFFFFFFFFFFF!\n");
@@ -297,7 +291,6 @@ inline void spin_lock_x86(spinlock_t *s) {
 		: "m" (s->lock)
 		: "eax", "memory"
 	);
-		//printf("TID %d locked on %p\n", local_tid, s);
 
 #if (!defined(NDEBUG)) && defined(HAVE_HELGRIND_H)
 	ANNOTATE_RWLOCK_ACQUIRED(&((s)->lock), 1);
@@ -314,7 +307,7 @@ inline void spin_lock_x86(spinlock_t *s) {
 *
 * @param s the spinlock to try to acquire
 */
-inline bool spin_trylock_x86(spinlock_t *s) {
+inline bool spin_trylock(spinlock_t *s) {
 /*	unsigned int out = 0;
 	unsigned int in = 1;
 
@@ -335,7 +328,7 @@ inline bool spin_trylock_x86(spinlock_t *s) {
 
 	return (bool)out;
 */
-	return atomic_test_and_set_x86((int *)&s->lock);
+	return atomic_test_and_set((int *)&s->lock);
 }
 
 
@@ -346,13 +339,12 @@ inline bool spin_trylock_x86(spinlock_t *s) {
 *
 * @param s the spinlock to unlock
 */
-inline void spin_unlock_x86(spinlock_t *s) {
+inline void spin_unlock(spinlock_t *s) {
 
 
 #if (!defined(NDEBUG)) && defined(HAVE_HELGRIND_H)
 	ANNOTATE_RWLOCK_RELEASED(&((s)->lock), 1);
 #endif
-		//printf("TID %d unlocking on %p\n", tid, s);
 
 	__asm__ __volatile__(
 		"mov $0, %%eax\n\t"
@@ -361,8 +353,5 @@ inline void spin_unlock_x86(spinlock_t *s) {
 		: "m" (s->lock)
 		: "eax", "memory"
 	);
-		//printf("TID %d unlocked on %p\n", tid, s);
 }
 
-
-#endif /* defined(ARCH_X86) || defined(ARCH_X86_64) */
