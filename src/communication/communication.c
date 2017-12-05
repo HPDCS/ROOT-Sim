@@ -167,7 +167,7 @@ void ParallelScheduleNewEvent(unsigned int gid_receiver, simtime_t timestamp, un
 * @todo One shot scan of the list
 */
 void send_antimessages(unsigned int lid, simtime_t after_simtime) {
-	msg_hdr_t *anti_msg, *anti_msg_next;
+	msg_hdr_t *anti_msg, *anti_msg_prev;
 	msg_t *msg;
 
 //	printf("send_antimessages lid: %d after: %f\n", lid, after_simtime);
@@ -175,35 +175,19 @@ void send_antimessages(unsigned int lid, simtime_t after_simtime) {
 	if (list_empty(LPS[lid]->queue_out))
 		return;
 
-	// get the first message header with a timestamp <= after_simtime
+	// Scan the output queue backwards, sending all required antimessages
 	anti_msg = list_tail(LPS[lid]->queue_out);
 	while(anti_msg != NULL && anti_msg->send_time > after_simtime) {
-		anti_msg = list_prev(anti_msg);
-	}
-	// the next event is the first event with a sendtime > after_simtime, if any.
-	// explicitly consider the case in which all anti messages should be sent.
-	if(anti_msg == NULL && list_head(LPS[lid]->queue_out)->send_time <= after_simtime) {
-		return;
-	} else if (anti_msg == NULL && list_head(LPS[lid]->queue_out)->send_time > after_simtime) {
-		anti_msg = list_head(LPS[lid]->queue_out);
-	} else {
-		anti_msg = list_next(anti_msg);
-	}
-
-	// now send all antimessages
-	while(anti_msg != NULL) {
 		msg = get_msg_from_slab();
 		hdr_to_msg(anti_msg, msg);
 		msg->message_kind = negative;
 
-//		dump_msg_content(msg);
-
 		Send(msg);
 
-		// Remove the already sent antimessage from output queue
-		anti_msg_next = list_next(anti_msg);
-		list_delete_by_content(lid, LPS[lid]->queue_out, anti_msg);
-		anti_msg = anti_msg_next;
+		// Remove the already-sent antimessage from the output queue
+		anti_msg_prev = list_prev(anti_msg);
+                list_delete_by_content(lid, LPS[lid]->queue_out, anti_msg);
+                anti_msg = anti_msg_prev;
 	}
 }
 
