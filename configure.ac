@@ -1,4 +1,4 @@
-C_PREREQ([2.67])
+AC_PREREQ([2.67])
 
 AC_INIT([ROOT-Sim],[1.0.0],[rootsim@googlegroups.com],[rootsim],[http://www.dis.uniroma1.it/~hpdcs/ROOT-Sim/])
 AC_CONFIG_SRCDIR([src])
@@ -15,7 +15,6 @@ AC_ARG_ENABLE([debug],
 
 AM_CONDITIONAL([DEBUG], [test x$enable_debug = xyes])
 
-
 # Setup compilation flags
 CFLAGS_COMMON="-std=c99 -fno-omit-frame-pointer -ffloat-store -fno-common -fstrict-aliasing -fgnu89-inline -rdynamic -lm -U_FORTIFY_SOURCE"
 CFLAGS_WARNINGS="-Wall -Wextra -Wcast-align -Wpointer-arith -Wstrict-overflow=5 -Wstrict-prototypes -Winline -Wundef -Wnested-externs -Wshadow -Wunreachable-code -Wfloat-equal -Wredundant-decls -Wold-style-definition -Wno-switch-enum"
@@ -26,9 +25,6 @@ AS_IF([test x$enable_debug = xyes],
       AC_DEFINE([NDEBUG]))
 
 
-AC_ARG_ENABLE([profile],
-    AS_HELP_STRING([--enable-profile], [Enable profiling the platform]))
-
 # Extra check flags
 AC_ARG_ENABLE(extra-checks,
 AS_HELP_STRING([--enable-exrta-checks],[Enable extra checks on models (kills performance!)]),
@@ -37,32 +33,42 @@ AS_IF([test "x$enable_extra_checks" = "xyes"], [
 	AC_DEFINE([EXTRA_CHECKS])
 ])
 
+
+# Code profiling flag
+AC_ARG_ENABLE([profile],
+    AS_HELP_STRING([--enable-profile], [Enable profiling the platform]))
 AS_IF([test "x$enable_profile" = "xyes"], [
 	CFLAGS="-pg $CFLAGS"
 ])
 
 
-# MPI flags
+#----------------------------------------------------------------------------
+# Check for the availability of a suitable MPI environment
+#----------------------------------------------------------------------------
 AC_ARG_WITH([mpi],
-            AS_HELP_STRING([--with-mpi], [compile with MPI (parallelization) support. Default: no]),
-            [],
-            [with_mpi=no])
+            AS_HELP_STRING([--enable-mpi], [compile with MPI support. Default: no]))
+AX_PROG_CC_MPI([test x"$enable_mpi" = xyes],[with_mpi=yes],[with_mpi=no])
 
-AS_IF([test x"$with_mpi" != xno],[
-	# Find a suitable MPI compiler: from CC and MPICC var or autodiscovery
-	# Test the choosen compiler for MPI support.
-	AX_PROG_CC_MPI(,,[AC_MSG_FAILURE(["Couldn't find any MPI compiler. Be sure that CC env variable is not set to an incompatible compiler"])])
-	AC_DEFINE([HAVE_MPI])
-	CFLAGS="$CFLAGS -DHAVE_MPI"
-],[
-	# MPI was not requested, force gcc compiler
-	AC_PROG_CC([gcc])
-])
-
-
-# Don't move this before AX_PROG_CC_MPI as it clashed with that macro
 AC_USE_SYSTEM_EXTENSIONS
 
+# We don't simply use MPI, rather a fresh version which supports
+# newer asynchronous primitives, e.g. MPI_Ireduce_scatter_block.
+# We test here for the availability of such primitives
+AC_MSG_CHECKING([if MPI version has asynchronous primitives])
+AS_IF([test x"$with_mpi" = xyes],[
+	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
+		#include <stdlib.h>
+		#include <mpi.h>
+	]], [[
+		MPI_Ireduce_scatter_block(NULL, NULL, 1, MPI_INT, MPI_SUM, 1, NULL);
+		MPI_Iallreduce(NULL, NULL, 1, MPI_INT, MPI_MIN, 1, NULL);
+	]])], [
+		AC_MSG_RESULT([yes])
+		AC_DEFINE([HAVE_MPI])
+	], [
+		AC_MSG_FAILURE([Asynchronous MPI primitives are not available. Please update your MPI version.])
+	])
+])
 
 #----------------------------------------------------------------------------
 # Check for languages
@@ -73,14 +79,11 @@ AC_LANG([C])
 #----------------------------------------------------------------------------
 # Checks for programs.
 #----------------------------------------------------------------------------
-m4_pattern_allow([AM_PROG_AR])
-
 AC_PROG_MAKE_SET
 AC_PROG_MKDIR_P
 AC_PROG_CC_C_O
 AM_PROG_CC_C_O
 m4_ifdef([AM_PROG_AR], [AM_PROG_AR])
-AM_PROG_AR
 AM_PROG_AS
 LT_INIT
 
@@ -113,8 +116,6 @@ esac
 #----------------------------------------------------------------------------
 # Checks for C header files and libraries
 #----------------------------------------------------------------------------
-AC_CHECK_HEADER([valgrind/helgrind.h], [AC_DEFINE([HAVE_HELGRIND_H])])
-
 
 # Check for POSIX thread support
 AX_PTHREAD([], [AC_MSG_ERROR([PTHREAD support not found])])
@@ -162,6 +163,8 @@ esac
 
 
 
+
+
 #----------------------------------------------------------------------------
 # Check if we can use the tick timer
 #----------------------------------------------------------------------------
@@ -193,7 +196,7 @@ AC_MSG_RESULT([no])
 #----------------------------------------------------------------------------
 
 
-# does the x86/amd64 assembler understand SSE3 instructions?
+# does the assembler understand SSE3 instructions?
 AC_MSG_CHECKING([if assembler knows SSE3])
 
 AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[]], [[
@@ -208,10 +211,7 @@ ac_have_as_sse3=yes
 AC_MSG_RESULT([no])
 ])
 
-
-
-
-# does the x86/amd64 assembler understand SSSE3 instructions?
+# does the assembler understand SSSE3 instructions?
 AC_MSG_CHECKING([if assembler knows SSSE3])
 
 save_CFLAGS="$CFLAGS"
@@ -230,11 +230,7 @@ AC_MSG_RESULT([no])
 ])
 CFLAGS="$save_CFLAGS"
 
-
-
-
-
-# does the x86/amd64 assembler understand SSE 4.2 instructions?
+# does the assembler understand SSE 4.2 instructions?
 AC_MSG_CHECKING([if assembler knows SSE4.2])
 
 AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[]], [[
@@ -502,7 +498,7 @@ if test x"$with_mpi" != xno
 then
 	enable_mpi="Enabled (compiler: $CC)"
 else
-	enable_mpi="Disabled (enable with --with-mpi)"
+	enable_mpi="Disabled (enable with --enable-mpi)"
 fi
 
 # Compose the message regarding the Parallel Allocator
