@@ -683,6 +683,13 @@ void statistics_fini(void) {
 
 void statistics_post_lp_data(unsigned int lid, unsigned int type, double data) {
 
+	// Sanity check
+	#ifndef NDEBUG
+	if(lid >= n_prc) {
+		rootsim_error(true, "%s:%d: Using an invalid lid to post statistics", __FILE__, __LINE__);
+	}
+	#endif
+
 	if(rootsim_config.serial) {
 
 		switch(type) {
