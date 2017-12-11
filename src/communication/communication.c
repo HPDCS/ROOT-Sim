@@ -341,11 +341,6 @@ void insert_outgoing_msg(msg_t *msg) {
 
 	// Message structure was declared on stack in ScheduleNewEvent: make a copy!
 	LPS[current_lp]->outgoing_buffer.outgoing_msgs[LPS[current_lp]->outgoing_buffer.size++] = *msg;
-
-	// Store the minimum timestamp of outgoing messages
-	if(msg->timestamp < LPS[current_lp]->outgoing_buffer.min_in_transit[LPS[current_lp]->worker_thread]) {
-		LPS[current_lp]->outgoing_buffer.min_in_transit[LPS[current_lp]->worker_thread] = msg->timestamp;
-	}
 }
 
 
