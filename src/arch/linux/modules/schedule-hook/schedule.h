@@ -1,4 +1,5 @@
-/**                       Copyright (C) 2014 HPDCS Group
+/**
+*			Copyright (C) 2008-2017 HPDCS Group
 *                       http://www.dis.uniroma1.it/~hpdcs
 *
 * This is free software;
