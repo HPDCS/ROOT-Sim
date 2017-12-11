@@ -79,9 +79,10 @@
 
 
 unsigned long the_hook = 0;
-#define PERMISSION_MASK (S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH)
+#define PERMISSION_MASK (S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH)
 module_param(the_hook, ulong, PERMISSION_MASK);
 unsigned int audit_counter = 0;
+#undef PERMISSION_MASK
 #define PERMISSION_MASK (S_IRUSR | S_IRGRP | S_IROTH)
 module_param(audit_counter, int, PERMISSION_MASK);
 
@@ -102,11 +103,9 @@ extern void schedule_hook_2(void);
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Alessandro Pellegrini <pellegrini@dis.uniroma1.it>, Francesco Quaglia <quaglia@dis.uniroma1.it>");
-MODULE_DESCRIPTION("Run time patch of the Linux kernel scheduler for supporting the execution of a generic custom function upon thread reschedule");
+MODULE_DESCRIPTION("Run time patch of the Linux kernel scheduler to support the execution of a generic custom function upon thread reschedule");
 module_init(schedule_hook_init);
 module_exit(schedule_unpatch);
-//module_exit(schedule_hook_cleanup);
-
 
 /* MODULE VARIABLES */
 
@@ -119,14 +118,14 @@ typedef struct backup{
 	unsigned short int len;
 } backup_t;
 
-backup_t* b;
+backup_t *b;
 
-unsigned short int backup_count=0;
+unsigned short int backup_count = 0;
 
 typedef struct instr {
-		void* ptr;
-		unsigned char bytecode[16];
-		short unsigned int size;
+	void* ptr;
+	unsigned char bytecode[16];
+	short unsigned int size;
 } instr_t;
 
 
@@ -183,12 +182,12 @@ static int schedule_patch(void) {
 	unsigned char bytes_to_redirect[6];
 	int i=0;
 	int j;
-  int k=0;
-  int count;
-  int size;
-  int patch_size, patch_offset;
+	int k=0;
+	int count;
+	int size;
+	int patch_size, patch_offset;
 	void *temp;
-  void *upper_bound, *lower_bound;
+	void *upper_bound, *lower_bound;
 
 	instr_t* v=(instr_t*) kmalloc(((unsigned char*)(finish_task_switch_next)-(unsigned char*)(finish_task_switch))*sizeof(instr_t), GFP_KERNEL);
 	if(!v){

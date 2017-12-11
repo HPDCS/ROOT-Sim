@@ -39,6 +39,7 @@
 #include <scheduler/scheduler.h>
 #include <scheduler/stf.h>
 #include <mm/state.h>
+#include <communication/communication.h>
 
 #define _INIT_FROM_MAIN
 #include <core/init.h>
@@ -86,18 +87,6 @@ void scheduler_init(void) {
 
 	register unsigned int i;
 
-	// TODO: implementare con delle broadcast!!
-/*	if(n_ker > 1) {
-		if (master_kernel()) {
-			for (i = 1; i < n_ker; i++) {
-				comm_send(&rootsim_config.scheduler, sizeof(rootsim_config.scheduler), MPI_CHAR, i, MSG_INIT_MPI, MPI_COMM_WORLD);
-			}
-		} else {
-			comm_recv(&rootsim_config.scheduler, sizeof(rootsim_config.scheduler), MPI_CHAR, 0, MSG_INIT_MPI, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-		}
-	}
-*/
-
 	// Allocate LPS control blocks
 	LPS = (LP_state **)rsalloc(n_prc * sizeof(LP_state *));
 	for (i = 0; i < n_prc; i++) {
@@ -106,7 +95,7 @@ void scheduler_init(void) {
 
 		// Allocate memory for the outgoing buffer
 		LPS[i]->outgoing_buffer.max_size = INIT_OUTGOING_MSG;
-		LPS[i]->outgoing_buffer.outgoing_msgs = rsalloc(sizeof(msg_t) * INIT_OUTGOING_MSG);
+		LPS[i]->outgoing_buffer.outgoing_msgs = rsalloc(sizeof(msg_t *) * INIT_OUTGOING_MSG);
 
 		// That's the only sequentially executed place where we can set the lid
 		LPS[i]->lid = i;
@@ -296,7 +285,7 @@ void initialize_LP(unsigned int lp) {
 	#ifdef HAVE_CROSS_STATE
 	// No read/write dependencies open so far for the LP. The current lp is always opened
 	LPS[lp]->ECS_index = 0;
-	LPS[lp]->ECS_synch_table[0] = lp;
+	LPS[lp]->ECS_synch_table[0] = LidToGid(lp); // LidToGid for distributed ECS
 	#endif
 
 	// Create user thread
@@ -308,6 +297,9 @@ void initialize_LP(unsigned int lp) {
 
 void initialize_worker_thread(void) {
 	register unsigned int t;
+	msg_t *init_event;
+
+	communication_init_thread();
 
 	// Divide LPs among worker threads, for the first time here
 	rebind_LPs();
@@ -319,29 +311,15 @@ void initialize_worker_thread(void) {
 	// Initialize the LP control block for each locally hosted LP
 	// and schedule the special INIT event
 	for (t = 0; t < n_prc_per_thread; t++) {
-
+//		printf("kid %d initializing lp %d, LidToGid %d, LPS[t]->lid %d\n",kid,LPS_bound[t]->lid,LidToGid(LPS_bound[t]->lid),LPS[t]->lid);
 		// Create user level thread for the current LP and initialize LP control block
 		initialize_LP(LPS_bound[t]->lid);
 
 		// Schedule an INIT event to the newly instantiated LP
-		msg_t init_event = {
-			sender: LidToGid(LPS_bound[t]->lid),
-			receiver: LidToGid(LPS_bound[t]->lid),
-			type: INIT,
-			timestamp: 0.0,
-			send_time: 0.0,
-			mark: generate_mark(LPS_bound[t]->lid),
-			size: model_parameters.size,
-			message_kind: positive,
-		};
+		pack_msg(&init_event, LidToGid(LPS_bound[t]->lid), LidToGid(LPS_bound[t]->lid), INIT, 0.0, 0.0, model_parameters.size, model_parameters.arguments);
+	        init_event->mark = generate_mark(LPS_bound[t]->lid);
 
-
-		// Copy the relevant string pointers to the INIT event payload
-		if(model_parameters.size > 0) {
-			memcpy(init_event.event_content, model_parameters.arguments, model_parameters.size * sizeof(char *));
-		}
-
-		(void)list_insert_head(LPS_bound[t]->lid, LPS_bound[t]->queue_in, &init_event);
+		(void)list_insert_head(LPS_bound[t]->lid, LPS_bound[t]->queue_in, init_event);
 		LPS_bound[t]->state_log_forced = true;
 	}
 	// Worker Threads synchronization barrier: they all should start working together
@@ -483,6 +461,8 @@ void schedule(void) {
 		return;
 	}
 
+//	if(lid == 1 && LPS[lid]->state != LP_STATE_READY)
+//		printf("state of lid 1 is %d\n",LPS[lid]->state);
 
 	// If we have to rollback
 	if(LPS[lid]->state == LP_STATE_ROLLBACK) {
@@ -518,14 +498,18 @@ void schedule(void) {
 #ifdef HAVE_CROSS_STATE
 	// In case we are resuming an interrupted execution, we keep track of this.
 	// If at the end of the scheduling the LP is not blocked, we can unblock all the remote objects
-	if(is_blocked_state(LPS[lid]->state)) {
+	if(is_blocked_state(LPS[lid]->state) || LPS[lid]->state == LP_STATE_READY_FOR_SYNCH) {
 		resume_execution = true;
 	}
 #endif
 
 
 	// Schedule the LP user-level thread
-	LPS[lid]->state = LP_STATE_RUNNING;
+	if(LPS[lid]->state == LP_STATE_READY_FOR_SYNCH)
+		LPS[lid]->state = LP_STATE_RUNNING_ECS;
+	else
+		LPS[lid]->state = LP_STATE_RUNNING;
+	
 	activate_LP(lid, lvt(lid), event, state);
 
 	if(!is_blocked_state(LPS[lid]->state)) {
@@ -533,16 +517,16 @@ void schedule(void) {
 		send_outgoing_msgs(lid);
 	}
 
-
 #ifdef HAVE_CROSS_STATE
 	if(resume_execution && !is_blocked_state(LPS[lid]->state)) {
+		printf("ECS event is finished mark %llu !!!\n", LPS[lid]->wait_on_rendezvous);
+		fflush(stdout);
 		unblock_synchronized_objects(lid);
 
 		// This is to avoid domino effect when relying on rendezvous messages
 		force_LP_checkpoint(lid);
 	}
 #endif
-
 
 	// Log the state, if needed
 	LogState(lid);

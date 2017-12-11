@@ -26,20 +26,19 @@
 #define OPT_GVT_SNAPSHOT_CYCLES	13
 #define OPT_SIMULATION_TIME	14
 #define OPT_LPS_DISTRIBUTION	15
-#define OPT_BACKTRACE		16
-#define OPT_DETERMINISTIC_SEED	17
-#define OPT_VERBOSE		18
-#define OPT_STATS		19
-#define OPT_SEED		20
-#define OPT_SERIAL		21
-#define OPT_NO_CORE_BINDING	22
+#define OPT_DETERMINISTIC_SEED	16
+#define OPT_VERBOSE		17
+#define OPT_STATS		18
+#define OPT_SEED		19
+#define OPT_SERIAL		20
+#define OPT_NO_CORE_BINDING	21
 
 #ifdef HAVE_PREEMPTION
-#define OPT_PREEMPTION		23
+#define OPT_PREEMPTION		22
 #endif
 
 #ifdef HAVE_PARALLEL_ALLOCATOR
-#define OPT_ALLOCATOR		24
+#define OPT_ALLOCATOR		23
 #endif
 
 // TODO: a vector of vector with text name of numerical options, which should be used for parsing options and for displaying names
@@ -63,7 +62,6 @@ static char *opt_desc[] = {
 	"Termination detection is invoked after this number of GVT reductions",
 	"Halt the simulation when all LPs reach this logical time. 0 means infinite",
 	"LPs distributions over simulation kernels policies. Supported values: block, circular",
-	"If the simulation crashes, print a backtrace",
 	"Do not change the initial random seed for LPs. Enforces different deterministic simulation runs",
 	"Verbose execution",
 	"Level of detail in the output statistics",
@@ -99,7 +97,6 @@ static struct option long_options[] = {
 	{"gvt_snapshot_cycles",	required_argument,	0, OPT_GVT_SNAPSHOT_CYCLES},
 	{"simulation_time",	required_argument,	0, OPT_SIMULATION_TIME},
 	{"lps_distribution",	required_argument,	0, OPT_LPS_DISTRIBUTION},
-	{"backtrace",		no_argument,		0, OPT_BACKTRACE},
 	{"deterministic_seed",	no_argument,		0, OPT_DETERMINISTIC_SEED},
 	{"verbose",		required_argument,	0, OPT_VERBOSE},
 	{"stats",		required_argument,	0, OPT_STATS},

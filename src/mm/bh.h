@@ -29,25 +29,28 @@
 
 #include <core/core.h>
 
-struct _bhmap {
-	char		*live_bh;		// address of the live bottom half for the sobj
-	char		*expired_bh;		// address of the expired bottom half
-	unsigned int	live_msgs;		// number of messages currently present inthe the live bottom half
-	unsigned int	live_offset;		// offset of the oldest undelivered msg from the expired pool
-	size_t		live_boundary;		// memory occupancy (in bytes) of live messages
-	unsigned int	expired_msgs;		// number of messages currently present in the live bottom half
-	unsigned int	expired_offset;		// offset of the oldest undelivered msg from the expired pool
-	unsigned int	expired_boundary;	// memory occupancy (in bytes) of live messages
-	char		*actual_bh_addresses[2];// these are the stable pointers used for bottom half buffers' migration across numa nodes
-	size_t		current_pages[2];	// The amount of pages allocated in the corresponding entry of the actual_bh_addessess vector
+struct _map {
+	msg_t		* volatile *buffer;
+	volatile unsigned int	size;
+	volatile unsigned int	written;
+	volatile unsigned int	read;
 };
 
-#define MAX_MSG_SIZE sizeof(msg_t)
-#define INITIAL_BH_PAGES	10
+struct _bhmap {
+	struct _map	* volatile maps[2];
+	spinlock_t	read_lock;
+	spinlock_t	write_lock;
+};
+
+// These are used to simplify reading the code
+#define M_WRITE	0
+#define M_READ	1
+
+#define INITIAL_BH_SIZE 1024
 
 extern bool BH_init(void);
 extern void BH_fini(void);
-extern int insert_BH(int sobj, void* msg, int size);
-extern void *get_BH(unsigned int sobj);
+extern void insert_BH(int, msg_t *);
+extern void *get_BH(unsigned int);
 
 #endif /* _BH_H */

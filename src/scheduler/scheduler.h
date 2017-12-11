@@ -62,11 +62,6 @@ extern bool reprocess_control_msg(msg_t *);
 extern void rollback_control_message(unsigned int, simtime_t);
 extern bool anti_control_message(msg_t * msg);
 
-#ifdef  HAVE_CROSS_STATE
-extern void unblock_synchronized_objects(unsigned int);
-#endif
-
-
 #ifdef HAVE_PREEMPTION
 extern void preempt_init(void);
 extern void preempt_fini(void);

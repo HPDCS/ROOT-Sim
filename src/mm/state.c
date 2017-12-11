@@ -218,7 +218,7 @@ void rollback(unsigned int lid) {
 		s = restore_state;
 		restore_state = list_prev(restore_state);
 		log_delete(s->log);
-		s->last_event = (void *)0xDEADC0DE;
+		s->last_event = (void *)0xBABEBEEF;
 		list_delete_by_content(lid, LPS[lid]->queue_states, s);
 	}
 	// Restore the simulation state and correct the state base pointer

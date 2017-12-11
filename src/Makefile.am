@@ -26,6 +26,7 @@ librootsim_a_SOURCES =	main.c \
 			datatypes/array.c \
 			datatypes/list.c \
 			datatypes/calqueue.c \
+			datatypes/slab.c \
 			mm/state.c \
 			mm/ecs.c \
 			mm/ecs_callback.S \
@@ -44,8 +45,11 @@ librootsim_a_SOURCES =	main.c \
 			gvt/gvt.c \
 			gvt/fossil.c \
 			gvt/ccgs.c \
-			communication/window.c \
-			communication/communication.c
+			communication/wnd.c\
+			communication/communication.c\
+			communication/gvt.c\
+			communication/mpi.c\
+			arch/parse-x86.c
 
 libwrapperl_a_SOURCES = lib-wrapper/wrapper.c
 

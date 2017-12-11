@@ -15,7 +15,12 @@ unsigned int FindReceiver(int topology) {
 	unsigned int ret;
  	double u;
 	bool invalid = false;
-	unsigned int sender = LidToGid(current_lp);
+	unsigned int sender;
+
+	if(rootsim_config.serial)
+		sender = current_lp;
+	else
+		sender = LidToGid(current_lp);
 
  	// These must be unsigned. They are not checked for negative (wrong) values,
  	// but they would overflow, and are caught by a different check.

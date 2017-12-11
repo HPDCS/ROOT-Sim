@@ -13,9 +13,10 @@ unsigned int complete_calls = COMPLETE_CALLS;
 
 double ran;
 
-
 void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_type *event_content, unsigned int size, void *ptr) {
 	unsigned int w;
+
+	//printf("%d executing %d at %f\n", me, event_type, now);
 
 	event_content_type new_event_content;
 
@@ -204,9 +205,9 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 			deallocation(me, state, event_content->channel, now);
 
 			new_event_content.call_term_time =  event_content->call_term_time;
-			new_event_content.dummy = &(state->dummy);
 			new_event_content.from = me;
-			ScheduleNewEvent(event_content->cell, now, HANDOFF_RECV, &new_event_content, sizeof(new_event_content));
+			new_event_content.dummy = &(state->dummy);
+			ScheduleNewEvent(event_content->cell, now+0.000001, HANDOFF_RECV, &new_event_content, sizeof(new_event_content));
 			break;
 
 		case HANDOFF_RECV:
@@ -281,6 +282,11 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 
 
 bool OnGVT(unsigned int me, lp_state_type *snapshot) {
+
+	if(me == 0) {
+		printf("0: complete calls: %d\n", snapshot->complete_calls);
+	}
+
 	if (snapshot->complete_calls < complete_calls)
 		return false;
 	return true;
