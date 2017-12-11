@@ -75,7 +75,6 @@ void fossil_collection(unsigned int lid, simtime_t time_barrier) {
 }
 
 
-
 /**
 * This function is used by Master and Slave Kernels to determine the time barrier
 * and perform some housekeeping once the new GVT value has been computed.

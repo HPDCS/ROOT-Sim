@@ -35,6 +35,7 @@ extern void __real_free(void *);
 extern void *__real_realloc(void *, size_t);
 extern void *__real_calloc(size_t, size_t);
 
+
 inline void *rsalloc(size_t size) {
 	void *mem_block = __real_malloc(size);
 	if(mem_block == NULL) {

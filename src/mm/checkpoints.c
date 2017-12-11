@@ -73,7 +73,7 @@
 */
 void *log_full(int lid) {
 
-	void *ptr, *ckpt;
+	void *ptr = NULL, *ckpt = NULL;
 	int i, j, k, idx, bitmap_blocks;
 	size_t size, chunk_size;
 	malloc_area *m_area;
@@ -84,7 +84,7 @@ void *log_full(int lid) {
 
 	recoverable_state[lid]->is_incremental = false;
 	size = get_log_size(recoverable_state[lid]);
-	
+
 	ckpt = rsalloc(size);
 
 	if(ckpt == NULL) {

@@ -11,9 +11,12 @@ unsigned int complete_calls = COMPLETE_CALLS;
 
 #define DUMMY_TA 500
 
+double ran;
 
 void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_type *event_content, unsigned int size, void *ptr) {
 	unsigned int w;
+
+	//printf("%d executing %d at %f\n", me, event_type, now);
 
 	event_content_type new_event_content;
 
@@ -99,10 +102,10 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 			ScheduleNewEvent(me, timestamp, START_CALL, NULL, 0);
 
 			// If needed, start the first fading recheck
-//			if (state->fading_recheck) {
+			//if (state->fading_recheck) {
 				timestamp = (simtime_t) (FADING_RECHECK_FREQUENCY * Random());
 				ScheduleNewEvent(me, timestamp, FADING_RECHECK, NULL, 0);
-//			}
+		//	}
 
 			break;
 
@@ -120,6 +123,8 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 				new_event_content.channel = allocation(state);
 				new_event_content.from = me;
 				new_event_content.sent_at = now;
+
+//				printf("(%d) allocation %d at %f\n", me, new_event_content.channel, now);
 
 				// Determine call duration
 				switch (DURATION_DISTRIBUTION) {
@@ -200,12 +205,21 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 			deallocation(me, state, event_content->channel, now);
 
 			new_event_content.call_term_time =  event_content->call_term_time;
-			ScheduleNewEvent(event_content->cell, now, HANDOFF_RECV, &new_event_content, sizeof(new_event_content));
+			new_event_content.from = me;
+			new_event_content.dummy = &(state->dummy);
+			ScheduleNewEvent(event_content->cell, now+0.000001, HANDOFF_RECV, &new_event_content, sizeof(new_event_content));
 			break;
 
-        	case HANDOFF_RECV:
+		case HANDOFF_RECV:
 			state->arriving_handoffs++;
 			state->arriving_calls++;
+
+			ran = Random();
+
+			if(me == 1 && ran < 0.3 && event_content->from == 2){//&& state->dummy_flag == false) {
+				*(event_content->dummy) = 1;
+				state->dummy_flag = true;
+			}
 
 			if (state->channel_counter == 0)
 				state->blocked_on_handoff++;
@@ -214,6 +228,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 
 				new_event_content.channel = allocation(state);
 				new_event_content.call_term_time = event_content->call_term_time;
+
 
 				switch (CELL_CHANGE_DISTRIBUTION) {
 					case UNIFORM:
@@ -226,7 +241,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 						break;
 					default:
 						handoff_time = now+
-			    			(simtime_t) (5 * Random());
+						(simtime_t) (5 * Random());
 				}
 
 				if(new_event_content.call_term_time < handoff_time ) {
@@ -241,7 +256,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 			break;
 
 
-		case FADING_RECHECK:
+				case FADING_RECHECK:
 
 /*
 			if(state->check_fading)
@@ -267,6 +282,11 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 
 
 bool OnGVT(unsigned int me, lp_state_type *snapshot) {
+
+	if(me == 0) {
+		printf("0: complete calls: %d\n", snapshot->complete_calls);
+	}
+
 	if (snapshot->complete_calls < complete_calls)
 		return false;
 	return true;

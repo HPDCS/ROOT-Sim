@@ -42,7 +42,6 @@
 #include <mm/dymelor.h>
 #include <statistics/statistics.h>
 
-
 /// Function pointer to switch between the parallel and serial version of SetState
 void (*SetState)(void *new_state);
 
@@ -55,13 +54,13 @@ void (*SetState)(void *new_state);
 *
 * @param lid The Light Process Identifier
 */
-void LogState(unsigned int lid) {
+bool LogState(unsigned int lid) {
 
 	bool take_snapshot = false;
 	state_t new_state; // If inserted, list API makes a copy of this
 
 	if(is_blocked_state(LPS[lid]->state)) {
-		return;
+		return take_snapshot;
 	}
 
 	// Keep track of the invocations to LogState
@@ -70,6 +69,7 @@ void LogState(unsigned int lid) {
 	if(LPS[lid]->state_log_forced) {
 		LPS[lid]->state_log_forced = false;
 		LPS[lid]->from_last_ckpt = 0;
+
 		take_snapshot = true;
 		goto skip_switch;
 	}
@@ -92,7 +92,7 @@ void LogState(unsigned int lid) {
 			rootsim_error(true, "State saving mode not supported.");
 	}
 
-    skip_switch:
+skip_switch:
 
 	// Shall we take a log?
 	if (take_snapshot) {
@@ -110,6 +110,8 @@ void LogState(unsigned int lid) {
 		(void)list_insert_tail(lid, LPS[lid]->queue_states, &new_state);
 
 	}
+
+	return take_snapshot;
 }
 
 
@@ -117,6 +119,11 @@ void RestoreState(unsigned int lid, state_t *restore_state) {
 	log_restore(lid, restore_state);
 	LPS[lid]->current_base_pointer = restore_state->base_pointer;
 	LPS[lid]->state = restore_state->state;
+#ifdef HAVE_CROSS_STATE
+	LPS[lid]->ECS_index = 0;
+	LPS[lid]->wait_on_rendezvous = 0;
+	LPS[lid]->wait_on_object = 0;
+#endif
 }
 
 
@@ -158,12 +165,11 @@ unsigned int silent_execution(unsigned int lid, void *state_buffer, msg_t *evt, 
 		}
 
 		events++;
-
 		activate_LP(lid, evt->timestamp, evt, state_buffer);
 		evt = list_next(evt);
 	}
 
-    out:
+out:
 	LPS[lid]->state = old_state;
 	return events;
 }
@@ -182,7 +188,6 @@ unsigned int silent_execution(unsigned int lid, void *state_buffer, msg_t *evt, 
 * @param lid The Logical Process Id
 */
 void rollback(unsigned int lid) {
-
 	state_t *restore_state, *s;
 	msg_t *last_correct_event;
 	msg_t *last_restored_event;
@@ -195,6 +200,7 @@ void rollback(unsigned int lid) {
 		return;
 	}
 
+
 	// Discard any possible execution state related to a blocked execution
 	#ifdef ENABLE_ULT
 	memcpy(&LPS[lid]->context, &LPS[lid]->default_context, sizeof(LP_context_t));
@@ -203,7 +209,6 @@ void rollback(unsigned int lid) {
 	statistics_post_lp_data(lid, STAT_ROLLBACK, 1.0);
 
 	last_correct_event = LPS[lid]->bound;
-
 	// Send antimessages
 	send_antimessages(lid, last_correct_event->timestamp);
 
@@ -213,10 +218,9 @@ void rollback(unsigned int lid) {
 		s = restore_state;
 		restore_state = list_prev(restore_state);
 		log_delete(s->log);
-		s->last_event = (void *)0xDEADC0DE;
+		s->last_event = (void *)0xBABEBEEF;
 		list_delete_by_content(lid, LPS[lid]->queue_states, s);
 	}
-
 	// Restore the simulation state and correct the state base pointer
 	RestoreState(lid, restore_state);
 
@@ -224,6 +228,8 @@ void rollback(unsigned int lid) {
 	reprocessed_events = silent_execution(lid, LPS[lid]->current_base_pointer, last_restored_event, last_correct_event);
 	statistics_post_lp_data(lid, STAT_SILENT, (double)reprocessed_events);
 
+	// TODO: silent execution resets the LP state to the previous
+	// value, so it should be the last function to be called within rollback()
 	// Control messages must be rolled back as well
 	rollback_control_message(lid, last_correct_event->timestamp);
 }

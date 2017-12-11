@@ -34,8 +34,20 @@
 #include <assert.h>
 
 #include <core/core.h>
-
 #include <arch/atomic.h>
+
+// The basic implementation of the list is such that each node of any list is allocated in
+// a separate memory region which is associated with a LP.
+// There are some points of the code where this is not the case. In particular, each worker
+// thread might have the need to handle per-thread lists.
+// If the lid passed to all list-library function is specified as GENERIC_LIST, the library
+// falls back to generic memory, thus the nodes are not associated with any LP.
+// BEWARE: The implementation of the generic list provided by this submodule IS NOT THREAD SAFE!
+// This is because LPs are handled in data separation.
+// In case this facility is used to handle a list which is shared across different worker threads,
+// then accesses to the list must be protected within critical sections.
+
+#define GENERIC_LIST IDLE_PROCESS
 
 /// This is the encapsulating structure of a list node. Any payload can be contained by this.
 struct rootsim_list_node {
@@ -68,7 +80,11 @@ struct rootsim_list {
  *  \endcode
  */
 #define new_list(lid, type)	(type *)({ \
-				void *__lmptr = (void *)umalloc((lid), sizeof(struct rootsim_list));\
+				void *__lmptr; \
+				if((lid) == GENERIC_LIST) \
+					__lmptr = (void *)rsalloc(sizeof(struct rootsim_list)); \
+				else \
+					__lmptr = (void *)umalloc((lid), sizeof(struct rootsim_list));\
 				bzero(__lmptr, sizeof(struct rootsim_list));\
 				__lmptr;\
 			})
@@ -82,6 +98,8 @@ struct rootsim_list {
 #define list_insert_tail(lid, list, data) \
 			(__typeof__(list))__list_insert_tail((lid), (list), sizeof *(list), (data))
 
+#define list_insert_tail_by_content(list, node) \
+			(__typeof__(list))__list_insert_tail_by_node((list), list_container_of(node))
 
 /// Insert a new node in the list. Refer to <__list_insert>() for a more thorough documentation.
 #define list_insert(lid, list, key_name, data) \
@@ -90,10 +108,10 @@ struct rootsim_list {
 /// Insert an existing node in the list. Refer to <__list_place>() for a more thorough documentation.
 #define list_place(lid, list, key_name, node) \
 			(__typeof__(list))__list_place((lid), (list), my_offsetof((list), key_name), (node))
-			
+
 #define list_place_by_content(lid, list, key_name, node) \
 			(__typeof__(list))__list_place((lid), (list), my_offsetof((list), key_name), list_container_of(node))
-			
+
 /// Remove a node in the list. Refer to <__list_delete>() for a more thorough documentation.
 #define list_delete(list, key_name, key_value) \
 		__list_delete((list), sizeof *(list), (double)(key_value), my_offsetof((list), key_name))
@@ -227,6 +245,7 @@ struct rootsim_list {
 
 extern char *__list_insert_head(unsigned int lid, void *li, unsigned int size, void *data);
 extern char *__list_insert_tail(unsigned int lid, void *li, unsigned int size, void *data);
+extern char *__list_insert_tail_by_node(void *li, struct rootsim_list_node* new_n);
 extern char *__list_insert(unsigned int lid, void *li, unsigned int size, size_t key_position, void *data);
 extern char *__list_extract(unsigned int lid, void *li, unsigned int size, double key, size_t key_position);
 extern bool __list_delete(unsigned int lid, void *li, unsigned int size, double key, size_t key_position);

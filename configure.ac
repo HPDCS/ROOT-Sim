@@ -5,11 +5,8 @@ AC_CONFIG_SRCDIR([src])
 AM_INIT_AUTOMAKE([-Wno-portability 1.10.1 -Wall foreign subdir-objects])
 
 AC_CONFIG_MACRO_DIR([m4])
-AC_USE_SYSTEM_EXTENSIONS
 
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
-
-
 
 # Debugging symbols or not?
 AC_ARG_ENABLE([debug],
@@ -20,11 +17,12 @@ AM_CONDITIONAL([DEBUG], [test x$enable_debug = xyes])
 
 # Setup compilation flags
 CFLAGS_COMMON="-std=c99 -fno-omit-frame-pointer -ffloat-store -fno-common -fstrict-aliasing -fgnu89-inline -rdynamic -lm -U_FORTIFY_SOURCE"
-CFLAGS_WARNINGS="-Wall -Wextra -Wswitch-enum -Wcast-align -Wpointer-arith -Wstrict-overflow=5 -Wstrict-prototypes -Winline -Wundef -Wnested-externs -Wshadow -Wunreachable-code -Wfloat-equal -Wredundant-decls -Wold-style-definition"
+CFLAGS_WARNINGS="-Wall -Wextra -Wcast-align -Wpointer-arith -Wstrict-overflow=5 -Wstrict-prototypes -Winline -Wundef -Wnested-externs -Wshadow -Wunreachable-code -Wfloat-equal -Wredundant-decls -Wold-style-definition -Wno-switch-enum"
 
 AS_IF([test x$enable_debug = xyes],
       [CFLAGS="-g3 -O0 $CFLAGS_COMMON $CFLAGS_WARNINGS"],
-      [CFLAGS="-O3 $CFLAGS_COMMON"])
+      [CFLAGS="-O3 $CFLAGS_COMMON"]
+      AC_DEFINE([NDEBUG]))
 
 
 AC_ARG_ENABLE([profile],
@@ -42,6 +40,27 @@ AS_IF([test "x$enable_profile" = "xyes"], [
 	CFLAGS="-pg $CFLAGS"
 ])
 
+
+AC_ARG_WITH([mpi],
+            AS_HELP_STRING([--with-mpi], [compile with MPI (parallelization) support. Default: no]),
+            [],
+            [with_mpi=no])
+
+AS_IF([test x"$with_mpi" != xno],[
+	# Find a suitable MPI compiler: from CC and MPICC var or autodiscovery
+	# Test the choosen compiler for MPI support.
+	AX_PROG_CC_MPI(,,[AC_MSG_FAILURE([Couldn't find any MPI compiler. Be sure that CC env variable is not set to an incompatible compiler])])
+	AC_DEFINE([HAS_MPI])
+	CFLAGS="$CFLAGS -DHAS_MPI"
+],[
+	# MPI was not requested, force gcc compiler
+	AC_PROG_CC([gcc])
+])
+
+# be sure to call this macro after the AX_PROG_CC_MPI cause it is implicitely
+# overwriting the CC envar
+AC_USE_SYSTEM_EXTENSIONS
+
 #----------------------------------------------------------------------------
 # Check for languages
 #----------------------------------------------------------------------------
@@ -52,7 +71,7 @@ AC_LANG([C])
 # Checks for programs.
 #----------------------------------------------------------------------------
 m4_pattern_allow([AM_PROG_AR])
-AC_PROG_CC([gcc])
+
 AC_PROG_MAKE_SET
 AC_PROG_MKDIR_P
 AC_PROG_CC_C_O
@@ -97,6 +116,8 @@ esac
 #----------------------------------------------------------------------------
 # Checks for C header files and libraries
 #----------------------------------------------------------------------------
+AC_CHECK_HEADER([valgrind/helgrind.h], [AC_DEFINE([HAVE_HELGRIND_H])])
+
 
 # Check for POSIX thread support
 AX_PTHREAD([], [AC_MSG_ERROR([PTHREAD support not found])])
@@ -122,14 +143,18 @@ AC_MSG_CHECKING([for supported host Operating System])
 
 case $host_os in
   linux*)
-        # Do something specific for linux
         AC_MSG_RESULT([yes, ${host_os}])
         AC_DEFINE([OS_LINUX])
+        ac_on_linux=yes
 	;;
   cygwin*)
-        # Do something specific for cygwin
         AC_MSG_RESULT([yes, ${host_os}])
-        AC_DEFINE([OS_CYGWIN])
+        AC_DEFINE([OS_WINDOWS])
+        AC_DEFINE([HAVE_CYGWIN])
+	;;
+  mingw*)
+        AC_MSG_RESULT([yes, ${host_os}])
+        AC_DEFINE([OS_WINDOWS])
 	;;
     *)
         #Default Case
@@ -149,7 +174,7 @@ esac
 AC_MSG_CHECKING([if assembler knows rdtsc instruction])
 
 AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[]], [[
-  do { 
+  do {
     unsigned int lo;
     unsigned int hi;
     __asm__ __volatile__ ("rdtsc" : "=a" (lo), "=d" (hi));
@@ -252,27 +277,6 @@ AS_IF([test "x$enable_ult" != "xno"], [
 ])
 
 
-# If our libtimestretch library is installed, then we can use Preemptive Time Warp
-AC_CHECK_LIB(timestretch, ts_start, [libtimestretch=yes], [libtimestretch=no])
-ac_preemption=no
-if test "x$libtimestretch" = "xyes" -a "x$enable_ult" != "xno"
-then
-        #
-        # We have found everything that we need, but the user can disable the subsystem
-        #
-
-	AC_ARG_ENABLE([preemption],
-	AS_HELP_STRING([--disable-preemption], [Disable Preemptive Time Warp)]))
-
-	AS_IF([test "x$enable_preemption" != "xno"], [
-		AC_DEFINE([HAVE_PREEMPTION])
-		ac_have_preemption=yes
-		CFLAGS="$CFLAGS -ltimestretch"
-	])
-fi
-
-
-
 # LP binding support
 AC_ARG_ENABLE([rebinding],
 AS_HELP_STRING([--disable-rebinding], [Disable LPs Rebinding (Enabled by default)]))
@@ -293,29 +297,126 @@ AS_IF([test "x$enable_allocator" != "xno"], [
 
 
 
-# If we are on a NUMA system, try to use the NUMA subsystem
-AC_CHECK_LIB(numa, numa_num_possible_nodes, [numa_cv_libnuma=yes], [numa_cv_libnuma=no])
-AC_CHECK_HEADER(numa.h, [numa_cv_numa_h=yes], [numa_cv_numa_h=no])
-AC_CHECK_PROG([numactl],[numactl],[yes],[no])
+#------------------------------------------------------------
+# Linux specific subsystems.
+# On other architectures all these checks are just skipped
+#------------------------------------------------------------
+ac_preemption=no
 ac_have_numa=no
+ac_have_cross_state=no
+ac_kernel_headers=no
+ac_disable_modules=yes
 
-if test "x$numa_cv_libnuma" = "xyes" -a "x$numa_cv_numa_h" = "xyes" -a "x$numactl" = "xyes" -a "x$ac_have_parallel_allocator" = "xyes"
+if test "x$ac_on_linux" = "xyes"
 then
-        #
-        # We have found everything that we need, but the user can disable the subsystem
-        #
 
-	AC_ARG_ENABLE([numa],
-	AS_HELP_STRING([--disable-numa], [Disable NUMA subsystem on NUMA machines (enabled by default)]))
+	# If our libtimestretch library is installed, then we can use Preemptive Time Warp
+	AC_CHECK_LIB(timestretch, ts_start, [libtimestretch=yes], [libtimestretch=no])
+	if test "x$libtimestretch" = "xyes" -a "x$enable_ult" != "xno"
+	then
+			#
+			# We have found everything that we need, but the user can disable the subsystem
+			#
 
-	AS_IF([test "x$enable_numa" != "xno"], [
-		AC_DEFINE([HAVE_NUMA])
-		ac_have_numa=yes
-		CFLAGS="$CFLAGS -lnuma"
+		AC_ARG_ENABLE([preemption],
+		AS_HELP_STRING([--disable-preemption], [Disable Preemptive Time Warp)]))
+
+		AS_IF([test "x$enable_preemption" != "xno"], [
+			AC_DEFINE([HAVE_PREEMPTION])
+			ac_have_preemption=yes
+			CFLAGS="$CFLAGS -ltimestretch"
+		])
+	fi
+
+	# If we are on a NUMA system, try to use the NUMA subsystem
+	AC_CHECK_LIB(numa, numa_num_possible_nodes, [numa_cv_libnuma=yes], [numa_cv_libnuma=no])
+	AC_CHECK_HEADER(numa.h, [numa_cv_numa_h=yes], [numa_cv_numa_h=no])
+	AC_CHECK_PROG([numactl],[numactl],[yes],[no])
+
+	if test "x$numa_cv_libnuma" = "xyes" -a "x$numa_cv_numa_h" = "xyes" -a "x$numactl" = "xyes" -a "x$ac_have_parallel_allocator" = "xyes"
+	then
+			#
+			# We have found everything that we need, but the user can disable the subsystem
+			#
+
+		AC_ARG_ENABLE([numa],
+		AS_HELP_STRING([--disable-numa], [Disable NUMA subsystem on NUMA machines (enabled by default)]))
+
+		AS_IF([test "x$enable_numa" != "xno"], [
+			AC_DEFINE([HAVE_NUMA])
+			ac_have_numa=yes
+			CFLAGS="$CFLAGS -lnuma"
+		])
+	fi
+
+
+	# Event Cross State dependency manager
+	AC_ARG_ENABLE([ecs],
+	AS_HELP_STRING([--disable-ecs], [Disable Event Cross-State Management (Enabled by default on linux)]))
+
+	AS_IF([test "x$enable_ecs" != "xno"], [
+		AC_DEFINE([HAVE_CROSS_STATE])
+		ac_have_cross_state=yes
 	])
-fi
+
+	# Test for linux headers, to compile kernel modules
+	ac_kernel_headers=no
+	AC_CHECK_HEADERS([linux/ioctl.h],
+		[ac_kernel_headers=yes])
+
+	if test "x$ac_kernel_headers" = "xyes"
+	then
+		# Configure kernel module paths
+		AC_SUBST([with_kernel], [`uname -r`])
+		AC_SUBST([with_kernel_mod], [/lib/modules/$with_kernel/extra])
+		AC_SUBST([KERNEL_SRC], [/lib/modules/$with_kernel/build])
+		AC_SUBST([KERNEL_MOD], [$with_kernel_mod])
+	fi
+
+	# We might want to disable all kernel modules explicitly. This is useful, for example,
+	# when installing the simulator in a per-user space, in a system where the modules
+	# were already installed. Using the --disable-modules won't compile nor try to
+	# install any module.
+	AC_ARG_ENABLE([modules],
+		AS_HELP_STRING([--disable-modules], [Disable compilation/installation of kernel modules]))
+
+	ac_disable_modules=no
+	AS_IF([test "x$enable_modules" = "xno"], [
+		ac_disable_modules=yes
+		ac_kernel_headers=no
+	])
+
+	# Per-module checks. To be run only if we are on Linux and kernel headers are available
+	if test "x$ac_kernel_headers" = "xyes"
+	then
+
+		# Get finish_task_switch in the current kernel
+		AC_MSG_CHECKING([for finish_task_switch in the current kernel])
+		fts_line=$($GREP -n finish_task_switch /boot/System.map-$(uname -r) | $SED 's/:.*//')
+		finish_task_switch=$($SED "${fts_line}q;d" /boot/System.map-$(uname -r) | $SED 's/ .*//')
+		if test -z "$finish_task_switch"; then
+				AC_MSG_ERROR([Address of finish_task_switch not found in kernel map])
+		fi
+		AC_MSG_RESULT([found at 0x$finish_task_switch])
+		AC_SUBST([FTS_ADDR], [0x$finish_task_switch])
+
+		# Get function after finish_task_switch in the current kernel
+		AC_MSG_CHECKING([the address of function next to finish_task_switch in the current kernel])
+		let fts_line=$fts_line+1
+		finish_task_switch_next=$($SED "${fts_line}q;d" /boot/System.map-$(uname -r) | $SED 's/ .*//')
+		if test -z "$finish_task_switch_next"; then
+				AC_MSG_ERROR([Address of function aftr finish_task_switch not found in kernel map])
+		fi
+		AC_MSG_RESULT([found at 0x$finish_task_switch_next])
+		AC_SUBST([FTS_ADDR_NEXT], [0x$finish_task_switch_next])
 
 
+	fi # closes the global Linux kernel headers availability check
+
+fi # Closes che global check for Linux availability
+
+# This instructs the Makefile to build kernel modules only when possible
+AM_CONDITIONAL([NO_KERNEL_MODULES], [test "x$ac_disable_modules" = "xyes"])
 
 #----------------------------------------------------------------------------
 # Check scripts sizes.
@@ -335,7 +436,11 @@ AC_MSG_RESULT([ok])
 
 # Generate Makefiles for all these subfolders
 #AC_OUTPUT
-AC_CONFIG_FILES([Makefile man/Makefile scripts/Makefile src/Makefile])
+AC_CONFIG_FILES([Makefile
+		 man/Makefile
+		 scripts/Makefile
+		 src/Makefile
+		 src/arch/linux/modules/Makefile])
 AC_OUTPUT
 
 
@@ -386,6 +491,13 @@ else
 	ac_enable_ult="Disabled"
 fi
 
+# Compose the message regarding mpi
+if test x"$with_mpi" != xno
+then
+	enable_mpi="Enabled (compiler: $CC)"
+else
+	enable_mpi="Disable"
+fi
 
 # Compose the message regarding the Parallel Allocator
 if test "x$ac_have_parallel_allocator" = "xyes"
@@ -415,20 +527,20 @@ else
 	then
 		numa_subsystem="${numa_subsystem}libnuma "
 	fi
-	
+
 	if test "x$numa_cv_numa_h" = "xno"
 	then
 		numa_subsystem="${numa_subsystem}numa.h "
 	fi
-	
-	if test "x$numactl" = "xno" 
+
+	if test "x$numactl" = "xno"
 	then
 		numa_subsystem="${numa_subsystem}numactl "
 	fi
-	
+
 	numa_subsystem="${numa_subsystem}not found)"
-	
-	if test "x$numa_cv_libnuma" = "xyes" -a "x$numa_cv_numa_h" = "xyes" -a "x$numactl" = "xyes" 
+
+	if test "x$numa_cv_libnuma" = "xyes" -a "x$numa_cv_numa_h" = "xyes" -a "x$numactl" = "xyes"
 	then
 		numa_subsystem="Disabled (manually excluded)"
 	fi
@@ -461,6 +573,40 @@ else
 fi
 
 
+# Compose the message regarding ECS
+if test "x$ac_have_cross_state" = "xyes"
+then
+	ac_ecs="Enabled by default on linux (use --disable-ecs if not wanted)"
+else
+	ac_ecs="Disabled"
+	if test "x$ac_on_linux" = "xyes"
+	then
+		if test "x$ac_kernel_headers" = "xyes"
+		then
+			ac_ecs="${ac_ecs} by the user"
+		else
+			ac_ecs="${ac_ecs} (linux kernel headers not found)"
+		fi
+	else
+		ac_ecs="${ac_ecs} (requires linux)"
+	fi
+fi
+
+
+# Compose message to tell whether modules are disabled
+if test "x$ac_disable_modules" = "xyes"
+then
+	ac_modules="Kernel modules compilation/installation disabled"
+	if test "x$ac_on_linux" = "xyes"
+	then
+		ac_modules="${ac_modules} via --disable-modules"
+	else
+		ac_modules="${ac_modules} on a non-Linux system"
+	fi
+else
+	ac_modules="Kernel modules will be compiled and installed (disable via --disable-modules)"
+fi
+
 
 cat<<EOF
 
@@ -470,11 +616,11 @@ cat<<EOF
 CPU Architecture.......... : ${current_cpu}
 Operating System.......... : ${host_os}
 Debugging Support......... : ${enable_debug}
+MPI....................... : ${enable_mpi}
 User-Level Threads........ : ${ac_enable_ult}
 Parallel Allocator........ : ${ac_parallel_allocator}
 NUMA Subsystem............ : ${numa_subsystem}
 LP Preemption Support..... : ${ac_preemption}
 LP Rebinding.............. : ${ac_lp_rebinding}
-
 
 EOF

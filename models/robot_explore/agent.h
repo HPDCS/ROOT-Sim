@@ -82,22 +82,16 @@ static char *direction_name(unsigned int direction) {
 	switch(direction) {
 		case NE:
 			return "NE";
-			break;
 		case E:
 			return "E";
-			break;
 		case SE:
 			return "SE";
-			break;
 		case SW:
 			return "SW";
-			break;
 		case W:
 			return "W";
-			break;
 		case NW:
 			return "NW";
-			break;
 	}
 	return "UNKNOWN";
 }
@@ -402,7 +396,7 @@ void AgentProcessEvent(int me, simtime_t now, int event_type, event_content_type
 				printf("ERRORE\n");
 				abort();
 			}
-			timestamp = now + Expent(TIME_STEP);
+			timestamp = now + Expent(TIME_STEP) + 0.0000001;
 
 			ScheduleNewEvent(me, timestamp, REGION_IN, &new_event, sizeof(event_content_type));
 			break;

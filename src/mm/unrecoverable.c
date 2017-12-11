@@ -50,10 +50,9 @@ static malloc_state **unrecoverable_state;
 
 void unrecoverable_init(void) {
 	unsigned int i;
+	unrecoverable_state = rsalloc(sizeof(malloc_state *) * n_prc * n_ker);
 
-	unrecoverable_state = rsalloc(sizeof(malloc_state *) * n_prc);
-
-	for(i = 0; i < n_prc; i++){
+	for(i = 0; i < n_prc * n_ker; i++){
 		unrecoverable_state[i] = rsalloc(sizeof(malloc_state));
 		if(unrecoverable_state[i] == NULL)
 			rootsim_error(true, "Unable to allocate memory on malloc init");
@@ -64,10 +63,11 @@ void unrecoverable_init(void) {
 
 
 void unrecoverable_fini(void) {
+/*
 	unsigned int i, j;
 	malloc_area *current_area;
-	
-/*	for(i = 0; i < n_prc; i++) {
+
+	for(i = 0; i < n_prc; i++) {
 		for (j = 0; j < (unsigned int)unrecoverable_state[i]->num_areas; j++) {
 			current_area = &(unrecoverable_state[i]->areas[j]);
 			if (current_area != NULL) {
@@ -95,12 +95,16 @@ void *umalloc(unsigned int lid, size_t s) {
 
 	return do_malloc(lid, unrecoverable_state[lid], s);
 	#else
+	(void)lid;
 	return rsalloc(s);
 	#endif
 }
 
 
 void ufree(unsigned int lid, void *ptr) {
+	
+//	printf("id of process requesting ufree: GID: %d LID: %d\n",LidToGid(lid),lid);
+	
 	if(rootsim_config.serial) {
 		rsfree(ptr);
 		return;
@@ -111,20 +115,28 @@ void ufree(unsigned int lid, void *ptr) {
 		rsfree(ptr);
 		return;
 	}
+		
+/*	if(lid >=n_prc){
+		printf("kernel is: %d LP is %d (%d) belonging to kernel: %d, try to change recoverable[%d] to recoverable[%d]: %p\n",kid,lid,GidToLid(lid),GidToKernel(lid),lid,GidToLid(lid),unrecoverable_state[GidToLid(lid)]);
+		fflush(stdout);
+		do_free(GidToLid(lid), unrecoverable_state[GidToLid(lid)], ptr);
+		return;
+	}else*/
 
 	do_free(lid, unrecoverable_state[lid], ptr);
 	#else
+	(void)lid;
 	rsfree(ptr);
 	#endif
 }
 
 
 void *urealloc(unsigned int lid, void *ptr, size_t new_s) {
-	
+
 	void *new_buffer;
 	size_t old_size;
 	malloc_area *m_area;
-	
+
 	// If ptr is NULL realloc is equivalent to the malloc
 	if (ptr == NULL) {
 		return umalloc(lid, new_s);
@@ -168,3 +180,5 @@ void *ucalloc(unsigned int lid, size_t nmemb, size_t size) {
 
 	return buffer;
 }
+
+

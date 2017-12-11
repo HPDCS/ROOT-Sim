@@ -148,11 +148,6 @@ void base_init(void) {
 		}
 	}
 
-	// TODO: questo va rimesso a posto quando ci rilanciamo sul distribuito
-	for (i = n_prc; i < n_prc_tot; i++) {
-		to_gid[i] = -1;
-	}
-
 	atexit(exit_from_simulation_model);
 }
 

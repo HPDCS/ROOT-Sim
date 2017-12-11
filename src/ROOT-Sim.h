@@ -127,10 +127,6 @@ unsigned int FindReceiver(int topology);
 // Returns -1 is a movement is not possible according to the given topology
 int GetReceiver(int topology, int direction);
 
-
-
-
-
 // Expose to the application level the command line parameter parsers
 int GetParameterInt(void *args, char *name);
 float GetParameterFloat(void *args, char *name);
@@ -138,11 +134,6 @@ double GetParameterDouble(void *args, char *name);
 bool GetParameterBool(void *args, char *name);
 char *GetParameterString(void *args, char *name);
 bool IsParameterPresent(void *args, char *name);
-
-
-// TODO: DA TOGLIERE, ERA ESPOSTO PER DEBUGGING!
-void __trace_input_queue(char *, int, unsigned int);
-
 
 // Expose to the application level the rollbackable numerical library
 double Random(void);
@@ -153,7 +144,6 @@ double Normal(void);
 double Gamma(int ia);
 double Poisson(void);
 int Zipf(double skew, int limit);
-
 
 // ROOT-Sim core API
 extern void (*ScheduleNewEvent)(unsigned int receiver, simtime_t timestamp, unsigned int event_type, void *event_content, unsigned int event_size);

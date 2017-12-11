@@ -31,12 +31,12 @@
 #include <core/core.h>
 #include <core/timer.h>
 #include <datatypes/list.h>
-#include <gvt/gvt.h>
 #include <scheduler/process.h>
 #include <scheduler/binding.h>
 #include <statistics/statistics.h>
+#include <gvt/gvt.h>
 
-#include <mm/allocator.h>
+#include <mm/numa.h>
 #include <arch/thread.h>
 
 
@@ -60,15 +60,17 @@ static __thread bool first_lp_binding = true;
  */
 __thread LP_state **LPS_bound = NULL;
 
-static timer rebinding_timer;
 
 static unsigned int *new_LPS_binding;
+static timer rebinding_timer;
+
+#ifdef HAVE_LP_REBINDING
+static int binding_acquire_phase = 0;
+static __thread int local_binding_acquire_phase = 0;
 
 static int binding_phase = 0;
 static __thread int local_binding_phase = 0;
-
-static int binding_acquire_phase = 0;
-static __thread int local_binding_acquire_phase = 0;
+#endif
 
 static atomic_t worker_thread_reduction;
 
@@ -94,6 +96,7 @@ static inline void LPs_block_binding(void) {
 	n_prc_per_thread = 0;
 	i = 0;
 	offset = 0;
+
 	while (i < n_prc) {
 		j = 0;
 		while (j < buf1) {
@@ -112,9 +115,6 @@ static inline void LPs_block_binding(void) {
 	}
 }
 
-
-
-
 /**
 * Convenience function to compare two elements of struct lp_cost_id.
 * This is used for sorting the LP vector in LP_knapsack()
@@ -132,9 +132,6 @@ static int compare_lp_cost(const void *a, const void *b) {
 
 	return ( B->workload_factor - A->workload_factor );
 }
-
-
-
 
 /**
 * Implements the knapsack load sharing policy in:
@@ -201,9 +198,9 @@ static inline void LP_knapsack(void) {
 			j = (j + 1) % n_cores;
 		}
 	}
-
 }
 
+#ifdef HAVE_LP_REBINDING
 
 static void post_local_reduction(void) {
 	unsigned int i;
@@ -219,7 +216,6 @@ static void post_local_reduction(void) {
 	}
 }
 
-
 static void install_binding(void) {
 	unsigned int i;
 
@@ -233,7 +229,7 @@ static void install_binding(void) {
 			if(local_tid != LPS[i]->worker_thread) {
 
 				#ifdef HAVE_NUMA
-				move_request(i, get_numa_node(running_core()));
+				numa_move_request(i, get_numa_node(running_core()));
 				#endif
 
 				LPS[i]->worker_thread = local_tid;
@@ -241,6 +237,8 @@ static void install_binding(void) {
 		}
 	}
 }
+
+#endif
 
 
 /**
@@ -269,6 +267,7 @@ void rebind_LPs(void) {
 
 		if(master_thread()) {
 			new_LPS_binding = rsalloc(sizeof(int) * n_prc);
+
 			lp_cost = rsalloc(sizeof(struct lp_cost_id) * n_prc);
 
 			atomic_set(&worker_thread_reduction, n_cores);
@@ -282,8 +281,12 @@ void rebind_LPs(void) {
 		if(timer_value_seconds(rebinding_timer) >= REBIND_INTERVAL) {
 			timer_restart(rebinding_timer);
 			binding_phase++;
-		} else if(atomic_read(&worker_thread_reduction) == 0) {
+		}
+
+		if(atomic_read(&worker_thread_reduction) == 0) {
+
 			LP_knapsack();
+
 			binding_acquire_phase++;
 		}
 	}
@@ -296,6 +299,7 @@ void rebind_LPs(void) {
 
 	if(local_binding_acquire_phase < binding_acquire_phase) {
 		local_binding_acquire_phase = binding_acquire_phase;
+
 		install_binding();
 
 		#ifdef HAVE_PREEMPTION
@@ -305,8 +309,8 @@ void rebind_LPs(void) {
 		if(thread_barrier(&all_thread_barrier)) {
 			atomic_set(&worker_thread_reduction, n_cores);
 		}
+
 	}
 #endif
 }
-
 

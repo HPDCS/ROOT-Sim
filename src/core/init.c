@@ -44,10 +44,12 @@
 #include <scheduler/scheduler.h>
 #include <mm/state.h>
 #include <mm/dymelor.h>
-#include <core/backtrace.h>
 #include <statistics/statistics.h>
 #include <lib/numerical.h>
 #include <serial/serial.h>
+#ifdef HAS_MPI
+#include <communication/mpi.h>
+#endif
 
 
 /// This variable keeps the executable's name
@@ -101,7 +103,6 @@ static int parse_cmd_line(int argc, char **argv) {
 
 	// Store the predefined values, before reading any overriding one
 	rootsim_config.output_dir = DEFAULT_OUTPUT_DIR;
-	rootsim_config.backtrace = false;
 	rootsim_config.gvt_time_period = 1000;
 	rootsim_config.scheduler = SMALLEST_TIMESTAMP_FIRST;
 	rootsim_config.checkpointing = INVALID_STATE_SAVING;
@@ -257,10 +258,6 @@ static int parse_cmd_line(int argc, char **argv) {
 				}
 				break;
 
-			case OPT_BACKTRACE:
-				rootsim_config.backtrace = true;
-				break;
-
 			case OPT_DETERMINISTIC_SEED:
 				rootsim_config.deterministic_seed = true;
 				break;
@@ -358,10 +355,22 @@ static int parse_cmd_line(int argc, char **argv) {
 * @param argv array of parameters passed at command line
 */
 void SystemInit(int argc, char **argv) {
-
-	n_ker = 1;
-
 	register int w;
+
+	#ifdef HAS_MPI
+	mpi_init(&argc, &argv);
+
+	if(n_ker > MAX_KERNELS){
+		rootsim_error(true, "Too many kernels, maximum supported number is %u\n", MAX_KERNELS);
+	}
+	#else
+	n_ker = 1;
+	#endif
+
+	// Early initialization of ECS subsystem if needed
+	#ifdef HAVE_CROSS_STATE
+	ecs_init();
+	#endif
 
 	// Parse the argument passed at command line, to initialize the internal configuration
 	w = parse_cmd_line(argc, argv);
@@ -375,20 +384,15 @@ void SystemInit(int argc, char **argv) {
 	while (argv[w] != NULL && (argv[w][0] == '\0' || argv[w][0] == ' ')) {
 		w++;
 	}
-	model_parameters.size = argc - w;
+	model_parameters.size = argc - w + sizeof(char *);
 	model_parameters.arguments = &argv[w];
-
-	// Initialize the backtrace handler if required
-	if(rootsim_config.backtrace && master_kernel() && master_thread()) {
-		INIT_BACKTRACE();
-	}
 
 	// If we're going to run a serial simulation, configure the simulation to support it
 	if(rootsim_config.serial) {
 		SetState = SerialSetState;
 		ScheduleNewEvent = SerialScheduleNewEvent;
 		numerical_init();
-		dymelor_init();
+		//dymelor_init();
 		statistics_init();
 		serial_init(argc, model_parameters.arguments, model_parameters.size);
 		return;
@@ -403,10 +407,14 @@ void SystemInit(int argc, char **argv) {
 		 printf("****************************\n"
 			"*  ROOT-Sim Configuration  *\n"
 			"****************************\n"
+			"Kernels: %u\n"
 			"Cores: %ld available, %d used\n"
 			"Number of Logical Processes: %u\n"
 			"Output Statistics Directory: %s\n"
 			"Scheduler: %d\n"
+			#ifdef HAS_MPI
+			"MPI multithread support: %s\n"
+			#endif
 			"GVT Time Period: %.2f seconds\n"
 			"Checkpointing Type: %d\n"
 			"Checkpointing Period: %d\n"
@@ -416,11 +424,15 @@ void SystemInit(int argc, char **argv) {
 			"Check Termination Mode: %d\n"
 			"Blocking GVT: %d\n"
 			"Set Seed: %ld\n",
+			n_ker,
 			get_cores(),
 			n_cores,
 			n_prc_tot,
 			rootsim_config.output_dir,
 			rootsim_config.scheduler,
+			#ifdef HAS_MPI
+			((mpi_support_multithread)? "yes":"no"),
+			#endif
 			rootsim_config.gvt_time_period / 1000.0,
 			rootsim_config.checkpointing,
 			rootsim_config.ckpt_period,
@@ -437,20 +449,17 @@ void SystemInit(int argc, char **argv) {
 	// Initialize ROOT-Sim subsystems.
 	// All init routines are executed serially (there is no notion of threads in there)
 	// and the order of invocation can matter!
+
 	base_init();
 	statistics_init();
 	scheduler_init();
-	communication_init();
 	dymelor_init();
+	communication_init();
 	gvt_init();
 	numerical_init();
 
 	// This call tells the simulation engine that the sequential initial simulation is complete
 	initialization_complete();
 }
-
-
-
-
 
 

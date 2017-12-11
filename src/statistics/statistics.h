@@ -74,6 +74,7 @@
 /* Definition of Global Statistics Post Messages */
 #define STAT_SIM_START		1001
 #define STAT_GVT		1002
+#define STAT_GVT_ROUND_TIME 1003
 
 
 /* Definition of Thread Statistics Get Messages */
@@ -105,6 +106,9 @@ struct stat_t {
 		memory_usage,
 		gvt_computations,
 		gvt_time,
+		gvt_round_time_min,
+		gvt_round_time_max,
+		gvt_round_time,
 		simtime_advancement;
 };
 

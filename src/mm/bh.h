@@ -18,30 +18,39 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file mapmove.h
-* @brief 
+* @file bh.h
+* @brief
 * @author Francesco Quaglia
 */
 
 #pragma once
-#ifndef _MAPMOVE_H
-#define _MAPMOVE_H
+#ifndef _BH_H
+#define _BH_H
 
-#ifdef HAVE_NUMA
+#include <core/core.h>
 
-#include <stdbool.h>
+struct _map {
+	msg_t		* volatile *buffer;
+	volatile unsigned int	size;
+	volatile unsigned int	written;
+	volatile unsigned int	read;
+};
 
-#define SLEEP_PERIOD 3 //this is defined in seconds
-#define NUMA_NODES   8 //numer of handled numa nodes
+struct _bhmap {
+	struct _map	* volatile maps[2];
+	spinlock_t	read_lock;
+	spinlock_t	write_lock;
+};
 
-#define unlikelynew(x)  (x!=-1)
+// These are used to simplify reading the code
+#define M_WRITE	0
+#define M_READ	1
 
-void * background_work( void* );
-int verify( int );
-void move_BH(int , unsigned );
-bool is_moving(void);
+#define INITIAL_BH_SIZE 1024
 
-#endif /* HAVE_NUMA */
+extern bool BH_init(void);
+extern void BH_fini(void);
+extern void insert_BH(int, msg_t *);
+extern void *get_BH(unsigned int);
 
-#endif /* _MAPMOVE_H */
-
+#endif /* _BH_H */

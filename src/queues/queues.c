@@ -37,12 +37,12 @@
 #include <queues/queues.h>
 #include <mm/state.h>
 #include <mm/dymelor.h>
-#include <mm/allocator.h>
+#include <mm/bh.h>
 #include <scheduler/scheduler.h>
 #include <communication/communication.h>
+#include <communication/gvt.h>
 #include <statistics/statistics.h>
 #include <gvt/gvt.h>
-
 
 
 /**
@@ -124,6 +124,8 @@ msg_t *advance_to_next_event(unsigned int lid) {
 		}
 	}
 
+//	printf("\t \t LP:%d bound->timestamp: %f type:%d sender:%d\n",lid,LPS[lid]->bound->timestamp,LPS[lid]->bound->type,LPS[lid]->bound->sender);
+
 	return LPS[lid]->bound;
 }
 
@@ -144,10 +146,11 @@ msg_t *advance_to_next_event(unsigned int lid) {
 * @param msg The message to be added into some LP's bottom half.
 */
 void insert_bottom_half(msg_t *msg) {
-
 	unsigned int lid = GidToLid(msg->receiver);
 
-	insert_BH(lid, msg, sizeof(msg_t));
+	validate_msg(msg);
+
+	insert_BH(lid, msg);
 	#ifdef HAVE_PREEMPTION
 	update_min_in_transit(LPS[lid]->worker_thread, msg->timestamp);
 	#endif
@@ -166,29 +169,27 @@ void insert_bottom_half(msg_t *msg) {
 void process_bottom_halves(void) {
 	unsigned int i;
 	unsigned int lid_receiver;
+
 	msg_t *msg_to_process;
 	msg_t *matched_msg;
 
-	//~ list(msg_t) processing;
+restart:
 
 	for(i = 0; i < n_prc_per_thread; i++) {
 
-		//~ spin_lock(&LPS_bound[i]->lock);
-		//~ processing = LPS_bound[i]->bottom_halves;
-		//~ LPS_bound[i]->bottom_halves = new_list(msg_t);
-		//~ spin_unlock(&LPS_bound[i]->lock);
-
-		//~ while(!list_empty(processing)) {
-			//~ msg_to_process = list_head(processing);
-
 		while((msg_to_process = (msg_t *)get_BH(LPS_bound[i]->lid)) != NULL) {
-
 			lid_receiver = GidToLid(msg_to_process->receiver);
+			
+			if(msg_to_process->timestamp < get_last_gvt())
+				printf("ERRORE\n");
 
-			// TODO: reintegrare per ECS
-			//~ if(!receive_control_msg(msg_to_process)) {
-				//~ goto expunge_msg;
-			//~ }
+			// Handle control messages
+			if(!receive_control_msg(msg_to_process)) {
+				//printf("Control lid:%d type:%d timestamp:%f\n",msg_to_process->receiver,msg_to_process->type,msg_to_process->timestamp);
+				list_deallocate_node_buffer(lid_receiver, msg_to_process);
+				goto restart;
+//				continue;
+			}
 
 			switch (msg_to_process->message_kind) {
 
@@ -203,12 +204,19 @@ void process_bottom_halves(void) {
 						matched_msg = list_prev(matched_msg);
 					}
 
+//					if(matched_msg->type == RENDEZVOUS_START) {
+//						printf("matched START from %d to %d mark %llu rendezvous_mark %llu\n", matched_msg->sender, matched_msg->receiver, matched_msg->mark, matched_msg->rendezvous_mark);
+//					}
+
 					if(matched_msg == NULL) {
 						rootsim_error(false, "LP %d Received an antimessage with mark %llu at LP %u from LP %u, but no such mark found in the input queue!\n", LPS_bound[i]->lid, msg_to_process->mark, msg_to_process->receiver, msg_to_process->sender);
 						printf("Message Content:"
 							"sender: %d\n"
 							"receiver: %d\n"
 							"type: %d\n"
+							#ifdef HAS_MPI
+							"red_colored: %u\n"
+							#endif
 							"timestamp: %f\n"
 							"send time: %f\n"
 							"is antimessage %d\n"
@@ -217,6 +225,9 @@ void process_bottom_halves(void) {
 							msg_to_process->sender,
 							msg_to_process->receiver,
 							msg_to_process->type,
+							#ifdef HAS_MPI
+							msg_to_process->colour,
+							#endif
 							msg_to_process->timestamp,
 							msg_to_process->send_time,
 							msg_to_process->message_kind,
@@ -228,14 +239,24 @@ void process_bottom_halves(void) {
 
 						// If the matched message is in the past, we have to rollback
 						if(matched_msg->timestamp <= lvt(lid_receiver)) {
+						// TODO understand if is correct IDLE_PROCESS
+//							if(matched_msg->type == RENDEZVOUS_START) {
+//								printf("straggler START antimessage mark %llu rmark %llu\n", matched_msg->mark, matched_msg->rendezvous_mark);
+//							}
+
 							LPS[lid_receiver]->bound = list_prev(matched_msg);
-							while ((LPS[lid_receiver]->bound != NULL) &&
-							       D_EQUAL(LPS[lid_receiver]->bound->timestamp, msg_to_process->timestamp)){
+							while((LPS[lid_receiver]->bound != NULL) &&
+									D_EQUAL(LPS[lid_receiver]->bound->timestamp, msg_to_process->timestamp)){
 								LPS[lid_receiver]->bound = list_prev(LPS[lid_receiver]->bound);
 							}
+
 							LPS[lid_receiver]->state = LP_STATE_ROLLBACK;
+
 						}
 
+#ifdef HAS_MPI
+						register_incoming_msg(msg_to_process);
+#endif
 						// Delete the matched message
 						list_delete_by_content(matched_msg->sender, LPS[lid_receiver]->queue_in, matched_msg);
 
@@ -247,37 +268,38 @@ void process_bottom_halves(void) {
 				// It's a positive message
 				case positive:
 
-					list_place_by_content(lid_receiver, LPS[lid_receiver]->queue_in, timestamp, msg_to_process);
-
+					(void)list_place_by_content(lid_receiver, LPS[lid_receiver]->queue_in, timestamp, msg_to_process);
 					// Check if we've just inserted an out-of-order event
 					if(msg_to_process->timestamp < lvt(lid_receiver)) {
+
 						LPS[lid_receiver]->bound = list_prev(msg_to_process);
-						while ((LPS[lid_receiver]->bound != NULL) &&
-						       D_EQUAL(LPS[lid_receiver]->bound->timestamp, msg_to_process->timestamp)){
+						while((LPS[lid_receiver]->bound != NULL) &&
+								D_EQUAL(LPS[lid_receiver]->bound->timestamp, msg_to_process->timestamp)){
 							LPS[lid_receiver]->bound = list_prev(LPS[lid_receiver]->bound);
 						}
+
 						LPS[lid_receiver]->state = LP_STATE_ROLLBACK;
 					}
+#ifdef HAS_MPI
+					register_incoming_msg(msg_to_process);
+#endif
 					break;
 
-				// TODO: reintegrare per ECS
 				// It's a control message
-				//~ case other:
-					// Check if it is an anti control message
-					//~ if(!anti_control_message(msg_to_process)) {
-						//~ goto expunge_msg;
-					//~ }
-					//~ break;
+				case control:
 
-				case other:
+					// Check if it is an anti control message
+					if(!anti_control_message(msg_to_process)) {
+						list_deallocate_node_buffer(lid_receiver, msg_to_process);
+						continue;
+					}
+
+					break;
+
 				default:
 					rootsim_error(true, "Received a message which is neither positive nor negative. Aborting...\n");
 			}
-
-		    //~ expunge_msg:
-			//~ list_pop(msg_to_process->sender, processing);
 		}
-		//~ rsfree(processing);
 	}
 
 	// We have processed all in transit messages.
@@ -285,7 +307,7 @@ void process_bottom_halves(void) {
 	// be placed by other threads. In this case, we loose their presence.
 	// This is not a correctness error. The only issue could be that the
 	// preemptive scheme will not detect this, and some events could
-	// be in fact executed out of error.
+	// be in fact executed out of order.
 	#ifdef HAVE_PREEMPTION
 	reset_min_in_transit(local_tid);
 	#endif
@@ -314,3 +336,4 @@ unsigned long long generate_mark(unsigned int lid) {
 
 	return (unsigned long long)( ((k1 + k2) * (k1 + k2 + 1) / 2) + k2 );
 }
+

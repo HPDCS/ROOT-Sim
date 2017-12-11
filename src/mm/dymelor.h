@@ -47,7 +47,8 @@
  **************************************/
 
 
-
+//ADDED BY MAT 0x00000200000000000
+#define LP_PREALLOCATION_INITIAL_ADDRESS	(void *)0x0000008000000000
 #define MASK 0x00000001		// Mask used to check, set and unset bits
 
 
@@ -56,7 +57,7 @@
 #define BLOCK_SIZE sizeof(unsigned int)
 
 
-#define MIN_CHUNK_SIZE 32	// Size (in bytes) of the smallest chunk provideable by DyMeLoR
+#define MIN_CHUNK_SIZE 128	// Size (in bytes) of the smallest chunk provideable by DyMeLoR
 #define MAX_CHUNK_SIZE 4194304	// Size (in bytes) of the biggest one. Notice that if this number
 				// is too large, performance (and memory usage) might be affected.
 				// If it is too small, large amount of memory requests by the
@@ -64,11 +65,11 @@
 				// will fail, as DyMeLoR will not be able to handle them!
 
 #define NUM_AREAS (log2(MAX_CHUNK_SIZE) - log2(MIN_CHUNK_SIZE) + 1)			// Number of initial malloc_areas available (will be increased at runtime if needed)
-#define MAX_NUM_AREAS (NUM_AREAS * 4) 	// Maximum number of allocatable malloc_areas. If MAX_NUM_AREAS
+#define MAX_NUM_AREAS (NUM_AREAS * 32) 	// Maximum number of allocatable malloc_areas. If MAX_NUM_AREAS
 				// malloc_areas are filled at runtime, subsequent malloc() requests
 				// by the application level software will fail.
-#define MAX_LIMIT_NUM_AREAS 100
-#define MIN_NUM_CHUNKS 4096	// Minimum number of chunks per malloc_area
+#define MAX_LIMIT_NUM_AREAS MAX_NUM_AREAS
+#define MIN_NUM_CHUNKS 512	// Minimum number of chunks per malloc_area
 #define MAX_NUM_CHUNKS 4096	// Maximum number of chunks per malloc_area
 
 #define MAX_LOG_THRESHOLD 1.7	// Threshold to check if a malloc_area is underused TODO: retest
@@ -122,6 +123,8 @@
 #define RESET_BIT_AT(B,K) ( B &= ~(MASK << K) )
 #define CHECK_BIT_AT(B,K) ( B & (MASK << K) )
 
+#define POWEROF2(x) (1UL << (1 + (63 - __builtin_clzl((x) - 1))))
+#define IS_POWEROF2(x) ((x) != 0 && ((x) & ((x) - 1)) == 0)
 
 /// This structure let DyMeLoR handle one malloc area (for serving given-size memory requests)
 struct _malloc_area {
@@ -226,13 +229,11 @@ extern void *__wrap_realloc(void *, size_t);
 extern void *__wrap_calloc(size_t, size_t);
 extern void clean_buffers_on_gvt(unsigned int, simtime_t);
 
-
 // Unrecoverable Memory API
 extern void *umalloc(unsigned int, size_t);
 extern void ufree(unsigned int, void *);
 extern void *urealloc(unsigned int, void *, size_t);
 extern void *ucalloc(unsigned int, size_t nmemb, size_t size);
-
 
 /* Simulation Platform Memory APIs */
 extern inline void *rsalloc(size_t);
@@ -241,7 +242,7 @@ extern inline void *rsrealloc(void *, size_t);
 extern inline void *rscalloc(size_t, size_t);
 
 
-
+extern void ecs_init(void);
 
 extern malloc_state **recoverable_state;
 

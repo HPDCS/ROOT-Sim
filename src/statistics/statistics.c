@@ -247,11 +247,11 @@ static char *format_size(double size) {
 }
 
 
-static inline statistics_flush_gvt_buffer(void) {
+static inline void statistics_flush_gvt_buffer(void) {
 	FILE *f;
 
 	f = get_file(STAT_PER_THREAD, GVT_STAT);
-	fprintf(f, gvt_buffer.buff);
+	fprintf(f, "%s", gvt_buffer.buff);
 	fflush(f);
 	gvt_buffer.pos = 0;
 	gvt_buffer.buff[0] = '\0';
@@ -330,7 +330,7 @@ void statistics_stop(int exit_code) {
 			timer_start(simulation_finished);
 			total_time = timer_value_seconds(simulation_timer);
 		}
-		
+
 		/* Finish flushing GVT statistics */
 		statistics_flush_gvt_buffer();
 
@@ -513,6 +513,10 @@ void statistics_stop(int exit_code) {
 			fprintf(f, "IDLE CYCLES................ : %.0f\n",		system_wide_stats.idle_cycles);
 			fprintf(f, "LAST COMMITTED GVT ........ : %f\n",		get_last_gvt());
 			fprintf(f, "NUMBER OF GVT REDUCTIONS... : %.0f\n",		system_wide_stats.gvt_computations);
+			
+			fprintf(f, "MIN GVT ROUND TIME......... : %.2f us\n",    system_wide_stats.gvt_round_time_min);
+			fprintf(f, "MAX GVT ROUND TIME......... : %.2f us\n",	system_wide_stats.gvt_round_time_max);
+			fprintf(f, "AVERAGE GVT ROUND TIME..... : %.2f us\n",	system_wide_stats.gvt_round_time / system_wide_stats.gvt_computations);
 			fprintf(f, "SIMULATION TIME SPEED...... : %.2f units per GVT\n",system_wide_stats.simtime_advancement);
 			fprintf(f, "AVERAGE MEMORY USAGE....... : %s\n",		format_size(system_wide_stats.memory_usage / system_wide_stats.gvt_computations));
 			fprintf(f, "PEAK MEMORY USAGE.......... : %s\n",		format_size(getPeakRSS()));
@@ -566,7 +570,7 @@ static inline void statistics_flush_gvt(double gvt) {
 	// If we are using a higher level of statistics, buffer data and eventually dump on file
 	if(rootsim_config.stats == STATS_PERF || rootsim_config.stats == STATS_LP || rootsim_config.stats ==  STATS_ALL) {
 
-		snprintf(gvt_line, 512, "%f\t%f\t%d\t%d\n\0", exec_time, gvt, committed, cumulated);
+		snprintf(gvt_line, 512, "%f\t%f\t%d\t%d\n", exec_time, gvt, committed, cumulated);
 		gvt_line_len = strlen(gvt_line);
 
 		if(gvt_buffer.pos + gvt_line_len > GVT_BUFF_SIZE - 2) {
@@ -641,6 +645,11 @@ void statistics_init(void) {
 	bzero(lp_stats_gvt, n_prc * sizeof(struct stat_t));
 	thread_stats = rsalloc(n_cores * sizeof(struct stat_t));
 	bzero(thread_stats, n_cores * sizeof(struct stat_t));
+
+
+	system_wide_stats.gvt_round_time_min = INFTY;
+	system_wide_stats.gvt_round_time_max = 0;
+	system_wide_stats.gvt_round_time = 0;
 }
 
 
@@ -834,6 +843,16 @@ void statistics_post_other_data(unsigned int type, double data) {
 				lp_stats_gvt[lid].exponential_event_time = keep_exponential_event_time;
 			}
 			break;
+			
+
+		case STAT_GVT_ROUND_TIME:
+			if(data < system_wide_stats.gvt_round_time_min)
+				system_wide_stats.gvt_round_time_min = data;
+			if(data > system_wide_stats.gvt_round_time_max)
+				system_wide_stats.gvt_round_time_max = data;
+			system_wide_stats.gvt_round_time += data;
+			break;
+
 
 		default:
 			rootsim_error(true, "Wrong statistics post type: %d. Aborting...\n", type);

@@ -29,6 +29,7 @@
 // Do not compile anything here if we're not on an x86 machine!
 #if defined(ARCH_X86) || defined(ARCH_X86_64)
 
+#define printf(...)
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -254,6 +255,8 @@ inline unsigned int spin_lock(spinlock_t *s) {
 
         int count = -1;
 
+		//printf("TID %d locking on %p\n", tid, s);
+
         __asm__ __volatile__(
                 "1:\n\t"
                 "movl $1,%%eax\n\t"
@@ -266,6 +269,10 @@ inline unsigned int spin_lock(spinlock_t *s) {
                 : "eax", "memory"
         );
 
+#if (!defined(NDEBUG)) && defined(HAVE_HELGRIND_H)
+	ANNOTATE_RWLOCK_ACQUIRED(&((s)->lock), 1);
+#endif
+
         return (unsigned int)count;
 }
 
@@ -273,6 +280,13 @@ inline unsigned int spin_lock(spinlock_t *s) {
 #else
 
 inline void spin_lock_x86(spinlock_t *s) {
+		//printf("TID %d locking on %p\n", local_tid, s);
+
+		if(local_tid > 100) {
+			printf("WTFFFFFFFFFFFFFFFFFF!\n");
+			fflush(stdout);
+			abort();
+		}
 
 	__asm__ __volatile__(
 		"1:\n\t"
@@ -284,6 +298,12 @@ inline void spin_lock_x86(spinlock_t *s) {
 		: "m" (s->lock)
 		: "eax", "memory"
 	);
+		//printf("TID %d locked on %p\n", local_tid, s);
+
+#if (!defined(NDEBUG)) && defined(HAVE_HELGRIND_H)
+	ANNOTATE_RWLOCK_ACQUIRED(&((s)->lock), 1);
+#endif
+
 }
 #endif
 
@@ -329,6 +349,12 @@ inline bool spin_trylock_x86(spinlock_t *s) {
 */
 inline void spin_unlock_x86(spinlock_t *s) {
 
+
+#if (!defined(NDEBUG)) && defined(HAVE_HELGRIND_H)
+	ANNOTATE_RWLOCK_RELEASED(&((s)->lock), 1);
+#endif
+		//printf("TID %d unlocking on %p\n", tid, s);
+
 	__asm__ __volatile__(
 		"mov $0, %%eax\n\t"
 		LOCK "xchgl %%eax, %0"
@@ -336,6 +362,7 @@ inline void spin_unlock_x86(spinlock_t *s) {
 		: "m" (s->lock)
 		: "eax", "memory"
 	);
+		//printf("TID %d unlocked on %p\n", tid, s);
 }
 
 

@@ -31,7 +31,7 @@
 #define __OS_H
 
 
-#if defined(OS_LINUX) || defined(OS_CYGWIN)
+#if defined(OS_LINUX)
 
 #include <sched.h>
 #include <unistd.h>
@@ -58,9 +58,26 @@ static inline void set_affinity(int core) {
 	sched_setaffinity(0, sizeof(cpuset), &cpuset);
 }
 
+#elif defined(OS_WINDOWS)
 
-#else /* OS_LINUX || OS_CYGWIN */
-#error Currently supporting only Linux...
+#include <windows.h>
+
+#define get_cores() ({\
+			SYSTEM_INFO _sysinfo;\
+			GetSystemInfo( &_sysinfo );\
+			_sysinfo.dwNumberOfProcessors;\
+			})
+
+// How do we identify a thread?
+typedef HANDLE tid_t;
+
+/// Spawn a new thread
+#define new_thread(entry, arg)	CreateThread(NULL, 0, entry, arg, 0, &os_tid)
+
+#define set_affinity(core) SetThreadAffinityMask(GetCurrentThread(), 1<<core)
+
+#else /* OS_LINUX || OS_WINDOWS */
+#error Unsupported operating system
 #endif
 
 

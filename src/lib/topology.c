@@ -15,7 +15,12 @@ unsigned int FindReceiver(int topology) {
 	unsigned int ret;
  	double u;
 	bool invalid = false;
-	unsigned int sender = LidToGid(current_lp);
+	unsigned int sender;
+
+	if(rootsim_config.serial)
+		sender = current_lp;
+	else
+		sender = LidToGid(current_lp);
 
  	// These must be unsigned. They are not checked for negative (wrong) values,
  	// but they would overflow, and are caught by a different check.
@@ -145,9 +150,9 @@ unsigned int FindReceiver(int topology) {
 			receiver = (ny * edge + nx);
 
 			break;
-			
+
 		case TOPOLOGY_TORUS:
-		
+
 			// Convert linear coords to square coords
 			x = sender % edge;
 			y = sender / edge;
@@ -157,7 +162,7 @@ unsigned int FindReceiver(int topology) {
 				receiver = sender;
 				break;
 			}
-			
+
 			receiver = 4 * Random();
 			if(receiver == 4) {
 				receiver = 3;
@@ -183,16 +188,16 @@ unsigned int FindReceiver(int topology) {
 				default:
 					rootsim_error(true, "Met an impossible condition at %s:%d. Aborting...\n", __FILE__, __LINE__);
 			}
-			
+
 			// Check for wrapping around
 			if(nx >= edge)
 				nx = nx % edge;
 			if(ny >= edge)
 				ny = ny % edge;
-			
+
 			// Convert back to linear coordinates
 			receiver = (ny * edge + nx);
-		
+
 			break;
 
 
@@ -292,7 +297,7 @@ int GetReceiver(int topology, int direction) {
 				receiver = sender;
 				break;
 			}
-	
+
 			switch(direction) {
 				case DIRECTION_NW:
 					nx = (y % 2 == 0 ? x - 1 : x);
@@ -321,7 +326,7 @@ int GetReceiver(int topology, int direction) {
 				default:
 					goto out;
 			}
-			
+
 			if(nx >= edge || ny >= edge)
 				receiver = -1;
 			else
@@ -369,7 +374,7 @@ int GetReceiver(int topology, int direction) {
 				receiver = (ny * edge + nx);
 
 			break;
-			
+
 		case TOPOLOGY_TORUS:
 			// Convert linear coords to square coords
 			x = sender % edge;
@@ -401,16 +406,16 @@ int GetReceiver(int topology, int direction) {
 				default:
 					goto out;
 			}
-			
+
 			// Check for wrapping around
 			if(nx >= edge)
 				nx = nx % edge;
 			if(ny >= edge)
 				ny = ny % edge;
-			
+
 			// Convert back to linear coordinates
 			receiver = (ny * edge + nx);
-		
+
 			break;
 
 		case TOPOLOGY_BIDRING:

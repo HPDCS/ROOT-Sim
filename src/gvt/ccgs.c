@@ -31,6 +31,7 @@
 #include <mm/dymelor.h>
 #include <mm/state.h>
 #include <communication/communication.h>
+#include <communication/mpi.h>
 #include <gvt/ccgs.h>
 #include <scheduler/scheduler.h>
 #include <scheduler/process.h>
@@ -46,7 +47,11 @@ static bool lps_termination[MAX_LPs];
 
 
 inline bool ccgs_can_halt_simulation(void) {
+	#ifdef HAS_MPI
+	return (ccgs_completed_simulation && all_kernels_terminated());
+	#else
 	return ccgs_completed_simulation;
+	#endif
 }
 
 
@@ -55,9 +60,19 @@ void ccgs_reduce_termination(void) {
 	register unsigned int i;
 	bool termination = true;
 
+	/* Local termination:  all LPs need to be terminated */
 	for(i = 0; i < n_prc; i++) {
 		termination &= lps_termination[i];
 	}
+
+	#ifdef HAS_MPI
+	/* If terminated locally check for global termination
+	 * All other kernel need to terminated
+	 */
+	if(!ccgs_completed_simulation && termination){
+		broadcast_termination();
+	}
+	#endif
 
 	ccgs_completed_simulation = termination;
 }
@@ -126,6 +141,7 @@ void ccgs_compute_snapshot(state_t *time_barrier_pointer[], simtime_t gvt) {
 */
 
 		// Call the application to check termination
+//		printf("[%d] inside OnGVT CBP: %p\n",lid,LPS[lid]->current_base_pointer);
 		lps_termination[lid] = OnGVT[lid](LidToGid(lid), LPS[lid]->current_base_pointer);
 		check_res &= lps_termination[lid];
 

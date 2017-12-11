@@ -58,7 +58,7 @@ void preempt_init(void) {
 	for(i = 0; i < n_cores; i++) {
 		min_in_transit_lvt[i] = INFTY;
 	}
-	
+
 	// Try to get control over libtimestretch device file
 	ret = ts_open();
 	if(ret == TS_OPEN_ERROR) {
@@ -134,7 +134,7 @@ __thread bool rolling_back = false;
 void preempt(void) {
 
 //	return;
-	
+
 	if(rootsim_config.disable_preemption)
 		return;
 
@@ -160,7 +160,7 @@ void preempt(void) {
 		switch_to_platform_mode();
 		context_switch(&LPS[current_lp]->context, &kernel_context);
 	}
-	
+
 
 /*	if(!platform_mode && min_in_transit_lvt[local_tid] < current_lvt) {
 
@@ -192,7 +192,7 @@ void preempt(void) {
 	}
 */
 
-	
+
 }
 
 

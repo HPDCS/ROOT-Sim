@@ -1,8 +1,32 @@
-// setjmp / longjmp variant which saves all registers
+/**
+*			Copyright (C) 2008-2015 HPDCS Group
+*			http://www.dis.uniroma1.it/~hpdcs
+*
+*
+* This file is part of ROOT-Sim (ROme OpTimistic Simulator).
+*
+* ROOT-Sim is free software; you can redistribute it and/or modify it under the
+* terms of the GNU General Public License as published by the Free Software
+* Foundation; either version 3 of the License, or (at your option) any later
+* version.
+*
+* ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
+* WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+* A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+*
+* You should have received a copy of the GNU General Public License along with
+* ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
+* 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+*
+* @file jmp.h
+* @brief setjmp / longjmp variant which saves all registers
+* @author Alessandro Pellegrini
+* @date December, 2015
+*/
 
 #pragma once
-#ifndef _JMP_H
-#define _JMP_H
+
+#ifdef OS_LINUX
 
 /// This structure is used to maintain execution context for LPs' userspace threads
 typedef struct __exec_context_t {
@@ -25,7 +49,7 @@ typedef struct __exec_context_t {
 	unsigned long long r15;
 	unsigned long long rip;
 	unsigned long long flags;
-	
+
 	// Space for other registers
 	unsigned char others[512] __attribute__((aligned(16))); // fxsave wants 16-byte aligned memory
 } exec_context_t;
@@ -43,4 +67,5 @@ __attribute__ ((__noreturn__)) void _long_jmp(exec_context_t *env, long long val
 
 #define long_jmp(env, val)	_long_jmp(env, val)
 
-#endif /* _JMP_H */
+#endif /* OS_LINUX */
+

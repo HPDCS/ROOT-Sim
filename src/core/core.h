@@ -62,10 +62,6 @@
 /// Maximum number of LPs the simulator will handle
 #define MAX_LPs		16384		// This is 2^14
 
-/// Maximum event size (in bytes)
-#define MAX_EVENT_SIZE	128
-
-
 // XXX: this should be moved somewhere else...
 #define VERBOSE_INFO	1700
 #define VERBOSE_DEBUG	1701
@@ -125,22 +121,32 @@
 /// Macro to "legitimately" pun a type
 #define UNION_CAST(x, destType) (((union {__typeof__(x) a; destType b;})x).b)
 
-typedef enum {positive, negative, other} message_kind_t;
+typedef enum {positive, negative, control} message_kind_t;
+
+#ifdef HAS_MPI
+typedef unsigned char phase_colour;
+#endif
+
+/* The MPI datatype msg_mpi_t depends on the order of this struct. */
 
 /// Message Type definition
 typedef struct _msg_t {
 	// Kernel's information
 	unsigned int   		sender;
 	unsigned int   		receiver;
+	#ifdef HAS_MPI
+	phase_colour		colour;
+	#endif
 	int   			type;
+	message_kind_t		message_kind;
 	simtime_t		timestamp;
 	simtime_t		send_time;
-	message_kind_t		message_kind;
 	unsigned long long	mark;	/// Unique identifier of the message, used for antimessages
 	unsigned long long	rendezvous_mark;	/// Unique identifier of the message, used for rendez-vous events
-	// Application informations
-	char event_content[MAX_EVENT_SIZE];
+	int			alloc_tid; // TODO: this should be moved into an external container, to avoid transmitting it!
+	// Model data
 	int size;
+	unsigned char event_content[];
 } msg_t;
 
 
@@ -149,6 +155,10 @@ typedef struct _msg_hdr_t {
 	// Kernel's information
 	unsigned int   		sender;
 	unsigned int   		receiver;
+	// TODO: non serve davvero, togliere
+	int   			type;
+	unsigned long long	rendezvous_mark;	/// Unique identifier of the message, used for rendez-vous event
+	// TODO: fine togliere
 	simtime_t		timestamp;
 	simtime_t		send_time;
 	unsigned long long	mark;
