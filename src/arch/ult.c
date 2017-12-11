@@ -162,8 +162,8 @@ static void context_create_trampoline(int sig) {
 */
 void context_create(LP_context_t *context, void (*entry_point)(void *), void *args, void *stack, size_t stack_size) {
 	struct sigaction sa;
-	struct sigaltstack ss;
-	struct sigaltstack oss;
+	stack_t ss;
+	stack_t oss;
 
 	bzero((void *)&sa, sizeof(struct sigaction));
 	sa.sa_handler = context_create_trampoline;
