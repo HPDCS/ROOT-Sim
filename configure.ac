@@ -54,8 +54,8 @@ AC_USE_SYSTEM_EXTENSIONS
 # We don't simply use MPI, rather a fresh version which supports
 # newer asynchronous primitives, e.g. MPI_Ireduce_scatter_block.
 # We test here for the availability of such primitives
-AC_MSG_CHECKING([if MPI version has asynchronous primitives])
 AS_IF([test x"$with_mpi" = xyes],[
+	AC_MSG_CHECKING([if MPI version has asynchronous primitives])
 	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
 		#include <stdlib.h>
 		#include <mpi.h>
@@ -493,10 +493,15 @@ else
 	ac_enable_ult="Disabled"
 fi
 
-# Compose the message regarding mpi
-if test x"$with_mpi" != xno
+# Compose the message regarding MPI
+if test x"$enable_mpi" == xyes
 then
-	enable_mpi="Enabled (compiler: $CC)"
+	if test x"$with_mpi" == xyes
+	then
+		enable_mpi="Enabled (compiler: $CC)"
+	else
+		enable_mpi="Disabled (no MPI compiler found)"
+	fi
 else
 	enable_mpi="Disabled (enable with --enable-mpi)"
 fi
