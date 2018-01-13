@@ -28,6 +28,7 @@
 #ifndef __ULT_H
 #define __ULT_H
 
+#include <core/core.h>
 
 #ifdef ENABLE_ULT
 
@@ -58,8 +59,7 @@ typedef exec_context_t kernel_context_t;
 	if(set_jmp(context_old) == 0) \
 		long_jmp(context_new, 1)
 
-// Allocate ULT stack (in LP memory)
-extern void *get_ult_stack(unsigned int lid, size_t size);
+extern void *get_ult_stack(size_t size);
 
 #elif defined(OS_CYGWIN) || defined(OS_WINDOWS) /* OS_LINUX || OS_CYGWIN */
 

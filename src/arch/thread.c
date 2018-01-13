@@ -26,7 +26,7 @@
 
 #include <stdbool.h>
 #include <arch/thread.h>
-#include <core/core.h>
+#include <core/init.h>
 #include <mm/dymelor.h>
 
 static tid_t os_tid;
@@ -134,16 +134,9 @@ void create_threads(unsigned short int n, void *(*start_routine)(void*), void *a
 * @param t the number of threads which will synchronize on the barrier
 */
 void barrier_init(barrier_t *b, int t) {
-	b->reserved = 0;
 	b->num_threads = t;
 	thread_barrier_reset(b);
 }
-
-
-bool reserve_barrier(barrier_t *b) {
-	return atomic_test_and_set((int *)&b->reserved);
-}
-
 
 /**
 * This function synchronizes all the threads. After a thread leaves this function,

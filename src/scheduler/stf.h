@@ -22,12 +22,13 @@
 * @author Francesco Quaglia
 */
 
-
 #pragma once
 #ifndef _STF_H
 #define _STF_H
 
-extern unsigned int smallest_timestamp_first(void);
+#include <core/core.h>
+
+extern LID_t smallest_timestamp_first(void);
 
 #endif /* _SFT_H */
 

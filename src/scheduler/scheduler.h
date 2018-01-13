@@ -49,16 +49,16 @@
 extern void scheduler_init(void);
 extern void scheduler_fini(void);
 extern void schedule(void);
-extern void initialize_LP(unsigned int lp);
+extern void initialize_LP(LID_t lp);
 extern void initialize_worker_thread(void);
-extern void activate_LP(unsigned int lp, simtime_t lvt, void *evt, void *state);
+extern void activate_LP(LID_t lp, simtime_t lvt, void *evt, void *state);
 
 
 
 extern bool receive_control_msg(msg_t *);
 extern bool process_control_msg(msg_t *);
 extern bool reprocess_control_msg(msg_t *);
-extern void rollback_control_message(unsigned int, simtime_t);
+extern void rollback_control_message(LID_t, simtime_t);
 extern bool anti_control_message(msg_t * msg);
 
 #ifdef HAVE_PREEMPTION
@@ -71,7 +71,7 @@ void disable_preemption(void);
 #endif
 
 
-extern __thread unsigned int current_lp;
+extern __thread LID_t current_lp;
 extern __thread simtime_t current_lvt;
 extern __thread msg_t *current_evt;
 extern __thread void *current_state;

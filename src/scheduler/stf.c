@@ -6,46 +6,56 @@
 #include <gvt/gvt.h>
 #include <mm/dymelor.h>
 
+typedef struct _min_lp {
+	LID_t lid;
+	simtime_t time;
+} min_lp;
+
+
 /**
-* This function implements the smallest timestamp first algorithm
+* This function implements the smallest timestamp first algorithm.
+* Bound LPs are looped through their foreach iteratora.
 *
 * @author Francesco Quaglia
 *
 * @return The Id of the Logical Process qith the smallest timestamp
 */
-unsigned int smallest_timestamp_first(void) {
+LID_t smallest_timestamp_first(void) {
+	min_lp stf_candidate = {
+		.lid = idle_process,
+		.time = INFTY,
+	};
 
-	simtime_t min_timestamp = -1, evt_time = -1;
-	unsigned int next = IDLE_PROCESS;
-	register unsigned int i;
-
-	// For each local process
-	for (i = 0; i < n_prc_per_thread; i++) {
+	int __helper(LID_t lid, GID_t gid, unsigned int num, void *data) {
+		min_lp *candidate = (min_lp *)data;
+		LP_State *lp = LPS(lid);
+		simtime_t evt_time;
+		(void)gid;
+		(void)num;
+	
 		// If waiting for synch, don't take into account the LP
-		if(is_blocked_state(LPS_bound[i]->state)) {
-			continue;
+		if(is_blocked_state(lp->state)) {
+			return 0; // continue to the next element
 		}
+	
 		//If the LP is in READY_FOR_SYNCH has to handle the same messagge of ECS
-		if(LPS_bound[i]->state == LP_STATE_READY_FOR_SYNCH) {
+		if(lp->state == LP_STATE_READY_FOR_SYNCH) {
 			// The LP handles the suspended event as the next event
-			evt_time = LPS_bound[i]->bound->timestamp;
-		}
-		else {
+			evt_time = lvt(lid);
+		} else {
 			// Compute the next event's timestamp. Translate the id from the local binding to the local ID
-			evt_time = next_event_timestamp(LPS_bound[i]->lid);
+			evt_time = next_event_timestamp(lid);
+		}
+	
+		if(evt_time < candidate->time && evt_time < INFTY) {
+			candidate->time = evt_time;
+			candidate->lid = lid;
 		}
 
-		if(evt_time > -1) {
-			if((D_EQUAL(min_timestamp, -1)) || ((min_timestamp > -1) && (evt_time < min_timestamp))) {
-				min_timestamp = evt_time;
-				next = LPS_bound[i]->lid;
-			}
-		}
+		return 0; // continue to the next element
 	}
-	if(D_EQUAL(min_timestamp, -1)) {
-		return IDLE_PROCESS;
-	} else {
-		return next;
-	}
+	LPS_bound_foreach(__helper, &stf_candidate);
+
+	return stf_candidate.lid;
 }
 

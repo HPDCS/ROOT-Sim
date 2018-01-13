@@ -38,6 +38,7 @@ librootsim_a_SOURCES =	main.c \
 			scheduler/control.c \
 			scheduler/preempt.c \
 			scheduler/preempt_callback.S \
+			scheduler/process.c \
 			scheduler/stf.c \
 			scheduler/scheduler.c \
 			serial/serial.c \

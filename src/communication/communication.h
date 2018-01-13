@@ -104,8 +104,8 @@ extern void Send(msg_t *msg);
 extern simtime_t receive_time_barrier(simtime_t max);
 extern int messages_checking(void);
 extern void insert_outgoing_msg(msg_t *msg);
-extern void send_outgoing_msgs(unsigned int);
-extern void send_antimessages(unsigned int, simtime_t);
+extern void send_outgoing_msgs(LID_t);
+extern void send_antimessages(LID_t, simtime_t);
 extern void communication_fini_thread(void);
 extern void communication_init_thread(void);
 
@@ -119,7 +119,7 @@ extern void start_ack_timer(void);
 
 
 extern msg_t *get_msg_from_slab(void);
-extern void pack_msg(msg_t **msg, unsigned int sender, unsigned int receiver, int type, simtime_t timestamp, simtime_t send_time, size_t size, void *payload);
+extern void pack_msg(msg_t **msg, GID_t sender, GID_t receiver, int type, simtime_t timestamp, simtime_t send_time, size_t size, void *payload);
 extern void msg_to_hdr(msg_hdr_t *hdr, msg_t *msg);
 extern void hdr_to_msg(msg_hdr_t *hdr, msg_t *msg);
 extern void msg_release(msg_t *msg);

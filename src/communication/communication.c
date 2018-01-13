@@ -60,7 +60,7 @@ void (* ScheduleNewEvent)(unsigned int gid_receiver, simtime_t timestamp, unsign
 * @author Roberto Vitali
 */
 void communication_init(void) {
-	int i;
+	unsigned int i;
 
 	#ifdef HAVE_MPI
 	inter_kernel_comm_init();
@@ -114,22 +114,29 @@ void communication_fini(void) {
 */
 void ParallelScheduleNewEvent(unsigned int gid_receiver, simtime_t timestamp, unsigned int event_type, void *event_content, unsigned int event_size) {
 	msg_t *event;
+	GID_t receiver;
+
 	switch_to_platform_mode();
 
+	// Internally to the platform, the receiver is a GID, while models
+	// have no difference across GIDs and LIDs. We convert here the passed
+	// id to a GID.
+	set_gid(receiver, gid_receiver);
+
 	// In Silent execution, we do not send again already sent messages
-	if(LPS[current_lp]->state == LP_STATE_SILENT_EXEC) {
+	if(LPS(current_lp)->state == LP_STATE_SILENT_EXEC) {
 		return;
 	}
 
 	// Check whether the destination LP is out of range
-	if(gid_receiver > n_prc_tot - 1) {	// It's unsigned, so no need to check whether it's < 0
-		rootsim_error(false, "Warning: the destination LP %u is out of range. The event has been ignored\n", gid_receiver);
+	if(receiver.id > n_prc_tot - 1) { // It's unsigned, so no need to check whether it's < 0
+		rootsim_error(false, "Warning: the destination LP %u is out of range. The event has been ignored\n", receiver.id);
 		goto out;
 	}
 
 	// Check if the associated timestamp is negative
 	if(timestamp < lvt(current_lp)) {
-		rootsim_error(true, "LP %u is trying to generate an event (type %d) to %u in the past! (Current LVT = %f, generated event's timestamp = %f) Aborting...\n", current_lp, event_type, gid_receiver, lvt(current_lp), timestamp);
+		rootsim_error(true, "LP %u is trying to generate an event (type %d) to %u in the past! (Current LVT = %f, generated event's timestamp = %f) Aborting...\n", current_lp, event_type, receiver.id, lvt(current_lp), timestamp);
 	}
 
 	// Check if the event type is mapped to an internal control message
@@ -139,7 +146,7 @@ void ParallelScheduleNewEvent(unsigned int gid_receiver, simtime_t timestamp, un
 
 
 	// Copy all the information into the event structure
-	pack_msg(&event, LidToGid(current_lp), gid_receiver, event_type, timestamp, lvt(current_lp), event_size, event_content);
+	pack_msg(&event, LidToGid(current_lp), receiver, event_type, timestamp, lvt(current_lp), event_size, event_content);
 	event->mark = generate_mark(current_lp);
 
 	if(event->type == RENDEZVOUS_START) {
@@ -166,17 +173,17 @@ void ParallelScheduleNewEvent(unsigned int gid_receiver, simtime_t timestamp, un
 *
 * @todo One shot scan of the list
 */
-void send_antimessages(unsigned int lid, simtime_t after_simtime) {
+void send_antimessages(LID_t lid, simtime_t after_simtime) {
 	msg_hdr_t *anti_msg, *anti_msg_prev;
 	msg_t *msg;
 
 //	printf("send_antimessages lid: %d after: %f\n", lid, after_simtime);
 
-	if (list_empty(LPS[lid]->queue_out))
+	if (list_empty(LPS(lid)->queue_out))
 		return;
 
 	// Scan the output queue backwards, sending all required antimessages
-	anti_msg = list_tail(LPS[lid]->queue_out);
+	anti_msg = list_tail(LPS(lid)->queue_out);
 	while(anti_msg != NULL && anti_msg->send_time > after_simtime) {
 		msg = get_msg_from_slab();
 		hdr_to_msg(anti_msg, msg);
@@ -186,7 +193,7 @@ void send_antimessages(unsigned int lid, simtime_t after_simtime) {
 
 		// Remove the already-sent antimessage from the output queue
 		anti_msg_prev = list_prev(anti_msg);
-                list_delete_by_content(lid, LPS[lid]->queue_out, anti_msg);
+                list_delete_by_content(lid, LPS(lid)->queue_out, anti_msg);
                 anti_msg = anti_msg_prev;
 	}
 }
@@ -202,10 +209,12 @@ void send_antimessages(unsigned int lid, simtime_t after_simtime) {
 */
 int comm_finalize(void) {
 
-	register unsigned int i;
+//	register unsigned int i;
+
+	// TODO: reimplement with foreach
 
 	// Release as well memory used for remaining input/output queues
-	for(i = 0; i < n_prc; i++) {
+/*	for(i = 0; i < n_prc; i++) {
 		while(!list_empty(LPS[i]->queue_in)) {
 			list_pop(i, LPS[i]->queue_in);
 		}
@@ -213,7 +222,7 @@ int comm_finalize(void) {
 			list_pop(i, LPS[i]->queue_out);
 		}
 	}
-
+*/
 	return 0; // TODO: What's the point of this return?
 }
 
@@ -247,29 +256,29 @@ void Send(msg_t *msg) {
 void insert_outgoing_msg(msg_t *msg) {
 
 	// if the model is generating many events at the same time, reallocate the outgoing buffer
-	if(LPS[current_lp]->outgoing_buffer.size == LPS[current_lp]->outgoing_buffer.max_size){
-		LPS[current_lp]->outgoing_buffer.max_size *= 2;
-		LPS[current_lp]->outgoing_buffer.outgoing_msgs = rsrealloc(LPS[current_lp]->outgoing_buffer.outgoing_msgs, sizeof(msg_t *) * LPS[current_lp]->outgoing_buffer.max_size);
+	if(LPS(current_lp)->outgoing_buffer.size == LPS(current_lp)->outgoing_buffer.max_size){
+		LPS(current_lp)->outgoing_buffer.max_size *= 2;
+		LPS(current_lp)->outgoing_buffer.outgoing_msgs = rsrealloc(LPS(current_lp)->outgoing_buffer.outgoing_msgs, sizeof(msg_t *) * LPS(current_lp)->outgoing_buffer.max_size);
 	}
 
-	LPS[current_lp]->outgoing_buffer.outgoing_msgs[LPS[current_lp]->outgoing_buffer.size++] = msg;
+	LPS(current_lp)->outgoing_buffer.outgoing_msgs[LPS(current_lp)->outgoing_buffer.size++] = msg;
 
 	// store the minimum timestamp of outgoing messages
-	if(msg->timestamp < LPS[current_lp]->outgoing_buffer.min_in_transit[LPS[current_lp]->worker_thread]) {
-		LPS[current_lp]->outgoing_buffer.min_in_transit[LPS[current_lp]->worker_thread] = msg->timestamp;
+	if(msg->timestamp < LPS(current_lp)->outgoing_buffer.min_in_transit[LPS(current_lp)->worker_thread]) {
+		LPS(current_lp)->outgoing_buffer.min_in_transit[LPS(current_lp)->worker_thread] = msg->timestamp;
 	}
 }
 
 
 
-void send_outgoing_msgs(unsigned int lid) {
+void send_outgoing_msgs(LID_t lid) {
 
 	register unsigned int i = 0;
 	msg_t *msg;
 	msg_hdr_t msg_hdr;
 
-	for(i = 0; i < LPS[lid]->outgoing_buffer.size; i++) {
-		msg = LPS[lid]->outgoing_buffer.outgoing_msgs[i];
+	for(i = 0; i < LPS(lid)->outgoing_buffer.size; i++) {
+		msg = LPS(lid)->outgoing_buffer.outgoing_msgs[i];
 		msg_to_hdr(&msg_hdr, msg);
 
 //		dump_msg_content(msg);
@@ -279,10 +288,10 @@ void send_outgoing_msgs(unsigned int lid) {
 		Send(msg);
 
 		// register the message in the sender's output queue, for antimessage management
-		(void)list_insert(lid, LPS[lid]->queue_out, send_time, &msg_hdr);
+		(void)list_insert(lid, LPS(lid)->queue_out, send_time, &msg_hdr);
 	}
 
-	LPS[lid]->outgoing_buffer.size = 0;
+	LPS(lid)->outgoing_buffer.size = 0;
 }
 
 
@@ -299,7 +308,7 @@ msg_t *get_msg_from_slab(void) {
 
 
 // TODO: si può generare qua dentro la marca, perché si usa sempre il sender. Occhio al gid/lid!!!!
-void pack_msg(msg_t **msg, unsigned int sender, unsigned int receiver, int type, simtime_t timestamp, simtime_t send_time, size_t size, void *payload) {
+void pack_msg(msg_t **msg, GID_t sender, GID_t receiver, int type, simtime_t timestamp, simtime_t send_time, size_t size, void *payload) {
 
 	// Check if we can rely on a slab to initialize the message
 	if(sizeof(msg_t) + size <= SLAB_MSG_SIZE) {
@@ -358,8 +367,8 @@ void msg_release(msg_t *msg) {
 }
 
 void dump_msg_content(msg_t *msg) {
-	printf("\tsender: %lu\n", msg->sender);
-	printf("\treceiver: %lu\n", msg->sender);
+	printf("\tsender: %u\n", gid_to_int(msg->sender));
+	printf("\treceiver: %u\n", gid_to_int(msg->sender));
 	#ifdef HAVE_MPI
 	printf("\tcolour: %d\n", msg->colour);
 	#endif
@@ -369,7 +378,7 @@ void dump_msg_content(msg_t *msg) {
 	printf("\tsend_time: %f\n", msg->send_time);
 	printf("\tmark: %llu\n", msg->mark);
 	printf("\trendezvous_mark: %llu\n", msg->rendezvous_mark);
-	printf("\tsize: %llu\n", msg->size);
+	printf("\tsize: %d\n", msg->size);
 }
 
 #ifndef NDEBUG
@@ -384,8 +393,8 @@ unsigned int mark_to_gid(unsigned long long mark) {
 }
 
 void validate_msg(msg_t *msg) {
-	assert(msg->sender <= n_prc_tot);
-	assert(msg->receiver <= n_prc_tot);
+	assert(gid_to_int(msg->sender) <= n_prc_tot);
+	assert(gid_to_int(msg->receiver) <= n_prc_tot);
 	assert(msg->message_kind == positive || msg->message_kind == negative || msg->message_kind == control);
 	assert(mark_to_gid(msg->mark) <= n_prc_tot);
 	assert(mark_to_gid(msg->rendezvous_mark) <= n_prc_tot);

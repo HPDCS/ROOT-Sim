@@ -210,15 +210,15 @@ extern void recoverable_fini(void);
 extern void unrecoverable_init(void);
 extern void unrecoverable_fini(void);
 extern void malloc_state_init(bool recoverable, malloc_state *state);
-extern void *do_malloc(unsigned int, malloc_state * mem_pool, size_t size);
-extern void do_free(unsigned int, malloc_state *mem_pool, void *ptr);
-extern void *pool_get_memory(unsigned int lid, size_t size);
-extern void pool_release_memory(unsigned int lid, void *ptr);
+extern void *do_malloc(LID_t, malloc_state * mem_pool, size_t size);
+extern void do_free(LID_t, malloc_state *mem_pool, void *ptr);
+extern void *pool_get_memory(LID_t lid, size_t size);
+extern void pool_release_memory(LID_t lid, void *ptr);
 
 // Checkpointing API
-extern void *log_full(int);
-extern void *log_state(int);
-extern void log_restore(int, state_t *);
+extern void *log_full(LID_t);
+extern void *log_state(LID_t);
+extern void log_restore(LID_t, state_t *);
 extern void log_delete(void *);
 
 // Recoverable Memory API
@@ -226,20 +226,19 @@ extern void *__wrap_malloc(size_t);
 extern void __wrap_free(void *);
 extern void *__wrap_realloc(void *, size_t);
 extern void *__wrap_calloc(size_t, size_t);
-extern void clean_buffers_on_gvt(unsigned int, simtime_t);
+extern void clean_buffers_on_gvt(LID_t, simtime_t);
 
 // Unrecoverable Memory API
-extern void *umalloc(unsigned int, size_t);
-extern void ufree(unsigned int, void *);
-extern void *urealloc(unsigned int, void *, size_t);
-extern void *ucalloc(unsigned int, size_t nmemb, size_t size);
+extern void *umalloc(LID_t, size_t);
+extern void ufree(LID_t, void *);
+extern void *urealloc(LID_t, void *, size_t);
+extern void *ucalloc(LID_t, size_t nmemb, size_t size);
 
 /* Simulation Platform Memory APIs */
 extern inline void *rsalloc(size_t);
 extern inline void rsfree(void *);
 extern inline void *rsrealloc(void *, size_t);
 extern inline void *rscalloc(size_t, size_t);
-
 
 extern void ecs_init(void);
 

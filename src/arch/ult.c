@@ -68,9 +68,7 @@ static __thread void			*context_creat_arg;
 * @param size The size of the requested stack
 * @return A pointer to the allocated and zeroed page-aligned stack
 */
-void *get_ult_stack(unsigned int lid, size_t size) {
-//	int err;
-	(void)lid;
+void *get_ult_stack(size_t size) {
 	void *stack;
 	size_t reminder;
 

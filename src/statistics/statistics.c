@@ -11,7 +11,6 @@
 
 #include <arch/thread.h>
 #include <arch/memusage.h>
-#include <core/core.h>
 #include <scheduler/process.h>
 #include <scheduler/scheduler.h>
 #include <gvt/gvt.h>
@@ -19,6 +18,8 @@
 #include <queues/queues.h>
 #include <mm/state.h>
 #include <mm/dymelor.h>
+#include <core/core.h>
+#include <core/init.h>
 #include <core/timer.h>
 
 
@@ -352,9 +353,12 @@ void statistics_stop(int exit_code) {
 				   "\"IDLE CYCLES\"\t"
 				   "\n");
 
+
+			// TODO: switch to foreach
 			for(i = 0; i < n_prc_per_thread; i++) {
-				unsigned int lid = LPS_bound[i]->lid;
-				fprintf(f, "%d\t", LidToGid(lid));
+				LID_t the_lid = LPS_bound(i)->lid;
+				unsigned int lid = lid_to_int(the_lid);
+				fprintf(f, "%d\t", gid_to_int(LidToGid(the_lid)));
 				fprintf(f, "%d\t", lid);
 				fprintf(f, "%d\t", (int)lp_stats[lid].tot_events);
 				fprintf(f, "%d\t", (int)lp_stats[lid].committed_events);
@@ -374,7 +378,7 @@ void statistics_stop(int exit_code) {
 
 		// Sum up all LPs statistics
 		for(i = 0; i < n_prc_per_thread; i++) {
-			unsigned int lid = LPS_bound[i]->lid;
+			unsigned int lid = lid_to_int(LPS_bound(i)->lid);
 
 			thread_stats[local_tid].tot_antimessages += lp_stats[lid].tot_antimessages;
 			thread_stats[local_tid].tot_events += lp_stats[lid].tot_events;
@@ -563,7 +567,7 @@ static inline void statistics_flush_gvt(double gvt) {
 
 	// Reduce the committed events from all LPs
 	for(i = 0; i < n_prc_per_thread; i++) {
-		committed += lp_stats_gvt[LPS_bound[i]->lid].committed_events;
+		committed += lp_stats_gvt[lid_to_int(LPS_bound(i)->lid)].committed_events;
 	}
 	cumulated += committed;
 
@@ -681,11 +685,12 @@ void statistics_fini(void) {
 }
 
 
-void statistics_post_lp_data(unsigned int lid, unsigned int type, double data) {
+void statistics_post_lp_data(LID_t the_lid, unsigned int type, double data) {
+	unsigned int lid = lid_to_int(the_lid);
 
 	// Sanity check
 	#ifndef NDEBUG
-	if(lid >= n_prc) {
+	if(!is_valid_lid(the_lid)) {
 		rootsim_error(true, "%s:%d: Using an invalid lid to post statistics", __FILE__, __LINE__);
 	}
 	#endif
@@ -829,7 +834,7 @@ void statistics_post_other_data(unsigned int type, double data) {
 			thread_stats[local_tid].gvt_time = data;
 
 			for(i = 0; i < n_prc_per_thread; i++) {
-				unsigned int lid = LPS_bound[i]->lid;
+				unsigned int lid = lid_to_int(LPS_bound(i)->lid);
 				double keep_exponential_event_time;
 
 				lp_stats[lid].tot_antimessages += lp_stats_gvt[lid].tot_antimessages;
@@ -846,7 +851,7 @@ void statistics_post_other_data(unsigned int type, double data) {
 				lp_stats[lid].reprocessed_events += lp_stats_gvt[lid].reprocessed_events;
 
 				keep_exponential_event_time = lp_stats_gvt[lid].exponential_event_time;
-				bzero(&lp_stats_gvt[LPS_bound[i]->lid], sizeof(struct stat_t));
+				bzero(&lp_stats_gvt[lid_to_int(LPS_bound(i)->lid)], sizeof(struct stat_t));
 				lp_stats_gvt[lid].exponential_event_time = keep_exponential_event_time;
 			}
 			break;
@@ -867,17 +872,13 @@ void statistics_post_other_data(unsigned int type, double data) {
 }
 
 
-double statistics_get_data(unsigned int type, double data) {
+double statistics_get_lp_data(unsigned int type, LID_t lid) {
 	double ret;
 
 	switch(type) {
 
-		case STAT_GET_SIMTIME_ADVANCEMENT:
-			ret = thread_stats[local_tid].simtime_advancement;
-			break;
-
 		case STAT_GET_EVENT_TIME_LP:
-			ret = lp_stats[(int)data].exponential_event_time;
+			ret = lp_stats[lid_to_int(lid)].exponential_event_time;
 			break;
 
 		default:

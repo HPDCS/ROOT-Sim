@@ -27,6 +27,8 @@
 #ifndef _STATISTICS_H
 #define _STATISTICS_H
 
+#include <scheduler/process.h>
+
 /// This macro pre-allocates space for statistics files.
 #define NUM_FILES	3
 
@@ -115,9 +117,9 @@ extern void _mkdir(const char *path);
 extern void statistics_init(void);
 extern void statistics_fini(void);
 extern void statistics_stop(int exit_code);
-extern inline void statistics_post_lp_data(unsigned int lid, unsigned int type, double data);
+extern inline void statistics_post_lp_data(LID_t lid, unsigned int type, double data);
 extern inline void statistics_post_other_data(unsigned int type, double data);
-extern double statistics_get_data(unsigned int type, double data);
+extern double statistics_get_lp_data(unsigned int type, LID_t lid);
 
 
 

@@ -274,13 +274,6 @@ inline unsigned int spin_lock(spinlock_t *s) {
 #else
 
 inline void spin_lock(spinlock_t *s) {
-
-		if(local_tid > 100) {
-			printf("WTFFFFFFFFFFFFFFFFFF!\n");
-			fflush(stdout);
-			abort();
-		}
-
 	__asm__ __volatile__(
 		"1:\n\t"
 		"movl $1,%%eax\n\t"

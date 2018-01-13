@@ -40,7 +40,7 @@ void outgoing_window_init(void){
 	for(i=0; i<n_queues; i++){
 		oq = outgoing_queues+i;
 		spinlock_init(&(oq->lock));
-		oq->queue = new_list(GENERIC_LIST, outgoing_msg);
+		oq->queue = new_list_generic(outgoing_msg);
 	}
 }
 
@@ -56,7 +56,7 @@ void outgoing_window_finalize(void){
 
 
 outgoing_msg* allocate_outgoing_msg(void){
-	return (outgoing_msg*) list_allocate_node_buffer(GENERIC_LIST, sizeof(outgoing_msg));
+	return (outgoing_msg*) list_allocate_node_buffer_generic(sizeof(outgoing_msg));
 }
 
 
@@ -88,7 +88,7 @@ int prune_outgoing_queue(outgoing_queue* oq){
 	while(msg != NULL && is_msg_delivered(msg)) {
 		msg_release(msg->msg);
 
-		list_delete_by_content(GENERIC_LIST, oq->queue, msg);
+		list_delete_by_content_generic(oq->queue, msg);
 		pruned++;
 		msg = list_head(oq->queue);
 	}

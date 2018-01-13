@@ -70,12 +70,13 @@
 *
 * @todo must be declared static. This will entail changing the logic in gvt.c to save a state before rebuilding.
 */
-void *log_full(int lid) {
+void *log_full(LID_t the_lid) {
 
 	void *ptr = NULL, *ckpt = NULL;
 	int i, j, k, idx, bitmap_blocks;
 	size_t size, chunk_size;
 	malloc_area *m_area;
+	unsigned int lid = lid_to_int(the_lid);
 
 	// Timers for self-tuning of the simulation platform
 	timer checkpoint_timer;
@@ -98,7 +99,7 @@ void *log_full(int lid) {
 	((malloc_state*)ckpt)->timestamp = current_lvt;
 
 	// Copy the per-LP Seed State (to make the numerical library rollbackable and PWD)
-	memcpy(ptr, &LPS[lid]->seed, sizeof(seed_type));
+	memcpy(ptr, &LPS(the_lid)->seed, sizeof(seed_type));
 	ptr = (void *)((char *)ptr + sizeof(seed_type));
 
 	for(i = 0; i < recoverable_state[lid]->num_areas; i++){
@@ -184,8 +185,8 @@ void *log_full(int lid) {
 	recoverable_state[lid]->dirty_bitmap_size = 0;
 	recoverable_state[lid]->total_inc_size = 0;
 
-	statistics_post_lp_data(lid, STAT_CKPT_TIME, (double)timer_value_micro(checkpoint_timer));
-	statistics_post_lp_data(lid, STAT_CKPT_MEM, (double)size);
+	statistics_post_lp_data(the_lid, STAT_CKPT_TIME, (double)timer_value_micro(checkpoint_timer));
+	statistics_post_lp_data(the_lid, STAT_CKPT_MEM, (double)size);
 
 	return ckpt;
 }
@@ -210,7 +211,7 @@ void *log_full(int lid) {
 * @return A pointer to a malloc()'d memory area which contains the log of the current simulation state,
 *         along with the relative meta-data which can be used to perform a restore operation.
 */
-void *log_state(int lid) {
+void *log_state(LID_t lid) {
 	statistics_post_lp_data(lid, STAT_CKPT, 1.0);
 	return log_full(lid);
 }
@@ -240,13 +241,14 @@ void *log_state(int lid) {
 * @param lid The logical process' local identifier
 * @param queue_node a pointer to the simulation state which must be restored in the logical process
 */
-void restore_full(int lid, void *ckpt) {
+void restore_full(LID_t the_lid, void *ckpt) {
 
 	void * ptr;
 	int i, j, k, bitmap_blocks, idx, original_num_areas, restored_areas;
 	unsigned int bitmap;
 	size_t chunk_size;
 	malloc_area *m_area, *new_area;
+	unsigned int lid = lid_to_int(the_lid);
 
 	// Timers for simulation platform self-tuning
 	timer recovery_timer;
@@ -261,7 +263,7 @@ void restore_full(int lid, void *ckpt) {
 	ptr = (void*)((char*)ptr + sizeof(malloc_state));
 
 	// Restore the per-LP Seed State (to make the numerical library rollbackable and PWD)
-	memcpy(&LPS[lid]->seed, ptr, sizeof(seed_type));
+	memcpy(&LPS(the_lid)->seed, ptr, sizeof(seed_type));
 	ptr = (void *)((char *)ptr + sizeof(seed_type));
 
 	recoverable_state[lid]->areas = new_area;
@@ -395,7 +397,7 @@ void restore_full(int lid, void *ckpt) {
 	recoverable_state[lid]->total_inc_size = 0;
 
 	int recovery_time = timer_value_micro(recovery_timer);
-	statistics_post_lp_data(lid, STAT_RECOVERY_TIME, (double)recovery_time);
+	statistics_post_lp_data(the_lid, STAT_RECOVERY_TIME, (double)recovery_time);
 }
 
 
@@ -412,7 +414,7 @@ void restore_full(int lid, void *ckpt) {
 * @param lid The logical process' local identifier
 * @param queue_node a pointer to the simulation state which must be restored in the logical process
 */
-void log_restore(int lid, state_t *state_queue_node) {
+void log_restore(LID_t lid, state_t *state_queue_node) {
 	statistics_post_lp_data(lid, STAT_RECOVERY, 1.0);
 	restore_full(lid, state_queue_node->log);
 }

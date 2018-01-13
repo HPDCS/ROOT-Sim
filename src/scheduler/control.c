@@ -40,15 +40,15 @@
 // correttamente processato nella traiettoria speculativa.
 // Ogni volta che ricevo un RENDEZVOUS_START da un altro processo
 // copio il messaggio nella rendezvous_queue.
-void rollback_control_message(unsigned int lid, simtime_t simtime) {
+void rollback_control_message(LID_t lid, simtime_t simtime) {
 	msg_t *control_antimessage;
 	msg_t *msg, *msg_prev;
 
-	if(list_empty(LPS[lid]->rendezvous_queue)) {
+	if(list_empty(LPS(lid)->rendezvous_queue)) {
 		return;
 	}
 
-	msg = list_tail(LPS[lid]->rendezvous_queue);
+	msg = list_tail(LPS(lid)->rendezvous_queue);
 	while(msg != NULL && msg->timestamp > simtime) {
 
 		// Control antimessage
@@ -57,7 +57,7 @@ void rollback_control_message(unsigned int lid, simtime_t simtime) {
 		control_antimessage->message_kind = control;
 		Send(control_antimessage);
 		msg_prev = list_prev(msg);
-		list_delete_by_content(lid, LPS[lid]->rendezvous_queue, msg);
+		list_delete_by_content(lid, LPS(lid)->rendezvous_queue, msg);
 		msg = msg_prev;
 	}
 }

@@ -20,6 +20,7 @@
 * @file bh.h
 * @brief
 * @author Francesco Quaglia
+* @author Alessandro Pellegrini
 */
 
 #pragma once
@@ -29,7 +30,7 @@
 #include <core/core.h>
 
 struct _map {
-	msg_t		* volatile *buffer;
+	msg_t * volatile *buffer;
 	volatile unsigned int	size;
 	volatile unsigned int	written;
 	volatile unsigned int	read;
@@ -49,7 +50,7 @@ struct _bhmap {
 
 extern bool BH_init(void);
 extern void BH_fini(void);
-extern void insert_BH(int, msg_t *);
-extern void *get_BH(unsigned int);
+extern void insert_BH(LID_t, msg_t *);
+extern void *get_BH(LID_t);
 
 #endif /* _BH_H */

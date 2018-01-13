@@ -35,8 +35,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <float.h>
 #include <stdbool.h>
+#include <float.h>
+#include <limits.h>
 
 
 #ifdef INIT
@@ -123,8 +124,11 @@ unsigned int FindReceiver(int topology);
 #define DIRECTION_SW	5
 #define DIRECTION_SE	6
 #define DIRECTION_NE	7
-// Returns -1 is a movement is not possible according to the given topology
-int GetReceiver(int topology, int direction);
+
+#define INVALID_DIRECTION UINT_MAX
+
+// Returns INVALID_DIRECTION if a movement is not possible according to the given topology
+unsigned int GetReceiver(int topology, int direction);
 
 // Expose to the application level the command line parameter parsers
 int GetParameterInt(void *args, char *name);

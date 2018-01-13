@@ -33,9 +33,9 @@
 
 #include <ROOT-Sim.h>
 
+#include <core/init.h>
 #include <communication/communication.h>
 #include <mm/dymelor.h>
-#include <core/core.h>
 #include <scheduler/process.h>
 #include <scheduler/scheduler.h>
 #include <statistics/statistics.h> // To have _mkdir helper function
@@ -53,8 +53,8 @@ static double do_random(void) {
 		seed1 = (uint32_t *)&master_seed;
 		seed2 = (uint32_t *)((char *)&master_seed + (sizeof(uint32_t)));
 	} else {
-		seed1 = (uint32_t *)&(LPS[current_lp]->seed);
-		seed2 = (uint32_t *)((char *)&(LPS[current_lp]->seed) + (sizeof(uint32_t)));
+		seed1 = (uint32_t *)&(LPS(current_lp)->seed);
+		seed2 = (uint32_t *)((char *)&(LPS(current_lp)->seed) + (sizeof(uint32_t)));
 	}
 
 	*seed1 = 36969u * (*seed1 & 0xFFFFu) + (*seed1 >> 16u);
@@ -428,14 +428,14 @@ static void load_seed(void) {
 #define ROR(value, places) (value << (places)) | (value >> (RS_WORD_LENGTH - places)) // Circular shift
 void numerical_init(void) {
 
-	unsigned int i;
+	LID_t lid;
 
 	// Initialize the master seed
 	load_seed();
 
 	// Initialize the per-LP seed
-	for(i = 0; i < n_prc; i++) {
-		LPS[i]->seed = sanitize_seed(ROR((int64_t)master_seed, LidToGid(i) % RS_WORD_LENGTH));
+	for(lid.id = 0; lid.id < n_prc; lid.id++) {
+		LPS(lid)->seed = sanitize_seed(ROR((int64_t)master_seed, LidToGid(lid).id % RS_WORD_LENGTH));
 	}
 
 }

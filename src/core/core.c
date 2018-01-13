@@ -33,11 +33,12 @@
 
 #include <arch/thread.h>
 #include <core/core.h>
+#include <core/init.h>
 #include <scheduler/process.h>
+#include <scheduler/scheduler.h>
 #include <statistics/statistics.h>
 #include <gvt/gvt.h>
 #include <mm/dymelor.h>
-
 
 /// Barrier for all worker threads
 barrier_t all_thread_barrier;
@@ -70,7 +71,7 @@ unsigned int *to_gid;
 simulation_configuration rootsim_config;
 
 // Function Pointers to access functions implemented at application level
-bool (**OnGVT)(int gid, void *snapshot);
+bool (**OnGVT)(unsigned int me, void *snapshot);
 void (**ProcessEvent)(unsigned int me, simtime_t now, int event_type, void *event_content, unsigned int size, void *state);
 
 /// Flag to notify all workers that there was an error
@@ -120,6 +121,7 @@ void exit_from_simulation_model(void) {
 */
 void base_init(void) {
 	register unsigned int i;
+	GID_t gid;
 
 	barrier_init(&all_thread_barrier, n_cores);
 
@@ -134,9 +136,10 @@ void base_init(void) {
 		if (rootsim_config.snapshot == FULL_SNAPSHOT) {
 			OnGVT[i] = &OnGVT_light;
 			ProcessEvent[i] = &ProcessEvent_light;
-		}
+		} // TODO: add here an else for ISS
 
-		if (GidToKernel(i) == kid) { // If the i-th logical process is hosted by this kernel
+		set_gid(gid, i);
+		if (GidToKernel(gid) == kid) { // If the i-th logical process is hosted by this kernel
 			to_lid[i] = n_prc;
 			to_gid[n_prc] = i;
 			n_prc++;
@@ -176,12 +179,15 @@ void base_fini(void){
 * Creates a mapping between logical processes' local and global identifiers
 *
 * @author Francesco Quaglia
+* @author Alessandro Pellegrini
 *
 * @param lid The logical process' local identifier
 * @return The global identifier of the logical process locally identified by lid
 */
-unsigned int LidToGid(unsigned int lid) {
-	return to_gid[lid];
+GID_t LidToGid(LID_t lid) {
+	GID_t ret;
+	set_gid(ret, to_gid[lid_to_int(lid)]);
+	return ret;
 }
 
 
@@ -189,16 +195,16 @@ unsigned int LidToGid(unsigned int lid) {
 * Creates a mapping between logical processes' global and local identifiers
 *
 * @author Francesco Quaglia
+* @author Alessandro Pellegrini
 *
 * @param gid The logical process' global identifier
-* @return The local identifier of the logical process globally identified by lid,
-*         -1 if the process is not hosted by the current kernel.
+* @return The local identifier of the logical process globally identified by gid
 */
-unsigned int GidToLid(unsigned int gid) {
-	return to_lid[gid];
+LID_t GidToLid(GID_t gid) {
+	LID_t ret;
+	set_lid(ret, to_lid[gid_to_int(gid)]);
+	return ret;
 }
-
-
 
 
 /**
@@ -209,9 +215,9 @@ unsigned int GidToLid(unsigned int gid) {
 * @param gid The logical process' global identifier
 * @return The id of the kernel currently hosting the logical process
 */
-unsigned int GidToKernel(unsigned int gid) {
+unsigned int GidToKernel(GID_t gid) {
 	// restituisce il kernel su cui si trova il processo identificato da gid
-	return kernel[gid];
+	return kernel[gid_to_int(gid)];
 }
 
 

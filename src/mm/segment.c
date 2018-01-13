@@ -33,19 +33,19 @@
 //TODO: document this magic! This is related to the pml4 index intialized in the ECS kernel module
 static unsigned char *init_address = (unsigned char *)(10LL << 39);
 
-void *get_base_pointer(unsigned int gid){
+void *get_base_pointer(GID_t gid){
 //	printf("get base pointer for lid % d (gid %d) returns: %p\n",GidToLid(gid),gid,init_address + PER_LP_PREALLOCATED_MEMORY * gid);
-	return init_address + PER_LP_PREALLOCATED_MEMORY * gid;
+	return init_address + PER_LP_PREALLOCATED_MEMORY * gid_to_int(gid);
 }
 
-void *get_segment(unsigned int gid) {
+void *get_segment(GID_t gid) {
 	int i;
 	void *the_address;
 
 	void *mmapped[NUM_MMAP];
 
 	// Addresses are determined in the same way across all kernel instances
-	the_address = init_address + PER_LP_PREALLOCATED_MEMORY * gid;
+	the_address = init_address + PER_LP_PREALLOCATED_MEMORY * gid_to_int(gid);
 
 	for(i = 0; i < NUM_MMAP; i++) {
 		mmapped[i] = mmap(the_address, MAX_MMAP, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS|MAP_FIXED, 0, 0);
@@ -53,10 +53,7 @@ void *get_segment(unsigned int gid) {
 			rootsim_error(true, "Unable to mmap LPs memory\n");
 			return NULL;
 		}
-/*		if(i%2 == 0) {
-			printf("base pointer of gid %d on kernel %d is %p\n", gid, kid, mmapped[i]);
-		}
-*/		// Access the memory in write mode to force the kernel to create the page table entries
+		// Access the memory in write mode to force the kernel to create the page table entries
 		*((char *)mmapped[i]) = 'x';
 		the_address = (char *)the_address + MAX_MMAP;
 	}

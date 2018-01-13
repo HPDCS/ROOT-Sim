@@ -30,8 +30,9 @@
 #include <core/core.h>
 #include <core/timer.h>
 #include <datatypes/list.h>
-#include <scheduler/process.h>
 #include <scheduler/binding.h>
+#include <scheduler/process.h>
+#include <scheduler/scheduler.h>
 #include <statistics/statistics.h>
 #include <gvt/gvt.h>
 
@@ -54,11 +55,6 @@ struct lp_cost_id *lp_cost;
 /// A guard to know whether this is the first invocation or not
 static __thread bool first_lp_binding = true;
 
-/** Each KLT has a binding towards some LPs. This is the structure used
- *  to keep track of LPs currently being handled
- */
-__thread LP_state **LPS_bound = NULL;
-
 
 static unsigned int *new_LPS_binding;
 static timer rebinding_timer;
@@ -75,7 +71,7 @@ static atomic_t worker_thread_reduction;
 
 
 /**
-* Performs a (deterministic) block allocation between LPs and KLTs
+* Performs a (deterministic) block allocation between LPs and WTs
 *
 * @author Alessandro Pellegrini
 */
@@ -84,6 +80,7 @@ static inline void LPs_block_binding(void) {
 	unsigned int buf1;
 	unsigned int offset;
 	unsigned int block_leftover;
+	LID_t lid;
 
 	buf1 = (n_prc / n_cores);
 	block_leftover = n_prc - buf1 * n_cores;
@@ -100,8 +97,9 @@ static inline void LPs_block_binding(void) {
 		j = 0;
 		while (j < buf1) {
 			if(offset == local_tid) {
-				LPS_bound[n_prc_per_thread++] = LPS[i];
-				LPS[i]->worker_thread = local_tid;
+				set_lid(lid, i);
+				LPS_bound_set(n_prc_per_thread++, LPS(lid));
+				LPS(lid)->worker_thread = local_tid;
 			}
 			i++;
 			j++;
@@ -203,35 +201,39 @@ static inline void LP_knapsack(void) {
 
 static void post_local_reduction(void) {
 	unsigned int i;
-	unsigned int lid;
+	LID_t lid;
+	unsigned int lid_id;
 
 	for(i = 0; i < n_prc_per_thread; i++) {
-		lid = LPS_bound[i]->lid;
+		lid = LPS_bound(i)->lid;
+		lid_id = lid_to_int(lid);
 
-		lp_cost[lid].id = i;
-		lp_cost[lid].workload_factor = list_sizeof(LPS[lid]->queue_in);
-		lp_cost[lid].workload_factor *= statistics_get_data(STAT_GET_EVENT_TIME_LP, lid);
-		lp_cost[lid].workload_factor /= ( list_tail(LPS[lid]->queue_in)->timestamp - list_head(LPS[lid]->queue_in)->timestamp );
+		lp_cost[lid_id].id = i;
+		lp_cost[lid_id].workload_factor = list_sizeof(LPS(lid)->queue_in);
+		lp_cost[lid_id].workload_factor *= statistics_get_lp_data(STAT_GET_EVENT_TIME_LP, lid);
+		lp_cost[lid_id].workload_factor /= ( list_tail(LPS(lid)->queue_in)->timestamp - list_head(LPS(lid)->queue_in)->timestamp );
 	}
 }
 
 static void install_binding(void) {
 	unsigned int i;
+	LID_t lid;
 
-	bzero(LPS_bound, sizeof(LP_state *) * n_prc);
 	n_prc_per_thread = 0;
 
 	for(i = 0; i < n_prc; i++) {
-		if(new_LPS_binding[i] == local_tid) {
-			LPS_bound[n_prc_per_thread++] = LPS[i];
+		set_lid(lid, i);
 
-			if(local_tid != LPS[i]->worker_thread) {
+		if(new_LPS_binding[i] == local_tid) {
+			LPS_bound_set(n_prc_per_thread++, LPS(lid));
+
+			if(local_tid != LPS(lid)->worker_thread) {
 
 				#ifdef HAVE_NUMA
 				numa_move_request(i, get_numa_node(running_core()));
 				#endif
 
-				LPS[i]->worker_thread = local_tid;
+				LPS(lid)->worker_thread = local_tid;
 			}
 		}
 	}
@@ -255,10 +257,7 @@ void rebind_LPs(void) {
 	if(first_lp_binding) {
 		first_lp_binding = false;
 
-		// Binding metadata are used in the platform to perform
-		// operations on LPs in isolation
-		LPS_bound = rsalloc(sizeof(LP_state *) * n_prc);
-		bzero(LPS_bound, sizeof(LP_state *) * n_prc);
+		initialize_binding_blocks();
 
 		LPs_block_binding();
 

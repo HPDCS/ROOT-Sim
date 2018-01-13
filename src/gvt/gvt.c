@@ -30,6 +30,7 @@
 #include <gvt/gvt.h>
 #include <gvt/ccgs.h>
 #include <core/core.h>
+#include <core/init.h>
 #include <core/timer.h>
 #include <scheduler/process.h>
 #include <scheduler/scheduler.h> // this is for n_prc_per_thread
@@ -190,11 +191,11 @@ simtime_t GVT_phases(void){
 		process_bottom_halves();
 
 		for(i = 0; i < n_prc_per_thread; i++) {
-			if(LPS_bound[i]->bound == NULL) {
+			if(LPS_bound(i)->bound == NULL) {
 				local_min[local_tid] = 0.0;
 				break;
 			}
-			local_min[local_tid] = min(local_min[local_tid], LPS_bound[i]->bound->timestamp);
+			local_min[local_tid] = min(local_min[local_tid], LPS_bound(i)->bound->timestamp);
 		}
 		thread_phase = tphase_send;     // Entering phase send
 		atomic_dec(&counter_A);	// Notify finalization of phase A
@@ -221,12 +222,12 @@ simtime_t GVT_phases(void){
 		process_bottom_halves();
 
 		for(i = 0; i < n_prc_per_thread; i++) {
-			if(LPS_bound[i]->bound == NULL) {
+			if(LPS_bound(i)->bound == NULL) {
 				local_min[local_tid] = 0.0;
 				break;
 			}
 
-			local_min[local_tid] = min(local_min[local_tid], LPS_bound[i]->bound->timestamp);
+			local_min[local_tid] = min(local_min[local_tid], LPS_bound(i)->bound->timestamp);
 		}
 
 		#ifdef HAVE_MPI

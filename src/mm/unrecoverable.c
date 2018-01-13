@@ -37,6 +37,7 @@
 
 
 #include <core/core.h>
+#include <core/init.h>
 #include <mm/dymelor.h>
 #include <scheduler/scheduler.h>
 #include <scheduler/process.h>
@@ -84,7 +85,7 @@ void unrecoverable_fini(void) {
 
 
 
-void *umalloc(unsigned int lid, size_t s) {
+void *umalloc(LID_t lid, size_t s) {
 	if(rootsim_config.serial)
 		return rsalloc(s);
 
@@ -92,7 +93,7 @@ void *umalloc(unsigned int lid, size_t s) {
 	if(rootsim_config.disable_allocator)
 		return rsalloc(s);
 
-	return do_malloc(lid, unrecoverable_state[lid], s);
+	return do_malloc(lid, unrecoverable_state[lid_to_int(lid)], s);
 	#else
 	(void)lid;
 	return rsalloc(s);
@@ -100,7 +101,7 @@ void *umalloc(unsigned int lid, size_t s) {
 }
 
 
-void ufree(unsigned int lid, void *ptr) {
+void ufree(LID_t lid, void *ptr) {
 	
 //	printf("id of process requesting ufree: GID: %d LID: %d\n",LidToGid(lid),lid);
 	
@@ -122,7 +123,7 @@ void ufree(unsigned int lid, void *ptr) {
 		return;
 	}else*/
 
-	do_free(lid, unrecoverable_state[lid], ptr);
+	do_free(lid, unrecoverable_state[lid_to_int(lid)], ptr);
 	#else
 	(void)lid;
 	rsfree(ptr);
@@ -130,7 +131,7 @@ void ufree(unsigned int lid, void *ptr) {
 }
 
 
-void *urealloc(unsigned int lid, void *ptr, size_t new_s) {
+void *urealloc(LID_t lid, void *ptr, size_t new_s) {
 
 	void *new_buffer;
 	size_t old_size;
@@ -165,7 +166,7 @@ void *urealloc(unsigned int lid, void *ptr, size_t new_s) {
 }
 
 
-void *ucalloc(unsigned int lid, size_t nmemb, size_t size) {
+void *ucalloc(LID_t lid, size_t nmemb, size_t size) {
 	void *buffer;
 
 	if (nmemb == 0 || size == 0)

@@ -24,6 +24,7 @@
 * @author Alessandro Pellegrini
 */
 
+#include <core/init.h>
 #include <mm/dymelor.h>
 #include <mm/mm.h>
 #include <scheduler/scheduler.h>
@@ -202,7 +203,7 @@ static void find_next_free(malloc_area *m_area){
 
 
 
-void *do_malloc(unsigned int lid, malloc_state *mem_pool, size_t size) {
+void *do_malloc(LID_t lid, malloc_state *mem_pool, size_t size) {
 	malloc_area *m_area, *prev_area;
 	void *ptr;
 	int bitmap_blocks, num_chunks;
@@ -367,7 +368,7 @@ void *do_malloc(unsigned int lid, malloc_state *mem_pool, size_t size) {
 
 // TODO: multiple checks on m_area->is_recoverable. The code should be refactored
 // TODO: lid non necessario qui
-void do_free(unsigned int lid, malloc_state *mem_pool, void *ptr) {
+void do_free(LID_t lid, malloc_state *mem_pool, void *ptr) {
 
 	(void)lid;
 	

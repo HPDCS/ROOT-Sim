@@ -18,6 +18,7 @@ AM_CONDITIONAL([DEBUG], [test x$enable_debug = xyes])
 # Setup compilation flags
 CFLAGS_COMMON="-std=c99 -fno-omit-frame-pointer -ffloat-store -fno-common -fstrict-aliasing -fgnu89-inline -rdynamic -lm -U_FORTIFY_SOURCE"
 CFLAGS_WARNINGS="-Wall -Wextra -Wcast-align -Wpointer-arith -Wstrict-overflow=5 -Wstrict-prototypes -Winline -Wundef -Wnested-externs -Wshadow -Wunreachable-code -Wfloat-equal -Wredundant-decls -Wold-style-definition -Wno-switch-enum"
+#FLAGS_WARNINGS="$CFLAGS_WARNINGS -Wconversion"
 
 AS_IF([test x$enable_debug = xyes],
       [CFLAGS="-g3 -O0 $CFLAGS_COMMON $CFLAGS_WARNINGS"],
@@ -43,13 +44,23 @@ AS_IF([test "x$enable_profile" = "xyes"], [
 
 
 #----------------------------------------------------------------------------
+# Check for languages and compilation support
+#----------------------------------------------------------------------------
+AC_LANG([C])
+AC_PROG_CC([gcc])
+AX_CHECK_COMPILE_FLAG([-std=c11], [ac_c11=yes], [ac_c11=no])
+AS_IF([test x$ac_c11 != xyes],[
+	AC_MSG_FAILURE([No. ROOT-Sim requires a compiler speaking the C11 standard.])
+])
+
+AC_USE_SYSTEM_EXTENSIONS
+
+#----------------------------------------------------------------------------
 # Check for the availability of a suitable MPI environment
 #----------------------------------------------------------------------------
 AC_ARG_WITH([mpi],
             AS_HELP_STRING([--enable-mpi], [compile with MPI support. Default: no]))
 AX_PROG_CC_MPI([test x"$enable_mpi" = xyes],[with_mpi=yes],[with_mpi=no])
-
-AC_USE_SYSTEM_EXTENSIONS
 
 # We don't simply use MPI, rather a fresh version which supports
 # newer asynchronous primitives, e.g. MPI_Ireduce_scatter_block.
@@ -69,11 +80,6 @@ AS_IF([test x"$with_mpi" = xyes],[
 		AC_MSG_FAILURE([Asynchronous MPI primitives are not available. Please update your MPI version.])
 	])
 ])
-
-#----------------------------------------------------------------------------
-# Check for languages
-#----------------------------------------------------------------------------
-AC_LANG([C])
 
 
 #----------------------------------------------------------------------------

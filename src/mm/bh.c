@@ -36,15 +36,15 @@
 
 static struct _bhmap *bh_maps;
 
-static void switch_bh(int lid) {
+static void switch_bh(LID_t lid) {
 	struct _map * volatile swap;
 
-	bh_maps[lid].maps[M_WRITE]->read = 0;
-	bh_maps[lid].maps[M_READ]->written = 0;
+	bh_maps[lid_to_int(lid)].maps[M_WRITE]->read = 0;
+	bh_maps[lid_to_int(lid)].maps[M_READ]->written = 0;
 
-	swap = bh_maps[lid].maps[M_WRITE];
-	bh_maps[lid].maps[M_WRITE] = bh_maps[lid].maps[M_READ];
-	bh_maps[lid].maps[M_READ] = swap;
+	swap = bh_maps[lid_to_int(lid)].maps[M_WRITE];
+	bh_maps[lid_to_int(lid)].maps[M_WRITE] = bh_maps[lid_to_int(lid)].maps[M_READ];
+	bh_maps[lid_to_int(lid)].maps[M_READ] = swap;
 }
 
 void BH_fini(void) {
@@ -95,7 +95,8 @@ bool BH_init(void) {
 }
 
 
-void insert_BH(int lid, msg_t *msg) {
+void insert_BH(LID_t the_lid, msg_t *msg) {
+	unsigned int lid = lid_to_int(the_lid);
 	spin_lock(&bh_maps[lid].write_lock);
 
 	// Reallocate the live BH buffer. Don't touch the other buffer,
@@ -123,15 +124,16 @@ void insert_BH(int lid, msg_t *msg) {
 	spin_unlock(&bh_maps[lid].write_lock);
 }
 
-void *get_BH(unsigned int lid) {
+void *get_BH(LID_t the_lid) {
 	msg_t *msg;
 	void *buff = NULL;
+	unsigned int lid = lid_to_int(the_lid);
 
 	spin_lock(&bh_maps[lid].read_lock);
 
 	if(bh_maps[lid].maps[M_READ]->read == bh_maps[lid].maps[M_READ]->written) {
 		spin_lock(&bh_maps[lid].write_lock);
-		switch_bh(lid);
+		switch_bh(the_lid);
 		spin_unlock(&bh_maps[lid].write_lock);
 	}
 
@@ -150,7 +152,7 @@ void *get_BH(unsigned int lid) {
 
 	// TODO: we should reorganize the msg list so as to keep pointers, to avoid this copy
 	size_t size = sizeof(msg_t) + msg->size;
-	buff = list_allocate_node_buffer(lid, size);
+	buff = list_allocate_node_buffer(the_lid, size);
 	memcpy(buff, msg, size);
 
 	// TODO: this should be removed according to the previous TODO in this function
@@ -160,3 +162,4 @@ void *get_BH(unsigned int lid) {
 	spin_unlock(&bh_maps[lid].read_lock);
 	return buff;
 }
+
