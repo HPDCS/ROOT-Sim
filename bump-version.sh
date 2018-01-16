@@ -43,7 +43,8 @@ configure_line=$(grep -n AC_INIT configure.ac | sed 's/:.*//')
 configure_line=$((configure_line-1))
 i=0
 echo "" > configure.new
-while read line
+IFS=
+while read -r line
 do
 	if [ $i -eq $configure_line ]; then
 		echo $new_config_line >> configure.new
