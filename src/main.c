@@ -31,6 +31,10 @@
 #include <math.h>
 #include <string.h>
 
+#ifdef HAVE_NUMA
+#include <numa.h>
+#endif
+
 #include <core/core.h>
 #include <arch/thread.h>
 #include <statistics/statistics.h>
@@ -173,9 +177,14 @@ static void *main_simulation_loop(void *arg) {
 * @return Exit code
 */
 int main(int argc, char **argv) {
-	printf("PID %d ready for attach\n", getpid());
-	fflush(stdout);
-//	 int i = 0; while (0 == i) sleep(5);
+
+	// Runtime NUMA check
+	#ifdef HAVE_NUMA
+	if(numa_available() < 0) {
+		fprintf(stderr, "Your system does not support NUMA API\n");
+		exit(EXIT_FAILURE);
+	}
+	#endif
 		
 	SystemInit(argc, argv);
 
