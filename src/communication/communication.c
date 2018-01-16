@@ -169,7 +169,7 @@ void ParallelScheduleNewEvent(unsigned int gid_receiver, simtime_t timestamp, un
 *
 * @author Francesco Quaglia
 *
-* @param lid The logical process id
+* @param lid The Logical Process Id
 *
 * @todo One shot scan of the list
 */
