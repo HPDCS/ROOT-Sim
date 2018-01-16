@@ -3,7 +3,7 @@ compiler: gcc
 
 install:
   - sudo apt-get update -qq
-  - sudo apt-get install -qq automake pkg-config build-essential libtool automake autoconf m4 libnuma-dev numactl
+  - sudo apt-get install -qq automake pkg-config build-essential libtool automake autoconf m4 libnuma-dev numactl gcc
 
 before_script:
   - sudo chmod -R 644 /boot/
