@@ -69,11 +69,11 @@ void fossil_collection(LID_t lid, simtime_t time_barrier) {
 	last_kept_event = list_head(LPS(lid)->queue_states)->last_event;
 
 	// Truncate the input queue, accounting for the event which is pointed by the lastly kept state
-	committed_events = (double)list_trunc_before(lid, LPS(lid)->queue_in, timestamp, last_kept_event->timestamp);
+	committed_events = (double)list_trunc(lid, LPS(lid)->queue_in, timestamp, last_kept_event->timestamp);
 	statistics_post_lp_data(lid, STAT_COMMITTED, committed_events);
 
 	// Truncate the output queue
-	list_trunc_before(lid, LPS(lid)->queue_out, send_time, last_kept_event->timestamp);
+	list_trunc(lid, LPS(lid)->queue_out, send_time, last_kept_event->timestamp);
 
 }
 

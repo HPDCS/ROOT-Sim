@@ -141,12 +141,9 @@ typedef struct rootsim_list {
 		(__typeof__(list))__list_find((list), (double)(key_value), my_offsetof((list), key_name))
 
 
-#define LIST_TRUNC_AFTER	10
-#define LIST_TRUNC_BEFORE	11
-
-/// Truncate a list up to a certain point, towards increasing values. Refer to <__list_trunc>() for a more thorough documentation.
-#define list_trunc_before(lid, list, key_name, key_value) \
-		__list_trunc((lid), (list), (double)(key_value), my_offsetof((list), key_name), LIST_TRUNC_BEFORE)
+/// Truncate a list up to a certain point, starting from the head. Refer to <__list_trunc>() for a more thorough documentation.
+#define list_trunc(lid, list, key_name, key_value) \
+		__list_trunc((lid), (list), (double)(key_value), my_offsetof((list), key_name))
 
 // Get the size of the current list. Refer to <__list_delete>() for a more thorough documentation.
 #define list_sizeof(list) ((struct rootsim_list *)list)->size
@@ -265,7 +262,7 @@ extern char *__list_extract(LID_t lid, void *li, unsigned int size, double key, 
 extern bool __list_delete(LID_t lid, void *li, unsigned int size, double key, size_t key_position);
 extern char *__list_extract_by_content(LID_t lid, void *li, unsigned int size, void *ptr, bool copy);
 extern char *__list_find(void *li, double key, size_t key_position);
-extern unsigned int __list_trunc(LID_t lid, void *li, double key, size_t key_position, unsigned short int direction);
+extern unsigned int __list_trunc(LID_t lid, void *li, double key, size_t key_position);
 extern void list_pop(LID_t lid, void *li);
 extern char *__list_place(LID_t lid, void *li, size_t key_position, struct rootsim_list_node *new_n);
 extern void *list_allocate_node(LID_t lid, size_t size);

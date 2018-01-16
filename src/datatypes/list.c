@@ -564,7 +564,7 @@ void list_pop(LID_t lid, void *li) {
 
 
 // element associated with key is not truncated
-unsigned int __list_trunc(LID_t lid, void *li, double key, size_t key_position, unsigned short int direction) {
+unsigned int __list_trunc(LID_t lid, void *li, double key, size_t key_position) {
 
 	struct rootsim_list_node *n;
 	struct rootsim_list_node *n_adjacent;
@@ -578,12 +578,6 @@ unsigned int __list_trunc(LID_t lid, void *li, double key, size_t key_position, 
 	if(l->size == 0) {
 		goto out;
 	}
-
-	if(direction == LIST_TRUNC_AFTER) {
-		printf("not implemented\n");
-		abort();
-	}
-
 
 	n = l->head;
 	while(n != NULL && get_key(&n->data) < key) {
