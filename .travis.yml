@@ -1,10 +1,19 @@
+sudo: required
 language: c
 compiler: gcc
 dist: trusty
 
+addons:
+  apt:
+    sources:
+    - ubuntu-toolchain-r-test
+    packages:
+    - gcc-5
+    - g++-5
+
 install:
   - sudo apt-get update -qq
-  - sudo apt-get install -qq automake pkg-config build-essential libtool automake autoconf m4 libnuma-dev numactl gcc
+  - sudo apt-get install -qq automake pkg-config build-essential libtool automake autoconf m4 libnuma-dev numactl gcc-5
 
 before_script:
   - sudo chmod -R 644 /boot/
@@ -15,6 +24,8 @@ before_script:
   - autoconf --version
 
 script:
+  - sudo unlink /usr/bin/gcc && sudo ln -s /usr/bin/gcc-5 /usr/bin/gcc
+  - gcc --version
   - ./autogen.sh
   - ./configure
   - make
