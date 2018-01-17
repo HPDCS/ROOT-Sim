@@ -3921,6 +3921,7 @@ void select_operand_size(struct disassembly_state *state, enum operand_type op) 
 				size = 2;
 				break;
 			}
+			/* fallthrough */
 		case OP_B: /* byte, a prescindere da tutti gli altri parametri */
 			size = 1;
 			break;
@@ -3929,7 +3930,9 @@ void select_operand_size(struct disassembly_state *state, enum operand_type op) 
 				size = 8;	// [FV] e.g. istruzione MOVNTI
 				break;
 			}
+			/* fallthrough */
 		case OP_D: /* double word */
+			/* fallthrough */
 		case OP_SI:
 			size = 4;
 			break;
@@ -3977,6 +3980,7 @@ void select_operand_size(struct disassembly_state *state, enum operand_type op) 
 				size = 4;
 				break;
 			}
+			/* fallthrough */
 		case OP_W: /* word */
 			size = 2;
 	}
@@ -4129,6 +4133,7 @@ void format_addr_e (struct disassembly_state *state, enum addr_method addr, enum
 				reg_size = REG_SIZE_8;
 				break;
 			}
+			/* fallthrough */
 		case OP_W: /* 2 */
 			reg_size = REG_SIZE_16;
 			break;
@@ -4143,6 +4148,7 @@ void format_addr_e (struct disassembly_state *state, enum addr_method addr, enum
 				reg_size = REG_SIZE_16;
 				break;
 			}
+			/* fallthrough */
 		case OP_D: /* 4 */
 		case OP_SI: /* 4 */
 			reg_size = REG_SIZE_32;
@@ -4232,6 +4238,7 @@ void format_addr_g (struct disassembly_state *state, enum addr_method addr, enum
 				reg_size = REG_SIZE_8;
 				break;
 			}
+			/* fallthrough */
 		case OP_W: /* 16 */
 			reg_size = REG_SIZE_16;
 			break;
@@ -4246,6 +4253,7 @@ void format_addr_g (struct disassembly_state *state, enum addr_method addr, enum
 				reg_size = REG_SIZE_16;
 				break;
 			}
+			/* fallthrough */
 		case OP_D: /* 32 */
 			reg_size = REG_SIZE_32;
 			break;
@@ -4256,6 +4264,7 @@ void format_addr_g (struct disassembly_state *state, enum addr_method addr, enum
 					break;
 				}
 			}
+			/* fallthrough */
 		case OP_SI: /* 32 */
 			reg_size = REG_SIZE_32;
 			break;
@@ -4300,6 +4309,7 @@ void format_addr_i (struct disassembly_state *state, enum addr_method addr, enum
 				immed_size = 1;
 				break;
 			}
+			/* fallthrough */
 		case OP_W: /* 16 */
 			immed_size = 2;
 			break;
@@ -4316,6 +4326,7 @@ void format_addr_i (struct disassembly_state *state, enum addr_method addr, enum
 				immed_size = 2;
 				break;
 			}
+			/* fallthrough */
 		case OP_D: /* 32 */
 			immed_size = 4;
 			break;
@@ -4375,6 +4386,7 @@ void format_addr_j (struct disassembly_state *state, enum addr_method addr, enum
 				off_size = 1;
 				break;
 			}
+			/* fallthrough */
 		case OP_W: /* 16 */
 			off_size = 2;
 			break;
@@ -4383,6 +4395,7 @@ void format_addr_j (struct disassembly_state *state, enum addr_method addr, enum
 				off_size = 2;
 				break;
 			}
+			/* fallthrough */
 		case OP_D: /* 32 */
 			off_size = 4;
 			break;

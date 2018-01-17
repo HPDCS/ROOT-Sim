@@ -13,15 +13,15 @@ static unsigned int edge; // Don't recompute every time the square root
 // TODO: we do not check here for a valid topology
 unsigned int FindReceiver(int topology) {
  	double u;
-	GID_t sender, receiver;
-	int direction;
  	// These must be unsigned. They are not checked for negative (wrong) values,
  	// but they would overflow, and are caught by a different check.
 	unsigned int x, y, nx, ny;
+	int direction;
+	GID_t receiver;
+	GID_t sender = LidToGid(current_lp);
 
 	switch_to_platform_mode();
 
-	sender = LidToGid(current_lp);
 
 	if(first_call) {
 		edge = sqrt(n_prc_tot);
@@ -192,7 +192,7 @@ unsigned int FindReceiver(int topology) {
 			u = Random();
 
 			if (u < 0.5) {
-				if(gid_to_int(receiver) == 0) {
+				if(gid_to_int(sender) == 0) {
 					set_gid(receiver, n_prc_tot - 1);
 				} else {
 					set_gid(receiver, gid_to_int(sender) - 1);
@@ -200,7 +200,7 @@ unsigned int FindReceiver(int topology) {
 			} else {
 				set_gid(receiver, gid_to_int(sender) + 1);
 
-				if (gid_to_int(receiver) == n_prc_tot) {
+				if (gid_to_int(sender) == n_prc_tot) {
 					set_gid(receiver, 0);
 				}
 			}
