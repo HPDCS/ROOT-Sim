@@ -3,6 +3,13 @@ AM_CFLAGS = -I$(top_srcdir)/src
 AM_MAKEFLAGS = -s
 AUTOMAKE_OPTIONS = subdir-objects
 
+if NO_KERNEL_MODULES
+SUBDIRS = 
+else
+SUBDIRS = arch/linux/modules
+endif
+DIST_SUBDIRS = arch/linux/modules
+
 librootsim_include_HEADERS = ROOT-Sim.h
 librootsim_includedir = $(includedir)
 lib_LIBRARIES = librootsim.a libwrapperl.a libdymelor.a
@@ -19,7 +26,10 @@ librootsim_a_SOURCES =	main.c \
 			datatypes/array.c \
 			datatypes/list.c \
 			datatypes/calqueue.c \
+			datatypes/slab.c \
 			mm/state.c \
+			mm/ecs.c \
+			mm/ecs_callback.S \
 			queues/queues.c \
 			queues/xxhash.c \
 			core/init.c \
@@ -28,6 +38,7 @@ librootsim_a_SOURCES =	main.c \
 			scheduler/control.c \
 			scheduler/preempt.c \
 			scheduler/preempt_callback.S \
+			scheduler/process.c \
 			scheduler/stf.c \
 			scheduler/scheduler.c \
 			serial/serial.c \
@@ -35,8 +46,11 @@ librootsim_a_SOURCES =	main.c \
 			gvt/gvt.c \
 			gvt/fossil.c \
 			gvt/ccgs.c \
-			communication/window.c \
-			communication/communication.c
+			communication/wnd.c\
+			communication/communication.c\
+			communication/gvt.c\
+			communication/mpi.c\
+			arch/parse-x86.c
 
 libwrapperl_a_SOURCES = lib-wrapper/wrapper.c
 
@@ -45,6 +59,7 @@ libdymelor_a_SOURCES = 	mm/checkpoints.c \
 			mm/unrecoverable.c \
 			mm/platform.c \
 			mm/dymelor.c \
-			mm/allocator.c \
-			mm/bh-manager.c \
-			mm/mapmove.c
+			mm/buddy.c \
+			mm/bh.c \
+			mm/segment.c \
+			mm/numa.c 

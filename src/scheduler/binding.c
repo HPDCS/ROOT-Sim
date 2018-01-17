@@ -1,5 +1,5 @@
 /**
-*			Copyright (C) 2008-2015 HPDCS Group
+*			Copyright (C) 2008-2018 HPDCS Group
 *			http://www.dis.uniroma1.it/~hpdcs
 *
 *
@@ -7,8 +7,7 @@
 *
 * ROOT-Sim is free software; you can redistribute it and/or modify it under the
 * terms of the GNU General Public License as published by the Free Software
-* Foundation; either version 3 of the License, or (at your option) any later
-* version.
+* Foundation; only version 3 of the License applies.
 *
 * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
 * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
@@ -31,12 +30,13 @@
 #include <core/core.h>
 #include <core/timer.h>
 #include <datatypes/list.h>
-#include <gvt/gvt.h>
-#include <scheduler/process.h>
 #include <scheduler/binding.h>
+#include <scheduler/process.h>
+#include <scheduler/scheduler.h>
 #include <statistics/statistics.h>
+#include <gvt/gvt.h>
 
-#include <mm/allocator.h>
+#include <mm/numa.h>
 #include <arch/thread.h>
 
 
@@ -55,26 +55,23 @@ struct lp_cost_id *lp_cost;
 /// A guard to know whether this is the first invocation or not
 static __thread bool first_lp_binding = true;
 
-/** Each KLT has a binding towards some LPs. This is the structure used
- *  to keep track of LPs currently being handled
- */
-__thread LP_state **LPS_bound = NULL;
-
-static timer rebinding_timer;
 
 static unsigned int *new_LPS_binding;
+static timer rebinding_timer;
+
+#ifdef HAVE_LP_REBINDING
+static int binding_acquire_phase = 0;
+static __thread int local_binding_acquire_phase = 0;
 
 static int binding_phase = 0;
 static __thread int local_binding_phase = 0;
-
-static int binding_acquire_phase = 0;
-static __thread int local_binding_acquire_phase = 0;
+#endif
 
 static atomic_t worker_thread_reduction;
 
 
 /**
-* Performs a (deterministic) block allocation between LPs and KLTs
+* Performs a (deterministic) block allocation between LPs and WTs
 *
 * @author Alessandro Pellegrini
 */
@@ -83,6 +80,7 @@ static inline void LPs_block_binding(void) {
 	unsigned int buf1;
 	unsigned int offset;
 	unsigned int block_leftover;
+	LID_t lid;
 
 	buf1 = (n_prc / n_cores);
 	block_leftover = n_prc - buf1 * n_cores;
@@ -94,12 +92,14 @@ static inline void LPs_block_binding(void) {
 	n_prc_per_thread = 0;
 	i = 0;
 	offset = 0;
+
 	while (i < n_prc) {
 		j = 0;
 		while (j < buf1) {
-			if(offset == tid) {
-				LPS_bound[n_prc_per_thread++] = LPS[i];
-				LPS[i]->worker_thread = tid;
+			if(offset == local_tid) {
+				set_lid(lid, i);
+				LPS_bound_set(n_prc_per_thread++, LPS(lid));
+				LPS(lid)->worker_thread = local_tid;
 			}
 			i++;
 			j++;
@@ -111,9 +111,6 @@ static inline void LPs_block_binding(void) {
 		}
 	}
 }
-
-
-
 
 /**
 * Convenience function to compare two elements of struct lp_cost_id.
@@ -132,9 +129,6 @@ static int compare_lp_cost(const void *a, const void *b) {
 
 	return ( B->workload_factor - A->workload_factor );
 }
-
-
-
 
 /**
 * Implements the knapsack load sharing policy in:
@@ -201,46 +195,51 @@ static inline void LP_knapsack(void) {
 			j = (j + 1) % n_cores;
 		}
 	}
-
 }
 
+#ifdef HAVE_LP_REBINDING
 
 static void post_local_reduction(void) {
 	unsigned int i;
-	unsigned int lid;
+	LID_t lid;
+	unsigned int lid_id;
 
 	for(i = 0; i < n_prc_per_thread; i++) {
-		lid = LPS_bound[i]->lid;
+		lid = LPS_bound(i)->lid;
+		lid_id = lid_to_int(lid);
 
-		lp_cost[lid].id = i;
-		lp_cost[lid].workload_factor = list_sizeof(LPS[lid]->queue_in);
-		lp_cost[lid].workload_factor *= statistics_get_data(STAT_GET_EVENT_TIME_LP, lid);
-		lp_cost[lid].workload_factor /= ( list_tail(LPS[lid]->queue_in)->timestamp - list_head(LPS[lid]->queue_in)->timestamp );
+		lp_cost[lid_id].id = i;
+		lp_cost[lid_id].workload_factor = list_sizeof(LPS(lid)->queue_in);
+		lp_cost[lid_id].workload_factor *= statistics_get_lp_data(STAT_GET_EVENT_TIME_LP, lid);
+		lp_cost[lid_id].workload_factor /= ( list_tail(LPS(lid)->queue_in)->timestamp - list_head(LPS(lid)->queue_in)->timestamp );
 	}
 }
 
-
 static void install_binding(void) {
 	unsigned int i;
+	LID_t lid;
 
-	bzero(LPS_bound, sizeof(LP_state *) * n_prc);
 	n_prc_per_thread = 0;
 
 	for(i = 0; i < n_prc; i++) {
-		if(new_LPS_binding[i] == tid) {
-			LPS_bound[n_prc_per_thread++] = LPS[i];
+		set_lid(lid, i);
 
-			if(tid != LPS[i]->worker_thread) {
+		if(new_LPS_binding[i] == local_tid) {
+			LPS_bound_set(n_prc_per_thread++, LPS(lid));
+
+			if(local_tid != LPS(lid)->worker_thread) {
 
 				#ifdef HAVE_NUMA
-				move_request(i, get_numa_node(running_core()));
+				numa_move_request(i, get_numa_node(running_core()));
 				#endif
 
-				LPS[i]->worker_thread = tid;
+				LPS(lid)->worker_thread = local_tid;
 			}
 		}
 	}
 }
+
+#endif
 
 
 /**
@@ -258,10 +257,7 @@ void rebind_LPs(void) {
 	if(first_lp_binding) {
 		first_lp_binding = false;
 
-		// Binding metadata are used in the platform to perform
-		// operations on LPs in isolation
-		LPS_bound = rsalloc(sizeof(LP_state *) * n_prc);
-		bzero(LPS_bound, sizeof(LP_state *) * n_prc);
+		initialize_binding_blocks();
 
 		LPs_block_binding();
 
@@ -269,6 +265,7 @@ void rebind_LPs(void) {
 
 		if(master_thread()) {
 			new_LPS_binding = rsalloc(sizeof(int) * n_prc);
+
 			lp_cost = rsalloc(sizeof(struct lp_cost_id) * n_prc);
 
 			atomic_set(&worker_thread_reduction, n_cores);
@@ -282,8 +279,12 @@ void rebind_LPs(void) {
 		if(timer_value_seconds(rebinding_timer) >= REBIND_INTERVAL) {
 			timer_restart(rebinding_timer);
 			binding_phase++;
-		} else if(atomic_read(&worker_thread_reduction) == 0) {
+		}
+
+		if(atomic_read(&worker_thread_reduction) == 0) {
+
 			LP_knapsack();
+
 			binding_acquire_phase++;
 		}
 	}
@@ -296,17 +297,18 @@ void rebind_LPs(void) {
 
 	if(local_binding_acquire_phase < binding_acquire_phase) {
 		local_binding_acquire_phase = binding_acquire_phase;
+
 		install_binding();
 
 		#ifdef HAVE_PREEMPTION
-		reset_min_in_transit(tid);
+		reset_min_in_transit(local_tid);
 		#endif
 
 		if(thread_barrier(&all_thread_barrier)) {
 			atomic_set(&worker_thread_reduction, n_cores);
 		}
+
 	}
 #endif
 }
-
 

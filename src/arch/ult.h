@@ -1,5 +1,5 @@
 /**
-*                       Copyright (C) 2008-2015 HPDCS Group
+*                       Copyright (C) 2008-2018 HPDCS Group
 *                       http://www.dis.uniroma1.it/~hpdcs
 *
 *
@@ -7,8 +7,7 @@
 *
 * ROOT-Sim is free software; you can redistribute it and/or modify it under the
 * terms of the GNU General Public License as published by the Free Software
-* Foundation; either version 3 of the License, or (at your option) any later
-* version.
+* Foundation; only version 3 of the License applies.
 *
 * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
 * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
@@ -29,6 +28,7 @@
 #ifndef __ULT_H
 #define __ULT_H
 
+#include <core/core.h>
 
 #ifdef ENABLE_ULT
 
@@ -54,9 +54,12 @@ typedef exec_context_t kernel_context_t;
 	if(set_jmp(context_old) == 0) \
 		long_jmp(context_new, (context_new)->rax)
 
+/// Swicth machine context for userspace context switch. This is used to schedule a LP or return control to simulation kernel
+#define context_switch_create(context_old, context_new) \
+	if(set_jmp(context_old) == 0) \
+		long_jmp(context_new, 1)
 
-// Allocate ULT stack (in LP memory)
-extern void *get_ult_stack(unsigned int lid, size_t size);
+extern void *get_ult_stack(size_t size);
 
 #elif defined(OS_CYGWIN) || defined(OS_WINDOWS) /* OS_LINUX || OS_CYGWIN */
 
@@ -106,5 +109,6 @@ extern __thread kernel_context_t kernel_context;
 #endif /* #define __ULT_H */
 
 #endif /* ENABLE_ULT */
+
 
 

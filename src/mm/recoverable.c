@@ -1,5 +1,5 @@
 /**
-*			Copyright (C) 2008-2015 HPDCS Group
+*			Copyright (C) 2008-2018 HPDCS Group
 *			http://www.dis.uniroma1.it/~hpdcs
 *
 *
@@ -7,8 +7,7 @@
 *
 * ROOT-Sim is free software; you can redistribute it and/or modify it under the
 * terms of the GNU General Public License as published by the Free Software
-* Foundation; either version 3 of the License, or (at your option) any later
-* version.
+* Foundation; only version 3 of the License applies.
 *
 * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
 * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
@@ -32,6 +31,7 @@
 #include <errno.h>
 
 #include <core/core.h>
+#include <core/init.h>
 #include <mm/dymelor.h>
 #include <scheduler/process.h>
 #include <scheduler/scheduler.h>
@@ -49,9 +49,9 @@ malloc_state **recoverable_state;
 
 
 void recoverable_init(void) {
-	
+
 	register unsigned int i;
-	
+
 	recoverable_state = rsalloc(sizeof(malloc_state *) * n_prc);
 
 	for(i = 0; i < n_prc; i++){
@@ -66,10 +66,11 @@ void recoverable_init(void) {
 
 
 void recoverable_fini(void) {
-	unsigned int i, j;
-	malloc_area *current_area;
+//	unsigned int i, j;
+//	malloc_area *current_area;
 
-	for(i = 0; i < n_prc; i++) {
+	// TODO: reimplmenent with foreach
+/*	for(i = 0; i < n_prc; i++) {
 		for (j = 0; j < (unsigned int)recoverable_state[i]->num_areas; j++) {
 			current_area = &(recoverable_state[i]->areas[j]);
 			if (current_area != NULL) {
@@ -94,6 +95,7 @@ void recoverable_fini(void) {
 			list_pop(i, LPS[i]->queue_states);
 		}
 	}
+*/
 }
 
 
@@ -238,7 +240,7 @@ void *__wrap_malloc(size_t size) {
 		goto out;
 	}
 
-	ptr = do_malloc(current_lp, recoverable_state[current_lp], size);
+	ptr = do_malloc(current_lp, recoverable_state[lid_to_int(current_lp)], size);
 
     out:
 	switch_to_application_mode();
@@ -271,7 +273,7 @@ void __wrap_free(void *ptr) {
 		goto out;
 	}
 
-	do_free(current_lp, recoverable_state[current_lp], ptr);
+	do_free(current_lp, recoverable_state[lid_to_int(current_lp)], ptr);
 
     out:
 	switch_to_application_mode();
@@ -363,18 +365,18 @@ void *__wrap_calloc(size_t nmemb, size_t size){
 
 
 
-void clean_buffers_on_gvt(unsigned int lid, simtime_t time_barrier){
+void clean_buffers_on_gvt(LID_t lid, simtime_t time_barrier){
 
 	int i;
 	malloc_state *state;
 	malloc_area *m_area;
 
-	state = recoverable_state[lid];
+	state = recoverable_state[lid_to_int(lid)];
 
 	// The first NUM_AREAS malloc_areas are placed according to their chunks' sizes. The exceeding malloc_areas can be compacted
 	for(i = NUM_AREAS; i < state->num_areas; i++){
 		m_area = &state->areas[i];
-		
+
 		if(m_area->alloc_chunks == 0 && m_area->last_access < time_barrier && !CHECK_AREA_LOCK_BIT(m_area)){
 
 			if(m_area->self_pointer != NULL) {
@@ -405,10 +407,10 @@ void clean_buffers_on_gvt(unsigned int lid, simtime_t time_barrier){
 						state->areas[m_area->prev].next = m_area->idx;
 					if(m_area->next != -1)
 						state->areas[m_area->next].prev = m_area->idx;
-					
+
 					// Update the self pointer
 					*(long long *)m_area->self_pointer = (long long)m_area;
-					
+
 					// The swapped area will now be checked
 					i--;
 				}

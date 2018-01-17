@@ -1,5 +1,5 @@
 /**
-*			Copyright (C) 2008-2015 HPDCS Group
+*			Copyright (C) 2008-2018 HPDCS Group
 *			http://www.dis.uniroma1.it/~hpdcs
 *
 *
@@ -7,8 +7,7 @@
 *
 * ROOT-Sim is free software; you can redistribute it and/or modify it under the
 * terms of the GNU General Public License as published by the Free Software
-* Foundation; either version 3 of the License, or (at your option) any later
-* version.
+* Foundation; only version 3 of the License applies.
 *
 * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
 * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
@@ -42,9 +41,6 @@
 #define  PERIODIC_STATE_SAVING		2
 
 
-extern bool processing_silent_execution;
-
-
 /// Structure for LP's state
 typedef struct _state_t {
 	/// Simulation time associated with the state log
@@ -61,15 +57,14 @@ typedef struct _state_t {
 
 
 extern void ParallelSetState(void *new_state);
-extern void LogState(unsigned int);
-extern void RestoreState(unsigned int lid, state_t *restore_state);
-extern void rollback(unsigned int lid);
-extern state_t *find_time_barrier(int lid,  simtime_t time);
-extern state_t *update_time_barrier(unsigned int, state_t *, simtime_t);
-extern void clean_queue_states(unsigned int lid, simtime_t new_gvt);
-extern void rebuild_state(unsigned int lid, state_t *state_pointer, simtime_t time);
-extern void set_checkpoint_period(unsigned int lid, int period);
-extern void force_LP_checkpoint(unsigned int lid);
-extern unsigned int silent_execution(unsigned int lid, void *state_buffer, msg_t *evt, msg_t *final_evt);
+extern bool LogState(LID_t);
+extern void RestoreState(LID_t lid, state_t *restore_state);
+extern void rollback(LID_t lid);
+extern state_t *find_time_barrier(LID_t lid,  simtime_t time);
+extern void clean_queue_states(LID_t lid, simtime_t new_gvt);
+extern void rebuild_state(LID_t lid, state_t *state_pointer, simtime_t time);
+extern void set_checkpoint_period(LID_t lid, int period);
+extern void force_LP_checkpoint(LID_t lid);
+extern unsigned int silent_execution(LID_t lid, void *state_buffer, msg_t *evt, msg_t *final_evt);
 #endif /* _STATE_MGNT_H_ */
 

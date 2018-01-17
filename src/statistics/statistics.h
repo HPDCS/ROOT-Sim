@@ -1,5 +1,5 @@
 /**
-*			Copyright (C) 2008-2015 HPDCS Group
+*			Copyright (C) 2008-2018 HPDCS Group
 *			http://www.dis.uniroma1.it/~hpdcs
 *
 *
@@ -7,8 +7,7 @@
 *
 * ROOT-Sim is free software; you can redistribute it and/or modify it under the
 * terms of the GNU General Public License as published by the Free Software
-* Foundation; either version 3 of the License, or (at your option) any later
-* version.
+* Foundation; only version 3 of the License applies.
 *
 * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
 * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
@@ -27,6 +26,8 @@
 #pragma once
 #ifndef _STATISTICS_H
 #define _STATISTICS_H
+
+#include <scheduler/process.h>
 
 /// This macro pre-allocates space for statistics files.
 #define NUM_FILES	3
@@ -74,6 +75,7 @@
 /* Definition of Global Statistics Post Messages */
 #define STAT_SIM_START		1001
 #define STAT_GVT		1002
+#define STAT_GVT_ROUND_TIME 1003
 
 
 /* Definition of Thread Statistics Get Messages */
@@ -105,6 +107,9 @@ struct stat_t {
 		memory_usage,
 		gvt_computations,
 		gvt_time,
+		gvt_round_time_min,
+		gvt_round_time_max,
+		gvt_round_time,
 		simtime_advancement;
 };
 
@@ -112,9 +117,9 @@ extern void _mkdir(const char *path);
 extern void statistics_init(void);
 extern void statistics_fini(void);
 extern void statistics_stop(int exit_code);
-extern inline void statistics_post_lp_data(unsigned int lid, unsigned int type, double data);
+extern inline void statistics_post_lp_data(LID_t lid, unsigned int type, double data);
 extern inline void statistics_post_other_data(unsigned int type, double data);
-extern double statistics_get_data(unsigned int type, double data);
+extern double statistics_get_lp_data(unsigned int type, LID_t lid);
 
 
 

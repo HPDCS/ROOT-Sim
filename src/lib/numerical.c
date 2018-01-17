@@ -1,5 +1,5 @@
 /**
-*			Copyright (C) 2008-2015 HPDCS Group
+*			Copyright (C) 2008-2018 HPDCS Group
 *			http://www.dis.uniroma1.it/~hpdcs
 *
 *
@@ -7,8 +7,7 @@
 *
 * ROOT-Sim is free software; you can redistribute it and/or modify it under the
 * terms of the GNU General Public License as published by the Free Software
-* Foundation; either version 3 of the License, or (at your option) any later
-* version.
+* Foundation; only version 3 of the License applies.
 *
 * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
 * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
@@ -34,9 +33,9 @@
 
 #include <ROOT-Sim.h>
 
+#include <core/init.h>
 #include <communication/communication.h>
 #include <mm/dymelor.h>
-#include <core/core.h>
 #include <scheduler/process.h>
 #include <scheduler/scheduler.h>
 #include <statistics/statistics.h> // To have _mkdir helper function
@@ -54,15 +53,15 @@ static double do_random(void) {
 		seed1 = (uint32_t *)&master_seed;
 		seed2 = (uint32_t *)((char *)&master_seed + (sizeof(uint32_t)));
 	} else {
-		seed1 = (uint32_t *)&(LPS[current_lp]->seed);
-		seed2 = (uint32_t *)((char *)&(LPS[current_lp]->seed) + (sizeof(uint32_t)));
+		seed1 = (uint32_t *)&(LPS(current_lp)->seed);
+		seed2 = (uint32_t *)((char *)&(LPS(current_lp)->seed) + (sizeof(uint32_t)));
 	}
 
 	*seed1 = 36969u * (*seed1 & 0xFFFFu) + (*seed1 >> 16u);
 	*seed2 = 18000u * (*seed2 & 0xFFFFu) + (*seed2 >> 16u);
 
 	// The magic number below is 1/(2^32 + 2).
-    	// The result is strictly between 0 and 1.
+	// The result is strictly between 0 and 1.
 	return (((*seed1 << 16u) + (*seed1 >> 16u) + *seed2) + 1.0) * 2.328306435454494e-10;
 
 }
@@ -429,14 +428,14 @@ static void load_seed(void) {
 #define ROR(value, places) (value << (places)) | (value >> (RS_WORD_LENGTH - places)) // Circular shift
 void numerical_init(void) {
 
-	unsigned int i;
+	LID_t lid;
 
 	// Initialize the master seed
 	load_seed();
 
 	// Initialize the per-LP seed
-	for(i = 0; i < n_prc; i++) {
-		LPS[i]->seed = sanitize_seed(ROR((int64_t)master_seed, LidToGid(i) % RS_WORD_LENGTH));
+	for(lid.id = 0; lid.id < n_prc; lid.id++) {
+		LPS(lid)->seed = sanitize_seed(ROR((int64_t)master_seed, LidToGid(lid).id % RS_WORD_LENGTH));
 	}
 
 }

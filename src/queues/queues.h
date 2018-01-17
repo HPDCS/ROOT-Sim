@@ -1,5 +1,5 @@
 /**
-*			Copyright (C) 2008-2015 HPDCS Group
+*			Copyright (C) 2008-2018 HPDCS Group
 *			http://www.dis.uniroma1.it/~hpdcs
 *
 *
@@ -7,8 +7,7 @@
 *
 * ROOT-Sim is free software; you can redistribute it and/or modify it under the
 * terms of the GNU General Public License as published by the Free Software
-* Foundation; either version 3 of the License, or (at your option) any later
-* version.
+* Foundation; only version 3 of the License applies.
 *
 * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
 * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
@@ -31,19 +30,14 @@
 #ifndef _QUEUES_H
 #define _QUEUES_H
 
-
-
-
-#define QUEUE_IN	0
-#define QUEUE_OUT	1
-
+#include <core/core.h>
 
 extern inline simtime_t get_min_in_transit(void);
-extern simtime_t last_event_timestamp(unsigned int);
-extern simtime_t next_event_timestamp(unsigned int);
-extern msg_t *advance_to_next_event(unsigned int);
+extern simtime_t last_event_timestamp(LID_t);
+extern simtime_t next_event_timestamp(LID_t);
+extern msg_t *advance_to_next_event(LID_t);
 extern void insert_bottom_half(msg_t *msg);
 extern void process_bottom_halves(void);
-extern unsigned long long generate_mark(unsigned int);
+extern unsigned long long generate_mark(LID_t);
 
 #endif /* _QUEUES_H */

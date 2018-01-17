@@ -1,5 +1,5 @@
 /**
-*			Copyright (C) 2008-2015 HPDCS Group
+*			Copyright (C) 2008-2018 HPDCS Group
 *			http://www.dis.uniroma1.it/~hpdcs
 *
 *
@@ -7,8 +7,7 @@
 *
 * ROOT-Sim is free software; you can redistribute it and/or modify it under the
 * terms of the GNU General Public License as published by the Free Software
-* Foundation; either version 3 of the License, or (at your option) any later
-* version.
+* Foundation; only version 3 of the License applies.
 *
 * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
 * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
@@ -24,9 +23,6 @@
 * @author Alessandro Pellegrini
 * @date November 5, 2013
 */
-
-
-
 #include <datatypes/list.h>
 #include <mm/dymelor.h>
 
@@ -54,7 +50,7 @@
 * @return a pointer to the newly-allocated copy of the payload into the list.
 *           This is different from the container node, which is not exposed to the caller.
 */
-char *__list_insert_head(unsigned int lid, void *li, unsigned int size, void *data) {
+char *__list_insert_head(LID_t lid, void *li, unsigned int size, void *data) {
 
 	rootsim_list *l = (rootsim_list *)li;
 
@@ -65,7 +61,11 @@ char *__list_insert_head(unsigned int lid, void *li, unsigned int size, void *da
 	struct rootsim_list_node *new_n;
 
 	// Create the new node and populate the entry
-	new_n = umalloc(lid, sizeof(struct rootsim_list_node) + size);
+	if(lid_equals(lid, idle_process))
+		new_n = rsalloc(sizeof(struct rootsim_list_node) + size);
+	else
+		new_n = umalloc(lid, sizeof(struct rootsim_list_node) + size);
+
 	bzero(new_n, sizeof(struct rootsim_list_node) + size);
 	memcpy(&new_n->data, data, size);
 
@@ -115,19 +115,28 @@ char *__list_insert_head(unsigned int lid, void *li, unsigned int size, void *da
 * @return a pointer to the newly-allocated copy of the payload into the list.
 *           This is different from the container node, which is not exposed to the caller.
 */
-char *__list_insert_tail(unsigned int lid, void *li, unsigned int size, void *data) {
+char *__list_insert_tail(LID_t lid, void *li, unsigned int size, void *data) {
+
+	struct rootsim_list_node *new_n;
+
+	// Create the new node and populate the entry
+	if(lid_equals(lid, idle_process))
+		new_n = rsalloc(sizeof(struct rootsim_list_node) + size);
+	else
+		new_n = umalloc(lid, sizeof(struct rootsim_list_node) + size);
+	bzero(new_n, sizeof(struct rootsim_list_node) + size);
+	memcpy(&new_n->data, data, size);
+
+	return __list_insert_tail_by_node(li, new_n);
+}
+
+
+char *__list_insert_tail_by_node(void *li, struct rootsim_list_node* new_n) {
 
 	rootsim_list *l = (rootsim_list *)li;
 
 	assert(l);
 	size_t size_before = l->size;
-
-	struct rootsim_list_node *new_n;
-
-	// Create the new node and populate the entry
-	new_n = umalloc(lid, sizeof(struct rootsim_list_node) + size);
-	bzero(new_n, sizeof(struct rootsim_list_node) + size);
-	memcpy(&new_n->data, data, size);
 
 	// Is the list empty?
 	if(l->size == 0) {
@@ -158,9 +167,9 @@ void dump_l(struct rootsim_list_node *n, size_t key_position) {
 }
 
 
-char *__list_insert(unsigned int lid, void *li, unsigned int size, size_t key_position, void *data) {
+char *__list_insert(LID_t lid, void *li, unsigned int size, size_t key_position, void *data) {
 	struct rootsim_list_node *new_n;
-	
+
 	new_n = list_allocate_node(lid, size);
 	bzero(new_n, sizeof(struct rootsim_list_node) + size);
 	memcpy(&new_n->data, data, size);
@@ -192,10 +201,11 @@ char *__list_insert(unsigned int lid, void *li, unsigned int size, size_t key_po
 *           by the list. This is used to maintain the list ordered.
 * @param data a pointer to the data buffer to be inserted into the list.
 *
-* @return a pointer to the newly-allocated copy of the payload into the list.
+* @return a pointer to the payload of the node just linked to the list.
 *           This is different from the container node, which is not exposed to the caller.
 */
-char *__list_place(unsigned int lid, void *li, size_t key_position, struct rootsim_list_node *new_n) {
+char *__list_place(LID_t lid, void *li, size_t key_position, struct rootsim_list_node *new_n) {
+	(void)lid;
 
 	rootsim_list *l = (rootsim_list *)li;
 
@@ -216,7 +226,8 @@ char *__list_place(unsigned int lid, void *li, size_t key_position, struct roots
 	}
 
 	n = l->tail;
-	while(n != NULL && key < get_key(&n->data)) {
+	while(n != NULL && 
+			key < get_key(&n->data)) {
 		n = n->prev;
 	}
 
@@ -273,7 +284,7 @@ char *__list_place(unsigned int lid, void *li, size_t key_position, struct roots
 *
 * @return a pointer to the payload of the corresponding node, if found, or NULL.
 */
-char *__list_extract(unsigned int lid, void *li, unsigned int size, double key, size_t key_position) {
+char *__list_extract(LID_t lid, void *li, unsigned int size, double key, size_t key_position) {
 
 	rootsim_list *l = (rootsim_list *)li;
 
@@ -305,12 +316,20 @@ char *__list_extract(unsigned int lid, void *li, unsigned int size, double key, 
 				n->prev->next = n->next;
 			}
 
-			content = umalloc(lid, size);
+			if(lid_equals(lid, idle_process))
+				content = rsalloc(size);
+			else
+				content = umalloc(lid, size);
+
 			memcpy(content, &n->data, size);
 			n->next = (void *)0xDEADBEEF;
 			n->prev = (void *)0xDEADBEEF;
 			bzero(n->data, size);
-			ufree(lid, n);
+
+			if(lid_equals(lid, idle_process))
+				rsfree(n);
+			else
+				ufree(lid, n);
 
 			l->size--;
 			assert(l->size == (size_before - 1));
@@ -346,11 +365,14 @@ char *__list_extract(unsigned int lid, void *li, unsigned int size, double key, 
 *
 * @return true, if the node was found and deleted. false, otherwise
 */
-bool __list_delete(unsigned int lid, void *li, unsigned int size, double key, size_t key_position) {
+bool __list_delete(LID_t lid, void *li, unsigned int size, double key, size_t key_position) {
 	void *content;
 	if((content =__list_extract(lid, li, size, key, key_position)) != NULL) {
 		bzero(&content, size);
-		ufree(lid, content);
+		if(lid_equals(lid, idle_process))
+			rsfree(content);
+		else
+			ufree(lid, content);
 		return true;
 	}
 	return false;
@@ -382,7 +404,7 @@ bool __list_delete(unsigned int lid, void *li, unsigned int size, double key, si
 *
 * @return a pointer to the payload's copy if copy is set, NULL otherwise
 */
-char *__list_extract_by_content(unsigned int lid, void *li, unsigned int size, void *ptr, bool copy) {
+char *__list_extract_by_content(LID_t lid, void *li, unsigned int size, void *ptr, bool copy) {
 
         rootsim_list *l = (rootsim_list *)li;
 
@@ -415,13 +437,24 @@ char *__list_extract_by_content(unsigned int lid, void *li, unsigned int size, v
 	}
 
 	if(copy) {
-		content = umalloc(lid, size);
+		if(lid_equals(lid, idle_process))
+			content = rsalloc(size);
+		else
+			content = umalloc(lid, size);
+
 		memcpy(content, &n->data, size);
 	}
-	n->next = (void *)0xDEADC0DE;
+
+	#ifndef NDEBUG
+	n->next = (void *)0xBEEFC0DE;
 	n->prev = (void *)0xDEADC0DE;
-//	bzero(n->data, size);
-	ufree(lid, n);
+	memset(n->data, 0xe9, size);
+	#endif
+
+	if(lid_equals(lid, idle_process))
+		rsfree(n);
+	else
+		ufree(lid, n);
 
 	l->size--;
 	assert(l->size == (size_before - 1));
@@ -496,7 +529,7 @@ char *__list_find(void *li, double key, size_t key_position) {
 * @param size the size of the payload of the list. This is automatically set by
 *           the list_insert() macro.
 */
-void list_pop(unsigned int lid, void *li) {
+void list_pop(LID_t lid, void *li) {
 
         rootsim_list *l = (rootsim_list *)li;
 
@@ -512,9 +545,17 @@ void list_pop(unsigned int lid, void *li) {
 			n->next->prev = NULL;
 		}
 		n_next = n->next;
+
+		#ifndef NDEBUG
 		n->next = (void *)0xDEFEC8ED;
 		n->prev = (void *)0xDEFEC8ED;
-		ufree(lid, n);
+		#endif
+
+		if(lid_equals(lid, idle_process))
+			rsfree(n);
+		else
+			ufree(lid, n);
+
 		n = n_next;
 		l->size--;
 		assert(l->size == (size_before - 1));
@@ -523,7 +564,7 @@ void list_pop(unsigned int lid, void *li) {
 
 
 // element associated with key is not truncated
-unsigned int __list_trunc(unsigned int lid, void *li, double key, size_t key_position, unsigned short int direction) {
+unsigned int __list_trunc(LID_t lid, void *li, double key, size_t key_position) {
 
 	struct rootsim_list_node *n;
 	struct rootsim_list_node *n_adjacent;
@@ -538,20 +579,22 @@ unsigned int __list_trunc(unsigned int lid, void *li, double key, size_t key_pos
 		goto out;
 	}
 
-	if(direction == LIST_TRUNC_AFTER) {
-		printf("not implemented\n");
-		abort();
-	}
-
-
 	n = l->head;
 	while(n != NULL && get_key(&n->data) < key) {
 		deleted++;
                 n_adjacent = n->next;
+
+		#ifndef NDEBUG
                 n->next = (void *)0xBAADF00D;
                 n->prev = (void *)0xBAADF00D;
-                ufree(lid, n);
-                n = n_adjacent;
+		#endif
+
+		if(lid_equals(lid, idle_process))
+			rsfree(n);
+		else
+			ufree(lid, n);
+
+		n = n_adjacent;
 	}
 	l->head = n;
 	if(l->head != NULL)
@@ -565,26 +608,33 @@ unsigned int __list_trunc(unsigned int lid, void *li, double key, size_t key_pos
 }
 
 
-void *list_allocate_node(unsigned int lid, size_t size) {
+void *list_allocate_node(LID_t lid, size_t size) {
 	struct rootsim_list_node *new_n;
 
-	new_n = umalloc(lid, sizeof(struct rootsim_list_node) + size);
+	if(lid_equals(lid, idle_process))
+		new_n = rsalloc(sizeof(struct rootsim_list_node) + size);
+	else
+		new_n = umalloc(lid, sizeof(struct rootsim_list_node) + size);
 	bzero(new_n, sizeof(struct rootsim_list_node) + size);
 	return new_n;
 }
 
-void *list_allocate_node_buffer(unsigned int lid, size_t size) {
+void *list_allocate_node_buffer(LID_t lid, size_t size) {
 	char *ptr;
-	
+
 	ptr = list_allocate_node(lid, size);
 
 	if(ptr == NULL)
 		return NULL;
-		
+
 	return (void *)(ptr + sizeof(struct rootsim_list_node));
 }
 
 
-void list_deallocate_node_buffer(unsigned int lid, void *ptr) {
-	ufree(lid, list_container_of(ptr));
+void list_deallocate_node_buffer(LID_t lid, void *ptr) {
+	if(lid_equals(lid, idle_process))
+		rsfree(list_container_of(ptr));
+	else
+		ufree(lid, list_container_of(ptr));
 }
+

@@ -24,9 +24,6 @@
 #define SE	4
 #define E	5
 
-
-
-
 #define MASK 0x00000001LL         // Mask used to check, set and unset bits
 #define NUM_CHUNKS_PER_BLOCK (sizeof(int) * 8)
 

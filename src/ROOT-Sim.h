@@ -1,5 +1,5 @@
 /**
-*			Copyright (C) 2008-2015 HPDCS Group
+*			Copyright (C) 2008-2018 HPDCS Group
 *			http://www.dis.uniroma1.it/~hpdcs
 *
 *
@@ -7,8 +7,7 @@
 *
 * ROOT-Sim is free software; you can redistribute it and/or modify it under the
 * terms of the GNU General Public License as published by the Free Software
-* Foundation; either version 3 of the License, or (at your option) any later
-* version.
+* Foundation; only version 3 of the License applies.
 *
 * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
 * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
@@ -36,8 +35,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <float.h>
 #include <stdbool.h>
+#include <float.h>
+#include <limits.h>
 
 
 #ifdef INIT
@@ -124,12 +124,11 @@ unsigned int FindReceiver(int topology);
 #define DIRECTION_SW	5
 #define DIRECTION_SE	6
 #define DIRECTION_NE	7
-// Returns -1 is a movement is not possible according to the given topology
-int GetReceiver(int topology, int direction);
 
+#define INVALID_DIRECTION UINT_MAX
 
-
-
+// Returns INVALID_DIRECTION if a movement is not possible according to the given topology
+unsigned int GetReceiver(int topology, int direction);
 
 // Expose to the application level the command line parameter parsers
 int GetParameterInt(void *args, char *name);
@@ -138,11 +137,6 @@ double GetParameterDouble(void *args, char *name);
 bool GetParameterBool(void *args, char *name);
 char *GetParameterString(void *args, char *name);
 bool IsParameterPresent(void *args, char *name);
-
-
-// TODO: DA TOGLIERE, ERA ESPOSTO PER DEBUGGING!
-void __trace_input_queue(char *, int, unsigned int);
-
 
 // Expose to the application level the rollbackable numerical library
 double Random(void);
@@ -153,7 +147,6 @@ double Normal(void);
 double Gamma(int ia);
 double Poisson(void);
 int Zipf(double skew, int limit);
-
 
 // ROOT-Sim core API
 extern void (*ScheduleNewEvent)(unsigned int receiver, simtime_t timestamp, unsigned int event_type, void *event_content, unsigned int event_size);

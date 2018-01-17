@@ -1,5 +1,5 @@
 /**
-*                       Copyright (C) 2008-2015 HPDCS Group
+*                       Copyright (C) 2008-2018 HPDCS Group
 *                       http://www.dis.uniroma1.it/~hpdcs
 *
 *
@@ -7,8 +7,7 @@
 *
 * ROOT-Sim is free software; you can redistribute it and/or modify it under the
 * terms of the GNU General Public License as published by the Free Software
-* Foundation; either version 3 of the License, or (at your option) any later
-* version.
+* Foundation; only version 3 of the License applies.
 *
 * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
 * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
@@ -69,8 +68,7 @@ static __thread void			*context_creat_arg;
 * @param size The size of the requested stack
 * @return A pointer to the allocated and zeroed page-aligned stack
 */
-void *get_ult_stack(unsigned int lid, size_t size) {
-//	int err;
+void *get_ult_stack(size_t size) {
 	void *stack;
 	size_t reminder;
 
@@ -127,7 +125,7 @@ static void context_create_boot(void) {
 	context_start_func(context_start_arg);
 
 	// you should never reach this!
-	assert(0);
+	abort();
 }
 
 
@@ -161,8 +159,8 @@ static void context_create_trampoline(int sig) {
 */
 void context_create(LP_context_t *context, void (*entry_point)(void *), void *args, void *stack, size_t stack_size) {
 	struct sigaction sa;
-	struct sigaltstack ss;
-	struct sigaltstack oss;
+	stack_t ss;
+	stack_t oss;
 
 	bzero((void *)&sa, sizeof(struct sigaction));
 	sa.sa_handler = context_create_trampoline;
@@ -183,17 +181,12 @@ void context_create(LP_context_t *context, void (*entry_point)(void *), void *ar
 	raise(SIGUSR1);
 	sigaltstack(&oss, NULL);
 
-	context_switch(&context_caller, context);
+//	printf("Print to context_switch\n"); // NON LEVARE QUESTA PRINTF
+	context_switch_create(&context_caller, context);
 }
 
 
 #elif defined(OS_WINDOWS) || defined(OS_CYGWIN)
-
-
-#if !defined(ARCH_X86) && !defined(ARCH_X86_64)
-#error Are you really running Cygwin on non-x86 architecture?!
-#endif
-
 
 void context_create(LP_context_t *context, void (*entry_point)(void *), void *args, void *stack, size_t stack_size) {
 
@@ -214,3 +207,4 @@ void context_create(LP_context_t *context, void (*entry_point)(void *), void *ar
 #endif /* OS */
 
 #endif /* ENABLE_ULT */
+

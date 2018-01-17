@@ -1,5 +1,3 @@
-
-
 ROOT-Sim is developed by the High Perfomance and Dependable Computing Systems (HPDCS)
 at Sapienza, University of Rome.
 
@@ -7,11 +5,12 @@ For support, please contact the developers using the official mailing list:
 
 	rootsim@googlegroups.com
 
-
 Current Developers:
 
  - Francesco Quaglia <quaglia@dis.uniroma1.it>
  - Alessandro Pellegrini <pellegrini@dis.uniroma1.it>
+ - Tommaso Tocci <tommaso.tocci@bsc.es>
+ - Matteo Principe <matteo.principe92@gmail.com>
 
 
 Former Developers:
@@ -30,5 +29,5 @@ Former Developers:
 
 Contributors:
 
- - Mario (preso da un commento) =)
  - Davide Italiano
+ - Davide Leoni

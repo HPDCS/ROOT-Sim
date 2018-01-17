@@ -1,5 +1,5 @@
 /**
-*			Copyright (C) 2008-2015 HPDCS Group
+*			Copyright (C) 2008-2018 HPDCS Group
 *			http://www.dis.uniroma1.it/~hpdcs
 *
 *
@@ -7,8 +7,7 @@
 *
 * ROOT-Sim is free software; you can redistribute it and/or modify it under the
 * terms of the GNU General Public License as published by the Free Software
-* Foundation; either version 3 of the License, or (at your option) any later
-* version.
+* Foundation; only version 3 of the License applies.
 *
 * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
 * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
@@ -32,6 +31,7 @@
 #ifndef GVT_H
 #define GVT_H
 
+
 #include <ROOT-Sim.h>
 #include <mm/state.h>
 
@@ -42,6 +42,6 @@ extern simtime_t gvt_operations(void);
 inline extern simtime_t get_last_gvt(void);
 
 /* API from fossil.c */
-extern void adopt_new_gvt(simtime_t, simtime_t);
+extern void adopt_new_gvt(simtime_t);
 
 #endif

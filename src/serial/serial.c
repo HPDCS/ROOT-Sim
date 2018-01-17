@@ -5,11 +5,13 @@
 
 #include <ROOT-Sim.h>
 #include <serial/serial.h>
-#include <core/core.h>
 #include <scheduler/scheduler.h>
+#include <core/core.h>
+#include <core/init.h>
 #include <core/timer.h>
 #include <mm/dymelor.h>
 #include <datatypes/calqueue.h>
+#include <statistics/statistics.h>
 
 #ifdef EXTRA_CHECKS
 #include <queues/xxhash.h>
@@ -22,10 +24,11 @@ static bool *serial_completed_simulation;
 
 
 void SerialSetState(void * state) {
-	serial_states[current_lp] = state;
+	serial_states[lid_to_int(current_lp)] = state;
 }
 
 void SerialScheduleNewEvent(unsigned int rcv, simtime_t stamp, unsigned int event_type, void *event_content, unsigned int event_size) {
+	GID_t receiver;
 	msg_t *event;
 
 	// Sanity checks
@@ -33,20 +36,19 @@ void SerialScheduleNewEvent(unsigned int rcv, simtime_t stamp, unsigned int even
 		rootsim_error(true, "LP %d is trying to send events in the past. Current time: %f, scheduled time: %f\n", current_lp, current_lvt, stamp);
 	}
 
-	if(event_size > MAX_EVENT_SIZE) {
-		rootsim_error(true, "Trying to schedule an event too large. Maximum size is %d, requested is %d. Recompile changing MAX_EVENT_SIZE\n", MAX_EVENT_SIZE, event_size);
-	}
-
+	// TODO: use pack function
 	// Populate the message data structure
-	event = rsalloc(sizeof(msg_t));
+	set_gid(receiver, rcv);
+	size_t size = sizeof(msg_t) + event_size;
+	event = rsalloc(size);
 	bzero(event, sizeof(msg_t));
-	event->sender = current_lp;
-	event->receiver = rcv;
+	event->sender = LidToGid(current_lp);
+	event->receiver = receiver;
 	event->timestamp = stamp;
 	event->send_time = current_lvt;
 	event->type = event_type;
 	event->size = event_size;
-	memcpy(event->event_content, event_content, event_size);
+	memcpy(event->event_content, event_content, event_size); // TODO: not compliant with the new structure
 
 	// Put the event in the Calenda Queue
 	calqueue_put(stamp, event);
@@ -89,7 +91,7 @@ void serial_init(int argc, char **argv, int app_arg) {
 	}
 
 	// No LP is scheduled now
-	current_lp = IDLE_PROCESS;
+	current_lp = idle_process;
 }
 
 
@@ -121,10 +123,10 @@ void serial_simulation(void) {
 		}
                 #endif
 
-		current_lp = event->receiver;
+		current_lp = GidToLid(event->receiver);
 		current_lvt = event->timestamp;
 		timer_start(serial_event_execution);
-		ProcessEvent_light(current_lp, current_lvt, event->type, event->event_content, event->size, serial_states[current_lp]);
+		ProcessEvent_light(lid_to_int(current_lp), current_lvt, event->type, event->event_content, event->size, serial_states[lid_to_int(current_lp)]);
 
 		statistics_post_lp_data(current_lp, STAT_EVENT, 1.0);
 		statistics_post_lp_data(current_lp, STAT_EVENT_TIME, timer_value_seconds(serial_event_execution) );
@@ -139,15 +141,15 @@ void serial_simulation(void) {
                         rootsim_error(true, "Error, LP %d has modified the payload of event %d during its processing. Aborting...\n", current_lp, event->type);
                 }
                 #endif
-		
-		current_lp = IDLE_PROCESS;
+
+		current_lp = idle_process;
 
 		// Termination detection can happen only after the state is initialized
-		if(serial_states[event->receiver] != NULL) {
+		if(serial_states[gid_to_int(event->receiver)] != NULL) {
 			// Should we terminate the simulation?
-			if(!serial_completed_simulation[event->receiver] && OnGVT_light(event->receiver, serial_states[event->receiver])) {
+			if(!serial_completed_simulation[gid_to_int(event->receiver)] && OnGVT_light(gid_to_int(event->receiver), serial_states[gid_to_int(event->receiver)])) {
 				completed++;
-				serial_completed_simulation[event->receiver] = true;
+				serial_completed_simulation[gid_to_int(event->receiver)] = true;
 				if(completed == n_prc_tot) {
 					serial_simulation_complete = true;
 				}

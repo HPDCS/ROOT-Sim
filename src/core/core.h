@@ -1,5 +1,5 @@
 /**
-*			Copyright (C) 2008-2015 HPDCS Group
+*			Copyright (C) 2008-2018 HPDCS Group
 *			http://www.dis.uniroma1.it/~hpdcs
 *
 *
@@ -7,8 +7,7 @@
 *
 * ROOT-Sim is free software; you can redistribute it and/or modify it under the
 * terms of the GNU General Public License as published by the Free Software
-* Foundation; either version 3 of the License, or (at your option) any later
-* version.
+* Foundation; only version 3 of the License applies.
 *
 * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
 * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
@@ -40,7 +39,6 @@
 
 #include <lib/numerical.h>
 #include <arch/thread.h>
-#include <statistics/statistics.h>
 
 /// If set, ROOT-Sim will produce statistics on the execution
 #define PLATFORM_STATS
@@ -48,23 +46,15 @@
 /// This macro expands to true if the local kernel is the master kernel
 #define master_kernel() (kid == 0)
 
-
 // XXX: This should be moved to state or queues
 #define INVALID_SNAPSHOT	2000
 #define FULL_SNAPSHOT		2001
-
-/// This defines an idle process (i.e., the fake process to be executed when no events are available)
-#define IDLE_PROCESS	UINT_MAX
 
 /// Maximum number of kernels the distributed simulator can handle
 #define N_KER_MAX	128
 
 /// Maximum number of LPs the simulator will handle
-#define MAX_LPs		8192		// This is 2^20
-
-/// Maximum event size (in bytes)
-#define MAX_EVENT_SIZE	128
-
+#define MAX_LPs		16384		// This is 2^14
 
 // XXX: this should be moved somewhere else...
 #define VERBOSE_INFO	1700
@@ -108,8 +98,8 @@
 #undef max
 #endif
 #define max(a,b) \
-   ({ __typeof__ (a) _a = (a); \
-       __typeof__ (b) _b = (b); \
+   ({ __auto_type _a = (a); \
+       __auto_type _b = (b); \
      _a > _b ? _a : _b; })
 
 /// Macro to find the minimum among two values
@@ -117,74 +107,80 @@
 #undef min
 #endif
 #define min(a,b) \
-   ({ __typeof__ (a) _a = (a); \
-       __typeof__ (b) _b = (b); \
+   ({ __auto_type _a = (a); \
+       __auto_type _b = (b); \
      _a < _b ? _a : _b; })
 
 
 /// Macro to "legitimately" pun a type
 #define UNION_CAST(x, destType) (((union {__typeof__(x) a; destType b;})x).b)
 
-typedef enum {positive, negative, other} message_kind_t;
+// GID and LID types
+typedef struct _gid_t {unsigned int id;} GID_t;
+typedef struct _lid_t {unsigned int id;} LID_t;
 
+// The idle process identifier
+extern LID_t idle_process;
+
+#define is_lid(val) __builtin_types_compatible_p(__typeof__ (val), LID_t)
+#define is_gid(val) __builtin_types_compatible_p(__typeof__ (val), GID_t)
+
+#define is_valid_lid(lid) ((lid).id < n_prc)
+#define is_valid_gid(gid) ((gid).id < n_prc_tot)
+
+#define lid_equals(first, second) (is_lid(first) && is_lid(second) && first.id == second.id)
+#define gid_equals(first, second) (is_gid(first) && is_gid(second) && first.id == second.id)
+
+#define lid_to_int(lid) __builtin_choose_expr(is_lid(lid), (lid).id, (void)0)
+#define gid_to_int(gid) __builtin_choose_expr(is_gid(gid), (gid).id, (void)0)
+
+#define set_lid(lid, value) (__builtin_choose_expr(is_lid(lid), lid.id, (void)0) = (value))
+#define set_gid(gid, value) (__builtin_choose_expr(is_gid(gid), gid.id, (void)0) = (value))
+
+typedef enum {positive, negative, control} message_kind_t;
+
+#ifdef HAVE_MPI
+typedef unsigned char phase_colour;
+#endif
+
+/** The MPI datatype msg_mpi_t depends on the order of this struct.
+   See src/communication/mpi.c for the implementation of the datatype */
 /// Message Type definition
 typedef struct _msg_t {
 	// Kernel's information
-	unsigned int   		sender;
-	unsigned int   		receiver;
+	GID_t   		sender;
+	GID_t   		receiver;
+	#ifdef HAVE_MPI
+	phase_colour		colour;
+	#endif
 	int   			type;
+	message_kind_t		message_kind;
 	simtime_t		timestamp;
 	simtime_t		send_time;
-	message_kind_t		message_kind;
 	unsigned long long	mark;	/// Unique identifier of the message, used for antimessages
 	unsigned long long	rendezvous_mark;	/// Unique identifier of the message, used for rendez-vous events
-	// Application informations
-	char event_content[MAX_EVENT_SIZE];
+	int			alloc_tid; // TODO: this should be moved into an external container, to avoid transmitting it!
+	// Model data
 	int size;
+	unsigned char event_content[];
 } msg_t;
 
 
 /// Message envelope definition. This is used to handle the output queue and stores information needed to generate antimessages
 typedef struct _msg_hdr_t {
 	// Kernel's information
-	unsigned int   		sender;
-	unsigned int   		receiver;
+	GID_t   		sender;
+	GID_t   		receiver;
+	// TODO: non serve davvero, togliere
+	int   			type;
+	unsigned long long	rendezvous_mark;	/// Unique identifier of the message, used for rendez-vous event
+	// TODO: fine togliere
 	simtime_t		timestamp;
 	simtime_t		send_time;
 	unsigned long long	mark;
 } msg_hdr_t;
 
 
-
-/// Configuration of the execution of the simulator
-typedef struct _simulation_configuration {
-	char *output_dir;		/// Destination Directory of output files
-	int backtrace;			/// Debug mode flag
-	int scheduler;			/// Which scheduler to be used
-	int gvt_time_period;		/// Wall-Clock time to wait before executiong GVT operations
-	int gvt_snapshot_cycles;	/// GVT operations to be executed before rebuilding the state
-	int simulation_time;		/// Wall-clock-time based termination predicate
-	int lps_distribution;		/// Policy for the LP to Kernel mapping
-	int ckpt_mode;			/// Type of checkpointing mode (Synchronous, Semi-Asyncronous, ...)
-	int checkpointing;		/// Type of checkpointing scheme (e.g., PSS, CSS, ...)
-	int ckpt_period;		/// Number of events to execute before taking a snapshot in PSS (ignored otherwise)
-	int snapshot;			/// Type of snapshot (e.g., full, incremental, autonomic, ...)
-	int check_termination_mode;	/// Check termination strategy: standard or incremental
-	bool blocking_gvt;		/// GVT protocol blocking or not
-	bool deterministic_seed;	/// Does not change the seed value config file that will be read during the next runs
-	int verbose;			/// Kernel verbose
-	enum stat_levels stats;		/// Produce performance statistic file (default STATS_ALL)
-	bool serial;			// If the simulation must be run serially
-	seed_type set_seed;		/// The master seed to be used in this run
-
-#ifdef HAVE_PREEMPTION
-	bool disable_preemption;	/// If compiled for preemptive Time Warp, it can be disabled at runtime
-#endif
-
-#ifdef HAVE_PARALLEL_ALLOCATOR
-	bool disable_allocator;
-#endif
-} simulation_configuration;
 
 
 /// Barrier for all worker threads
@@ -198,22 +194,19 @@ extern unsigned int	kid,		/* Kernel ID for the local kernel */
 			*kernel;
 
 
-extern bool mpi_is_initialized;
-
-extern simulation_configuration rootsim_config;
 
 extern void ProcessEvent_light(unsigned int me, simtime_t now, int event_type, void *event_content, unsigned int size, void *state);
-bool OnGVT_light(int gid, void *snapshot);
+bool OnGVT_light(unsigned int me, void *snapshot);
 extern void ProcessEvent_inc(unsigned int me, simtime_t now, int event_type, void *event_content, unsigned int size, void *state);
-bool OnGVT_inc(int gid, void *snapshot);
-extern bool (**OnGVT)(int gid, void *snapshot);
+bool OnGVT_inc(unsigned int me, void *snapshot);
+extern bool (**OnGVT)(unsigned int me, void *snapshot);
 extern void (**ProcessEvent)(unsigned int me, simtime_t now, int event_type, void *event_content, unsigned int size, void *state);
 
 extern void base_init(void);
 extern void base_fini(void);
-extern unsigned int LidToGid(unsigned int lid);
-extern unsigned int GidToLid(unsigned int gid);
-extern unsigned int GidToKernel(unsigned int gid);
+extern GID_t LidToGid(LID_t lid);
+extern LID_t GidToLid(GID_t gid);
+extern unsigned int GidToKernel(GID_t gid);
 extern void rootsim_error(bool fatal, const char *msg, ...);
 extern void distribute_lps_on_kernels(void);
 extern void simulation_shutdown(int code) __attribute__((noreturn));

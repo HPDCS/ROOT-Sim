@@ -1,5 +1,5 @@
 /**
-*			Copyright (C) 2008-2015 HPDCS Group
+*			Copyright (C) 2008-2018 HPDCS Group
 *			http://www.dis.uniroma1.it/~hpdcs
 *
 *
@@ -7,8 +7,7 @@
 *
 * ROOT-Sim is free software; you can redistribute it and/or modify it under the
 * terms of the GNU General Public License as published by the Free Software
-* Foundation; either version 3 of the License, or (at your option) any later
-* version.
+* Foundation; only version 3 of the License applies.
 *
 * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
 * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
@@ -30,14 +29,16 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include <limits.h>
 
 #include <arch/thread.h>
 #include <core/core.h>
+#include <core/init.h>
 #include <scheduler/process.h>
+#include <scheduler/scheduler.h>
 #include <statistics/statistics.h>
 #include <gvt/gvt.h>
 #include <mm/dymelor.h>
-
 
 /// Barrier for all worker threads
 barrier_t all_thread_barrier;
@@ -70,14 +71,11 @@ unsigned int *to_gid;
 simulation_configuration rootsim_config;
 
 // Function Pointers to access functions implemented at application level
-bool (**OnGVT)(int gid, void *snapshot);
+bool (**OnGVT)(unsigned int me, void *snapshot);
 void (**ProcessEvent)(unsigned int me, simtime_t now, int event_type, void *event_content, unsigned int size, void *state);
 
 /// Flag to notify all workers that there was an error
 static bool sim_error = false;
-
-/// This variable is used by rootsim_error to know whether fatal errors involve stopping MPI or not
-bool mpi_is_initialized = false;
 
 /// This flag tells whether we are exiting from the kernel of from userspace
 bool exit_silently_from_kernel = false;
@@ -123,6 +121,7 @@ void exit_from_simulation_model(void) {
 */
 void base_init(void) {
 	register unsigned int i;
+	GID_t gid;
 
 	barrier_init(&all_thread_barrier, n_cores);
 
@@ -137,22 +136,18 @@ void base_init(void) {
 		if (rootsim_config.snapshot == FULL_SNAPSHOT) {
 			OnGVT[i] = &OnGVT_light;
 			ProcessEvent[i] = &ProcessEvent_light;
-		}
+		} // TODO: add here an else for ISS
 
-		if (GidToKernel(i) == kid) { // If the i-th logical process is hosted by this kernel
+		set_gid(gid, i);
+		if (GidToKernel(gid) == kid) { // If the i-th logical process is hosted by this kernel
 			to_lid[i] = n_prc;
 			to_gid[n_prc] = i;
 			n_prc++;
 		} else if (kernel[i] < n_ker) { // If not
-			to_lid[i] = -1;
+			to_lid[i] = UINT_MAX;
 		} else { // Sanity check
 			rootsim_error(true, "Invalid mapping: there is no kernel %d!\n", kernel[i]);
 		}
-	}
-
-	// TODO: questo va rimesso a posto quando ci rilanciamo sul distribuito
-	for (i = n_prc; i < n_prc_tot; i++) {
-		to_gid[i] = -1;
 	}
 
 	atexit(exit_from_simulation_model);
@@ -184,12 +179,15 @@ void base_fini(void){
 * Creates a mapping between logical processes' local and global identifiers
 *
 * @author Francesco Quaglia
+* @author Alessandro Pellegrini
 *
 * @param lid The logical process' local identifier
 * @return The global identifier of the logical process locally identified by lid
 */
-unsigned int LidToGid(unsigned int lid) {
-	return to_gid[lid];
+GID_t LidToGid(LID_t lid) {
+	GID_t ret;
+	set_gid(ret, to_gid[lid_to_int(lid)]);
+	return ret;
 }
 
 
@@ -197,16 +195,16 @@ unsigned int LidToGid(unsigned int lid) {
 * Creates a mapping between logical processes' global and local identifiers
 *
 * @author Francesco Quaglia
+* @author Alessandro Pellegrini
 *
 * @param gid The logical process' global identifier
-* @return The local identifier of the logical process globally identified by lid,
-*         -1 if the process is not hosted by the current kernel.
+* @return The local identifier of the logical process globally identified by gid
 */
-unsigned int GidToLid(unsigned int gid) {
-	return to_lid[gid];
+LID_t GidToLid(GID_t gid) {
+	LID_t ret;
+	set_lid(ret, to_lid[gid_to_int(gid)]);
+	return ret;
 }
-
-
 
 
 /**
@@ -217,9 +215,9 @@ unsigned int GidToLid(unsigned int gid) {
 * @param gid The logical process' global identifier
 * @return The id of the kernel currently hosting the logical process
 */
-unsigned int GidToKernel(unsigned int gid) {
+unsigned int GidToKernel(GID_t gid) {
 	// restituisce il kernel su cui si trova il processo identificato da gid
-	return kernel[gid];
+	return kernel[gid_to_int(gid)];
 }
 
 
@@ -237,24 +235,11 @@ void simulation_shutdown(int code) {
 
 	exit_silently_from_kernel = true;
 
-	if(mpi_is_initialized) {
-		comm_finalize();
-
-		// TODO: qui è necessario notificare agli altri kernel che c'è stato un errore ed è necessario fare lo shutdown
-		if(master_kernel()) {
-		}
-	}
-
 	statistics_stop(code);
 
 	if(!rootsim_config.serial) {
 
 		thread_barrier(&all_thread_barrier);
-
-		// All kernels must exit at the same time
-		if(n_ker > 1) {
-//			comm_barrier(MPI_COMM_WORLD);
-		}
 
 		if(master_thread()) {
 			statistics_fini();

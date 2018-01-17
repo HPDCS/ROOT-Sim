@@ -1,14 +1,13 @@
 /**
-*			Copyright (C) 2008-2010 HPDC Group
-*			http://www.dis.uniroma1.it/~hpdcs
+*                       Copyright (C) 2008-2018 HPDCS Group
+*			 http://www.dis.uniroma1.it/~hpdcs
 *
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
 *
 * ROOT-Sim is free software; you can redistribute it and/or modify it under the
 * terms of the GNU General Public License as published by the Free Software
-* Foundation; either version 3 of the License, or (at your option) any later
-* version.
+* Foundation; only version 3 of the License applies.
 *
 * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
 * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
@@ -27,12 +26,13 @@
 
 #include <stdbool.h>
 #include <arch/thread.h>
-#include <core/core.h>
+#include <core/init.h>
 #include <mm/dymelor.h>
 
 static tid_t os_tid;
 
 __thread unsigned int tid;
+__thread unsigned int local_tid;
 
 static unsigned int thread_counter = 0;
 
@@ -57,22 +57,23 @@ static void *__helper_create_thread(void *arg) {
 
 	// Get a unique local thread id...
 	unsigned int old_counter;
-	unsigned int local_tid;
+	unsigned int _local_tid;
 
 	while(true) {
 		old_counter = thread_counter;
-		local_tid = old_counter + 1;
-		if(iCAS(&thread_counter, old_counter, local_tid)) {
+		_local_tid = old_counter + 1;
+		if(iCAS(&thread_counter, old_counter, _local_tid)) {
 			break;
 		}
 	}
-
+	local_tid = _local_tid;
 	// ...and make it globally unique
-	tid = (kid << (sizeof(unsigned int) * 8 / 2)) | local_tid;
+	tid = to_global_tid(kid, _local_tid);
 
 
 	// Set the affinity on a CPU core, for increased performance
-	set_affinity(local_tid);
+	if(rootsim_config.core_binding)
+		set_affinity(local_tid);
 
 	// Now get into the real thread's entry point
 	real_arg->start_routine(real_arg->arg);
@@ -133,16 +134,9 @@ void create_threads(unsigned short int n, void *(*start_routine)(void*), void *a
 * @param t the number of threads which will synchronize on the barrier
 */
 void barrier_init(barrier_t *b, int t) {
-	b->reserved = 0;
 	b->num_threads = t;
 	thread_barrier_reset(b);
 }
-
-
-bool reserve_barrier(barrier_t *b) {
-	return atomic_test_and_set((int *)&b->reserved);
-}
-
 
 /**
 * This function synchronizes all the threads. After a thread leaves this function,

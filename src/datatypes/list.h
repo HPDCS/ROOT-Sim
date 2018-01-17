@@ -1,5 +1,5 @@
 /**
-*			Copyright (C) 2008-2015 HPDCS Group
+*			Copyright (C) 2008-2018 HPDCS Group
 *			http://www.dis.uniroma1.it/~hpdcs
 *
 *
@@ -7,8 +7,7 @@
 *
 * ROOT-Sim is free software; you can redistribute it and/or modify it under the
 * terms of the GNU General Public License as published by the Free Software
-* Foundation; either version 3 of the License, or (at your option) any later
-* version.
+* Foundation; only version 3 of the License applies.
 *
 * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
 * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
@@ -34,8 +33,19 @@
 #include <assert.h>
 
 #include <core/core.h>
-
 #include <arch/atomic.h>
+
+// The basic implementation of the list is such that each node of any list is allocated in
+// a separate memory region which is associated with a LP.
+// There are some points of the code where this is not the case. In particular, each worker
+// thread might have the need to handle per-thread lists.
+// If the lid passed to all list-library function is idle_process, the library
+// falls back to generic memory, thus the nodes are not associated with any LP.
+// BEWARE: The implementation of the generic list provided by this submodule IS NOT THREAD SAFE!
+// This is because LPs are handled in data separation.
+// In case this facility is used to handle a list which is shared across different worker threads,
+// then accesses to the list must be protected within critical sections.
+
 
 /// This is the encapsulating structure of a list node. Any payload can be contained by this.
 struct rootsim_list_node {
@@ -45,14 +55,13 @@ struct rootsim_list_node {
 };
 
 
-typedef struct rootsim_list rootsim_list;
 /// This structure defines a generic list.
-struct rootsim_list {
-	unsigned int size;
+typedef struct rootsim_list {
+	size_t size;
 	struct rootsim_list_node *head;
 	struct rootsim_list_node *tail;
 	atomic_t counter;
-};
+} rootsim_list;
 
 
 /// This macro is a slightly-different implementation of the standard offsetof macro
@@ -68,10 +77,20 @@ struct rootsim_list {
  *  \endcode
  */
 #define new_list(lid, type)	(type *)({ \
-				void *__lmptr = (void *)umalloc((lid), sizeof(struct rootsim_list));\
+				void *__lmptr; \
+				if(lid_equals(lid, idle_process)) \
+					__lmptr = (void *)rsalloc(sizeof(struct rootsim_list)); \
+				else \
+					__lmptr = (void *)umalloc((lid), sizeof(struct rootsim_list));\
 				bzero(__lmptr, sizeof(struct rootsim_list));\
 				__lmptr;\
 			})
+
+#define new_list_generic(type)	(tyep *)({ \
+					void *__lmptr; \
+					__lmptr = new_list(idle_process, (type)) \
+					__lmptr; \
+				})
 
 /// Insert a new node in the list. Refer to <__list_insert_head>() for a more thorough documentation.
 #define list_insert_head(lid, list, data) \
@@ -82,6 +101,8 @@ struct rootsim_list {
 #define list_insert_tail(lid, list, data) \
 			(__typeof__(list))__list_insert_tail((lid), (list), sizeof *(list), (data))
 
+#define list_insert_tail_by_content(list, node) \
+			(__typeof__(list))__list_insert_tail_by_node((list), list_container_of(node))
 
 /// Insert a new node in the list. Refer to <__list_insert>() for a more thorough documentation.
 #define list_insert(lid, list, key_name, data) \
@@ -90,10 +111,10 @@ struct rootsim_list {
 /// Insert an existing node in the list. Refer to <__list_place>() for a more thorough documentation.
 #define list_place(lid, list, key_name, node) \
 			(__typeof__(list))__list_place((lid), (list), my_offsetof((list), key_name), (node))
-			
+
 #define list_place_by_content(lid, list, key_name, node) \
 			(__typeof__(list))__list_place((lid), (list), my_offsetof((list), key_name), list_container_of(node))
-			
+
 /// Remove a node in the list. Refer to <__list_delete>() for a more thorough documentation.
 #define list_delete(list, key_name, key_value) \
 		__list_delete((list), sizeof *(list), (double)(key_value), my_offsetof((list), key_name))
@@ -120,12 +141,9 @@ struct rootsim_list {
 		(__typeof__(list))__list_find((list), (double)(key_value), my_offsetof((list), key_name))
 
 
-#define LIST_TRUNC_AFTER	10
-#define LIST_TRUNC_BEFORE	11
-
-/// Truncate a list up to a certain point, towards increasing values. Refer to <__list_trunc>() for a more thorough documentation.
-#define list_trunc_before(lid, list, key_name, key_value) \
-		__list_trunc((lid), (list), (double)(key_value), my_offsetof((list), key_name), LIST_TRUNC_BEFORE)
+/// Truncate a list up to a certain point, starting from the head. Refer to <__list_trunc>() for a more thorough documentation.
+#define list_trunc(lid, list, key_name, key_value) \
+		__list_trunc((lid), (list), (double)(key_value), my_offsetof((list), key_name))
 
 // Get the size of the current list. Refer to <__list_delete>() for a more thorough documentation.
 #define list_sizeof(list) ((struct rootsim_list *)list)->size
@@ -225,19 +243,31 @@ struct rootsim_list {
 
 #define list_empty(list) (((rootsim_list *)list)->size == 0)
 
-extern char *__list_insert_head(unsigned int lid, void *li, unsigned int size, void *data);
-extern char *__list_insert_tail(unsigned int lid, void *li, unsigned int size, void *data);
-extern char *__list_insert(unsigned int lid, void *li, unsigned int size, size_t key_position, void *data);
-extern char *__list_extract(unsigned int lid, void *li, unsigned int size, double key, size_t key_position);
-extern bool __list_delete(unsigned int lid, void *li, unsigned int size, double key, size_t key_position);
-extern char *__list_extract_by_content(unsigned int lid, void *li, unsigned int size, void *ptr, bool copy);
+
+#define list_allocate_node_buffer_generic(size)	({ \
+							void *__ptr; \
+							__ptr = list_allocate_node_buffer(idle_process, (size)); \
+							__ptr; \
+						})
+
+#define list_delete_by_content_generic(list, ptr) ({ \
+							(void)__list_extract_by_content(idle_process, (list), sizeof *(list), (ptr), false); \
+						  })
+
+extern char *__list_insert_head(LID_t lid, void *li, unsigned int size, void *data);
+extern char *__list_insert_tail(LID_t lid, void *li, unsigned int size, void *data);
+extern char *__list_insert_tail_by_node(void *li, struct rootsim_list_node* new_n);
+extern char *__list_insert(LID_t lid, void *li, unsigned int size, size_t key_position, void *data);
+extern char *__list_extract(LID_t lid, void *li, unsigned int size, double key, size_t key_position);
+extern bool __list_delete(LID_t lid, void *li, unsigned int size, double key, size_t key_position);
+extern char *__list_extract_by_content(LID_t lid, void *li, unsigned int size, void *ptr, bool copy);
 extern char *__list_find(void *li, double key, size_t key_position);
-extern unsigned int __list_trunc(unsigned int lid, void *li, double key, size_t key_position, unsigned short int direction);
-extern void list_pop(unsigned int lid, void *li);
-extern char *__list_place(unsigned int lid, void *li, size_t key_position, struct rootsim_list_node *new_n);
-extern void *list_allocate_node(unsigned int lid, size_t size);
-extern void *list_allocate_node_buffer(unsigned int lid, size_t size);
-extern void list_deallocate_node_buffer(unsigned int lid, void *ptr);
+extern unsigned int __list_trunc(LID_t lid, void *li, double key, size_t key_position);
+extern void list_pop(LID_t lid, void *li);
+extern char *__list_place(LID_t lid, void *li, size_t key_position, struct rootsim_list_node *new_n);
+extern void *list_allocate_node(LID_t lid, size_t size);
+extern void *list_allocate_node_buffer(LID_t lid, size_t size);
+extern void list_deallocate_node_buffer(LID_t lid, void *ptr);
 
 
 #endif /* __LIST_DATATYPE_H */

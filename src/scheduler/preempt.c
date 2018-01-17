@@ -1,5 +1,5 @@
 /**
-*			Copyright (C) 2008-2015 HPDCS Group
+*			Copyright (C) 2008-2018 HPDCS Group
 *			http://www.dis.uniroma1.it/~hpdcs
 *
 *
@@ -7,8 +7,7 @@
 *
 * ROOT-Sim is free software; you can redistribute it and/or modify it under the
 * terms of the GNU General Public License as published by the Free Software
-* Foundation; either version 3 of the License, or (at your option) any later
-* version.
+* Foundation; only version 3 of the License applies.
 *
 * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
 * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
@@ -58,7 +57,7 @@ void preempt_init(void) {
 	for(i = 0; i < n_cores; i++) {
 		min_in_transit_lvt[i] = INFTY;
 	}
-	
+
 	// Try to get control over libtimestretch device file
 	ret = ts_open();
 	if(ret == TS_OPEN_ERROR) {
@@ -134,7 +133,7 @@ __thread bool rolling_back = false;
 void preempt(void) {
 
 //	return;
-	
+
 	if(rootsim_config.disable_preemption)
 		return;
 
@@ -154,15 +153,15 @@ void preempt(void) {
 	if(platform_mode || rolling_back) {
 //		atomic_inc(&overtick_platform);
 
-	} else if(min_in_transit_lvt[tid] < current_lvt) {
+	} else if(min_in_transit_lvt[local_tid] < current_lvt) {
 //		atomic_inc(&would_preempt);
 		LPS[current_lp]->state = LP_STATE_SUSPENDED; // Questo triggera la logica di ripartenza dell'LP di ECS, ma forse va cambiato nome...
 		switch_to_platform_mode();
 		context_switch(&LPS[current_lp]->context, &kernel_context);
 	}
-	
 
-/*	if(!platform_mode && min_in_transit_lvt[tid] < current_lvt) {
+
+/*	if(!platform_mode && min_in_transit_lvt[local_tid] < current_lvt) {
 
 		atomic_inc(&preempt_count);
 
@@ -192,7 +191,7 @@ void preempt(void) {
 	}
 */
 
-	
+
 }
 
 

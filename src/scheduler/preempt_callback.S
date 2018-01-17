@@ -1,5 +1,5 @@
 /**
-*			Copyright (C) 2008-2015 HPDCS Group
+*			Copyright (C) 2008-2018 HPDCS Group
 *			http://www.dis.uniroma1.it/~hpdcs
 *
 *
@@ -7,8 +7,7 @@
 *
 * ROOT-Sim is free software; you can redistribute it and/or modify it under the
 * terms of the GNU General Public License as published by the Free Software
-* Foundation; either version 3 of the License, or (at your option) any later
-* version.
+* Foundation; only version 3 of the License applies.
 *
 * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
 * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
@@ -31,7 +30,7 @@
 .extern preempt
 .extern return_from_kernel
 
-#if defined(HAVE_PREEMPTION) && ( defined(ARCH_X86) || defined(ARCH_X86_64) )
+#ifdef HAVE_PREEMPTION
 
 .text
 .globl preempt_callback
@@ -39,15 +38,18 @@
 
 preempt_callback:
 	push %rbp
-	pushfq
 	push %rax
+
+	lahf
+	seto %al
+	pushq %rax
+
 	push %rbx
 	push %rcx
 	push %rdx
 	push %rdi
 	push %rsi
 
-#ifdef ARCH_X86_64
 	push %r8
 	push %r9
 	push %r10
@@ -56,7 +58,6 @@ preempt_callback:
 	push %r13
 	push %r14
 	push %r15
-#endif
 
 	subq $16, %rsp
 	movsd %xmm0, (%rsp)
@@ -70,7 +71,6 @@ preempt_callback:
 	movsd (%rsp), %xmm0
 	addq $16, %rsp
 
-#ifdef ARCH_X86_64
 	pop %r15
 	pop %r14
 	pop %r13
@@ -79,18 +79,21 @@ preempt_callback:
 	pop %r10
 	pop %r9
 	pop %r8
-#endif
 
 	pop %rsi
 	pop %rdi
 	pop %rdx
 	pop %rcx
 	pop %rbx
+
 	pop %rax
-	popfq
+	addb $0x7f, %al
+	sahf
+
+	pop %rax
 	pop %rbp
 	retq
 
 .size   preempt_callback, .-preempt_callback
 
-#endif /* defined(HAVE_PREEMPT) and ( defined(ARCH_X86) or defined(ARCH_X86_64) ) */
+#endif /* HAVE_PREEMPT */

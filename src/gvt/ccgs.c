@@ -1,5 +1,5 @@
 /**
-*			Copyright (C) 2008-2015 HPDCS Group
+*			Copyright (C) 2008-2018 HPDCS Group
 *			http://www.dis.uniroma1.it/~hpdcs
 *
 *
@@ -7,8 +7,7 @@
 *
 * ROOT-Sim is free software; you can redistribute it and/or modify it under the
 * terms of the GNU General Public License as published by the Free Software
-* Foundation; either version 3 of the License, or (at your option) any later
-* version.
+* Foundation; only version 3 of the License applies.
 *
 * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
 * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
@@ -28,9 +27,11 @@
 
 #include <stdbool.h>
 #include <core/core.h>
+#include <core/init.h>
 #include <mm/dymelor.h>
 #include <mm/state.h>
 #include <communication/communication.h>
+#include <communication/mpi.h>
 #include <gvt/ccgs.h>
 #include <scheduler/scheduler.h>
 #include <scheduler/process.h>
@@ -46,7 +47,11 @@ static bool lps_termination[MAX_LPs];
 
 
 inline bool ccgs_can_halt_simulation(void) {
+	#ifdef HAVE_MPI
+	return (ccgs_completed_simulation && all_kernels_terminated());
+	#else
 	return ccgs_completed_simulation;
+	#endif
 }
 
 
@@ -55,9 +60,19 @@ void ccgs_reduce_termination(void) {
 	register unsigned int i;
 	bool termination = true;
 
+	/* Local termination:  all LPs need to be terminated */
 	for(i = 0; i < n_prc; i++) {
 		termination &= lps_termination[i];
 	}
+
+	#ifdef HAVE_MPI
+	/* If terminated locally check for global termination
+	 * All other kernel need to terminated
+	 */
+	if(!ccgs_completed_simulation && termination){
+		broadcast_termination();
+	}
+	#endif
 
 	ccgs_completed_simulation = termination;
 }
@@ -78,7 +93,7 @@ void ccgs_compute_snapshot(state_t *time_barrier_pointer[], simtime_t gvt) {
 
 	bool check_res = true;
 	register unsigned int i;
-	register unsigned int lid;
+	LID_t lid;
 
 	state_t temporary_log;
 //	msg_t *realignment_evt;
@@ -86,10 +101,10 @@ void ccgs_compute_snapshot(state_t *time_barrier_pointer[], simtime_t gvt) {
 
 	for(i = 0; i < n_prc_per_thread; i++) {
 
-		lid = LPS_bound[i]->lid;
+		lid = LPS_bound(i)->lid;
 
 		// If termination detection is incremental, we skip the current LP
-		if(rootsim_config.check_termination_mode == INCR_CKTRM && lps_termination[lid]) {
+		if(rootsim_config.check_termination_mode == INCR_CKTRM && lps_termination[lid_to_int(lid)]) {
 			continue;
 		}
 
@@ -102,14 +117,14 @@ void ccgs_compute_snapshot(state_t *time_barrier_pointer[], simtime_t gvt) {
 		current_lp = lid;
 		current_lvt = lvt(lid);
 		temporary_log.log = log_state(lid);
-		temporary_log.state = LPS[lid]->state;
-		temporary_log.base_pointer = LPS[lid]->current_base_pointer;
+		temporary_log.state = LPS(lid)->state;
+		temporary_log.base_pointer = LPS(lid)->current_base_pointer;
 
 		// Restore the time barrier state
 		current_lvt = time_barrier_pointer[i]->lvt;
 		log_restore(lid, time_barrier_pointer[i]);
-		LPS[lid]->state = time_barrier_pointer[i]->state;
-		LPS[lid]->current_base_pointer = time_barrier_pointer[i]->base_pointer;
+		LPS(lid)->state = time_barrier_pointer[i]->state;
+		LPS(lid)->current_base_pointer = time_barrier_pointer[i]->base_pointer;
 
 /*
 		// If the LP is not blocked, we can reconstruct the state exactly to the GVT
@@ -126,8 +141,9 @@ void ccgs_compute_snapshot(state_t *time_barrier_pointer[], simtime_t gvt) {
 */
 
 		// Call the application to check termination
-		lps_termination[lid] = OnGVT[lid](LidToGid(lid), LPS[lid]->current_base_pointer);
-		check_res &= lps_termination[lid];
+//		printf("[%d] inside OnGVT CBP: %p\n",lid,LPS[lid]->current_base_pointer);
+		lps_termination[lid_to_int(lid)] = OnGVT[lid_to_int(lid)](gid_to_int(LidToGid(lid)), LPS(lid)->current_base_pointer);
+		check_res &= lps_termination[lid_to_int(lid)];
 
 		// Early stop
 		if(rootsim_config.check_termination_mode == INCR_CKTRM && !check_res) {
@@ -135,15 +151,15 @@ void ccgs_compute_snapshot(state_t *time_barrier_pointer[], simtime_t gvt) {
 		}
 
 		// Restore the current state
-		current_lvt = LPS[lid]->bound->timestamp;
-		LPS[lid]->state = temporary_log.state;
-		LPS[lid]->current_base_pointer = temporary_log.base_pointer;
+		current_lvt = LPS(lid)->bound->timestamp;
+		LPS(lid)->state = temporary_log.state;
+		LPS(lid)->current_base_pointer = temporary_log.base_pointer;
 		log_restore(lid, &temporary_log);
 		log_delete(temporary_log.log);
 	}
 
 	// No real LP is running now!
-	current_lp = IDLE_PROCESS;
+	current_lp = idle_process;
 	current_lvt = -1.0;
 
 }

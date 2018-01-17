@@ -1,5 +1,5 @@
 /**
-*			Copyright (C) 2008-2015 HPDCS Group
+*			Copyright (C) 2008-2018 HPDCS Group
 *			http://www.dis.uniroma1.it/~hpdcs
 *
 *
@@ -7,8 +7,7 @@
 *
 * ROOT-Sim is free software; you can redistribute it and/or modify it under the
 * terms of the GNU General Public License as published by the Free Software
-* Foundation; either version 3 of the License, or (at your option) any later
-* version.
+* Foundation; only version 3 of the License applies.
 *
 * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
 * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
@@ -50,22 +49,17 @@
 extern void scheduler_init(void);
 extern void scheduler_fini(void);
 extern void schedule(void);
-extern void initialize_LP(unsigned int lp);
+extern void initialize_LP(LID_t lp);
 extern void initialize_worker_thread(void);
-extern void activate_LP(unsigned int lp, simtime_t lvt, void *evt, void *state);
+extern void activate_LP(LID_t lp, simtime_t lvt, void *evt, void *state);
 
 
 
 extern bool receive_control_msg(msg_t *);
 extern bool process_control_msg(msg_t *);
 extern bool reprocess_control_msg(msg_t *);
-extern void rollback_control_message(unsigned int, simtime_t);
+extern void rollback_control_message(LID_t, simtime_t);
 extern bool anti_control_message(msg_t * msg);
-
-#ifdef  HAVE_LINUX_KERNEL_MAP_MODULE
-extern void unblock_synchronized_objects(unsigned int);
-#endif
-
 
 #ifdef HAVE_PREEMPTION
 extern void preempt_init(void);
@@ -77,7 +71,7 @@ void disable_preemption(void);
 #endif
 
 
-extern __thread unsigned int current_lp;
+extern __thread LID_t current_lp;
 extern __thread simtime_t current_lvt;
 extern __thread msg_t *current_evt;
 extern __thread void *current_state;
