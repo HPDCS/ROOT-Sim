@@ -29,7 +29,7 @@ AS_IF([test x$enable_debug = xyes],
 
 # Extra check flags
 AC_ARG_ENABLE(extra-checks,
-AS_HELP_STRING([--enable-exrta-checks],[Enable extra checks on models (kills performance!)]),
+AS_HELP_STRING([--enable-extra-checks],[Enable extra checks on models (kills performance!)]),
 [enable_extra_checks=$enableval],[enable_extra_checks=no])
 AS_IF([test "x$enable_extra_checks" = "xyes"], [
 	AC_DEFINE([EXTRA_CHECKS])
@@ -45,31 +45,9 @@ AS_IF([test "x$enable_profile" = "xyes"], [
 
 
 #----------------------------------------------------------------------------
-# Check for languages and compilation support
-#----------------------------------------------------------------------------
-AC_LANG([C])
-AC_PROG_CC([gcc])
-AX_CHECK_COMPILE_FLAG([-std=c11], [ac_c11=yes], [ac_c11=no])
-AS_IF([test x$ac_c11 != xyes],[
-	AC_MSG_FAILURE([No. ROOT-Sim requires a compiler speaking the C11 standard.])
-])
-
-AX_COMPILER_VERSION
-GCC_VERSION=$ax_cv_c_compiler_version
-GCC_VERSION_MAJOR=$(echo $GCC_VERSION | cut -d'.' -f1)
-GCC_VERSION_MINOR=$(echo $GCC_VERSION | cut -d'.' -f2)
-GCC_VERSION_PATCH=$(echo $GCC_VERSION | cut -d'.' -f3)
-AS_IF([test $GCC_VERSION_MAJOR -lt 4 -a $GCC_VERSION_MINOR -lt 9],[
-	AC_MSG_FAILURE([At least version 4.9.0 is required.])
-])
-
-
-AC_USE_SYSTEM_EXTENSIONS
-
-#----------------------------------------------------------------------------
 # Check for the availability of a suitable MPI environment
 #----------------------------------------------------------------------------
-AC_ARG_WITH([mpi],
+AC_ARG_ENABLE([mpi],
             AS_HELP_STRING([--enable-mpi], [compile with MPI support. Default: no]))
 AX_PROG_CC_MPI([test x"$enable_mpi" = xyes],[with_mpi=yes],[with_mpi=no])
 
@@ -92,6 +70,29 @@ AS_IF([test x"$with_mpi" = xyes],[
 	])
 ])
 
+#----------------------------------------------------------------------------
+# Check for languages and compilation support
+#----------------------------------------------------------------------------
+AC_LANG([C])
+AC_PROG_CC([gcc])
+AX_CHECK_COMPILE_FLAG([-std=c11], [ac_c11=yes], [ac_c11=no])
+AS_IF([test x$ac_c11 != xyes],[
+	AC_MSG_FAILURE([No. ROOT-Sim requires a compiler speaking the C11 standard.])
+])
+
+
+#----------------------------------------------------------------------------
+# Check for GCC version
+#----------------------------------------------------------------------------
+AC_USE_SYSTEM_EXTENSIONS
+AX_COMPILER_VERSION
+GCC_VERSION=$ax_cv_c_compiler_version
+GCC_VERSION_MAJOR=$(echo $GCC_VERSION | cut -d'.' -f1)
+GCC_VERSION_MINOR=$(echo $GCC_VERSION | cut -d'.' -f2)
+GCC_VERSION_PATCH=$(echo $GCC_VERSION | cut -d'.' -f3)
+AS_IF([test $GCC_VERSION_MAJOR -lt 4 -a $GCC_VERSION_MINOR -lt 9],[
+	AC_MSG_FAILURE([At least version 4.9.0 is required.])
+])
 
 #----------------------------------------------------------------------------
 # Checks for programs.
