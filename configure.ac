@@ -18,7 +18,7 @@ AM_CONDITIONAL([DEBUG], [test x$enable_debug = xyes])
 
 # Setup compilation flags
 CFLAGS_COMMON="-std=c11 -fno-omit-frame-pointer -ffloat-store -fno-common -fstrict-aliasing -fgnu89-inline -rdynamic -lm -U_FORTIFY_SOURCE"
-CFLAGS_WARNINGS="-Wall -Wextra -Wcast-align -Wpointer-arith -Wstrict-overflow=5 -Wstrict-prototypes -Winline -Wundef -Wnested-externs -Wshadow -Wunreachable-code -Wfloat-equal -Wredundant-decls -Wold-style-definition -Wno-switch-enum"
+CFLAGS_WARNINGS="-Wall -Wextra -Wcast-align -Wpointer-arith -Wstrict-overflow=5 -Wstrict-prototypes -Winline -Wundef -Wnested-externs -Wshadow -Wunreachable-code -Wfloat-equal -Wredundant-decls -Wold-style-definition -Wno-switch-enum -Wimplicit-fallthrough=3"
 #FLAGS_WARNINGS="$CFLAGS_WARNINGS -Wconversion"
 
 AS_IF([test x$enable_debug = xyes],
@@ -59,8 +59,8 @@ GCC_VERSION=$ax_cv_c_compiler_version
 GCC_VERSION_MAJOR=$(echo $GCC_VERSION | cut -d'.' -f1)
 GCC_VERSION_MINOR=$(echo $GCC_VERSION | cut -d'.' -f2)
 GCC_VERSION_PATCH=$(echo $GCC_VERSION | cut -d'.' -f3)
-AS_IF([test $GCC_VERSION_MAJOR -lt 5],[
-	AC_MSG_FAILURE([At least version 5.0.0 is required.])
+AS_IF([test $GCC_VERSION_MAJOR -lt 4 -a $GCC_VERSION_MINOR -lt 9],[
+	AC_MSG_FAILURE([At least version 4.9.0 is required.])
 ])
 
 
