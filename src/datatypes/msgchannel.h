@@ -17,8 +17,8 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file bh.h
-* @brief
+* @file msgchannel.h
+* @brief This module implements an (M, N) channel to transfer message pointers.
 * @author Francesco Quaglia
 * @author Alessandro Pellegrini
 */
@@ -29,28 +29,24 @@
 
 #include <core/core.h>
 
-struct _map {
+struct _msg_buff {
 	msg_t * volatile *buffer;
 	volatile unsigned int	size;
 	volatile unsigned int	written;
 	volatile unsigned int	read;
 };
 
-struct _bhmap {
-	struct _map	* volatile maps[2];
-	spinlock_t	read_lock;
-	spinlock_t	write_lock;
-};
+typedef struct _msg_channel {
+	struct _msg_buff	*volatile buffers[2];
+	spinlock_t		read_lock;
+	spinlock_t		write_lock;
+} msg_channel;
 
-// These are used to simplify reading the code
-#define M_WRITE	0
-#define M_READ	1
+#define INITIAL_CHANNEL_SIZE (64 * sizeof(msg_t *))
 
-#define INITIAL_BH_SIZE 1024
-
-extern bool BH_init(void);
-extern void BH_fini(void);
-extern void insert_BH(LID_t, msg_t *);
-extern void *get_BH(LID_t);
+extern msg_channel *init_channel(void);
+extern void fini_channel(msg_channel *);
+extern void insert_msg(msg_channel *, msg_t *);
+extern void *get_msg(msg_channel *);
 
 #endif /* _BH_H */

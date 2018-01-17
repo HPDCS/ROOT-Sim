@@ -56,6 +56,9 @@ void initialize_control_blocks(void) {
 		lps_blocks[i]->outgoing_buffer.max_size = INIT_OUTGOING_MSG;
 		lps_blocks[i]->outgoing_buffer.outgoing_msgs = rsalloc(sizeof(msg_t *) * INIT_OUTGOING_MSG);
 
+		// Initialize bottom halves msg channel
+		lps_blocks[i]->bottom_halves = init_channel();
+
 		// That's the only sequentially executed place where we can set the lid
 		lps_blocks[i]->lid.id = i;
 	}

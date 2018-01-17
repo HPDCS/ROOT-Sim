@@ -31,7 +31,6 @@
 
 #include <mm/dymelor.h>
 #include <mm/mm.h>
-#include <mm/bh.h>
 
 
 static struct _buddy **buddies;
@@ -259,10 +258,6 @@ bool allocator_init(void) {
 #ifdef HAVE_NUMA
 	numa_init();
 #endif
-
-	//set_BH_map(maps);
-	if(!BH_init())
-		rootsim_error(true, "Unable to initialize bottom halves buffers\n");
 
 	return true;
 }

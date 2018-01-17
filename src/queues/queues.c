@@ -33,10 +33,10 @@
 #include <arch/atomic.h>
 #include <arch/thread.h>
 #include <datatypes/list.h>
+#include <datatypes/msgchannel.h>
 #include <queues/queues.h>
 #include <mm/state.h>
 #include <mm/dymelor.h>
-#include <mm/bh.h>
 #include <scheduler/scheduler.h>
 #include <communication/communication.h>
 #include <communication/gvt.h>
@@ -141,7 +141,7 @@ void insert_bottom_half(msg_t *msg) {
 
 	validate_msg(msg);
 
-	insert_BH(lid, msg);
+	insert_msg(LPS(lid)->bottom_halves, msg);
 	#ifdef HAVE_PREEMPTION
 	update_min_in_transit(LPS(lid)->worker_thread, msg->timestamp);
 	#endif
@@ -163,7 +163,7 @@ void process_bottom_halves(void) {
 
 	for(i = 0; i < n_prc_per_thread; i++) {
 
-		while((msg_to_process = (msg_t *)get_BH(LPS_bound(i)->lid)) != NULL) {
+		while((msg_to_process = get_msg(LPS_bound(i)->bottom_halves)) != NULL) {
 			lid_receiver = GidToLid(msg_to_process->receiver);
 			receiver = LPS(lid_receiver);
 			

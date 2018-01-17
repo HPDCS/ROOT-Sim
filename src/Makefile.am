@@ -27,6 +27,7 @@ librootsim_a_SOURCES =	main.c \
 			datatypes/list.c \
 			datatypes/calqueue.c \
 			datatypes/slab.c \
+			datatypes/msgchannel.c \
 			mm/state.c \
 			mm/ecs.c \
 			mm/ecs_callback.S \
@@ -60,6 +61,5 @@ libdymelor_a_SOURCES = 	mm/checkpoints.c \
 			mm/platform.c \
 			mm/dymelor.c \
 			mm/buddy.c \
-			mm/bh.c \
 			mm/segment.c \
 			mm/numa.c 

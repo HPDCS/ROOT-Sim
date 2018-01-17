@@ -37,6 +37,7 @@
 #include <mm/dymelor.h>
 #include <mm/ecs.h>
 #include <datatypes/list.h>
+#include <datatypes/msgchannel.h>
 #include <arch/ult.h>
 #include <lib/numerical.h>
 #include <communication/communication.h>
@@ -110,8 +111,8 @@ typedef struct _LP_state {
 	/// Saved states queue
 	list(state_t)		queue_states;
 
-	/// Bottom halves queue
-	list(msg_t)		bottom_halves;
+	/// Bottom halves
+	msg_channel		*bottom_halves;
 
 	/// Processed rendezvous queue
 	list(msg_t)		rendezvous_queue;

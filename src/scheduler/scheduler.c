@@ -28,6 +28,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <datatypes/list.h>
+#include <datatypes/msgchannel.h>
 #include <core/core.h>
 #include <core/timer.h>
 #include <arch/atomic.h>
@@ -244,7 +245,6 @@ void initialize_LP(LID_t lp) {
 	LPS(lp)->queue_in = new_list(lp, msg_t);
 	LPS(lp)->queue_out = new_list(lp, msg_hdr_t);
 	LPS(lp)->queue_states = new_list(lp, state_t);
-	LPS(lp)->bottom_halves = new_list(lp, msg_t);
 	LPS(lp)->rendezvous_queue = new_list(lp, msg_t);
 
 	// Initialize the LP lock
