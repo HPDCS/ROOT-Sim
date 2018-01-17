@@ -18,7 +18,7 @@ AM_CONDITIONAL([DEBUG], [test x$enable_debug = xyes])
 
 # Setup compilation flags
 CFLAGS_COMMON="-std=c11 -fno-omit-frame-pointer -ffloat-store -fno-common -fstrict-aliasing -fgnu89-inline -rdynamic -lm -U_FORTIFY_SOURCE"
-CFLAGS_WARNINGS="-Wall -Wextra -Wcast-align -Wpointer-arith -Wstrict-overflow=5 -Wstrict-prototypes -Winline -Wundef -Wnested-externs -Wshadow -Wunreachable-code -Wfloat-equal -Wredundant-decls -Wold-style-definition -Wno-switch-enum -Wimplicit-fallthrough=3"
+CFLAGS_WARNINGS="-Wall -Wextra -Wcast-align -Wpointer-arith -Wstrict-overflow=5 -Wstrict-prototypes -Winline -Wundef -Wnested-externs -Wshadow -Wunreachable-code -Wfloat-equal -Wredundant-decls -Wold-style-definition -Wno-switch-enum"
 #FLAGS_WARNINGS="$CFLAGS_WARNINGS -Wconversion"
 
 AS_IF([test x$enable_debug = xyes],
@@ -92,6 +92,18 @@ GCC_VERSION_MINOR=$(echo $GCC_VERSION | cut -d'.' -f2)
 GCC_VERSION_PATCH=$(echo $GCC_VERSION | cut -d'.' -f3)
 AS_IF([test $GCC_VERSION_MAJOR -lt 4 -a $GCC_VERSION_MINOR -lt 9],[
 	AC_MSG_FAILURE([At least version 4.9.0 is required.])
+])
+
+# GCC7 complains about switch cases fallthrough. We use this in some highly-
+# optimized portions of the code. The -Wimplicit-fallthrough=3 compile-time
+# flag can prevent the compiler from emitting warnings in all fallthrough
+# cases where a "fallthrough" comment has been places (in a way compliant with
+# the [[fallthrough]] C14 tag which we don't support here.
+# Yet, previous version of the compiler fail badly if we simply use that
+# flag. We check here for the compiler version, and if we're of GCC >= 7.0 we
+# set the flag, only in debug mode.
+AS_IF([test $GCC_VERSION_MAJOR -ge 7 -a "x$enable_debug" == "xyes"],[
+	CFLAGS="$CFLAGS -Wimplicit-fallthrough=3"
 ])
 
 #----------------------------------------------------------------------------
