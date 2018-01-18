@@ -99,7 +99,7 @@ inline bool iCAS(volatile uint32_t *ptr, uint32_t oldVal, uint32_t newVal) {
 * @ret true if the int value has been set, false otherwise
 */
 inline int atomic_test_and_set(int *b) {
-    int result = 0;
+	int result = 0;
 
 	__asm__  __volatile__ (
 		LOCK "bts $0, %1;\n\t"
@@ -247,21 +247,21 @@ inline int atomic_inc_and_test(atomic_t *v) {
 
 #ifdef SPINLOCK_GIVES_COUNT
 
-inline unsigned int spin_lock(spinlock_t *s) {
+unsigned int spin_lock(spinlock_t *s) {
 
-        int count = -1;
+	int count = -1;
 
-        __asm__ __volatile__(
-                "1:\n\t"
-                "movl $1,%%eax\n\t"
-                LOCK "xchgl %%eax, %2\n\t"
-                "addl $1, %0\n\t"
-                "testl %%eax, %%eax\n\t"
-                "jnz 1b"
-                : "=c" (count)
-                : "c" (count), "m" (s->lock)
-                : "eax", "memory"
-        );
+	__asm__ __volatile__(
+		"1:\n\t"
+		"movl $1,%%eax\n\t"
+		LOCK "xchgl %%eax, %2\n\t"
+		"addl $1, %0\n\t"
+		"testl %%eax, %%eax\n\t"
+		"jnz 1b"
+		: "=c" (count)
+		: "c" (count), "m" (s->lock)
+		: "eax", "memory"
+	);
 
 #if (!defined(NDEBUG)) && defined(HAVE_HELGRIND_H)
 	ANNOTATE_RWLOCK_ACQUIRED(&((s)->lock), 1);

@@ -1,4 +1,3 @@
-
 AC_PREREQ([2.67])
 
 AC_INIT([ROOT-Sim],[2.0.0],[rootsim@googlegroups.com],[rootsim],[http://www.dis.uniroma1.it/~hpdcs/ROOT-Sim/])
