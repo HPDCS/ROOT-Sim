@@ -47,22 +47,22 @@ typedef struct { volatile unsigned int lock; } spinlock_t;
 
 
 
-inline bool CAS_x86(volatile unsigned long long *ptr, unsigned long long oldVal, unsigned long long newVal);
-inline bool iCAS_x86(volatile unsigned int *ptr, unsigned int oldVal, unsigned int newVal);
-inline int atomic_test_and_set_x86(int *);
-inline int atomic_test_and_reset_x86(int *);
-inline void atomic_add_x86(atomic_t *, int);
-inline void atomic_sub_x86(atomic_t *, int);
-inline void atomic_inc_x86(atomic_t *);
-inline void atomic_dec_x86(atomic_t *);
-inline int atomic_inc_and_test_x86(atomic_t *v);
-inline bool spin_trylock_x86(spinlock_t *s);
-inline void spin_unlock_x86(spinlock_t *s);
+bool CAS_x86(volatile unsigned long long *ptr, unsigned long long oldVal, unsigned long long newVal);
+bool iCAS_x86(volatile unsigned int *ptr, unsigned int oldVal, unsigned int newVal);
+int atomic_test_and_set_x86(int *);
+int atomic_test_and_reset_x86(int *);
+void atomic_add_x86(atomic_t *, int);
+void atomic_sub_x86(atomic_t *, int);
+void atomic_inc_x86(atomic_t *);
+void atomic_dec_x86(atomic_t *);
+int atomic_inc_and_test_x86(atomic_t *v);
+bool spin_trylock_x86(spinlock_t *s);
+void spin_unlock_x86(spinlock_t *s);
 
 #ifdef SPINLOCK_GIVES_COUNT
-inline unsigned int spin_lock_x86(spinlock_t *s);
+unsigned int spin_lock_x86(spinlock_t *s);
 #else
-inline void spin_lock_x86(spinlock_t *s);
+void spin_lock_x86(spinlock_t *s);
 #endif
 
 

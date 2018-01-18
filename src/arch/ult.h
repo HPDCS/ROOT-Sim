@@ -62,6 +62,12 @@ typedef struct __execution_context_t kernel_context_t;
 		longjmp((context_new)->jb, 1)
 
 
+/// Swicth machine context for userspace context switch. This is used to schedule a LP or return control to simulation kernel
+#define context_switch_create(context_old, context_new) \
+	if(set_jmp(context_old) == 0) \
+		long_jmp(context_new, 1)
+
+
 // Allocate ULT stack (in LP memory)
 extern void *get_ult_stack(unsigned int lid, size_t size);
 
