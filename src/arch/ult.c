@@ -201,16 +201,16 @@ static void context_create_trampoline(int sig) {
 * @param stack_size size of the memory area to be used as stack
 */
 void context_create(LP_context_t *context, void (*entry_point)(void *), void *args, void *stack, size_t stack_size) {
-
 	struct sigaction sa;
 	stack_t ss;
 	stack_t oss;
 
-	memset((void *)&sa, 0, sizeof(struct sigaction));
+	bzero((void *)&sa, sizeof(struct sigaction));
 	sa.sa_handler = context_create_trampoline;
 	sa.sa_flags = SA_ONSTACK;
-	sigemptyset(&sa.sa_mask);
-	sigaction(SIGUSR1, &sa, &osa);
+	sigfillset(&sa.sa_mask);
+	sigdelset(&sa.sa_mask, SIGUSR1);
+	sigaction(SIGUSR1, &sa, NULL);
 
 	ss.ss_sp = stack;
 	ss.ss_size = stack_size;
@@ -220,23 +220,9 @@ void context_create(LP_context_t *context, void (*entry_point)(void *), void *ar
 	context_creat = context;
 	context_creat_func = entry_point;
 	context_creat_arg = args;
-	context_creat_sigs = osigs;
 	context_called = false;
-	kill(getpid(), SIGUSR1);
-	sigfillset(&sigs);
-	sigdelset(&sigs, SIGUSR1);
-	while(!context_called) {
-		sigsuspend(&sigs);
-	}
-
-	sigaltstack(NULL, &ss);
-	ss.ss_flags = SS_DISABLE;
-	sigaltstack(&ss, NULL);
-	if(!(oss.ss_flags & SS_DISABLE)) {
-		sigaltstack(&oss, NULL);
-	}
-	sigaction(SIGUSR1, &osa, NULL);
-	sigprocmask(SIG_SETMASK, &osigs, NULL);
+	raise(SIGUSR1);
+	sigaltstack(&oss, NULL);
 
 	context_switch(&context_caller, context);
 }

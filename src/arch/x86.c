@@ -47,7 +47,7 @@
 *
 * @ret true if the CAS succeeded, false otherwise
 */
-inline bool CAS_x86(volatile unsigned long long *ptr, unsigned long long oldVal, unsigned long long newVal) {
+bool CAS_x86(volatile unsigned long long *ptr, unsigned long long oldVal, unsigned long long newVal) {
 	unsigned long res = 0;
 
 	__asm__ __volatile__(
@@ -75,7 +75,7 @@ inline bool CAS_x86(volatile unsigned long long *ptr, unsigned long long oldVal,
 *
 * @ret true if the CAS succeeded, false otherwise
 */
-inline bool iCAS_x86(volatile unsigned int *ptr, unsigned int oldVal, unsigned int newVal) {
+bool iCAS_x86(volatile unsigned int *ptr, unsigned int oldVal, unsigned int newVal) {
 	unsigned long res = 0;
 
 	__asm__ __volatile__(
@@ -101,8 +101,8 @@ inline bool iCAS_x86(volatile unsigned int *ptr, unsigned int oldVal, unsigned i
 *
 * @ret true if the int value has been set, false otherwise
 */
-inline int atomic_test_and_set_x86(int *b) {
-    int result = 0;
+int atomic_test_and_set_x86(int *b) {
+	int result = 0;
 
 	__asm__  __volatile__ (
 		LOCK "bts $0, %1;\n\t"
@@ -126,7 +126,7 @@ inline int atomic_test_and_set_x86(int *b) {
 *
 * @ret true if the int value has been reset, false otherwise
 */
-inline int atomic_test_and_reset_x86(int *b) {
+int atomic_test_and_reset_x86(int *b) {
 	int result = 0;
 
 	__asm__  __volatile__ (
@@ -151,7 +151,7 @@ inline int atomic_test_and_reset_x86(int *b) {
 * @param v the atomic counter which is the destination of the operation
 * @param i how much must be added
 */
-inline void atomic_add_x86(atomic_t *v, int i) {
+void atomic_add_x86(atomic_t *v, int i) {
 	__asm__ __volatile__(
 		LOCK "addl %1,%0"
 		: "=m" (v->count)
@@ -169,7 +169,7 @@ inline void atomic_add_x86(atomic_t *v, int i) {
 * @param v the atomic counter which is the destination of the operation
 * @param i how much must be subtracted
 */
-inline void atomic_sub_x86(atomic_t *v, int i) {
+void atomic_sub_x86(atomic_t *v, int i) {
 	__asm__ __volatile__(
 		LOCK "subl %1,%0"
 		: "=m" (v->count)
@@ -186,7 +186,7 @@ inline void atomic_sub_x86(atomic_t *v, int i) {
 *
 * @param v the atomic counter which is the destination of the operation
 */
-inline void atomic_inc_x86(atomic_t *v) {
+void atomic_inc_x86(atomic_t *v) {
 	__asm__ __volatile__(
 		LOCK "incl %0"
 		: "=m" (v->count)
@@ -204,7 +204,7 @@ inline void atomic_inc_x86(atomic_t *v) {
 *
 * @param v the atomic counter which is the destination of the operation
 */
-inline void atomic_dec_x86(atomic_t *v) {
+void atomic_dec_x86(atomic_t *v) {
 	__asm__ __volatile__(
 		LOCK "decl %0"
 		: "=m" (v->count)
@@ -224,7 +224,7 @@ inline void atomic_dec_x86(atomic_t *v) {
 *
 * @return true if the counter became zero
 */
-inline int atomic_inc_and_test_x86(atomic_t *v) {
+int atomic_inc_and_test_x86(atomic_t *v) {
 	unsigned char c = 0;
 
 	__asm__ __volatile__(
@@ -250,29 +250,29 @@ inline int atomic_inc_and_test_x86(atomic_t *v) {
 
 #ifdef SPINLOCK_GIVES_COUNT
 
-inline unsigned int spin_lock(spinlock_t *s) {
+unsigned int spin_lock(spinlock_t *s) {
 
-        int count = -1;
+	int count = -1;
 
-        __asm__ __volatile__(
-                "1:\n\t"
-                "movl $1,%%eax\n\t"
-                LOCK "xchgl %%eax, %2\n\t"
-                "addl $1, %0\n\t"
-                "testl %%eax, %%eax\n\t"
-                "jnz 1b"
-                : "=c" (count)
-                : "c" (count), "m" (s->lock)
-                : "eax", "memory"
-        );
+	__asm__ __volatile__(
+		"1:\n\t"
+		"movl $1,%%eax\n\t"
+		LOCK "xchgl %%eax, %2\n\t"
+		"addl $1, %0\n\t"
+		"testl %%eax, %%eax\n\t"
+		"jnz 1b"
+		: "=c" (count)
+		: "c" (count), "m" (s->lock)
+		: "eax", "memory"
+	);
 
-        return (unsigned int)count;
+	return (unsigned int)count;
 }
 
 
 #else
 
-inline void spin_lock_x86(spinlock_t *s) {
+void spin_lock_x86(spinlock_t *s) {
 
 	__asm__ __volatile__(
 		"1:\n\t"
@@ -295,7 +295,7 @@ inline void spin_lock_x86(spinlock_t *s) {
 *
 * @param s the spinlock to try to acquire
 */
-inline bool spin_trylock_x86(spinlock_t *s) {
+bool spin_trylock_x86(spinlock_t *s) {
 /*	unsigned int out = 0;
 	unsigned int in = 1;
 
@@ -327,7 +327,7 @@ inline bool spin_trylock_x86(spinlock_t *s) {
 *
 * @param s the spinlock to unlock
 */
-inline void spin_unlock_x86(spinlock_t *s) {
+void spin_unlock_x86(spinlock_t *s) {
 
 	__asm__ __volatile__(
 		"mov $0, %%eax\n\t"
@@ -337,6 +337,5 @@ inline void spin_unlock_x86(spinlock_t *s) {
 		: "eax", "memory"
 	);
 }
-
 
 #endif /* defined(ARCH_X86) || defined(ARCH_X86_64) */
