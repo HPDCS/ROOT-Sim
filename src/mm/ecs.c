@@ -69,6 +69,7 @@ static __thread fault_info_t fault_info;
 // Declared in ecsstub.S
 extern void rootsim_cross_state_dependency_handler(void);
 
+GID_t target_gid;
 // This handler is only called in case of a remote ECS
 void ecs_secondary(void) {
 
@@ -100,7 +101,8 @@ void ecs_secondary(void) {
 
 	// Send the page lease request control message. This is not incorporated into the input queue at the receiver
 	// so we do not place it into the output queue
-	pack_msg(&control_msg, LidToGid(current_lp), fault_info.target_gid, RENDEZVOUS_GET_PAGE, current_lvt, current_lvt, sizeof(page_req), &page_req);
+	target_gid.id = fault_info.target_gid;
+	pack_msg(&control_msg, LidToGid(current_lp), target_gid, RENDEZVOUS_GET_PAGE, current_lvt, current_lvt, sizeof(page_req), &page_req);
 	control_msg->rendezvous_mark = current_evt->rendezvous_mark;
 	Send(control_msg);
 
@@ -119,7 +121,8 @@ void ecs_initiate(void) {
 	LPS[current_lp]->wait_on_rendezvous = current_evt->rendezvous_mark;
 
 	// Prepare the control message to synchronize the two LPs
-	pack_msg(&control_msg, LidToGid(current_lp), fault_info.target_gid, RENDEZVOUS_START, current_lvt, current_lvt, 0, NULL);
+	target_gid.id = fault_info.target_gid;
+	pack_msg(&control_msg, LidToGid(current_lp), target_gid, RENDEZVOUS_START, current_lvt, current_lvt, 0, NULL);
 	control_msg->rendezvous_mark = current_evt->rendezvous_mark;
 	control_msg->mark = generate_mark(current_lp);
 
@@ -183,7 +186,7 @@ void ECS(void) {
 
 void ecs_init(void) {
 	printf("Invocation of ECS Init\n");
-	ioctl_fd = manual_open("/dev/ktblmgr", O_RDONLY);
+	ioctl_fd = open("/dev/ktblmgr", O_RDONLY);
 	if (ioctl_fd <= -1) {
 		rootsim_error(true, "Error in opening special device file. ROOT-Sim is compiled for using the ktblmgr linux kernel module, which seems to be not loaded.");
 	}
@@ -192,11 +195,13 @@ void ecs_init(void) {
 // inserire qui tutte le api di schedulazione/deschedulazione
 void lp_alloc_thread_init(void) {
 	void *ptr;
+	GID_t LP0; //dummy structure just to accomplish get_base_pointer
 
+	LP0.id = 0;
 	// TODO: test ioctl return value
-	manual_ioctl(ioctl_fd, IOCTL_SET_ANCESTOR_PGD,NULL);  //ioctl call
+	ioctl(ioctl_fd, IOCTL_SET_ANCESTOR_PGD,NULL);  //ioctl call
 	lp_memory_ioctl_info.ds = -1;
-	ptr = get_base_pointer(0); // LP 0 is the first allocated one, and it's memory stock starts from the beginning of the PML4
+	ptr = get_base_pointer(LP0); // LP 0 is the first allocated one, and it's memory stock starts from the beginning of the PML4
 	lp_memory_ioctl_info.addr = ptr;
 	lp_memory_ioctl_info.mapped_processes = n_prc;
 
@@ -206,10 +211,10 @@ void lp_alloc_thread_init(void) {
 	// TODO: this function is called by each worker thread. Does calling SET_VM_RANGE cause
   // a memory leak into kernel space?
 	// TODO: Yes it does! And there could be some issues when unmounting as well!
-	manual_ioctl(ioctl_fd, IOCTL_SET_VM_RANGE, &lp_memory_ioctl_info);
+	ioctl(ioctl_fd, IOCTL_SET_VM_RANGE, &lp_memory_ioctl_info);
 
 	/* required to manage the per-thread memory view */
-	pgd_ds = manual_ioctl(ioctl_fd, IOCTL_GET_PGD, &fault_info);  //ioctl call
+	pgd_ds = ioctl(ioctl_fd, IOCTL_GET_PGD, &fault_info);  //ioctl call
 	fault_info.target_gid = 3;
 }
 
@@ -304,9 +309,11 @@ void ecs_install_pages(msg_t *msg) {
 void unblock_synchronized_objects(unsigned int lid) {
 	unsigned int i;
 	msg_t *control_msg;
-
+	LID_t localID;
+	
+	localID.id = lid;
 	for(i = 1; i <= LPS[lid]->ECS_index; i++) {
-		pack_msg(&control_msg, LidToGid(lid), LPS[lid]->ECS_synch_table[i], RENDEZVOUS_UNBLOCK, lvt(lid), lvt(lid), 0, NULL);
+		pack_msg(&control_msg, LidToGid(localID), LPS[lid]->ECS_synch_table[i], RENDEZVOUS_UNBLOCK, lvt(lid), lvt(lid), 0, NULL);
 		control_msg->rendezvous_mark = LPS[lid]->wait_on_rendezvous;
 		Send(control_msg);
 	}
