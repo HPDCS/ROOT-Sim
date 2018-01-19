@@ -401,7 +401,7 @@ then
 
 	# Check if System.map is available. Some kernel modules require access to special symbols
 	# which are not exported, but are available in System.map.
-	AC_CHECK_FILE("/boot/System.map", [ac_system_map=yes])
+	AC_CHECK_FILE("/boot/System.map-$(uname -r)", [ac_system_map=yes])
 
 	# Per-module checks. To be run only if we are on Linux and kernel headers are available
 	if test "x$ac_kernel_headers" = "xyes"
