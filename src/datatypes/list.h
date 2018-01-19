@@ -86,9 +86,9 @@ typedef struct rootsim_list {
 				__lmptr;\
 			})
 
-#define new_list_generic(type)	(tyep *)({ \
+#define new_list_generic(type)	(type *)({ \
 					void *__lmptr; \
-					__lmptr = new_list(idle_process, (type)) \
+					__lmptr = new_list(idle_process, type); \
 					__lmptr; \
 				})
 
