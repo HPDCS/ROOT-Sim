@@ -106,7 +106,7 @@ void ecs_secondary(void) {
 	control_msg->rendezvous_mark = current_evt->rendezvous_mark;
 	Send(control_msg);
 
-	LPS[current_lp]->state = LP_STATE_WAIT_FOR_DATA;
+	LPS(current_lp)->state = LP_STATE_WAIT_FOR_DATA;
 
 	// Give back control to the simulation kernel's user-level thread
 	long_jmp(&kernel_context, kernel_context.rax);
@@ -118,7 +118,7 @@ void ecs_initiate(void) {
 
 	// Generate a unique mark for this ECS
 	current_evt->rendezvous_mark = generate_mark(current_lp);
-	LPS[current_lp]->wait_on_rendezvous = current_evt->rendezvous_mark;
+	LPS(current_lp)->wait_on_rendezvous = current_evt->rendezvous_mark;
 
 	// Prepare the control message to synchronize the two LPs
 	target_gid.id = fault_info.target_gid;
@@ -128,15 +128,15 @@ void ecs_initiate(void) {
 
 	// This message must be stored in the output queue as well, in case this LP rollbacks
 	msg_to_hdr(&msg_hdr, control_msg);
-	(void)list_insert(current_lp, LPS[current_lp]->queue_out, send_time, &msg_hdr);
+	(void)list_insert(current_lp, LPS(current_lp)->queue_out, send_time, &msg_hdr);
 
 	// Block the execution of this LP
-	LPS[current_lp]->state = LP_STATE_WAIT_FOR_SYNCH;
-	LPS[current_lp]->wait_on_object = fault_info.target_gid;
+	LPS(current_lp)->state = LP_STATE_WAIT_FOR_SYNCH;
+	LPS(current_lp)->wait_on_object = fault_info.target_gid;
 
 	// Store which LP we are waiting for synchronization.
-	LPS[current_lp]->ECS_index++;
-	LPS[current_lp]->ECS_synch_table[LPS[current_lp]->ECS_index] = fault_info.target_gid;
+	LPS(current_lp)->ECS_index++;
+	LPS(current_lp)->ECS_synch_table[LPS(current_lp)->ECS_index] = target_gid;
 	Send(control_msg);
 
 	// Give back control to the simulation kernel's user-level thread
@@ -148,13 +148,13 @@ void ECS(void) __attribute__((__used__));
 void ECS(void) {
 	// ECS cannot happen in silent execution, as we take a log after the completion
 	// of an event which involves one or multiple ecs
-	if(LPS[current_lp]->state == LP_STATE_SILENT_EXEC) {
+	if(LPS(current_lp)->state == LP_STATE_SILENT_EXEC) {
 		rootsim_error(true,"----ERROR---- ECS in Silent Execution LP[%d] Hit:%llu Timestamp:%f\n",
 		current_lp, fault_info.target_gid, current_lvt);
 	}
 
 	// Sanity check: we cannot run an ECS with an old mark after a rollback
-	if(LPS[current_lp]->wait_on_rendezvous != 0 && LPS[current_lp]->wait_on_rendezvous != current_evt->rendezvous_mark) {
+	if(LPS(current_lp)->wait_on_rendezvous != 0 && LPS(current_lp)->wait_on_rendezvous != current_evt->rendezvous_mark) {
 		printf("muori male\n");
 		fflush(stdout);
 		abort();
@@ -224,8 +224,8 @@ void lp_alloc_schedule(void) {
 	bzero(&sched_info, sizeof(ioctl_info));
 
 	sched_info.ds = pgd_ds;
-	sched_info.count = LPS[current_lp]->ECS_index + 1; // it's a counter
-	sched_info.objects = LPS[current_lp]->ECS_synch_table; // pgd descriptor range from 0 to number threads - a subset of object ids
+	sched_info.count = LPS(current_lp)->ECS_index + 1; // it's a counter
+	sched_info.objects = LPS(current_lp)->ECS_synch_table; // pgd descriptor range from 0 to number threads - a subset of object ids
 
 	/* passing into LP mode - here for the pgd_ds-th LP */
 	ioctl(ioctl_fd,IOCTL_SCHEDULE_ON_PGD, &sched_info);
@@ -306,20 +306,19 @@ void ecs_install_pages(msg_t *msg) {
 	fflush(stdout);
 }
 
-void unblock_synchronized_objects(unsigned int lid) {
+void unblock_synchronized_objects(LID_t localID) {
 	unsigned int i;
 	msg_t *control_msg;
-	LID_t localID;
 	
-	localID.id = lid;
-	for(i = 1; i <= LPS[lid]->ECS_index; i++) {
-		pack_msg(&control_msg, LidToGid(localID), LPS[lid]->ECS_synch_table[i], RENDEZVOUS_UNBLOCK, lvt(lid), lvt(lid), 0, NULL);
-		control_msg->rendezvous_mark = LPS[lid]->wait_on_rendezvous;
+	for(i = 1; i <= LPS(localID)->ECS_index; i++) {
+		LPS(localID)->ECS_synch_table[i];
+		pack_msg(&control_msg, LidToGid(localID), LPS(localID)->ECS_synch_table[i], RENDEZVOUS_UNBLOCK, lvt(localID), lvt(localID), 0, NULL);
+		control_msg->rendezvous_mark = LPS(localID)->wait_on_rendezvous;
 		Send(control_msg);
 	}
 
-	LPS[lid]->wait_on_rendezvous = 0;
-	LPS[lid]->ECS_index = 0;
+	LPS(localID)->wait_on_rendezvous = 0;
+	LPS(localID)->ECS_index = 0;
 }
 #endif
 

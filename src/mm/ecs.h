@@ -20,7 +20,7 @@ extern void lp_alloc_thread_init(void);
 extern void setup_ecs_on_segment(msg_t *);
 extern void ecs_send_pages(msg_t *);
 extern void ecs_install_pages(msg_t *);
-void unblock_synchronized_objects(unsigned int lid);
+void unblock_synchronized_objects(LID_t lid);
 
 
 #endif /* _ECS_H */

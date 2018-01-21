@@ -30,7 +30,7 @@
 #ifdef OS_LINUX
 
 .extern ECS
-.extern LPS
+.extern lps_blocks
 
 .text
 .globl rootsim_cross_state_dependency_handler
@@ -62,7 +62,7 @@ rootsim_cross_state_dependency_handler:
 
 	# Access to context field of LPS[current_lp]
 	movl %fs:current_lp@tpoff, %edi
-	movq LPS(%rip), %rsi
+	movq lps_blocks(%rip), %rsi
 	leaq (%rsi, %rdi, 8), %rdi
 	movq (%rdi), %rdi
 	

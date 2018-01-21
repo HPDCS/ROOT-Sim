@@ -124,8 +124,8 @@ typedef struct _LP_state {
 	outgoing_t 		outgoing_buffer;
 
 	#ifdef HAVE_CROSS_STATE
-	unsigned int 		ECS_synch_table[MAX_CROSS_STATE_DEPENDENCIES];
-	unsigned int 		ECS_index;
+	GID_t			ECS_synch_table[MAX_CROSS_STATE_DEPENDENCIES];
+	unsigned int 	ECS_index;
 	#endif
 
 	unsigned long long	wait_on_rendezvous;
