@@ -242,10 +242,10 @@ void initialize_LP(LID_t lp) {
 	LPS(lp)->current_base_pointer = NULL;
 
 	// Initialize the queues
-	LPS(lp)->queue_in = new_list(lp, msg_t);
-	LPS(lp)->queue_out = new_list(lp, msg_hdr_t);
-	LPS(lp)->queue_states = new_list(lp, state_t);
-	LPS(lp)->rendezvous_queue = new_list(lp, msg_t);
+	LPS(lp)->queue_in = new_list(msg_t);
+	LPS(lp)->queue_out = new_list(msg_hdr_t);
+	LPS(lp)->queue_states = new_list(state_t);
+	LPS(lp)->rendezvous_queue = new_list(msg_t);
 
 	// Initialize the LP lock
 	spinlock_init(&LPS(lp)->lock);
@@ -297,7 +297,7 @@ void initialize_worker_thread(void) {
 		pack_msg(&init_event, gid, gid, INIT, 0.0, 0.0, model_parameters.size, model_parameters.arguments);
 	        init_event->mark = generate_mark(lid);
 
-		(void)list_insert_head(lid, LPS(lid)->queue_in, init_event);
+		list_insert_head(LPS(lid)->queue_in, init_event);
 		LPS(lid)->state_log_forced = true;
 
 		return 0; // continue to next element

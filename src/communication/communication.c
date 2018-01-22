@@ -97,8 +97,42 @@ void communication_fini(void) {
 	rsfree(slab_lock);
 }
 
+static msg_hdr_t *get_msg_hdr_from_slab(void) {
+	spin_lock(&slab_lock[local_tid]);
+	msg_hdr_t *msg = (msg_hdr_t *)slab_alloc(&msg_slab[local_tid]);
+	spin_unlock(&slab_lock[local_tid]);
+	bzero(msg, SLAB_MSG_SIZE);
+	msg->alloc_tid = local_tid;
+	return msg;
+}
 
+void msg_hdr_release(msg_hdr_t *msg) {
+	int thr = msg->alloc_tid;
+	spin_lock(&slab_lock[thr]);	// TODO: avere un lock qua è un disastro, soprattutto al GVT! Sta cosa si può fare in maniera simile al flat combining!
+	slab_free(&msg_slab[thr], msg);
+	spin_unlock(&slab_lock[thr]);
+}
 
+msg_t *get_msg_from_slab(void) {
+	spin_lock(&slab_lock[local_tid]);
+	msg_t *msg = (msg_t *)slab_alloc(&msg_slab[local_tid]);
+	spin_unlock(&slab_lock[local_tid]);
+	bzero(msg, SLAB_MSG_SIZE);
+	msg->alloc_tid = local_tid;
+	return msg;
+}
+
+void msg_release(msg_t *msg) {
+	if(sizeof(msg_t) + msg->size <= SLAB_MSG_SIZE) {
+		int thr = msg->alloc_tid;
+
+		spin_lock(&slab_lock[thr]);// TODO: avere un lock qua è un disastro, soprattutto al GVT! Sta cosa si può fare in maniera simile al flat combining!
+		slab_free(&msg_slab[thr], msg);
+		spin_unlock(&slab_lock[thr]);
+	} else {
+		rsfree(msg);
+	}
+}
 
 
 /**
@@ -193,7 +227,8 @@ void send_antimessages(LID_t lid, simtime_t after_simtime) {
 
 		// Remove the already-sent antimessage from the output queue
 		anti_msg_prev = list_prev(anti_msg);
-                list_delete_by_content(lid, LPS(lid)->queue_out, anti_msg);
+                list_delete_by_content(LPS(lid)->queue_out, anti_msg);
+		msg_hdr_release(anti_msg);
                 anti_msg = anti_msg_prev;
 	}
 }
@@ -275,36 +310,22 @@ void send_outgoing_msgs(LID_t lid) {
 
 	register unsigned int i = 0;
 	msg_t *msg;
-	msg_hdr_t msg_hdr;
+	msg_hdr_t *msg_hdr;
 
 	for(i = 0; i < LPS(lid)->outgoing_buffer.size; i++) {
+		msg_hdr = get_msg_hdr_from_slab();
 		msg = LPS(lid)->outgoing_buffer.outgoing_msgs[i];
-		msg_to_hdr(&msg_hdr, msg);
-
-//		dump_msg_content(msg);
-
-//		printf("send %p\n", msg);
+		msg_to_hdr(msg_hdr, msg);
 
 		Send(msg);
 
 		// register the message in the sender's output queue, for antimessage management
-		(void)list_insert(lid, LPS(lid)->queue_out, send_time, &msg_hdr);
+		list_insert(LPS(lid)->queue_out, send_time, msg_hdr);
 	}
 
 	LPS(lid)->outgoing_buffer.size = 0;
 }
 
-
-msg_t *get_msg_from_slab(void) {
-	spin_lock(&slab_lock[local_tid]);
-	msg_t *msg = (msg_t *)slab_alloc(&msg_slab[local_tid]);
-	spin_unlock(&slab_lock[local_tid]);
-	#ifndef NDEBUG
-	bzero(msg, SLAB_MSG_SIZE-8);
-	#endif
-	msg->alloc_tid = local_tid;
-	return msg;
-}
 
 
 // TODO: si può generare qua dentro la marca, perché si usa sempre il sender. Occhio al gid/lid!!!!
@@ -315,6 +336,7 @@ void pack_msg(msg_t **msg, GID_t sender, GID_t receiver, int type, simtime_t tim
 		*msg = get_msg_from_slab();
 	} else {
 		*msg = rsalloc(sizeof(msg_t) + size);
+		bzero(msg, sizeof(msg_t) + size);
 	}
 
 	(*msg)->sender = sender;
@@ -349,21 +371,6 @@ void hdr_to_msg(msg_hdr_t *hdr, msg_t *msg) {
 	msg->timestamp = hdr->timestamp;
 	msg->send_time = hdr->send_time;
 	msg->mark = hdr->mark;
-}
-
-void msg_release(msg_t *msg) {
-	if(sizeof(msg_t) + msg->size <= SLAB_MSG_SIZE) {
-		int thr = msg->alloc_tid;
-
-		spin_lock(&slab_lock[thr]);
-		#ifndef NDEBUG
-		bzero(msg, sizeof(msg_t) + msg->size);
-		#endif
-		slab_free(&msg_slab[thr], msg);
-		spin_unlock(&slab_lock[thr]);
-	} else {
-		rsfree(msg);
-	}
 }
 
 void dump_msg_content(msg_t *msg) {

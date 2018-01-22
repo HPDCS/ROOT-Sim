@@ -102,7 +102,7 @@ typedef struct _LP_state {
 	/// Input messages queue
 	list(msg_t)		queue_in;
 
-	/// Pointer to the last correctly elaborated event
+	/// Pointer to the last correctly processed event
 	msg_t			*bound;
 
 	/// Output messages queue
@@ -145,7 +145,7 @@ extern __thread LP_State **lps_bound_blocks;
  */
 #define lvt(lid) (LPS(lid)->bound != NULL ? LPS(lid)->bound->timestamp : 0.0)
 
-#define LPS(lid) (__builtin_choose_expr(is_lid(lid), lps_blocks[lid.id], (void)0))
+#define LPS(lid) ((__builtin_choose_expr(is_lid(lid), lps_blocks[lid.id], (void)0)))
 #define LPS_bound(lid) (__builtin_choose_expr(__builtin_types_compatible_p(__typeof__ (lid), unsigned int), lps_bound_blocks[lid], (void)0))
 
 
