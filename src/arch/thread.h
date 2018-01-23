@@ -34,8 +34,8 @@
 
 
 
-/* The global tid is obtained by concatenating of the `kid` and the `local_tid`
- * and is stored into an unsigned int. Since we are using half of the unsigned int
+/* Global tid is obtained by concatenating `kid` and `tid`.
+ * It is stored into an unsigned int. Since we are using half of the unsigned int
  * for each part we have that the total number of kernels and
  * the number of threads per kernel must be less then (2^HALF_UINT_BITS - 1)
  */
@@ -47,13 +47,11 @@
 #define to_global_tid(kid, local_tid) ( (kid << HALF_UINT_BITS) | local_tid )
 #define to_local_tid(global_tid) ( global_tid & ((1 << HALF_UINT_BITS)-1) )
 
-
 /// This macro expands to true if the current KLT is the master thread for the local kernel
-#define master_thread() (local_tid == 0)
-
+#define master_thread() (tid == 0)
 
 /// This macro tells on what core the current thread is running
-#define running_core() (local_tid)
+#define running_core() (tid)
 
 enum thread_incarnation {
 	THREAD_SYMMETRIC,
@@ -66,8 +64,6 @@ typedef struct _Thread_State {
 	/// This member tells what incar
 	enum thread_incarnation	incarnation;
 
-	// TODO: remove local_tid everywhere and use only tid. The global tid (if ever required)
-	// can be retrieved from here!
 	/// Global tid, used to identify a thread within the whole system
 	unsigned int		global_tid;
 
@@ -93,7 +89,6 @@ struct _helper_thread {
 void create_threads(unsigned short int n, void *(*start_routine)(void*), void *arg);
 
 extern __thread unsigned int tid;
-extern __thread unsigned int local_tid;
 
 /// Thread barrier definition
 typedef struct {

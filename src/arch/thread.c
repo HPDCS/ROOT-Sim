@@ -36,7 +36,6 @@
 static tid_t os_tid;
 
 __thread unsigned int tid;
-__thread unsigned int local_tid;
 
 static unsigned int thread_counter = 0;
 
@@ -72,14 +71,14 @@ static void *__helper_create_thread(void *arg) {
 			break;
 		}
 	}
-	local_tid = _local_tid;
+	tid = _local_tid;
 	// ...and make it globally unique
-	tid = to_global_tid(kid, _local_tid);
+	Threads[tid]->global_tid = to_global_tid(kid, _local_tid);
 
 
 	// Set the affinity on a CPU core, for increased performance
 	if(rootsim_config.core_binding)
-		set_affinity(local_tid);
+		set_affinity(tid);
 
 	// Now get into the real thread's entry point
 	real_arg->start_routine(real_arg->arg);

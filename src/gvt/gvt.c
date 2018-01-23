@@ -192,10 +192,10 @@ simtime_t GVT_phases(void){
 
 		for(i = 0; i < n_prc_per_thread; i++) {
 			if(LPS_bound(i)->bound == NULL) {
-				local_min[local_tid] = 0.0;
+				local_min[tid] = 0.0;
 				break;
 			}
-			local_min[local_tid] = min(local_min[local_tid], LPS_bound(i)->bound->timestamp);
+			local_min[tid] = min(local_min[tid], LPS_bound(i)->bound->timestamp);
 		}
 		thread_phase = tphase_send;     // Entering phase send
 		atomic_dec(&counter_A);	// Notify finalization of phase A
@@ -223,18 +223,18 @@ simtime_t GVT_phases(void){
 
 		for(i = 0; i < n_prc_per_thread; i++) {
 			if(LPS_bound(i)->bound == NULL) {
-				local_min[local_tid] = 0.0;
+				local_min[tid] = 0.0;
 				break;
 			}
 
-			local_min[local_tid] = min(local_min[local_tid], LPS_bound(i)->bound->timestamp);
+			local_min[tid] = min(local_min[tid], LPS_bound(i)->bound->timestamp);
 		}
 
 		#ifdef HAVE_MPI
 		// WARNING: local thread cannot send any remote
 		// message between the two following calls
 		exit_red_phase();
-		local_min[local_tid] = min(local_min[local_tid], min_outgoing_red_msg[local_tid]);
+		local_min[tid] = min(local_min[tid], min_outgoing_red_msg[tid]);
 		#endif
 
 		thread_phase = tphase_aware;
@@ -350,7 +350,7 @@ simtime_t gvt_operations(void) {
 		enter_red_phase();
 		#endif
 
-		local_min[local_tid] = INFTY;
+		local_min[tid] = INFTY;
 
 		thread_phase = tphase_A;
 		atomic_dec(&counter_initialized);

@@ -93,7 +93,7 @@ bool is_request_completed(MPI_Request* req){
 void send_remote_msg(msg_t *msg){
 	outgoing_msg *out_msg = allocate_outgoing_msg();
 	out_msg->msg = msg;
-	out_msg->msg->colour = threads_phase_colour[local_tid];
+	out_msg->msg->colour = threads_phase_colour[tid];
 	unsigned int dest = GidToKernel(msg->receiver);
 
 	if(count_as_white(msg->type)) 
@@ -394,7 +394,7 @@ void mpi_finalize(void){
 		MPI_Barrier(MPI_COMM_WORLD);
 		MPI_Finalize();
 	}else{
-		rootsim_error(true, "MPI finalize has been invoked by a non master thread: T%u\n", local_tid);
+		rootsim_error(true, "MPI finalize has been invoked by a non master thread: T%u\n", tid);
 	}
 }
 

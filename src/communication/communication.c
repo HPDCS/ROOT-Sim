@@ -77,11 +77,11 @@ void communication_init(void) {
 
 
 void communication_init_thread(void) {
-	slab_init(&msg_slab[local_tid], SLAB_MSG_SIZE); 
+	slab_init(&msg_slab[tid], SLAB_MSG_SIZE); 
 }
 
 void communication_fini_thread(void) {
-	slab_destroy(&msg_slab[local_tid]);
+	slab_destroy(&msg_slab[tid]);
 }
 
 
@@ -99,11 +99,11 @@ void communication_fini(void) {
 }
 
 static msg_hdr_t *get_msg_hdr_from_slab(void) {
-	spin_lock(&slab_lock[local_tid]);
-	msg_hdr_t *msg = (msg_hdr_t *)slab_alloc(&msg_slab[local_tid]);
-	spin_unlock(&slab_lock[local_tid]);
+	spin_lock(&slab_lock[tid]);
+	msg_hdr_t *msg = (msg_hdr_t *)slab_alloc(&msg_slab[tid]);
+	spin_unlock(&slab_lock[tid]);
 	bzero(msg, SLAB_MSG_SIZE);
-	msg->alloc_tid = local_tid;
+	msg->alloc_tid = tid;
 	return msg;
 }
 
@@ -115,11 +115,11 @@ void msg_hdr_release(msg_hdr_t *msg) {
 }
 
 msg_t *get_msg_from_slab(void) {
-	spin_lock(&slab_lock[local_tid]);
-	msg_t *msg = (msg_t *)slab_alloc(&msg_slab[local_tid]);
-	spin_unlock(&slab_lock[local_tid]);
+	spin_lock(&slab_lock[tid]);
+	msg_t *msg = (msg_t *)slab_alloc(&msg_slab[tid]);
+	spin_unlock(&slab_lock[tid]);
 	bzero(msg, SLAB_MSG_SIZE);
-	msg->alloc_tid = local_tid;
+	msg->alloc_tid = tid;
 	return msg;
 }
 

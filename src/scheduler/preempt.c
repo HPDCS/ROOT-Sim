@@ -153,7 +153,7 @@ void preempt(void) {
 	if(platform_mode || rolling_back) {
 //		atomic_inc(&overtick_platform);
 
-	} else if(min_in_transit_lvt[local_tid] < current_lvt) {
+	} else if(min_in_transit_lvt[tid] < current_lvt) {
 //		atomic_inc(&would_preempt);
 		LPS[current_lp]->state = LP_STATE_SUSPENDED; // Questo triggera la logica di ripartenza dell'LP di ECS, ma forse va cambiato nome...
 		switch_to_platform_mode();
@@ -161,7 +161,7 @@ void preempt(void) {
 	}
 
 
-/*	if(!platform_mode && min_in_transit_lvt[local_tid] < current_lvt) {
+/*	if(!platform_mode && min_in_transit_lvt[tid] < current_lvt) {
 
 		atomic_inc(&preempt_count);
 

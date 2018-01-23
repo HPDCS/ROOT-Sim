@@ -149,8 +149,8 @@ void enter_red_phase(void){
 		rootsim_error(true, "Thread %u cannot enter in red phase "
 				"because is already in red phase.\n");
 	}
-	min_outgoing_red_msg[local_tid] = INFTY;
-	threads_phase_colour[local_tid] = next_colour(threads_phase_colour[local_tid]);
+	min_outgoing_red_msg[tid] = INFTY;
+	threads_phase_colour[tid] = next_colour(threads_phase_colour[tid]);
 }
 
 
@@ -166,7 +166,7 @@ void exit_red_phase(void){
 		rootsim_error(true, "Thread %u cannot exit from red phase "
 				"because it wasn't in red phase.\n");
 	}
-	threads_phase_colour[local_tid] = next_colour(threads_phase_colour[local_tid]);
+	threads_phase_colour[tid] = next_colour(threads_phase_colour[tid]);
 }
 
 
@@ -322,7 +322,7 @@ void register_outgoing_msg(const msg_t* msg) {
 	if(dst_kid == kid) return;
 
 	if(is_red_colour(msg->colour)) {
-		min_outgoing_red_msg[local_tid] = min(min_outgoing_red_msg[local_tid], msg->timestamp);
+		min_outgoing_red_msg[tid] = min(min_outgoing_red_msg[tid], msg->timestamp);
 	} else {
 		atomic_inc(&white_msg_sent[dst_kid]);
 	}
