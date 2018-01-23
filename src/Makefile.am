@@ -34,6 +34,7 @@ librootsim_a_SOURCES =	main.c \
 			queues/xxhash.c \
 			core/init.c \
 			core/core.c \
+			core/power.c \
 			scheduler/binding.c \
 			scheduler/control.c \
 			scheduler/preempt.c \
