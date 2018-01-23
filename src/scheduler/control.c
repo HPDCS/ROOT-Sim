@@ -57,7 +57,7 @@ void rollback_control_message(LID_t lid, simtime_t simtime) {
 		control_antimessage->message_kind = control;
 		Send(control_antimessage);
 		msg_prev = list_prev(msg);
-		list_delete_by_content(lid, LPS(lid)->rendezvous_queue, msg);
+		list_delete_by_content(LPS(lid)->rendezvous_queue, msg);
 		msg = msg_prev;
 	}
 }

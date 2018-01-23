@@ -53,13 +53,7 @@
 * @return The timestamp of the last executed event
 */
 simtime_t last_event_timestamp(LID_t lid) {
-	simtime_t ret = 0.0;
-
-	if (LPS(lid)->bound != NULL) {
-		ret = LPS(lid)->bound->timestamp;
-	}
-
-	return ret;
+	return lvt(lid);
 }
 
 
@@ -74,21 +68,19 @@ simtime_t last_event_timestamp(LID_t lid) {
 * @return The timestamp of the next-to-execute event
 */
 simtime_t next_event_timestamp(LID_t lid) {
-
-	simtime_t ret = INFTY;
 	msg_t *evt;
 
 	// The bound can be NULL in the first execution or if it has gone back
 	if (LPS(lid)->bound == NULL && !list_empty(LPS(lid)->queue_in)) {
-		ret = list_head(LPS(lid)->queue_in)->timestamp;
+		return list_head(LPS(lid)->queue_in)->timestamp;
 	} else {
 		evt = list_next(LPS(lid)->bound);
 		if(evt != NULL) {
-			ret = evt->timestamp;
+			return evt->timestamp;
 		}
 	}
 
-	return ret;
+	return INFTY;
 
 }
 
@@ -172,7 +164,7 @@ void process_bottom_halves(void) {
 
 			// Handle control messages
 			if(!receive_control_msg(msg_to_process)) {
-				list_deallocate_node_buffer(lid_receiver, msg_to_process);
+				msg_release(msg_to_process);
 				continue;
 			}
 
@@ -213,8 +205,8 @@ void process_bottom_halves(void) {
 					#endif
 
 					// Delete the matched message
-					list_delete_by_content(GidToLid(matched_msg->sender), receiver->queue_in, matched_msg);
-					list_deallocate_node_buffer(lid_receiver, msg_to_process);
+					list_delete_by_content(receiver->queue_in, matched_msg);
+					msg_release(matched_msg);
 
 					break;
 
@@ -222,7 +214,7 @@ void process_bottom_halves(void) {
 				case positive:
 
 					// A positive message is directly placed in the queue
-					(void)list_place_by_content(lid_receiver, receiver->queue_in, timestamp, msg_to_process);
+					list_insert(receiver->queue_in, timestamp, msg_to_process);
 
 					// Check if we've just inserted an out-of-order event.
 					// Here we check for a strictly minor timestamp since
@@ -247,7 +239,7 @@ void process_bottom_halves(void) {
 
 					// Check if it is an anti control message
 					if(!anti_control_message(msg_to_process)) {
-						list_deallocate_node_buffer(lid_receiver, msg_to_process);
+						msg_release(msg_to_process);
 						continue;
 					}
 

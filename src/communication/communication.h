@@ -118,6 +118,7 @@ extern simtime_t local_min_timestamp(void);
 extern void start_ack_timer(void);
 
 
+extern void msg_hdr_release(msg_hdr_t *msg);
 extern msg_t *get_msg_from_slab(void);
 extern void pack_msg(msg_t **msg, GID_t sender, GID_t receiver, int type, simtime_t timestamp, simtime_t send_time, size_t size, void *payload);
 extern void msg_to_hdr(msg_hdr_t *hdr, msg_t *msg);
