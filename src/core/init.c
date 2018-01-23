@@ -585,6 +585,7 @@ void SystemInit(int argc, char **argv) {
 	// and the order of invocation can matter!
 
 	base_init();
+	threads_init();
 	scheduler_init();
 	statistics_init();
 	dymelor_init();

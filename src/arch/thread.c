@@ -29,6 +29,10 @@
 #include <core/init.h>
 #include <mm/dymelor.h>
 
+// Macros to differentiate across different input ports
+#define PORT_PRIO_HI	0
+#define PORT_PRIO_LO	1
+
 static tid_t os_tid;
 
 __thread unsigned int tid;
@@ -36,6 +40,8 @@ __thread unsigned int local_tid;
 
 static unsigned int thread_counter = 0;
 
+/// Thread Control Blocks
+Thread_State **Threads;
 
 /**
 * This helper function is the actual entry point for every thread created using the provided internal
@@ -85,7 +91,6 @@ static void *__helper_create_thread(void *arg) {
 
 
 
-
 /**
 * This function creates n threads, all having the same entry point and the same arguments.
 * It creates a new thread starting from the __helper_create_thread function which silently
@@ -119,8 +124,6 @@ void create_threads(unsigned short int n, void *(*start_routine)(void*), void *a
 		new_thread(__helper_create_thread, (void *)new_arg);
 	}
 }
-
-
 
 
 
@@ -185,4 +188,37 @@ bool thread_barrier(barrier_t *b) {
 }
 
 
+
+void threads_init(void) {
+	unsigned int i;
+
+	// Check if we have enough threads to run an asymmetric simulation
+	if(rootsim_config.num_controllers > n_cores/2) {
+		printf("Running with %d threads, asked for %d controllers: there won't be enough PTs!\n", n_cores, rootsim_config.num_controllers);
+	}
+
+	// Initialize Thread Control Blocks
+	Threads = rsalloc(sizeof(Thread_State *) * n_cores);
+	bzero(Threads, sizeof(Thread_State *) * n_cores);
+
+	for(i = 0; i < n_cores; i++) {
+		Threads[i] = rsalloc(sizeof(Thread_State));
+		bzero(Threads[i], sizeof(Thread_State));
+
+		// TODO: we should find a new way to orchestrate symmetric, controlling, and processing threads altogether!
+		if(rootsim_config.num_controllers == 0)
+			Threads[i]->incarnation = THREAD_SYMMETRIC;
+		else if(i < rootsim_config.num_controllers)
+			Threads[i]->incarnation = THREAD_CONTROLLER;
+		else
+			Threads[i]->incarnation = THREAD_PROCESSING;
+
+		// Initialize thread ports
+		Threads[i]->input_port[PORT_PRIO_HI] = init_channel();
+		Threads[i]->input_port[PORT_PRIO_LO] = init_channel();
+		Threads[i]->output_port = init_channel();
+
+		// Global tid will be initialized later on...
+	}
+}
 

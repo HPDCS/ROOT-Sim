@@ -115,7 +115,7 @@ extern void barrier_init(barrier_t *b, int t);
 extern bool thread_barrier(barrier_t *b);
 bool reserve_barrier(barrier_t *b);
 void release_barrier(barrier_t *b);
-
+void threads_init(void);
 
 
 /// Barrier for all worker threads
