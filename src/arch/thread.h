@@ -116,6 +116,8 @@ void threads_init(void);
 /// Barrier for all worker threads
 extern barrier_t all_thread_barrier;
 
+extern Thread_State **Threads;
+
 
 #endif /* __ROOTSIM_THREAD_H */
 

@@ -102,6 +102,37 @@ static void *main_simulation_loop(void *arg) {
 
 	simtime_t my_time_barrier = -1.0;
 
+	// We differentiate here the nature of the main loop
+	switch(Threads[tid]->incarnation) {
+		case THREAD_SYMMETRIC:
+			goto symmetric;
+		case THREAD_CONTROLLER:
+			goto controller;
+		case THREAD_PROCESSING:
+			goto processing;
+		default:
+			fprintf(stderr, "%s:%d: Error: unknown incarnation for thread %d\n", __FILE__, __LINE__, tid);
+			abort();
+	}
+
+
+    controller:
+
+	printf("Tid %d is a controller\n", tid);
+
+	goto finish;
+
+    processing:
+
+	printf("Tid %d is a PT\n", tid);
+
+	goto finish;
+
+    symmetric:
+	printf("Tid %d is a symmetric processor\n", tid);
+
+	// TODO: everything down there must be rethought in case we differentiate at runtime the number of Controllers and PTs!!!!
+
 	#ifdef HAVE_CROSS_STATE
 	lp_alloc_thread_init();
 	#endif
@@ -121,7 +152,7 @@ static void *main_simulation_loop(void *arg) {
 		       "****************************\n");
 	}
 
-		while (!end_computing()) {
+	while (!end_computing()) {
 		// Recompute the LPs-thread binding
 		rebind_LPs();
 
@@ -157,6 +188,8 @@ static void *main_simulation_loop(void *arg) {
 		collect_termination();
 		#endif
 	}
+
+    finish:
 
 	// If we're exiting due to an error, we neatly shut down the simulation
 	if(simulation_error()) {

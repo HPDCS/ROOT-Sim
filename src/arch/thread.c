@@ -193,7 +193,8 @@ void threads_init(void) {
 
 	// Check if we have enough threads to run an asymmetric simulation
 	if(rootsim_config.num_controllers > n_cores/2) {
-		printf("Running with %d threads, asked for %d controllers: there won't be enough PTs!\n", n_cores, rootsim_config.num_controllers);
+		fprintf(stderr, "Running with %d threads, asked for %d controllers: there won't be enough PTs!\n", n_cores, rootsim_config.num_controllers);
+		exit(EXIT_FAILURE);
 	}
 
 	// Initialize Thread Control Blocks
