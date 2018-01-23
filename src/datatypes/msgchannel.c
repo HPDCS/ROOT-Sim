@@ -64,6 +64,8 @@ msg_channel *init_channel(void) {
 	mc->buffers[M_READ] = rsalloc(sizeof(struct _msg_buff));
 	mc->buffers[M_WRITE] = rsalloc(sizeof(struct _msg_buff));
 
+	atomic_set(&mc->size, 0);
+
 	if(mc->buffers[M_READ] == NULL || mc->buffers[M_WRITE] == NULL)
 		rootsim_error(true, "%s:%d: Unable to allocate message channel\n", __FILE__, __LINE__);
 
@@ -113,6 +115,8 @@ void insert_msg(msg_channel *mc, msg_t *msg) {
 	mc->buffers[M_WRITE]->buffer[index] = msg;
 
 	spin_unlock(&mc->write_lock);
+
+	atomic_inc(&mc->size);
 }
 
 void *get_msg(msg_channel *mc) {
@@ -140,6 +144,7 @@ void *get_msg(msg_channel *mc) {
 
     leave:
 	spin_unlock(&mc->read_lock);
+	atomic_dec(&mc->size);
 	return msg;
 }
 

@@ -24,9 +24,8 @@
 */
 
 #pragma once
-#ifndef _BH_H
-#define _BH_H
 
+#include <arch/atomic.h>
 #include <core/core.h>
 
 struct _msg_buff {
@@ -38,6 +37,7 @@ struct _msg_buff {
 
 typedef struct _msg_channel {
 	struct _msg_buff	*volatile buffers[2];
+	atomic_t		size;
 	spinlock_t		read_lock;
 	spinlock_t		write_lock;
 } msg_channel;
@@ -49,4 +49,3 @@ extern void fini_channel(msg_channel *);
 extern void insert_msg(msg_channel *, msg_t *);
 extern void *get_msg(msg_channel *);
 
-#endif /* _BH_H */
