@@ -43,13 +43,17 @@
 
 /// Structure for LP's state
 typedef struct _state_t {
+	// Pointers to chain this structure to the state queue
+	struct _state_t *next;
+	struct _state_t *prev;
+
 	/// Simulation time associated with the state log
 	simtime_t	lvt;
 	/// This is a pointer used to keep track of changes to simulation states via <SetState>()
 	void		*base_pointer;
 	/// A pointer to the actual log
 	void		*log;
-	/// This log has been taken after the execution of this event. This is useful to speedup silent execution.
+	/// This log has been taken after the execution of this event
 	msg_t		*last_event;
 	/// Execution state
 	short unsigned int state;

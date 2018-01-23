@@ -97,18 +97,18 @@
 #ifdef max
 #undef max
 #endif
-#define max(a,b) \
-   ({ __auto_type _a = (a); \
-       __auto_type _b = (b); \
+#define max(a, b) \
+   ({ __typeof__ (a) _a = (a); \
+       __typeof__ (b) _b = (b); \
      _a > _b ? _a : _b; })
 
 /// Macro to find the minimum among two values
 #ifdef min
 #undef min
 #endif
-#define min(a,b) \
-   ({ __auto_type _a = (a); \
-       __auto_type _b = (b); \
+#define min(a, b) \
+   ({ __typeof__ (a) _a = (a); \
+       __typeof__ (b) _b = (b); \
      _a < _b ? _a : _b; })
 
 
@@ -147,6 +147,9 @@ typedef unsigned char phase_colour;
    See src/communication/mpi.c for the implementation of the datatype */
 /// Message Type definition
 typedef struct _msg_t {
+	// Pointers to attach messages to chains
+	struct _msg_t 		*next;
+	struct _msg_t 		*prev;
 	// Kernel's information
 	GID_t   		sender;
 	GID_t   		receiver;
@@ -168,12 +171,16 @@ typedef struct _msg_t {
 
 /// Message envelope definition. This is used to handle the output queue and stores information needed to generate antimessages
 typedef struct _msg_hdr_t {
+	// Pointers to attach messages to chains
+	struct _msg_hdr_t 		*next;
+	struct _msg_hdr_t 		*prev;
 	// Kernel's information
 	GID_t   		sender;
 	GID_t   		receiver;
 	// TODO: non serve davvero, togliere
 	int   			type;
 	unsigned long long	rendezvous_mark;	/// Unique identifier of the message, used for rendez-vous event
+	int			alloc_tid;
 	// TODO: fine togliere
 	simtime_t		timestamp;
 	simtime_t		send_time;

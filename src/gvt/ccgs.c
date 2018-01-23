@@ -151,7 +151,7 @@ void ccgs_compute_snapshot(state_t *time_barrier_pointer[], simtime_t gvt) {
 		}
 
 		// Restore the current state
-		current_lvt = LPS(lid)->bound->timestamp;
+		current_lvt = lvt(lid);
 		LPS(lid)->state = temporary_log.state;
 		LPS(lid)->current_base_pointer = temporary_log.base_pointer;
 		log_restore(lid, &temporary_log);

@@ -57,7 +57,7 @@ void (*SetState)(void *new_state);
 bool LogState(LID_t lid) {
 
 	bool take_snapshot = false;
-	state_t new_state; // If inserted, list API makes a copy of this
+	state_t *new_state; 
 
 	if(is_blocked_state(LPS(lid)->state)) {
 		return take_snapshot;
@@ -74,7 +74,7 @@ bool LogState(LID_t lid) {
 		goto skip_switch;
 	}
 
-	// Switch on the checkpointing mode.
+	// Switch on the checkpointing mode
 	switch(rootsim_config.checkpointing) {
 
 		case COPY_STATE_SAVING:
@@ -97,17 +97,20 @@ skip_switch:
 	// Shall we take a log?
 	if (take_snapshot) {
 
+		// Allocate the state buffer
+		new_state = rsalloc(sizeof(*new_state));
+
 		// Take a log and set the associated LVT
-		new_state.log = log_state(lid);
-		new_state.lvt = lvt(lid);
-		new_state.last_event = LPS(lid)->bound;
-		new_state.state = LPS(lid)->state;
+		new_state->log = log_state(lid);
+		new_state->lvt = lvt(lid);
+		new_state->last_event = LPS(lid)->bound;
+		new_state->state = LPS(lid)->state;
 
 		// We take as the buffer state the last one associated with a SetState() call, if any
-		new_state.base_pointer = LPS(lid)->current_base_pointer;
+		new_state->base_pointer = LPS(lid)->current_base_pointer;
 
-		// list_insert() makes a copy of the payload
-		(void)list_insert_tail(lid, LPS(lid)->queue_states, &new_state);
+		// Link the new checkpoint to the state chain
+		list_insert_tail(LPS(lid)->queue_states, new_state);
 
 	}
 
@@ -148,7 +151,7 @@ unsigned int silent_execution(LID_t lid, void *state_buffer, msg_t *evt, msg_t *
 	old_state = LPS(lid)->state;
 	LPS(lid)->state = LP_STATE_SILENT_EXEC;
 
-	// This is true if the restored state was taken after the new bound
+	// This is true if the restored state was taken exactly after the new bound
 	if(evt == final_evt)
 		goto out;
 
@@ -218,8 +221,10 @@ void rollback(LID_t lid) {
 		s = restore_state;
 		restore_state = list_prev(restore_state);
 		log_delete(s->log);
+		#ifndef NDEBUG
 		s->last_event = (void *)0xBABEBEEF;
-		list_delete_by_content(lid, LPS(lid)->queue_states, s);
+		#endif
+		list_delete_by_content(LPS(lid)->queue_states, s);
 	}
 	// Restore the simulation state and correct the state base pointer
 	RestoreState(lid, restore_state);

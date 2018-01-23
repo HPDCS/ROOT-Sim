@@ -116,8 +116,7 @@ void insert_msg(msg_channel *mc, msg_t *msg) {
 }
 
 void *get_msg(msg_channel *mc) {
-	msg_t *msg;
-	void *buff = NULL;
+	msg_t *msg = NULL;
 
 	spin_lock(&mc->read_lock);
 
@@ -138,18 +137,9 @@ void *get_msg(msg_channel *mc) {
 	mc->buffers[M_READ]->buffer[index] = (void *)0xDEADB00B;
 	validate_msg(msg);
 	#endif
-	
-
-	// TODO: we should reorganize the msg list so as to keep pointers, to avoid this copy
-	size_t size = sizeof(msg_t) + msg->size;
-	buff = list_allocate_node_buffer(GidToLid(msg->receiver), size);
-	memcpy(buff, msg, size);
-
-	// TODO: this should be removed according to the previous TODO in this function
-	msg_release(msg);
 
     leave:
 	spin_unlock(&mc->read_lock);
-	return buff;
+	return msg;
 }
 

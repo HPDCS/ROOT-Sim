@@ -32,43 +32,22 @@
 #include <string.h>
 #include <assert.h>
 
-#include <core/core.h>
 #include <arch/atomic.h>
-
-// The basic implementation of the list is such that each node of any list is allocated in
-// a separate memory region which is associated with a LP.
-// There are some points of the code where this is not the case. In particular, each worker
-// thread might have the need to handle per-thread lists.
-// If the lid passed to all list-library function is idle_process, the library
-// falls back to generic memory, thus the nodes are not associated with any LP.
-// BEWARE: The implementation of the generic list provided by this submodule IS NOT THREAD SAFE!
-// This is because LPs are handled in data separation.
-// In case this facility is used to handle a list which is shared across different worker threads,
-// then accesses to the list must be protected within critical sections.
-
-
-/// This is the encapsulating structure of a list node. Any payload can be contained by this.
-struct rootsim_list_node {
-	struct rootsim_list_node *next;
-	struct rootsim_list_node *prev;
-	char data[];
-};
-
 
 /// This structure defines a generic list.
 typedef struct rootsim_list {
 	size_t size;
-	struct rootsim_list_node *head;
-	struct rootsim_list_node *tail;
-	atomic_t counter;
+	void *head; // Generic pointers: nodes of the list must have a next/prev pointer properly typed
+	void *tail;
+//	atomic_t counter;
 } rootsim_list;
-
 
 /// This macro is a slightly-different implementation of the standard offsetof macro
 #define my_offsetof(st, m) ((size_t)( (unsigned char *)&((st)->m ) - (unsigned char *)(st)))
 
-/// Declare a "typed" list. This is a pointer to type, but the variable will intead reference a struct rootsim_list!!!
+/// Declare a "typed" list. This is a pointer to type, but the variable will instead reference a struct rootsim_list!
 #define list(type) type *
+
 
 /** This macro allocates a struct rootsim_list object and cast it to the type pointer.
  *  It can be used to mimic the C++ syntax of templated lists, like:
@@ -76,76 +55,14 @@ typedef struct rootsim_list {
  *   list(int) = new_list(int);
  *  \endcode
  */
-#define new_list(lid, type)	(type *)({ \
+#define new_list(type)	(type *)({ \
 				void *__lmptr; \
-				if(lid_equals(lid, idle_process)) \
-					__lmptr = (void *)rsalloc(sizeof(struct rootsim_list)); \
-				else \
-					__lmptr = (void *)umalloc((lid), sizeof(struct rootsim_list));\
+				__lmptr = (void *)rsalloc(sizeof(struct rootsim_list)); \
 				bzero(__lmptr, sizeof(struct rootsim_list));\
 				__lmptr;\
 			})
 
-#define new_list_generic(type)	(type *)({ \
-					void *__lmptr; \
-					__lmptr = new_list(idle_process, type); \
-					__lmptr; \
-				})
-
-/// Insert a new node in the list. Refer to <__list_insert_head>() for a more thorough documentation.
-#define list_insert_head(lid, list, data) \
-			(__typeof__(list))__list_insert_head((lid), (list), sizeof *(list), (data))
-
-
-/// Insert a new node in the list. Refer to <__list_insert_tail>() for a more thorough documentation.
-#define list_insert_tail(lid, list, data) \
-			(__typeof__(list))__list_insert_tail((lid), (list), sizeof *(list), (data))
-
-#define list_insert_tail_by_content(list, node) \
-			(__typeof__(list))__list_insert_tail_by_node((list), list_container_of(node))
-
-/// Insert a new node in the list. Refer to <__list_insert>() for a more thorough documentation.
-#define list_insert(lid, list, key_name, data) \
-			(__typeof__(list))__list_insert((lid), (list), sizeof *(list), my_offsetof((list), key_name), (data))
-
-/// Insert an existing node in the list. Refer to <__list_place>() for a more thorough documentation.
-#define list_place(lid, list, key_name, node) \
-			(__typeof__(list))__list_place((lid), (list), my_offsetof((list), key_name), (node))
-
-#define list_place_by_content(lid, list, key_name, node) \
-			(__typeof__(list))__list_place((lid), (list), my_offsetof((list), key_name), list_container_of(node))
-
-/// Remove a node in the list. Refer to <__list_delete>() for a more thorough documentation.
-#define list_delete(list, key_name, key_value) \
-		__list_delete((list), sizeof *(list), (double)(key_value), my_offsetof((list), key_name))
-
-/// Remove a node in the list and returns its content. Refer to <__list_extract>() for a more thorough documentation.
-#define list_extract(list, key_name, key_value) \
-		(__typeof__(list))__list_extract((list), sizeof *(list), (double)(key_value), my_offsetof((list), key_name))
-
-/** Remove a node in the list and returns its content by the pointer of the data contained in the node.
- *  Refer to <__list_extract_by_content>() for a more thorough documentation.
- */
-#define list_extract_by_content(lid, list, ptr) \
-		(__typeof__(list))__list_extract_by_content((lid), (list), sizeof *(list), (ptr), true)
-
-/** Remove a node in the list by the pointer of the data contained in the node
- *  Refer to <__list_delete_by_content>() for a more thorough documentation.
- *  TODO: there is a memory leak here
- */
-#define list_delete_by_content(lid, list, ptr) \
-		(void)(lid), __list_extract_by_content((lid), (list), sizeof *(list), (ptr), false)
-
-/// Find a node in the list. Refer to <__list_find>() for a more thorough documentation.
-#define list_find(list, key_name, key_value) \
-		(__typeof__(list))__list_find((list), (double)(key_value), my_offsetof((list), key_name))
-
-
-/// Truncate a list up to a certain point, starting from the head. Refer to <__list_trunc>() for a more thorough documentation.
-#define list_trunc(lid, list, key_name, key_value) \
-		__list_trunc((lid), (list), (double)(key_value), my_offsetof((list), key_name))
-
-// Get the size of the current list. Refer to <__list_delete>() for a more thorough documentation.
+// Get the size of the current list.
 #define list_sizeof(list) ((struct rootsim_list *)list)->size
 
 
@@ -154,51 +71,14 @@ typedef struct rootsim_list {
  *
  * @param list a pointer to a list created using the <new_list>() macro.
  */
-#define list_head(list) ({\
-			struct rootsim_list_node *__headptr = ((struct rootsim_list *)(list))->head;\
-			__typeof__(list) __dataptr = (__typeof__(list))(__headptr == NULL ? NULL : __headptr->data);\
-			__dataptr;\
-			})
-
+#define list_head(list) ((__typeof__ (list))(((rootsim_list *)(list))->head))
 
 /**
  * This macro retrieves a pointer to the payload of the tail node of a list.
  *
  * @param list a pointer to a list created using the <new_list>() macro.
  */
-#define list_tail(list) ({\
-			struct rootsim_list_node *__tailptr = ((struct rootsim_list *)(list))->tail;\
-			__typeof__(list) __dataptr = (__typeof__(list))(__tailptr == NULL ? NULL : __tailptr->data);\
-			__dataptr;\
-			})
-
-
-/**
- * This macro checks whether a given pointer corresponds to the list head's payload.
- *
- * @param list a pointer to a list created using the <new_list>() macro.
- */
-#define list_is_head(list, ptr) ({\
-				bool __isheadbool = (((struct rootsim_list*)(list))->head == list_container_of((ptr)));\
-				if(ptr == NULL) {\
-					__isheadbool = false;\
-				}\
-				__isheadbool;\
-				})
-
-
-/**
- * This macro checks whether a given pointer corresponds to the list tail's payload.
- *
- * @param list a pointer to a list created using the <new_list>() macro.
- */
-#define list_is_tail(list, ptr) ({\
-				bool __istailbool = (((struct rootsim_list *)(list))->tail == list_container_of((ptr)));\
-				if(ptr == NULL) {\
-					__istailbool = false;\
-				}\
-				__istailbool;\
-				})
+#define list_tail(list) ((__typeof__ (list))(((rootsim_list *)(list))->tail))
 
 
 /**
@@ -206,11 +86,7 @@ typedef struct rootsim_list {
  *
  * @param list a pointer to a list created using the <new_list>() macro.
  */
-#define list_next(ptr) ({\
-			struct rootsim_list_node *__nextptr = list_container_of(ptr)->next;\
-			__typeof__(ptr) __dataptr = (__typeof__(ptr))(__nextptr == NULL ? NULL : __nextptr->data);\
-			__dataptr;\
-			})
+#define list_next(ptr) ((ptr)->next)
 
 
 /**
@@ -218,25 +94,11 @@ typedef struct rootsim_list {
  *
  * @param list a pointer to a list created using the <new_list>() macro.
  */
-#define list_prev(ptr) ({\
-			struct rootsim_list_node *__prevptr = list_container_of(ptr)->prev;\
-			__typeof__(ptr)__dataptr = (__typeof__(ptr))(__prevptr == NULL ? NULL : __prevptr->data);\
-			__dataptr;\
-			})
-
-
-
-
-
-
-
-
-/// This macro allows to get a pointer to the struct rootsim_list_node containing the passed ptr
-#define list_container_of(ptr) ((struct rootsim_list_node *)( (char *)(ptr) - offsetof(struct rootsim_list_node, data) ))
+#define list_prev(ptr) ((ptr)->prev)
 
 /// This macro retrieves the key of a payload data structure given its offset, and casts the value to double.
 #define get_key(data) ({\
-			char *__key_ptr = ((char *)(data) + key_position);\
+			char *__key_ptr = ((char *)(data) + __key_position);\
 			double *__key_double_ptr = (double *)__key_ptr;\
 			*__key_double_ptr;\
 		      })
@@ -244,31 +106,199 @@ typedef struct rootsim_list {
 #define list_empty(list) (((rootsim_list *)list)->size == 0)
 
 
-#define list_allocate_node_buffer_generic(size)	({ \
-							void *__ptr; \
-							__ptr = list_allocate_node_buffer(idle_process, (size)); \
-							__ptr; \
-						})
+#define list_insert_tail(li, data) \
+	do {	\
+		__typeof__(data) __new_n = (data); /* in-block scope variable */\
+		size_t __size_before;\
+		rootsim_list *__l;\
+		do {\
+			__l = (rootsim_list *)(li);\
+			assert(__l);\
+			__size_before = __l->size;\
+			if(__l->size == 0) { /* is the list empty? */\
+				__l->head = __new_n;\
+				__l->tail = __new_n;\
+				break; /* leave the inner do-while */\
+			}\
+			__new_n->next = NULL; /* Otherwise add at the end */\
+			__new_n->prev = __l->tail;\
+			((__typeof__(data))(__l->tail))->next = __new_n;\
+			__l->tail = __new_n;\
+		} while(0);\
+		__l->size++;\
+		assert(__l->size == (__size_before + 1));\
+	} while(0)
 
-#define list_delete_by_content_generic(list, ptr) ({ \
-							(void)__list_extract_by_content(idle_process, (list), sizeof *(list), (ptr), false); \
-						  })
 
-extern char *__list_insert_head(LID_t lid, void *li, unsigned int size, void *data);
-extern char *__list_insert_tail(LID_t lid, void *li, unsigned int size, void *data);
-extern char *__list_insert_tail_by_node(void *li, struct rootsim_list_node* new_n);
-extern char *__list_insert(LID_t lid, void *li, unsigned int size, size_t key_position, void *data);
-extern char *__list_extract(LID_t lid, void *li, unsigned int size, double key, size_t key_position);
-extern bool __list_delete(LID_t lid, void *li, unsigned int size, double key, size_t key_position);
-extern char *__list_extract_by_content(LID_t lid, void *li, unsigned int size, void *ptr, bool copy);
-extern char *__list_find(void *li, double key, size_t key_position);
-extern unsigned int __list_trunc(LID_t lid, void *li, double key, size_t key_position);
-extern void list_pop(LID_t lid, void *li);
-extern char *__list_place(LID_t lid, void *li, size_t key_position, struct rootsim_list_node *new_n);
-extern void *list_allocate_node(LID_t lid, size_t size);
-extern void *list_allocate_node_buffer(LID_t lid, size_t size);
-extern void list_deallocate_node_buffer(LID_t lid, void *ptr);
+#define list_insert_head(li, data) \
+	do {	\
+		__typeof__(data) __new_n = (data); /* in-block scope variable */\
+		size_t __size_before;\
+		rootsim_list *__l;\
+		__new_n->next = NULL;\
+		__new_n->prev = NULL;\
+		do {\
+			__l = (rootsim_list *)(li);\
+			assert(__l);\
+			__size_before = __l->size;\
+			if(__l->size == 0) { /* is the list empty? */\
+				__l->head = __new_n;\
+				__l->tail = __new_n;\
+				break; /* leave the inner do-while */\
+			}\
+			__new_n->prev = NULL; /* Otherwise add at the beginning */\
+			__new_n->next = __l->head;\
+			((__typeof(data))__l->head)->prev = __new_n;\
+			__l->head = __new_n;\
+		} while(0);\
+		__l->size++;\
+		assert(__l->size == (__size_before + 1));\
+	} while(0)
 
+/// Insert a new node in the list
+#define list_insert(li, key_name, data)\
+	do {\
+		__typeof__(data) __n; /* in-block scope variable */\
+		__typeof__(data) __new_n = (data);\
+		size_t __key_position = my_offsetof((li), key_name);\
+		double __key;\
+		size_t __size_before;\
+		rootsim_list *__l;\
+		do {\
+			__l = (rootsim_list *)(li);\
+			assert(__l);\
+			__size_before = __l->size;\
+			if(__l->size == 0) { /* Is the list empty? */\
+				__new_n->prev = NULL;\
+				__new_n->next = NULL;\
+				__l->head = __new_n;\
+				__l->tail = __new_n;\
+				break;\
+			}\
+			__key = get_key(__new_n); /* Retrieve the new node's key */\
+			/* Scan from the tail, as keys are ordered in an increasing order */\
+			__n = __l->tail;\
+			while(__n != NULL && __key < get_key(__n)) {\
+				__n = __n->prev;\
+			}\
+			/* Insert depending on the position */\
+		 	if(__n == __l->tail) { /* tail */\
+				__new_n->next = NULL;\
+				((__typeof(data))__l->tail)->next = __new_n;\
+				__new_n->prev = __l->tail;\
+				__l->tail = __new_n;\
+			} else if(__n == NULL) { /* head */\
+				__new_n->prev = NULL;\
+				__new_n->next = __l->head;\
+				((__typeof(data))__l->head)->prev = __new_n;\
+				__l->head = __new_n;\
+			} else { /* middle */\
+				__new_n->prev = __n;\
+				__new_n->next = __n->next;\
+				__n->next->prev = __new_n;\
+				__n->next = __new_n;\
+			}\
+		} while(0);\
+		__l->size++;\
+		assert(__l->size == (__size_before + 1));\
+	} while(0)
+
+
+
+#define list_delete_by_content(li, node)\
+	do {\
+		__typeof__(node) __n = (node); /* in-block scope variable */\
+		rootsim_list *__l;\
+		size_t __size_before;\
+		__l = (rootsim_list *)(li);\
+		assert(__l);\
+		__size_before = __l->size;\
+		/* Unchain the node */\
+		if(__l->head == __n) {\
+			__l->head = __n->next;\
+			if(__l->head != NULL) {\
+				((__typeof(node))__l->head)->prev = NULL;\
+			}\
+		}\
+		if(__l->tail == __n) {\
+			__l->tail = __n->prev;\
+			if(__l->tail != NULL) {\
+				((__typeof(node))__l->tail)->next = NULL;\
+			}\
+		}\
+		if(__n->next != NULL) {\
+			__n->next->prev = __n->prev;\
+		}\
+		if(__n->prev != NULL) {\
+			__n->prev->next = __n->next;\
+		}\
+		__n->next = (void *)0xBEEFC0DE;\
+		__n->prev = (void *)0xDEADC0DE;\
+		__l->size--;\
+		assert(__l->size == (__size_before - 1));\
+	} while(0)
+
+
+
+
+#define list_pop(list)\
+	do {\
+		rootsim_list *__l;\
+		size_t __size_before;\
+		__typeof__ (list) __n;\
+		__typeof__ (list) __n_next;\
+		__l = (rootsim_list *)(list);\
+		assert(__l);\
+		__size_before = __l->size;\
+		__n = __l->head;\
+		if(__n != NULL) {\
+			__l->head = __n->next;\
+			if(__n->next != NULL) {\
+				__n->next->prev = NULL;\
+			}\
+			__n_next = __n->next;\
+			__n->next = (void *)0xDEFEC8ED;\
+			__n->prev = (void *)0xDEFEC8ED;\
+			__n = __n_next;\
+			__l->size--;\
+			assert(__l->size == (__size_before - 1));\
+		}\
+	} while(0)
+
+
+
+
+
+/// Truncate a list up to a certain point, starting from the head.
+#define list_trunc(list, key_name, key_value, release_fn) \
+	({\
+	rootsim_list *__l = (rootsim_list *)(list);\
+	__typeof__(list) __n;\
+	__typeof__(list) __n_adjacent;\
+	unsigned int __deleted = 0;\
+	size_t __key_position = my_offsetof((list), key_name);\
+	assert(__l);\
+	size_t __size_before = __l->size;\
+	/* Attempting to truncate an empty list? */\
+	if(__l->size > 0) {\
+		__n = __l->head;\
+		while(__n != NULL && get_key(__n) < (key_value)) {\
+			__deleted++;\
+                	__n_adjacent = __n->next;\
+	                __n->next = (void *)0xBAADF00D;\
+        	        __n->prev = (void *)0xBAADF00D;\
+			release_fn(__n);\
+			__n = __n_adjacent;\
+		}\
+		__l->head = __n;\
+		if(__l->head != NULL)\
+		((__typeof__(list))__l->head)->prev = NULL;\
+	}\
+	__l->size -= __deleted;\
+	assert(__l->size == (__size_before - __deleted));\
+	__deleted;\
+	})
+	
 
 #endif /* __LIST_DATATYPE_H */
 
