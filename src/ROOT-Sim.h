@@ -273,7 +273,8 @@ enum capability_t
 	CAP_LINUX_MODULES,
 	CAP_LP_REBINDING,
 	CAP_MPI,
-	CAP_SILENT
+	CAP_SILENT,
+	CAP_POWER,
 };
 
 struct capability_info_t {
@@ -291,6 +292,7 @@ struct capability_info_t {
 		int verbose;		 //!< Kernel verbose
 		int stats;		 //!< Produce performance statistic file (default STATS_ALL)
 		int lps;		 //!< Number of active logical processes
+		double powercap;	 //!< Current power cap value
 		uint64_t seed;		 //!< The master seed to be used in this run
 	};
 };

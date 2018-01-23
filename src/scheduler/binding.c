@@ -42,7 +42,7 @@
 
 #include <arch/thread.h>
 
-#define REBIND_INTERVAL 10.0
+#define REBIND_INTERVAL 100
 
 struct lp_cost_id {
 	double workload_factor;

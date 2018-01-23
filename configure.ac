@@ -232,6 +232,24 @@ AS_IF([test "x$enable_rebinding" != "xno"], [
 ])
 
 
+#------------------------------------------------------------
+# Power management support
+#------------------------------------------------------------
+ac_power_management=no
+if test "x$ac_on_linux" = "xyes"
+then
+	ac_power_management=yes
+	AC_CHECK_FILE("/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor",, [ac_power_management=no])
+	AC_CHECK_FILE("/sys/devices/system/cpu/cpu0/cpufreq/scaling_available_frequencies",, [ac_power_management=no])
+	AC_CHECK_FILE("/sys/devices/system/cpu/cpu0/cpufreq/scaling_setspeed",, [ac_power_management=no])
+	AC_CHECK_FILE("/sys/class/powercap/intel-rapl/intel-rapl:0/energy_uj",, [ac_power_management=no])
+
+	AS_IF([test "x$ac_power_management" != "xno"], [
+		AC_DEFINE([HAVE_POWER_MANAGEMENT])
+		ac_have_power_management=yes
+	])
+fi
+
 
 #------------------------------------------------------------
 # Linux specific subsystems.
@@ -460,6 +478,15 @@ then
 	fi
 fi
 
+
+# Compose the message regarding Power Management
+if test "x$ac_have_power_management" = "xyes"
+then
+	ac_power="Enabled"
+else
+	ac_power="Governor information not found"
+fi
+
 # This is the line to reintroduce the ECS and modules messages
 #Event Cross State......... : ${ac_ecs}
 #Linux Kernel Modules...... : ${ac_modules}
@@ -472,6 +499,7 @@ CPU Architecture.......... : ${host_cpu}
 Operating System.......... : ${host_os}
 Debugging Support......... : ${enable_debug}
 MPI....................... : ${enable_mpi}
+Power Management.......... : ${ac_power}
 LP Preemption Support..... : ${ac_preemption}
 LP Rebinding.............. : ${ac_lp_rebinding}
 

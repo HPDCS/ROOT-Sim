@@ -171,6 +171,9 @@ static void *main_simulation_loop(void *arg)
 	}
 
  leave_for_error:
+	if(rootsim_config.powercap > 0 && master_thread())
+		end_powercap_mainthread();
+
 	thread_barrier(&all_thread_barrier);
 
 	// If we're exiting due to an error, we neatly shut down the simulation
@@ -215,6 +218,10 @@ int main(int argc, char **argv)
 
 		// The number of locally required threads is now set. Detach them and then join the main simulation loop
 		if (!simulation_error()) {
+
+			if(rootsim_config.powercap > 0)
+				init_powercap_mainthread(n_cores);
+			
 			if (n_cores > 1) {
 				create_threads(n_cores - 1, main_simulation_loop, NULL);
 			}

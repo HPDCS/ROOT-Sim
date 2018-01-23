@@ -253,7 +253,8 @@ static void print_config_to_file(FILE *f)
 		"Halt Simulation After: %d\n"
 		"LPs Distribution Mode across Kernels: %s\n"
 		"Check Termination Mode: %s\n"
-		"Set Seed: %ld\n",
+		"Set Seed: %ld\n"
+		"Power Cap: %fW\n",
 		n_ker,
 		get_cores(),
 		n_cores,
@@ -270,7 +271,8 @@ static void print_config_to_file(FILE *f)
 		rootsim_config.simulation_time,
 		param_to_text[PARAM_LPS_DISTRIBUTION][rootsim_config.lps_distribution],
 		param_to_text[PARAM_CKTRM_MODE][rootsim_config.check_termination_mode],
-		rootsim_config.set_seed);
+		rootsim_config.set_seed,
+		rootsim_config.powercap);
 }
 
 

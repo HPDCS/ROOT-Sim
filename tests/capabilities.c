@@ -36,6 +36,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int type, void *payload, unsig
 	CapabilityAvailable(CAP_LINUX_MODULES, NULL);
 	CapabilityAvailable(CAP_LP_REBINDING, NULL);
 	CapabilityAvailable(CAP_MPI, NULL);
+	CapabilityAvailable(CAP_POWER, NULL);
 
 	CapabilityAvailable(CAP_SCHEDULER, &info);
 	CapabilityAvailable(CAP_CKTRM_MODE, &info);
@@ -62,6 +63,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int type, void *payload, unsig
 	CapabilityAvailable(CAP_LINUX_MODULES, &info);
 	CapabilityAvailable(CAP_LP_REBINDING, &info);
 	CapabilityAvailable(CAP_MPI, &info);
+	CapabilityAvailable(CAP_POWER, &info);
 }
 
 

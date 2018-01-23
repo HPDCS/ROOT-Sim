@@ -23,7 +23,7 @@
 #define DEALLOC 	2
 #define LOOP		3
 
-#define COMPLETE_EVENTS 10000	// for the LOOP traditional case
+#define COMPLETE_EVENTS 100000000	// for the LOOP traditional case
 #define LOOP_COUNT	1000
 
 

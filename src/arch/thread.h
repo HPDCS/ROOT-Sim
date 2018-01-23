@@ -172,7 +172,7 @@ typedef struct {
 
 
 extern __thread unsigned int tid;
-extern __thread unsigned int local_tid;
+extern __thread unsigned int local_tid; // TODO: we don't really need the local tid...
 
 extern void barrier_init(barrier_t * b, int t);
 extern bool thread_barrier(barrier_t * b);

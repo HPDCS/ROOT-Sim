@@ -72,6 +72,8 @@ librootsim_a_SOURCES =	src/main.c \
 			src/lib/jsmn.c \
 			src/mm/state.c \
 			src/mm/ecs.c \
+			src/powercap/heuristics.c \
+			src/powercap/powercap.c \
 			src/queues/queues.c \
 			src/queues/xxhash.c \
 			src/scheduler/binding.c \

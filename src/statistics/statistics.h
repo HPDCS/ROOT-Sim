@@ -131,7 +131,8 @@ struct stat_t {
 			    idle_cycles,
 			    memory_usage,
 			    simtime_advancement,
-			    gvt_computations, exponential_event_time;
+			    gvt_computations,
+			    exponential_event_time;
 		};
 		vec_double vec;
 	};
