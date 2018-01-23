@@ -47,7 +47,11 @@ typedef struct _simulation_configuration {
 	enum stat_levels stats;		/// Produce performance statistic file (default STATS_ALL)
 	bool serial;			// If the simulation must be run serially
 	seed_type set_seed;		/// The master seed to be used in this run
-	bool core_binding;		/// Bind threads to specific core ( reduce context switches and cache misses )
+	bool core_binding;		/// Bind threads to specific core (reduce context switches and cache misses)
+	unsigned int num_controllers;	/// The number of controllers
+	double controllers_freq;	/// The initial frequency of controllers
+	double powercap;		/// Power Capping frequency
+	int powercap_exploration;	/// Power Capping Exploration Strategy
 
 #ifdef HAVE_PREEMPTION
 	bool disable_preemption;	/// If compiled for preemptive Time Warp, it can be disabled at runtime

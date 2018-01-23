@@ -76,13 +76,17 @@
 #define OPT_SEED		19
 #define OPT_SERIAL		20
 #define OPT_NO_CORE_BINDING	21
-
-#ifdef HAVE_PREEMPTION
-#define OPT_PREEMPTION		22
-#endif
+#define OPT_CONTROLLERS		23
+#define OPT_CONTROLLERS_FREQ	24
+#define OPT_POWERCAP		25
+#define OPT_POWERCAP_EXPLORE	26
 
 #ifdef HAVE_PARALLEL_ALLOCATOR
-#define OPT_ALLOCATOR		23
+#define OPT_ALLOCATOR		27
+#endif
+
+#ifdef HAVE_PREEMPTION
+#define OPT_PREEMPTION		28
 #endif
 
 /// This variable keeps the executable's name
@@ -92,8 +96,6 @@ char *program_name;
 struct app_arguments model_parameters;
 
 
-// TODO: a vector of vector with text name of numerical options, which should be used for parsing options and for displaying names
-// static char *opt_opt[][] = { ... }
 static char *opt_desc[] = {
 	"",
 	"Number of total cores being used by the simulation",
@@ -117,15 +119,18 @@ static char *opt_desc[] = {
 	"Manually specify the initial random seed",
 	"Run a serial simulation (using Calendar Queues)",
 	"Disable the binding of threads to specific phisical processing cores",
-
-#ifdef HAVE_PREEMPTION
-	"Disable Preemptive Time Warp",
-#endif
+	"Initial number of Controller Threads",
+	"Initial frequency of Controller Threads",
+	"Power value (in Watts) for Power Capping",
+	"Power Capping Exploration Strategy",
 
 #ifdef HAVE_PARALLEL_ALLOCATOR
 	"Disable parallel allocator",
 #endif
 
+#ifdef HAVE_PREEMPTION
+	"Disable Preemptive Time Warp",
+#endif
 	""
 };
 
@@ -150,17 +155,21 @@ static struct option long_options[] = {
 	{"verbose",		required_argument,	0, OPT_VERBOSE},
 	{"stats",		required_argument,	0, OPT_STATS},
 	{"seed",		required_argument,	0, OPT_SEED},
-	{"serial",		no_argument,		0, OPT_SERIAL},
-	{"sequential",		no_argument,		0, OPT_SERIAL},
 	{"no-core-binding",	no_argument,		0, OPT_NO_CORE_BINDING},
-
-#ifdef HAVE_PREEMPTION
-	{"no-preemption",	no_argument,		0, OPT_PREEMPTION},
-#endif
+	{"ncontrollers",	required_argument,	0, OPT_CONTROLLERS},
+	{"controllers-freq",	required_argument,	0, OPT_CONTROLLERS_FREQ},
+	{"powercap",		required_argument,	0, OPT_POWERCAP},
+	{"powercap-exploration",required_argument,	0, OPT_POWERCAP_EXPLORE},
 
 #ifdef HAVE_PARALLEL_ALLOCATOR
 	{"no-allocator",	no_argument,		0, OPT_ALLOCATOR},
 #endif
+
+#ifdef HAVE_PREEMPTION
+	{"no-preemption",	no_argument,		0, OPT_PREEMPTION},
+#endif
+	{"serial",		no_argument,		0, OPT_SERIAL},
+	{"sequential",		no_argument,		0, OPT_SERIAL},
 
 	{0,			0,			0, 0}
 };
@@ -300,7 +309,6 @@ static int parse_cmd_line(int argc, char **argv) {
 				} else {
 					rootsim_config.checkpointing = PERIODIC_STATE_SAVING;
 					rootsim_config.ckpt_period = parseIntLimits(optarg, 1, 40);
-					// This is a micro optimization that makes the LogState function to avoid checking the checkpointing interval and keeping track of the logs taken
 					if(rootsim_config.ckpt_period == 1) {
 						rootsim_config.checkpointing = COPY_STATE_SAVING;
 					}
@@ -406,6 +414,23 @@ static int parse_cmd_line(int argc, char **argv) {
 			case OPT_NO_CORE_BINDING:
 				rootsim_config.core_binding = false;
 				break;
+
+			case OPT_CONTROLLERS:
+				rootsim_config.num_controllers = parseInt(optarg);
+				break;
+
+			case OPT_CONTROLLERS_FREQ:
+				rootsim_config.controllers_freq = parseDouble(optarg);
+				break;
+
+			case OPT_POWERCAP:
+				rootsim_config.powercap = parseDouble(optarg);
+				break;
+
+			case OPT_POWERCAP_EXPLORE:
+				rootsim_config.powercap_exploration = parseInt(optarg);
+				break;
+
 
 			#ifdef HAVE_PREEMPTION
 			case OPT_PREEMPTION:
@@ -514,6 +539,7 @@ void SystemInit(int argc, char **argv) {
 			"****************************\n"
 			"Kernels: %u\n"
 			"Cores: %ld available, %d used\n"
+			"Controllers: %d\n"
 			"Number of Logical Processes: %u\n"
 			"Output Statistics Directory: %s\n"
 			"Scheduler: %d\n"
@@ -528,10 +554,12 @@ void SystemInit(int argc, char **argv) {
 			"LPs Distribution Mode across Kernels: %d\n"
 			"Check Termination Mode: %d\n"
 			"Blocking GVT: %d\n"
-			"Set Seed: %ld\n",
+			"Set Seed: %ld\n"
+			"Power Capping: %fW\n",
 			n_ker,
 			get_cores(),
 			n_cores,
+			rootsim_config.num_controllers,
 			n_prc_tot,
 			rootsim_config.output_dir,
 			rootsim_config.scheduler,
@@ -546,7 +574,8 @@ void SystemInit(int argc, char **argv) {
 			rootsim_config.lps_distribution,
 			rootsim_config.check_termination_mode,
 			rootsim_config.blocking_gvt,
-			rootsim_config.set_seed);
+			rootsim_config.set_seed,
+			rootsim_config.powercap);
 	}
 
 	distribute_lps_on_kernels();
