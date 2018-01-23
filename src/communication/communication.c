@@ -28,6 +28,7 @@
 #include <stdlib.h>
 #include <float.h>
 
+#include <arch/thread.h>
 #include <core/core.h>
 #include <gvt/gvt.h>
 #include <queues/queues.h>

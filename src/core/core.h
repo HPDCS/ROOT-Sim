@@ -38,7 +38,6 @@
 #include <stdint.h>
 
 #include <lib/numerical.h>
-#include <arch/thread.h>
 
 /// If set, ROOT-Sim will produce statistics on the execution
 #define PLATFORM_STATS
@@ -187,11 +186,6 @@ typedef struct _msg_hdr_t {
 	unsigned long long	mark;
 } msg_hdr_t;
 
-
-
-
-/// Barrier for all worker threads
-extern barrier_t all_thread_barrier;
 
 // XXX: this should be refactored someway
 extern unsigned int	kid,		/* Kernel ID for the local kernel */

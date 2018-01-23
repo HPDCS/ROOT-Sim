@@ -29,6 +29,7 @@
 #include <stdbool.h>
 #include <arch/atomic.h>
 #include <arch/os.h>
+#include <datatypes/msgchannel.h>
 
 
 
@@ -53,6 +54,30 @@
 
 /// This macro tells on what core the current thread is running
 #define running_core() (local_tid)
+
+enum thread_incarnation {
+	THREAD_SYMMETRIC,
+	THREAD_CONTROLLER,
+	THREAD_PROCESSING
+};
+
+/// Thread State Control Block
+typedef struct _Thread_State {
+	/// This member tells what incar
+	enum thread_incarnation	incarnation;
+
+	// TODO: remove local_tid everywhere and use only tid. The global tid (if ever required)
+	// can be retrieved from here!
+	/// Global tid, used to identify a thread within the whole system
+	unsigned int		global_tid;
+
+	/** Thread Input Port: if a thread is a Processing Thread, these are used to send messages to process.
+	 * There are two input ports, which are associated with high and low priority messages to exchange. */
+	msg_channel		*input_port[2];
+
+	/// Thread Output Port: if a thread is a Processing Thread, this is used to send back generated events or control messages to the controller
+	msg_channel		*output_port;
+} Thread_State;
 
 
 /// This structure is used to call the thread creation helper function
@@ -90,6 +115,11 @@ extern void barrier_init(barrier_t *b, int t);
 extern bool thread_barrier(barrier_t *b);
 bool reserve_barrier(barrier_t *b);
 void release_barrier(barrier_t *b);
+
+
+
+/// Barrier for all worker threads
+extern barrier_t all_thread_barrier;
 
 
 #endif /* __ROOTSIM_THREAD_H */
