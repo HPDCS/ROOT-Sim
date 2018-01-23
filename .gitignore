@@ -9,8 +9,9 @@
 *.dylib
 *.out
 
-Makefile
 Makefile.in
+Makefile
+!/src/arch/linux/modules/*/Makefile
 
 /aclocal.m4
 /autom4te.cache/
