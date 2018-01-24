@@ -81,8 +81,11 @@ typedef struct _LP_state {
 	/// Seed to generate pseudo-random values
 	seed_type		seed;
 
-	/// ID of the worker thread towards which the LP is bound
+	/// ID of the worker thread (or controller) towards which the LP is bound
 	unsigned int		worker_thread;
+
+	/// ID of the Processing Thread (in case worker_thread above is a controller) which processes events
+	unsigned int		processing_thread;
 
 	/// Current execution state of the LP
 	short unsigned int 	state;
@@ -125,7 +128,7 @@ typedef struct _LP_state {
 
 	#ifdef HAVE_CROSS_STATE
 	GID_t			ECS_synch_table[MAX_CROSS_STATE_DEPENDENCIES];
-	unsigned int 	ECS_index;
+	unsigned int 		ECS_index;
 	#endif
 
 	unsigned long long	wait_on_rendezvous;

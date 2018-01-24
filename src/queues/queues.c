@@ -118,11 +118,8 @@ msg_t *advance_to_next_event(LID_t lid) {
 
 
 /**
-* Insert a message in the bottom halft of a locally-hosted LP. Of course,
-* the LP must be locally hosted. This is guaranteed by the fact
-* that the only point where this function is called is from Send(),
-* which checks whether the LP is hosted locally from this kernel
-* instance or not.
+* Insert a message in the bottom half of a locally-hosted LP. Of course,
+* the LP must be locally hosted.
 *
 * @author Alessandro Pellegrini
 *

@@ -123,7 +123,10 @@ void base_init(void) {
 	register unsigned int i;
 	GID_t gid;
 
-	barrier_init(&all_thread_barrier, n_cores);
+	if(rootsim_config.num_controllers > 0)
+		barrier_init(&all_thread_barrier, rootsim_config.num_controllers);
+	else
+		barrier_init(&all_thread_barrier, n_cores);
 
 	n_prc = 0;
 	ProcessEvent = rsalloc(sizeof(void *) * n_prc_tot);

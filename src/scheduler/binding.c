@@ -71,6 +71,16 @@ static __thread int local_binding_phase = 0;
 static atomic_t worker_thread_reduction;
 
 
+
+static void rebind_LPs_to_PTs(void) {
+	unsigned int i;
+
+	for(i = 0; i < Threads[tid]->num_PTs; i++) {
+		LPS_bound(i)->processing_thread = Threads[tid]->PTs[i]->tid;
+	}
+}
+
+
 /**
 * Performs a (deterministic) block allocation between LPs and WTs
 *
@@ -119,6 +129,11 @@ static inline void LPs_block_binding(void) {
 			buf1--;
 		}
 	}
+
+	// In case we're running with the asymmetric architecture, we have
+	// to rebind as well 
+	if(rootsim_config.num_controllers > 0)
+		rebind_LPs_to_PTs();
 }
 
 /**
@@ -186,7 +201,7 @@ static inline void LP_knapsack(void) {
 		j++;
 	}
 
-	// Very suboptimal approximation of knapsack
+	// Suboptimal approximation of knapsack
 	for(; i < n_prc; i++) {
 		assigned = false;
 
@@ -257,6 +272,11 @@ static void install_binding(void) {
 			}
 		}
 	}
+
+	// In case we're running with the asymmetric architecture, we have
+	// to rebind as well 
+	if(rootsim_config.num_controllers > 0)
+		rebind_LPs_to_PTs();
 }
 
 #endif

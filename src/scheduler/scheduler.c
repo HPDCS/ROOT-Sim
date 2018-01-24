@@ -416,6 +416,141 @@ bool check_rendevouz_request(LID_t lid){
 }
 
 /**
+ * This is the core processing routine of PTs
+ */
+void asym_process(void) {
+	msg_t *msg;
+	LID_t lid;
+
+	// We initially check for high priority msgs. If one is present,
+	// we process it and then return. In this way, the next call to
+	// asym_process() will again check for high priority events, making
+	// them really high priority.
+	msg = pt_get_hi_prio_msg();
+	if(msg != NULL) {
+		// TODO
+
+		goto out;
+	}
+
+	// No high priority message. Get an event to process.
+	msg = pt_get_lo_prio_msg();
+
+	// My queue might be empty...
+	if(msg == NULL)
+		return;
+
+	lid = GidToLid(msg->receiver);
+
+	// The LP might have been flagged as rolling back. In this case,
+	// discard the event and go on...
+	if(LPS(lid)->state == LP_STATE_ROLLBACK) {
+		goto out;
+	}
+
+	// Process this event
+	activate_LP(lid, lvt(lid), msg, LPS(lid)->current_base_pointer);
+
+	// Send back to the controller the (possibly) generated events
+	asym_send_outgoing_msgs(lid);
+
+    out:
+	msg_release(msg);
+}
+
+
+/**
+* This is the asymmetric scheduler. This function extracts a bunch of events
+* to be processed by LPs bound to a controller and sends them to processing
+* threads for later execution. Rollbacks are executed by the controller, and
+* are triggered here in a lazy fashion.
+*
+* @author Alessandro Pellegrini
+*/
+void asym_schedule(void) {
+	LID_t lid;
+	msg_t *event;
+	unsigned int i;
+	unsigned int bulk_sched = 1;
+
+	for(i = 0; i < bulk_sched; i++) {
+
+		#ifdef HAVE_CROSS_STATE
+		bool resume_execution = false;
+		#endif
+
+		// Find next LP to be executed, depending on the chosen scheduler
+		switch (rootsim_config.scheduler) {
+
+			case SMALLEST_TIMESTAMP_FIRST:
+				lid = smallest_timestamp_first();
+				break;
+
+			default:
+				lid = smallest_timestamp_first();
+		}
+
+		// No logical process found with events to be processed
+		if (lid_equals(lid, idle_process)) {
+			statistics_post_lp_data(lid, STAT_IDLE_CYCLES, 1.0);
+			continue;
+		}
+
+		// If we have to rollback
+		if(LPS(lid)->state == LP_STATE_ROLLBACK) {
+			// XXX: PUT A BUBBLE HERE in High Prio Queue!
+			LPS(lid)->state = LP_STATE_READY;
+//			send_outgoing_msgs(lid);
+			continue;
+		}
+
+		if(!is_blocked_state(LPS(lid)->state) && LPS(lid)->state != LP_STATE_READY_FOR_SYNCH){
+			event = advance_to_next_event(lid);
+		} else {
+			event = LPS(lid)->bound;
+		}
+
+
+		// Sanity check: if we get here, it means that lid is a LP which has
+		// at least one event to be executed. If advance_to_next_event() returns
+		// NULL, it means that lid has no events to be executed. This is
+		// a critical condition and we abort.
+		if(event == NULL) {
+			rootsim_error(true, "Critical condition: LP %d seems to have events to be processed, but I cannot find them. Aborting...\n", lid);
+		}
+
+		if(!process_control_msg(event)) {
+			return;
+		}
+
+		#ifdef HAVE_CROSS_STATE
+		// TODO: we should change this by managing the state internally to activate_LP, as this
+		// would uniform the code across symmetric/asymmetric implementations.
+		// In case we are resuming an interrupted execution, we keep track of this.
+		// If at the end of the scheduling the LP is not blocked, we can unblock all the remote objects
+		if(is_blocked_state(LPS(lid)->state) || LPS(lid)->state == LP_STATE_READY_FOR_SYNCH) {
+			resume_execution = true;
+		}
+		#endif
+
+		// Put the event in the low prio queue of the associated PT
+		pt_put_lo_prio_msg(LPS(lid)->processing_thread, event);
+
+		#ifdef HAVE_CROSS_STATE
+		if(resume_execution && !is_blocked_state(LPS(lid)->state)) {
+			printf("ECS event is finished mark %llu !!!\n", LPS(lid)->wait_on_rendezvous);
+			fflush(stdout);
+			unblock_synchronized_objects(lid);
+
+			// This is to avoid domino effect when relying on rendezvous messages
+			// TODO: I'm not quite sure if with asynchronous PTs' this way to code ECS-related checkpoints still holds
+			force_LP_checkpoint(lid);
+		}
+		#endif
+	}
+}
+
+/**
 * This function checks wihch LP must be activated (if any),
 * and in turn activates it. This is used only to support forward execution.
 *

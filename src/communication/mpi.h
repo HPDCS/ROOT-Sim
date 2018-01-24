@@ -51,7 +51,7 @@ void mpi_init(int *argc, char ***argv);
 void inter_kernel_comm_init(void);
 void inter_kernel_comm_finalize(void);
 void mpi_finalize(void);
-void syncronize_all(void);
+void synchronize_all(void);
 void send_remote_msg(msg_t* msg);
 bool pending_msgs(int tag);
 void receive_remote_msgs(void);

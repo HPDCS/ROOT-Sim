@@ -11,7 +11,7 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
 	exit_t *exit_p;
 	destination_t *destination_p;
 	complete_t *complete_p;
-		
+
 	enter_t enter;
 	exit_t exit;
 	destination_t destination;
@@ -33,24 +33,24 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
 
 	if(is_agent(me) && event != INIT)
 		((lp_agent_t *)state)->lvt = now;
-	
+
 	switch(event) {
 
 			case INIT: // must be ALWAYS implemented
-			
+
 				if(n_prc_tot < TOT_REG + 1) {
 					printf("You must use at least %d LPs\n", TOT_REG + 1);
 					abort();
 				}
-		
+
 				if(is_agent(me)){
 					agent = (lp_agent_t *)malloc(sizeof(lp_agent_t));
-					DEBUG printf("AGENT ADD:%p\n",agent);	
+					DEBUG printf("AGENT ADD:%p\n",agent);
 					agent->complete = false;
-					
+
 					agent->id = me;
 					agent->region = random_region();
-					
+
 					agent->map = ALLOCATE_BITMAP(get_tot_regions());
 					BITMAP_BZERO(agent->map,get_tot_regions());
 
@@ -63,30 +63,30 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
 					region = (lp_region_t *)malloc(sizeof(lp_region_t));
 					region->guests = calloc(get_tot_agents(),sizeof(lp_agent_t *));
 
-					region->count = 0;     
+					region->count = 0;
 					region->obstacles = get_obstacles();
 
-					SetState(region);	
+					SetState(region);
 				}
-		
+
 				timestamp = (simtime_t)(20 * Random());
 
 				if(is_agent(me)) {
 					BITMAP_SET_BIT(agent->map,agent->region);
 					agent->count++;
-					
+
 					enter.agent = agent;
-					
+
 					DEBUG printf("%d send ENTER to %d\n",me,agent->region);
 					ScheduleNewEvent(agent->region, timestamp, ENTER, &enter, sizeof(enter));
-					
-					exit.agent = me;		
-					
+
+					exit.agent = me;
+
 					timestamp += Expent(DELAY);
 					DEBUG printf("%d send EXIT to %d\n",me,agent->region);
 					ScheduleNewEvent(agent->region, timestamp, EXIT, &exit, sizeof(exit));
 				} else {
-					ScheduleNewEvent(me, timestamp, PING, NULL, 0);	
+					ScheduleNewEvent(me, timestamp, PING, NULL, 0);
 				}
 
 				break;
@@ -101,9 +101,9 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
 				region = (lp_region_t *) state;
 
 				DEBUG printf("Region %d process ENTER of %d\n",me,enter_p->agent->id);
-			
+
 				region->guests[region->count] = enter_p->agent;
-				new_group = enter_p->agent->group;	
+				new_group = enter_p->agent->group;
 				for(i=0;i<region->count;i++){
 					old_group = region->guests[i]->group;
 					for(j=0;j<get_tot_agents();j++){
@@ -112,73 +112,73 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
 						else if(new_group[j] != NULL && old_group[j] == NULL)
 													old_group[j] = new_group[j];
 					}
-				}			
+				}
 
-				region->count++;	
+				region->count++;
 				DEBUG	printf("End enter Region:%d\n",me);
-				
+
 				break;
 
-			case EXIT: 
+			case EXIT:
 				exit_p = (exit_t *) content;
 				region = (lp_region_t *) state;
-				
+
 				destination.region = get_region(me,region->obstacles,exit_p->agent);
-				
+
 				for(i=0;i<region->count; i++){
 					if(region->guests[i]->id == exit_p->agent){
 						if(i!=(region->count-1) && region->count >= 1)
 							region->guests[i] = region->guests[region->count-1];
 						region->guests[region->count-1] = NULL;
-						region->count--;	
+						region->count--;
 						break;
 					}
 				}
-				
+
 				DEBUG 	printf("%d send DESTINATION to %d\n",me,exit_p->agent);
 				ScheduleNewEvent(exit_p->agent, now + Expent(DELAY), DESTINATION, &destination, sizeof(destination));
-				
+
 				break;
 
-			case DESTINATION: 
+			case DESTINATION:
 				destination_p = (destination_t *) content;
 				agent = (lp_agent_t *) state;
 				agent->region = destination_p->region;
 
-				send_updated_info(agent);			
-			
+				send_updated_info(agent);
+
 				if(check_termination(agent)){
-					
+
 					agent->complete = true;
-								
+
 					complete.agent = me;
-					
+
 					timestamp = now + Expent(DELAY);
 
 					if(me + 1 == n_prc_tot){
 						DEBUG printf("%d send COMPLETE to %d add at %f: %p \n",me,get_tot_regions(),timestamp,agent);
 						ScheduleNewEvent(get_tot_regions(), timestamp, COMPLETE, &complete, sizeof(complete));
 					}
-					else{	
+					else{
 						DEBUG printf("%d send COMPLETE to %d add at %f: %p\n",me, me+1, timestamp,agent);
 						ScheduleNewEvent(me + 1, timestamp, COMPLETE, &complete, sizeof(complete));
 					}
-					
+
 					//Unnote break command to stop exploration if the termination condiction is true
-				
+
 	//				printf("%d send COMPLETE to %d add:%p \n",me,get_tot_regions(),agent);
 	//				break;
 				}
-				
-				timestamp = now + Expent(DELAY);			
-				
+
+				timestamp = now + Expent(DELAY);
+
 				enter.agent = agent;
 
 				DEBUG printf("%d send ENTER to %d\n",me,destination_p->region);
 				ScheduleNewEvent(destination_p->region, timestamp, ENTER, &enter, sizeof(enter));
 
 				exit.agent = me;
-				
+
 				DEBUG printf("%d send EXIT to %d\n",me,destination_p->region);
 				ScheduleNewEvent(destination_p->region, timestamp + Expent(DELAY), EXIT, &exit, sizeof(exit));
 				break;
@@ -191,7 +191,7 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
 					agent->complete = true;
 					agent->count = get_tot_regions();
 				}
-			
+
 				if(complete_p->agent == me) break;
 
 							complete.agent = complete_p->agent;
@@ -207,17 +207,17 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, void *cont
 				}
 
 			break;
-			
+
 		}
 }
 
 bool OnGVT(unsigned int me, void *snapshot) {
 	lp_agent_t *agent;
-	
+
 	if(is_agent(me)){
-		agent = (lp_agent_t *) snapshot;	
-		
-		DEBUG{	
+		agent = (lp_agent_t *) snapshot;
+
+		DEBUG{
 			unsigned int i;
 			printf("Agent[%d]\t",me);
 			printf("LVT:%f\t",agent->lvt);
@@ -232,19 +232,19 @@ bool OnGVT(unsigned int me, void *snapshot) {
 			}
 			printf("}\n");
 		}
-		
+
 			if(me == get_tot_regions())
 					printf("Completed work: %f%%\n", percentage(agent));
-			
-		
-			
+
+
+
 		if(!check_termination(agent)){
 			DEBUG	printf("[ME:%d] Complete:%f flag:%d\n",me,percentage(agent),agent->complete);
 			return false;
 		}
-	
+
 		DEBUG printf("%d complete execution  C:%f F:%d\n",me,percentage(agent),agent->complete);
 	}
-	
+
 	return true;
 }
