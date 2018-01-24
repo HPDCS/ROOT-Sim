@@ -25,11 +25,6 @@ unsigned int FindReceiver(int topology) {
 
 	if(first_call) {
 		edge = sqrt(n_prc_tot);
-		// Sanity check!
-		if(edge * edge != n_prc_tot) {
-			rootsim_error(true, "Hexagonal map wrongly specified!\n");
-			return 0;
-		}
 		first_call = false;
 	}
 
@@ -43,6 +38,11 @@ unsigned int FindReceiver(int topology) {
 	switch(topology) {
 
 		case TOPOLOGY_HEXAGON:
+			// Sanity check!
+			if(edge * edge != n_prc_tot) {
+				rootsim_error(true, "Hexagonal map wrongly specified!\n");
+				return 0;
+			}
 
 			// Convert linear coords to hexagonal coords
 			x = gid_to_int(sender) % edge;
@@ -93,6 +93,11 @@ unsigned int FindReceiver(int topology) {
 
 
 		case TOPOLOGY_SQUARE:
+			// Sanity check!
+			if(edge * edge != n_prc_tot) {
+				rootsim_error(true, "Hexagonal map wrongly specified!\n");
+				return 0;
+			}
 
 			// Convert linear coords to square coords
 			x = gid_to_int(sender) % edge;
@@ -136,6 +141,11 @@ unsigned int FindReceiver(int topology) {
 			break;
 
 		case TOPOLOGY_TORUS:
+			// Sanity check!
+			if(edge * edge != n_prc_tot) {
+				rootsim_error(true, "Hexagonal map wrongly specified!\n");
+				return 0;
+			}
 
 			// Convert linear coords to square coords
 			x = gid_to_int(sender) % edge;
