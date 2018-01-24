@@ -24,3 +24,5 @@
 
 #pragma once
 
+#define DEBUG_POWER
+// #define OVERHEAD_POWER

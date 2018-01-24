@@ -48,9 +48,9 @@ typedef struct _simulation_configuration {
 	bool serial;			// If the simulation must be run serially
 	seed_type set_seed;		/// The master seed to be used in this run
 	bool core_binding;		/// Bind threads to specific core (reduce context switches and cache misses)
-	unsigned int num_controllers;	/// The number of controllers
-	double controllers_freq;	/// The initial frequency of controllers
-	double powercap;		/// Power Capping frequency
+	unsigned int num_controllers;	/// The number of controller threads 
+	double controllers_freq;	/// The initial frequency of controllers, expressed in MHz 
+	double powercap;		/// Power Capping value, expressed in Watt, which defines a limit for the system power consumption
 	int powercap_exploration;	/// Power Capping Exploration Strategy
 
 #ifdef HAVE_PREEMPTION
