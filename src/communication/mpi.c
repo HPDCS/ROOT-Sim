@@ -329,13 +329,13 @@ void mpi_datatype_finalize(void){
 /*
  * Syncronize all the kernels:
  *
- * This function can be used as syncronization barrier between all the threads
+ * This function can be used as synchronization barrier between all the threads
  * of all the kernels.
  *
  * The function will return only after all the threads on all the kernels
  * have already entered this function.
  */
-void syncronize_all(void){
+void synchronize_all(void){
 	if(master_thread()){
 		MPI_Comm comm;
 		MPI_Comm_dup(MPI_COMM_WORLD, &comm);

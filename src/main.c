@@ -97,7 +97,6 @@ extern atomic_t would_preempt;
 */
 static void *main_simulation_loop(void *arg) __attribute__ ((noreturn));
 static void *main_simulation_loop(void *arg) {
-
 	(void)arg;
 
 	simtime_t my_time_barrier = -1.0;
@@ -118,18 +117,66 @@ static void *main_simulation_loop(void *arg) {
 
     controller:
 
-	printf("Tid %d is a controller\n", tid);
+	// Do the initial (local) LP binding, then execute INIT at all (local) LPs
+	initialize_worker_thread();
+
+	#ifdef HAVE_MPI
+	syncronize_all();
+	#endif
+	
+	while (!end_computing()) {
+		// Recompute the LPs-thread binding
+		rebind_LPs();
+
+		#ifdef HAVE_MPI
+		// Check whether we have new ingoing messages sent by remote instances
+		receive_remote_msgs();
+		prune_outgoing_queues();
+		#endif
+		// Forward the messages from the kernel incoming message queue to the destination LPs
+		process_bottom_halves();
+
+		// Activate one LP and process one event. Send messages produced during the events' execution
+		asym_schedule();
+
+		my_time_barrier = gvt_operations();
+
+		// Only a master thread on master kernel prints the time barrier
+		if (master_kernel() && master_thread () && D_DIFFER(my_time_barrier, -1.0)) {
+			if (rootsim_config.verbose == VERBOSE_INFO || rootsim_config.verbose == VERBOSE_DEBUG) {
+				#ifdef HAVE_PREEMPTION
+				printf("TIME BARRIER %f - %d preemptions - %d in platform mode - %d would preempt\n", my_time_barrier, atomic_read(&preempt_count), atomic_read(&overtick_platform), atomic_read(&would_preempt));
+				#else
+				printf("TIME BARRIER %f\n", my_time_barrier);
+
+
+				#endif
+
+				fflush(stdout);
+			}
+		}
+
+		#ifdef HAVE_MPI
+		collect_termination();
+		#endif
+	}
 
 	goto finish;
 
     processing:
 
-	printf("Tid %d is a PT\n", tid);
+	#ifdef HAVE_CROSS_STATE
+	lp_alloc_thread_init();
+	#endif
+	
+	while (!end_computing()) {
+		asym_process();
+	}
+
 
 	goto finish;
 
     symmetric:
-	printf("Tid %d is a symmetric processor\n", tid);
 
 	// TODO: everything down there must be rethought in case we differentiate at runtime the number of Controllers and PTs!!!!
 

@@ -29,9 +29,6 @@
 #include <core/init.h>
 #include <mm/dymelor.h>
 
-// Macros to differentiate across different input ports
-#define PORT_PRIO_HI	0
-#define PORT_PRIO_LO	1
 
 static tid_t os_tid;
 
@@ -190,9 +187,10 @@ bool thread_barrier(barrier_t *b) {
 
 void threads_init(void) {
 	unsigned int i;
+	unsigned int curr_ct = 0;
 
 	// Check if we have enough threads to run an asymmetric simulation
-	if(rootsim_config.num_controllers > n_cores/2) {
+	if(rootsim_config.num_controllers > n_cores / 2) {
 		fprintf(stderr, "Running with %d threads, asked for %d controllers: there won't be enough PTs!\n", n_cores, rootsim_config.num_controllers);
 		exit(EXIT_FAILURE);
 	}
@@ -218,7 +216,22 @@ void threads_init(void) {
 		Threads[i]->input_port[PORT_PRIO_LO] = init_channel();
 		Threads[i]->output_port = init_channel();
 
-		// Global tid will be initialized later on...
+		// Initialize the pointer of possible PTs for this thread
+		Threads[i]->num_PTs = 0;
+		if(n_cores - rootsim_config.num_controllers > 0) {
+			Threads[i]->PTs = rsalloc(sizeof(Thread_State *) * (n_cores - rootsim_config.num_controllers));
+		} else {
+			Threads[i]->PTs = NULL;
+		}
+	}
+
+	// In this second run, we mutually assing PTs to CTs and vice versa (we loop over PTs)
+	if(rootsim_config.num_controllers > 0) {
+		for(i = rootsim_config.num_controllers; i < n_cores; i++) {
+			Threads[i]->CT = Threads[curr_ct];
+			Threads[curr_ct]->PTs[Threads[curr_ct]->num_PTs++] = Threads[i];
+			curr_ct = (curr_ct + 1) % rootsim_config.num_controllers;
+		}
 	}
 }
 

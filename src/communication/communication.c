@@ -328,6 +328,27 @@ void send_outgoing_msgs(LID_t lid) {
 }
 
 
+void asym_send_outgoing_msgs(LID_t lid) {
+
+	register unsigned int i = 0;
+	msg_t *msg;
+	msg_hdr_t *msg_hdr;
+
+	for(i = 0; i < LPS(lid)->outgoing_buffer.size; i++) {
+		msg_hdr = get_msg_hdr_from_slab();
+		msg = LPS(lid)->outgoing_buffer.outgoing_msgs[i];
+		msg_to_hdr(msg_hdr, msg);
+
+		pt_put_out_msg(msg);
+
+		// register the message in the sender's output queue, for antimessage management
+		list_insert(LPS(lid)->queue_out, send_time, msg_hdr);
+	}
+
+	LPS(lid)->outgoing_buffer.size = 0;
+}
+
+
 
 // TODO: si può generare qua dentro la marca, perché si usa sempre il sender. Occhio al gid/lid!!!!
 void pack_msg(msg_t **msg, GID_t sender, GID_t receiver, int type, simtime_t timestamp, simtime_t send_time, size_t size, void *payload) {

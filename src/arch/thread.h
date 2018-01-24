@@ -27,6 +27,7 @@
 #define __ROOTSIM_THREAD_H
 
 #include <stdbool.h>
+#include <core/core.h>
 #include <arch/atomic.h>
 #include <arch/os.h>
 #include <datatypes/msgchannel.h>
@@ -64,6 +65,9 @@ typedef struct _Thread_State {
 	/// This member tells what incar
 	enum thread_incarnation	incarnation;
 
+	/// tid, used to identify a thread within a local machine
+	unsigned int		tid;
+
 	/// Global tid, used to identify a thread within the whole system
 	unsigned int		global_tid;
 
@@ -73,6 +77,15 @@ typedef struct _Thread_State {
 
 	/// Thread Output Port: if a thread is a Processing Thread, this is used to send back generated events or control messages to the controller
 	msg_channel		*output_port;
+
+	/// Number of PTs assigned to this controller. 0 if the thread isn't a controller.
+	unsigned int		num_PTs;
+
+	/// Processing Threads assigned to this controller.
+	struct _Thread_State	**PTs;
+
+	/// If the thread is a PT, this points to the corresponding CT
+	struct _Thread_State	*CT;
 } Thread_State;
 
 
@@ -112,6 +125,22 @@ bool reserve_barrier(barrier_t *b);
 void release_barrier(barrier_t *b);
 void threads_init(void);
 
+extern msg_t *pt_get_lo_prio_msg(void);
+extern msg_t *pt_get_hi_prio_msg(void);
+
+// Macros to differentiate across different input ports
+#define PORT_PRIO_HI	0
+#define PORT_PRIO_LO	1
+
+// Macros to retrieve messages from PT port
+#define pt_get_lo_prio_msg() get_msg(Threads[tid]->input_port[PORT_PRIO_LO])
+#define pt_get_hi_prio_msg() get_msg(Threads[tid]->input_port[PORT_PRIO_HI])
+#define pt_get_out_msg(th_id) get_msg(Threads[(th_id)->output_port)
+
+// Macros to send messages to PT port
+#define pt_put_lo_prio_msg(th_id, event) insert_msg(Threads[(th_id)]->input_port[PORT_PRIO_LO], (event))
+#define pt_put_hi_prio_msg(th_id, event) insert_msg(Threads[(th_id)]->input_port[PORT_PRIO_HI], (event))
+#define pt_put_out_msg(event) insert_msg(Threads[tid]->output_port, (event))
 
 /// Barrier for all worker threads
 extern barrier_t all_thread_barrier;

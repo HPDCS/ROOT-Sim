@@ -105,6 +105,7 @@ extern simtime_t receive_time_barrier(simtime_t max);
 extern int messages_checking(void);
 extern void insert_outgoing_msg(msg_t *msg);
 extern void send_outgoing_msgs(LID_t);
+extern void asym_send_outgoing_msgs(LID_t);
 extern void send_antimessages(LID_t, simtime_t);
 extern void communication_fini_thread(void);
 extern void communication_init_thread(void);

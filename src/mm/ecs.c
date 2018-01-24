@@ -209,7 +209,7 @@ void lp_alloc_thread_init(void) {
 	lp_memory_ioctl_info.callback = (ulong) callback_function;
 
 	// TODO: this function is called by each worker thread. Does calling SET_VM_RANGE cause
-  // a memory leak into kernel space?
+	// a memory leak into kernel space?
 	// TODO: Yes it does! And there could be some issues when unmounting as well!
 	ioctl(ioctl_fd, IOCTL_SET_VM_RANGE, &lp_memory_ioctl_info);
 
@@ -219,7 +219,6 @@ void lp_alloc_thread_init(void) {
 }
 
 void lp_alloc_schedule(void) {
-
 	ioctl_info sched_info;
 	bzero(&sched_info, sizeof(ioctl_info));
 
