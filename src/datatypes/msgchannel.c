@@ -99,7 +99,7 @@ void insert_msg(msg_channel *mc, msg_t *msg) {
 		spin_lock(&mc->read_lock);
 
 		mc->buffers[M_WRITE]->size *= 2;
-		mc->buffers[M_WRITE]->buffer = rsrealloc((void *)mc->buffers[M_WRITE]->buffer, mc->buffers[M_WRITE]->size);
+		mc->buffers[M_WRITE]->buffer = rsrealloc((void *)mc->buffers[M_WRITE]->buffer, mc->buffers[M_WRITE]->size * sizeof(msg_t *));
 
 		if(mc->buffers[M_WRITE]->buffer == NULL)
 			rootsim_error(true, "%s:%d: Unable to reallocate message channel\n", __FILE__, __LINE__);
