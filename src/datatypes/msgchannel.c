@@ -132,6 +132,7 @@ void *get_msg(msg_channel *mc) {
 
 	int index = mc->buffers[M_READ]->read++;
 	msg = mc->buffers[M_READ]->buffer[index];
+	atomic_dec(&mc->size);
 
 	#ifndef NDEBUG
 	mc->buffers[M_READ]->buffer[index] = (void *)0xDEADB00B;
