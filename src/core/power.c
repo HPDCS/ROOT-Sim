@@ -5,8 +5,8 @@
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
 *
-* ROOT-Sim is rsfree software; you can redistribute it and/or modify it under the
-* terms of the GNU General Public License as published by the rsfree Software
+* ROOT-Sim is free software; you can redistribute it and/or modify it under the
+* terms of the GNU General Public License as published by the free Software
 * Foundation; only version 3 of the License applies.
 *
 * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
@@ -14,7 +14,7 @@
 * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
 *
 * You should have received a copy of the GNU General Public License along with
-* ROOT-Sim; if not, write to the rsfree Software Foundation, Inc.,
+* ROOT-Sim; if not, write to the free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
 * @file power.c
@@ -49,7 +49,7 @@
 #define RESTART_EXPLORATION_RANGE 0.03
 
 // Static state machine function declaration
-static int static_state_machine();
+static int static_state_machine(void);
 
 // Number of logical cores. Detected at startup and used to apply DVFS setting for all cores
 static int nb_cores;			
@@ -70,7 +70,7 @@ static int max_pstate;
 static int* current_pstates; 				
 
 // Defines if frequency boosting (such as TurboBoost) is either enabled or disabled 
-static int boost;
+// static int boost;
 
 // Current state in the powercap state machine. The semantics of this value is specific to each exploration strategy
 static int exploration_state;
@@ -109,7 +109,7 @@ static double converged_power;
 *
 * @Author: Stefano Conoci
 */
-static int init_DVFS_management(){
+static int init_DVFS_management(void){
 	char fname[64];
 	char* freq_available;
 	char* filename;
@@ -269,7 +269,6 @@ static int set_pstate(int input_pstate){
 */	
 static int set_core_pstate(int core, int input_pstate){
 		
-		int i;
 		char fname[64];
 		FILE* frequency_file;
 
@@ -291,8 +290,8 @@ static int set_core_pstate(int core, int input_pstate){
 			sprintf(fname, "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_setspeed", core);
 			frequency_file = fopen(fname,"w+");
 			if(frequency_file == NULL){
-				printf("Error opening cpu%d scaling_setspeed file. Must be superuser\n", i);
-				return(0);		
+				printf("Error opening cpu%d scaling_setspeed file. Must be superuser\n", core);
+				return(-1);		
 			}		
 			fprintf(frequency_file, "%d", frequency);
 			current_pstates[core] = input_pstate;
@@ -304,7 +303,7 @@ static int set_core_pstate(int core, int input_pstate){
 				sprintf(fname, "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_setspeed", core+nb_phys_cores);
 				frequency_file = fopen(fname,"w+");
 				if(frequency_file == NULL){
-					printf("Error opening cpu%d scaling_setspeed file. Must be superuser\n", i);
+					printf("Error opening cpu%d scaling_setspeed file. Must be superuser\n", core+nb_phys_cores);
 					return(-1);		
 				}		
 				fprintf(frequency_file, "%d", frequency);
@@ -328,7 +327,7 @@ static int set_core_pstate(int core, int input_pstate){
 *
 * @Author: Stefano Conoci
 */
-static long get_energy(){
+static long get_energy(void){
 
 	#ifdef OVERHEAD_POWER
 		long time_heuristic_start;
@@ -373,7 +372,7 @@ static long get_energy(){
 *
 * @Author: Stefano Conoci
 */
-long get_time(){
+static inline long get_time(void){
 	
 	long time =0;
 	struct timespec ts;
@@ -391,10 +390,9 @@ long get_time(){
 *
 * @Author: Stefano Conoci
 */
+/* Commented for no use
 static inline void set_boost(int value){
 
-	int i;
-	char fname[64];
 	FILE* boost_file;
 
 	#ifdef OVERHEAD_POWER
@@ -420,21 +418,7 @@ static inline void set_boost(int value){
 		time_heuristic_microseconds = (((double) time_heuristic_end) - ((double) time_heuristic_start))/1000;
 		printf("OVERHEAD_POWER - set_boost() %lf microseconds\n", time_heuristic_microseconds);
 	#endif 
-	
-	return;
-}
-
-/**
-* This function rsfrees dymically allocated memory. Should be executed at shutdown.
-*
-* @Author: Stefano Conoci
-*/
-static void rsfree_memory(){
-
-	rsfree(pstate);
-	rsfree(current_pstates);
-}
-
+}*/
 
 /**
 * This function sets the P-state of all controllers threads to the passed parameter. 
@@ -442,13 +426,17 @@ static void rsfree_memory(){
 *
 * @Author: Stefano Conoci
 */
+/* Commented for no use
 static int set_controllers_pstate(int input_pstate){
 
+	int ret;
 	for(int i=0; i<current_controllers; i++){
-		set_core_pstate(i, input_pstate);
+		if(set_core_pstate(i, input_pstate) != 0)
+			ret = -1;
 	}
+	return ret; 
 }
-
+*/
 
 /**
 * This function sets the P-state of all processing threads to the passed parameter. 
@@ -459,9 +447,12 @@ static int set_controllers_pstate(int input_pstate){
 */
 static int set_processing_pstate(int input_pstate){
 
+	int ret = 0;
 	for(int i=current_controllers; i<nb_phys_cores; i++){
-		set_core_pstate(i, input_pstate);
+		if(set_core_pstate(i, input_pstate) != 0)
+			ret = -1;
 	}
+	return ret;
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -474,7 +465,7 @@ static int set_processing_pstate(int input_pstate){
 *
 * @Author: Stefano Conoci
 */
-int init_powercap_module(){
+int init_powercap_module(void){
 
 	if(init_DVFS_management() != 0){
 		printf("Cannot init DVFS management\n");
@@ -514,6 +505,8 @@ int init_powercap_module(){
 	// Initialize power cap error variables
 	error_weighted = 0; 
 	error_time_sum = 0;
+
+	return 0;
 }
 
 /**
@@ -523,7 +516,7 @@ int init_powercap_module(){
 *
 * @Author: Stefano Conoci
 */
-int powercap_state_machine(){
+int powercap_state_machine(void){
 
 	double error_time_interval, error_energy_interval, error_sample_power;
 	long end_time, end_energy;
@@ -561,13 +554,15 @@ int powercap_state_machine(){
 }
 
 /**
-* This function rsfrees memory and prints power capping results
+* This function frees memory and prints power capping results
 *
 * @Author: Stefano Conoci
 */
-void shutdown_powercap_module(){
+void shutdown_powercap_module(void){
 
-	rsfree_memory();
+	rsfree(pstate);
+	rsfree(current_pstates);
+
 	printf("Powercap error percentage: %lf\n", error_weighted);
 }
 
@@ -590,9 +585,9 @@ void shutdown_powercap_module(){
 *
 * @Author: Stefano Conoci
 */
-static int static_state_machine(){
+static int static_state_machine(void){
 	
-	double time_interval, energy_interval, sample_power, high_powercap, low_powercap;
+	double time_interval, energy_interval, sample_power, high_powercap;
 	long end_time, end_energy;
 
 	end_time = get_time();
