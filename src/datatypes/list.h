@@ -62,8 +62,6 @@ typedef struct rootsim_list {
 				__lmptr;\
 			})
 
-
-
 // Get the size of the current list.
 #define list_sizeof(list) ((struct rootsim_list *)list)->size
 

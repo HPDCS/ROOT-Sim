@@ -71,10 +71,10 @@ bool anti_control_message(msg_t * msg) {
 
 	if(msg->type == RENDEZVOUS_ROLLBACK) {
 
-		unsigned int lid_receiver = GidToLid(msg->receiver);
+		LID_t lid_receiver = GidToLid(msg->receiver);
 		//Check if a relative message exists
 		//TODO non serve andare indietro più del tempo di rendezvous_rollback (VERO!!! Ma in quel caso devo uscire dal ciclo con old_rendezvous == NULL per cadere nell'if successivo)
-		old_rendezvous = list_tail(LPS[lid_receiver]->queue_in);
+		old_rendezvous = list_tail(LPS(lid_receiver)->queue_in);
 		while(old_rendezvous != NULL && old_rendezvous->rendezvous_mark != msg->rendezvous_mark) {
 			old_rendezvous = list_prev(old_rendezvous);
 		}
@@ -87,15 +87,15 @@ bool anti_control_message(msg_t * msg) {
 		if(old_rendezvous->timestamp <= lvt(lid_receiver)) {
 
 			//Set LP->bound to the message that caused ECS
-			LPS[lid_receiver]->bound = list_prev(old_rendezvous);
-			while (LPS[lid_receiver]->bound != NULL && LPS[lid_receiver]->bound->timestamp >= old_rendezvous->timestamp) {
-				//        if(list_prev(LPS[lid_receiver]->bound) == NULL) {
+			LPS(lid_receiver)->bound = list_prev(old_rendezvous);
+			while (LPS(lid_receiver)->bound != NULL && LPS(lid_receiver)->bound->timestamp >= old_rendezvous->timestamp) {
+				//        if(list_prev(LPS(lid_receiver)->bound) == NULL) {
 				//          break;
 				//        }
-				LPS[lid_receiver]->bound = list_prev(LPS[lid_receiver]->bound);
+				LPS(lid_receiver)->bound = list_prev(LPS(lid_receiver)->bound);
 			}
 
-			LPS[lid_receiver]->state = LP_STATE_ROLLBACK;
+			LPS(lid_receiver)->state = LP_STATE_ROLLBACK;
 		}
 
 		old_rendezvous->rendezvous_mark = 0;
@@ -103,9 +103,9 @@ bool anti_control_message(msg_t * msg) {
 
 
 		//Reset ECS information
-		if(LPS[lid_receiver]->wait_on_rendezvous == msg->rendezvous_mark) {
-			LPS[lid_receiver]->ECS_index = 0;
-			LPS[lid_receiver]->wait_on_rendezvous = 0;
+		if(LPS(lid_receiver)->wait_on_rendezvous == msg->rendezvous_mark) {
+			LPS(lid_receiver)->ECS_index = 0;
+			LPS(lid_receiver)->wait_on_rendezvous = 0;
 		}
 
 		return false;
@@ -134,7 +134,7 @@ bool receive_control_msg(msg_t *msg) {
 	}
 
 #ifdef  HAVE_CROSS_STATE
-	int lid_receiver = GidToLid(msg->receiver);
+	LID_t lid_receiver = GidToLid(msg->receiver);
 	switch(msg->type) {
 
 		case RENDEZVOUS_START:
@@ -146,38 +146,38 @@ bool receive_control_msg(msg_t *msg) {
 
 		case RENDEZVOUS_PAGE_WRITE_BACK:
 		case RENDEZVOUS_GET_PAGE_ACK:
-			if(LPS[lid_receiver]->state == LP_STATE_ROLLBACK ||
-					LPS[lid_receiver]->state == LP_STATE_SILENT_EXEC) {
+			if(LPS(lid_receiver)->state == LP_STATE_ROLLBACK ||
+					LPS(lid_receiver)->state == LP_STATE_SILENT_EXEC) {
 				break;
 			}
-			if(LPS[lid_receiver]->wait_on_rendezvous == msg->rendezvous_mark) {
+			if(LPS(lid_receiver)->wait_on_rendezvous == msg->rendezvous_mark) {
 				ecs_install_pages(msg);
-				LPS[lid_receiver]->state = LP_STATE_READY_FOR_SYNCH;
+				LPS(lid_receiver)->state = LP_STATE_READY_FOR_SYNCH;
 			}
 			break;
 
 		case RENDEZVOUS_ACK:
 			printf("Received ACK\n");
-			if(LPS[lid_receiver]->state == LP_STATE_ROLLBACK ||
-					LPS[lid_receiver]->state == LP_STATE_SILENT_EXEC) {
+			if(LPS(lid_receiver)->state == LP_STATE_ROLLBACK ||
+					LPS(lid_receiver)->state == LP_STATE_SILENT_EXEC) {
 				break;
 			}
-			if(LPS[lid_receiver]->wait_on_rendezvous == msg->rendezvous_mark) {
+			if(LPS(lid_receiver)->wait_on_rendezvous == msg->rendezvous_mark) {
 				setup_ecs_on_segment(msg);
-				LPS[lid_receiver]->state = LP_STATE_READY_FOR_SYNCH;
+				LPS(lid_receiver)->state = LP_STATE_READY_FOR_SYNCH;
 			}
 
 			break;
 
 		case RENDEZVOUS_UNBLOCK:
-			if(LPS[lid_receiver]->state == LP_STATE_ROLLBACK ||
-				LPS[lid_receiver]->state == LP_STATE_SILENT_EXEC)  {
+			if(LPS(lid_receiver)->state == LP_STATE_ROLLBACK ||
+				LPS(lid_receiver)->state == LP_STATE_SILENT_EXEC)  {
 				break;
 			}
 
-			if(LPS[lid_receiver]->wait_on_rendezvous == msg->rendezvous_mark) {
-				LPS[lid_receiver]->wait_on_rendezvous = 0;
-				LPS[lid_receiver]->state = LP_STATE_READY;
+			if(LPS(lid_receiver)->wait_on_rendezvous == msg->rendezvous_mark) {
+				LPS(lid_receiver)->wait_on_rendezvous = 0;
+				LPS(lid_receiver)->state = LP_STATE_READY;
 			}
 			
 			current_lp = GidToLid(msg->receiver);
@@ -185,7 +185,7 @@ bool receive_control_msg(msg_t *msg) {
 			force_LP_checkpoint(current_lp);
 			LogState(current_lp);
 			current_lvt = INFTY;
-			current_lp = IDLE_PROCESS;
+			current_lp = idle_process;
 
 			break;
 
@@ -214,16 +214,16 @@ bool process_control_msg(msg_t *msg) {
 	}
 
 #ifdef HAVE_CROSS_STATE
-	int lid_receiver = GidToLid(msg->receiver);
+	LID_t lid_receiver = GidToLid(msg->receiver);
 
 	switch(msg->type) {
 
 		case RENDEZVOUS_START:
-			list_insert(lid_receiver, LPS[lid_receiver]->rendezvous_queue, timestamp, msg);
+			list_insert(lid_receiver, LPS(lid_receiver)->rendezvous_queue, timestamp, msg);
 			// Place this into input queue
-			LPS[lid_receiver]->wait_on_rendezvous = msg->rendezvous_mark;
+			LPS(lid_receiver)->wait_on_rendezvous = msg->rendezvous_mark;
 
-			LPS[lid_receiver]->state = LP_STATE_WAIT_FOR_UNBLOCK;
+			LPS(lid_receiver)->state = LP_STATE_WAIT_FOR_UNBLOCK;
 			
 			pack_msg(&control_msg, msg->receiver, msg->sender, RENDEZVOUS_ACK, msg->timestamp, msg->timestamp, 0, NULL);
 			control_msg->message_kind = positive;

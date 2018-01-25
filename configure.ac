@@ -362,9 +362,9 @@ then
 			#
 
 		AC_ARG_ENABLE([numa],
-		AS_HELP_STRING([--enable-numa], [Enable NUMA subsystem on NUMA machines]))
+		AS_HELP_STRING([--disable-numa], [Disable NUMA subsystem on NUMA machines]))
 
-		AS_IF([test "x$enable_numa" = "xno"], [
+		AS_IF([test "x$enable_numa" != "xno"], [
 			AC_DEFINE([HAVE_NUMA])
 			ac_have_numa=yes
 			CFLAGS="$CFLAGS -lnuma"
@@ -401,7 +401,7 @@ then
 
 	# Check if System.map is available. Some kernel modules require access to special symbols
 	# which are not exported, but are available in System.map.
-	AC_CHECK_FILE("/boot/System.map", [ac_system_map=yes])
+	AC_CHECK_FILE("/boot/System.map-$(uname -r)", [ac_system_map=yes])
 
 	# Per-module checks. To be run only if we are on Linux and kernel headers are available
 	if test "x$ac_kernel_headers" = "xyes"

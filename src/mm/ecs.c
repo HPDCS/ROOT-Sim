@@ -69,6 +69,7 @@ static __thread fault_info_t fault_info;
 // Declared in ecsstub.S
 extern void rootsim_cross_state_dependency_handler(void);
 
+GID_t target_gid;
 // This handler is only called in case of a remote ECS
 void ecs_secondary(void) {
 
@@ -100,11 +101,12 @@ void ecs_secondary(void) {
 
 	// Send the page lease request control message. This is not incorporated into the input queue at the receiver
 	// so we do not place it into the output queue
-	pack_msg(&control_msg, LidToGid(current_lp), fault_info.target_gid, RENDEZVOUS_GET_PAGE, current_lvt, current_lvt, sizeof(page_req), &page_req);
+	target_gid.id = fault_info.target_gid;
+	pack_msg(&control_msg, LidToGid(current_lp), target_gid, RENDEZVOUS_GET_PAGE, current_lvt, current_lvt, sizeof(page_req), &page_req);
 	control_msg->rendezvous_mark = current_evt->rendezvous_mark;
 	Send(control_msg);
 
-	LPS[current_lp]->state = LP_STATE_WAIT_FOR_DATA;
+	LPS(current_lp)->state = LP_STATE_WAIT_FOR_DATA;
 
 	// Give back control to the simulation kernel's user-level thread
 	long_jmp(&kernel_context, kernel_context.rax);
@@ -116,24 +118,25 @@ void ecs_initiate(void) {
 
 	// Generate a unique mark for this ECS
 	current_evt->rendezvous_mark = generate_mark(current_lp);
-	LPS[current_lp]->wait_on_rendezvous = current_evt->rendezvous_mark;
+	LPS(current_lp)->wait_on_rendezvous = current_evt->rendezvous_mark;
 
 	// Prepare the control message to synchronize the two LPs
-	pack_msg(&control_msg, LidToGid(current_lp), fault_info.target_gid, RENDEZVOUS_START, current_lvt, current_lvt, 0, NULL);
+	target_gid.id = fault_info.target_gid;
+	pack_msg(&control_msg, LidToGid(current_lp), target_gid, RENDEZVOUS_START, current_lvt, current_lvt, 0, NULL);
 	control_msg->rendezvous_mark = current_evt->rendezvous_mark;
 	control_msg->mark = generate_mark(current_lp);
 
 	// This message must be stored in the output queue as well, in case this LP rollbacks
 	msg_to_hdr(&msg_hdr, control_msg);
-	(void)list_insert(current_lp, LPS[current_lp]->queue_out, send_time, &msg_hdr);
+	(void)list_insert(current_lp, LPS(current_lp)->queue_out, send_time, &msg_hdr);
 
 	// Block the execution of this LP
-	LPS[current_lp]->state = LP_STATE_WAIT_FOR_SYNCH;
-	LPS[current_lp]->wait_on_object = fault_info.target_gid;
+	LPS(current_lp)->state = LP_STATE_WAIT_FOR_SYNCH;
+	LPS(current_lp)->wait_on_object = fault_info.target_gid;
 
 	// Store which LP we are waiting for synchronization.
-	LPS[current_lp]->ECS_index++;
-	LPS[current_lp]->ECS_synch_table[LPS[current_lp]->ECS_index] = fault_info.target_gid;
+	LPS(current_lp)->ECS_index++;
+	LPS(current_lp)->ECS_synch_table[LPS(current_lp)->ECS_index] = target_gid;
 	Send(control_msg);
 
 	// Give back control to the simulation kernel's user-level thread
@@ -145,13 +148,13 @@ void ECS(void) __attribute__((__used__));
 void ECS(void) {
 	// ECS cannot happen in silent execution, as we take a log after the completion
 	// of an event which involves one or multiple ecs
-	if(LPS[current_lp]->state == LP_STATE_SILENT_EXEC) {
+	if(LPS(current_lp)->state == LP_STATE_SILENT_EXEC) {
 		rootsim_error(true,"----ERROR---- ECS in Silent Execution LP[%d] Hit:%llu Timestamp:%f\n",
 		current_lp, fault_info.target_gid, current_lvt);
 	}
 
 	// Sanity check: we cannot run an ECS with an old mark after a rollback
-	if(LPS[current_lp]->wait_on_rendezvous != 0 && LPS[current_lp]->wait_on_rendezvous != current_evt->rendezvous_mark) {
+	if(LPS(current_lp)->wait_on_rendezvous != 0 && LPS(current_lp)->wait_on_rendezvous != current_evt->rendezvous_mark) {
 		printf("muori male\n");
 		fflush(stdout);
 		abort();
@@ -183,7 +186,7 @@ void ECS(void) {
 
 void ecs_init(void) {
 	printf("Invocation of ECS Init\n");
-	ioctl_fd = manual_open("/dev/ktblmgr", O_RDONLY);
+	ioctl_fd = open("/dev/ktblmgr", O_RDONLY);
 	if (ioctl_fd <= -1) {
 		rootsim_error(true, "Error in opening special device file. ROOT-Sim is compiled for using the ktblmgr linux kernel module, which seems to be not loaded.");
 	}
@@ -192,11 +195,13 @@ void ecs_init(void) {
 // inserire qui tutte le api di schedulazione/deschedulazione
 void lp_alloc_thread_init(void) {
 	void *ptr;
+	GID_t LP0; //dummy structure just to accomplish get_base_pointer
 
+	LP0.id = 0;
 	// TODO: test ioctl return value
-	manual_ioctl(ioctl_fd, IOCTL_SET_ANCESTOR_PGD,NULL);  //ioctl call
+	ioctl(ioctl_fd, IOCTL_SET_ANCESTOR_PGD,NULL);  //ioctl call
 	lp_memory_ioctl_info.ds = -1;
-	ptr = get_base_pointer(0); // LP 0 is the first allocated one, and it's memory stock starts from the beginning of the PML4
+	ptr = get_base_pointer(LP0); // LP 0 is the first allocated one, and it's memory stock starts from the beginning of the PML4
 	lp_memory_ioctl_info.addr = ptr;
 	lp_memory_ioctl_info.mapped_processes = n_prc;
 
@@ -206,10 +211,10 @@ void lp_alloc_thread_init(void) {
 	// TODO: this function is called by each worker thread. Does calling SET_VM_RANGE cause
   // a memory leak into kernel space?
 	// TODO: Yes it does! And there could be some issues when unmounting as well!
-	manual_ioctl(ioctl_fd, IOCTL_SET_VM_RANGE, &lp_memory_ioctl_info);
+	ioctl(ioctl_fd, IOCTL_SET_VM_RANGE, &lp_memory_ioctl_info);
 
 	/* required to manage the per-thread memory view */
-	pgd_ds = manual_ioctl(ioctl_fd, IOCTL_GET_PGD, &fault_info);  //ioctl call
+	pgd_ds = ioctl(ioctl_fd, IOCTL_GET_PGD, &fault_info);  //ioctl call
 	fault_info.target_gid = 3;
 }
 
@@ -219,8 +224,8 @@ void lp_alloc_schedule(void) {
 	bzero(&sched_info, sizeof(ioctl_info));
 
 	sched_info.ds = pgd_ds;
-	sched_info.count = LPS[current_lp]->ECS_index + 1; // it's a counter
-	sched_info.objects = LPS[current_lp]->ECS_synch_table; // pgd descriptor range from 0 to number threads - a subset of object ids
+	sched_info.count = LPS(current_lp)->ECS_index + 1; // it's a counter
+	sched_info.objects = LPS(current_lp)->ECS_synch_table; // pgd descriptor range from 0 to number threads - a subset of object ids
 
 	/* passing into LP mode - here for the pgd_ds-th LP */
 	ioctl(ioctl_fd,IOCTL_SCHEDULE_ON_PGD, &sched_info);
@@ -301,18 +306,19 @@ void ecs_install_pages(msg_t *msg) {
 	fflush(stdout);
 }
 
-void unblock_synchronized_objects(unsigned int lid) {
+void unblock_synchronized_objects(LID_t localID) {
 	unsigned int i;
 	msg_t *control_msg;
-
-	for(i = 1; i <= LPS[lid]->ECS_index; i++) {
-		pack_msg(&control_msg, LidToGid(lid), LPS[lid]->ECS_synch_table[i], RENDEZVOUS_UNBLOCK, lvt(lid), lvt(lid), 0, NULL);
-		control_msg->rendezvous_mark = LPS[lid]->wait_on_rendezvous;
+	
+	for(i = 1; i <= LPS(localID)->ECS_index; i++) {
+		LPS(localID)->ECS_synch_table[i];
+		pack_msg(&control_msg, LidToGid(localID), LPS(localID)->ECS_synch_table[i], RENDEZVOUS_UNBLOCK, lvt(localID), lvt(localID), 0, NULL);
+		control_msg->rendezvous_mark = LPS(localID)->wait_on_rendezvous;
 		Send(control_msg);
 	}
 
-	LPS[lid]->wait_on_rendezvous = 0;
-	LPS[lid]->ECS_index = 0;
+	LPS(localID)->wait_on_rendezvous = 0;
+	LPS(localID)->ECS_index = 0;
 }
 #endif
 
