@@ -133,6 +133,10 @@ static void *main_simulation_loop(void *arg) {
 		receive_remote_msgs();
 		prune_outgoing_queues();
 		#endif
+
+		// Read output ports of all bound PTs
+		asym_extract_generated_msgs();
+
 		// Forward the messages from the kernel incoming message queue to the destination LPs
 		process_bottom_halves();
 

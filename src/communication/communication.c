@@ -348,6 +348,15 @@ void asym_send_outgoing_msgs(LID_t lid) {
 	LPS(lid)->outgoing_buffer.size = 0;
 }
 
+void asym_extract_generated_msgs(void) {
+	unsigned int i;
+	msg_t *msg;
+	for(i = 0; i < Threads[tid]->num_PTs; i++) {
+		while((msg = pt_get_out_msg(Threads[tid]->PTs[i]->tid)) != NULL) {
+			insert_bottom_half(msg);
+		}
+	}
+}
 
 
 // TODO: si può generare qua dentro la marca, perché si usa sempre il sender. Occhio al gid/lid!!!!
