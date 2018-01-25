@@ -42,7 +42,7 @@ typedef struct _msg_channel {
 	spinlock_t		write_lock;
 } msg_channel;
 
-#define INITIAL_CHANNEL_SIZE (512 * sizeof(msg_t *))
+#define INITIAL_CHANNEL_SIZE (512)
 
 extern msg_channel *init_channel(void);
 extern void fini_channel(msg_channel *);
