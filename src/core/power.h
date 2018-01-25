@@ -26,3 +26,7 @@
 
 #define DEBUG_POWER
 // #define OVERHEAD_POWER
+
+extern int init_powercap_module();
+extern int powercap_state_machine();
+extern void shutdown_powercap_module();
