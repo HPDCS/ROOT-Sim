@@ -145,7 +145,6 @@ void *get_msg(msg_channel *mc) {
 
     leave:
 	spin_unlock(&mc->read_lock);
-	atomic_dec(&mc->size);
 	return msg;
 }
 

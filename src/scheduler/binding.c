@@ -71,12 +71,15 @@ static __thread int local_binding_phase = 0;
 static atomic_t worker_thread_reduction;
 
 
-
+// When calling this function, n_prc_per_thread
+// must have been updated with the new number of bound LPs.
 static void rebind_LPs_to_PTs(void) {
 	unsigned int i;
+	unsigned int curr_pt_idx = 0;
 
-	for(i = 0; i < Threads[tid]->num_PTs; i++) {
-		LPS_bound(i)->processing_thread = Threads[tid]->PTs[i]->tid;
+	for(i = 0; i < n_prc_per_thread; i++) {
+		LPS_bound(i)->processing_thread = Threads[tid]->PTs[curr_pt_idx]->tid;
+		curr_pt_idx = (curr_pt_idx + 1) % Threads[tid]->num_PTs;
 	}
 }
 
