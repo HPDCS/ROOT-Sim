@@ -128,7 +128,7 @@ void ecs_initiate(void) {
 
 	// This message must be stored in the output queue as well, in case this LP rollbacks
 	msg_to_hdr(&msg_hdr, control_msg);
-	(void)list_insert(current_lp, LPS(current_lp)->queue_out, send_time, &msg_hdr);
+	list_insert(LPS(current_lp)->queue_out, send_time, &msg_hdr);
 
 	// Block the execution of this LP
 	LPS(current_lp)->state = LP_STATE_WAIT_FOR_SYNCH;
