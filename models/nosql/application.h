@@ -1,6 +1,6 @@
 #include <ROOT-Sim.h>
 
-//#define ECS
+#define ECS
 
 #define TX_OP_ARRIVAL	250
 #define MIN_OP_COUNT	500
