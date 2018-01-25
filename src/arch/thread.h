@@ -135,7 +135,7 @@ extern msg_t *pt_get_hi_prio_msg(void);
 // Macros to retrieve messages from PT port
 #define pt_get_lo_prio_msg() get_msg(Threads[tid]->input_port[PORT_PRIO_LO])
 #define pt_get_hi_prio_msg() get_msg(Threads[tid]->input_port[PORT_PRIO_HI])
-#define pt_get_out_msg(th_id) get_msg(Threads[(th_id)->output_port)
+#define pt_get_out_msg(th_id) get_msg(Threads[(th_id)]->output_port)
 
 // Macros to send messages to PT port
 #define pt_put_lo_prio_msg(th_id, event) insert_msg(Threads[(th_id)]->input_port[PORT_PRIO_LO], (event))

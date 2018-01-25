@@ -69,6 +69,7 @@ static void *__helper_create_thread(void *arg) {
 		}
 	}
 	tid = _local_tid;
+	Threads[tid]->tid = tid;
 	// ...and make it globally unique
 	Threads[tid]->global_tid = to_global_tid(kid, _local_tid);
 
