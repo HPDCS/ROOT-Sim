@@ -5,8 +5,8 @@
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
 *
-* ROOT-Sim is free software; you can redistribute it and/or modify it under the
-* terms of the GNU General Public License as published by the Free Software
+* ROOT-Sim is rsfree software; you can redistribute it and/or modify it under the
+* terms of the GNU General Public License as published by the rsfree Software
 * Foundation; only version 3 of the License applies.
 *
 * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
@@ -14,7 +14,7 @@
 * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
 *
 * You should have received a copy of the GNU General Public License along with
-* ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
+* ROOT-Sim; if not, write to the rsfree Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
 * @file power.c
@@ -24,6 +24,7 @@
 */
 
 #include "power.h"
+#include <mm/dymelor.h>
 #include <core/init.h>
 #include <stdio.h>
 #include <math.h>
@@ -46,6 +47,9 @@
 
 // Percentage of powercap deviation compared to the converged result after which the exploration is restarted
 #define RESTART_EXPLORATION_RANGE 0.03
+
+// Static state machine function declaration
+static int static_state_machine();
 
 // Number of logical cores. Detected at startup and used to apply DVFS setting for all cores
 static int nb_cores;			
@@ -148,7 +152,7 @@ static int init_DVFS_management(){
 	}
 
 	// Read number of packages in the system
-	filename = malloc(sizeof(char)*64); 
+	filename = rsalloc(sizeof(char)*64); 
 	sprintf(filename,"/sys/devices/system/cpu/cpu%d/topology/physical_package_id", nb_cores-1);
 	numafile = fopen(filename,"r");
 	if (numafile == NULL){
@@ -157,7 +161,7 @@ static int init_DVFS_management(){
 	} 
 	fscanf(numafile ,"%d", &package_last_core);
 	nb_packages = package_last_core+1;
-	free(filename);
+	rsfree(filename);
 
 	// Init array that associates frequencies to P-states
 	FILE* available_freq_file = fopen("/sys/devices/system/cpu/cpu0/cpufreq/scaling_available_frequencies","r");
@@ -165,9 +169,9 @@ static int init_DVFS_management(){
 		printf("Cannot open scaling_available_frequencies file\n");
 		return(-1);
 	}
-	freq_available = malloc(sizeof(char)*256);
+	freq_available = rsalloc(sizeof(char)*256);
 	fgets(freq_available, 256, available_freq_file);
-	pstate = malloc(sizeof(int)*32);
+	pstate = rsalloc(sizeof(int)*32);
 	i = 0; 
 	char * end;
 	for (frequency = strtol(freq_available, &end, 10); freq_available != end; frequency = strtol(freq_available, &end, 10)){
@@ -176,10 +180,10 @@ static int init_DVFS_management(){
   		i++;
 	}
   	max_pstate = --i;
-  	free(freq_available);
+  	rsfree(freq_available);
 
   	// Retrieve current P-state for all cores
-  	current_pstates = malloc(sizeof(int)*nb_phys_cores);
+  	current_pstates = rsalloc(sizeof(int)*nb_phys_cores);
 	for(i=0; i<nb_phys_cores; i++){
 		sprintf(fname, "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_setspeed", i);
 		frequency_file = fopen(fname,"r");
@@ -421,14 +425,14 @@ static inline void set_boost(int value){
 }
 
 /**
-* This function frees dymically allocated memory. Should be executed at shutdown.
+* This function rsfrees dymically allocated memory. Should be executed at shutdown.
 *
 * @Author: Stefano Conoci
 */
-static void free_memory(){
+static void rsfree_memory(){
 
-	free(pstate);
-	free(current_pstates);
+	rsfree(pstate);
+	rsfree(current_pstates);
 }
 
 
@@ -478,7 +482,7 @@ int init_powercap_module(){
 	}
 
 	// Set all cores to the P-state with frequency equal to the controllers_freq parameter
-	int frequency_KHz = simulation_configuration.controllers_freq*1000;
+	int frequency_KHz = rootsim_config.controllers_freq*1000;
 	int pstate_config = -1;
 	for(int i = 0; i<=max_pstate && pstate_config == -1; i++)
 		if(pstate[i] == frequency_KHz)
@@ -497,7 +501,7 @@ int init_powercap_module(){
 	exploration_state = 0; 
 
 	// Set current controllers to the starting parameter set by user
-	current_controllers = simulation_configuration.num_controllers;
+	current_controllers = rootsim_config.num_controllers;
 
 	// Start timer and read initial energy 
 	start_time = get_time();
@@ -533,7 +537,7 @@ int powercap_state_machine(){
 		error_energy_interval = (double) end_energy-start_energy;
 		error_sample_power = error_energy_interval*1000/error_time_interval;
 
-		double error = (error_sample_power - simulation_configuration.powercap)/simulation_configuration.powercap;
+		double error = (error_sample_power - rootsim_config.powercap)/rootsim_config.powercap;
 		if (error < 0) 
 		 error = 0; 
 
@@ -545,7 +549,7 @@ int powercap_state_machine(){
 	}
 
 	// Redirect execution flow to the specific state machine 
-	switch(simulation_configuration.powercap_exploration){
+	switch(rootsim_config.powercap_exploration){
 		case 0: 
 			return static_state_machine();
 			break;
@@ -557,13 +561,13 @@ int powercap_state_machine(){
 }
 
 /**
-* This function frees memory and prints power capping results
+* This function rsfrees memory and prints power capping results
 *
 * @Author: Stefano Conoci
 */
 void shutdown_powercap_module(){
 
-	free_memory();
+	rsfree_memory();
 	printf("Powercap error percentage: %lf\n", error_weighted);
 }
 
@@ -606,11 +610,11 @@ static int static_state_machine(){
 	#ifdef DEBUG_POWER
 		printf("Number of Controllers: %d - CT P-state: %d  - PT P-state: %d - Interval %lf ms - Powercap %lf Watt - Sampled Power %lf Watt\n",
 			current_controllers, current_pstates[0], current_pstates[current_controllers], 
-			time_interval/1000000, simulation_configuration.powercap, sample_power);
+			time_interval/1000000, rootsim_config.powercap, sample_power);
 	#endif
 
 	// Compute hysteresis range for the powercap
-	high_powercap = simulation_configuration.powercap*(1+HYSTERESIS);
+	high_powercap = rootsim_config.powercap*(1+HYSTERESIS);
 
 	switch(exploration_state){
 		case 0:	// Source state
