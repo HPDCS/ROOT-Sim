@@ -60,7 +60,7 @@ enum _control_msgs {
 	MAX_VALUE_CONTROL
 };
 
-#define count_as_white(type)	(type < MIN_VALUE_CONTROL || type == RENDEZVOUS_START)
+#define is_control_msg(type)	(type >= MIN_VALUE_CONTROL && type != RENDEZVOUS_START)
 
 // Message Codes for PVM
 #define MSG_INIT_MPI		200

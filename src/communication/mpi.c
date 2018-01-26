@@ -94,8 +94,7 @@ void send_remote_msg(msg_t *msg){
 	out_msg->msg->colour = threads_phase_colour[local_tid];
 	unsigned int dest = GidToKernel(msg->receiver);
 
-	if(count_as_white(msg->type))
-		register_outgoing_msg(out_msg->msg);
+	register_outgoing_msg(out_msg->msg);
 
 	lock_mpi();
 	MPI_Isend(((char*)out_msg->msg) + MSG_PADDING, MSG_META_SIZE + msg->size, MPI_BYTE, dest, MSG_EVENT, MPI_COMM_WORLD, &out_msg->req);
