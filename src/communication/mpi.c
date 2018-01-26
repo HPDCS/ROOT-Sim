@@ -44,8 +44,6 @@ spinlock_t mpi_lock;
 // control access to the message receiving routine
 static spinlock_t msgs_lock;
 
-MPI_Datatype msg_mpi_t;
-
 // counter of the kernels that have already reached the
 // termination condition. Must be updated through the collect_termination() function.
 static unsigned int terminated = 0;
@@ -96,27 +94,12 @@ void send_remote_msg(msg_t *msg){
 	out_msg->msg->colour = threads_phase_colour[local_tid];
 	unsigned int dest = GidToKernel(msg->receiver);
 
-	if(count_as_white(msg->type)) 
+	if(count_as_white(msg->type))
 		register_outgoing_msg(out_msg->msg);
 
-	// Check if the message buffer is from the slab. In this case
-	// we can send it using the msg_mpi_t. On the other hand, we need
-	// to send a header telling the size of the message to be received
-	// at the other endpoint.
-	if(sizeof(msg_t) + msg->size <= SLAB_MSG_SIZE) {
-		lock_mpi();
-		MPI_Isend(out_msg->msg, 1, msg_mpi_t, dest, MSG_EVENT, MPI_COMM_WORLD, &(out_msg->req));
-		unlock_mpi();
-	} else {
-		unsigned int size = sizeof(msg_t) + msg->size;
-		lock_mpi();
-		// We don't keep the header in the list, as the following two messages can be considered
-		// as just one.
-		MPI_Send(&size, 1, MPI_UNSIGNED, dest, MSG_EVENT_LARGER, MPI_COMM_WORLD);
-		MPI_Isend(out_msg->msg, size, MPI_UNSIGNED_CHAR, dest, MSG_EVENT_LARGER, MPI_COMM_WORLD, &(out_msg->req));
-		unlock_mpi();
-	}
-
+	lock_mpi();
+	MPI_Isend(((char*)out_msg->msg) + MSG_PADDING, MSG_META_SIZE + msg->size, MPI_BYTE, dest, MSG_EVENT, MPI_COMM_WORLD, &out_msg->req);
+	unlock_mpi();
 	// Keep the message in the outgoing queue until it will be delivered
 	store_outgoing_msg(out_msg, dest);
 }
@@ -132,73 +115,43 @@ void send_remote_msg(msg_t *msg){
  * This function is thread-safe.
  */
 void receive_remote_msgs(void){
-	int res = 0;
 	int size;
 	msg_t *msg;
 	MPI_Status status;
-	bool found_msg = true;
+	int pending;
+
+	if(!spin_trylock(&msgs_lock))
+		return;
+
+	lock_mpi();
+	MPI_Iprobe(MPI_ANY_SOURCE, MSG_EVENT, MPI_COMM_WORLD, &pending, &status);
+	unlock_mpi();
+
+	if(!pending)
+		goto out;
+
+	MPI_Get_count(&status, MPI_BYTE, &size);
+
+	if(MSG_PADDING + size <= SLAB_MSG_SIZE)
+		msg = get_msg_from_slab();
+	else
+		msg = rsalloc(MSG_PADDING + size);
 
 	/* - `pending_msgs` and `MPI_Recv` need to be in the same critical section.
 	 *    I could start an MPI_Recv with an empty incoming queue.
 	 * - `MPI_Recv` and `insert_bottom_half` need to be in the same critical section.
 	 *    messages need to be inserted in arrival order into the BH
 	 */
-	if(!spin_trylock(&msgs_lock))
-		return;
 
-	while(found_msg) {
-		found_msg = false;
+	// Receive the message
+	lock_mpi();
+	MPI_Recv(((char*)msg) + MSG_PADDING, size, MPI_BYTE, MPI_ANY_SOURCE, MSG_EVENT, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+	unlock_mpi();
 
-		// Try to receive a fixed-size message
-		if(pending_msgs(MSG_EVENT)) {
-			found_msg = true;
+	validate_msg(msg);
+	insert_bottom_half(msg);
 
-			// We get the buffer from the slab allocator
-			msg = get_msg_from_slab();
-
-			// Receive the message
-			lock_mpi();
-			res = MPI_Recv(msg, 1, msg_mpi_t, MPI_ANY_SOURCE, MSG_EVENT, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-			unlock_mpi();
-			if(res != 0)
-				goto out;
-
-			validate_msg(msg);
-		}
-
-		// Try to receive a variable-size message
-		if(pending_msgs(MSG_EVENT_LARGER)) {
-			found_msg = true;
-
-			// First, get the size and identify the source
-			lock_mpi();
-                        res = MPI_Recv(&size, 1, MPI_UNSIGNED, MPI_ANY_SOURCE, MSG_EVENT_LARGER, MPI_COMM_WORLD, &status);
-                        unlock_mpi();
-			if(res != 0)
-				goto out;
-
-			// Now get the actual message, matching the source of the header
-			if(size + sizeof(msg_t) <= SLAB_MSG_SIZE)
-				msg = get_msg_from_slab();
-			else
-				msg = rsalloc(size);
-			lock_mpi();
-                        res = MPI_Recv(msg, size, MPI_UNSIGNED_CHAR, status.MPI_SOURCE, MSG_EVENT_LARGER, MPI_COMM_WORLD, &status);
-                        unlock_mpi();
-                        if(res != 0)
-				goto out;
-
-			validate_msg(msg);
-		}
-	
-		if(found_msg)
-			insert_bottom_half(msg);
-	}
-
-    out:
-	if(res != 0)
-		rootsim_error(true, "MPI_Recv did not complete correctly");
-
+out:
 	spin_unlock(&msgs_lock);
 }
 
@@ -288,57 +241,6 @@ void dist_termination_finalize(void){
 }
 
 
-void mpi_datatype_init(void) {
-	#define NUM_MEMBERS 7
-
-	msg_t* msg = NULL;
-	int base;
-	unsigned int i;
-	int type_size;
-	int header_size = 0;
-
-	MPI_Datatype type[NUM_MEMBERS] = {MPI_UNSIGNED,
-					  MPI_UNSIGNED_CHAR,
-					  MPI_INT,
-					  MPI_DOUBLE,
-					  MPI_UNSIGNED_LONG_LONG,
-					  MPI_INT,
-					  MPI_CHAR};
-
-
-	// The last entry of the array is dynamically populated below
-	int blocklen[NUM_MEMBERS] = {2, 1, 2, 2, 2, 1, 0};
-	for(i = 0; i < (NUM_MEMBERS - 1); i++) {
-		MPI_Type_size(type[i], &type_size);
-		type_size *= blocklen[i];
-		header_size += type_size;
-	}
-	blocklen[NUM_MEMBERS - 1] = SLAB_MSG_SIZE - header_size;
-
-	MPI_Aint disp[NUM_MEMBERS];
-	MPI_Get_address(&msg->sender, disp);
-	MPI_Get_address(&msg->colour, disp + 1);
-	MPI_Get_address(&msg->type, disp + 2);
-	MPI_Get_address(&msg->timestamp, disp + 3);
-	MPI_Get_address(&msg->mark, disp + 4);
-	MPI_Get_address(&msg->size, disp + 5);
-	MPI_Get_address(&msg->event_content, disp + 6);
-	base = disp[0];
-	for (i = 0; i < sizeof(disp) / sizeof(disp[0]); i++) {
-		disp[i] = MPI_Aint_diff(disp[i], base);
-	}
-	MPI_Type_create_struct(7, blocklen, disp, type, &msg_mpi_t);
-	MPI_Type_commit(&msg_mpi_t);
-
-	#undef NUM_MEMBERS
-}
-
-
-void mpi_datatype_finalize(void){
-	MPI_Type_free(&msg_mpi_t);
-}
-
-
 /*
  * Syncronize all the kernels:
  *
@@ -388,7 +290,6 @@ void inter_kernel_comm_init(void){
 	spinlock_init(&msgs_lock);
 
 	outgoing_window_init();
-	mpi_datatype_init();
 	gvt_comm_init();
 	dist_termination_init();
 }
@@ -396,7 +297,6 @@ void inter_kernel_comm_init(void){
 
 void inter_kernel_comm_finalize(void){
 	dist_termination_finalize();
-	mpi_datatype_finalize();
 	//outgoing_window_finalize();
 	gvt_comm_finalize();
 }
