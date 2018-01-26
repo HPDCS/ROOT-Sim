@@ -120,6 +120,7 @@ void insert_msg(msg_channel *mc, msg_t *msg) {
 }
 
 void *get_msg(msg_channel *mc) {
+	int index;
 	msg_t *msg = NULL;
 
 	spin_lock(&mc->read_lock);
@@ -134,7 +135,7 @@ void *get_msg(msg_channel *mc) {
 		goto leave;
 	}
 
-	int index = mc->buffers[M_READ]->read++;
+	index = mc->buffers[M_READ]->read++;
 	msg = mc->buffers[M_READ]->buffer[index];
 	atomic_dec(&mc->size);
 

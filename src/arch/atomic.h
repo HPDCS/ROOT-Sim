@@ -43,8 +43,7 @@ typedef struct { volatile int count; } atomic_t;
 /// Spinlock definition
 typedef struct { volatile unsigned int lock; } spinlock_t;
 
-
-inline bool CAS(volatile uint64_t *ptr, uint64_t oldVal, uint64_t newVal);
+#define CAS(ptr, old, new) __sync_bool_compare_and_swap((ptr), (old), (new))
 inline bool iCAS(volatile uint32_t *ptr, uint32_t oldVal, uint32_t newVal);
 inline int atomic_test_and_set(int *);
 inline int atomic_test_and_reset(int *);

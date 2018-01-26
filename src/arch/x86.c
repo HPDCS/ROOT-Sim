@@ -44,7 +44,7 @@
 *
 * @ret true if the CAS succeeded, false otherwise
 */
-inline bool CAS(volatile uint64_t *ptr, uint64_t oldVal, uint64_t newVal) {
+/*inline bool CAS(volatile uint64_t *ptr, uint64_t oldVal, uint64_t newVal) {
 	unsigned long res = 0;
 
 	__asm__ __volatile__(
@@ -59,7 +59,7 @@ inline bool CAS(volatile uint64_t *ptr, uint64_t oldVal, uint64_t newVal) {
 
 	return (bool)res;
 }
-
+*/
 
 /**
 * This function implements a compare-and-swap atomic operation on x86-64 for integers

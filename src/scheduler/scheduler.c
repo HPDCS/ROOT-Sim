@@ -29,6 +29,7 @@
 #include <stdbool.h>
 #include <datatypes/list.h>
 #include <datatypes/msgchannel.h>
+#include <communication/communication.h>
 #include <core/core.h>
 #include <core/timer.h>
 #include <arch/atomic.h>
@@ -441,17 +442,43 @@ void asym_process(void) {
 
 	lid = GidToLid(msg->receiver);
 
+	// If this is a control message telling that the LP rollback is complete,
+	// we reset the LP to READY
+	if(is_control_msg(msg->type) && msg->type == ASYM_ROLLBACK_DONE) {
+		LPS(lid)->state = LP_STATE_READY;
+		return;
+	}
+
 	// The LP might have been flagged as rolling back. In this case,
 	// discard the event and go on...
 	if(LPS(lid)->state == LP_STATE_ROLLBACK) {
 		return;
 	}
 
+//	printf("PT %d scheduling LP %d on event at %f sent by %d\n", tid, lid_to_int(lid), msg->timestamp, gid_to_int(msg->sender));
+
+	// Try to set the process as running, only if the process is currently ready
+	if(!CAS(&LPS(lid)->state, LP_STATE_READY, LP_STATE_RUNNING)) {
+		// We cannot schedule this LP as it is being flagged as rollback
+		return;
+	}
+
 	// Process this event
 	activate_LP(lid, msg->timestamp, msg, LPS(lid)->current_base_pointer);
 
+	// Set the LP back to ready state, only if it has not been set as running
+	CAS(&LPS(lid)->state, LP_STATE_RUNNING, LP_STATE_READY);
+	
+
 	// Send back to the controller the (possibly) generated events
 	asym_send_outgoing_msgs(lid);
+
+	// Log the state, if needed
+	// TODO: we make the PT take a checkpoint. The optimality would be to let the CT
+	// take a checkpoint, but we need some sort of synchronization which is out of the
+	// scope of the current development phase here.
+	LogState(lid);
+	
 }
 
 
@@ -466,6 +493,7 @@ void asym_process(void) {
 void asym_schedule(void) {
 	LID_t lid;
 	msg_t *event;
+	msg_t *rollback_control;
 	unsigned int i;
 	unsigned int bulk_sched = 1;
 
@@ -494,9 +522,15 @@ void asym_schedule(void) {
 
 		// If we have to rollback
 		if(LPS(lid)->state == LP_STATE_ROLLBACK) {
-			// XXX: PUT A BUBBLE HERE in High Prio Queue!
-			LPS(lid)->state = LP_STATE_READY;
-//			send_outgoing_msgs(lid);
+			// Rollback the LP and send antimessages
+			rollback(lid);
+			send_outgoing_msgs(lid);
+
+			// Notify the CT in charge of managing this LP that the rollback is complete and
+			// events to the LP should not be discarded anymore
+			pack_msg(&rollback_control, LidToGid(lid), LidToGid(lid), ASYM_ROLLBACK_DONE, lvt(lid), lvt(lid), 0, NULL);
+			rollback_control->message_kind = control;
+			pt_put_lo_prio_msg(LPS(lid)->processing_thread, rollback_control);
 			continue;
 		}
 
