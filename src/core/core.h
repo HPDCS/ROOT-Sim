@@ -142,6 +142,9 @@ typedef enum {positive, negative, control} message_kind_t;
 typedef unsigned char phase_colour;
 #endif
 
+#define MSG_PADDING offsetof(msg_t, sender)
+#define MSG_META_SIZE (sizeof(msg_t) - MSG_PADDING)
+
 /** The MPI datatype msg_mpi_t depends on the order of this struct.
    See src/communication/mpi.c for the implementation of the datatype */
 /// Message Type definition
