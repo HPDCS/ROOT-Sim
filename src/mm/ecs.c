@@ -225,7 +225,7 @@ void lp_alloc_schedule(void) {
 
 	sched_info.ds = pgd_ds;
 	sched_info.count = LPS(current_lp)->ECS_index + 1; // it's a counter
-	sched_info.objects = LPS(current_lp)->ECS_synch_table; // pgd descriptor range from 0 to number threads - a subset of object ids
+	sched_info.objects = (unsigned int*) LPS(current_lp)->ECS_synch_table; // pgd descriptor range from 0 to number threads - a subset of object ids
 
 	/* passing into LP mode - here for the pgd_ds-th LP */
 	ioctl(ioctl_fd,IOCTL_SCHEDULE_ON_PGD, &sched_info);
@@ -311,7 +311,6 @@ void unblock_synchronized_objects(LID_t localID) {
 	msg_t *control_msg;
 	
 	for(i = 1; i <= LPS(localID)->ECS_index; i++) {
-		LPS(localID)->ECS_synch_table[i];
 		pack_msg(&control_msg, LidToGid(localID), LPS(localID)->ECS_synch_table[i], RENDEZVOUS_UNBLOCK, lvt(localID), lvt(localID), 0, NULL);
 		control_msg->rendezvous_mark = LPS(localID)->wait_on_rendezvous;
 		Send(control_msg);
