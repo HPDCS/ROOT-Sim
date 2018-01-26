@@ -368,7 +368,7 @@ void pack_msg(msg_t **msg, GID_t sender, GID_t receiver, int type, simtime_t tim
 		*msg = get_msg_from_slab();
 	} else {
 		*msg = rsalloc(sizeof(msg_t) + size);
-		bzero(msg, sizeof(msg_t) + size);
+		bzero(*msg, sizeof(msg_t) + size);
 	}
 
 	(*msg)->sender = sender;
