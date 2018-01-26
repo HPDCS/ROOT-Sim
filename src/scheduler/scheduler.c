@@ -449,7 +449,7 @@ void asym_process(void) {
 	}
 
 	// Process this event
-	activate_LP(lid, lvt(lid), msg, LPS(lid)->current_base_pointer);
+	activate_LP(lid, msg->timestamp, msg, LPS(lid)->current_base_pointer);
 
 	// Send back to the controller the (possibly) generated events
 	asym_send_outgoing_msgs(lid);

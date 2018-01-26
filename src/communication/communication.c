@@ -30,6 +30,7 @@
 
 #include <arch/thread.h>
 #include <core/core.h>
+#include <core/init.h>
 #include <gvt/gvt.h>
 #include <queues/queues.h>
 #include <communication/communication.h>
@@ -169,8 +170,8 @@ void ParallelScheduleNewEvent(unsigned int gid_receiver, simtime_t timestamp, un
 		goto out;
 	}
 
-	// Check if the associated timestamp is negative
-	if(timestamp < lvt(current_lp)) {
+	// Check if the associated timestamp is negative. In asymmetric computation, anyhow, this sanity check doesn't hold.
+	if(rootsim_config.num_controllers == 0 && timestamp < lvt(current_lp)) {
 		rootsim_error(true, "LP %u is trying to generate an event (type %d) to %u in the past! (Current LVT = %f, generated event's timestamp = %f) Aborting...\n", current_lp, event_type, receiver.id, lvt(current_lp), timestamp);
 	}
 
