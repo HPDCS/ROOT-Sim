@@ -429,8 +429,7 @@ void asym_process(void) {
 	msg = pt_get_hi_prio_msg();
 	if(msg != NULL) {
 		// TODO
-
-		goto out;
+		return;
 	}
 
 	// No high priority message. Get an event to process.
@@ -445,7 +444,7 @@ void asym_process(void) {
 	// The LP might have been flagged as rolling back. In this case,
 	// discard the event and go on...
 	if(LPS(lid)->state == LP_STATE_ROLLBACK) {
-		goto out;
+		return;
 	}
 
 	// Process this event
@@ -453,9 +452,6 @@ void asym_process(void) {
 
 	// Send back to the controller the (possibly) generated events
 	asym_send_outgoing_msgs(lid);
-
-    out:
-	msg_release(msg);
 }
 
 
