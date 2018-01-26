@@ -288,36 +288,49 @@ void dist_termination_finalize(void){
 }
 
 
-void mpi_datatype_init(void){
+void mpi_datatype_init(void) {
+	#define NUM_MEMBERS 7
+
 	msg_t* msg = NULL;
 	int base;
 	unsigned int i;
-	MPI_Datatype type[7] = {MPI_UNSIGNED,
-                          MPI_UNSIGNED_CHAR,
-                          MPI_INT,
-                          MPI_DOUBLE,
-                          MPI_UNSIGNED_LONG_LONG,
-                          MPI_INT,
-                          MPI_CHAR};
+	int type_size;
+	int header_size = 0;
+
+	MPI_Datatype type[NUM_MEMBERS] = {MPI_UNSIGNED,
+					  MPI_UNSIGNED_CHAR,
+					  MPI_INT,
+					  MPI_DOUBLE,
+					  MPI_UNSIGNED_LONG_LONG,
+					  MPI_INT,
+					  MPI_CHAR};
 
 
-	int blocklen[7] = {2, 1, 2, 2, 2, 1, SLAB_MSG_SIZE - 10};
-	MPI_Aint disp[7];
+	// The last entry of the array is dynamically populated below
+	int blocklen[NUM_MEMBERS] = {2, 1, 2, 2, 2, 1, 0};
+	for(i = 0; i < (NUM_MEMBERS - 1); i++) {
+		MPI_Type_size(type[i], &type_size);
+		type_size *= blocklen[i];
+		header_size += type_size;
+	}
+	blocklen[NUM_MEMBERS - 1] = SLAB_MSG_SIZE - header_size;
 
-	MPI_Get_address(msg, disp);
-	MPI_Get_address(&msg->colour, disp+1);
-	MPI_Get_address(&msg->type, disp+2);
-	MPI_Get_address(&msg->timestamp, disp+3);
-	MPI_Get_address(&msg->mark, disp+4);
-	MPI_Get_address(&msg->size, disp+5);
-	MPI_Get_address(&msg->event_content, disp+6);
+	MPI_Aint disp[NUM_MEMBERS];
+	MPI_Get_address(&msg->sender, disp);
+	MPI_Get_address(&msg->colour, disp + 1);
+	MPI_Get_address(&msg->type, disp + 2);
+	MPI_Get_address(&msg->timestamp, disp + 3);
+	MPI_Get_address(&msg->mark, disp + 4);
+	MPI_Get_address(&msg->size, disp + 5);
+	MPI_Get_address(&msg->event_content, disp + 6);
 	base = disp[0];
-	for (i=0; i < sizeof(disp)/sizeof(disp[0]); i++){
-		// disp[i] = MPI_Aint_diff(disp[i], base);  /* Not supported on old MPI version */
-		disp[i] = disp[i] - base;
+	for (i = 0; i < sizeof(disp) / sizeof(disp[0]); i++) {
+		disp[i] = MPI_Aint_diff(disp[i], base);
 	}
 	MPI_Type_create_struct(7, blocklen, disp, type, &msg_mpi_t);
 	MPI_Type_commit(&msg_mpi_t);
+
+	#undef NUM_MEMBERS
 }
 
 
