@@ -57,7 +57,7 @@ static void *__helper_create_thread(void *arg) {
 
 	struct _helper_thread *real_arg = (struct _helper_thread *)arg;
 
-	// Get a unique local thread id...
+	// Uniquely pick a TCB across the ones which have been previously created
 	unsigned int old_counter;
 	unsigned int _local_tid;
 
@@ -68,11 +68,9 @@ static void *__helper_create_thread(void *arg) {
 			break;
 		}
 	}
-	tid = _local_tid;
-	Threads[tid]->tid = tid;
-	// ...and make it globally unique
-	Threads[tid]->global_tid = to_global_tid(kid, _local_tid);
 
+	// I'm the _local_tid-th thread
+	tid = Threads[_local_tid]->tid;
 
 	// Set the affinity on a CPU core, for increased performance
 	if(rootsim_config.core_binding)
@@ -224,13 +222,25 @@ void threads_init(void) {
 		} else {
 			Threads[i]->PTs = NULL;
 		}
+
+		// This TCB is associated with a certain tid and global_tid.
+		// The actual thread which will take this tid depends on the race
+		// threads make upon their creation.
+		Threads[i]->tid = i;
+		Threads[i]->global_tid = to_global_tid(kid, i);
+
 	}
 
 	// In this second run, we mutually assing PTs to CTs and vice versa (we loop over PTs)
 	if(rootsim_config.num_controllers > 0) {
 		for(i = rootsim_config.num_controllers; i < n_cores; i++) {
 			Threads[i]->CT = Threads[curr_ct];
-			Threads[curr_ct]->PTs[Threads[curr_ct]->num_PTs++] = Threads[i];
+			Threads[curr_ct]->PTs[Threads[curr_ct]->num_PTs] = Threads[i];
+
+			printf("PT %d sees as its CT: %d\n", Threads[i]->tid, Threads[i]->CT->tid);
+			printf("CT %d has got a new PT: %d\n", Threads[curr_ct]->tid, Threads[curr_ct]->PTs[Threads[curr_ct]->num_PTs]->tid); 
+
+			Threads[curr_ct]->num_PTs++;
 			curr_ct = (curr_ct + 1) % rootsim_config.num_controllers;
 		}
 	}
