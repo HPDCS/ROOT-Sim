@@ -111,6 +111,8 @@ typedef struct rootsim_list {
 		__typeof__(data) __new_n = (data); /* in-block scope variable */\
 		size_t __size_before;\
 		rootsim_list *__l;\
+		__new_n->next = NULL;\
+		__new_n->prev = NULL;\
 		do {\
 			__l = (rootsim_list *)(li);\
 			assert(__l);\
