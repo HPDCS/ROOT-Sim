@@ -146,9 +146,18 @@ typedef unsigned char phase_colour;
    See src/communication/mpi.c for the implementation of the datatype */
 /// Message Type definition
 typedef struct _msg_t {
+
+	/* Place here all memebers of the struct which should not be transmitted over the network */
+
 	// Pointers to attach messages to chains
 	struct _msg_t 		*next;
 	struct _msg_t 		*prev;
+	int			alloc_tid; // TODO: this should be moved into an external container, to avoid transmitting it!
+
+	/* Place here all members which must be transmitted over the network. It is convenient not to reorder the members
+	 * of the structure. If new members have to be addedd, place them right before the "Model data" part.
+	 * The code in `mpi_datatype_init()` in communication/mpi.c must be aligned to the content that we have here. */
+
 	// Kernel's information
 	GID_t   		sender;
 	GID_t   		receiver;
@@ -161,7 +170,7 @@ typedef struct _msg_t {
 	simtime_t		send_time;
 	unsigned long long	mark;	/// Unique identifier of the message, used for antimessages
 	unsigned long long	rendezvous_mark;	/// Unique identifier of the message, used for rendez-vous events
-	int			alloc_tid; // TODO: this should be moved into an external container, to avoid transmitting it!
+
 	// Model data
 	int size;
 	unsigned char event_content[];
