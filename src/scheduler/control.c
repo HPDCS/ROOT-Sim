@@ -219,7 +219,7 @@ bool process_control_msg(msg_t *msg) {
 	switch(msg->type) {
 
 		case RENDEZVOUS_START:
-			list_insert(lid_receiver, LPS(lid_receiver)->rendezvous_queue, timestamp, msg);
+			list_insert(LPS(lid_receiver)->rendezvous_queue, timestamp, msg);
 			// Place this into input queue
 			LPS(lid_receiver)->wait_on_rendezvous = msg->rendezvous_mark;
 

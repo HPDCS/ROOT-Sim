@@ -40,6 +40,8 @@
 
 typedef struct _outgoing_msg {
 	MPI_Request req;
+	struct _outgoing_msg *next;
+	struct _outgoing_msg *prev;
 	msg_t *msg;
 } outgoing_msg;
 
