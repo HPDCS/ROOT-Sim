@@ -69,10 +69,10 @@ static __thread fault_info_t fault_info;
 // Declared in ecsstub.S
 extern void rootsim_cross_state_dependency_handler(void);
 
-GID_t target_gid;
 // This handler is only called in case of a remote ECS
 void ecs_secondary(void) {
 
+	GID_t target_gid;
 	// target_address is filled by the ROOT-Sim fault handler at kernel level before triggering the signal
 	long long target_address = fault_info.target_address;
 	unsigned char *faulting_insn = (unsigned char *)fault_info.rip;
@@ -116,6 +116,7 @@ void ecs_initiate(void) {
 	msg_t *control_msg;
 	msg_hdr_t msg_hdr;
 
+	GID_t target_gid;
 	// Generate a unique mark for this ECS
 	current_evt->rendezvous_mark = generate_mark(current_lp);
 	LPS(current_lp)->wait_on_rendezvous = current_evt->rendezvous_mark;
