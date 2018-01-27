@@ -35,6 +35,8 @@
 #include <unistd.h>
 #include <math.h>
 #include <stdint.h>
+#include <statistics/statistics.h>
+#include <scheduler/process.h>
 
 // Interval of time needed to obtain an accurate sample of energy consumption. Expressed in milliseconds.  
 #define ENERGY_SAMPLE_INTERVAL 30
@@ -48,8 +50,21 @@
 // Percentage of powercap deviation compared to the converged result after which the exploration is restarted
 #define RESTART_EXPLORATION_RANGE 0.03
 
-// Static state machine function declaration
+// State machine function declarations
 static int static_state_machine(void);
+static int static_controllers_state_machine(int);
+
+/** 
+* Struct that contains the statistics obtained in the last GVT interval. 
+* Populated by the function 
+*/
+typedef struct aggregated_stats_t{
+	double interval_power,
+		interval_abort_rate;
+		interval_throughput; 
+
+} aggregated_stats; 
+
 
 // Number of logical cores. Detected at startup and used to apply DVFS setting for all cores
 static int nb_cores;			
@@ -92,6 +107,12 @@ static long error_start_energy;
 
 // Variables needed to compute the power error at runtime
 static double error_time_sum, error_weighted; 
+
+// Variable needed to compute the GVT interval of time 
+static long gvt_start_time; 
+
+// Variable needed to compute the energy used in the GVT interval of time 
+static long gvt_start_energy; 
 
 // Extra state variable for the static state machine, indicates the power consumption of the selected configuration
 static double converged_power;
@@ -455,6 +476,26 @@ static int set_processing_pstate(int input_pstate){
 	return ret;
 }
 
+/**
+* This function accesses statistics of all LP's and computes the 
+* throughput and the percentage of usefull work obtained in the last GVT interval. 
+* Should only be called after GVT calculation is completed.
+*
+* For each LP, it computes the difference in the values of the stats between
+* the current values and the values at the time of the previous GVT calculation,
+* which are saved in the interval_stat variable of the LP control block.
+* In addition, it also computes the average power consumption in the interval. 
+* Finally, it sets the interval_stat to the current values. 
+* TODO: postpone the setting of interval_stat to be after state machine transitions.
+*
+* @Author: Stefano Conoci
+*/
+static aggregated_stats aggregate_interval_statistics(){
+
+	
+}
+
+
 //////////////////////////////////////////////////////////////////////////////
 //	Extern functions 
 //////////////////////////////////////////////////////////////////////////////
@@ -466,6 +507,11 @@ static int set_processing_pstate(int input_pstate){
 * @Author: Stefano Conoci
 */
 int init_powercap_module(void){
+
+	if(!rootsim_config.num_controllers > 0){
+		printf("Required to init the power_cap module with num_controllers set to 0\n");
+		return -1;
+	}
 
 	if(init_DVFS_management() != 0){
 		printf("Cannot init DVFS management\n");
@@ -502,6 +548,10 @@ int init_powercap_module(void){
 	error_start_time = get_time();
 	error_start_energy = get_energy();
 
+	// Start timer and read initial energy for the gvt interval
+	gvt_start_time = get_time();
+	gvt_start_energy = get_energy();
+
 	// Initialize power cap error variables
 	error_weighted = 0; 
 	error_time_sum = 0;
@@ -516,10 +566,15 @@ int init_powercap_module(void){
 *
 * @Author: Stefano Conoci
 */
-int powercap_state_machine(void){
+int powercap_state_machine(int from_gvt){
 
 	double error_time_interval, error_energy_interval, error_sample_power;
 	long end_time, end_energy;
+
+	// Do not trigger any state change if asymmetric mode is disabled 
+	if(rootsim_config.num_controllers == 0){
+		return 0; 
+	}
 
 	// Compute powercap error, if time interval has passed
 	end_time = get_time();
@@ -546,6 +601,9 @@ int powercap_state_machine(void){
 		case 0: 
 			return static_state_machine();
 			break;
+		case 1: 
+			return static_controllers_state_machine(from_gvt);
+			break; 
 		default:
 			printf("Invalid powercap_exploration parameter\n");
 			return -1;
@@ -685,4 +743,15 @@ static int static_state_machine(void){
 
 	return 0;
 
+}
+
+/**
+* This function implements the state machine for powercap_exploration 1.    
+* To be implemented. 
+*
+* @Author: Stefano Conoci
+*/
+static int static_controllers_state_machine(int from_gvt){
+
+	return from_gvt;
 }

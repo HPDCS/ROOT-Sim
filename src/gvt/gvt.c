@@ -32,6 +32,7 @@
 #include <core/core.h>
 #include <core/init.h>
 #include <core/timer.h>
+#include <core/power.h>
 #include <scheduler/process.h>
 #include <scheduler/scheduler.h> // this is for n_prc_per_thread
 //#include <scheduler/binding.h> // this is for force_rebind_GLP
@@ -437,6 +438,11 @@ simtime_t gvt_operations(void) {
 
 		if(atomic_read(&counter_finalized) == 0){
 			if(iCAS(&idle_tkn, 1, 0)){
+				
+				// Trigger a new powercap state transition, if enabled 
+				if(rootsim_config.num_controllers > 0)
+					powercap_state_machine(1);
+				
 				kernel_phase = kphase_idle;
 			}
 		}

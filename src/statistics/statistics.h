@@ -113,6 +113,18 @@ struct stat_t {
 		simtime_advancement;
 };
 
+/*
+* Structure necessary to compute statistics per time interval. 
+* Used by the powercap module. Reads data at runtime from stats_t. 
+* 
+* @Author: Stefano Conoci 
+*/
+typedef struct stat_t_interval {
+	double start_commits,
+		start_tot_events;
+} stat_interval;
+
+
 extern void _mkdir(const char *path);
 extern void statistics_init(void);
 extern void statistics_fini(void);

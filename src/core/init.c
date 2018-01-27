@@ -47,6 +47,7 @@
 #include <statistics/statistics.h>
 #include <lib/numerical.h>
 #include <serial/serial.h>
+#include <core/power.h>
 #ifdef HAVE_MPI
 #include <communication/mpi.h>
 #endif
@@ -531,6 +532,12 @@ void SystemInit(int argc, char **argv) {
 		ScheduleNewEvent = ParallelScheduleNewEvent;
 	}
 
+	// If power management is enabled, initialize it 
+	if(rootsim_config.num_controllers > 0){
+		if (init_powercap_module() != 0)
+			printf("Cannot initialize the powercap module. 
+				If power management is not needed please set num_controllers to 0.\n");
+	}
 
 	if (master_kernel()) {
 
