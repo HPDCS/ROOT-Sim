@@ -27,6 +27,18 @@
 #define DEBUG_POWER
 // #define OVERHEAD_POWER
 
+/*
+* Structure necessary to compute statistics per time interval. 
+* Used by the powercap module. Reads data at runtime from stats_t. 
+* 
+* @Author: Stefano Conoci 
+*/
+typedef struct stat_interval {
+	double start_commits;
+	double start_tot_events;
+} stat_interval_t;
+
+
 /* Variables used to track if new gvt has been computed since last statistics sample.
 * Should be set to 1 after the last thread completes its fossil collection and 
 * a new GVT is established. It is set back to 0 after interval statistics are gathered. 

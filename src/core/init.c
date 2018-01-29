@@ -535,8 +535,8 @@ void SystemInit(int argc, char **argv) {
 	// If power management is enabled, initialize it 
 	if(rootsim_config.num_controllers > 0){
 		if (init_powercap_module() != 0)
-			printf("Cannot initialize the powercap module. 
-				If power management is not needed please set num_controllers to 0.\n");
+			printf("Cannot initialize the powercap module." 
+				"If power management is not needed please set num_controllers to 0.\n");
 	}
 
 	if (master_kernel()) {

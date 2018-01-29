@@ -44,6 +44,7 @@
 #include <scheduler/process.h>
 #include <gvt/gvt.h>
 #include <mm/dymelor.h>
+#include <core/power.h>
 
 #ifdef HAVE_CROSS_STATE
 #include <mm/ecs.h>

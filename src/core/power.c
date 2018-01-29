@@ -39,7 +39,7 @@
 #include <scheduler/process.h>
 
 // Interval of time needed to obtain an accurate sample of energy consumption. Expressed in milliseconds.  
-#define ENERGY_SAMPLE_INTERVAL 30
+#define FAST_SAMPLE_INTERVAL 30
 
 // Interval of milliserconds during which the average power consumption is sampled to compute the powercap error
 #define POWERCAP_ERROR_INTERVAL 1000
@@ -466,26 +466,6 @@ static int set_processing_pstate(int input_pstate){
 	return ret;
 }
 
-/**
-* This function accesses statistics of all LP's and computes the 
-* throughput and the percentage of usefull work obtained in the last GVT interval. 
-* Should only be called after GVT calculation is completed.
-*
-* For each LP, it computes the difference in the values of the stats between
-* the current values and the values at the time of the previous GVT calculation,
-* which are saved in the interval_stat variable of the LP control block.
-* In addition, it also computes the average power consumption in the interval. 
-* Finally, it sets the interval_stat to the current values. 
-* TODO: postpone the setting of interval_stat to be after state machine transitions.
-*
-* @Author: Stefano Conoci
-*/
-static aggregated_stats aggregate_interval_statistics(){
-
-	
-}
-
-
 //////////////////////////////////////////////////////////////////////////////
 //	Extern functions 
 //////////////////////////////////////////////////////////////////////////////
@@ -498,7 +478,7 @@ static aggregated_stats aggregate_interval_statistics(){
 */
 int init_powercap_module(void){
 
-	if(!rootsim_config.num_controllers > 0){
+	if(!(rootsim_config.num_controllers > 0)){
 		printf("Required to init the power_cap module with num_controllers set to 0\n");
 		return -1;
 	}
@@ -566,7 +546,6 @@ void powercap_state_machine(void){
 	double error_time_interval, error_energy_interval, error_sample_power;
 	double gvt_time_interval, gvt_energy_interval, gvt_sample_power;
 	double fast_time_interval, fast_energy_interval, fast_sample_power;
-	double old_committed_events, old_tot_events;
 	double last_num_events, last_committed;
 	long end_time, end_energy;
 
@@ -575,14 +554,15 @@ void powercap_state_machine(void){
 		return;
 	}
 
-	double throughput = -1, efficiency = -1; 
+	double throughput = -1;
+        //double efficiency = -1; 
 	
 	// Local variables passed to specific state machine implementantion to track which interval was completed
 	int local_gvt_completed = 0, local_fast_completed = 0, local_error_completed = 0; 
 
 	end_time = get_time();
 	end_energy = get_energy();
-	
+
 	// Compute powercap error, if time interval for error computation has passed
 	if((double) end_time-error_start_time / 1000000 > POWERCAP_ERROR_INTERVAL){	
 		// Compute average power consumption in the sampling interval
@@ -614,9 +594,9 @@ void powercap_state_machine(void){
 		double accumulator_events = 0; 
 		double accumulator_commits = 0; 
 
-		for(int i=0;i<n_prc_tot;i++){		
+		for(unsigned int i=0;i<n_prc_tot;i++){		
 			last_num_events =  statistics_get_lp_data(STAT_EVENT, lps_blocks[i]->lid);
-			last_committed = statistics_get_lp_data(STAT_COMMITS, lps_blocks[i]->lid);
+			last_committed = statistics_get_lp_data(STAT_COMMITTED, lps_blocks[i]->lid);
 
 			// Increase the accumulators
 			accumulator_events+=(last_num_events - lps_blocks[i]->interval_stats.start_tot_events); 
@@ -629,7 +609,7 @@ void powercap_state_machine(void){
 
 		// Compute throughput and efficiency for the last round
 		throughput = accumulator_commits/(gvt_time_interval/1000000000);
-		efficiency = accumulator_commits/accumulator_events;
+		//efficiency = accumulator_commits/accumulator_events;
 
 		// Reset the gvt_interval_passed variable, set again to 1 
 		// after next gvt calculation is completed (see gvt.c)
@@ -641,7 +621,7 @@ void powercap_state_machine(void){
 	// Compute statistics for the last fast time interval, if completed 
 	// Compute power consumption but not throughput as it is necessary
 	// to wait for GVT calculation to obtain a meaningful value
-	if((double) end_time-fast_start_time / 1000000 > ENERGY_SAMPLE_INTERVAL){
+	if((double) end_time-fast_start_time / 1000000 > FAST_SAMPLE_INTERVAL){
 		// Compute average power consumption in the sampling interval
 		fast_time_interval = (double) end_time-fast_start_time;
 		fast_energy_interval = (double) end_energy-fast_start_energy;
@@ -650,8 +630,8 @@ void powercap_state_machine(void){
 		local_fast_completed = 1; 
 
 		#ifdef DEBUG_POWER
-			printf("Fast Interval - Number of Controllers: %d - CT P-state: %d  -
-			 PT P-state: %d - Interval %lf ms - Powercap %lf Watt - Sampled Power %lf Watt\n",
+			printf("Fast Interval - Number of Controllers: %d - CT P-state: %d" 
+					" - PT P-state: %d - Interval %lf ms - Powercap %lf Watt - Sampled Power %lf Watt\n",
 				current_controllers, current_pstates[0], current_pstates[current_controllers], 
 				fast_time_interval/1000000, rootsim_config.powercap, fast_sample_power);
 		#endif
@@ -688,7 +668,7 @@ void powercap_state_machine(void){
 			fast_start_time = end_time;
 			fast_start_energy = end_energy;
 		}
-		if(error_fast_completed){
+		if(local_error_completed){
 			error_start_time = end_time;
 			error_start_energy = end_energy;
 		}
@@ -716,7 +696,7 @@ void shutdown_powercap_module(void){
 
 /**
 * This function implements the state machine for powercap_exploration 0. 
-* State transition are triggered each interval of time defined by ENERGY_SAMPLE_INTERVAL   
+* State transition are triggered each interval of time defined by FAST_SAMPLE_INTERVAL   
 * The exploration policy of this machine is static w.r.t the application performance, 
 * it searches for the configuration with "num_controllers" controller threads at frequency 
 * "controllers_freq" and processing threads with the highest possible frequency that
@@ -727,12 +707,14 @@ void shutdown_powercap_module(void){
 *
 * @Author: Stefano Conoci
 */
-static int static_state_machine(int fast_completed, int gvt_completed, 
-		double fast_power, double gvt_power, double throughput){
+static int static_state_machine(int fast_completed, __attribute__((unused)) int gvt_completed, 
+		double fast_power, __attribute__((unused)) double gvt_power, __attribute__((unused)) double throughput){
 
 	// If "fast" sampling interval is not completed, just return
 	if(!fast_completed)
 		return 1; 
+
+	
 
 	// Compute hysteresis range for the powercap
 	double high_powercap = rootsim_config.powercap*(1+HYSTERESIS);

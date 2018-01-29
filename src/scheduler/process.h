@@ -42,7 +42,7 @@
 #include <lib/numerical.h>
 #include <communication/communication.h>
 #include <arch/linux/modules/cross_state_manager/cross_state_manager.h>
-#include <statistics/statistics.h>
+#include <core/power.h>
 
 #define LP_STACK_SIZE	4194304	// 4 MB
 
@@ -135,7 +135,7 @@ typedef struct _LP_state {
 	unsigned long long	wait_on_rendezvous;
 	unsigned int		wait_on_object;
 
-	stat_interval		interval_stats;
+	stat_interval_t		interval_stats;
 } LP_State;
 
 
