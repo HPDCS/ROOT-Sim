@@ -317,8 +317,13 @@ simtime_t last_reduced_gvt(void){
 
 
 void register_outgoing_msg(const msg_t* msg) {
-	unsigned int dst_kid = GidToKernel(msg->receiver);
+#ifdef ECS 
+	if(is_control_msg(msg->type))
+		return;
+#endif
 
+	unsigned int dst_kid = GidToKernel(msg->receiver);						
+			
 	if(dst_kid == kid) return;
 
 	if(is_red_colour(msg->colour)) {
@@ -330,6 +335,11 @@ void register_outgoing_msg(const msg_t* msg) {
 
 
 void register_incoming_msg(const msg_t* msg){
+#ifdef ECS 
+	if(is_control_msg(msg->type))
+		return;
+#endif
+
 	unsigned int src_kid = GidToKernel(msg->sender);
 
 	if(src_kid == kid) return;
