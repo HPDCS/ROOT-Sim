@@ -317,7 +317,7 @@ simtime_t last_reduced_gvt(void){
 
 
 void register_outgoing_msg(const msg_t* msg) {
-#ifdef ECS 
+#ifdef HAVE_CROSS_STATE 
 	if(is_control_msg(msg->type))
 		return;
 #endif
@@ -335,7 +335,7 @@ void register_outgoing_msg(const msg_t* msg) {
 
 
 void register_incoming_msg(const msg_t* msg){
-#ifdef ECS 
+#ifdef HAVE_CROSS_STATE
 	if(is_control_msg(msg->type))
 		return;
 #endif
