@@ -97,7 +97,7 @@ void communication_fini(void) {
 	rsfree(slab_lock);
 }
 
-static msg_hdr_t *get_msg_hdr_from_slab(void) {
+msg_hdr_t *get_msg_hdr_from_slab(void) {
 	spin_lock(&slab_lock[local_tid]);
 	msg_hdr_t *msg = (msg_hdr_t *)slab_alloc(&msg_slab[local_tid]);
 	spin_unlock(&slab_lock[local_tid]);

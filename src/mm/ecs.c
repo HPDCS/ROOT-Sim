@@ -46,6 +46,7 @@
 #include <mm/mm.h>
 #include <scheduler/scheduler.h>
 #include <scheduler/process.h>
+#include <communication/communication.h>
 #include <arch/ult.h>
 #include <arch/x86.h>
 
@@ -114,7 +115,7 @@ void ecs_secondary(void) {
 
 void ecs_initiate(void) {
 	msg_t *control_msg;
-	msg_hdr_t msg_hdr;
+	msg_hdr_t *msg_hdr;
 
 	GID_t target_gid;
 	// Generate a unique mark for this ECS
@@ -128,8 +129,9 @@ void ecs_initiate(void) {
 	control_msg->mark = generate_mark(current_lp);
 
 	// This message must be stored in the output queue as well, in case this LP rollbacks
-	msg_to_hdr(&msg_hdr, control_msg);
-	list_insert(LPS(current_lp)->queue_out, send_time, &msg_hdr);
+	msg_hdr =  get_msg_hdr_from_slab();
+	msg_to_hdr(msg_hdr, control_msg);
+	list_insert(LPS(current_lp)->queue_out, send_time, msg_hdr);
 
 	// Block the execution of this LP
 	LPS(current_lp)->state = LP_STATE_WAIT_FOR_SYNCH;
