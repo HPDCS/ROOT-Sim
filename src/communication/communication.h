@@ -60,7 +60,7 @@ enum _control_msgs {
 	MAX_VALUE_CONTROL
 };
 
-#define count_as_white(type)	(type < MIN_VALUE_CONTROL || type == RENDEZVOUS_START)
+#define is_control_msg(type)	(type >= MIN_VALUE_CONTROL && type != RENDEZVOUS_START)
 
 // Message Codes for PVM
 #define MSG_INIT_MPI		200
@@ -120,6 +120,7 @@ extern void start_ack_timer(void);
 
 extern void msg_hdr_release(msg_hdr_t *msg);
 extern msg_t *get_msg_from_slab(void);
+extern msg_hdr_t *get_msg_hdr_from_slab(void);
 extern void pack_msg(msg_t **msg, GID_t sender, GID_t receiver, int type, simtime_t timestamp, simtime_t send_time, size_t size, void *payload);
 extern void msg_to_hdr(msg_hdr_t *hdr, msg_t *msg);
 extern void hdr_to_msg(msg_hdr_t *hdr, msg_t *msg);
