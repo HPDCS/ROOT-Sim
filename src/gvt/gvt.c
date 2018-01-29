@@ -438,10 +438,9 @@ simtime_t gvt_operations(void) {
 
 		if(atomic_read(&counter_finalized) == 0){
 			if(iCAS(&idle_tkn, 1, 0)){
-				
-				// Trigger a new powercap state transition, if enabled 
+				// Notify the power cap module that a new statistic sample is available 
 				if(rootsim_config.num_controllers > 0)
-					powercap_state_machine(1);
+					gvt_interval_passed = 1; 
 				
 				kernel_phase = kphase_idle;
 			}
