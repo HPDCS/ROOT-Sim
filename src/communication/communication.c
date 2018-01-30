@@ -144,11 +144,15 @@ msg_t *get_msg_from_slab(void) {
 }
 
 void msg_release(msg_t *msg) {
+	int thr;
+
 	if(sizeof(msg_t) + msg->size <= SLAB_MSG_SIZE) {
-		int thr = msg->alloc_tid;
-		msg->prev = 0xBAADBAAD;
-		msg->next = 0xBAADBAAD;
-		treiber_push(msg_treiber[thr], msg);
+		thr = msg->alloc_tid;
+		if(local_tid == thr) {
+			slab_free(&msg_slab[thr], msg);
+		} else {
+			treiber_push(msg_treiber[thr], msg);
+		}
 	} else {
 		rsfree(msg);
 	}
