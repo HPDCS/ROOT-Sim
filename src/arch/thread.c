@@ -29,7 +29,6 @@
 #include <core/init.h>
 #include <mm/dymelor.h>
 
-
 static tid_t os_tid;
 
 __thread unsigned int tid;
@@ -214,6 +213,7 @@ void threads_init(void) {
 		Threads[i]->input_port[PORT_PRIO_HI] = init_channel();
 		Threads[i]->input_port[PORT_PRIO_LO] = init_channel();
 		Threads[i]->output_port = init_channel();
+		Threads[i]->port_batch_size = PORT_START_BATCH_SIZE;
 
 		// Initialize the pointer of possible PTs for this thread
 		Threads[i]->num_PTs = 0;

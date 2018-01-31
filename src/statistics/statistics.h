@@ -121,6 +121,4 @@ extern inline void statistics_post_lp_data(LID_t lid, unsigned int type, double 
 extern inline void statistics_post_other_data(unsigned int type, double data);
 extern double statistics_get_lp_data(unsigned int type, LID_t lid);
 
-
-
 #endif /* _STATISTICS_H */

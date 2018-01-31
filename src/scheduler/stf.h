@@ -29,6 +29,8 @@
 #include <core/core.h>
 
 extern LID_t smallest_timestamp_first(void);
+extern LID_t asym_smallest_timestamp_first(**LP_State);
+
 
 #endif /* _SFT_H */
 

@@ -48,4 +48,4 @@ extern msg_channel *init_channel(void);
 extern void fini_channel(msg_channel *);
 extern void insert_msg(msg_channel *, msg_t *);
 extern void *get_msg(msg_channel *);
-
+extern int get_port_current_size(msg_channel *);
