@@ -155,7 +155,7 @@ bool OnGVT(unsigned int me, lp_state_type *state) {
 
 	//printf("%d: %f\% (%d/%d)\n", me, 100 * state->committed_tx / (double)TOTAL_COMMITTED_TX, state->committed_tx, TOTAL_COMMITTED_TX);
 
-	if(state->committed_tx < TOTAL_COMMITTED_TX*10000)
+	if(state->committed_tx < TOTAL_COMMITTED_TX)
 		return false;
 	return true;
 }
