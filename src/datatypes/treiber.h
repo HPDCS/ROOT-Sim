@@ -31,4 +31,5 @@ typedef struct _treiber {
 extern treiber *treiber_init(void);
 extern void treiber_push(treiber *, void *);
 extern void *treiber_pop(treiber *);
+extern void *treiber_detach(treiber *);
 
