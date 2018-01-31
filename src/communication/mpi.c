@@ -134,9 +134,10 @@ void receive_remote_msgs(void){
 
 		if(MSG_PADDING + size <= SLAB_MSG_SIZE)
 			msg = get_msg_from_slab();
-		else
+		else{
 			msg = rsalloc(MSG_PADDING + size);
-
+			bzero(msg, MSG_PADDING);
+		}
 		/* - `pending_msgs` and `MPI_Recv` need to be in the same critical section.
 		 *    I could start an MPI_Recv with an empty incoming queue.
 		 * - `MPI_Recv` and `insert_bottom_half` need to be in the same critical section.
