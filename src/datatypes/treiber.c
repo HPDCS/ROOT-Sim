@@ -71,3 +71,8 @@ void *treiber_pop(treiber *treib) {
 	} while(1);
 }
 
+void *treiber_detach(treiber *treib) {
+	treiber *f;
+	f = __sync_lock_test_and_set(&treib->next, NULL);
+	return f;
+}

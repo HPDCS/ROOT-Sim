@@ -114,21 +114,22 @@ void msg_hdr_release(msg_hdr_t *msg) {
 
 msg_t *get_msg_from_slab(void) {
 	msg_t *msg = NULL;
-	msg_t *msg_free;
-	int i;
-	// TODO: find a way to self-tune this depending on memory availability and slab size
-	#define release_count 10
+	treiber *to_release;
+	treiber *to_release_nxt;
 
-	for(i = 0; i < release_count; i++) {
-		msg_free = treiber_pop(msg_treiber[local_tid]);
-		if(msg_free == NULL) {
-			break;
-		}
+	// Unlink the whole Treiber stack and release all nodes.
+	// If at least one node is available, reuse it for the
+	// current allocation.
+	to_release = treiber_detach(msg_treiber[local_tid]);
+	while(to_release != NULL) {
 		if(msg == NULL) {
-			msg = msg_free;
+			msg = to_release->data;
 		} else {
-			slab_free(&msg_slab[local_tid], msg_free);
+			slab_free(&msg_slab[local_tid], to_release->data);
 		}
+		to_release_nxt = to_release->next;
+		rsfree(to_release);
+		to_release = to_release_nxt;
 	}
 
 	if(msg != NULL) {
