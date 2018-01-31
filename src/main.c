@@ -177,7 +177,9 @@ static void *main_simulation_loop(void *arg) {
 * @return Exit code
 */
 int main(int argc, char **argv) {
-
+	if((getenv("WGDB")) != NULL && *(getenv("WGDB")) == '1'){
+		int i = 0; char hostname[256]; gethostname(hostname, sizeof(hostname)); printf("PID %d on %s ready for attach\n", getpid(), hostname); fflush(stdout); while (0 == i) sleep(5);
+	}
 	// Runtime NUMA check
 	#ifdef HAVE_NUMA
 	if(numa_available() < 0) {
