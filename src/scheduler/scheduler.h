@@ -45,6 +45,27 @@
 /// Smallest Timestamp Scheduler's Code
 #define SMALLEST_TIMESTAMP_FIRST	0
 
+/* This macro defines a threshold in the percentage of utilization
+* of the port in asymmetric execution. Utilization rates higher than 
+* this value are considered inadequate as they might lead to an empty port 
+* the PTs. Consequently, if utilization is higher than this value,
+* the port size is increased.
+*
+* Author: Stefano Conoci
+*/
+#define UPPER_PORT_THRESHOLD 0.9
+
+
+/* This macro defines a threshold in the percentage of utilization
+* of the port in asymmetric execution. Utilization rates lower than 
+* this value are considered inadequate as they might lead to an excessive 
+* amount of unnecessary speculation . Consequently, if utilization  is
+* lower than this value, the port size is decreased.
+*
+* Author: Stefano Conoci
+*/ 
+#define LOWER_PORT_THRESHOLD 0.5
+
 /* Functions invoked by other modules */
 extern void scheduler_init(void);
 extern void scheduler_fini(void);

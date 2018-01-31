@@ -496,18 +496,30 @@ void asym_schedule(void) {
 	msg_t *event;
 	msg_t *rollback_control;
 	LP_State **lps_current_batch;
-	int *port_events_to_fill;
+	int port_events_to_fill[n_cores];
 	unsigned int i;
 	unsigned int events_to_fill = 0; 
 
-	// TO BE COMPLETED
-	//feedback_port_batch_size(all_bound_LP);
+	// Compute utilization rate of the input ports since the last call to asym_schedule
+	// and resize the ports if necessary
+	for(i = 0; i < Threads[tid]->num_PTs; i++){
+		Thread_State* pt = Threads[tid]->PTs[i];
+		int port_size = pt->port_batch_size;
+		double utilization_rate = ((double ) port_size - get_port_current_size(pt->input_port[PORT_PRIO_LO]))/ (double) port_size;
+		// If utilization rate is too high, the size of the port should be increased
+		if(utilization_rate > UPPER_PORT_THRESHOLD){
+			pt->port_batch_size++; // Might be better to increase by a percentage of the previous value, but its another parameter
+		}
+		// If utilization rate is too low, the size of the port should be decreased
+		else if (utilization_rate > LOWER_PORT_THRESHOLD){
+			pt->port_batch_size--;
+		}
+	}
 
 	// Compute the total number of events necessary to fill all
 	// the input ports, considering the current batch value 
 	// and the current number of events yet to be processed in 
 	// each port  
-	port_events_to_fill = rsalloc(sizeof(int)*(Threads[tid]->num_PTs));
 	for(i = 0; i < Threads[tid]->num_PTs; i++){
 		Thread_State* pt = Threads[tid]->PTs[i];
 		port_events_to_fill[i] = pt->port_batch_size - get_port_current_size(pt->input_port[PORT_PRIO_LO]);
