@@ -496,10 +496,9 @@ void asym_schedule(void) {
 	msg_t *event;
 	msg_t *rollback_control;
 	LP_State **lps_current_batch;
-	int* port_events_to_fill;
+	int *port_events_to_fill;
 	unsigned int i;
-
-	unsigned int bulk_sched = 1;
+	unsigned int events_to_fill = 0; 
 
 	// TO BE COMPLETED
 	//feedback_port_batch_size(all_bound_LP);
@@ -508,11 +507,10 @@ void asym_schedule(void) {
 	// the input ports, considering the current batch value 
 	// and the current number of events yet to be processed in 
 	// each port  
-	int events_to_fill = 0; 
-	port_events_to_fill = malloc(sizeof(int)*(Threads[tid]->num_PTs));
+	port_events_to_fill = rsalloc(sizeof(int)*(Threads[tid]->num_PTs));
 	for(i = 0; i < Threads[tid]->num_PTs; i++){
 		Thread_State* pt = Threads[tid]->PTs[i];
-		port_events_to_fill[i] = pt->port_batch_size - get_port_current_size(pt->input_port[PORT_PRIO_LO])
+		port_events_to_fill[i] = pt->port_batch_size - get_port_current_size(pt->input_port[PORT_PRIO_LO]);
 		events_to_fill += port_events_to_fill[i];
 	}
 
@@ -520,7 +518,7 @@ void asym_schedule(void) {
 	// be modified during scheduling in order to jump LPs bound to PT
 	// for whom the input port is already filled
 	lps_current_batch = rsalloc(sizeof(LP_State*)*n_prc); // Should avoid to alloc dynamically for performance
-	memcopy(lps_current_batch, lps_bound_blocks, sizeof(LP_State*)*n_prc);
+	memcpy(lps_current_batch, lps_bound_blocks, sizeof(LP_State*)*n_prc);
 
 	for(i = 0; i < events_to_fill; i++) {
 
@@ -596,7 +594,7 @@ void asym_schedule(void) {
 		// If one port becomes full, should modify lps_current_batch accordingly.  
 		// TO BE COMPLETED
 		port_events_to_fill[0]--; 
-		if(ports_events_to_fill[0] == 0){
+		if(port_events_to_fill[0] == 0){
 			//Modifico lps_current_batch e ci rimuovo tutti i puntatori 
 			// ad LP gestiti del thread che è a 0 
 			printf("TODO\n");

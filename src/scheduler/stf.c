@@ -72,7 +72,7 @@ LID_t smallest_timestamp_first(void) {
 * @author Stefano Conoci 
 * @author Alessandro Pellegrini */
 
-LID_t smallest_timestamp_first(**LP_State lps_current_batch){
+LID_t asym_smallest_timestamp_first(LP_State **lps_current_batch){
 	return lps_current_batch[0]->lid;
 }
 
