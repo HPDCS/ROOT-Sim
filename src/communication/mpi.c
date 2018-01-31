@@ -97,7 +97,7 @@ void send_remote_msg(msg_t *msg){
 	register_outgoing_msg(out_msg->msg);
 
 	lock_mpi();
-	MPI_Isend(((char*)out_msg->msg) + MSG_PADDING, MSG_META_SIZE + msg->size, MPI_BYTE, dest, MSG_EVENT, MPI_COMM_WORLD, &out_msg->req);
+	MPI_Isend(out_msg->msg, sizeof(msg_t) + msg->size, MPI_BYTE, dest, MSG_EVENT, MPI_COMM_WORLD, &out_msg->req);
 	unlock_mpi();
 	// Keep the message in the outgoing queue until it will be delivered
 	store_outgoing_msg(out_msg, dest);
@@ -131,11 +131,11 @@ void receive_remote_msgs(void){
 		
 		MPI_Get_count(&status, MPI_BYTE, &size);
 
-		if(MSG_PADDING + size <= SLAB_MSG_SIZE)
+		if(size <= SLAB_MSG_SIZE)
 			msg = get_msg_from_slab();
 		else{
-			msg = rsalloc(MSG_PADDING + size);
-			bzero(msg,MSG_PADDING);
+			msg = rsalloc(size);
+			bzero(msg,size);
 		}
 
 		/* - `pending_msgs` and `MPI_Recv` need to be in the same critical section.
@@ -143,17 +143,22 @@ void receive_remote_msgs(void){
 		 * - `MPI_Recv` and `insert_bottom_half` need to be in the same critical section.
 		 *    messages need to be inserted in arrival order into the BH
 		 */
+		unsigned int thr = msg->alloc_tid;
 
 		// Receive the message
 		lock_mpi();
-		MPI_Recv(((char*)msg) + MSG_PADDING, size, MPI_BYTE, MPI_ANY_SOURCE, MSG_EVENT, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+		MPI_Recv(msg, SLAB_MSG_SIZE, MPI_BYTE, MPI_ANY_SOURCE, MSG_EVENT, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 		unlock_mpi();
 
-		//Note: variable array member of the struct could overlap the struct itself
+		msg->alloc_tid = thr;
+		msg->next = NULL;
+		msg->prev = NULL;
+
+		/*Note: variable array member of the struct could overlap the struct itself
 		if(MSG_PADDING + size > sizeof(msg_t) + msg->size){
 			printf("%d + %d > %d + %d\n",MSG_PADDING,size,sizeof(msg_t),msg->size);
 			abort();
-		}
+		}*/
 
 		validate_msg(msg);
 		insert_bottom_half(msg);
