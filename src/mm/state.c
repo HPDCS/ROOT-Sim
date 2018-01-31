@@ -42,6 +42,7 @@
 #include <mm/dymelor.h>
 #include <statistics/statistics.h>
 
+
 /// Function pointer to switch between the parallel and serial version of SetState
 void (*SetState)(void *new_state);
 
@@ -55,7 +56,6 @@ void (*SetState)(void *new_state);
 * @param lid The Light Process Identifier
 */
 bool LogState(LID_t lid) {
-
 	bool take_snapshot = false;
 	state_t *new_state; 
 

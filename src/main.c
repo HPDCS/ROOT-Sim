@@ -44,6 +44,7 @@
 #include <scheduler/process.h>
 #include <gvt/gvt.h>
 #include <mm/dymelor.h>
+#include <core/power.h>
 
 #ifdef HAVE_CROSS_STATE
 #include <mm/ecs.h>
@@ -125,6 +126,13 @@ static void *main_simulation_loop(void *arg) {
 	#endif
 	
 	while (!end_computing()) {
+		
+		// We assume that thread with tid 0 should be a controller. 
+		// Should be adapted for MPI. 
+		if(master_thread()){
+			powercap_state_machine();
+		}
+
 		// Recompute the LPs-thread binding
 		rebind_LPs();
 

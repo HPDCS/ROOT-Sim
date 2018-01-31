@@ -164,6 +164,8 @@ void ParallelScheduleNewEvent(unsigned int gid_receiver, simtime_t timestamp, un
 		return;
 	}
 
+	/* Sanity checks */
+#ifndef NDEBUG
 	// Check whether the destination LP is out of range
 	if(receiver.id > n_prc_tot - 1) { // It's unsigned, so no need to check whether it's < 0
 		rootsim_error(false, "Warning: the destination LP %u is out of range. The event has been ignored\n", receiver.id);
@@ -179,10 +181,11 @@ void ParallelScheduleNewEvent(unsigned int gid_receiver, simtime_t timestamp, un
 	if(event_type >= MIN_VALUE_CONTROL) {
 		rootsim_error(true, "LP %u is generating an event with type %d which is a reserved type. Switch event type to a value less than %d. Aborting...\n", current_lp, event_type, MIN_VALUE_CONTROL);
 	}
+#endif
 
 
 	// Copy all the information into the event structure
-	pack_msg(&event, LidToGid(current_lp), receiver, event_type, timestamp, lvt(current_lp), event_size, event_content);
+	pack_msg(&event, LidToGid(current_lp), receiver, event_type, timestamp, current_evt->timestamp, event_size, event_content);
 	event->mark = generate_mark(current_lp);
 
 	if(event->type == RENDEZVOUS_START) {
@@ -341,6 +344,8 @@ void asym_send_outgoing_msgs(LID_t lid) {
 		msg_to_hdr(msg_hdr, msg);
 
 		pt_put_out_msg(msg);
+//		printf("Putting in the output port the following message\n");
+//		dump_msg_content(msg);
 
 		// register the message in the sender's output queue, for antimessage management
 		list_insert(LPS(lid)->queue_out, send_time, msg_hdr);

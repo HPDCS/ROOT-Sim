@@ -25,10 +25,12 @@
 */
 
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
 #include <datatypes/list.h>
 #include <datatypes/msgchannel.h>
+#include <communication/communication.h>
 #include <core/core.h>
 #include <core/timer.h>
 #include <arch/atomic.h>
@@ -441,17 +443,43 @@ void asym_process(void) {
 
 	lid = GidToLid(msg->receiver);
 
+	// If this is a control message telling that the LP rollback is complete,
+	// we reset the LP to READY
+	if(is_control_msg(msg->type) && msg->type == ASYM_ROLLBACK_DONE) {
+		LPS(lid)->state = LP_STATE_READY;
+		return;
+	}
+
 	// The LP might have been flagged as rolling back. In this case,
 	// discard the event and go on...
 	if(LPS(lid)->state == LP_STATE_ROLLBACK) {
 		return;
 	}
 
+//	printf("PT %d scheduling LP %d on event at %f sent by %d\n", tid, lid_to_int(lid), msg->timestamp, gid_to_int(msg->sender));
+
+	// Try to set the process as running, only if the process is currently ready
+	if(!CAS(&LPS(lid)->state, LP_STATE_READY, LP_STATE_RUNNING)) {
+		// We cannot schedule this LP as it is being flagged as rollback
+		return;
+	}
+
 	// Process this event
 	activate_LP(lid, msg->timestamp, msg, LPS(lid)->current_base_pointer);
 
+	// Set the LP back to ready state, only if it has not been set as running
+	CAS(&LPS(lid)->state, LP_STATE_RUNNING, LP_STATE_READY);
+	
+
 	// Send back to the controller the (possibly) generated events
 	asym_send_outgoing_msgs(lid);
+
+	// Log the state, if needed
+	// TODO: we make the PT take a checkpoint. The optimality would be to let the CT
+	// take a checkpoint, but we need some sort of synchronization which is out of the
+	// scope of the current development phase here.
+	LogState(lid);
+	
 }
 
 
@@ -466,24 +494,48 @@ void asym_process(void) {
 void asym_schedule(void) {
 	LID_t lid;
 	msg_t *event;
+	msg_t *rollback_control;
+	LP_State **lps_current_batch;
+	int *port_events_to_fill;
 	unsigned int i;
-	unsigned int bulk_sched = 1;
+	unsigned int events_to_fill = 0; 
 
-	for(i = 0; i < bulk_sched; i++) {
+	// TO BE COMPLETED
+	//feedback_port_batch_size(all_bound_LP);
+
+	// Compute the total number of events necessary to fill all
+	// the input ports, considering the current batch value 
+	// and the current number of events yet to be processed in 
+	// each port  
+	port_events_to_fill = rsalloc(sizeof(int)*(Threads[tid]->num_PTs));
+	for(i = 0; i < Threads[tid]->num_PTs; i++){
+		Thread_State* pt = Threads[tid]->PTs[i];
+		port_events_to_fill[i] = pt->port_batch_size - get_port_current_size(pt->input_port[PORT_PRIO_LO]);
+		events_to_fill += port_events_to_fill[i];
+	}
+
+	// Create a copy of lps_bound_blocks in lps_current_batch which will
+	// be modified during scheduling in order to jump LPs bound to PT
+	// for whom the input port is already filled
+	lps_current_batch = rsalloc(sizeof(LP_State*)*n_prc); // Should avoid to alloc dynamically for performance
+	memcpy(lps_current_batch, lps_bound_blocks, sizeof(LP_State*)*n_prc);
+
+	for(i = 0; i < events_to_fill; i++) {
 
 		#ifdef HAVE_CROSS_STATE
 		bool resume_execution = false;
 		#endif
 
+
 		// Find next LP to be executed, depending on the chosen scheduler
 		switch (rootsim_config.scheduler) {
 
 			case SMALLEST_TIMESTAMP_FIRST:
-				lid = smallest_timestamp_first();
+				lid = asym_smallest_timestamp_first(lps_current_batch);
 				break;
 
 			default:
-				lid = smallest_timestamp_first();
+				lid = asym_smallest_timestamp_first(lps_current_batch);
 		}
 
 		// No logical process found with events to be processed
@@ -494,9 +546,15 @@ void asym_schedule(void) {
 
 		// If we have to rollback
 		if(LPS(lid)->state == LP_STATE_ROLLBACK) {
-			// XXX: PUT A BUBBLE HERE in High Prio Queue!
-			LPS(lid)->state = LP_STATE_READY;
-//			send_outgoing_msgs(lid);
+			// Rollback the LP and send antimessages
+			rollback(lid);
+			send_outgoing_msgs(lid);
+
+			// Notify the CT in charge of managing this LP that the rollback is complete and
+			// events to the LP should not be discarded anymore
+			pack_msg(&rollback_control, LidToGid(lid), LidToGid(lid), ASYM_ROLLBACK_DONE, lvt(lid), lvt(lid), 0, NULL);
+			rollback_control->message_kind = control;
+			pt_put_lo_prio_msg(LPS(lid)->processing_thread, rollback_control);
 			continue;
 		}
 
@@ -532,6 +590,17 @@ void asym_schedule(void) {
 		// Put the event in the low prio queue of the associated PT
 		pt_put_lo_prio_msg(LPS(lid)->processing_thread, event);
 
+		// Modify port_events_to_fill to reflect last message sent.
+		// If one port becomes full, should modify lps_current_batch accordingly.  
+		// TO BE COMPLETED
+		port_events_to_fill[0]--; 
+		if(port_events_to_fill[0] == 0){
+			//Modifico lps_current_batch e ci rimuovo tutti i puntatori 
+			// ad LP gestiti del thread che è a 0 
+			printf("TODO\n");
+		}
+
+
 		#ifdef HAVE_CROSS_STATE
 		if(resume_execution && !is_blocked_state(LPS(lid)->state)) {
 			printf("ECS event is finished mark %llu !!!\n", LPS(lid)->wait_on_rendezvous);
@@ -544,6 +613,8 @@ void asym_schedule(void) {
 		}
 		#endif
 	}
+
+	rsfree(lps_current_batch);
 }
 
 /**

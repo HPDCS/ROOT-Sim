@@ -213,6 +213,7 @@ void process_bottom_halves(void) {
 					// A positive message is directly placed in the queue
 					list_insert(receiver->queue_in, timestamp, msg_to_process);
 
+
 					// Check if we've just inserted an out-of-order event.
 					// Here we check for a strictly minor timestamp since
 					// the queue is FIFO for same-timestamp events. Therefore,
