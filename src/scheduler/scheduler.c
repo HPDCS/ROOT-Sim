@@ -25,6 +25,7 @@
 */
 
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
 #include <datatypes/list.h>
@@ -470,24 +471,49 @@ void asym_process(void) {
 void asym_schedule(void) {
 	LID_t lid;
 	msg_t *event;
+	LP_State **lps_current_batch;
+	int* port_events_to_fill;
 	unsigned int i;
+
 	unsigned int bulk_sched = 1;
 
-	for(i = 0; i < bulk_sched; i++) {
+	// TO BE COMPLETED
+	//feedback_port_batch_size(all_bound_LP);
+
+	// Compute the total number of events necessary to fill all
+	// the input ports, considering the current batch value 
+	// and the current number of events yet to be processed in 
+	// each port  
+	int events_to_fill = 0; 
+	port_events_to_fill = malloc(sizeof(int)*(Threads[tid]->num_PTs));
+	for(i = 0; i < Threads[tid]->num_PTs; i++){
+		Thread_State* pt = Threads[tid]->PTs[i];
+		port_events_to_fill[i] = pt->port_batch_size - get_port_current_size(pt->input_port[PORT_PRIO_LO])
+		events_to_fill += port_events_to_fill[i];
+	}
+
+	// Create a copy of lps_bound_blocks in lps_current_batch which will
+	// be modified during scheduling in order to jump LPs bound to PT
+	// for whom the input port is already filled
+	lps_current_batch = rsalloc(sizeof(LP_State*)*n_prc); // Should avoid to alloc dynamically for performance
+	memcopy(lps_current_batch, lps_bound_blocks, sizeof(LP_State*)*n_prc);
+
+	for(i = 0; i < events_to_fill; i++) {
 
 		#ifdef HAVE_CROSS_STATE
 		bool resume_execution = false;
 		#endif
 
+
 		// Find next LP to be executed, depending on the chosen scheduler
 		switch (rootsim_config.scheduler) {
 
 			case SMALLEST_TIMESTAMP_FIRST:
-				lid = smallest_timestamp_first();
+				lid = asym_smallest_timestamp_first(lps_current_batch);
 				break;
 
 			default:
-				lid = smallest_timestamp_first();
+				lid = asym_smallest_timestamp_first(lps_current_batch);
 		}
 
 		// No logical process found with events to be processed
@@ -536,6 +562,17 @@ void asym_schedule(void) {
 		// Put the event in the low prio queue of the associated PT
 		pt_put_lo_prio_msg(LPS(lid)->processing_thread, event);
 
+		// Modify port_events_to_fill to reflect last message sent.
+		// If one port becomes full, should modify lps_current_batch accordingly.  
+		// TO BE COMPLETED
+		port_events_to_fill[0]--; 
+		if(ports_events_to_fill[0] == 0){
+			//Modifico lps_current_batch e ci rimuovo tutti i puntatori 
+			// ad LP gestiti del thread che è a 0 
+			printf("TODO\n");
+		}
+
+
 		#ifdef HAVE_CROSS_STATE
 		if(resume_execution && !is_blocked_state(LPS(lid)->state)) {
 			printf("ECS event is finished mark %llu !!!\n", LPS(lid)->wait_on_rendezvous);
@@ -548,6 +585,8 @@ void asym_schedule(void) {
 		}
 		#endif
 	}
+
+	rsfree(lps_current_batch);
 }
 
 /**

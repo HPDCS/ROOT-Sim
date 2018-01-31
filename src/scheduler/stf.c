@@ -59,3 +59,20 @@ LID_t smallest_timestamp_first(void) {
 	return stf_candidate.lid;
 }
 
+
+/* This function implements a selection strategy similar
+* to smallest timestamp first algorithm for the asymmetric 
+* architecture. It returns the LP of the logical process with 
+* the smallest timestamp among the set of LPs passed as parameter
+* This is necessary to skip LPs for whom the respective input port
+* is already filled. 
+*
+* TO BE IMPLEMENTED.
+* 
+* @author Stefano Conoci 
+* @author Alessandro Pellegrini */
+
+LID_t smallest_timestamp_first(**LP_State lps_current_batch){
+	return lps_current_batch[0]->lid;
+}
+
