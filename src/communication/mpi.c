@@ -133,8 +133,10 @@ void receive_remote_msgs(void){
 
 		if(MSG_PADDING + size <= SLAB_MSG_SIZE)
 			msg = get_msg_from_slab();
-		else
+		else{
 			msg = rsalloc(MSG_PADDING + size);
+			bzero(msg,MSG_PADDING);
+		}
 
 		/* - `pending_msgs` and `MPI_Recv` need to be in the same critical section.
 		 *    I could start an MPI_Recv with an empty incoming queue.
@@ -146,6 +148,12 @@ void receive_remote_msgs(void){
 		lock_mpi();
 		MPI_Recv(((char*)msg) + MSG_PADDING, size, MPI_BYTE, MPI_ANY_SOURCE, MSG_EVENT, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 		unlock_mpi();
+
+		//Note: variable array member of the struct could overlap the struct itself
+		if(MSG_PADDING + size > sizeof(msg_t) + msg->size){
+			printf("%d + %d > %d + %d\n",MSG_PADDING,size,sizeof(msg_t),msg->size);
+			abort();
+		}
 
 		validate_msg(msg);
 		insert_bottom_half(msg);
