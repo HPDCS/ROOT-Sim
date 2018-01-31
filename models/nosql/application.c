@@ -153,9 +153,9 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 
 bool OnGVT(unsigned int me, lp_state_type *state) {
 
-	printf("%d: %f\% (%d/%d)\n", me, 100 * state->committed_tx / (double)TOTAL_COMMITTED_TX, state->committed_tx, TOTAL_COMMITTED_TX);
+	//printf("%d: %f\% (%d/%d)\n", me, 100 * state->committed_tx / (double)TOTAL_COMMITTED_TX, state->committed_tx, TOTAL_COMMITTED_TX);
 
-	if(state->committed_tx < TOTAL_COMMITTED_TX)
+	if(state->committed_tx < TOTAL_COMMITTED_TX*10000)
 		return false;
 	return true;
 }

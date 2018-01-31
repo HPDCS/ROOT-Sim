@@ -125,7 +125,8 @@ msg_t *get_msg_from_slab(void) {
 void msg_release(msg_t *msg) {
 	if(sizeof(msg_t) + msg->size <= SLAB_MSG_SIZE) {
 		int thr = msg->alloc_tid;
-
+		if(thr >= n_cores)
+			abort();
 		spin_lock(&slab_lock[thr]);// TODO: avere un lock qua è un disastro, soprattutto al GVT! Sta cosa si può fare in maniera simile al flat combining!
 		slab_free(&msg_slab[thr], msg);
 		spin_unlock(&slab_lock[thr]);

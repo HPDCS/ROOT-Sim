@@ -165,7 +165,7 @@ static void *main_simulation_loop(void *arg) {
 	simulation_shutdown(EXIT_SUCCESS);
 }
 
-
+ 
 /**
 * This function implements the ROOT-Sim's entry point
 *
