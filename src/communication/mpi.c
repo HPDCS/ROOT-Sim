@@ -117,39 +117,42 @@ void receive_remote_msgs(void){
 	int size;
 	msg_t *msg;
 	MPI_Status status;
+	MPI_Status recv_status;
 	int pending;
 
 	if(!spin_trylock(&msgs_lock))
 		return;
+	while(true){
+		lock_mpi();
+		MPI_Iprobe(MPI_ANY_SOURCE, MSG_EVENT, MPI_COMM_WORLD, &pending, &status);
+		unlock_mpi();
 
-	lock_mpi();
-	MPI_Iprobe(MPI_ANY_SOURCE, MSG_EVENT, MPI_COMM_WORLD, &pending, &status);
-	unlock_mpi();
+		if(!pending)
+			goto out;
+		
+		size = -1;
+		MPI_Get_count(&status, MPI_BYTE, &size);
+		assert(size != -1);
 
-	if(!pending)
-		goto out;
+		if(MSG_PADDING + size <= SLAB_MSG_SIZE)
+			msg = get_msg_from_slab();
+		else
+			msg = rsalloc(MSG_PADDING + size);
 
-	MPI_Get_count(&status, MPI_BYTE, &size);
+		/* - `pending_msgs` and `MPI_Recv` need to be in the same critical section.
+		 *    I could start an MPI_Recv with an empty incoming queue.
+		 * - `MPI_Recv` and `insert_bottom_half` need to be in the same critical section.
+		 *    messages need to be inserted in arrival order into the BH
+		 */
 
-	if(MSG_PADDING + size <= SLAB_MSG_SIZE)
-		msg = get_msg_from_slab();
-	else
-		msg = rsalloc(MSG_PADDING + size);
+		// Receive the message
+		lock_mpi();
+		MPI_Recv(((char*)msg) + MSG_PADDING, size, MPI_BYTE, MPI_ANY_SOURCE, MSG_EVENT, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+		unlock_mpi();
 
-	/* - `pending_msgs` and `MPI_Recv` need to be in the same critical section.
-	 *    I could start an MPI_Recv with an empty incoming queue.
-	 * - `MPI_Recv` and `insert_bottom_half` need to be in the same critical section.
-	 *    messages need to be inserted in arrival order into the BH
-	 */
-
-	// Receive the message
-	lock_mpi();
-	MPI_Recv(((char*)msg) + MSG_PADDING, size, MPI_BYTE, MPI_ANY_SOURCE, MSG_EVENT, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-	unlock_mpi();
-
-	validate_msg(msg);
-	insert_bottom_half(msg);
-
+		validate_msg(msg);
+		insert_bottom_half(msg);
+	}
 out:
 	spin_unlock(&msgs_lock);
 }
