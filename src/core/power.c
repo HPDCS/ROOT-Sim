@@ -71,7 +71,7 @@ static int* pstate;
 static int max_pstate;			
 
 // Array of P-state values for all physical cores  
-static int* current_pstates; 				
+static int *current_pstates;
 
 // Defines if frequency boosting (such as TurboBoost) is either enabled or disabled 
 // static int boost;
@@ -105,6 +105,9 @@ static long gvt_start_energy;
 
 // Extra state variable for the static state machine, indicates the power consumption of the selected configuration
 static double converged_power;
+
+
+int gvt_interval_passed;
 
 
 //////////////////////////////////////////////////////////////////////////////
@@ -144,7 +147,7 @@ static int init_DVFS_management(void){
 		nb_phys_cores = nb_cores/2;
 	 else 
 		nb_phys_cores = nb_cores;
-	#ifdef DEBUG_POWER
+	#ifndef NDEBUG
 		printf("Virtual cores = %d - Physical cores = %d\n - Hyperthreading: %d", nb_cores, nb_phys_cores, hyperthreading);
 	#endif
 
@@ -215,7 +218,7 @@ static int init_DVFS_management(void){
 		}
 	}
 
-	#ifdef DEBUG_POWER
+	#ifndef NDEBUG
   		printf("Found %d p-states in the range from %d MHz to %d MHz\n",
   			max_pstate, pstate[max_pstate]/1000, pstate[0]/1000);
   	#endif
@@ -478,12 +481,11 @@ static int set_processing_pstate(int input_pstate){
 */
 int init_powercap_module(void){
 
-	if(!(rootsim_config.num_controllers > 0)){
-		printf("Required to init the power_cap module with num_controllers set to 0\n");
-		return -1;
+	if(rootsim_config.num_controllers < 1) {
+		return 0;
 	}
 
-	if(init_DVFS_management() != 0){
+	if(init_DVFS_management() != 0) {
 		printf("Cannot init DVFS management\n");
 		return -1;
 	}
@@ -629,7 +631,7 @@ void powercap_state_machine(void){
 
 		local_fast_completed = 1; 
 
-		#ifdef DEBUG_POWER
+		#ifndef NDEBUG
 			printf("Fast Interval - Number of Controllers: %d - CT P-state: %d" 
 					" - PT P-state: %d - Interval %lf ms - Powercap %lf Watt - Sampled Power %lf Watt\n",
 				current_controllers, current_pstates[0], current_pstates[current_controllers], 
@@ -766,8 +768,8 @@ static int static_state_machine(int fast_completed, __attribute__((unused)) int 
 
 		case 3:	// Save the power consumption of the converged configuration
 			
-			#ifdef DEBUG_POWER
-				printf("Converged to p-state %d for PTs\n", current_pstates[current_controllers]);
+			#ifndef NDEBUG
+			printf("Converged to p-state %d for PTs\n", current_pstates[current_controllers]);
 			#endif
 			converged_power = fast_power;
 			exploration_state = 4;
