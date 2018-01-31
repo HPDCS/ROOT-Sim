@@ -117,7 +117,6 @@ void receive_remote_msgs(void){
 	int size;
 	msg_t *msg;
 	MPI_Status status;
-	MPI_Status recv_status;
 	int pending;
 
 	if(!spin_trylock(&msgs_lock))
@@ -130,9 +129,7 @@ void receive_remote_msgs(void){
 		if(!pending)
 			goto out;
 		
-		size = -1;
 		MPI_Get_count(&status, MPI_BYTE, &size);
-		assert(size != -1);
 
 		if(MSG_PADDING + size <= SLAB_MSG_SIZE)
 			msg = get_msg_from_slab();
