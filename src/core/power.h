@@ -56,7 +56,7 @@ extern void powercap_state_machine(void);
 * 
 * Author: Stefano Conoci 
 */
-extern int init_powercap_module(void);
+extern void init_powercap_module(void);
 
 
 /* Frees memory used by the powercap related data structures

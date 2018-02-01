@@ -40,6 +40,8 @@ LP_State **lps_blocks = NULL;
  */
 __thread LP_State **lps_bound_blocks = NULL;
 
+__thread LP_State **asym_lps_mask = NULL;
+
 void initialize_control_blocks(void) {
 	register unsigned int i;
 

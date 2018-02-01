@@ -384,6 +384,11 @@ void asym_extract_generated_msgs(void) {
 	msg_t *msg;
 	for(i = 0; i < Threads[tid]->num_PTs; i++) {
 		while((msg = pt_get_out_msg(Threads[tid]->PTs[i]->tid)) != NULL) {
+			if(is_control_msg(msg->type) && msg->type == ASYM_ROLLBACK_ACK) {
+				LPS(GidToLid(msg->receiver))->state = LP_STATE_ROLLBACK_ALLOWED;
+				msg_release(msg);
+				continue;
+			}
 			insert_bottom_half(msg);
 		}
 	}

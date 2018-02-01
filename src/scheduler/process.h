@@ -51,11 +51,13 @@
 #define LP_STATE_RUNNING_ECS		0x00004
 #define LP_STATE_ROLLBACK		0x00008
 #define LP_STATE_SILENT_EXEC		0x00010
+#define LP_STATE_ROLLBACK_ALLOWED	0x00020
+#define LP_STATE_READY_FOR_SYNCH	0x00040	// This should be a blocked state! Check schedule() and stf()
 #define LP_STATE_SUSPENDED		0x01010
-#define LP_STATE_READY_FOR_SYNCH	0x00011	// This should be a blocked state! Check schedule() and stf()
 #define LP_STATE_WAIT_FOR_SYNCH		0x01001
 #define LP_STATE_WAIT_FOR_UNBLOCK	0x01002
 #define LP_STATE_WAIT_FOR_DATA		0x01004
+#define LP_STATE_WAIT_FOR_ROLLBACK_ACK	0x01008
 
 #define BLOCKED_STATE			0x01000
 #define is_blocked_state(state)	(bool)(state & BLOCKED_STATE)

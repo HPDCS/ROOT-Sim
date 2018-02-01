@@ -74,6 +74,9 @@ __thread msg_t *current_evt;
 /// This global variable tells the simulator what is the LP currently being scheduled on the current worker thread
 __thread void *current_state;
 
+/// This is a list to keep high-priority messages yet to be processed
+static __thread list(msg_t) hi_prio_list;
+
 /*
 * This function initializes the scheduler. In particular, it relies on MPI to broadcast to every simulation kernel process
 * which is the actual scheduling algorithm selected.
@@ -84,6 +87,8 @@ __thread void *current_state;
 */
 void scheduler_init(void) {
 	initialize_control_blocks();
+
+	hi_prio_list = new_list(msg_t);
 
 	#ifdef HAVE_PREEMPTION
 	preempt_init();
@@ -391,7 +396,7 @@ void activate_LP(LID_t lp, simtime_t lvt, void *evt, void *state) {
 	if(!is_blocked_state(LPS(lp)->state)) {
 //		printf("Deschedule %d\n",lp);
 		lp_alloc_deschedule();
-	}
+	}L
 	#endif
 
 	current_lp = idle_process;
@@ -422,6 +427,7 @@ bool check_rendevouz_request(LID_t lid){
  */
 void asym_process(void) {
 	msg_t *msg;
+	msg_t *hi_prio_msg;
 	LID_t lid;
 
 	// We initially check for high priority msgs. If one is present,
@@ -430,7 +436,7 @@ void asym_process(void) {
 	// them really high priority.
 	msg = pt_get_hi_prio_msg();
 	if(msg != NULL) {
-		// TODO
+		list_insert_tail(hi_prio_list, msg);
 		return;
 	}
 
@@ -441,14 +447,40 @@ void asym_process(void) {
 	if(msg == NULL)
 		return;
 
-	lid = GidToLid(msg->receiver);
+	// Check if we picked a stale message
+	hi_prio_msg = list_head(hi_prio_list);
+	while(hi_prio_msg != NULL) {
+		if(gid_equals(msg->receiver, hi_prio_msg->receiver) && msg->timestamp > hi_prio_msg->timestamp) {
+			// TODO: switch to bool
+			if(hi_prio_msg->event_content[0] == 0) {
+				hi_prio_msg->event_content[0] = 1;
+
+				// Send back an ack to start processing the actual rollback operation
+				pack_msg(&msg, LidToGid(lid), LidToGid(lid), ASYM_ROLLBACK_ACK, msg->timestamp, msg->timestamp, 0, NULL);
+				msg->message_kind = control;
+				pt_put_out_msg(msg);
+			}
+			return;
+		}
+	}
 
 	// If this is a control message telling that the LP rollback is complete,
 	// we reset the LP to READY
-	if(is_control_msg(msg->type) && msg->type == ASYM_ROLLBACK_DONE) {
-		LPS(lid)->state = LP_STATE_READY;
-		return;
+	if(is_control_msg(msg->type) && msg->type == ASYM_ROLLBACK_BUBBLE) {
+		hi_prio_msg = list_head(hi_prio_list);
+		while(hi_prio_msg != NULL) {
+			if(msg->mark == hi_prio_msg->mark) {
+				list_delete_by_content(hi_prio_list, hi_prio_msg);
+				msg_release(hi_prio_msg);
+				msg_release(msg);
+				return;
+			}
+			fprintf(stderr, "Cannot match a bubble!\n");
+			abort();
+		}
 	}
+
+	lid = GidToLid(msg->receiver);
 
 	// The LP might have been flagged as rolling back. In this case,
 	// discard the event and go on...
@@ -497,7 +529,9 @@ void asym_schedule(void) {
 	msg_t *rollback_control;
 	int port_events_to_fill[n_cores];
 	unsigned int i, thread_id_mask;
-	unsigned int events_to_fill = 0; 
+	unsigned int events_to_fill = 0;
+	char first_encountered = 0;
+	unsigned long long mark;
 
 	// Compute utilization rate of the input ports since the last call to asym_schedule
 	// and resize the ports if necessary
@@ -556,15 +590,33 @@ void asym_schedule(void) {
 
 		// If we have to rollback
 		if(LPS(lid)->state == LP_STATE_ROLLBACK) {
+			// Get a mark for the current batch of control messages
+			mark = generate_mark(lid);
+
+			// Send rollback notice in the high priority port
+			pack_msg(&rollback_control, LidToGid(lid), LidToGid(lid), ASYM_ROLLBACK_NOTICE, lvt(lid), lvt(lid), sizeof(char), &first_encountered);
+			rollback_control->message_kind = control;
+			rollback_control->mark = mark;
+			pt_put_hi_prio_msg(LPS(lid)->processing_thread, rollback_control);
+
+			// Set the LP to a blocked state
+			LPS(lid)->state = LP_STATE_WAIT_FOR_ROLLBACK_ACK;
+
+			// Notify the PT in charge of managing this LP that the rollback is complete and
+			// events to the LP should not be discarded anymore
+			pack_msg(&rollback_control, LidToGid(lid), LidToGid(lid), ASYM_ROLLBACK_BUBBLE, lvt(lid), lvt(lid), 0, NULL);
+			rollback_control->message_kind = control;
+			rollback_control->mark = mark;
+			pt_put_lo_prio_msg(LPS(lid)->processing_thread, rollback_control);
+
+			continue;
+		}
+
+		if(LPS(lid)->state == LP_STATE_ROLLBACK_ALLOWED) {
 			// Rollback the LP and send antimessages
 			rollback(lid);
 			send_outgoing_msgs(lid);
 
-			// Notify the CT in charge of managing this LP that the rollback is complete and
-			// events to the LP should not be discarded anymore
-			pack_msg(&rollback_control, LidToGid(lid), LidToGid(lid), ASYM_ROLLBACK_DONE, lvt(lid), lvt(lid), 0, NULL);
-			rollback_control->message_kind = control;
-			pt_put_lo_prio_msg(LPS(lid)->processing_thread, rollback_control);
 			continue;
 		}
 

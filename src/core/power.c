@@ -479,15 +479,15 @@ static int set_processing_pstate(int input_pstate){
 *
 * @Author: Stefano Conoci
 */
-int init_powercap_module(void){
+void init_powercap_module(void){
 
 	if(rootsim_config.num_controllers < 1) {
-		return 0;
+		return;
 	}
 
 	if(init_DVFS_management() != 0) {
-		printf("Cannot init DVFS management\n");
-		return -1;
+		fprintf(stderr, "Cannot init DVFS management\n");
+		exit(EXIT_FAILURE);
 	}
 
 	// Set all cores to the P-state with frequency equal to the controllers_freq parameter
@@ -498,12 +498,12 @@ int init_powercap_module(void){
 			pstate_config = i; 
 	
 	if(pstate_config == -1){
-		printf("init_powercap_module: The controllers_freq parameter is invalid for this system\n");
-		return -1;
+		fprintf(stderr, "init_powercap_module: The controllers_freq parameter is invalid for this system\n");
+		exit(EXIT_FAILURE);
 	}
 	if(set_pstate(pstate_config) != 0){
-		printf("init_powercap_module: set_pstate() error\n");
-		return -1;
+		fprintf(stderr, "init_powercap_module: set_pstate() error\n");
+		exit(EXIT_FAILURE);
 	}
 
 	// Set the powercap state machine to the source state
@@ -530,8 +530,6 @@ int init_powercap_module(void){
 
 	// Set GVT interval passed to 0. Not needed, introduced for clarity
 	gvt_interval_passed = 0;
-
-	return 0;
 }
 
 /**
