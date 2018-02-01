@@ -66,7 +66,6 @@ enum _control_msgs {
 // Message Codes for PVM
 #define MSG_INIT_MPI		200
 #define MSG_EVENT		2
-#define MSG_EVENT_LARGER	3
 //#define MSG_ACKNOWLEDGE		3
 #define MSG_GVT			10
 #define MSG_UNLOCK		11

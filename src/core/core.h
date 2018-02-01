@@ -143,7 +143,7 @@ typedef unsigned char phase_colour;
 #endif
 
 #define MSG_PADDING offsetof(msg_t, sender)
-#define MSG_META_SIZE (sizeof(msg_t) - MSG_PADDING)
+#define MSG_META_SIZE (offsetof(msg_t, event_content) - MSG_PADDING)
 
 /** The MPI datatype msg_mpi_t depends on the order of this struct.
    See src/communication/mpi.c for the implementation of the datatype */
@@ -155,7 +155,7 @@ typedef struct _msg_t {
 	// Pointers to attach messages to chains
 	struct _msg_t 		*next;
 	struct _msg_t 		*prev;
-	int			alloc_tid; // TODO: this should be moved into an external container, to avoid transmitting it!
+	unsigned int		alloc_tid; // TODO: this should be moved into an external container, to avoid transmitting it!
 
 	/* Place here all members which must be transmitted over the network. It is convenient not to reorder the members
 	 * of the structure. If new members have to be addedd, place them right before the "Model data" part.
@@ -191,7 +191,7 @@ typedef struct _msg_hdr_t {
 	// TODO: non serve davvero, togliere
 	int   			type;
 	unsigned long long	rendezvous_mark;	/// Unique identifier of the message, used for rendez-vous event
-	int			alloc_tid;
+	unsigned int		alloc_tid;
 	// TODO: fine togliere
 	simtime_t		timestamp;
 	simtime_t		send_time;

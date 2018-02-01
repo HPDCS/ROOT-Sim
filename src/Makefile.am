@@ -25,8 +25,9 @@ librootsim_a_SOURCES =	main.c \
 			arch/linux/jmp.S \
 			datatypes/array.c \
 			datatypes/calqueue.c \
-			datatypes/slab.c \
 			datatypes/msgchannel.c \
+			datatypes/slab.c \
+			datatypes/treiber.c \
 			mm/state.c \
 			mm/ecs.c \
 			mm/ecs_callback.S \
