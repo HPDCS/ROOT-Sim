@@ -250,6 +250,7 @@ void initialize_LP(LID_t lp) {
 	LPS(lp)->queue_in = new_list(msg_t);
 	LPS(lp)->queue_out = new_list(msg_hdr_t);
 	LPS(lp)->queue_states = new_list(state_t);
+	LPS(lp)->retirement_queue = new_list(msg_t);
 	LPS(lp)->rendezvous_queue = new_list(msg_t);
 
 	// Initialize the LP lock
@@ -439,6 +440,9 @@ void asym_process(void) {
 	msg = pt_get_hi_prio_msg();
 	if(msg != NULL) {
 		list_insert_tail(hi_prio_list, msg);
+		// Never change this return to anything else: we call asym_process()
+		// within asym_process() to forcely match a high priority queue when
+		// there could be a priority inversion between hi and lo prio ports.
 		return;
 	}
 
@@ -470,10 +474,12 @@ void asym_process(void) {
 	// Match a ROLLBACK_NOTICE with a ROLLBACK_BUBBLE and remove it from the
 	// local hi_priority_list.
 	if(is_control_msg(msg->type) && msg->type == ASYM_ROLLBACK_BUBBLE) {
+		asym_process();
+
 		hi_prio_msg = list_head(hi_prio_list);
 		while(hi_prio_msg != NULL) {
 			if(msg->mark == hi_prio_msg->mark) {
-				msg_release(msg);
+//				msg_release(msg);
 
 				// TODO: switch to bool
 				if(hi_prio_msg->event_content[0] == 0) {
@@ -484,7 +490,7 @@ void asym_process(void) {
 				}
 
 				list_delete_by_content(hi_prio_list, hi_prio_msg);
-				msg_release(hi_prio_msg);
+//				msg_release(hi_prio_msg);
 				return;
 			}
 			hi_prio_msg = list_next(hi_prio_msg);
@@ -499,6 +505,7 @@ void asym_process(void) {
 
 	// Process this event
 	activate_LP(lid, msg->timestamp, msg, LPS(lid)->current_base_pointer);
+	msg->unprocessed = false;
 
 	// Send back to the controller the (possibly) generated events
 	asym_send_outgoing_msgs(lid);
@@ -556,11 +563,19 @@ void asym_schedule(void) {
 		events_to_fill += port_events_to_fill[i];
 	}
 
-	// Create a copy of lps_bound_blocks in lps_current_batch which will
+	// Create a copy of lps_bound_blocks in asym_lps_mask which will
 	// be modified during scheduling in order to jump LPs bound to PT
 	// for whom the input port is already filled
-	memcpy(asym_lps_mask, lps_bound_blocks, sizeof(LP_State*)*n_prc_per_thread); 
-
+	memcpy(asym_lps_mask, lps_bound_blocks, sizeof(LP_State *) * n_prc_per_thread); 
+/*
+	for(i = 0; i < n_prc_per_thread; i++) {
+		Thread_State *pt = Threads[asym_lps_mask[i]->processing_thread];
+		if(get_port_current_size(pt->input_port[PORT_PRIO_LO]) == pt->port_batch_size) {
+			asym_lps_mask[i] = NULL;
+			events_to_fill -= pt->port_batch_size;
+		}
+	}
+*/
 	for(i = 0; i < events_to_fill; i++) {
 
 		#ifdef HAVE_CROSS_STATE
@@ -616,6 +631,16 @@ void asym_schedule(void) {
 			LPS(lid)->state = LP_STATE_READY;
 			send_outgoing_msgs(lid);
 
+			// Prune the retirement queue for this LP
+			while(true) {
+				event = list_head(LPS(lid)->retirement_queue);
+				if(event == NULL) {
+					break;
+				}
+				list_delete_by_content(LPS(lid)->retirement_queue, event);
+				msg_release(event);
+			}
+
 			continue;
 		}
 
@@ -651,6 +676,7 @@ void asym_schedule(void) {
 		thread_id_mask = LPS(lid)->processing_thread;
 
 		// Put the event in the low prio queue of the associated PT
+		event->unprocessed = true;
 		pt_put_lo_prio_msg(thread_id_mask, event);
 
 		// Modify port_events_to_fill to reflect last message sent

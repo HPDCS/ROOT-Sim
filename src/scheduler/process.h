@@ -114,6 +114,9 @@ typedef struct _LP_state {
 	/// Output messages queue
 	list(msg_hdr_t)		queue_out;
 
+	/// Event retirement queue
+	list(msg_t)		retirement_queue;
+
 	/// Saved states queue
 	list(state_t)		queue_states;
 

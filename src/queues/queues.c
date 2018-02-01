@@ -185,6 +185,11 @@ void process_bottom_halves(void) {
 						abort();
 					} 
 
+
+					#ifdef HAVE_MPI
+					register_incoming_msg(msg_to_process);
+					#endif
+
 					// If the matched message is in the past, we have to rollback
 					if(matched_msg->timestamp <= lvt(lid_receiver)) {
 
@@ -195,15 +200,19 @@ void process_bottom_halves(void) {
 
 						receiver->state = LP_STATE_ROLLBACK;
 
+						if(matched_msg->unprocessed == false)
+							goto delete;
+
+						// Unchain the event from the input queue
+						list_delete_by_content(receiver->queue_in, matched_msg);
+						list_insert_tail(LPS(lid_receiver)->retirement_queue, matched_msg);
+					} else {
+					    delete:
+						// Unchain the event from the input queue
+						list_delete_by_content(receiver->queue_in, matched_msg);
+						// Delete the matched message
+						msg_release(matched_msg);
 					}
-
-					#ifdef HAVE_MPI
-					register_incoming_msg(msg_to_process);
-					#endif
-
-					// Delete the matched message
-					list_delete_by_content(receiver->queue_in, matched_msg);
-					msg_release(matched_msg);
 
 					break;
 
@@ -227,9 +236,10 @@ void process_bottom_halves(void) {
 
 						receiver->state = LP_STATE_ROLLBACK;
 					}
-#ifdef HAVE_MPI
+
+					#ifdef HAVE_MPI
 					register_incoming_msg(msg_to_process);
-#endif
+					#endif
 					break;
 
 				// It's a control message
