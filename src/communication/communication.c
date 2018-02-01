@@ -122,12 +122,12 @@ msg_t *get_msg_from_slab(void) {
 	// Unlink the whole Treiber stack and release all nodes.
 	// If at least one node is available, reuse it for the
 	// current allocation.
-	to_release = treiber_detach(msg_treiber[local_tid]);
+	to_release = treiber_detach(msg_treiber[tid]);
 	while(to_release != NULL) {
 		if(msg == NULL) {
 			msg = to_release->data;
 		} else {
-			slab_free(&msg_slab[local_tid], to_release->data);
+			slab_free(&msg_slab[tid], to_release->data);
 		}
 		to_release_nxt = to_release->next;
 		rsfree(to_release);
@@ -138,7 +138,7 @@ msg_t *get_msg_from_slab(void) {
 		goto out;
 	}
 
-	msg = (msg_t *)slab_alloc(&msg_slab[local_tid]);
+	msg = (msg_t *)slab_alloc(&msg_slab[tid]);
 
     out:
 	bzero(msg, SLAB_MSG_SIZE);
@@ -151,7 +151,7 @@ void msg_release(msg_t *msg) {
 
 	if(sizeof(msg_t) + msg->size <= SLAB_MSG_SIZE) {
 		thr = msg->alloc_tid;
-		if(local_tid == thr) {
+		if(tid == thr) {
 			slab_free(&msg_slab[thr], msg);
 		} else {
 			treiber_push(msg_treiber[thr], msg);
