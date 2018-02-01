@@ -188,7 +188,7 @@ void ECS(void) {
 }
 
 void ecs_init(void) {
-	printf("Invocation of ECS Init\n");
+	//printf("Invocation of ECS Init\n");
 	ioctl_fd = open("/dev/ktblmgr", O_RDONLY);
 	if (ioctl_fd <= -1) {
 		rootsim_error(true, "Error in opening special device file. ROOT-Sim is compiled for using the ktblmgr linux kernel module, which seems to be not loaded.");
@@ -249,7 +249,7 @@ void setup_ecs_on_segment(msg_t *msg) {
 
 	// In case of a remote ECS, protect the memory
 	if(GidToKernel(msg->sender) != kid) {
-		printf("Mi sincronizzo con un LP remoto e proteggo la memoria\n");
+		//printf("Mi sincronizzo con un LP remoto e proteggo la memoria\n");
 		bzero(&sched_info, sizeof(ioctl_info));
 		sched_info.base_address = get_base_pointer(msg->sender);
 		ioctl(ioctl_fd, IOCTL_PROTECT_REMOTE_LP, &sched_info);
@@ -270,7 +270,7 @@ void ecs_send_pages(msg_t *msg) {
 	the_pages->base_address = the_request->base_address;
 	the_pages->count = the_request->count;
 
-	printf("LP %d sending %d pages from %p to %d\n", msg->receiver, the_request->count, the_request->base_address, msg->sender);
+	//printf("LP %d sending %d pages from %p to %d\n", msg->receiver, the_request->count, the_request->base_address, msg->sender);
 	fflush(stdout);
 
 	memcpy(the_pages->buffer, the_request->base_address, the_request->count * PAGE_SIZE);
@@ -288,12 +288,12 @@ void ecs_install_pages(msg_t *msg) {
 	ecs_page_request_t *the_pages = (ecs_page_request_t *)&(msg->event_content);
 	ioctl_info sched_info;
 
-	printf("LP %d receiving %d pages from %p from %d\n", msg->receiver, the_pages->count, the_pages->base_address, msg->sender);
+	//printf("LP %d receiving %d pages from %p from %d\n", msg->receiver, the_pages->count, the_pages->base_address, msg->sender);
 	fflush(stdout);
 
 	memcpy(the_pages->base_address, the_pages->buffer, the_pages->count * PAGE_SIZE);
 
-	printf("Completed the installation of the page copying %d bytes\n", the_pages->count * PAGE_SIZE);
+	//printf("Completed the installation of the page copying %d bytes\n", the_pages->count * PAGE_SIZE);
 	fflush(stdout);
 
 	bzero(&sched_info, sizeof(ioctl_info));
@@ -304,7 +304,7 @@ void ecs_install_pages(msg_t *msg) {
 	// TODO: se accedo in write non devo fare questa chiamata!
 //	ioctl(ioctl_fd, IOCTL_SET_PAGE_PRIVILEGE, &sched_info);
 
-	printf("Completato il setup dei privilegi\n");
+	//printf("Completato il setup dei privilegi\n");
 	fflush(stdout);
 }
 
