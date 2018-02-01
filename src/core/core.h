@@ -144,7 +144,7 @@ typedef unsigned char phase_colour;
 #endif
 
 #define MSG_PADDING offsetof(msg_t, sender)
-#define MSG_META_SIZE (sizeof(msg_t) - MSG_PADDING)
+#define MSG_META_SIZE (offsetof(msg_t, event_content) - MSG_PADDING)
 
 /** The MPI datatype msg_mpi_t depends on the order of this struct.
    See src/communication/mpi.c for the implementation of the datatype */
