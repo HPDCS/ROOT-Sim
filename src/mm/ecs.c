@@ -288,7 +288,7 @@ void ecs_install_pages(msg_t *msg) {
 	ecs_page_request_t *the_pages = (ecs_page_request_t *)&(msg->event_content);
 	ioctl_info sched_info;
 
-	printf("LP %d receiving %d pages from %p from %d\n", msg->receiver, the_pages->count, the_pages->base_address, msg->sender);
+	//printf("LP %d receiving %d pages from %p from %d\n", msg->receiver, the_pages->count, the_pages->base_address, msg->sender);
 	fflush(stdout);
 
 	memcpy(the_pages->base_address, the_pages->buffer, the_pages->count * PAGE_SIZE);
