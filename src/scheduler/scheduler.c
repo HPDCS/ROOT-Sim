@@ -88,8 +88,6 @@ static __thread list(msg_t) hi_prio_list;
 void scheduler_init(void) {
 	initialize_control_blocks();
 
-	hi_prio_list = new_list(msg_t);
-
 	#ifdef HAVE_PREEMPTION
 	preempt_init();
 	#endif
@@ -278,6 +276,10 @@ void initialize_LP(LID_t lp) {
 }
 
 
+void initialize_processing_thread(void) {
+	communication_init_thread();
+	hi_prio_list = new_list(msg_t);
+}
 
 
 void initialize_worker_thread(void) {
@@ -462,46 +464,41 @@ void asym_process(void) {
 			}
 			return;
 		}
+		hi_prio_msg = list_next(hi_prio_msg);
 	}
 
-	// If this is a control message telling that the LP rollback is complete,
-	// we reset the LP to READY
+	// Match a ROLLBACK_NOTICE with a ROLLBACK_BUBBLE and remove it from the
+	// local hi_priority_list.
 	if(is_control_msg(msg->type) && msg->type == ASYM_ROLLBACK_BUBBLE) {
 		hi_prio_msg = list_head(hi_prio_list);
 		while(hi_prio_msg != NULL) {
 			if(msg->mark == hi_prio_msg->mark) {
+				msg_release(msg);
+
+				// TODO: switch to bool
+				if(hi_prio_msg->event_content[0] == 0) {
+					// Send back an ack to start processing the actual rollback operation
+					pack_msg(&msg, LidToGid(lid), LidToGid(lid), ASYM_ROLLBACK_ACK, msg->timestamp, msg->timestamp, 0, NULL);
+					msg->message_kind = control;
+					pt_put_out_msg(msg);
+				}
+
 				list_delete_by_content(hi_prio_list, hi_prio_msg);
 				msg_release(hi_prio_msg);
-				msg_release(msg);
 				return;
 			}
-			fprintf(stderr, "Cannot match a bubble!\n");
-			abort();
+			hi_prio_msg = list_next(hi_prio_msg);
 		}
+		fprintf(stderr, "Cannot match a bubble!\n");
+		abort();
 	}
 
 	lid = GidToLid(msg->receiver);
 
-	// The LP might have been flagged as rolling back. In this case,
-	// discard the event and go on...
-	if(LPS(lid)->state == LP_STATE_ROLLBACK) {
-		return;
-	}
-
-//	printf("PT %d scheduling LP %d on event at %f sent by %d\n", tid, lid_to_int(lid), msg->timestamp, gid_to_int(msg->sender));
-
-	// Try to set the process as running, only if the process is currently ready
-	if(!CAS(&LPS(lid)->state, LP_STATE_READY, LP_STATE_RUNNING)) {
-		// We cannot schedule this LP as it is being flagged as rollback
-		return;
-	}
+	// TODO: find a way to set the LP to RUNNING without incurring in a race condition with the CT
 
 	// Process this event
 	activate_LP(lid, msg->timestamp, msg, LPS(lid)->current_base_pointer);
-
-	// Set the LP back to ready state, only if it has not been set as running
-	CAS(&LPS(lid)->state, LP_STATE_RUNNING, LP_STATE_READY);
-	
 
 	// Send back to the controller the (possibly) generated events
 	asym_send_outgoing_msgs(lid);
@@ -614,7 +611,9 @@ void asym_schedule(void) {
 
 		if(LPS(lid)->state == LP_STATE_ROLLBACK_ALLOWED) {
 			// Rollback the LP and send antimessages
+			LPS(lid)->state = LP_STATE_ROLLBACK;
 			rollback(lid);
+			LPS(lid)->state = LP_STATE_READY;
 			send_outgoing_msgs(lid);
 
 			continue;

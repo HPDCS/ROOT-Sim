@@ -38,6 +38,8 @@
 #include <statistics/statistics.h>
 #include <scheduler/process.h>
 
+#define NDEBUG
+
 // Interval of time needed to obtain an accurate sample of energy consumption. Expressed in milliseconds.  
 #define FAST_SAMPLE_INTERVAL 30
 
@@ -124,7 +126,7 @@ int gvt_interval_passed;
 */
 static int init_DVFS_management(void){
 	char fname[64];
-	char* freq_available;
+	char freq_available[256];
 	char* filename;
 	int frequency, i, package_last_core, read_frequency;
 	FILE* governor_file;
@@ -182,18 +184,16 @@ static int init_DVFS_management(void){
 		printf("Cannot open scaling_available_frequencies file\n");
 		return(-1);
 	}
-	freq_available = rsalloc(sizeof(char)*256);
 	fgets(freq_available, 256, available_freq_file);
 	pstate = rsalloc(sizeof(int)*32);
 	i = 0; 
-	char * end;
+	char *end = NULL;
 	for (frequency = strtol(freq_available, &end, 10); freq_available != end; frequency = strtol(freq_available, &end, 10)){
 		pstate[i]=frequency;
-		freq_available = end;
+		strncpy(freq_available, end, 256);
   		i++;
 	}
   	max_pstate = --i;
-  	rsfree(freq_available);
 
   	// Retrieve current P-state for all cores
   	current_pstates = rsalloc(sizeof(int)*nb_phys_cores);
@@ -564,7 +564,7 @@ void powercap_state_machine(void){
 	end_energy = get_energy();
 
 	// Compute powercap error, if time interval for error computation has passed
-	if((double) end_time-error_start_time / 1000000 > POWERCAP_ERROR_INTERVAL){	
+	if((double)(end_time - error_start_time) / 1000000 > POWERCAP_ERROR_INTERVAL){	
 		// Compute average power consumption in the sampling interval
 		error_time_interval = (double) end_time-error_start_time;
 		error_energy_interval = (double) end_energy-error_start_energy;
@@ -621,7 +621,7 @@ void powercap_state_machine(void){
 	// Compute statistics for the last fast time interval, if completed 
 	// Compute power consumption but not throughput as it is necessary
 	// to wait for GVT calculation to obtain a meaningful value
-	if((double) end_time-fast_start_time / 1000000 > FAST_SAMPLE_INTERVAL){
+	if((double)(end_time - fast_start_time) / 1000000 > FAST_SAMPLE_INTERVAL){
 		// Compute average power consumption in the sampling interval
 		fast_time_interval = (double) end_time-fast_start_time;
 		fast_energy_interval = (double) end_energy-fast_start_energy;

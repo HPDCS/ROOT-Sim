@@ -199,7 +199,7 @@ void rollback(LID_t lid) {
 
 	// Sanity check
 	if(LPS(lid)->state != LP_STATE_ROLLBACK) {
-		rootsim_error(false, "I'm asked to roll back LP %d's execution, but rollback_bound is not set. Ignoring...\n", LidToGid(lid));
+		rootsim_error(false, "I'm asked to roll back LP %d's execution, but it's not flagged as an LP to rollback\n", LidToGid(lid));
 		return;
 	}
 

@@ -178,7 +178,7 @@ static void *main_simulation_loop(void *arg) {
     processing:
 
 	// To enforce data separation more, we need a slab allocator for processing threads as well
-	communication_init_thread();
+	initialize_processing_thread();
 
 	#ifdef HAVE_CROSS_STATE
 	lp_alloc_thread_init();

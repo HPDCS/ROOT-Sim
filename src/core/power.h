@@ -24,7 +24,6 @@
 
 #pragma once
 
-// #define NDEBUG
 // #define OVERHEAD_POWER
 
 /*

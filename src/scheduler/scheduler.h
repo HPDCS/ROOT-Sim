@@ -73,6 +73,7 @@ extern void schedule(void);
 extern void asym_schedule(void);
 extern void asym_process(void);
 extern void initialize_LP(LID_t lp);
+extern void initialize_processing_thread(void);
 extern void initialize_worker_thread(void);
 extern void activate_LP(LID_t lp, simtime_t lvt, void *evt, void *state);
 

@@ -221,7 +221,9 @@ void ParallelScheduleNewEvent(unsigned int gid_receiver, simtime_t timestamp, un
 
 	insert_outgoing_msg(event);
 
+#ifndef NDEBUG
     out:
+#endif
 	switch_to_application_mode();
 }
 
