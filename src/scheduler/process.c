@@ -67,6 +67,10 @@ void initialize_control_blocks(void) {
 void initialize_binding_blocks(void) {
 	lps_bound_blocks = (LP_State **)rsalloc(n_prc * sizeof(LP_State *));
 	bzero(lps_bound_blocks, sizeof(LP_State *) * n_prc);
+
+	// Also initialize the mask for asym_schedule used in asymmetric executions
+	asym_lps_mask = (LP_State **)rsalloc(n_prc * sizeof(LP_State *));
+	bzero(asym_lps_mask, sizeof(LP_State *) * n_prc);
 }
 
 inline void LPS_bound_set(unsigned int entry, LP_State *lp_block) {
@@ -74,22 +78,46 @@ inline void LPS_bound_set(unsigned int entry, LP_State *lp_block) {
 }
 
 inline int LPS_bound_foreach(int (*f)(LID_t, GID_t, unsigned int, void *), void *data) {
-        LID_t lid;
-        GID_t gid;
-        unsigned int i;
+		LID_t lid;
+		GID_t gid;
+		unsigned int i;
 	
-        int ret = 0;
+		int ret = 0;
 
-        for(i = 0; i < n_prc_per_thread; i++) {
+		for(i = 0; i < n_prc_per_thread; i++) {
 		lid = LPS_bound(i)->lid;
-                gid = LidToGid(lid);
-                ret = f(lid, gid, lid_to_int(lid), data);
-                if(ret != 0)
-                        break;
-        }
+				gid = LidToGid(lid);
+				ret = f(lid, gid, lid_to_int(lid), data);
+				if(ret != 0)
+						break;
+		}
 
-        return ret;
+		return ret;
 
+}
+
+// In asymmetric executions, it cycles on all LPs currently bound to the controller
+// thread. It skips NULL pointers as they represent LP's mapped to ports which are already
+// filled. 
+inline int LPS_asym_mask_foreach(int (*f)(LID_t, GID_t, unsigned int, void *), void *data) {
+		LID_t lid;
+		GID_t gid;
+		unsigned int i;
+		LP_State *mask;
+	
+		int ret = 0;
+
+		for(i = 0; i < n_prc_per_thread; i++) {
+			if((mask = LPS_bound_mask(i)) != NULL){
+				lid = mask->lid;
+				gid = LidToGid(lid);
+				ret = f(lid, gid, lid_to_int(lid), data);
+				if(ret != 0)
+					break;
+			}
+		}
+
+		return ret;
 }
 
 inline int LPS_foreach(int (*f)(LID_t, GID_t, unsigned int, void *), void *data) {

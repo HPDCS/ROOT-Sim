@@ -495,9 +495,8 @@ void asym_schedule(void) {
 	LID_t lid;
 	msg_t *event;
 	msg_t *rollback_control;
-	LP_State **lps_current_batch;
 	int port_events_to_fill[n_cores];
-	unsigned int i;
+	unsigned int i, thread_id_mask;
 	unsigned int events_to_fill = 0; 
 
 	// Compute utilization rate of the input ports since the last call to asym_schedule
@@ -529,8 +528,7 @@ void asym_schedule(void) {
 	// Create a copy of lps_bound_blocks in lps_current_batch which will
 	// be modified during scheduling in order to jump LPs bound to PT
 	// for whom the input port is already filled
-	lps_current_batch = rsalloc(sizeof(LP_State*)*n_prc); // Should avoid to alloc dynamically for performance
-	memcpy(lps_current_batch, lps_bound_blocks, sizeof(LP_State*)*n_prc);
+	memcpy(asym_lps_mask, lps_bound_blocks, sizeof(LP_State*)*n_prc_per_thread); 
 
 	for(i = 0; i < events_to_fill; i++) {
 
@@ -543,11 +541,11 @@ void asym_schedule(void) {
 		switch (rootsim_config.scheduler) {
 
 			case SMALLEST_TIMESTAMP_FIRST:
-				lid = asym_smallest_timestamp_first(lps_current_batch);
+				lid = asym_smallest_timestamp_first();
 				break;
 
 			default:
-				lid = asym_smallest_timestamp_first(lps_current_batch);
+				lid = asym_smallest_timestamp_first();
 		}
 
 		// No logical process found with events to be processed
@@ -599,19 +597,21 @@ void asym_schedule(void) {
 		}
 		#endif
 
+		thread_id_mask = LPS(lid)->processing_thread;
+
 		// Put the event in the low prio queue of the associated PT
-		pt_put_lo_prio_msg(LPS(lid)->processing_thread, event);
+		pt_put_lo_prio_msg(thread_id_mask, event);
 
-		// Modify port_events_to_fill to reflect last message sent.
-		// If one port becomes full, should modify lps_current_batch accordingly.  
-		// TO BE COMPLETED
-		port_events_to_fill[0]--; 
-		if(port_events_to_fill[0] == 0){
-			//Modifico lps_current_batch e ci rimuovo tutti i puntatori 
-			// ad LP gestiti del thread che è a 0 
-			printf("TODO\n");
+		// Modify port_events_to_fill to reflect last message sent
+		port_events_to_fill[thread_id_mask]--; 
+		// If one port becomes full, should set all pointers to LP
+		// mapped to the PT of the respective port to NULL 
+		if(port_events_to_fill[thread_id_mask] == 0){
+			for(i = 0; i<n_prc_per_thread; i++){
+				if(asym_lps_mask[i]->processing_thread == thread_id_mask)
+					asym_lps_mask[i] = NULL;
+			}
 		}
-
 
 		#ifdef HAVE_CROSS_STATE
 		if(resume_execution && !is_blocked_state(LPS(lid)->state)) {
@@ -625,8 +625,6 @@ void asym_schedule(void) {
 		}
 		#endif
 	}
-
-	rsfree(lps_current_batch);
 }
 
 /**

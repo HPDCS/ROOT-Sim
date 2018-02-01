@@ -143,6 +143,11 @@ typedef struct _LP_state {
 extern LP_State **lps_blocks;
 extern __thread LP_State **lps_bound_blocks;
 
+// Mask of LP bound to thread that are yet to be filled 
+// in the current execution of asym_schedule. It reset 
+// to lps_bound_block each time asym_schedule is called. 
+extern __thread LP_State **asym_lps_mask;
+
 /** This macro retrieves the LVT for the current LP. There is a small interval window
  *  where the value returned is the one of the next event to be processed. In particular,
  *  this happens during the scheduling, when the bound is advanced to the next event to
@@ -152,11 +157,12 @@ extern __thread LP_State **lps_bound_blocks;
 
 #define LPS(lid) ((__builtin_choose_expr(is_lid(lid), lps_blocks[lid.id], (void)0)))
 #define LPS_bound(lid) (__builtin_choose_expr(__builtin_types_compatible_p(__typeof__ (lid), unsigned int), lps_bound_blocks[lid], (void)0))
-
+#define LPS_bound_mask(lid) (__builtin_choose_expr(__builtin_types_compatible_p(__typeof__ (lid), unsigned int), asym_lps_mask[lid], (void)0))
 
 extern inline void LPS_bound_set(unsigned int entry, LP_State *lp_block);
 extern inline int LPS_foreach(int (*f)(LID_t, GID_t, unsigned int, void *), void *data);
 extern inline int LPS_bound_foreach(int (*f)(LID_t, GID_t, unsigned int, void *), void *data);
+extern inline int LPS_asym_mask_foreach(int (*f)(LID_t, GID_t, unsigned int, void *), void *data);
 extern void initialize_control_blocks(void);
 extern void initialize_binding_blocks(void);
 
