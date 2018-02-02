@@ -533,7 +533,7 @@ void SystemInit(int argc, char **argv) {
 	}
 
 	// If power management is enabled, initialize it 
-	init_powercap_module();
+//	init_powercap_module();
 
 	if (master_kernel()) {
 

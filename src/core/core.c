@@ -42,6 +42,7 @@
 
 /// Barrier for all worker threads
 barrier_t all_thread_barrier;
+barrier_t controller_barrier;
 
 /// Mapping between kernel instances and logical processes
 unsigned int *kernel;
@@ -123,10 +124,12 @@ void base_init(void) {
 	register unsigned int i;
 	GID_t gid;
 
-	if(rootsim_config.num_controllers > 0)
-		barrier_init(&all_thread_barrier, rootsim_config.num_controllers);
-	else
-		barrier_init(&all_thread_barrier, n_cores);
+	if(rootsim_config.num_controllers > 0) {
+		barrier_init(&controller_barrier, rootsim_config.num_controllers);
+	} else {
+	}
+
+	barrier_init(&all_thread_barrier, n_cores);
 
 	n_prc = 0;
 	ProcessEvent = rsalloc(sizeof(void *) * n_prc_tot);

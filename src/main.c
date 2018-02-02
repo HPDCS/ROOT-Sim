@@ -129,9 +129,9 @@ static void *main_simulation_loop(void *arg) {
 		
 		// We assume that thread with tid 0 should be a controller. 
 		// Should be adapted for MPI. 
-		if(master_thread()){
-			powercap_state_machine();
-		}
+	//	if(master_thread()){
+	//		powercap_state_machine();
+	//	}
 
 		// Recompute the LPs-thread binding
 		rebind_LPs();

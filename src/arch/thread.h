@@ -151,6 +151,7 @@ extern msg_t *pt_get_hi_prio_msg(void);
 
 /// Barrier for all worker threads
 extern barrier_t all_thread_barrier;
+extern barrier_t controller_barrier;
 
 extern Thread_State **Threads;
 

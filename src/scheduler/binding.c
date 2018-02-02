@@ -356,7 +356,7 @@ void rebind_LPs(void) {
 		reset_min_in_transit(tid);
 		#endif
 
-		if(thread_barrier(&all_thread_barrier)) {
+		if(thread_barrier(&controller_barrier)) {
 			atomic_set(&worker_thread_reduction, binding_threads);
 		}
 

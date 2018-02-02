@@ -147,6 +147,10 @@ msg_t *get_msg_from_slab(void) {
 }
 
 void msg_release(msg_t *msg) {
+
+	return;
+
+
 	unsigned int thr;
 
 	if(sizeof(msg_t) + msg->size <= SLAB_MSG_SIZE) {

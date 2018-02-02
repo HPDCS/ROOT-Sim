@@ -317,7 +317,11 @@ void initialize_worker_thread(void) {
 	LPS_bound_foreach(__helper1, NULL);
 
 	// Worker Threads synchronization barrier: they all should start working together
-	thread_barrier(&all_thread_barrier);
+	if(rootsim_config.num_controllers == 0) {
+		thread_barrier(&all_thread_barrier);
+	} else {
+		thread_barrier(&controller_barrier);
+	}
 
 	if(master_thread() && master_kernel())
 		printf("done\n");
@@ -335,7 +339,11 @@ void initialize_worker_thread(void) {
 	LPS_bound_foreach(__helper2, NULL);
 
 	// Worker Threads synchronization barrier: they all should start working together
-	thread_barrier(&all_thread_barrier);
+	if(rootsim_config.num_controllers == 0) {
+		thread_barrier(&all_thread_barrier);
+	} else {
+		thread_barrier(&controller_barrier);
+	}
 
         #ifdef HAVE_PREEMPTION
         if(!rootsim_config.disable_preemption)
@@ -549,7 +557,7 @@ void asym_schedule(void) {
 	LID_t lid;
 	msg_t *event;
 	msg_t *rollback_control;
-	int port_events_to_fill[n_cores];
+	unsigned int port_events_to_fill[n_cores];
 	unsigned int i, thread_id_mask;
 	unsigned int events_to_fill = 0;
 	char first_encountered = 0;
@@ -578,15 +586,17 @@ void asym_schedule(void) {
 	// Compute the total number of events necessary to fill all
 	// the input ports, considering the current batch value 
 	// and the current number of events yet to be processed in 
-	// each port  
+	// each port
 	for(i = 0; i < Threads[tid]->num_PTs; i++){
 		Thread_State* pt = Threads[tid]->PTs[i];
 		toAdd = pt->port_batch_size - get_port_current_size(pt->input_port[PORT_PRIO_LO]);
 		// Might be negative as we reduced the port size, and it might 
 		// have been already full
 		if(toAdd >= 0){	
-			port_events_to_fill[i] = toAdd;
+			port_events_to_fill[pt->tid] = toAdd;
 			events_to_fill += toAdd;
+		} else {
+			port_events_to_fill[pt->tid] = 0;
 		}
 	}
 
@@ -603,6 +613,7 @@ void asym_schedule(void) {
 		}
 	}
 
+	events_to_fill = 1;
 	for(i = 0; i < events_to_fill; i++) {
 
 		printf("SCHED: mask: ");
@@ -723,10 +734,11 @@ void asym_schedule(void) {
 		port_events_to_fill[thread_id_mask]--; 
 		// If one port becomes full, should set all pointers to LP
 		// mapped to the PT of the respective port to NULL 
+		printf("thread_id_mask: %u\n", thread_id_mask);
 		if(port_events_to_fill[thread_id_mask] == 0){
 			for(i = 0; i<n_prc_per_thread; i++){
-				if(asym_lps_mask[i] != NULL && asym_lps_mask[i]->processing_thread == thread_id_mask)
-					asym_lps_mask[i] = NULL;
+		//		if(asym_lps_mask[i] != NULL && asym_lps_mask[i]->processing_thread == thread_id_mask)
+		//			asym_lps_mask[i] = NULL;
 			}
 		}
 

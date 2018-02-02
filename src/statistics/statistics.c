@@ -446,7 +446,7 @@ void statistics_stop(int exit_code) {
 		/* (only one thread does the reduction, not necessarily the master) */
 
 
-		thread_barrier(&all_thread_barrier);
+		thread_barrier(&controller_barrier);
 
 		if(master_kernel() && master_thread()) {
 

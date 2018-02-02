@@ -16,7 +16,7 @@ double ran;
 void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_type *event_content, unsigned int size, void *ptr) {
 	unsigned int w;
 
-	//printf("%d executing %d at %f\n", me, event_type, now);
+	printf("%d executing %d at %f\n", me, event_type, now);
 
 	event_content_type new_event_content;
 
