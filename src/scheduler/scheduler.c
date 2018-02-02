@@ -536,6 +536,7 @@ void asym_schedule(void) {
 	unsigned int events_to_fill = 0;
 	char first_encountered = 0;
 	unsigned long long mark;
+	long toAdd;
 
 	// Compute utilization rate of the input ports since the last call to asym_schedule
 	// and resize the ports if necessary
@@ -548,7 +549,7 @@ void asym_schedule(void) {
 			pt->port_batch_size++; // Might be better to increase by a percentage of the previous value, but its another parameter
 		}
 		// If utilization rate is too low, the size of the port should be decreased
-		else if (utilization_rate > LOWER_PORT_THRESHOLD){
+		else if (utilization_rate < LOWER_PORT_THRESHOLD){
 			pt->port_batch_size--;
 		}
 	}
@@ -559,8 +560,13 @@ void asym_schedule(void) {
 	// each port  
 	for(i = 0; i < Threads[tid]->num_PTs; i++){
 		Thread_State* pt = Threads[tid]->PTs[i];
-		port_events_to_fill[i] = pt->port_batch_size - get_port_current_size(pt->input_port[PORT_PRIO_LO]);
-		events_to_fill += port_events_to_fill[i];
+		toAdd = pt->port_batch_size - get_port_current_size(pt->input_port[PORT_PRIO_LO]);
+		// Might be negative as we reduced the port size, and it might 
+		// have been already full
+		if(toAdd >= 0){	
+			port_events_to_fill[i] = toAdd;
+			events_to_fill += toAdd;
+		}
 	}
 
 	// Create a copy of lps_bound_blocks in asym_lps_mask which will
