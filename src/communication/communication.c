@@ -360,22 +360,15 @@ void send_outgoing_msgs(LID_t lid) {
 
 
 void asym_send_outgoing_msgs(LID_t lid) {
-
 	register unsigned int i = 0;
 	msg_t *msg;
-	msg_hdr_t *msg_hdr;
 
 	for(i = 0; i < LPS(lid)->outgoing_buffer.size; i++) {
-		msg_hdr = get_msg_hdr_from_slab();
 		msg = LPS(lid)->outgoing_buffer.outgoing_msgs[i];
-		msg_to_hdr(msg_hdr, msg);
 
 		pt_put_out_msg(msg);
 //		printf("Putting in the output port the following message\n");
 //		dump_msg_content(msg);
-
-		// register the message in the sender's output queue, for antimessage management
-		list_insert(LPS(lid)->queue_out, send_time, msg_hdr);
 	}
 
 	LPS(lid)->outgoing_buffer.size = 0;
@@ -384,6 +377,7 @@ void asym_send_outgoing_msgs(LID_t lid) {
 void asym_extract_generated_msgs(void) {
 	unsigned int i;
 	msg_t *msg;
+	msg_hdr_t *msg_hdr;
 	for(i = 0; i < Threads[tid]->num_PTs; i++) {
 		while((msg = pt_get_out_msg(Threads[tid]->PTs[i]->tid)) != NULL) {
 			if(is_control_msg(msg->type) && msg->type == ASYM_ROLLBACK_ACK) {
@@ -391,7 +385,14 @@ void asym_extract_generated_msgs(void) {
 				msg_release(msg);
 				continue;
 			}
-			insert_bottom_half(msg);
+			msg_hdr = get_msg_hdr_from_slab();
+			Send(msg);
+			msg_to_hdr(msg_hdr, msg);
+			// register the message in the sender's output queue, for antimessage management
+			// We can use msg->sender here (ensuring data separation) because we're extracting
+			// messages from an output port coming from a PT managed by the current CT, therefore
+			// involving only local LPs.
+			list_insert(LPS(GidToLid(msg->sender))->queue_out, send_time, msg_hdr);
 		}
 	}
 }

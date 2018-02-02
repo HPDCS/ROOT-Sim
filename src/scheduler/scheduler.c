@@ -59,6 +59,8 @@
 #include <arch/linux/modules/cross_state_manager/cross_state_manager.h>
 #include <queues/xxhash.h>
 
+static __thread atomic_t notice_count;
+
 /// This is used to keep track of how many LPs were bound to the current KLT
 __thread unsigned int n_prc_per_thread;
 
@@ -378,9 +380,9 @@ void activate_LP(LID_t lp, simtime_t lvt, void *evt, void *state) {
 	lp_alloc_schedule();
 	#endif
 
-	if(is_blocked_state(LPS(lp)->state)){
-		rootsim_error(true, "Critical condition: LP %d has a wrong state -> %d. Aborting...\n", gid_to_int(LidToGid(lp)), LPS(lp)->state);
-	}
+//	if(is_blocked_state(LPS(lp)->state)){
+//		rootsim_error(true, "Critical condition: LP %d has a wrong state -> %d. Aborting...\n", gid_to_int(LidToGid(lp)), LPS(lp)->state);
+//	}
 
 	#ifdef ENABLE_ULT
 	context_switch(&kernel_context, &LPS(lp)->context);
@@ -430,6 +432,7 @@ bool check_rendevouz_request(LID_t lid){
  */
 void asym_process(void) {
 	msg_t *msg;
+	msg_t *msg_hi;
 	msg_t *hi_prio_msg;
 	LID_t lid;
 
@@ -456,13 +459,16 @@ void asym_process(void) {
 	// Check if we picked a stale message
 	hi_prio_msg = list_head(hi_prio_list);
 	while(hi_prio_msg != NULL) {
-		if(gid_equals(msg->receiver, hi_prio_msg->receiver) && msg->timestamp > hi_prio_msg->timestamp) {
+		if(gid_equals(msg->receiver, hi_prio_msg->receiver) && !is_control_msg(msg->type) && msg->timestamp > hi_prio_msg->timestamp) {
 			// TODO: switch to bool
 			if(hi_prio_msg->event_content[0] == 0) {
 				hi_prio_msg->event_content[0] = 1;
 
+				printf("Sending a ROLLBACK_ACK for LP %d at time %f\n", msg->receiver.id, msg->timestamp);
+				atomic_sub(&notice_count, 1);
+
 				// Send back an ack to start processing the actual rollback operation
-				pack_msg(&msg, LidToGid(lid), LidToGid(lid), ASYM_ROLLBACK_ACK, msg->timestamp, msg->timestamp, 0, NULL);
+				pack_msg(&msg, msg->receiver, msg->receiver, ASYM_ROLLBACK_ACK, msg->timestamp, msg->timestamp, 0, NULL);
 				msg->message_kind = control;
 				pt_put_out_msg(msg);
 			}
@@ -474,8 +480,9 @@ void asym_process(void) {
 	// Match a ROLLBACK_NOTICE with a ROLLBACK_BUBBLE and remove it from the
 	// local hi_priority_list.
 	if(is_control_msg(msg->type) && msg->type == ASYM_ROLLBACK_BUBBLE) {
-		asym_process();
+//		asym_process();
 
+           ariprova:
 		hi_prio_msg = list_head(hi_prio_list);
 		while(hi_prio_msg != NULL) {
 			if(msg->mark == hi_prio_msg->mark) {
@@ -483,8 +490,11 @@ void asym_process(void) {
 
 				// TODO: switch to bool
 				if(hi_prio_msg->event_content[0] == 0) {
+					printf("Sending a ROLLBACK_ACK (2)  for LP %d at time %f\n", msg->receiver.id, msg->timestamp);
+					atomic_sub(&notice_count, 1);
+
 					// Send back an ack to start processing the actual rollback operation
-					pack_msg(&msg, LidToGid(lid), LidToGid(lid), ASYM_ROLLBACK_ACK, msg->timestamp, msg->timestamp, 0, NULL);
+					pack_msg(&msg, msg->receiver, msg->receiver, ASYM_ROLLBACK_ACK, msg->timestamp, msg->timestamp, 0, NULL);
 					msg->message_kind = control;
 					pt_put_out_msg(msg);
 				}
@@ -495,6 +505,14 @@ void asym_process(void) {
 			}
 			hi_prio_msg = list_next(hi_prio_msg);
 		}
+
+		msg_hi = pt_get_hi_prio_msg();
+		while(msg_hi != NULL) {
+			list_insert_tail(hi_prio_list, msg_hi);
+			msg_hi = pt_get_hi_prio_msg();
+		}
+		goto ariprova;
+
 		fprintf(stderr, "Cannot match a bubble!\n");
 		abort();
 	}
@@ -538,6 +556,8 @@ void asym_schedule(void) {
 	unsigned long long mark;
 	long toAdd;
 
+	printf("NOTICE COUNT: %d\n", atomic_read(&notice_count));
+
 	// Compute utilization rate of the input ports since the last call to asym_schedule
 	// and resize the ports if necessary
 	for(i = 0; i < Threads[tid]->num_PTs; i++){
@@ -573,8 +593,8 @@ void asym_schedule(void) {
 	// Create a copy of lps_bound_blocks in asym_lps_mask which will
 	// be modified during scheduling in order to jump LPs bound to PT
 	// for whom the input port is already filled
-	memcpy(asym_lps_mask, lps_bound_blocks, sizeof(LP_State *) * n_prc_per_thread); 
-/*
+	memcpy(asym_lps_mask, lps_bound_blocks, sizeof(LP_State *) * n_prc_per_thread);
+
 	for(i = 0; i < n_prc_per_thread; i++) {
 		Thread_State *pt = Threads[asym_lps_mask[i]->processing_thread];
 		if(get_port_current_size(pt->input_port[PORT_PRIO_LO]) == pt->port_batch_size) {
@@ -582,8 +602,15 @@ void asym_schedule(void) {
 			events_to_fill -= pt->port_batch_size;
 		}
 	}
-*/
+
 	for(i = 0; i < events_to_fill; i++) {
+
+		printf("SCHED: mask: ");
+		int jk;
+		for(jk = 0; jk < n_prc_per_thread; jk++) {
+			printf("%p, ", asym_lps_mask[jk]);
+		}
+		puts("");
 
 		#ifdef HAVE_CROSS_STATE
 		bool resume_execution = false;
@@ -612,6 +639,10 @@ void asym_schedule(void) {
 			// Get a mark for the current batch of control messages
 			mark = generate_mark(lid);
 
+			printf("Sending a ROLLBACK_NOTICE for LP %d at time %f\n", lid.id, lvt(lid));
+
+			atomic_add(&notice_count, 1);
+
 			// Send rollback notice in the high priority port
 			pack_msg(&rollback_control, LidToGid(lid), LidToGid(lid), ASYM_ROLLBACK_NOTICE, lvt(lid), lvt(lid), sizeof(char), &first_encountered);
 			rollback_control->message_kind = control;
@@ -623,6 +654,8 @@ void asym_schedule(void) {
 
 			// Notify the PT in charge of managing this LP that the rollback is complete and
 			// events to the LP should not be discarded anymore
+			printf("Sending a ROLLBACK_BUBBLE for LP %d at time %f\n", lid.id, lvt(lid));
+
 			pack_msg(&rollback_control, LidToGid(lid), LidToGid(lid), ASYM_ROLLBACK_BUBBLE, lvt(lid), lvt(lid), 0, NULL);
 			rollback_control->message_kind = control;
 			rollback_control->mark = mark;
@@ -692,7 +725,7 @@ void asym_schedule(void) {
 		// mapped to the PT of the respective port to NULL 
 		if(port_events_to_fill[thread_id_mask] == 0){
 			for(i = 0; i<n_prc_per_thread; i++){
-				if(asym_lps_mask[i]->processing_thread == thread_id_mask)
+				if(asym_lps_mask[i] != NULL && asym_lps_mask[i]->processing_thread == thread_id_mask)
 					asym_lps_mask[i] = NULL;
 			}
 		}
