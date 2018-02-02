@@ -188,6 +188,10 @@ void gvt_fini(void){
  * detection based on passed simulation time.
  */
 inline simtime_t get_last_gvt(void) {
+	// TODO: è un po' una porcata, perché potrebbe esserci una corsa
+	// critica su new_gvt, ma è da verificare
+	if(Threads[tid]->incarnation == THREAD_PROCESSING)
+		return new_gvt;
 	return last_gvt;
 }
 

@@ -86,11 +86,11 @@ LID_t asym_smallest_timestamp_first(void){
 		(void)gid;
 		(void)num;
 
-		printf("STF: LP %d in state %d", num, lp->state);
+//		printf("STF: LP %d in state %d", num, lp->state);
 	
 		// If waiting for synch, don't take into account the LP
 		if(is_blocked_state(lp->state)) {
-			printf(" skipped\n");
+//			printf(" skipped\n");
 			return 0; // continue to the next element
 		}
 	
@@ -101,28 +101,28 @@ LID_t asym_smallest_timestamp_first(void){
 		} else {
 			// Compute the next event's timestamp. Translate the id from the local binding to the local ID
 			evt_time = next_event_timestamp(lid);
-			printf(" evt_time: %f", (evt_time < INFTY ? evt_time : -1.0));
+//			printf(" evt_time: %f", (evt_time < INFTY ? evt_time : -1.0));
 		}
 
-		printf(" candidate->time: %f",  (candidate->time < INFTY ? candidate->time : -1.0));
+//		printf(" candidate->time: %f",  (candidate->time < INFTY ? candidate->time : -1.0));
 	
 		if(evt_time < candidate->time && evt_time < INFTY) {
 			candidate->time = evt_time;
 			candidate->lid = lid;
 		}
 
-		printf("\n");
+//		printf("\n");
 
 		return 0; // continue to the next element
 	}
 
 	LPS_asym_mask_foreach(__helper, &stf_candidate);
 
-	if(stf_candidate.time == INFTY)
+/*	if(stf_candidate.time == INFTY)
 		printf("SCHED: NO LP TO SCHEDULE\n");
 	else
 		printf("SCHED: picking LP %d at time %f\n", stf_candidate.lid, stf_candidate.time);
-
+*/
 	return stf_candidate.lid;
 }
 

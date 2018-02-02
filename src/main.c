@@ -129,9 +129,9 @@ static void *main_simulation_loop(void *arg) {
 		
 		// We assume that thread with tid 0 should be a controller. 
 		// Should be adapted for MPI. 
-	//	if(master_thread()){
-	//		powercap_state_machine();
-	//	}
+		if(master_thread()){
+			powercap_state_machine();
+		}
 
 		// Recompute the LPs-thread binding
 		rebind_LPs();
@@ -160,9 +160,15 @@ static void *main_simulation_loop(void *arg) {
 				printf("TIME BARRIER %f - %d preemptions - %d in platform mode - %d would preempt\n", my_time_barrier, atomic_read(&preempt_count), atomic_read(&overtick_platform), atomic_read(&would_preempt));
 				#else
 				printf("TIME BARRIER %f\n", my_time_barrier);
-
-
 				#endif
+
+				printf("\tPorts: ");
+				int i;
+				for(i = 0; i < n_cores; i++) {
+					if(Threads[i]->incarnation == THREAD_PROCESSING)
+						printf("%d/%d ", atomic_read(&Threads[i]->input_port[1]->size), Threads[i]->port_batch_size);
+				}
+				printf("\n");
 
 				fflush(stdout);
 			}

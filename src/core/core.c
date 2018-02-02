@@ -127,6 +127,7 @@ void base_init(void) {
 	if(rootsim_config.num_controllers > 0) {
 		barrier_init(&controller_barrier, rootsim_config.num_controllers);
 	} else {
+		barrier_init(&controller_barrier, n_cores);
 	}
 
 	barrier_init(&all_thread_barrier, n_cores);

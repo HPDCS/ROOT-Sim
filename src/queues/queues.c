@@ -221,7 +221,52 @@ void process_bottom_halves(void) {
 				case positive:
 
 					// A positive message is directly placed in the queue
-					list_insert(receiver->queue_in, timestamp, msg_to_process);
+	//				list_insert(receiver->queue_in, timestamp, msg_to_process);
+	do {\
+		__typeof__(msg_to_process) __n; /* in-block scope variable */\
+		__typeof__(msg_to_process) __new_n = (msg_to_process);\
+		size_t __key_position = my_offsetof((receiver->queue_in), timestamp);\
+		double __key;\
+		size_t __size_before;\
+		rootsim_list *__l;\
+		do {\
+			__l = (rootsim_list *)(receiver->queue_in);\
+			assert(__l);\
+			__size_before = __l->size;\
+			if(__l->size == 0) { /* Is the list empty? */\
+				__new_n->prev = NULL;\
+				__new_n->next = NULL;\
+				__l->head = __new_n;\
+				__l->tail = __new_n;\
+				break;\
+			}\
+			__key = get_key(__new_n); /* Retrieve the new node's key */\
+			/* Scan from the tail, as keys are ordered in an increasing order */\
+			__n = __l->tail;\
+			while(__n != NULL && __key < get_key(__n)) {\
+				__n = __n->prev;\
+			}\
+			/* Insert depending on the position */\
+		 	if(__n == __l->tail) { /* tail */\
+				__new_n->next = NULL;\
+				((__typeof(msg_to_process))__l->tail)->next = __new_n;\
+				__new_n->prev = __l->tail;\
+				__l->tail = __new_n;\
+			} else if(__n == NULL) { /* head */\
+				__new_n->prev = NULL;\
+				__new_n->next = __l->head;\
+				((__typeof(msg_to_process))__l->head)->prev = __new_n;\
+				__l->head = __new_n;\
+			} else { /* middle */\
+				__new_n->prev = __n;\
+				__new_n->next = __n->next;\
+				__n->next->prev = __new_n;\
+				__n->next = __new_n;\
+			}\
+		} while(0);\
+		__l->size++;\
+		assert(__l->size == (__size_before + 1));\
+	} while(0);
 
 
 					// Check if we've just inserted an out-of-order event.

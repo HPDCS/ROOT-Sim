@@ -472,7 +472,7 @@ void asym_process(void) {
 			if(hi_prio_msg->event_content[0] == 0) {
 				hi_prio_msg->event_content[0] = 1;
 
-				printf("Sending a ROLLBACK_ACK for LP %d at time %f\n", msg->receiver.id, msg->timestamp);
+//				printf("Sending a ROLLBACK_ACK for LP %d at time %f\n", msg->receiver.id, msg->timestamp);
 				atomic_sub(&notice_count, 1);
 
 				// Send back an ack to start processing the actual rollback operation
@@ -498,7 +498,7 @@ void asym_process(void) {
 
 				// TODO: switch to bool
 				if(hi_prio_msg->event_content[0] == 0) {
-					printf("Sending a ROLLBACK_ACK (2)  for LP %d at time %f\n", msg->receiver.id, msg->timestamp);
+//g					printf("Sending a ROLLBACK_ACK (2)  for LP %d at time %f\n", msg->receiver.id, msg->timestamp);
 					atomic_sub(&notice_count, 1);
 
 					// Send back an ack to start processing the actual rollback operation
@@ -564,11 +564,11 @@ void asym_schedule(void) {
 	unsigned long long mark;
 	long toAdd;
 
-	printf("NOTICE COUNT: %d\n", atomic_read(&notice_count));
+//	printf("NOTICE COUNT: %d\n", atomic_read(&notice_count));
 
 	// Compute utilization rate of the input ports since the last call to asym_schedule
 	// and resize the ports if necessary
-	for(i = 0; i < Threads[tid]->num_PTs; i++){
+/*	for(i = 0; i < Threads[tid]->num_PTs; i++){
 		Thread_State* pt = Threads[tid]->PTs[i];
 		int port_size = pt->port_batch_size;
 		double utilization_rate = ((double ) port_size - get_port_current_size(pt->input_port[PORT_PRIO_LO]))/ (double) port_size;
@@ -582,7 +582,7 @@ void asym_schedule(void) {
 				pt->port_batch_size--;
 		}
 	}
-
+*/
 	// Compute the total number of events necessary to fill all
 	// the input ports, considering the current batch value 
 	// and the current number of events yet to be processed in 
@@ -613,15 +613,14 @@ void asym_schedule(void) {
 		}
 	}
 
-	events_to_fill = 1;
 	for(i = 0; i < events_to_fill; i++) {
 
-		printf("SCHED: mask: ");
-		int jk;
-		for(jk = 0; jk < n_prc_per_thread; jk++) {
-			printf("%p, ", asym_lps_mask[jk]);
-		}
-		puts("");
+//		printf("SCHED: mask: ");
+//		int jk;
+//		for(jk = 0; jk < n_prc_per_thread; jk++) {
+//			printf("%p, ", asym_lps_mask[jk]);
+//		}
+//		puts("");
 
 		#ifdef HAVE_CROSS_STATE
 		bool resume_execution = false;
@@ -650,7 +649,7 @@ void asym_schedule(void) {
 			// Get a mark for the current batch of control messages
 			mark = generate_mark(lid);
 
-			printf("Sending a ROLLBACK_NOTICE for LP %d at time %f\n", lid.id, lvt(lid));
+//			printf("Sending a ROLLBACK_NOTICE for LP %d at time %f\n", lid.id, lvt(lid));
 
 			atomic_add(&notice_count, 1);
 
@@ -665,7 +664,7 @@ void asym_schedule(void) {
 
 			// Notify the PT in charge of managing this LP that the rollback is complete and
 			// events to the LP should not be discarded anymore
-			printf("Sending a ROLLBACK_BUBBLE for LP %d at time %f\n", lid.id, lvt(lid));
+//			printf("Sending a ROLLBACK_BUBBLE for LP %d at time %f\n", lid.id, lvt(lid));
 
 			pack_msg(&rollback_control, LidToGid(lid), LidToGid(lid), ASYM_ROLLBACK_BUBBLE, lvt(lid), lvt(lid), 0, NULL);
 			rollback_control->message_kind = control;
@@ -734,11 +733,11 @@ void asym_schedule(void) {
 		port_events_to_fill[thread_id_mask]--; 
 		// If one port becomes full, should set all pointers to LP
 		// mapped to the PT of the respective port to NULL 
-		printf("thread_id_mask: %u\n", thread_id_mask);
+//		printf("thread_id_mask: %u\n", thread_id_mask);
 		if(port_events_to_fill[thread_id_mask] == 0){
 			for(i = 0; i<n_prc_per_thread; i++){
-		//		if(asym_lps_mask[i] != NULL && asym_lps_mask[i]->processing_thread == thread_id_mask)
-		//			asym_lps_mask[i] = NULL;
+				if(asym_lps_mask[i] != NULL && asym_lps_mask[i]->processing_thread == thread_id_mask)
+					asym_lps_mask[i] = NULL;
 			}
 		}
 

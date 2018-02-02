@@ -501,9 +501,11 @@ void init_powercap_module(void){
 		fprintf(stderr, "init_powercap_module: The controllers_freq parameter is invalid for this system\n");
 		exit(EXIT_FAILURE);
 	}
-	if(set_pstate(pstate_config) != 0){
-		fprintf(stderr, "init_powercap_module: set_pstate() error\n");
-		exit(EXIT_FAILURE);
+	if(rootsim_config.powercap_exploration != 2) {
+		if(set_pstate(pstate_config) != 0){
+			fprintf(stderr, "init_powercap_module: set_pstate() error\n");
+			exit(EXIT_FAILURE);
+		}
 	}
 
 	// Set the powercap state machine to the source state
@@ -648,6 +650,8 @@ void powercap_state_machine(void){
 			case 1: 
 				static_controllers_state_machine(local_gvt_completed);
 				break; 
+			case 2:
+				break;
 			default:
 				printf("Invalid powercap_exploration parameter\n");
 				break;

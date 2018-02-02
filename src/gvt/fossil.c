@@ -55,6 +55,8 @@ void fossil_collection(LID_t lid, simtime_t time_barrier) {
 	msg_t *last_kept_event;
 	double committed_events;
 
+	time_barrier *= 0.5;
+
 	// State list must be handled specifically, as nodes point to malloc'd
 	// nodes. We therefore manually scan the list and free the memory.
 	while( (state = list_head(LPS(lid)->queue_states)) != NULL && state->lvt < time_barrier) {
@@ -101,7 +103,7 @@ void adopt_new_gvt(simtime_t new_gvt) {
 
 	// If needed, call the CCGS subsystem
 	if(compute_snapshot) {
-		ccgs_compute_snapshot(time_barrier_pointer, new_gvt);
+//		ccgs_compute_snapshot(time_barrier_pointer, new_gvt);
 	}
 
 	for(i = 0; i < n_prc_per_thread; i++) {
