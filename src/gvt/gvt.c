@@ -35,11 +35,11 @@
 #include <core/power.h>
 #include <scheduler/process.h>
 #include <scheduler/scheduler.h> // this is for n_prc_per_thread
-//#include <scheduler/binding.h> // this is for force_rebind_GLP
 #include <statistics/statistics.h>
 #include <mm/dymelor.h>
 #include <communication/mpi.h>
 #include <communication/gvt.h>
+
 
 enum kernel_phases {
 	kphase_start,
@@ -124,6 +124,11 @@ static simtime_t *local_min;
 
 static simtime_t *local_min_barrier;
 
+// The number of threads participating to the GVT computation on a single node depends on whether
+// we are running with the symmetric or asymmetric configuration, and it can potentially change
+// over time. This variable tells how many threads are participating to the GVT.
+static unsigned int gvt_participants;
+
 /**
 * Initialization of the GVT subsystem
 *
@@ -141,6 +146,12 @@ void gvt_init(void) {
 	for(i = 0; i < n_cores; i++) {
 		local_min[i] = INFTY;
 		local_min_barrier[i] = INFTY;
+	}
+
+	if(rootsim_config.num_controllers > 0) {
+		gvt_participants = rootsim_config.num_controllers;
+	} else {
+		gvt_participants = n_cores;
 	}
 
 	timer_start(gvt_timer);
@@ -243,7 +254,7 @@ simtime_t GVT_phases(void){
 
 		if(atomic_read(&counter_B) == 0){
 			simtime_t agreed_vt = INFTY;
-			for(i = 0; i < n_cores; i++) {
+			for(i = 0; i < gvt_participants; i++) {
 				agreed_vt = min(local_min[i], agreed_vt);
 			}
 			return agreed_vt;
@@ -323,13 +334,13 @@ simtime_t gvt_operations(void) {
 			commit_kvt_tkn = 1;
 			idle_tkn = 1;
 
-			atomic_set(&counter_initialized, n_cores);
-			atomic_set(&counter_kvt, n_cores);
-			atomic_set(&counter_finalized, n_cores);
+			atomic_set(&counter_initialized, gvt_participants);
+			atomic_set(&counter_kvt, gvt_participants);
+			atomic_set(&counter_finalized, gvt_participants);
 
-			atomic_set(&counter_A, n_cores);
-			atomic_set(&counter_send, n_cores);
-			atomic_set(&counter_B, n_cores);
+			atomic_set(&counter_A, gvt_participants);
+			atomic_set(&counter_send, gvt_participants);
+			atomic_set(&counter_B, gvt_participants);
 
 			kernel_phase = kphase_start;
 

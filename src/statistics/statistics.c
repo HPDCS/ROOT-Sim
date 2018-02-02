@@ -874,8 +874,13 @@ double statistics_get_lp_data(unsigned int type, LID_t lid) {
 			ret = lp_stats[lid_to_int(lid)].exponential_event_time;
 			break;
 
-		default:
-			rootsim_error(true, "Wrong statistics get type: %d. Aborting...\n", type);
+		case STAT_EVENT:
+			ret = lp_stats[lid_to_int(lid)].tot_events;
+			break;
+
+		case STAT_COMMITTED:
+			ret = lp_stats[lid_to_int(lid)].committed_events;
+			break;
 	}
 
 	return ret;
