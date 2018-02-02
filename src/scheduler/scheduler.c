@@ -546,11 +546,12 @@ void asym_schedule(void) {
 		double utilization_rate = ((double ) port_size - get_port_current_size(pt->input_port[PORT_PRIO_LO]))/ (double) port_size;
 		// If utilization rate is too high, the size of the port should be increased
 		if(utilization_rate > UPPER_PORT_THRESHOLD){
-			pt->port_batch_size++; // Might be better to increase by a percentage of the previous value, but its another parameter
+				pt->port_batch_size++; // Might be better to increase by a percentage of the previous value, but its another parameter
 		}
 		// If utilization rate is too low, the size of the port should be decreased
 		else if (utilization_rate < LOWER_PORT_THRESHOLD){
-			pt->port_batch_size--;
+			if(pt->port_batch_size > 1)
+				pt->port_batch_size--;
 		}
 	}
 
