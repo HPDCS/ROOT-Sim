@@ -39,6 +39,7 @@
 #include <statistics/statistics.h>
 #include <gvt/gvt.h>
 #include <mm/dymelor.h>
+#include <core/power.h>
 
 /// Barrier for all worker threads
 barrier_t all_thread_barrier;
@@ -254,6 +255,7 @@ void simulation_shutdown(int code) {
 			scheduler_fini();
 			gvt_fini();
 			communication_fini();
+			shutdown_powercap_module();
 			base_fini();
 		}
 

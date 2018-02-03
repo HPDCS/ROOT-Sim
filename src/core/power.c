@@ -108,6 +108,8 @@ static long gvt_start_energy;
 // Extra state variable for the static state machine, indicates the power consumption of the selected configuration
 static double converged_power;
 
+// Variables needed to track the execution time and average power consumption of the overall execution
+static long execution_start_time, execution_start_energy; 
 
 int gvt_interval_passed;
 
@@ -522,6 +524,10 @@ void init_powercap_module(void){
 	error_start_time = fast_start_time;
 	error_start_energy = fast_start_energy;
 
+	// Start timer and read initial energy for the overall execution averages
+	execution_start_time = fast_start_time;
+	execution_start_energy = fast_start_energy;
+
 	// Start timer and read initial energy for the gvt interval
 	gvt_start_time = fast_start_time;
 	gvt_start_energy = fast_start_energy;
@@ -565,7 +571,7 @@ void powercap_state_machine(void){
 	end_time = get_time();
 	end_energy = get_energy();
 
-	// Compute powercap error, if time interval for error computation has passed
+	// Compute powercap error and average power, if time interval for error computation has passed
 	if((double)(end_time - error_start_time) / 1000000 > POWERCAP_ERROR_INTERVAL){	
 		// Compute average power consumption in the sampling interval
 		error_time_interval = (double) end_time-error_start_time;
@@ -686,10 +692,21 @@ void powercap_state_machine(void){
 */
 void shutdown_powercap_module(void){
 
+	long end_time, end_energy;
+	double total_time, avg_power, total_energy; 
+	
+	end_time = get_time();
+	end_energy = get_energy();
+
+	total_time = (double) (end_time - execution_start_time)/1000000000;
+	total_energy = (double) (end_energy - execution_start_energy)/1000000;
+	avg_power = total_energy/total_time;
+
+	printf("Execution time: %lf s - Average power: %lf Watt - Powercap error: %lf percent\n", total_time, avg_power, error_weighted);
+	
 	rsfree(pstate);
 	rsfree(current_pstates);
 
-	printf("Powercap error percentage: %lf\n", error_weighted);
 }
 
 

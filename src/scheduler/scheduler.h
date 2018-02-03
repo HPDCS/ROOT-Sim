@@ -66,6 +66,9 @@
 */ 
 #define LOWER_PORT_THRESHOLD 0.5
 
+// This port defines the maximum logical size for the input queues
+#define MAX_PORT_SIZE 100
+
 /* Functions invoked by other modules */
 extern void scheduler_init(void);
 extern void scheduler_fini(void);

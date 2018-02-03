@@ -585,8 +585,8 @@ void asym_schedule(void) {
 		// Check limits
 		if(pt->port_batch_size == 0)
 			pt->port_batch_size = 1;
-		if(pt->port_batch_size > 500)
-			pt->port_batch_size = 500;
+		if(pt->port_batch_size > MAX_PORT_SIZE)
+			pt->port_batch_size = MAX_PORT_SIZE;
 	}
 
 	// Compute the total number of events necessary to fill all
