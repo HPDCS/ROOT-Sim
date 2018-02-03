@@ -144,7 +144,7 @@ void *get_msg(msg_channel *mc) {
 }
 
 // Retrive the current amount of events in the respective input port 
-inline int get_port_current_size(msg_channel *mc){
+int get_port_current_size(msg_channel *mc){
 	return atomic_read(&mc->size);
 }
 

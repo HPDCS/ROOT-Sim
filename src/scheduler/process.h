@@ -111,6 +111,9 @@ typedef struct _LP_state {
 	/// Pointer to the last correctly processed event
 	msg_t			*bound;
 
+	/// Send time of the last event extracted from the output port of the PT executing events of this LP
+	simtime_t		last_sent_time;
+
 	/// Output messages queue
 	list(msg_hdr_t)		queue_out;
 

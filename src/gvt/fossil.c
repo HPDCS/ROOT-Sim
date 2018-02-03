@@ -55,7 +55,7 @@ void fossil_collection(LID_t lid, simtime_t time_barrier) {
 	msg_t *last_kept_event;
 	double committed_events;
 
-	time_barrier *= 0.5;
+//	time_barrier *= 0.5;
 
 	// State list must be handled specifically, as nodes point to malloc'd
 	// nodes. We therefore manually scan the list and free the memory.

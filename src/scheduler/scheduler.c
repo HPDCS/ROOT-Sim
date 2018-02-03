@@ -568,10 +568,11 @@ void asym_schedule(void) {
 
 	// Compute utilization rate of the input ports since the last call to asym_schedule
 	// and resize the ports if necessary
-/*	for(i = 0; i < Threads[tid]->num_PTs; i++){
+	for(i = 0; i < Threads[tid]->num_PTs; i++){
 		Thread_State* pt = Threads[tid]->PTs[i];
 		int port_size = pt->port_batch_size;
 		double utilization_rate = ((double ) port_size - get_port_current_size(pt->input_port[PORT_PRIO_LO]))/ (double) port_size;
+//		printf("Input port size of PT %u: %d (utilization factor: %f)\n", pt->tid, get_port_current_size(pt->input_port[PORT_PRIO_LO]), utilization_rate);
 		// If utilization rate is too high, the size of the port should be increased
 		if(utilization_rate > UPPER_PORT_THRESHOLD){
 				pt->port_batch_size++; // Might be better to increase by a percentage of the previous value, but its another parameter
@@ -581,8 +582,13 @@ void asym_schedule(void) {
 			if(pt->port_batch_size > 1)
 				pt->port_batch_size--;
 		}
+		// Check limits
+		if(pt->port_batch_size == 0)
+			pt->port_batch_size = 1;
+		if(pt->port_batch_size > 100)
+			pt->port_batch_size = 100;
 	}
-*/
+
 	// Compute the total number of events necessary to fill all
 	// the input ports, considering the current batch value 
 	// and the current number of events yet to be processed in 

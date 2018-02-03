@@ -216,9 +216,11 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 			for(i = 0; i < LOOP_COUNT; i++) {
 				j = i;
 			}
-			state_ptr->events++;
-			timestamp = now + (simtime_t)(Expent(TAU));
-			ScheduleNewEvent(me, timestamp, LOOP, NULL, 0);
+			for(i = 0; i < 1; i++) {
+				state_ptr->events++;
+				timestamp = now + (simtime_t)(Expent(TAU));
+				ScheduleNewEvent(me, timestamp, LOOP, NULL, 0);
+			}
 			if(Random() < 0.2)
 				ScheduleNewEvent(FindReceiver(TOPOLOGY_MESH), timestamp, LOOP, NULL, 0);
 			break;

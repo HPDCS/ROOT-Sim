@@ -150,7 +150,14 @@ static void *main_simulation_loop(void *arg) {
 
 		// Activate one LP and process one event. Send messages produced during the events' execution
 		asym_schedule();
-
+/*		printf("\tPorts: ");
+		int i;
+		for(i = 0; i < n_cores; i++) {
+			if(Threads[i]->incarnation == THREAD_PROCESSING)
+				printf("%d/%d ", atomic_read(&Threads[i]->input_port[1]->size), Threads[i]->port_batch_size);
+		}
+		printf("\n");
+*/
 		my_time_barrier = gvt_operations();
 
 		// Only a master thread on master kernel prints the time barrier
@@ -163,7 +170,7 @@ static void *main_simulation_loop(void *arg) {
 				#endif
 
 				printf("\tPorts: ");
-				int i;
+		int i;
 				for(i = 0; i < n_cores; i++) {
 					if(Threads[i]->incarnation == THREAD_PROCESSING)
 						printf("%d/%d ", atomic_read(&Threads[i]->input_port[1]->size), Threads[i]->port_batch_size);

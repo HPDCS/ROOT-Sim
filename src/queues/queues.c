@@ -201,18 +201,23 @@ void process_bottom_halves(void) {
 						receiver->state = LP_STATE_ROLLBACK;
 
 //						if(matched_msg->unprocessed == false)
-	//						goto delete;
+//							goto delete;
 
 						// Unchain the event from the input queue
 						list_delete_by_content(receiver->queue_in, matched_msg);
 						list_insert_tail(LPS(lid_receiver)->retirement_queue, matched_msg);
+
+						// Rollback last sent time as well if needed
+						if(receiver->bound->timestamp < LPS(lid_receiver)->last_sent_time)
+							LPS(lid_receiver)->last_sent_time = receiver->bound->timestamp;
+
 					} else {
 					    delete:
 						// Unchain the event from the input queue
 						list_delete_by_content(receiver->queue_in, matched_msg);
 						// Delete the matched message
-						//msg_release(matched_msg);
-						list_insert_tail(LPS(lid_receiver)->retirement_queue, matched_msg);
+						msg_release(matched_msg);
+						//list_insert_tail(LPS(lid_receiver)->retirement_queue, matched_msg);
 					}
 
 					break;
@@ -281,6 +286,10 @@ void process_bottom_halves(void) {
 						}
 
 						receiver->state = LP_STATE_ROLLBACK;
+
+						// Rollback last sent time as well if needed
+						if(receiver->bound->timestamp < LPS(lid_receiver)->last_sent_time)
+							LPS(lid_receiver)->last_sent_time = receiver->bound->timestamp;
 					}
 
 					#ifdef HAVE_MPI

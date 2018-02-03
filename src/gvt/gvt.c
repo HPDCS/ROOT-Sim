@@ -211,7 +211,8 @@ simtime_t GVT_phases(void){
 				local_min[tid] = 0.0;
 				break;
 			}
-			local_min[tid] = min(local_min[tid], LPS_bound(i)->bound->timestamp);
+//			local_min[tid] = min(local_min[tid], LPS_bound(i)->bound->timestamp);
+			local_min[tid] = min(local_min[tid], LPS_bound(i)->last_sent_time);
 		}
 		thread_phase = tphase_send;     // Entering phase send
 		atomic_dec(&counter_A);	// Notify finalization of phase A
@@ -219,12 +220,20 @@ simtime_t GVT_phases(void){
 	}
 
 	if(thread_phase == tphase_send && atomic_read(&counter_A) == 0) {
-		#ifdef HAVE_MPI
-		// Check whether we have new ingoing messages sent by remote instances
-		receive_remote_msgs();
-		#endif
-		process_bottom_halves();
-		schedule();
+		// In the asymmetric version, repeating a main loop is such that
+		// the output port is completely emptied in the next iteration of the main
+		// loop
+		if(rootsim_config.num_controllers == 0) {
+			#ifdef HAVE_MPI
+			// Check whether we have new ingoing messages sent by remote instances
+			receive_remote_msgs();
+			#endif
+			process_bottom_halves();
+			schedule();
+		} else {
+			asym_extract_generated_msgs();
+			process_bottom_halves();
+		}
 		thread_phase = tphase_B;
 		atomic_dec(&counter_send);
 		return  -1.0;
@@ -243,7 +252,8 @@ simtime_t GVT_phases(void){
 				break;
 			}
 
-			local_min[tid] = min(local_min[tid], LPS_bound(i)->bound->timestamp);
+//			local_min[tid] = min(local_min[tid], LPS_bound(i)->bound->timestamp);
+			local_min[tid] = min(local_min[tid], LPS_bound(i)->last_sent_time);
 		}
 
 		#ifdef HAVE_MPI

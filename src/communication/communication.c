@@ -379,14 +379,19 @@ void asym_extract_generated_msgs(void) {
 	msg_t *msg;
 	msg_hdr_t *msg_hdr;
 	for(i = 0; i < Threads[tid]->num_PTs; i++) {
+//		printf("Output port size for PT %u: %d\n", Threads[tid]->PTs[i]->tid), atomic_read(&Threads[tid]->PTs[i]->output_port->size);
 		while((msg = pt_get_out_msg(Threads[tid]->PTs[i]->tid)) != NULL) {
 			if(is_control_msg(msg->type) && msg->type == ASYM_ROLLBACK_ACK) {
 				LPS(GidToLid(msg->receiver))->state = LP_STATE_ROLLBACK_ALLOWED;
 				msg_release(msg);
 				continue;
 			}
-			msg_hdr = get_msg_hdr_from_slab();
 			Send(msg);
+
+			if(msg->send_time > LPS(GidToLid(msg->receiver))->last_sent_time)
+				LPS(GidToLid(msg->receiver))->last_sent_time = msg->send_time;
+
+			msg_hdr = get_msg_hdr_from_slab();
 			msg_to_hdr(msg_hdr, msg);
 			// register the message in the sender's output queue, for antimessage management
 			// We can use msg->sender here (ensuring data separation) because we're extracting
