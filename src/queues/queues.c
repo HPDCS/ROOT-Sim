@@ -200,8 +200,8 @@ void process_bottom_halves(void) {
 
 						receiver->state = LP_STATE_ROLLBACK;
 
-//						if(matched_msg->unprocessed == false)
-//							goto delete;
+						if(matched_msg->unprocessed == false)
+							goto delete;
 
 						// Unchain the event from the input queue
 						list_delete_by_content(receiver->queue_in, matched_msg);

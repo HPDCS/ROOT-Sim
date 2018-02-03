@@ -353,6 +353,9 @@ void send_outgoing_msgs(LID_t lid) {
 
 		// register the message in the sender's output queue, for antimessage management
 		list_insert(LPS(lid)->queue_out, send_time, msg_hdr);
+
+		if(msg->send_time > LPS(lid)->last_sent_time)
+			LPS(lid)->last_sent_time = msg->send_time;
 	}
 
 	LPS(lid)->outgoing_buffer.size = 0;

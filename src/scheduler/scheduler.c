@@ -585,8 +585,8 @@ void asym_schedule(void) {
 		// Check limits
 		if(pt->port_batch_size == 0)
 			pt->port_batch_size = 1;
-		if(pt->port_batch_size > 100)
-			pt->port_batch_size = 100;
+		if(pt->port_batch_size > 500)
+			pt->port_batch_size = 500;
 	}
 
 	// Compute the total number of events necessary to fill all
@@ -685,7 +685,7 @@ void asym_schedule(void) {
 			LPS(lid)->state = LP_STATE_ROLLBACK;
 			rollback(lid);
 			LPS(lid)->state = LP_STATE_READY;
-			send_outgoing_msgs(lid);
+			//send_outgoing_msgs(lid);
 
 			// Prune the retirement queue for this LP
 			while(true) {
