@@ -66,8 +66,12 @@
 */ 
 #define LOWER_PORT_THRESHOLD 0.5
 
-// This port defines the maximum logical size for the input queues
-#define MAX_PORT_SIZE 100
+// This marco defines the maximum logical size for the input queues
+#define MAX_PORT_SIZE 256
+
+// This macro defines the maximum number of events of a given lp can be put
+// in the input port in a single asym_schedule executiona
+#define MAX_LP_EVENTS_PER_BATCH 5
 
 /* Functions invoked by other modules */
 extern void scheduler_init(void);

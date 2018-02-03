@@ -215,6 +215,9 @@ void threads_init(void) {
 		Threads[i]->output_port = init_channel();
 		Threads[i]->port_batch_size = PORT_START_BATCH_SIZE;
 
+		// Initialize curr_scheduled_events
+		Threads[i]->curr_scheduled_events = rsalloc(sizeof(int)*n_prc);
+
 		// Initialize the pointer of possible PTs for this thread
 		Threads[i]->num_PTs = 0;
 		if(n_cores - rootsim_config.num_controllers > 0) {

@@ -59,7 +59,7 @@
 #include <arch/linux/modules/cross_state_manager/cross_state_manager.h>
 #include <queues/xxhash.h>
 
-static __thread atomic_t notice_count;
+// static __thread atomic_t notice_count;
 
 /// This is used to keep track of how many LPs were bound to the current KLT
 __thread unsigned int n_prc_per_thread;
@@ -473,7 +473,7 @@ void asym_process(void) {
 				hi_prio_msg->event_content[0] = 1;
 
 //				printf("Sending a ROLLBACK_ACK for LP %d at time %f\n", msg->receiver.id, msg->timestamp);
-				atomic_sub(&notice_count, 1);
+				// atomic_sub(&notice_count, 1);
 
 				// Send back an ack to start processing the actual rollback operation
 				pack_msg(&msg, msg->receiver, msg->receiver, ASYM_ROLLBACK_ACK, msg->timestamp, msg->timestamp, 0, NULL);
@@ -499,7 +499,7 @@ void asym_process(void) {
 				// TODO: switch to bool
 				if(hi_prio_msg->event_content[0] == 0) {
 //g					printf("Sending a ROLLBACK_ACK (2)  for LP %d at time %f\n", msg->receiver.id, msg->timestamp);
-					atomic_sub(&notice_count, 1);
+					// atomic_sub(&notice_count, 1);
 
 					// Send back an ack to start processing the actual rollback operation
 					pack_msg(&msg, msg->receiver, msg->receiver, ASYM_ROLLBACK_ACK, msg->timestamp, msg->timestamp, 0, NULL);
@@ -619,6 +619,9 @@ void asym_schedule(void) {
 		}
 	}
 
+	// Set to 0 all the curr_scheduled_events array
+	bzero(Threads[tid]->curr_scheduled_events, sizeof(int)*n_prc);
+
 	for(i = 0; i < events_to_fill; i++) {
 
 //		printf("SCHED: mask: ");
@@ -639,7 +642,7 @@ void asym_schedule(void) {
 			case SMALLEST_TIMESTAMP_FIRST:
 				lid = asym_smallest_timestamp_first();
 				break;
-
+	
 			default:
 				lid = asym_smallest_timestamp_first();
 		}
@@ -657,7 +660,7 @@ void asym_schedule(void) {
 
 //			printf("Sending a ROLLBACK_NOTICE for LP %d at time %f\n", lid.id, lvt(lid));
 
-			atomic_add(&notice_count, 1);
+			// atomic_add(&notice_count, 1);
 
 			// Send rollback notice in the high priority port
 			pack_msg(&rollback_control, LidToGid(lid), LidToGid(lid), ASYM_ROLLBACK_NOTICE, lvt(lid), lvt(lid), sizeof(char), &first_encountered);
@@ -737,9 +740,26 @@ void asym_schedule(void) {
 
 		// Modify port_events_to_fill to reflect last message sent
 		port_events_to_fill[thread_id_mask]--; 
+
+		unsigned int lp_id = lid_to_int(lid);
+		
+		// Increase curr_scheduled_events, and set pointer to 
+		// respective LP to NULL if exceeded MAX_LP_EVENTS_PER_BATCH
+		Threads[tid]->curr_scheduled_events[lp_id] = Threads[tid]->curr_scheduled_events[lp_id]+1;
+		//printf("curr_scheduled_events[%u] = %d\n", lp_id, Threads[tid]->curr_scheduled_events[lp_id]);
+		if(Threads[tid]->curr_scheduled_events[lp_id] >= MAX_LP_EVENTS_PER_BATCH){
+			for(i=0; i<n_prc_per_thread; i++){
+				if(asym_lps_mask[i] != NULL && lid_equals(asym_lps_mask[i]->lid,lid)){
+					asym_lps_mask[i] = NULL;
+					//printf("Setting to NULL pointer to LP %d\n", lp_id);
+					break;
+				}
+			}
+		}
+
 		// If one port becomes full, should set all pointers to LP
 		// mapped to the PT of the respective port to NULL 
-//		printf("thread_id_mask: %u\n", thread_id_mask);
+		// printf("thread_id_mask: %u\n", thread_id_mask);
 		if(port_events_to_fill[thread_id_mask] == 0){
 			for(i = 0; i<n_prc_per_thread; i++){
 				if(asym_lps_mask[i] != NULL && asym_lps_mask[i]->processing_thread == thread_id_mask)
