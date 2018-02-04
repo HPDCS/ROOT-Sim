@@ -91,7 +91,7 @@ typedef struct _Thread_State {
 	struct _Thread_State	*CT;
 
 	/// If PT, it defines the current batch size for the input port
-	int port_batch_size; 
+	unsigned int port_batch_size; 
 
 	/* Pointer to an array of chars used by controllers as a counter of the number
 	of events scheduled for each LP during the execution of asym_schedule*/
