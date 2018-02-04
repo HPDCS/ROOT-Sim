@@ -53,7 +53,7 @@
 *
 * Author: Stefano Conoci
 */
-#define UPPER_PORT_THRESHOLD 0.9
+#define UPPER_PORT_THRESHOLD	0.9
 
 
 /* This macro defines a threshold in the percentage of utilization
@@ -64,18 +64,21 @@
 *
 * Author: Stefano Conoci
 */ 
-#define LOWER_PORT_THRESHOLD 0.4
+#define LOWER_PORT_THRESHOLD	0.4
 
 // This marco defines the maximum logical size for the input queues
-#define MAX_PORT_SIZE 128
+#define MAX_PORT_SIZE	128
 
 // This macro defines the maximum number of events of a given lp can be put
 // in the input port in a single asym_schedule execution
-#define MAX_LP_EVENTS_PER_BATCH 128
+#define MAX_LP_EVENTS_PER_BATCH	128
 
 // This macro defines the amount of variation (either increase or decrease)
 // in the size of input ports based on the feedback from the previous schedule
-#define BATCH_STEP 5
+#define BATCH_STEP 	4
+
+// This macro defins the default value of the batch size of each input port
+#define PORT_START_BATCH_SIZE	4
 
 /* Functions invoked by other modules */
 extern void scheduler_init(void);

@@ -28,6 +28,7 @@
 #include <arch/thread.h>
 #include <core/init.h>
 #include <mm/dymelor.h>
+#include <scheduler/scheduler.h>
 
 static tid_t os_tid;
 

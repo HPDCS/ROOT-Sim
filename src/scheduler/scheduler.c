@@ -581,19 +581,27 @@ void asym_schedule(void) {
 		double utilization_rate = (double) delta_utilization / (double) port_size;
 	
 		// DEBUG
-		printf("Port current size: %u, port size %u, delta_utilization %d\n", port_current_size[pt->tid], port_size, delta_utilization); 
-		printf("Input port size of PT %u: %d (utilization factor: %f)\n", pt->tid, get_port_current_size(pt->input_port[PORT_PRIO_LO]), utilization_rate);
+		//printf("Port current size: %u, port size %u, delta_utilization %d\n", port_current_size[pt->tid], port_size, delta_utilization); 
+		//printf("Input port size of PT %u: %d (utilization factor: %f)\n", pt->tid, port_current_size[pt->tid], utilization_rate);
 		// DEBUG
 
 		// If utilization rate is too high, the size of the port should be increased
-		if(utilization_rate > UPPER_PORT_THRESHOLD && pt->port_batch_size <= (MAX_PORT_SIZE - BATCH_STEP)){
-				pt->port_batch_size+=BATCH_STEP; // Might be better to increase by a percentage of the previous value, but its another parameter
-				printf("Increased port size of PT %u to %d\n", pt->tid, pt->port_batch_size);
+		if(utilization_rate > UPPER_PORT_THRESHOLD){
+			if(pt->port_batch_size <= (MAX_PORT_SIZE - BATCH_STEP)){
+				pt->port_batch_size+=BATCH_STEP;
+			}else if(pt->port_batch_size < MAX_PORT_SIZE){
+				pt->port_batch_size++;
+			}
+			//printf("Increased port size of PT %u to %d\n", pt->tid, pt->port_batch_size);
 		}
 		// If utilization rate is too low, the size of the port should be decreased
-		else if (utilization_rate < LOWER_PORT_THRESHOLD && pt->port_batch_size > BATCH_STEP){
-			pt->port_batch_size-=BATCH_STEP;
-			printf("Reduced port size of PT %u to %d\n", pt->tid, pt->port_batch_size);
+		else if (utilization_rate < LOWER_PORT_THRESHOLD){
+			if(pt->port_batch_size > BATCH_STEP){
+				pt->port_batch_size-=BATCH_STEP;
+			}else if(pt->port_batch_size > 1){
+				pt->port_batch_size--;
+			}
+			//printf("Reduced port size of PT %u to %d\n", pt->tid, pt->port_batch_size);
 		}
 	}
 
@@ -609,7 +617,7 @@ void asym_schedule(void) {
 		if(toAdd > 0){	
 			port_events_to_fill[pt->tid] = toAdd;
 			events_to_fill += toAdd;
-			printf("Adding toAdd = %d to events_to_fill\n", toAdd);
+			//printf("Adding toAdd = %d to events_to_fill\n", toAdd);
 		} else {
 			port_events_to_fill[pt->tid] = 0;
 		}
@@ -629,7 +637,7 @@ void asym_schedule(void) {
 	// Set to 0 all the curr_scheduled_events array
 	bzero(Threads[tid]->curr_scheduled_events, sizeof(int)*n_prc);
 
-	printf("events_to_fill=%d\n", events_to_fill);
+	//printf("events_to_fill=%d\n", events_to_fill);
 
 	for(i = 0; i < events_to_fill; i++) {
 
@@ -667,7 +675,7 @@ void asym_schedule(void) {
 			// Get a mark for the current batch of control messages
 			mark = generate_mark(lid);
 
-//			printf("Sending a ROLLBACK_NOTICE for LP %d at time %f\n", lid.id, lvt(lid));
+			//printf("Sending a ROLLBACK_NOTICE for LP %d at time %f\n", lid.id, lvt(lid));
 
 			// atomic_add(&notice_count, 1);
 
@@ -688,8 +696,6 @@ void asym_schedule(void) {
 			rollback_control->message_kind = control;
 			rollback_control->mark = mark;
 			pt_put_lo_prio_msg(LPS(lid)->processing_thread, rollback_control);
-
-			sent_events++;
 
 			continue;
 		}
@@ -763,7 +769,7 @@ void asym_schedule(void) {
 			for(i=0; i<n_prc_per_thread; i++){
 				if(asym_lps_mask[i] != NULL && lid_equals(asym_lps_mask[i]->lid,lid)){
 					asym_lps_mask[i] = NULL;
-					printf("Setting to NULL pointer to LP %d\n", lp_id);
+					//printf("Setting to NULL pointer to LP %d\n", lp_id);
 					break;
 				}
 			}
@@ -791,7 +797,7 @@ void asym_schedule(void) {
 		}
 		#endif
 	}
-	printf("Sent events: %u\n", sent_events);
+	//printf("Sent events: %u\n", sent_events);
 }
 
 /**

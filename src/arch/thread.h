@@ -54,9 +54,6 @@
 /// This macro tells on what core the current thread is running
 #define running_core() (tid)
 
-// This macro defins the default value of the batch size of each input port
-#define PORT_START_BATCH_SIZE	5 
-
 enum thread_incarnation {
 	THREAD_SYMMETRIC,
 	THREAD_CONTROLLER,
