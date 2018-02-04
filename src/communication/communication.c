@@ -391,8 +391,9 @@ void asym_extract_generated_msgs(void) {
 			}
 			Send(msg);
 
-			if(msg->send_time > LPS(GidToLid(msg->receiver))->last_sent_time)
-				LPS(GidToLid(msg->receiver))->last_sent_time = msg->send_time;
+			if(msg->send_time > LPS(GidToLid(msg->sender))->last_sent_time &&
+					LPS(GidToLid(msg->sender))->state == LP_STATE_READY)
+				LPS(GidToLid(msg->sender))->last_sent_time = msg->send_time;
 
 			msg_hdr = get_msg_hdr_from_slab();
 			msg_to_hdr(msg_hdr, msg);
