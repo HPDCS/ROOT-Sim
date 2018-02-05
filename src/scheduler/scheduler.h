@@ -71,7 +71,7 @@
 
 // This macro defines the maximum number of events of a given lp can be put
 // in the input port in a single asym_schedule execution
-#define MAX_LP_EVENTS_PER_BATCH	128
+#define MAX_LP_EVENTS_PER_BATCH	1
 
 // This macro defines the amount of variation (either increase or decrease)
 // in the size of input ports based on the feedback from the previous schedule

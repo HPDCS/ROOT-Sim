@@ -4,6 +4,7 @@
 
 #include "application.h"
 
+#define JOBS_PER_OBJECT 10
 
 // These global variables are used to store execution configuration values
 // They will be set by every LP on every Simulation Kernel upon INIT execution
@@ -32,7 +33,7 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 
 	lp_state_type *state_ptr = (lp_state_type*)state;
 
-
+	int cont = 0; 
 	switch (event_type) {
 
 		case INIT:
@@ -45,9 +46,9 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 
 			// Explicitly tell ROOT-Sim this is our LP's state
                         SetState(state_ptr);
-
+	loop: 
 			timestamp = (simtime_t) (20 * Random());
-
+	
 
 			if(1 /*|| IsParameterPresent(event_content, "traditional")*/) {
 
@@ -66,6 +67,9 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 				}
 
 				ScheduleNewEvent(me, timestamp, LOOP, NULL, 0);
+				cont++; 
+				if(cont < JOBS_PER_OBJECT)
+					goto loop;
 			} else {
 
 				state_ptr->traditional = false;
@@ -219,9 +223,12 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 			for(i = 0; i < 1; i++) {
 				state_ptr->events++;
 				timestamp = now + (simtime_t)(Expent(TAU));
-				ScheduleNewEvent(me, timestamp, LOOP, NULL, 0);
+				if(Random() < 0.8)
+					ScheduleNewEvent(FindReceiver(TOPOLOGY_MESH), timestamp, LOOP, NULL, 0);
+				else
+					ScheduleNewEvent(me, timestamp, LOOP, NULL, 0);
 			}
-			if(Random() < 0.2)
+			if(0 && Random() < 0.2)
 				ScheduleNewEvent(FindReceiver(TOPOLOGY_MESH), timestamp, LOOP, NULL, 0);
 			break;
 

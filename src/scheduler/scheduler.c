@@ -79,6 +79,10 @@ __thread void *current_state;
 /// This is a list to keep high-priority messages yet to be processed
 static __thread list(msg_t) hi_prio_list;
 
+// Timer per thread used to gather statistics on execution time for 
+// controllers and processers in asymmetric executions
+__thread timer timer_local_thread;
+
 /*
 * This function initializes the scheduler. In particular, it relies on MPI to broadcast to every simulation kernel process
 * which is the actual scheduling algorithm selected.
@@ -565,8 +569,11 @@ void asym_schedule(void) {
 	unsigned long long mark;
 	int toAdd, delta_utilization;
 	unsigned int sent_events = 0; 
+	unsigned int sent_notice = 0;
 
 //	printf("NOTICE COUNT: %d\n", atomic_read(&notice_count));
+
+	timer_start(timer_local_thread);
 
 	// Compute utilization rate of the input ports since the last call to asym_schedule
 	// and resize the ports if necessary
@@ -676,6 +683,7 @@ void asym_schedule(void) {
 			mark = generate_mark(lid);
 
 			//printf("Sending a ROLLBACK_NOTICE for LP %d at time %f\n", lid.id, lvt(lid));
+			sent_notice++;
 
 			// atomic_add(&notice_count, 1);
 
@@ -798,6 +806,8 @@ void asym_schedule(void) {
 		#endif
 	}
 	//printf("Sent events: %u\n", sent_events);
+	//printf("Sent rollback notice: %u\n", sent_notice);
+	//printf("asym_schedule for controller %d completed in %d milliseconds\n", tid, timer_value_milli(timer_local_thread));
 }
 
 /**
