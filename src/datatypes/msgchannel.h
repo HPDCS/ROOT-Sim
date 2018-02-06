@@ -18,7 +18,7 @@
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
 * @file msgchannel.h
-* @brief This module implements an (M, N) channel to transfer message pointers.
+* @brief This module implements an (M, 1) channel to transfer message pointers.
 * @author Francesco Quaglia
 * @author Alessandro Pellegrini
 */
@@ -39,7 +39,6 @@ struct _msg_buff {
 typedef struct _msg_channel {
 	struct _msg_buff	*volatile buffers[2];
 	atomic_t		size;
-	spinlock_t		read_lock;
 	spinlock_t		write_lock;
 } msg_channel;
 
