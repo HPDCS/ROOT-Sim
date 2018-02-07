@@ -578,9 +578,6 @@ void asym_schedule(void) {
 	int toAdd, delta_utilization;
 	unsigned int sent_events = 0; 
 	unsigned int sent_notice = 0;
- 	heap_t events_heap; 
-	events_heap.size = 0;
-	events_heap.len = 0; 
 
 	/* Testing heap 
 	heap_t heap_test; 
@@ -679,6 +676,10 @@ void asym_schedule(void) {
 	// Put up to MAX_LP_EVENTS_PER_BATCH events for each LP in the priority
 	// queue events_heap
 	if(rootsim_config.scheduler == BATCH_LOWEST_TIMESTAMP){
+		// Clean the priority queue
+		bzero(Threads[tid]->events_heap->nodes, Threads[tid]->events_heap->len*sizeof(node_heap_t));
+		Threads[tid]->events_heap->len = 0;
+
 		for(i = 0; i < n_prc_per_thread; i++){
 			if(asym_lps_mask[i] != NULL && !is_blocked_state(asym_lps_mask[i]->state)){
 				if(asym_lps_mask[i]->bound == NULL && !list_empty(asym_lps_mask[i]->queue_in)){
@@ -690,9 +691,11 @@ void asym_schedule(void) {
 
 				j = 0;
 				while(curr_event != NULL && j < MAX_LP_EVENTS_PER_BATCH){
-					heap_push(&events_heap, curr_event->timestamp, curr_event);
-					j++;
-					curr_event = curr_event->next;
+					if(curr_event->timestamp >= 0){
+						heap_push(Threads[tid]->events_heap, curr_event->timestamp, curr_event);
+						j++;
+						curr_event = curr_event->next;
+					}
 				}
 			}
 		}
@@ -725,7 +728,7 @@ void asym_schedule(void) {
 				break;
 
 			case BATCH_LOWEST_TIMESTAMP:
-				curr_event = heap_pop(&events_heap);
+				curr_event = heap_pop(Threads[tid]->events_heap);
 				int found = 0;
 			       	lid = idle_process;	
 				while(curr_event != NULL && !found){
@@ -735,7 +738,7 @@ void asym_schedule(void) {
 						lid = curr_lid;
 					}
 					else{
-						curr_event = heap_pop(&events_heap);
+						curr_event = heap_pop(Threads[tid]->events_heap);
 						lid = idle_process;
 					}
 				}

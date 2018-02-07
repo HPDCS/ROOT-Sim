@@ -31,7 +31,7 @@
 #include <arch/atomic.h>
 #include <arch/os.h>
 #include <datatypes/msgchannel.h>
-
+#include <datatypes/heap.h>
 
 
 
@@ -93,6 +93,10 @@ typedef struct _Thread_State {
 	/* Pointer to an array of chars used by controllers as a counter of the number
 	of events scheduled for each LP during the execution of asym_schedule*/
 	int *curr_scheduled_events;	
+
+	/* If CT, it is a pointer to a priority queue used in BATCH_LOWEST_TIMESTAMP
+	 * for scheduling a batch of events*/
+	heap_t *events_heap;
 
 } Thread_State;
 

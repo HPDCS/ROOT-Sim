@@ -218,6 +218,13 @@ void threads_init(void) {
 
 		// Initialize curr_scheduled_events
 		Threads[i]->curr_scheduled_events = rsalloc(sizeof(int)*n_prc);
+		
+		// Initialize heap data structure used by controllers.
+		// We can initialize it for all threads with a minor cost since 
+		// it actually allocs memory to store data on first push
+		Threads[i]->events_heap = rsalloc(sizeof(heap_t));
+		Threads[i]->events_heap->size = 0; 
+		Threads[i]->events_heap->len = 0;
 
 		// Initialize the pointer of possible PTs for this thread
 		Threads[i]->num_PTs = 0;
