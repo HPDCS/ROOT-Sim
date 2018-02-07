@@ -42,6 +42,7 @@
 #include <scheduler/stf.h>
 #include <mm/state.h>
 #include <communication/communication.h>
+#include <datatypes/heap.h>
 
 #define _INIT_FROM_MAIN
 #include <core/init.h>
@@ -570,6 +571,23 @@ void asym_schedule(void) {
 	int toAdd, delta_utilization;
 	unsigned int sent_events = 0; 
 	unsigned int sent_notice = 0;
+ 
+	/* Testing heap 
+	heap_t heap_test; 
+	heap_test.size = 0;
+	heap_test.len = 0;
+	
+	if(lps_blocks[1]->bound != NULL && lps_blocks[2]->bound != NULL){
+		// DEBUG: testing heap implementantion
+		printf("Adding to heap bound of LP 1 and LP2\n");
+		heap_push(&heap_test, lps_blocks[1]->bound->timestamp, lps_blocks[1]->bound);
+		heap_push(&heap_test, lps_blocks[2]->bound->timestamp, lps_blocks[2]->bound);
+		printf("Retrieving LPS in order of timestamp bound\n");
+		msg_t *first_dequeue = heap_pop(&heap_test);
+		msg_t *second_dequeue = heap_pop(&heap_test);
+		printf("First dequeue: %lf, second dequeue: %lf\n", first_dequeue->timestamp, second_dequeue->timestamp);
+	}
+	*/
 
 //	printf("NOTICE COUNT: %d\n", atomic_read(&notice_count));
 

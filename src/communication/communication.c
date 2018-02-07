@@ -386,7 +386,7 @@ void asym_extract_generated_msgs(void) {
 		while((msg = pt_get_out_msg(Threads[tid]->PTs[i]->tid)) != NULL) {
 			if(is_control_msg(msg->type) && msg->type == ASYM_ROLLBACK_ACK) {
 				LPS(GidToLid(msg->receiver))->state = LP_STATE_ROLLBACK_ALLOWED;
-				printf("Received ROLLBACK ACK for LP %d with timestamp %lf\n", gid_to_int(msg->receiver), msg->timestamp);
+				// printf("Received ROLLBACK ACK for LP %d with timestamp %lf\n", gid_to_int(msg->receiver), msg->timestamp);
 				msg_release(msg);
 				continue;
 			}

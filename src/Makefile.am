@@ -28,6 +28,7 @@ librootsim_a_SOURCES =	main.c \
 			datatypes/msgchannel.c \
 			datatypes/slab.c \
 			datatypes/treiber.c \
+			datatypes/heap.c\
 			mm/state.c \
 			mm/ecs.c \
 			mm/ecs_callback.S \
