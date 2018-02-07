@@ -449,6 +449,9 @@ void asym_process(void) {
 	msg_t *hi_prio_msg;
 	LID_t lid;
 
+
+	timer_start(timer_local_thread);
+
 	// We initially check for high priority msgs. If one is present,
 	// we process it and then return. In this way, the next call to
 	// asym_process() will again check for high priority events, making
@@ -466,8 +469,10 @@ void asym_process(void) {
 	msg = pt_get_lo_prio_msg();
 
 	// My queue might be empty...
-	if(msg == NULL)
+	if(msg == NULL){
+		//printf("Empty queue for PT %d\n", tid);
 		return;
+	}
 
 	// Check if we picked a stale message
 	hi_prio_msg = list_head(hi_prio_list);
@@ -547,6 +552,8 @@ void asym_process(void) {
 	// scope of the current development phase here.
 	LogState(lid);
 	
+	//printf("asym_process for PT %d completed in %d millisecond\n", tid, timer_value_milli(timer_local_thread));
+
 }
 
 
@@ -559,19 +566,22 @@ void asym_process(void) {
 * @author Alessandro Pellegrini
 */
 void asym_schedule(void) {
-	LID_t lid;
-	msg_t *event;
+	LID_t lid, curr_lid;
+	msg_t *event, *curr_event;
 	msg_t *rollback_control;
 	unsigned int port_events_to_fill[n_cores];
 	unsigned int port_current_size[n_cores];
-	unsigned int i, thread_id_mask;
+	unsigned int i, j, thread_id_mask;
 	unsigned int events_to_fill = 0;
 	char first_encountered = 0;
 	unsigned long long mark;
 	int toAdd, delta_utilization;
 	unsigned int sent_events = 0; 
 	unsigned int sent_notice = 0;
- 
+ 	heap_t events_heap; 
+	events_heap.size = 0;
+	events_heap.len = 0; 
+
 	/* Testing heap 
 	heap_t heap_test; 
 	heap_test.size = 0;
@@ -629,6 +639,9 @@ void asym_schedule(void) {
 			//printf("Reduced port size of PT %u to %d\n", pt->tid, pt->port_batch_size);
 		}
 	}
+	
+	//printf("asym_schedule: port resize completed for controller %d at millisecond %d\n", tid, timer_value_milli(timer_local_thread));
+
 
 	// Compute the total number of events necessary to fill all
 	// the input ports, considering the current batch value 
@@ -648,6 +661,9 @@ void asym_schedule(void) {
 		}
 	}
 
+	//printf("asym_schedule: events_to_fill computed for controller %d at millisecond %d\n", tid, timer_value_milli(timer_local_thread));
+
+
 	// Create a copy of lps_bound_blocks in asym_lps_mask which will
 	// be modified during scheduling in order to jump LPs bound to PT
 	// for whom the input port is already filled
@@ -656,6 +672,29 @@ void asym_schedule(void) {
 		Thread_State *pt = Threads[asym_lps_mask[i]->processing_thread];
 		if(port_current_size[pt->tid] >= pt->port_batch_size) {
 			asym_lps_mask[i] = NULL;
+		}
+	}
+	//printf("asym_schedule: asym_lps_mask computed for controller %d at millisecond %d\n", tid, timer_value_milli(timer_local_thread));
+
+	// Put up to MAX_LP_EVENTS_PER_BATCH events for each LP in the priority
+	// queue events_heap
+	if(rootsim_config.scheduler == BATCH_LOWEST_TIMESTAMP){
+		for(i = 0; i < n_prc_per_thread; i++){
+			if(asym_lps_mask[i] != NULL && !is_blocked_state(asym_lps_mask[i]->state)){
+				if(asym_lps_mask[i]->bound == NULL && !list_empty(asym_lps_mask[i]->queue_in)){
+					curr_event = list_head(asym_lps_mask[i]->queue_in);
+				}
+				else{
+					curr_event = list_next(asym_lps_mask[i]->bound);
+				}
+
+				j = 0;
+				while(curr_event != NULL && j < MAX_LP_EVENTS_PER_BATCH){
+					heap_push(&events_heap, curr_event->timestamp, curr_event);
+					j++;
+					curr_event = curr_event->next;
+				}
+			}
 		}
 	}
 
@@ -683,6 +722,23 @@ void asym_schedule(void) {
 
 			case SMALLEST_TIMESTAMP_FIRST:
 				lid = asym_smallest_timestamp_first();
+				break;
+
+			case BATCH_LOWEST_TIMESTAMP:
+				curr_event = heap_pop(&events_heap);
+				int found = 0;
+			       	lid = idle_process;	
+				while(curr_event != NULL && !found){
+					curr_lid = GidToLid(curr_event->sender);
+					if(port_events_to_fill[LPS(curr_lid)->processing_thread] > 0 && LPS(curr_lid)->state != LP_STATE_WAIT_FOR_ROLLBACK_ACK){
+						found = 1; 
+						lid = curr_lid;
+					}
+					else{
+						curr_event = heap_pop(&events_heap);
+						lid = idle_process;
+					}
+				}
 				break;
 	
 			default:
@@ -787,30 +843,35 @@ void asym_schedule(void) {
 
 		unsigned int lp_id = lid_to_int(lid);
 		
-		// Increase curr_scheduled_events, and set pointer to 
-		// respective LP to NULL if exceeded MAX_LP_EVENTS_PER_BATCH
-		Threads[tid]->curr_scheduled_events[lp_id] = Threads[tid]->curr_scheduled_events[lp_id]+1;
-		//printf("curr_scheduled_events[%u] = %d\n", lp_id, Threads[tid]->curr_scheduled_events[lp_id]);
-		if(Threads[tid]->curr_scheduled_events[lp_id] >= MAX_LP_EVENTS_PER_BATCH){
-			for(i=0; i<n_prc_per_thread; i++){
-				if(asym_lps_mask[i] != NULL && lid_equals(asym_lps_mask[i]->lid,lid)){
-					asym_lps_mask[i] = NULL;
-					//printf("Setting to NULL pointer to LP %d\n", lp_id);
-					break;
+		if(rootsim_config.scheduler == SMALLEST_TIMESTAMP_FIRST){
+			// Increase curr_scheduled_events, and set pointer to 
+			// respective LP to NULL if exceeded MAX_LP_EVENTS_PER_BATCH
+			Threads[tid]->curr_scheduled_events[lp_id] = Threads[tid]->curr_scheduled_events[lp_id]+1;
+			//printf("curr_scheduled_events[%u] = %d\n", lp_id, Threads[tid]->curr_scheduled_events[lp_id]);
+			if(Threads[tid]->curr_scheduled_events[lp_id] >= MAX_LP_EVENTS_PER_BATCH){
+				for(i=0; i<n_prc_per_thread; i++){
+					if(asym_lps_mask[i] != NULL && lid_equals(asym_lps_mask[i]->lid,lid)){
+						asym_lps_mask[i] = NULL;
+						//printf("Setting to NULL pointer to LP %d\n", lp_id);
+						break;
+					}
 				}
 			}
-		}
 
-		// If one port becomes full, should set all pointers to LP
-		// mapped to the PT of the respective port to NULL 
-		// printf("thread_id_mask: %u\n", thread_id_mask);
-		if(port_events_to_fill[thread_id_mask] == 0){
-			for(i = 0; i<n_prc_per_thread; i++){
-				if(asym_lps_mask[i] != NULL && asym_lps_mask[i]->processing_thread == thread_id_mask)
-					asym_lps_mask[i] = NULL;
+			//printf("asym_schedule: event sent for controller %d at millisecond %d\n", tid, timer_value_milli(timer_local_thread));
+
+			// If one port becomes full, should set all pointers to LP
+			// mapped to the PT of the respective port to NULL 
+			// printf("thread_id_mask: %u\n", thread_id_mask);
+			if(port_events_to_fill[thread_id_mask] == 0){
+				for(i = 0; i<n_prc_per_thread; i++){
+					if(asym_lps_mask[i] != NULL && asym_lps_mask[i]->processing_thread == thread_id_mask)
+						asym_lps_mask[i] = NULL;
+				}
 			}
-		}
 
+		}
+		
 		#ifdef HAVE_CROSS_STATE
 		if(resume_execution && !is_blocked_state(LPS(lid)->state)) {
 			printf("ECS event is finished mark %llu !!!\n", LPS(lid)->wait_on_rendezvous);

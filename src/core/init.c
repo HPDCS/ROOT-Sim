@@ -290,6 +290,8 @@ static int parse_cmd_line(int argc, char **argv) {
 			case OPT_SCHEDULER:
 				if(strcmp(optarg, "stf") == 0) {
 					rootsim_config.scheduler = SMALLEST_TIMESTAMP_FIRST;
+				} else if(strcmp(optarg, "batch") == 0){
+					rootsim_config.scheduler = BATCH_LOWEST_TIMESTAMP;
 				} else {
 					rootsim_error(true, "Invalid argument for scheduler parameter\n");
 					return -1;
