@@ -23,7 +23,7 @@ void generate_init_region_in(int me, simtime_t now){
 	if(me < (int)(NUM_OCCUPIED_CELLS/2 + parity) || me >= (int) (n_prc_tot - (NUM_OCCUPIED_CELLS/2 + parity)) ){
 		printf("generating REGION_IN for %d\n",me);
 		for(i = 0; i < BUG_PER_CELL;i++){
-			ScheduleNewEvent(me, now, REGION_IN, NULL, 0);
+			ScheduleNewEvent(me, now + (simtime_t)(20*Random()), REGION_IN, NULL, 0);
 		}
 
 	}
@@ -54,10 +54,11 @@ void send_update_neighbours(int me, simtime_t now, int present){
 		if(receiver >= (int) n_prc_tot || receiver < 0){
 			rootsim_error(true,"%s:%d Got receiver out of bounds!\n",__FILE__, __LINE__);
 		}	
-		ScheduleNewEvent(receiver, now + TIME_STEP, UPDATE_NEIGHBOURS, &new_event_content, sizeof(new_event_content));
+		ScheduleNewEvent(receiver, now + TIME_STEP/100000, UPDATE_NEIGHBOURS, &new_event_content, sizeof(new_event_content));
 	}
 
 }
+
 void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *event_content, int event_size, lp_state_type *pointer) {
 
 	event_content_type new_event_content;
