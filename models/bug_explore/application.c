@@ -136,7 +136,7 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 			do{
 				i = (int) RandomRange(0,3);
 				receiver = GetReceiver(TOPOLOGY_TORUS, i);
-			}while(pointer->neighbour_bugs[receiver] >= BUG_PER_CELL);
+			}while(pointer->neighbour_bugs[i] >= BUG_PER_CELL);
 
 			// Uniform distribution used for timestamp
             ScheduleNewEvent(receiver, now + (simtime_t) (TIME_STEP * Random()), REGION_IN, NULL, 0);
@@ -150,7 +150,7 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 }
 
 int OnGVT(unsigned int me, lp_state_type *snapshot){
-
+	
 	if(snapshot->explored == 0) printf("cell %u not explored yet (%u), lvt is %f\n",me, snapshot->explored, snapshot->lvt);
 
 	if(snapshot->lvt < EXECUTION_TIME)
