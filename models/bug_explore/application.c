@@ -1,6 +1,17 @@
 #include "application.h"
 
 unsigned int execution_time = EXECUTION_TIME; //this variable is updated by a user parameter
+
+/**
+ * This (helper) function schedules a new REGION_IN event towards 
+ * the cells that are lower/greater than NUM_OCCUPIED_CELLS
+ *
+ * @author Matteo Principe
+ * @date 8 feb 2018
+ *
+ * @param me The id of the cell who is calling the function
+ * @param now The current time of the cell
+*/
 void generate_init_region_in(int me, simtime_t now){
 	int i;
 	int parity;
@@ -18,6 +29,17 @@ void generate_init_region_in(int me, simtime_t now){
 	}
 
 }
+/**
+ * This (helper) function schedules a new UPDATE_NEIGHBOURS
+ * event towards the cells that represent my neighbours
+ *
+ * @author Matteo Principe
+ * @date 8 feb 2018
+ *
+ * @param me The id of the cell who is calling the function
+ * @param now The current time of the cell
+ * @param present The number of bugs that are inside the cell
+*/
 
 void send_update_neighbours(int me, simtime_t now, int present){
 	event_content_type new_event_content;
@@ -70,9 +92,10 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 			if(NUM_OCCUPIED_CELLS > n_prc_tot){
 				rootsim_error(true, "%s:%d: Require more cell than available LPs\n", __FILE__, __LINE__);
 			}
-	
+			//send REGION_IN towards first and last cells	
 			generate_init_region_in(me,now);
 			
+			//initialize data structures
 			for(i = 0; i < 4; i++){
 				pointer->neighbour_bugs[i] = 0;
 			}
@@ -105,7 +128,7 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 			break;
 		
 		case UPDATE_NEIGHBOURS:
-			
+			//update only the entry dedicated to the sender cell with the number of bugs that are inside it
 			for(i = 0; i < 4; i++){
 				if(event_content->cell == GetReceiver(TOPOLOGY_TORUS,i)){
 					pointer->neighbour_bugs[i] = event_content->present;
@@ -130,7 +153,7 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 				receiver = GetReceiver(TOPOLOGY_TORUS, i);
 			}while(pointer->neighbour_bugs[i] >= BUG_PER_CELL);
 
-			// Uniform distribution used for timestamp
+			//The bug is going to another cell, send a REGION_IN to it. TODO: Only uniform distribution used for timestamp
             ScheduleNewEvent(receiver, now + (simtime_t) (TIME_STEP * Random()), REGION_IN, NULL, 0);
 			break;
 		

@@ -17,17 +17,14 @@
 
 
 typedef struct _event_content_type { 
-	    unsigned int cell; 
+	    unsigned int cell; //cell's ID
 	    int present; //was a bug inside this cell? 
 } event_content_type; 
  
 typedef struct _lp_state_type{ 
-	    int present; //is a bug inside this cell? 
-		int neighbour_bugs[4];
-		simtime_t lvt;
-		unsigned int explored;	
+	    int present; //number of bugs actually present in this cell 
+		int neighbour_bugs[4]; //each entry memorizes the number of bugs of the surrounding cells (i.e.: N,S,O,W cells)
+		simtime_t lvt; //the lvt of this cell
+		unsigned int explored; //was this cell already explored?
 } lp_state_type;
 
-
-extern bool isValidNeighbour(unsigned int sender, unsigned int neighbour);
-extern unsigned int GetNeighbourId(unsigned int sender, unsigned int neighbour);
