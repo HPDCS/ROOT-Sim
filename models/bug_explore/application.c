@@ -95,15 +95,11 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 
 			new_event_content.cell = me;
 			new_event_content.present = pointer->present;
-
-			for(i = 0; i < 4; i++){
-				receiver = GetReceiver(TOPOLOGY_TORUS,i);
-				if(receiver >= (int) n_prc_tot || receiver < 0){
-					rootsim_error(true,"%s:%d Got receiver out of bounds!\n",__FILE__, __LINE__);
-				}	
-				ScheduleNewEvent(receiver, now + TIME_STEP/100000, UPDATE_NEIGHBOURS, &new_event_content, sizeof(new_event_content));
-			}
-
+			
+			//for every neighbour I have, send them an UPDATE_NEIGHBOUR event to notify them that a bug passed through me
+			send_update_neighbours(me,now,pointer->present);
+			
+			//a bug is going outside me, I need to notify myself
 			ScheduleNewEvent(me, now + TIME_STEP/100000, REGION_OUT, NULL,0);
 
 			break;
@@ -124,15 +120,11 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 
 			new_event_content.cell = me;
 			new_event_content.present = pointer->present;
-
-			for(i = 0; i < 4; i++){
-				receiver = GetReceiver(TOPOLOGY_TORUS,i);
-				if(receiver >= (int) n_prc_tot || receiver < 0){
-					rootsim_error(true,"%s:%d Got receiver out of bounds!\n",__FILE__, __LINE__);
-				}	
-				ScheduleNewEvent(receiver, now + TIME_STEP/100000, UPDATE_NEIGHBOURS, &new_event_content, sizeof(new_event_content));
-			}
-
+			
+			//for every neighbour I have, send them an UPDATE_NEIGHBOUR event to notify them that a bug is going outside me
+			send_update_neighbours(me,now,pointer->present);
+			
+			//choose a random direction to take, and get the corresponding cell ID (receiver)
 			do{
 				i = (int) RandomRange(0,3);
 				receiver = GetReceiver(TOPOLOGY_TORUS, i);
