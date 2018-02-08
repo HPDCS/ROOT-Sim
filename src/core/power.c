@@ -796,7 +796,7 @@ static int static_state_machine(int fast_completed, __attribute__((unused)) int 
 		case 1:	// Increase frequency until powercap is exceeded
 			
 			if(fast_power > high_powercap || current_pstates[current_controllers] == 0){
-				// Decrease frequency since if it is now too high and transition to state 3
+				// Decrease frequency if it is now too high and transition to state 3
 				if(fast_power > high_powercap)
 					set_processing_pstate(current_pstates[current_controllers]+1);
 				exploration_state = 3; 
@@ -899,7 +899,7 @@ static int symmetric_powercap_state_machine(int fast_completed, double fast_powe
 		case 1:	// Increase frequency until powercap is exceeded
 			
 			if(fast_power > high_powercap || current_pstates[0] == 0){
-				// Decrease frequency since if it is now too high and transition to state 3
+				// Decrease frequency if it is now too high and transition to state 3
 				if(fast_power > high_powercap)
 					set_pstate(current_pstates[0]+1);
 				exploration_state = 3; 

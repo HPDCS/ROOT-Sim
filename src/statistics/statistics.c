@@ -332,6 +332,9 @@ void statistics_stop(int exit_code) {
 			total_time = timer_value_seconds(simulation_timer);
 		}
 
+		if(Threads[tid]->incarnation == THREAD_CONTROLLER)
+			return;
+
 		/* Finish flushing GVT statistics */
 		statistics_flush_gvt_buffer();
 
@@ -445,9 +448,10 @@ void statistics_stop(int exit_code) {
 		/* Reduce and dump per-thread statistics */
 		/* (only one thread does the reduction, not necessarily the master) */
 
-
-		thread_barrier(&controller_barrier);
-
+		if(!master_kernel() || !master_thread()){
+			thread_barrier(&controller_barrier);
+		}
+		
 		if(master_kernel() && master_thread()) {
 
 			// Sum up all threads statistics
@@ -533,6 +537,8 @@ void statistics_stop(int exit_code) {
 			}
 
 			fflush(f);
+
+			thread_barrier(&controller_barrier);
 		}
 
 		// TODO: quando reintegriamo la parte distribuita, qui si deve fare la riduzione tra tutti i kernel
