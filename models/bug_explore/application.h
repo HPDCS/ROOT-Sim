@@ -6,7 +6,6 @@
 #define REGION_OUT 2
 #define UPDATE_NEIGHBOURS 3
 #define TIME_STEP 5.0
-#define TOT_REG 10000
 #define EXECUTION_TIME 10000000 //dummy: it can be modified with a specific parameter 
 
 #ifndef NUM__OCCUPIED_CELLS

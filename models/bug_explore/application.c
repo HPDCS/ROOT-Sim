@@ -1,7 +1,6 @@
 #include "application.h"
 
-unsigned int execution_time = EXECUTION_TIME;
-
+unsigned int execution_time = EXECUTION_TIME; //this variable is updated by a user parameter
 void generate_init_region_in(int me, simtime_t now){
 	int i;
 	int parity;
@@ -86,7 +85,8 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 		case REGION_IN:
 			
 			pointer->present++;
-			pointer->explored++;
+			if(pointer->explored == 0)
+				pointer->explored++;
 
 			//Sanity check
 			if(pointer->present > BUG_PER_CELL ){
