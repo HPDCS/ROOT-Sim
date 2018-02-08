@@ -693,6 +693,8 @@ void asym_schedule(void) {
 				while(curr_event != NULL && j < MAX_LP_EVENTS_PER_BATCH){
 					if(curr_event->timestamp >= 0){
 						heap_push(Threads[tid]->events_heap, curr_event->timestamp, curr_event);
+						//printf("Pushing to priority queue event from LP %d with timestamp %lf\n", 
+								 //lid_to_int(asym_lps_mask[i]->lid), curr_event->timestamp);
 						j++;
 						curr_event = curr_event->next;
 					}
@@ -729,11 +731,14 @@ void asym_schedule(void) {
 
 			case BATCH_LOWEST_TIMESTAMP:
 				curr_event = heap_pop(Threads[tid]->events_heap);
+				//printf("Retrieving from priority queue event from LP %d with timestamp %lf\n",
+				//		lid_to_int(GidToLid(curr_event->sender)), curr_event->timestamp);
 				int found = 0;
 			       	lid = idle_process;	
 				while(curr_event != NULL && !found){
-					curr_lid = GidToLid(curr_event->sender);
-					if(port_events_to_fill[LPS(curr_lid)->processing_thread] > 0 && LPS(curr_lid)->state != LP_STATE_WAIT_FOR_ROLLBACK_ACK){
+					curr_lid = GidToLid(curr_event->receiver);
+					if(port_events_to_fill[LPS(curr_lid)->processing_thread] > 0 &&
+					  LPS(curr_lid)->state != LP_STATE_WAIT_FOR_ROLLBACK_ACK){
 						found = 1; 
 						lid = curr_lid;
 					}
