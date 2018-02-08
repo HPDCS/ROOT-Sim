@@ -1,0 +1,32 @@
+#include "utility.h"
+
+bool isValidNeighbour(unsigned int sender, unsigned int neighbour){
+	return true;
+}
+
+unsigned int GetNeighbourId(unsigned int sender, unsigned int neighbour){
+	
+	unsigned int edge;
+	unsigned int receiver;
+
+	edge = sqrt(TOT_REG);
+
+	if(edge * edege != TOT_REG){
+		rootsim_error(true,"Square map wrongly specified!\n");
+	}
+
+	switch(neighbour){
+		case N:
+			break;
+		case S:
+			break;
+		case O:
+			break;
+		case E
+			break;
+		default:
+			rootsim_error(true,"UNKNOWN DIRECTION\n");
+	}
+	
+	return 1;
+}

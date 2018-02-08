@@ -1,0 +1,96 @@
+#include "bug.h"
+
+void *states[TOT_REG]; //pointer to the array of the states of the cells
+void BugProcessEvent(int me, simtime_t now, int event_type, event_content_type *event_content, int event_size, void *pointer){
+	
+	cell_state_type *cell; // make a copy of the cell the bug is currently in
+	event_content_type new_event; // prepare the structure for the next event to be generated
+	simtime_t timestamp; // time at which new event should be generated
+	int current_cell; //just a temp variable
+	
+	//let's see what is going on!!
+	switch(event_type){
+		case INIT:
+			pointer = malloc(sizeof(bug_state_type)); //first, allocate some space for the state of the bug
+			if(pointer == NULL){ //sanity check
+				rootsim_error(true,"INIT ERROR: cannot allocate bug %d state\n", me - TOT_REG);
+			}
+			SetState(pointer);
+
+			bzero(pointer, sizeof(bug_state_type));
+			state = (bug_state_type *) pointer;
+
+			//current and next cell are defaulted to this value
+			state->current_cell = UINT_MAX;
+			state->target_cell = UINT_MAX;
+
+			states[me] = pointer; //update "shared" array;
+
+			//prepare next event's informations
+			new_event.cell = RandomRange(0, TOT_REG -1); //initially, a bug is positioned randomly on the map
+			new_event.coming_from = -1; //default value
+			
+			//start moving!!
+			ScheduleNewEvent(me,10*Random()+1, REGION_IN, &new_event, sizeof(event_content_type));
+
+			break;
+
+		case REGION_IN:
+			state->current_cell = event_content->cell; //update current position
+			current_cell = state->current_cell;
+			//did i just started moving?
+			if(event_content->coming_from != -1){
+				cell = (cell_state_type *) states[event_content->coming_from];
+				cell->present_bugs--; // I moved away from that cell, free it!
+			}
+
+			//update the state of the cell the bug moved in by incrementing the number of present bugs 
+			cell = (cell_state_type *)states[current_cell];
+			cell->present_bugs++;
+
+			//sanity check
+			if(cell->present_bugs > 1){
+				rootsim_error(true,"REGION_IN ERROR: cell %d has more than a bug inside!\n",current_cell);
+			}
+
+			//did we already explore this cell? if no, mark it as explored and update the 
+			if(!(state->visit_map[current_cell].visited)){
+				state->visit_map[current_cell].visited = true;
+				state->visited_cells++;
+				memcpy(&state->visit_map[current_cell].neighbours, cell->neighbours, sizeof(unsigned int)*4); //update the visit map with the actual neighbours of the current cell
+			}
+
+			//decide where to go
+			state->target_cell = RandomRange(0, TOT_REG -1); //TODO: change this!
+			//take a random direction
+			state->direction = RandomRange (0,3);
+
+			//now we have a target and a direction. Let's go!
+			new_event.cell = GetNeighbourId(state->current_cell, state->direction);
+			if(new_event.cell > TOT_REG){
+				rootsim_error(true,"REGION_IN ERROR: new event cell %d has an id > than TOT_REG %u\n",new_event.cell,TOT_REG);
+			}
+
+			new_event.coming_from = state->current_cell;
+			timestamp = now + Expent(TIME_STEP);
+
+			ScheduleNewEvent(me, timestamp, REGION_IN, &new_event, sizeof(event_content_type));
+
+			break;
+	
+	default:	
+		rootsim_error(true,"ERROR: event type not allowed\n");
+	
+	}
+
+}
+
+int BugOnGVT(unsigned int me, bug_state_type *state){
+	
+	if((double) state->visited_cells / TOT_REG < 1.0)
+		printf("Bug %u: %0.2f percent --- currently in cell %d\n",me - TOT_REG,(double) state->visited_cells / TOT_REG * 100, state->current_cell);
+	else
+		return true;
+
+	return false;
+}
