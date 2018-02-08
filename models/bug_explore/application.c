@@ -143,7 +143,10 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 
 int OnGVT(unsigned int me, lp_state_type *snapshot){
 	
-	if(snapshot->explored == 0) printf("cell %u not explored yet (%u), lvt is %f\n",me, snapshot->explored, snapshot->lvt);
+	if(snapshot->explored == 0) 
+		printf("cell %u not explored yet (%u)\n",me, snapshot->explored);
+	else
+		printf("cell %u explored (%u)\n",me, snapshot->explored);
 
 	if(snapshot->lvt < EXECUTION_TIME)
 		return 0;
