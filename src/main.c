@@ -228,6 +228,13 @@ static void *main_simulation_loop(void *arg) {
 	}
 
 	while (!end_computing()) {
+		
+		// This should be only called when power mode is enabled 
+		if(master_thread()){
+			powercap_state_machine();
+		}
+
+		
 		// Recompute the LPs-thread binding
 		rebind_LPs();
 

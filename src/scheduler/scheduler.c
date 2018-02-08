@@ -442,6 +442,9 @@ bool check_rendevouz_request(LID_t lid){
 
 /**
  * This is the core processing routine of PTs
+ *
+ * @Author: Stefano Conoci
+ * @Author: Alessandro Pellegrini
  */
 void asym_process(void) {
 	msg_t *msg;
@@ -563,7 +566,8 @@ void asym_process(void) {
 * threads for later execution. Rollbacks are executed by the controller, and
 * are triggered here in a lazy fashion.
 *
-* @author Alessandro Pellegrini
+* @Author Stefano Conoci
+* @Author Alessandro Pellegrini
 */
 void asym_schedule(void) {
 	LID_t lid, curr_lid;

@@ -55,7 +55,7 @@
 // State machine function declarations
 static int static_state_machine(int, int, double, double, double);
 static int static_controllers_state_machine(int);
-
+static int symmetric_powercap_state_machine(int, double);
 
 // Number of logical cores. Detected at startup and used to apply DVFS setting for all cores
 static int nb_cores;			
@@ -111,7 +111,11 @@ static double converged_power;
 // Variables needed to track the execution time and average power consumption of the overall execution
 static long execution_start_time, execution_start_energy; 
 
+// Variables used to track if gvt interval has passed
 int gvt_interval_passed;
+
+// Variable used to check if timers should be initialized
+int init_timers = 0; 
 
 
 //////////////////////////////////////////////////////////////////////////////
@@ -471,6 +475,34 @@ static int set_processing_pstate(int input_pstate){
 	return ret;
 }
 
+
+static void init_interval_counters(void){
+
+	if(init_timers == 1)
+		return;
+	
+	// Start timer and read initial energy 
+	fast_start_time = get_time();
+	fast_start_energy = get_energy();
+
+	// Start timer and read initial energy for the computation of the powercap error
+	error_start_time = fast_start_time;
+	error_start_energy = fast_start_energy;
+
+	// Start timer and read initial energy for the overall execution averages
+	execution_start_time = fast_start_time;
+	execution_start_energy = fast_start_energy;
+
+	// Start timer and read initial energy for the gvt interval
+	gvt_start_time = fast_start_time;
+	gvt_start_energy = fast_start_energy;
+
+	init_timers = 1; 
+}
+
+
+
+
 //////////////////////////////////////////////////////////////////////////////
 //	Extern functions 
 //////////////////////////////////////////////////////////////////////////////
@@ -482,10 +514,6 @@ static int set_processing_pstate(int input_pstate){
 * @Author: Stefano Conoci
 */
 void init_powercap_module(void){
-
-	if(rootsim_config.num_controllers < 1) {
-		return;
-	}
 
 	if(init_DVFS_management() != 0) {
 		fprintf(stderr, "Cannot init DVFS management\n");
@@ -503,34 +531,31 @@ void init_powercap_module(void){
 		fprintf(stderr, "init_powercap_module: The controllers_freq parameter is invalid for this system\n");
 		exit(EXIT_FAILURE);
 	}
-	if(rootsim_config.powercap_exploration != 2) {
+	
+	if(rootsim_config.num_controllers > 0){
+		if(rootsim_config.powercap_exploration != 2) {
+			if(set_pstate(pstate_config) != 0){
+				fprintf(stderr, "init_powercap_module: set_pstate() error\n");
+				exit(EXIT_FAILURE);
+			}
+		}
+	}
+	else{ // Simmetric execution, just set CPU to the highest frequency without turbo boost
 		if(set_pstate(pstate_config) != 0){
 			fprintf(stderr, "init_powercap_module: set_pstate() error\n");
 			exit(EXIT_FAILURE);
 		}
-	}
+
+		//Also set powercap strategy to 3, which performs powercapping for 
+		//symmetric executions. Should be eventually refactored. 
+		rootsim_config.powercap_exploration = 3; 
+	}	
 
 	// Set the powercap state machine to the source state
 	exploration_state = 0; 
 
 	// Set current controllers to the starting parameter set by user
 	current_controllers = rootsim_config.num_controllers;
-
-	// Start timer and read initial energy 
-	fast_start_time = get_time();
-	fast_start_energy = get_energy();
-
-	// Start timer and read initial energy for the computation of the powercap error
-	error_start_time = fast_start_time;
-	error_start_energy = fast_start_energy;
-
-	// Start timer and read initial energy for the overall execution averages
-	execution_start_time = fast_start_time;
-	execution_start_energy = fast_start_energy;
-
-	// Start timer and read initial energy for the gvt interval
-	gvt_start_time = fast_start_time;
-	gvt_start_energy = fast_start_energy;
 
 	// Initialize power cap error variables
 	error_weighted = 0; 
@@ -557,9 +582,8 @@ void powercap_state_machine(void){
 	double last_num_events, last_committed;
 	long end_time, end_energy;
 
-	// Do not trigger any state change if asymmetric mode is disabled 
-	if(rootsim_config.num_controllers == 0){
-		return;
+	if(!init_timers){
+		init_interval_counters();	
 	}
 
 	double throughput = -1;
@@ -657,6 +681,11 @@ void powercap_state_machine(void){
 				static_controllers_state_machine(local_gvt_completed);
 				break; 
 			case 2:
+				// This case is used to test with static frequency 
+				// for all cores equal to controllers_freq
+				break;
+			case 3: 
+				symmetric_powercap_state_machine(local_fast_completed, fast_sample_power);
 				break;
 			default:
 				printf("Invalid powercap_exploration parameter\n");
@@ -703,7 +732,7 @@ void shutdown_powercap_module(void){
 	avg_power = total_energy/total_time;
 
 	printf("Execution time: %lf s - Average power: %lf Watt - Powercap error: %lf percent\n", total_time, avg_power, error_weighted);
-	
+
 	rsfree(pstate);
 	rsfree(current_pstates);
 
@@ -730,7 +759,7 @@ void shutdown_powercap_module(void){
 */
 static int static_state_machine(int fast_completed, __attribute__((unused)) int gvt_completed, 
 		double fast_power, __attribute__((unused)) double gvt_power, __attribute__((unused)) double throughput){
-
+	
 	// If "fast" sampling interval is not completed, just return
 	if(!fast_completed)
 		return 1; 
@@ -821,4 +850,95 @@ static int static_state_machine(int fast_completed, __attribute__((unused)) int 
 static int static_controllers_state_machine(int gvt_completed){
 
 	return gvt_completed;
+}
+
+/**
+ * This function implements the state machine used in symmetric
+ * executions to run within the powercap. It simply starts at the highest
+ * frequency and reduces P-state for all cores until the powercap is met. 
+ * Once the powercap is found, it either increases or decreases P-state based
+ * on power consumption variations.
+ *
+ * @Author: Stefano Conoci
+ */
+static int symmetric_powercap_state_machine(int fast_completed, double fast_power){
+	
+
+	// If "fast" sampling interval is not completed, just return
+	if(!fast_completed)
+		return 1; 
+
+	// Compute hysteresis range for the powercap
+	double high_powercap = rootsim_config.powercap*(1+HYSTERESIS);
+
+	switch(exploration_state){
+		case 0:	// Source state
+			
+			if(fast_power < high_powercap){
+				if(current_pstates[0] == 0){
+					exploration_state = 3;
+				} else{
+					// Increase frequency and transition to state 1
+					set_pstate(current_pstates[0]-1);
+					exploration_state = 1;
+				}
+			}
+			else{ // fast_power >= high_powercap
+				if(current_pstates[0] == max_pstate){
+					exploration_state = 3; 
+				}
+				else{
+					// Decrease frequency and transition to state 2
+					set_pstate(current_pstates[0]+1);
+					exploration_state = 2; 
+				}
+			}
+			break;
+		
+		case 1:	// Increase frequency until powercap is exceeded
+			
+			if(fast_power > high_powercap || current_pstates[0] == 0){
+				// Decrease frequency since it is now too high and transition to state 3
+				set_pstate(current_pstates[0]+1);
+				exploration_state = 3; 
+			}
+			else{	
+				// Should stay in state 1 and increase frequency again 
+				set_pstate(current_pstates[0]-1);
+			}
+			break;
+		
+		case 2: // Decrease frequency until powercap is met
+
+			if(fast_power < high_powercap || current_pstates[0] == max_pstate)
+				exploration_state = 3; 
+			else
+				set_pstate(current_pstates[0]+1);
+			break;
+
+		case 3:	// Save the power consumption of the converged configuration
+			
+			#ifndef NDEBUG
+			printf("Converged to p-state %d for PTs\n", current_pstates[0]);
+			#endif
+			converged_power = fast_power;
+			exploration_state = 4;
+			break;
+
+		case 4: // Check if should restart the exploration
+
+			// If power consumption is higher than the cap and it is 3% higher
+			// than at the time of convergence, should explore lower frequencies
+			if ( fast_power > high_powercap && fast_power > converged_power*(1+RESTART_EXPLORATION_RANGE))
+				exploration_state = 2;
+
+			// If power consumption is lower than the cap and it is 3% lower
+			// than at the time of convergence, should explore higher frequencies
+			if(fast_power < high_powercap && fast_power < converged_power*(1-RESTART_EXPLORATION_RANGE))
+				exploration_state = 1;
+			break;
+	}
+
+	return 0;
+
 }
