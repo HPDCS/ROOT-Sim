@@ -18,7 +18,8 @@
 
 typedef struct _event_content_type { 
 	    unsigned int cell; //cell's ID
-	    int present; //was a bug inside this cell? 
+	    int present; //was a bug inside this cell?
+	   	unsigned int bug_size;	
 } event_content_type; 
  
 typedef struct _lp_state_type{ 
@@ -26,5 +27,6 @@ typedef struct _lp_state_type{
 		int neighbour_bugs[4]; //each entry memorizes the number of bugs of the surrounding cells (i.e.: N,S,O,W cells)
 		simtime_t lvt; //the lvt of this cell
 		unsigned int explored; //was this cell already explored?
+		unsigned int bug_size; //how big is the bug?
 } lp_state_type;
 

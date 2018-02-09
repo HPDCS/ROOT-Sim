@@ -67,6 +67,7 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 	new_event_content.present = -1;
 	
 	int i;
+	int temp;
 	int receiver;
 	simtime_t timestamp = 0;
 
@@ -103,7 +104,9 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 			
 			pointer->present = 0;
 			pointer->explored = 0;
+			pointer->bug_size = 1;
 
+			new_event_content.bug_size = 1;
 			break;
 		
 		case REGION_IN:
@@ -116,9 +119,16 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 			if(pointer->present > BUG_PER_CELL ){
 				rootsim_error(true,"%s:%d: More than BUG_PER_CELL (%d) are inside cell %d !\n", BUG_PER_CELL, me);
 			}
+			
+			temp = event_content->bug_size + 1;
+			if( temp > pointer->bug_size)
+				pointer->bug_size = temp;
+			
+			//printf("entering region %d and bug size is %u (event content %u)\n", me, pointer->bug_size, temp);
 
 			new_event_content.cell = me;
 			new_event_content.present = pointer->present;
+			new_event_content.bug_size = temp;
 			
 			//for every neighbour I have, send them an UPDATE_NEIGHBOUR event to notify them that a bug passed through me
 			send_update_neighbours(me,now,pointer->present);
@@ -144,6 +154,8 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 
 			new_event_content.cell = me;
 			new_event_content.present = pointer->present;
+			//increase bug size every time it moves...
+			new_event_content.bug_size = event_content->bug_size;
 			
 			//for every neighbour I have, send them an UPDATE_NEIGHBOUR event to notify them that a bug is going outside me
 			send_update_neighbours(me,now,pointer->present);
@@ -171,6 +183,7 @@ int OnGVT(unsigned int me, lp_state_type *snapshot){
 		printf("cell %u not explored yet (%u)\n",me, snapshot->explored);
 	else
 		printf("cell %u explored (%u)\n",me, snapshot->explored);
+	printf("and size of last passed bug is %d\n",snapshot->bug_size);
 
 	if(snapshot->lvt < EXECUTION_TIME)
 		return 0;
