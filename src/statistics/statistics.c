@@ -332,7 +332,7 @@ void statistics_stop(int exit_code) {
 			total_time = timer_value_seconds(simulation_timer);
 		}
 
-		if(Threads[tid]->incarnation == THREAD_CONTROLLER)
+		if(Threads[tid]->incarnation == THREAD_PROCESSING)
 			return;
 
 		/* Finish flushing GVT statistics */
