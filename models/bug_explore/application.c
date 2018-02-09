@@ -15,7 +15,7 @@ unsigned int execution_time = EXECUTION_TIME; //this variable is updated by a us
 void generate_init_region_in(int me, simtime_t now, event_content_type *new_event_content){
 	int i;
 	int parity;
-	
+
 	parity = 1;
 	if(NUM_OCCUPIED_CELLS %2 == 0)
 		parity = 0;
@@ -63,9 +63,7 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 	new_event_content.present = -1;
 	
 	int i;
-	int temp;
 	int receiver;
-	simtime_t timestamp = 0;
 
 	if(pointer!= NULL) {
 		pointer->lvt = now;
@@ -122,15 +120,11 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 				rootsim_error(true,"%s:%d: More than BUG_PER_CELL (%d) are inside cell %d !\n", BUG_PER_CELL, me);
 			}
 			
-			temp = event_content->bug_size + 1;
-			if( temp > pointer->bug_size)
-				pointer->bug_size = temp;
 			
 			//printf("entering region %d and bug size is %u (event content %u)\n", me, pointer->bug_size, temp);
 
 			new_event_content.cell = me;
 			new_event_content.present = pointer->present;
-			new_event_content.bug_size = temp;
 			
 			//for every neighbour I have, send them an UPDATE_NEIGHBOUR event to notify them that a bug passed through me
 			send_update_neighbours(me, now, &new_event_content);
