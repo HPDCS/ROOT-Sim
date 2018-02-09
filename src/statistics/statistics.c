@@ -455,7 +455,7 @@ void statistics_stop(int exit_code) {
 		if(master_kernel() && master_thread()) {
 
 			// Sum up all threads statistics
-			for(i = 0; i < n_cores; i++) {
+			for(i = 0; i < rootsim_config.num_controllers; i++) {
 				system_wide_stats.tot_antimessages += thread_stats[i].tot_antimessages;
 				system_wide_stats.tot_events += thread_stats[i].tot_events;
 				system_wide_stats.committed_events += thread_stats[i].committed_events;
