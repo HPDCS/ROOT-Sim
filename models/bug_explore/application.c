@@ -12,7 +12,7 @@ unsigned int execution_time = EXECUTION_TIME; //this variable is updated by a us
  * @param me The id of the cell who is calling the function
  * @param now The current time of the cell
 */
-void generate_init_region_in(int me, simtime_t now){
+void generate_init_region_in(int me, simtime_t now, event_content_type *new_event_content){
 	int i;
 	int parity;
 	
@@ -23,7 +23,7 @@ void generate_init_region_in(int me, simtime_t now){
 	if(me < (int)(NUM_OCCUPIED_CELLS/2 + parity) || me >= (int) (n_prc_tot - (NUM_OCCUPIED_CELLS/2 + parity)) ){
 		printf("generating REGION_IN for %d\n",me);
 		for(i = 0; i < BUG_PER_CELL;i++){
-			ScheduleNewEvent(me, now + (simtime_t)(20*Random()), REGION_IN, NULL, 0);
+			ScheduleNewEvent(me, now + (simtime_t)(20*Random()), REGION_IN, new_event_content, sizeof(new_event_content));
 		}
 
 	}
@@ -41,20 +41,16 @@ void generate_init_region_in(int me, simtime_t now){
  * @param present The number of bugs that are inside the cell
 */
 
-void send_update_neighbours(int me, simtime_t now, int present){
-	event_content_type new_event_content;
+void send_update_neighbours(int me, simtime_t now, event_content_type *new_event_content){
 	int receiver;
 	int i;
-
-	new_event_content.cell = me;
-	new_event_content.present = present;
 
 	for(i = 0; i < 4; i++){
 		receiver = GetReceiver(TOPOLOGY_TORUS,i);
 		if(receiver >= (int) n_prc_tot || receiver < 0){
 			rootsim_error(true,"%s:%d Got receiver out of bounds!\n",__FILE__, __LINE__);
 		}	
-		ScheduleNewEvent(receiver, now + TIME_STEP/100000, UPDATE_NEIGHBOURS, &new_event_content, sizeof(new_event_content));
+		ScheduleNewEvent(receiver, now + TIME_STEP/100000, UPDATE_NEIGHBOURS, new_event_content, sizeof(new_event_content));
 	}
 
 }
@@ -94,9 +90,7 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 			if(NUM_OCCUPIED_CELLS > n_prc_tot){
 				rootsim_error(true, "%s:%d: Require more cell than available LPs\n", __FILE__, __LINE__);
 			}
-			//send REGION_IN towards first and last cells	
-			generate_init_region_in(me,now);
-			
+
 			//initialize data structures
 			for(i = 0; i < 4; i++){
 				pointer->neighbour_bugs[i] = 0;
@@ -106,7 +100,15 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 			pointer->explored = 0;
 			pointer->bug_size = 1;
 
+			new_event_content.cell = me;
+			new_event_content.present = 0;
 			new_event_content.bug_size = 1;
+
+			//send REGION_IN towards first and last cells	
+			generate_init_region_in(me,now,&new_event_content);
+	
+
+
 			break;
 		
 		case REGION_IN:
@@ -131,10 +133,10 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 			new_event_content.bug_size = temp;
 			
 			//for every neighbour I have, send them an UPDATE_NEIGHBOUR event to notify them that a bug passed through me
-			send_update_neighbours(me,now,pointer->present);
+			send_update_neighbours(me, now, &new_event_content);
 			
 			//a bug is going outside me, I need to notify myself
-			ScheduleNewEvent(me, now + TIME_STEP/100000, REGION_OUT, NULL,0);
+			ScheduleNewEvent(me, now + TIME_STEP/100000, REGION_OUT, &new_event_content, sizeof(new_event_content));
 
 			break;
 		
@@ -158,7 +160,7 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 			new_event_content.bug_size = event_content->bug_size;
 			
 			//for every neighbour I have, send them an UPDATE_NEIGHBOUR event to notify them that a bug is going outside me
-			send_update_neighbours(me,now,pointer->present);
+			send_update_neighbours(me, now, &new_event_content);
 			
 			//choose a random direction to take, and get the corresponding cell ID (receiver)
 			do{
@@ -167,7 +169,7 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 			}while(pointer->neighbour_bugs[i] >= BUG_PER_CELL);
 
 			//The bug is going to another cell, send a REGION_IN to it. TODO: Only uniform distribution used for timestamp
-            ScheduleNewEvent(receiver, now + (simtime_t) (TIME_STEP * Random()), REGION_IN, NULL, 0);
+            ScheduleNewEvent(receiver, now + (simtime_t) (TIME_STEP * Random()), REGION_IN, &new_event_content, sizeof(new_event_content));
 			break;
 		
 		default:
