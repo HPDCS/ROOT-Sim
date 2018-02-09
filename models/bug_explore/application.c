@@ -97,11 +97,15 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 			pointer->present = 0;
 			pointer->explored = 0;
 			pointer->bug_size = 1;
-
+			pointer->food_availability = 0.0;
+			pointer->food_production = RandomRange(0,MAX_FOOD_PRODUCTION_RATE);
+			pointer->food_consumption = (MAX_FOOD_CONSUMPTION_RATE > pointer->food_availability) ? MAX_FOOD_CONSUMPTION_RATE : pointer->food_availability;
+		
 			new_event_content.cell = me;
 			new_event_content.present = 0;
 			new_event_content.bug_size = 1;
 
+			ScheduleNewEvent(me, now + TIME_STEP/1000, PRODUCE_FOOD, NULL, 0);
 			//send REGION_IN towards first and last cells	
 			generate_init_region_in(me,now,&new_event_content);
 	
@@ -120,6 +124,11 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 				rootsim_error(true,"%s:%d: More than BUG_PER_CELL (%d) are inside cell %d !\n", BUG_PER_CELL, me);
 			}
 			
+			pointer->food_consumption = (MAX_FOOD_CONSUMPTION_RATE < pointer->food_availability) ? MAX_FOOD_CONSUMPTION_RATE : pointer->food_availability;
+			pointer->bug_size = pointer->food_consumption;
+			pointer->food_availability =- pointer->food_consumption;
+			if(pointer->food_availability < 0)
+				pointer->food_availability = 0.0;
 			
 			//printf("entering region %d and bug size is %u (event content %u)\n", me, pointer->bug_size, temp);
 
@@ -135,6 +144,7 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 			break;
 		
 		case UPDATE_NEIGHBOURS:
+			
 			//update only the entry dedicated to the sender cell with the number of bugs that are inside it
 			for(i = 0; i < 4; i++){
 				if(event_content->cell == GetReceiver(TOPOLOGY_TORUS,i)){
@@ -143,11 +153,20 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 			}
 
 			break;
+		
+		case PRODUCE_FOOD:
+			pointer->food_production = RandomRange(0,MAX_FOOD_PRODUCTION_RATE);
+			pointer->food_availability =+ pointer->food_production;
+			
+			//printf("producing food at cell %d, product %f and avail %f\n", me, pointer->food_production, pointer->food_availability); 
+			ScheduleNewEvent(me, now + TIME_STEP/1000, PRODUCE_FOOD, NULL, 0);
 
+			break; 
+		
 		case REGION_OUT:
 			
 			pointer->present--;
-
+		
 			new_event_content.cell = me;
 			new_event_content.present = pointer->present;
 			//increase bug size every time it moves...
@@ -176,10 +195,11 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 int OnGVT(unsigned int me, lp_state_type *snapshot){
 	
 	if(snapshot->explored == 0) 
-		printf("cell %u not explored yet (%u)\n",me, snapshot->explored);
+		printf("cell %u not explored yet (%u)",me, snapshot->explored);
 	else
-		printf("cell %u explored (%u)\n",me, snapshot->explored);
-	printf("and size of last passed bug is %d\n",snapshot->bug_size);
+		printf("cell %u explored (%u)",me, snapshot->explored);
+
+	printf(" and size of last passed bug is %f\n",snapshot->bug_size);
 
 	if(snapshot->lvt < EXECUTION_TIME)
 		return 0;

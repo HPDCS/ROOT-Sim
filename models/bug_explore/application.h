@@ -5,7 +5,10 @@
 #define REGION_IN 1
 #define REGION_OUT 2
 #define UPDATE_NEIGHBOURS 3
+#define PRODUCE_FOOD 4
 #define TIME_STEP 5.0
+#define MAX_FOOD_PRODUCTION_RATE 10
+#define MAX_FOOD_CONSUMPTION_RATE 10
 #define EXECUTION_TIME 10000000 //dummy: it can be modified with a specific parameter 
 
 #ifndef NUM__OCCUPIED_CELLS
@@ -19,14 +22,17 @@
 typedef struct _event_content_type { 
 	    unsigned int cell; //cell's ID
 	    int present; //was a bug inside this cell?
-	   	unsigned int bug_size;	
+	   	double bug_size;	
 } event_content_type; 
  
 typedef struct _lp_state_type{ 
 	    int present; //number of bugs actually present in this cell 
 		int neighbour_bugs[4]; //each entry memorizes the number of bugs of the surrounding cells (i.e.: N,S,O,W cells)
 		simtime_t lvt; //the lvt of this cell
-		unsigned int explored; //was this cell already explored?
-		unsigned int bug_size; //how big is the bug?
+		unsigned int explored; //was this cell already explored?	
+		double bug_size; //how big is the bug?
+		double food_availability; //cell's amount of food
+		double food_production; //rate at which a cell produces food
+		int food_consumption;
 } lp_state_type;
 
