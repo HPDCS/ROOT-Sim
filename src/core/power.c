@@ -725,7 +725,8 @@ void powercap_state_machine(void){
 void shutdown_powercap_module(void){
 
 	long end_time, end_energy;
-	double total_time, avg_power, total_energy, idle_seconds; 
+	double total_time, avg_power, total_energy, idle_seconds;
+        double 	ct_sum_idle = 0, pt_sum_idle = 0;
 	unsigned int i;
 	
 	end_time = get_time();
@@ -740,8 +741,16 @@ void shutdown_powercap_module(void){
 	if(rootsim_config.num_controllers > 0){
 		for(i = 0;i<n_cores;i++){
 			idle_seconds = ((double) total_idle_microseconds[i]/1000000);
-			printf("Thread %d - idle percentage %lf\n", i, idle_seconds/total_time);
+			if(i<rootsim_config.num_controllers){
+				ct_sum_idle+=idle_seconds;	
+			} else{
+				pt_sum_idle+=idle_seconds;
+			}
+			//printf("Thread %d - idle percentage %lf\n", i, idle_seconds/total_time);
 		}
+
+		printf("CT idle: %lf percent - PT idle: %lf percent\n",
+				(ct_sum_idle/rootsim_config.num_controllers)/total_time*100, (pt_sum_idle/(n_cores-rootsim_config.num_controllers))/total_time*100);
 	}
 
 	printf("Execution time: %lf s - Average power: %lf Watt - Powercap error: %lf percent - Processed: %d" 
