@@ -37,7 +37,7 @@
 #include <stdint.h>
 #include <statistics/statistics.h>
 #include <scheduler/process.h>
-
+#include <scheduler/scheduler.h>
 #include <core/core.h>
 
 #define NDEBUG
@@ -717,14 +717,16 @@ void powercap_state_machine(void){
 }
 
 /**
-* This function frees memory and prints power capping results
+* This function frees memory and prints power capping results.
+* Executed only by master thread at the end of simulation
 *
 * @Author: Stefano Conoci
 */
 void shutdown_powercap_module(void){
 
 	long end_time, end_energy;
-	double total_time, avg_power, total_energy; 
+	double total_time, avg_power, total_energy, idle_seconds; 
+	unsigned int i;
 	
 	end_time = get_time();
 	end_energy = get_energy();
@@ -735,8 +737,15 @@ void shutdown_powercap_module(void){
 
 	int tot_processed_events = atomic_read(&final_processed_events);
 
+	if(rootsim_config.num_controllers > 0){
+		for(i = 0;i<n_cores;i++){
+			idle_seconds = ((double) total_idle_microseconds[i]/1000000);
+			printf("Thread %d - idle percentage %lf\n", i, idle_seconds/total_time);
+		}
+	}
+
 	printf("Execution time: %lf s - Average power: %lf Watt - Powercap error: %lf percent - Processed: %d" 
-			" - Committed: %d Efficiency %lf\n",
+			" - Committed: %d Efficiency: %lf\n",
 		       	total_time, avg_power, error_weighted, tot_processed_events,
 		       	controller_committed_events, ((double) controller_committed_events/ (double) tot_processed_events));
 

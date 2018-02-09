@@ -82,7 +82,11 @@ static __thread list(msg_t) hi_prio_list;
 
 // Timer per thread used to gather statistics on execution time for 
 // controllers and processers in asymmetric executions
-__thread timer timer_local_thread;
+static __thread timer timer_local_thread;
+
+// Pointer to an array of longs which are used as an accumulator of time 
+// spent idle in asym_schedule or asym_process
+long *total_idle_microseconds;
 
 /*
 * This function initializes the scheduler. In particular, it relies on MPI to broadcast to every simulation kernel process
@@ -452,7 +456,6 @@ void asym_process(void) {
 	msg_t *hi_prio_msg;
 	LID_t lid;
 
-
 	timer_start(timer_local_thread);
 
 	// We initially check for high priority msgs. If one is present,
@@ -474,6 +477,7 @@ void asym_process(void) {
 	// My queue might be empty...
 	if(msg == NULL){
 		//printf("Empty queue for PT %d\n", tid);
+		total_idle_microseconds[tid] += timer_value_micro(timer_local_thread);
 		return;
 	}
 
@@ -897,6 +901,11 @@ void asym_schedule(void) {
 		}
 		#endif
 	}
+
+	if(sent_events == 0){
+		total_idle_microseconds[tid] += timer_value_micro(timer_local_thread);
+	}
+
 	//printf("Sent events: %u\n", sent_events);
 	//printf("Sent rollback notice: %u\n", sent_notice);
 	//printf("asym_schedule for controller %d completed in %d milliseconds\n", tid, timer_value_milli(timer_local_thread));

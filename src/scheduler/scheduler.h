@@ -119,6 +119,7 @@ extern __thread simtime_t current_lvt;
 extern __thread msg_t *current_evt;
 extern __thread void *current_state;
 extern __thread unsigned int n_prc_per_thread;
+extern long *total_idle_microseconds;
 
 
 #ifdef HAVE_PREEMPTION

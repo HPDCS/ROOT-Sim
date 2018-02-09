@@ -217,8 +217,8 @@ void threads_init(void) {
 		Threads[i]->port_batch_size = PORT_START_BATCH_SIZE;
 
 		// Initialize curr_scheduled_events
-		Threads[i]->curr_scheduled_events = rsalloc(sizeof(int)*n_prc);
-		
+		Threads[i]->curr_scheduled_events = rsalloc(sizeof(int)*n_prc);	
+				
 		// Initialize heap data structure used by controllers.
 		// We can initialize it for all threads with a minor cost since 
 		// it actually allocs memory to store data on first push
@@ -254,6 +254,10 @@ void threads_init(void) {
 			Threads[curr_ct]->num_PTs++;
 			curr_ct = (curr_ct + 1) % rootsim_config.num_controllers;
 		}
+		
+		// Alloc and set to zero the idle_microseconds array. Should be moved to statistics
+		total_idle_microseconds = rsalloc(sizeof(long)*n_cores); 
+		bzero(total_idle_microseconds, sizeof(long)*n_cores);
 	}
 }
 
