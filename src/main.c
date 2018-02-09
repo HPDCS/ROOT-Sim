@@ -58,6 +58,10 @@
 #include <core/init.h>
 #undef _INIT_FROM_MAIN
 
+int controller_committed_events = 0; 
+atomic_t final_processed_events;
+__thread int my_processed_events = 0;
+
 
 /**
 * This function checks the different possibilities for termination detection termination.
@@ -201,6 +205,7 @@ static void *main_simulation_loop(void *arg) {
 		asym_process();
 	}
 
+	atomic_add(&final_processed_events, my_processed_events);
 
 	goto finish;
 

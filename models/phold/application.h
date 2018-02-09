@@ -24,7 +24,7 @@
 #define LOOP		3
 
 #define COMPLETE_EVENTS 10000	// for the LOOP traditional case
-#define LOOP_COUNT	1000000
+#define LOOP_COUNT	300000
 
 
 // This is the events' payload which is exchanged across LPs

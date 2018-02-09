@@ -38,6 +38,12 @@
 #include <stdint.h>
 
 #include <lib/numerical.h>
+#include <arch/atomic.h>
+
+
+extern int controller_committed_events;
+extern atomic_t final_processed_events;
+extern __thread int my_processed_events;
 
 /// If set, ROOT-Sim will produce statistics on the execution
 #define PLATFORM_STATS

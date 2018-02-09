@@ -38,6 +38,8 @@
 #include <statistics/statistics.h>
 #include <scheduler/process.h>
 
+#include <core/core.h>
+
 #define NDEBUG
 
 // Interval of time needed to obtain an accurate sample of energy consumption. Expressed in milliseconds.  
@@ -731,7 +733,12 @@ void shutdown_powercap_module(void){
 	total_energy = (double) (end_energy - execution_start_energy)/1000000;
 	avg_power = total_energy/total_time;
 
-	printf("Execution time: %lf s - Average power: %lf Watt - Powercap error: %lf percent\n", total_time, avg_power, error_weighted);
+	int tot_processed_events = atomic_read(&final_processed_events);
+
+	printf("Execution time: %lf s - Average power: %lf Watt - Powercap error: %lf percent - Processed: %d" 
+			" - Committed: %d Efficiency %lf\n",
+		       	total_time, avg_power, error_weighted, tot_processed_events,
+		       	controller_committed_events, ((double) controller_committed_events/ (double) tot_processed_events));
 
 	rsfree(pstate);
 	rsfree(current_pstates);

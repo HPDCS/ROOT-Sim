@@ -544,6 +544,7 @@ void asym_process(void) {
 
 	// Process this event
 	activate_LP(lid, msg->timestamp, msg, LPS(lid)->current_base_pointer);
+	my_processed_events++;
 	msg->unprocessed = false;
 
 	// Send back to the controller the (possibly) generated events
