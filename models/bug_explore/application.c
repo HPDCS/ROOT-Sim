@@ -19,7 +19,18 @@ void generate_init_region_in(int me, simtime_t now, event_content_type *new_even
 	parity = 1;
 	if(NUM_OCCUPIED_CELLS %2 == 0)
 		parity = 0;
-
+	
+	if(BUG_PER_CELL == 1){
+		if(me == 0){
+			printf("generating REGION_IN for %d\n",me);
+			ScheduleNewEvent(me, now + (simtime_t)(20*Random()), REGION_IN, new_event_content, sizeof(new_event_content));
+			return;
+		}
+		else
+			return;
+	}
+	
+	//this code left is for further improvements
 	if(me < (int)(NUM_OCCUPIED_CELLS/2 + parity) || me >= (int) (n_prc_tot - (NUM_OCCUPIED_CELLS/2 + parity)) ){
 		printf("generating REGION_IN for %d\n",me);
 		for(i = 0; i < BUG_PER_CELL;i++){
@@ -98,6 +109,7 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 			pointer->explored = 0;
 			pointer->bug_size = 1;
 			pointer->food_availability = 0.0;
+			pointer->lvt = 0;
 			pointer->food_production = RandomRange(0,MAX_FOOD_PRODUCTION_RATE);
 			pointer->food_consumption = (MAX_FOOD_CONSUMPTION_RATE > pointer->food_availability) ? MAX_FOOD_CONSUMPTION_RATE : pointer->food_availability;
 		
