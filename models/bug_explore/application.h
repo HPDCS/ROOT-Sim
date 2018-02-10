@@ -6,6 +6,7 @@
 #define REGION_OUT 2
 #define UPDATE_NEIGHBOURS 3
 #define PRODUCE_FOOD 4
+#define REPRODUCE 5
 #define TIME_STEP 5.0
 #define MAX_FOOD_PRODUCTION_RATE 10
 #define MAX_FOOD_CONSUMPTION_RATE 10
@@ -23,6 +24,7 @@ typedef struct _event_content_type {
 	    unsigned int cell; //cell's ID
 	    int present; //was a bug inside this cell?
 	   	double bug_size;	
+		int dying;
 } event_content_type; 
  
 typedef struct _lp_state_type{ 

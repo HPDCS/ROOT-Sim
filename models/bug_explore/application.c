@@ -75,6 +75,8 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 	
 	int i;
 	int receiver;
+	int count;
+	int times;
 
 	if(pointer!= NULL) {
 		pointer->lvt = now;
@@ -112,10 +114,11 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 			pointer->lvt = 0;
 			pointer->food_production = RandomRange(0,MAX_FOOD_PRODUCTION_RATE);
 			pointer->food_consumption = (MAX_FOOD_CONSUMPTION_RATE > pointer->food_availability) ? MAX_FOOD_CONSUMPTION_RATE : pointer->food_availability;
-		
+
 			new_event_content.cell = me;
 			new_event_content.present = 0;
 			new_event_content.bug_size = 1;
+			new_event_content.dying = 0;
 
 			ScheduleNewEvent(me, now + TIME_STEP/1000, PRODUCE_FOOD, NULL, 0);
 			//send REGION_IN towards first and last cells	
@@ -146,10 +149,30 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 
 			new_event_content.cell = me;
 			new_event_content.present = pointer->present;
+			new_event_content.bug_size = pointer->bug_size;	
+			if(pointer->bug_size >= 10){
+				printf("bug in cell %d is reproducing!\n",me);	
+				
+				//reproduce to 5 new bugs
+				count = 0; times = 0;
+				for(i = 0; i < 5; i++){
+					do{
+						count = RandomRange(0,3);
+						if(pointer->neighbour_bugs[count] == 0){
+							pointer->neighbour_bugs[count] = 1;
+							receiver = GetReceiver(TOPOLOGY_TORUS, count);
+							ScheduleNewEvent(receiver, now + (simtime_t) (TIME_STEP * Random()), REGION_IN, &new_event_content, sizeof(new_event_content));
+						}
+						times++;
+					}while(times < 5);
+				}
+				//break;
+				new_event_content.dying = 1;
+			}
 			
 			//for every neighbour I have, send them an UPDATE_NEIGHBOUR event to notify them that a bug passed through me
 			send_update_neighbours(me, now, &new_event_content);
-			
+
 			//a bug is going outside me, I need to notify myself
 			ScheduleNewEvent(me, now + TIME_STEP/100000, REGION_OUT, &new_event_content, sizeof(new_event_content));
 
@@ -174,7 +197,7 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 			ScheduleNewEvent(me, now + TIME_STEP/1000, PRODUCE_FOOD, NULL, 0);
 
 			break; 
-		
+
 		case REGION_OUT:
 			
 			pointer->present--;
@@ -182,11 +205,14 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 			new_event_content.cell = me;
 			new_event_content.present = pointer->present;
 			//increase bug size every time it moves...
-			new_event_content.bug_size = event_content->bug_size;
+			new_event_content.bug_size = pointer->bug_size;
 			
 			//for every neighbour I have, send them an UPDATE_NEIGHBOUR event to notify them that a bug is going outside me
 			send_update_neighbours(me, now, &new_event_content);
 			
+			if(event_content->dying != 0)
+				break;
+
 			//choose a random direction to take, and get the corresponding cell ID (receiver)
 			do{
 				i = (int) RandomRange(0,3);
