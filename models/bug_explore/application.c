@@ -53,7 +53,7 @@ void generate_init_region_in(int me, simtime_t now, event_content_type *new_even
  * @param present The number of bugs that are inside the cell
 */
 
-void send_update_neighbours(int me, simtime_t now, event_content_type *new_event_content){
+void send_update_neighbours(simtime_t now, event_content_type *new_event_content){
 	int receiver;
 	int i;
 
@@ -182,7 +182,7 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 			}
 			
 			//for every neighbour I have, send them an UPDATE_NEIGHBOUR event to notify them that a bug passed through me
-			send_update_neighbours(me, now, &new_event_content);
+			send_update_neighbours(now, &new_event_content);
 
 			//a bug is going outside me, I need to notify myself
 			ScheduleNewEvent(me, now + TIME_STEP/100000, REGION_OUT, &new_event_content, sizeof(new_event_content));
@@ -227,7 +227,7 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 			new_event_content.dying = 0;
 
 			// for every neighbour I have, send them an UPDATE_NEIGHBOUR event to notify them that a bug is going outside me
-			send_update_neighbours(me, now, &new_event_content);
+			send_update_neighbours(now, &new_event_content);
 		
 			if(total_num_bugs >= TOT_REG) //avoid bugs deadlocks!!
 				goto die;
