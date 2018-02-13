@@ -60,7 +60,8 @@ void send_update_neighbours(int me, simtime_t now, event_content_type *new_event
 	for(i = 0; i < 4; i++){
 		receiver = GetReceiver(TOPOLOGY_TORUS,i);
 		if(receiver >= (int) n_prc_tot || receiver < 0){
-			rootsim_error(true,"%s:%d Got receiver out of bounds!\n",__FILE__, __LINE__);
+			printf("%s:%d Got receiver out of bounds!\n",__FILE__, __LINE__);
+			exit(EXIT_FAILURE);
 		}	
 		ScheduleNewEvent(receiver, now + TIME_STEP/100000, UPDATE_NEIGHBOURS, new_event_content, sizeof(new_event_content));
 	}
@@ -93,14 +94,16 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 						
 			pointer = (lp_state_type *)malloc(sizeof(lp_state_type));
 			if(pointer == NULL){
-				rootsim_error(true,"%s:%d: Unable to allocate memory!", __FILE__, __LINE__);
+				printf("%s:%d: Unable to allocate memory!", __FILE__, __LINE__);
+				exit(EXIT_FAILURE);
 			}
 
 			SetState(pointer);
 			
 			//Sanity check
 			if(NUM_OCCUPIED_CELLS > n_prc_tot){
-				rootsim_error(true, "%s:%d: Require more cell than available LPs\n", __FILE__, __LINE__);
+				printf( "%s:%d: Require more cell than available LPs\n", __FILE__, __LINE__);
+				exit(EXIT_FAILURE);
 			}
 
 			//initialize data structures+
@@ -139,7 +142,8 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 
 			//Sanity check
 			if(pointer->present > BUG_PER_CELL ){
-				rootsim_error(true,"%s:%d: More than BUG_PER_CELL (%d) are inside cell %d !\n", BUG_PER_CELL, me);
+				printf("%s:%d: More than BUG_PER_CELL (%d) are inside cell %d !\n",__FILE__,__LINE__, BUG_PER_CELL, me);
+				exit(EXIT_FAILURE);
 			}
 			
 			pointer->food_consumption = (MAX_FOOD_CONSUMPTION_RATE < pointer->food_availability) ? MAX_FOOD_CONSUMPTION_RATE : pointer->food_availability;
@@ -246,13 +250,16 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 			total_num_bugs--;
 
 			//Sanity check
-			if(total_num_bugs < 0)
-				rootsim_error(true,"%s:%d Reached a negative number of bugs: %d\n"__FILE__,__LINE__, total_num_bugs);
+			if(total_num_bugs < 0){
+				printf("%s:%d Reached a negative number of bugs: %d\n", __FILE__,__LINE__, total_num_bugs);
+				exit(EXIT_FAILURE);
+			}
 
 			break;
 		
 		default:
-			rootsim_error(true,"%s:%d: Unsupported event: %d\n", __FILE__, __LINE__, event_type);
+			printf("%s:%d: Unsupported event: %d\n", __FILE__, __LINE__, event_type);
+			exit(EXIT_FAILURE);
 	}
 	
 
