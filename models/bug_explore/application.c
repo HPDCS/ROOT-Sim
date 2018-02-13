@@ -1,5 +1,6 @@
 #include "application.h"
 
+int total_num_bugs = 1;
 unsigned int execution_time = EXECUTION_TIME; //this variable is updated by a user parameter
 
 /**
@@ -102,7 +103,10 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 				rootsim_error(true, "%s:%d: Require more cell than available LPs\n", __FILE__, __LINE__);
 			}
 
-			//initialize data structures
+			//initialize data structures+
+
+			total_num_bugs = 1;
+
 			for(i = 0; i < 4; i++){
 				pointer->neighbour_bugs[i] = 0;
 			}
@@ -129,7 +133,6 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 			break;
 		
 		case REGION_IN:
-			
 			pointer->present++;
 			if(pointer->explored == 0)
 				pointer->explored++;
@@ -140,8 +143,8 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 			}
 			
 			pointer->food_consumption = (MAX_FOOD_CONSUMPTION_RATE < pointer->food_availability) ? MAX_FOOD_CONSUMPTION_RATE : pointer->food_availability;
-			pointer->bug_size = pointer->food_consumption;
-			pointer->food_availability =- pointer->food_consumption;
+			pointer->bug_size += pointer->food_consumption;
+			pointer->food_availability -= pointer->food_consumption;
 			if(pointer->food_availability < 0)
 				pointer->food_availability = 0.0;
 			
@@ -149,25 +152,29 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 
 			new_event_content.cell = me;
 			new_event_content.present = pointer->present;
-			new_event_content.bug_size = pointer->bug_size;	
+			new_event_content.bug_size = pointer->bug_size;
+			new_event_content.dying = 0;
+
 			if(pointer->bug_size >= 10){
 				printf("bug in cell %d is reproducing!\n",me);	
 				
 				//reproduce to 5 new bugs
-				count = 0; times = 0;
-				for(i = 0; i < 5; i++){
+				for(i = 0; i < 5; i++){ //split in 5 different siblings, so find a direction for each of them
+					count = 0; times = 0;
 					do{
 						count = RandomRange(0,3);
-						if(pointer->neighbour_bugs[count] == 0){
-							pointer->neighbour_bugs[count] = 1;
+						if(pointer->neighbour_bugs[count] < BUG_PER_CELL){
+							pointer->neighbour_bugs[count] += 1;
 							receiver = GetReceiver(TOPOLOGY_TORUS, count);
+							new_event_content.bug_size = 1; //sibling's initial size is 1
+							total_num_bugs++;
 							ScheduleNewEvent(receiver, now + (simtime_t) (TIME_STEP * Random()), REGION_IN, &new_event_content, sizeof(new_event_content));
 						}
 						times++;
-					}while(times < 5);
+					}while(times < 5); //if no location is identified within 5 random rows, the sibling "dies" (i.e.: the REGION_IN event is never sent).
 				}
-				//break;
-				new_event_content.dying = 1;
+				
+				new_event_content.dying = 1; //in any case, the parent dies.
 			}
 			
 			//for every neighbour I have, send them an UPDATE_NEIGHBOUR event to notify them that a bug passed through me
@@ -183,7 +190,10 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 			//update only the entry dedicated to the sender cell with the number of bugs that are inside it
 			for(i = 0; i < 4; i++){
 				if(event_content->cell == GetReceiver(TOPOLOGY_TORUS,i)){
-					pointer->neighbour_bugs[i] = event_content->present;
+					if(event_content->dying != 0) //if the event was sent by a dying bug, it means that this cell will be empty.
+						pointer->neighbour_bugs[i] = 0;
+					else
+						pointer->neighbour_bugs[i] = event_content->present;
 				}
 			}
 
@@ -191,7 +201,7 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 		
 		case PRODUCE_FOOD:
 			pointer->food_production = RandomRange(0,MAX_FOOD_PRODUCTION_RATE);
-			pointer->food_availability =+ pointer->food_production;
+			pointer->food_availability += pointer->food_production;
 			
 			//printf("producing food at cell %d, product %f and avail %f\n", me, pointer->food_production, pointer->food_availability); 
 			ScheduleNewEvent(me, now + TIME_STEP/1000, PRODUCE_FOOD, NULL, 0);
@@ -201,17 +211,27 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 		case REGION_OUT:
 			
 			pointer->present--;
-		
+
+			// if the bug who sent me this event was dying, it means that he already notified its neighbours. Do nothing else then.
+			if(event_content->dying != 0)				
+				goto die;
+
 			new_event_content.cell = me;
 			new_event_content.present = pointer->present;
-			//increase bug size every time it moves...
+			// increase bug size every time it moves...
 			new_event_content.bug_size = pointer->bug_size;
-			
-			//for every neighbour I have, send them an UPDATE_NEIGHBOUR event to notify them that a bug is going outside me
+			new_event_content.dying = 0;
+
+			// for every neighbour I have, send them an UPDATE_NEIGHBOUR event to notify them that a bug is going outside me
 			send_update_neighbours(me, now, &new_event_content);
-			
-			if(event_content->dying != 0)
-				break;
+		
+			if(total_num_bugs >= TOT_REG) //avoid bugs deadlocks!!
+				goto die;
+			else{
+				// randomly choose if this bug needs to die 
+				if(RandomRange(0,100) >= SURVIVAL_PROBABILITY && total_num_bugs > 1)
+					goto die;
+			}
 
 			//choose a random direction to take, and get the corresponding cell ID (receiver)
 			do{
@@ -221,6 +241,14 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 
 			//The bug is going to another cell, send a REGION_IN to it. TODO: Only uniform distribution used for timestamp
             ScheduleNewEvent(receiver, now + (simtime_t) (TIME_STEP * Random()), REGION_IN, &new_event_content, sizeof(new_event_content));
+			break;
+			die:
+			total_num_bugs--;
+
+			//Sanity check
+			if(total_num_bugs < 0)
+				rootsim_error(true,"%s:%d Reached a negative number of bugs: %d\n"__FILE__,__LINE__, total_num_bugs);
+
 			break;
 		
 		default:
@@ -237,10 +265,16 @@ int OnGVT(unsigned int me, lp_state_type *snapshot){
 	else
 		printf("cell %u explored (%u)",me, snapshot->explored);
 
-	printf(" and size of last passed bug is %f\n",snapshot->bug_size);
+	printf(" and size of last passed bug is %f. Left bugs are %d\n",snapshot->bug_size, total_num_bugs);
+
+	if(total_num_bugs == 0){
+		printf("All bugs died!\n");
+		return 1;
+	}
 
 	if(snapshot->lvt < EXECUTION_TIME)
 		return 0;
+
 	
 	return 1;
 }
