@@ -160,6 +160,9 @@ double Gamma(int ia);
 double Poisson(void);
 int Zipf(double skew, int limit);
 
+// Generate a system-wide unique identifier
+unsigned long long GenerateUniqueId(void);
+
 // ROOT-Sim core API
 extern void (*ScheduleNewEvent)(unsigned int receiver, simtime_t timestamp, unsigned int event_type, void *event_content, unsigned int event_size);
 extern void (*SetState)(void *new_state);

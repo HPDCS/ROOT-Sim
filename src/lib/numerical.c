@@ -419,6 +419,11 @@ static void load_seed(void) {
 }
 
 
+unsigned long long GenerateUniqueId(void) {
+	return generate_mark(current_lp);
+}
+
+
 // TODO: con un (non tanto) alto numero di processi logici (> numero di bit di un intero!!), lo shift
 // circolare restituisce a due LP differenti lo stesso seme iniziale. Questo fa sì che, se la logica di
 // programma è la stessa e basata soltanto su numeri casuali, due o più nodi eseguano sempre la stessa
