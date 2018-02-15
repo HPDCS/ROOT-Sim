@@ -37,14 +37,15 @@
 #include <scheduler/process.h>
 #include <datatypes/list.h>
 #include <datatypes/slab.h>
+#include <datatypes/treiber.h>
 #include <mm/dymelor.h>
 #include <arch/atomic.h>
 #ifdef HAVE_MPI
 #include <communication/mpi.h>
 #endif
 
+static treiber **msg_treiber;
 static struct slab_chain *msg_slab;
-static spinlock_t *slab_lock;
 
 
 /// This is the function pointer to correctly set ScheduleNewEvent API version, depending if we're running serially or parallelly
@@ -66,11 +67,11 @@ void communication_init(void) {
 	inter_kernel_comm_init();
 	#endif
 
+	msg_treiber = rsalloc(n_cores * sizeof(msg_treiber));
 	msg_slab = rsalloc(n_cores * sizeof(*msg_slab));
-	slab_lock = rsalloc(n_cores * sizeof(*slab_lock));
 
 	for(i = 0; i < n_cores; i++) {
-		spinlock_init(&slab_lock[i]);
+		msg_treiber[i] = treiber_init();
 	}
 }
 
@@ -94,13 +95,13 @@ void communication_fini(void) {
 	#endif
 
 	rsfree(msg_slab);
-	rsfree(slab_lock);
 }
 
 msg_hdr_t *get_msg_hdr_from_slab(void) {
-	spin_lock(&slab_lock[local_tid]);
-	msg_hdr_t *msg = (msg_hdr_t *)slab_alloc(&msg_slab[local_tid]);
-	spin_unlock(&slab_lock[local_tid]);
+	// TODO: The magnitude of this hack compares to that of the national debt.
+	// We must have a single allocation point where we just get a buffer, and then
+	// we map that to the various data structures.
+	msg_hdr_t *msg = (msg_hdr_t *)get_msg_from_slab();
 	bzero(msg, SLAB_MSG_SIZE);
 	msg->alloc_tid = local_tid;
 	return msg;
@@ -108,27 +109,51 @@ msg_hdr_t *get_msg_hdr_from_slab(void) {
 
 void msg_hdr_release(msg_hdr_t *msg) {
 	int thr = msg->alloc_tid;
-	spin_lock(&slab_lock[thr]);	// TODO: avere un lock qua è un disastro, soprattutto al GVT! Sta cosa si può fare in maniera simile al flat combining!
-	slab_free(&msg_slab[thr], msg);
-	spin_unlock(&slab_lock[thr]);
+	treiber_push(msg_treiber[thr], msg);
 }
 
 msg_t *get_msg_from_slab(void) {
-	spin_lock(&slab_lock[local_tid]);
-	msg_t *msg = (msg_t *)slab_alloc(&msg_slab[local_tid]);
-	spin_unlock(&slab_lock[local_tid]);
+	msg_t *msg = NULL;
+	treiber *to_release;
+	treiber *to_release_nxt;
+
+	// Unlink the whole Treiber stack and release all nodes.
+	// If at least one node is available, reuse it for the
+	// current allocation.
+	to_release = treiber_detach(msg_treiber[local_tid]);
+	while(to_release != NULL) {
+		if(msg == NULL) {
+			msg = to_release->data;
+		} else {
+			slab_free(&msg_slab[local_tid], to_release->data);
+		}
+		to_release_nxt = to_release->next;
+		rsfree(to_release);
+		to_release = to_release_nxt;
+	}
+
+	if(msg != NULL) {
+		goto out;
+	}
+
+	msg = (msg_t *)slab_alloc(&msg_slab[local_tid]);
+
+    out:
 	bzero(msg, SLAB_MSG_SIZE);
 	msg->alloc_tid = local_tid;
 	return msg;
 }
 
 void msg_release(msg_t *msg) {
-	if(sizeof(msg_t) + msg->size <= SLAB_MSG_SIZE) {
-		int thr = msg->alloc_tid;
+	unsigned int thr;
 
-		spin_lock(&slab_lock[thr]);// TODO: avere un lock qua è un disastro, soprattutto al GVT! Sta cosa si può fare in maniera simile al flat combining!
-		slab_free(&msg_slab[thr], msg);
-		spin_unlock(&slab_lock[thr]);
+	if(sizeof(msg_t) + msg->size <= SLAB_MSG_SIZE) {
+		thr = msg->alloc_tid;
+		if(local_tid == thr) {
+			slab_free(&msg_slab[thr], msg);
+		} else {
+			treiber_push(msg_treiber[thr], msg);
+		}
 	} else {
 		rsfree(msg);
 	}
@@ -406,6 +431,7 @@ void validate_msg(msg_t *msg) {
 	assert(mark_to_gid(msg->mark) <= n_prc_tot);
 	assert(mark_to_gid(msg->rendezvous_mark) <= n_prc_tot);
 	assert(msg->type < MAX_VALUE_CONTROL);
+	assert(msg->alloc_tid < n_cores);
 }
 #endif
 

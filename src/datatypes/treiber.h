@@ -17,36 +17,19 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file msgchannel.h
-* @brief This module implements an (M, 1) channel to transfer message pointers.
-* @author Francesco Quaglia
-* @author Alessandro Pellegrini
+* @file triber.h
+* @brief This module implements a Triber stack.
 */
 
 #pragma once
-#ifndef _BH_H
-#define _BH_H
 
-#include <core/core.h>
+typedef struct _treiber {
+	struct _treiber *next;
+	void *data;
+} treiber;
 
-struct _msg_buff {
-	msg_t * volatile *buffer;
-	volatile unsigned int	size;
-	volatile unsigned int	written;
-	volatile unsigned int	read;
-};
+extern treiber *treiber_init(void);
+extern void treiber_push(treiber *, void *);
+extern void *treiber_pop(treiber *);
+extern void *treiber_detach(treiber *);
 
-typedef struct _msg_channel {
-	struct _msg_buff	*volatile buffers[2];
-	atomic_t		size;
-	spinlock_t		write_lock;
-} msg_channel;
-
-#define INITIAL_CHANNEL_SIZE (512)
-
-extern msg_channel *init_channel(void);
-extern void fini_channel(msg_channel *);
-extern void insert_msg(msg_channel *, msg_t *);
-extern void *get_msg(msg_channel *);
-
-#endif /* _BH_H */
