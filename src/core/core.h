@@ -199,7 +199,11 @@ typedef struct _msg_hdr_t {
 	unsigned long long	mark;
 } msg_hdr_t;
 
-
+// This is a structure used to setup an obstacle map in a grid of cells
+typedef struct obstacles_t {
+	size_t size;
+	unsigned int grid[];
+} obstacles_t;
 
 
 /// Barrier for all worker threads
