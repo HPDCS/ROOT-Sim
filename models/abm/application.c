@@ -1,6 +1,7 @@
 #include <ROOT-Sim.h>
 #include <limits.h>
 #include "application.h"
+#include "functions.h"
 
 
 
@@ -12,22 +13,17 @@ obstacles_t *obstacles;
 
 // This array describes in which cells an agent is present at the
 // beginning of the simulation
-const int cells_with_agents[NUM_AGENT_CELLS] = {0, 2, 4, 6, 8, 10, 12, 14, 16, 18};
+const unsigned int cells_with_agents[NUM_AGENT_CELLS] = {0, 2, 4, 6, 8, 10, 12, 14, 16, 18};
 
 
 
-void ProcessEvent(int me, simtime_t now, int event_type, void *event_content, int event_size, lp_state_type *state) {
+void ProcessEvent(unsigned int me, simtime_t now, int event_type, void *event_content, int event_size, lp_state_type *state) {
 	unsigned int i, j;
 	unsigned int destination;
 	agent_t *agent, *new_agent;
 	agent_node_t *agent_node;
-	int steps;
+	unsigned int steps;
 	unsigned int *list;
-
-	
-	int receiver;
-	int count;
-	int times;
 
 	switch(event_type) {
 
@@ -39,7 +35,7 @@ void ProcessEvent(int me, simtime_t now, int event_type, void *event_content, in
 				printf("%s:%d: Unable to allocate memory for the simulation state\n", __FILE__, __LINE__);
 				exit(EXIT_FAILURE);
 			}
-			SetState(pointer);
+			SetState(state);
 
 			state->num_agents = 0;
 			state->agents = NULL;
@@ -147,7 +143,7 @@ void ProcessEvent(int me, simtime_t now, int event_type, void *event_content, in
 
 
 	// Independently of the event, we update the neighbours
-	send_update_neighbours();
+	//send_update_neighbours();
 
 }
 

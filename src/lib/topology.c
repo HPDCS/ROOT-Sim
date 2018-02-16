@@ -301,6 +301,14 @@ unsigned int GetReceiver(int topology, int direction) {
 					nx = (y % 2 == 0 ? x : x + 1);
 					ny = y + 1;
 					break;
+				case DIRECTION_N:
+					nx = x;
+					ny = y - 1;
+					break;
+				case DIRECTION_S:
+					nx = x;
+					ny = y + 1;
+					break;
 				case DIRECTION_E:
 					nx = x + 1;
 					ny = y;
@@ -453,7 +461,12 @@ void SetupObstacles(obstacles_t **obstacles)  {
 	if(bitmap_blocks < 1)
 		bitmap_blocks = 1;
 	*obstacles = __wrap_malloc(sizeof(obstacles_t) + sizeof(unsigned int) * bitmap_blocks);
+
+	if(*obstacles == NULL)
+		rootsim_error(true, "Unable to allocate the obstacle grid\n");
+
 	(*obstacles)->size = n_prc_tot;
+	bzero((*obstacles)->grid, sizeof(unsigned int) * bitmap_blocks);
 }
 
 void AddObstacles(obstacles_t *obstacles, int num, ...)  {
@@ -532,6 +545,11 @@ static astar_t a_star(unsigned int *a_star_bitmap, int topology, unsigned int cu
 		if(states[i].list != NULL) {
 			rsfree(states[i].list);
 		}
+	}
+
+	if(states[0].list == NULL) {
+		printf("No solutions\n");
+		return states[0];
 	}
 
 	// Register me in the 0-th state's list

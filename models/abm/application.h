@@ -18,9 +18,9 @@
 
 // Initial number of cells where there are agents. IDs are defined in application.c
 #define NUM_AGENT_CELLS		10
-// How many agents in each cell, initially
-#deinfe NUM_AGENTS_PER_CELL	2
 
+// How many agents in each cell, initially
+#define NUM_AGENTS_PER_CELL	2
 
 // How much time does an agent spend in a cell?
 #define RESIDENCE_TIME		10
