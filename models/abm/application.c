@@ -27,6 +27,8 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, void *event_co
 
 	switch(event_type) {
 
+		printf("=> Event %d <=\n", event_type);
+
 		case INIT:
 
 			// Initialize simulation state
@@ -56,19 +58,29 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, void *event_co
 
 			// Determine if we have to spawn an agent in this cell
 			for(i = 0; i < NUM_AGENT_CELLS; i++) {
+				// If the cell is an obstacle no agent could be positioned
+				if(IsObstacle(obstacles, me))
+					continue;
+
 				if(cells_with_agents[i] == me) {
 
 					for(j = 0; j < NUM_AGENTS_PER_CELL; j++) {
 						// Initialize the visit list for a random destination
 						do {
 							destination = FindReceiver(TOPOLOGY_MESH);
-						} while(destination == me);
+						} while(destination == me || IsObstacle(obstacles, me));
 						steps = ComputeMinTour(&list, obstacles, TOPOLOGY, me, destination);
 
 						if(steps == UINT_MAX) {
 							printf("%s:%d: Picked an unreachable cell\n", __FILE__, __LINE__);
 							exit(EXIT_FAILURE);
 						}
+
+						printf("Path found: [");
+						for (int i = 0; i < steps; i++) {
+							printf("%d,", list[i]);
+						}
+						printf("\033[1D]\n");
 					
 						// Setup the state of an agent (in the current cell's simulation state)
 						agent = malloc(sizeof(agent_t) + sizeof(unsigned int) * steps);
@@ -81,6 +93,9 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, void *event_co
 						// Chain the agent to the cell
 						add_agent(state, agent);
 					}
+
+					// DEBUG
+					print_agent_list(state);
 				}
 			}
 
@@ -88,11 +103,17 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, void *event_co
 			agent_node = state->agents;
 			while(agent_node != NULL) {
 				ScheduleNewEvent(me, now + Expent(RESIDENCE_TIME), AGENT_OUT, &agent_node->agent->uuid, sizeof(agent_node->agent->uuid));
+				agent_node = agent_node->next;
 			}
 			
 			break;
 
 		case AGENT_OUT:
+			// Sanity check: does the cell host any agent?
+			if (state->num_agents == 0) {
+				printf("Agent %llu leaving from a cell that has no agent", *(unsigned long long *)event_content);
+				exit(EXIT_FAILURE);
+			}
 			state->num_agents--;
 			
 			// This agent is leaving: remove from the list
@@ -105,8 +126,14 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, void *event_co
 			break;
 
 		case AGENT_IN:
-			state->num_agents++;
+			// Sanity check: an obstacle could not host an agent
+			if (IsObstacle(obstacles, me)) {
+				printf("Obstacle %lu is requested to host agent%llu\n", me, (agent_t *)event_content);
+				exit(EXIT_FAILURE);
+			}
 			
+			state->num_agents++;
+
 			// Get the agent
 			agent = (agent_t *)event_content;
 			agent->visited++;
@@ -115,7 +142,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, void *event_co
 			if(agent->visited == agent->visit_list_size) {
 				do {
 					destination = FindReceiver(TOPOLOGY_MESH);
-				} while(destination == me);
+				} while(destination == me || IsObstacle(obstacles, destination));
 				steps = ComputeMinTour(&list, obstacles, TOPOLOGY, me, destination);
 
 				if(steps == UINT_MAX) {

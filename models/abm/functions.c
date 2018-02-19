@@ -2,26 +2,72 @@
 #include "application.h"
 
 
+
 void initialize_obstacles(obstacles_t **obstacles) {
 	unsigned int i;
+	unsigned int cell;
 	
 	SetupObstacles(obstacles);
 	for(i = 0; i < OBSTACLES_PERCENT * n_prc_tot; i++) {
-		AddObstacle(*obstacles, FindReceiver(TOPOLOGY_MESH));
+		cell = FindReceiver(TOPOLOGY_MESH);
+		AddObstacle(*obstacles, cell);
+		printf("Cell %lu is a obstacle\n", cell);
 	}
 }
 
+
 int add_agent(lp_state_type *state, agent_t *agent) {
-	printf("Add agent: %llu\n", agent->uuid);
+	agent_node_t *node;
+
+	printf("Add agent %llu to state %p\n", agent->uuid, state);
+
+	// Fill the agent structure
+	node = malloc(sizeof(agent_node_t));
+	node->next = state->agents;
+	node->agent = agent;
+
+	// Link the new agent node to the linked list of the
+	// simulation state.
+	state->agents = node;
+	state->num_agents++;
+
 	return 0;
 }
 
 
-
 agent_t *remove_agent(lp_state_type *state, unsigned long long uuid) {
-	printf("Remove agent: %llu\n", uuid);
+	agent_node_t *node;
+
+	printf("Remove agent %llu\n", uuid);
+
+	// Look for the agent identified by the provided uuid
+	// and free that space in the simulation state
+	node = state->agents;
+	while(node != NULL) {
+		if(node->agent->uuid == uuid) {
+			free(node->agent);
+			free(node);
+			state->num_agents--;
+			break;
+		}
+		node = node->next;
+	}
+
 	return NULL;
 }
+
+
+void print_agent_list(lp_state_type *state) {
+	agent_node_t *node;
+
+	printf("Agent list of state %p: [", state);
+	while(node != NULL) {
+		printf("%llu,", node->agent->uuid);
+		node = node->next;
+	}
+	printf("\033[1D]\n");
+}
+
 
 /**
  * This (helper) function schedules a new UPDATE_NEIGHBOURS
