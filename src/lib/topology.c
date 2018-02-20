@@ -256,13 +256,14 @@ unsigned int FindReceiver(int topology) {
 
 
 // TODO: we do not check here for a valid topology nor direction
-unsigned int GetReceiver(int topology, int direction) {
+unsigned int GetReceiver(int topology, unsigned int from, int direction) {
 	GID_t receiver, sender;
 	unsigned int x, y, nx, ny;
 
 	switch_to_platform_mode();
 
-	sender = LidToGid(current_lp);
+	//sender = LidToGid(current_lp);
+	set_gid(sender, from);
 	set_gid(receiver, INVALID_DIRECTION);
 
 	if(first_call) {
@@ -299,6 +300,14 @@ unsigned int GetReceiver(int topology, int direction) {
 					break;
 				case DIRECTION_SE:
 					nx = (y % 2 == 0 ? x : x + 1);
+					ny = y + 1;
+					break;
+				case DIRECTION_N:
+					nx = x;
+					ny = y - 1;
+					break;
+				case DIRECTION_S:
+					nx = x;
 					ny = y + 1;
 					break;
 				case DIRECTION_E:
@@ -453,7 +462,12 @@ void SetupObstacles(obstacles_t **obstacles)  {
 	if(bitmap_blocks < 1)
 		bitmap_blocks = 1;
 	*obstacles = __wrap_malloc(sizeof(obstacles_t) + sizeof(unsigned int) * bitmap_blocks);
+
+	if(*obstacles == NULL)
+		rootsim_error(true, "Unable to allocate the obstacle grid\n");
+
 	(*obstacles)->size = n_prc_tot;
+	bzero((*obstacles)->grid, sizeof(unsigned int) * bitmap_blocks);
 }
 
 void AddObstacles(obstacles_t *obstacles, int num, ...)  {
@@ -481,19 +495,29 @@ void DiscardObstacles(obstacles_t *obstacles) {
 	__wrap_free(obstacles);
 }
 
+bool IsObstacle(obstacles_t *obstacles, int cell) {
+	return CHECK_BIT(obstacles->grid, cell);
+}
+
 typedef struct _astar_t {
 	unsigned int num_steps;
 	unsigned int *list;
 } astar_t;
 
 
-static int compare_astar(const void *a, const void *b) {
-	return (int)(((astar_t *)a)->num_steps - ((astar_t *)b)->num_steps);
+static int compare_astar(const void *_a, const void *_b) {
+	//return (int)(((astar_t *)a)->num_steps - ((astar_t *)b)->num_steps);
+	astar_t *a = _a;
+	astar_t *b = _b;
+
+	return ((b->num_steps < a->num_steps) - (b->num_steps > a->num_steps));
 }
 
 static astar_t a_star(unsigned int *a_star_bitmap, int topology, unsigned int current_cell, unsigned int dest, unsigned int step, obstacles_t *obstacles) {
 	unsigned int i;
 	unsigned int tentative_cell;
+
+	printf("a_star(current_cell: %lu, destination: %lu, step: %lu)\n", current_cell, dest, step);
 
 	astar_t states[8] = { [0 ... 7] = { UINT_MAX, NULL } };
 
@@ -502,6 +526,7 @@ static astar_t a_star(unsigned int *a_star_bitmap, int topology, unsigned int cu
 
 	// Is this the target?
 	if (current_cell == dest) {
+		printf("Destination reached!\n");
 		states[0].list = rsalloc(sizeof(unsigned int) * step);
 		states[0].list[step - 1] = current_cell;
 		states[0].num_steps = step;
@@ -513,7 +538,7 @@ static astar_t a_star(unsigned int *a_star_bitmap, int topology, unsigned int cu
 
 	// Scan all possible neighbours depending on the actual topology
 	for(i = 0; i < (topology == TOPOLOGY_SQUARE ? 4 : 8); i++) {
-		tentative_cell = GetReceiver(TOPOLOGY_HEXAGON, i);
+		tentative_cell = GetReceiver(TOPOLOGY_HEXAGON, current_cell, i);
 
 		// Try all reachable unvisited cells
 		if(tentative_cell == INVALID_DIRECTION || CHECK_BIT(a_star_bitmap, tentative_cell) || CHECK_BIT(obstacles->grid, tentative_cell))
@@ -531,11 +556,19 @@ static astar_t a_star(unsigned int *a_star_bitmap, int topology, unsigned int cu
 	for(i = 1; i < (topology == TOPOLOGY_SQUARE ? 4 : 8); i++) {
 		if(states[i].list != NULL) {
 			rsfree(states[i].list);
+			states[i].list = NULL;
 		}
 	}
 
-	// Register me in the 0-th state's list
-	states[0].list[step - 1] = current_cell;
+	if(states[0].list == NULL) {
+		printf("No solutions! frame: current_cell: %lu, destination: %lu, step: %lu\n", current_cell, dest, step);
+		return states[0];
+	}
+
+	if (step != 0) {
+		// Register me in the 0-th state's list
+		states[0].list[step - 1] = current_cell;
+	}
 
 	return states[0];
 }

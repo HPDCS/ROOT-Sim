@@ -21,9 +21,9 @@
 
 // Initial number of cells where there are agents. IDs are defined in application.c
 #define NUM_AGENT_CELLS		10
+
 // How many agents in each cell, initially
 #define NUM_AGENTS_PER_CELL	2
-
 
 // How much time does an agent spend in a cell?
 #define RESIDENCE_TIME		10
@@ -43,7 +43,7 @@ typedef struct _agent_t {
 	char name[64];
 	size_t visited;
 	size_t visit_list_size;
-	visit_t visit_list[]; // TODO: add also visit simulation time
+	visit_t visit_list[];
 } agent_t;
 
 

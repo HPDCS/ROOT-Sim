@@ -2,151 +2,72 @@
 #include "application.h"
 
 
+
 void initialize_obstacles(obstacles_t **obstacles) {
 	unsigned int i;
+	unsigned int cell;
 	
-	SetupObstacles(&obstacles);
+	SetupObstacles(obstacles);
 	for(i = 0; i < OBSTACLES_PERCENT * n_prc_tot; i++) {
-		AddObstacle(ostacles, FindReceiver(TOPOLOGY_MESH));
+		cell = FindReceiver(TOPOLOGY_MESH);
+		AddObstacle(*obstacles, cell);
+		printf("Cell %lu is a obstacle\n", cell);
 	}
 }
+
 
 int add_agent(lp_state_type *state, agent_t *agent) {
-	int i;
-  	int index;
-	double summ;
+	agent_node_t *node;
 
-	channel *c, *ch;
+	printf("Add agent %llu to state %p\n", agent->uuid, state);
 
-	index = -1;
-	for(i = 0; i < pointer->channels_per_cell; i++){
-		if(!CHECK_CHANNEL(pointer,i)){
-			index = i;
-			break;
-		}
-	}
+	// Fill the agent structure
+	node = malloc(sizeof(agent_node_t));
+	node->next = state->agents;
+	node->agent = agent;
 
-	if(index != -1){
+	// Link the new agent node to the linked list of the
+	// simulation state.
+	state->agents = node;
+	state->num_agents++;
 
-		SET_CHANNEL(pointer,index);
-
-		c = (channel*)malloc(sizeof(channel));
-		if(c == NULL){
-			printf("malloc error: unable to allocate channel!\n");
-			exit(-1);void deallocation(unsigned int me, lp_state_type *pointer, int ch, simtime_t lvt) {
-	channel *c;
-
-	c = pointer->channels;
-	while(c != NULL){
-		if(c->channel_id == ch)
-			break;
-		c = c->prev;
-	}
-	if(c != NULL){
-		if(c == pointer->channels){
-			pointer->channels = c->prev;
-			if(pointer->channels)
-				pointer->channels->next = NULL;
-		}
-		else{
-			if(c->next != NULL)
-				c->next->prev = c->prev;
-			if(c->prev != NULL)
-				c->prev->next = c->next;
-		}
-		RESET_CHANNEL(pointer, ch);
-		free(c->sir_data);
-
-		free(c);
-	} else {
-		printf("(%d) Unable to deallocate on %p, channel is %d at time %f\n", me, c, ch, lvt);
-		abort();
-	}
-	return;
+	return 0;
 }
-		}
-
-		c->next = NULL;
-		c->prev = pointer->channels;
-		c->channel_id = index;
-		c->sir_data = (sir_data_per_cell*)malloc(sizeof(sir_data_per_cell));
-		if(c->sir_data == NULL){
-			printf("malloc error: unable to allocate SIR data!\n");
-			exit(-1);
-		}
-
-		if(pointer->channels != NULL)
-			pointer->channels->next = c;
-		pointer->channels = c;
-
-		summ = 0.0;
-
-	//	if (pointer->check_fading) {
-	//force this
-
-		if(1){
-			ch = pointer->channels->prev;
-
-			while(ch != NULL){
-				ch->sir_data->fading = Expent(1.0);
-
-				summ += generate_cross_path_gain() *  ch->sir_data->power * ch->sir_data->fading ;
-				ch = ch->prev;
-			}
-		}
-
-		if (summ == 0.0) {
-			// The newly allocated channel receives the minimal power
-			c->sir_data->power = MIN_POWER;
-		} else {
-		  	c->sir_data->fading = Expent(1.0);
-			c->sir_data->power = ((SIR_AIM * summ) / (generate_path_gain() * c->sir_data->fading));
-			if (c->sir_data->power < MIN_POWER) c->sir_data->power = MIN_POWER;
-			if (c->sir_data->power > MAX_POWER) c->sir_data->power = MAX_POWER;
-		}
-
-	} else {
-		printf("Unable to allocate channel, but the counter says I have %d available channels\n", pointer->channel_counter);
-		abort();
-		fflush(stdout);
-	}
-
-        return index;
-}
-
 
 
 agent_t *remove_agent(lp_state_type *state, unsigned long long uuid) {
-	channel *c;
+	agent_node_t *node;
 
-	c = pointer->channels;
-	while(c != NULL){
-		if(c->channel_id == ch)
+	printf("Remove agent %llu\n", uuid);
+
+	// Look for the agent identified by the provided uuid
+	// and free that space in the simulation state
+	node = state->agents;
+	while(node != NULL) {
+		if(node->agent->uuid == uuid) {
+			free(node->agent);
+			free(node);
+			state->num_agents--;
 			break;
-		c = c->prev;
+		}
+		node = node->next;
 	}
-	if(c != NULL){
-		if(c == pointer->channels){
-			pointer->channels = c->prev;
-			if(pointer->channels)
-				pointer->channels->next = NULL;
-		}
-		else{
-			if(c->next != NULL)
-				c->next->prev = c->prev;
-			if(c->prev != NULL)
-				c->prev->next = c->next;
-		}
-		RESET_CHANNEL(pointer, ch);
-		free(c->sir_data);
 
-		free(c);
-	} else {
-		printf("(%d) Unable to deallocate on %p, channel is %d at time %f\n", me, c, ch, lvt);
-		abort();
-	}
-	return;
+	return NULL;
 }
+
+
+void print_agent_list(lp_state_type *state) {
+	agent_node_t *node;
+
+	printf("Agent list of state %p: [", state);
+	while(node != NULL) {
+		printf("%llu,", node->agent->uuid);
+		node = node->next;
+	}
+	printf("\033[1D]\n");
+}
+
 
 /**
  * This (helper) function schedules a new UPDATE_NEIGHBOURS
@@ -160,20 +81,19 @@ agent_t *remove_agent(lp_state_type *state, unsigned long long uuid) {
  * @param present The number of bugs that are inside the cell
 */
 
-void send_update_neighbours(simtime_t now, event_content_type *new_event_content){
-	int receiver;
-	int i;
+void send_update_neighbours(simtime_t now, neighbour_state_t *new_event_content) {
+	//int receiver;
+	//int i;
 
-	// TODO: send state->num_agents
+	//// TODO: send state->num_agents
 
-	for(i = 0; i < 4; i++){
-		receiver = GetReceiver(TOPOLOGY_TORUS,i);
-		if(receiver >= (int) n_prc_tot || receiver < 0){
-			printf("%s:%d Got receiver out of bounds!\n",__FILE__, __LINE__);
-			exit(EXIT_FAILURE);
-		}	
-		ScheduleNewEvent(receiver, now + TIME_STEP/100000, UPDATE_NEIGHBOURS, new_event_content, sizeof(new_event_content));
-	}
+	//for(i = 0; i < 4; i++){
+	//	receiver = GetReceiver(TOPOLOGY_TORUS,i);
+	//	if(receiver >= (int) n_prc_tot || receiver < 0){
+	//		printf("%s:%d Got receiver out of bounds!\n",__FILE__, __LINE__);
+	//		exit(EXIT_FAILURE);
+	//	}
+	//	ScheduleNewEvent(receiver, now + TIME_STEP/100000, UPDATE_NEIGHBOURS, new_event_content, sizeof(new_event_content));
+	//}
 
 }
-

@@ -131,13 +131,14 @@ unsigned int FindReceiver(int topology);
 typedef struct obstacles_t obstacles_t;
 
 // Returns INVALID_DIRECTION if a movement is not possible according to the given topology
-unsigned int GetReceiver(int topology, int direction);
+unsigned int GetReceiver(int topology, unsigned int from, int direction);
 
 // Setup and discard an obstacle grid. num is the number of integers passed to the variadic function
 void SetupObstacles(obstacles_t **obstacles);
 void AddObstacles(obstacles_t *obstacles, int num, ...);
 void AddObstacle(obstacles_t *obstacles, int cell);
 void DiscardObstacles(obstacles_t *obstacles);
+bool IsObstacle(obstacles_t *obstacles, int cell);
 
 // Function to return a list of LP IDs to be visited in order to reach a given cell.
 unsigned int ComputeMinTour(unsigned int **list, obstacles_t *obstacles, int topology, unsigned int source, unsigned int dest);
