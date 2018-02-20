@@ -1,0 +1,56 @@
+{
+  "name": "Agent-Based PDES Model Configuration",
+  "description": "This is a generic configuration file for the ABM simulation model",
+  "general":
+  {
+	"name": "Region",
+	"description": "This is the generic configuration for a region. Put here all shared attributes",
+  },
+  "regions": 
+  [
+	  {
+		  "id": 0,
+		  "name": "Region 0",
+		  "description": "Put here all attributes for a specific region",
+		  "agents": ["agent2", "agent3"]
+	  },
+	  {
+		  "id": 1,
+		  "name": "Region 1",
+		  "agents": ["agent1"]
+	  }
+  ],
+  "obstacles": [4, 3, 2, 1, 16, 23],
+  "agents":
+  [
+	  {
+		  "id": "agent1",
+		  "name": "Foo Agent",
+		  "task-list": 
+		  [
+			  { "Region 0", "Action A" },
+			  { "Region 10", "Action B" },
+			  { "Region 64", "Action A"}
+		  ]
+	  },
+  	  {
+		  "id": "agent2",
+		  "name": "Bar Agent",
+		  "task-list":
+		  [
+			  { "Region 3", "Action C" },
+			  { "Region 64", "Action C" }, 
+			  { "Region 1", "Action A"}
+		  ]
+	  },
+  	  {
+		  "id": "agent3",
+		  "name": "FooBar Agent",
+		  "task-list":
+		  [
+			  { "Region 21", "Action B" }
+		  ]
+	  }
+  ]
+
+}

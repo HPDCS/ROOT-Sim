@@ -3,6 +3,9 @@
 #include <ROOT-Sim.h>
 #include <stdbool.h>
 
+// Configuration file
+#define CONFIG_FILE "config.json"
+
 // Event Types
 #define AGENT_IN		1
 #define AGENT_OUT		2
@@ -19,7 +22,7 @@
 // Initial number of cells where there are agents. IDs are defined in application.c
 #define NUM_AGENT_CELLS		10
 // How many agents in each cell, initially
-#deinfe NUM_AGENTS_PER_CELL	2
+#define NUM_AGENTS_PER_CELL	2
 
 
 // How much time does an agent spend in a cell?
@@ -30,12 +33,17 @@ typedef struct _neighbour_state_t {
 	size_t num_agents;
 } neighbour_state_t;
 
+typedef struct _visit_list_t {
+	simtime_t time;
+	unsigned int cell;
+} visit_t;
 
 typedef struct _agent_t {
 	unsigned long long uuid;
+	char name[64];
 	size_t visited;
 	size_t visit_list_size;
-	unsigned int visit_list[]; // TODO: add also visit simulation time
+	visit_t visit_list[]; // TODO: add also visit simulation time
 } agent_t;
 
 
@@ -46,6 +54,7 @@ typedef struct _agent_node_t {
 
 
 typedef struct _lp_state_type {
+	char name[64];
 	size_t num_agents;
 	agent_node_t *agents;
 	neighbour_state_t *neighbours;
