@@ -1,7 +1,6 @@
 #include <ROOT-Sim.h>
 #include <limits.h>
 #include "application.h"
-#include "functions.h"
 
 
 
@@ -11,13 +10,7 @@
 obstacles_t *obstacles;
 
 
-// This array describes in which cells an agent is present at the
-// beginning of the simulation
-const unsigned int cells_with_agents[NUM_AGENT_CELLS] = {0, 2, 4, 6, 8, 10, 12, 14, 16, 18};
-
-
-
-void ProcessEvent(unsigned int me, simtime_t now, int event_type, void *event_content, int event_size, lp_state_type *state) {
+void ProcessEvent(unsigned int me, simtime_t now, int event_type, void *event_content, int event_size, lp_state_t *state) {
 	unsigned int i, j;
 	unsigned int destination;
 	agent_t *agent, *new_agent;
@@ -31,8 +24,11 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, void *event_co
 
 		case INIT:
 
+			// Load the configuration file
+			load_config();
+
 			// Initialize simulation state
-			state = malloc(sizeof(lp_state_type));
+			state = malloc(sizeof(lp_state_t));
 			if(state == NULL){
 				printf("%s:%d: Unable to allocate memory for the simulation state\n", __FILE__, __LINE__);
 				exit(EXIT_FAILURE);
@@ -41,6 +37,9 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, void *event_co
 
 			state->num_agents = 0;
 			state->agents = NULL;
+
+			// Get the configuration parameters from the config file
+			region_config(state, me);
 
 			if(TOPOLOGY == TOPOLOGY_HEXAGON) {
 				state->neighbours = malloc(sizeof(neighbour_state_t) * 8);
@@ -52,52 +51,18 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, void *event_co
 			}
 
 			// Initialize the obstacles for the current topology
+			// TODO: this doesn't work in distributed!
 			if(me == 0) {
 				initialize_obstacles(&obstacles);
 			}
 
-			// Determine if we have to spawn an agent in this cell
-			for(i = 0; i < NUM_AGENT_CELLS; i++) {
-				// If the cell is an obstacle no agent could be positioned
-				if(IsObstacle(obstacles, me))
-					continue;
-
-				if(cells_with_agents[i] == me) {
-
-					for(j = 0; j < NUM_AGENTS_PER_CELL; j++) {
-						// Initialize the visit list for a random destination
-						do {
-							destination = FindReceiver(TOPOLOGY_MESH);
-						} while(destination == me || IsObstacle(obstacles, me));
-						steps = ComputeMinTour(&list, obstacles, TOPOLOGY, me, destination);
-
-						if(steps == UINT_MAX) {
-							printf("%s:%d: Picked an unreachable cell\n", __FILE__, __LINE__);
-							exit(EXIT_FAILURE);
-						}
-
-						printf("Path found: [");
-						for (int i = 0; i < steps; i++) {
-							printf("%d,", list[i]);
-						}
-						printf("\033[1D]\n");
-					
-						// Setup the state of an agent (in the current cell's simulation state)
-						agent = malloc(sizeof(agent_t) + sizeof(unsigned int) * steps);
-						agent->uuid = GenerateUniqueId();
-						agent->visited = 1;
-						agent->visit_list_size = steps;
-						memcpy(agent->visit_list, list, sizeof(unsigned int) * steps);
-						free(list);
-
-						// Chain the agent to the cell
-						add_agent(state, agent);
-					}
-
-					// DEBUG
-					print_agent_list(state);
-				}
+			// Initialize local agents, if any
+			while((agent = get_next_agent(me)) != NULL) {
+				add_agent(state, agent);
 			}
+
+			// DEBUG
+			//print_agent_list(state);
 
 			// Schedule a leave event for all generated agents
 			agent_node = state->agents;
@@ -120,7 +85,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, void *event_co
 			agent = remove_agent(state, *(unsigned long long *)event_content);
 
 			// Send the agent to the destination cell
-			ScheduleNewEvent(agent->visit_list[agent->visited + 1], now, AGENT_IN, agent, sizeof(agent_t) + sizeof(unsigned int) * agent->visit_list_size);
+			ScheduleNewEvent(agent->visit_list[agent->visited + 1].region, now, AGENT_IN, agent, sizeof(agent_t) + sizeof(unsigned int) * agent->visit_list_size);
 
 			free(agent);
 			break;
@@ -175,6 +140,6 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, void *event_co
 }
 
 // In this simple model, we terminate only after a certain time
-bool OnGVT(unsigned int me, lp_state_type *snapshot) {
+bool OnGVT(unsigned int me, lp_state_t *snapshot) {
 	return false;
 }

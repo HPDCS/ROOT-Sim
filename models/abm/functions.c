@@ -1,22 +1,7 @@
 #include <ROOT-Sim.h>
 #include "application.h"
 
-
-
-void initialize_obstacles(obstacles_t **obstacles) {
-	unsigned int i;
-	unsigned int cell;
-	
-	SetupObstacles(obstacles);
-	for(i = 0; i < OBSTACLES_PERCENT * n_prc_tot; i++) {
-		cell = FindReceiver(TOPOLOGY_MESH);
-		AddObstacle(*obstacles, cell);
-		printf("Cell %lu is a obstacle\n", cell);
-	}
-}
-
-
-int add_agent(lp_state_type *state, agent_t *agent) {
+int add_agent(lp_state_t *state, agent_t *agent) {
 	agent_node_t *node;
 
 	printf("Add agent %llu to state %p\n", agent->uuid, state);
@@ -35,7 +20,7 @@ int add_agent(lp_state_type *state, agent_t *agent) {
 }
 
 
-agent_t *remove_agent(lp_state_type *state, unsigned long long uuid) {
+agent_t *remove_agent(lp_state_t *state, unsigned long long uuid) {
 	agent_node_t *node;
 
 	printf("Remove agent %llu\n", uuid);
@@ -57,8 +42,8 @@ agent_t *remove_agent(lp_state_type *state, unsigned long long uuid) {
 }
 
 
-void print_agent_list(lp_state_type *state) {
-	agent_node_t *node;
+void print_agent_list(lp_state_t *state) {
+	agent_node_t *node = state->agents;
 
 	printf("Agent list of state %p: [", state);
 	while(node != NULL) {

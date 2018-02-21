@@ -4,7 +4,7 @@
   "general":
   {
 	"name": "Region",
-	"description": "This is the generic configuration for a region. Put here all shared attributes",
+	"description": "This is the generic configuration for a region. Put here all shared attributes"
   },
   "regions": 
   [
@@ -28,9 +28,9 @@
 		  "name": "Foo Agent",
 		  "task-list": 
 		  [
-			  { "Region 0", "Action A" },
-			  { "Region 10", "Action B" },
-			  { "Region 64", "Action A"}
+			  { "0": "Action A" },
+			  { "10": "Action B" },
+			  { "64": "Action A"}
 		  ]
 	  },
   	  {
@@ -38,9 +38,9 @@
 		  "name": "Bar Agent",
 		  "task-list":
 		  [
-			  { "Region 3", "Action C" },
-			  { "Region 64", "Action C" }, 
-			  { "Region 1", "Action A"}
+			  { "3": "Action C" },
+			  { "64": "Action C" }, 
+			  { "1": "Action A"}
 		  ]
 	  },
   	  {
@@ -48,7 +48,7 @@
 		  "name": "FooBar Agent",
 		  "task-list":
 		  [
-			  { "Region 21", "Action B" }
+			  { "21": "Action B" }
 		  ]
 	  }
   ]
