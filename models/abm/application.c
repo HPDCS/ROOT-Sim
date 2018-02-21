@@ -3,7 +3,6 @@
 #include "application.h"
 
 
-
 // This is a global variable that is initialized only once during the
 // execution of INIT by LP 0. It does not change over time, and it is
 // only read by other LPs.
@@ -11,12 +10,9 @@ obstacles_t *obstacles;
 
 
 void ProcessEvent(unsigned int me, simtime_t now, int event_type, void *event_content, int event_size, lp_state_t *state) {
-	unsigned int i, j;
-	unsigned int destination;
-	agent_t *agent, *new_agent;
-	agent_node_t *agent_node;
 	unsigned int steps;
-	unsigned int *list;
+	agent_t *agent;
+	agent_node_t *agent_node;
 
 	switch(event_type) {
 
@@ -61,16 +57,13 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, void *event_co
 				add_agent(state, agent);
 			}
 
-			// DEBUG
-			//print_agent_list(state);
-
 			// Schedule a leave event for all generated agents
 			agent_node = state->agents;
 			while(agent_node != NULL) {
 				ScheduleNewEvent(me, now + Expent(RESIDENCE_TIME), AGENT_OUT, &agent_node->agent->uuid, sizeof(agent_node->agent->uuid));
 				agent_node = agent_node->next;
 			}
-			
+
 			break;
 
 		case AGENT_OUT:
@@ -79,55 +72,74 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, void *event_co
 				printf("Agent %llu leaving from a cell that has no agent", *(unsigned long long *)event_content);
 				exit(EXIT_FAILURE);
 			}
+
+			// Decrement the number of the agents in the current cell
 			state->num_agents--;
-			
+
 			// This agent is leaving: remove from the list
 			agent = remove_agent(state, *(unsigned long long *)event_content);
 
 			// Send the agent to the destination cell
-			ScheduleNewEvent(agent->visit_list[agent->visited + 1].region, now, AGENT_IN, agent, sizeof(agent_t) + sizeof(unsigned int) * agent->visit_list_size);
+			// NOTE: since the array of visit_list is zero-based and the visited cell c
+			// NOTE2: the list of cell to be visited does not include the current cell
+			ScheduleNewEvent(agent->visit_list[agent->visited - 1].region, now, AGENT_IN, agent, sizeof(agent_t) + sizeof(unsigned int) * agent->visit_list_size);
 
+			// The agent has been copined by the platform into the event's content, now it possible to free that buffer
 			free(agent);
 			break;
 
 		case AGENT_IN:
 			// Sanity check: an obstacle could not host an agent
 			if (IsObstacle(obstacles, me)) {
-				printf("Obstacle %lu is requested to host agent%llu\n", me, (agent_t *)event_content);
+				printf("Obstacle %u is requested to host agent%llu\n", me, ((agent_t *)event_content)->uuid);
 				exit(EXIT_FAILURE);
 			}
-			
+
+			// Increment the number of the agents in the current cell
 			state->num_agents++;
 
-			// Get the agent
-			agent = (agent_t *)event_content;
+			// Get the agent by copying the 'one' provoded into the event's payload
+			// so that we still work in data separation
+			//agent = ((agent_t *)event_content);
+			agent = malloc(event_size);
+			memcpy(agent, event_content, event_size);
+
+			// Update the state of the current (new) copy of the agent
 			agent->visited++;
 
-			// If this is my last cell to visit, get a new destination
-			if(agent->visited == agent->visit_list_size) {
-				do {
-					destination = FindReceiver(TOPOLOGY_MESH);
-				} while(destination == me || IsObstacle(obstacles, destination));
-				steps = ComputeMinTour(&list, obstacles, TOPOLOGY, me, destination);
-
-				if(steps == UINT_MAX) {
-					printf("%s:%d: Picked an unreachable cell\n", __FILE__, __LINE__);
-					exit(EXIT_FAILURE);
-				}
-
-				new_agent = malloc(sizeof(agent_t) + sizeof(unsigned int) * (agent->visit_list_size + steps) );
-				memcpy(&new_agent->visit_list[agent->visit_list_size], list, sizeof(unsigned int) * steps);
-			}
-
-			// Finish to copy in my state the copy of the agent
-			memcpy(new_agent, agent, sizeof(agent_t) + sizeof(unsigned int) * agent->visit_list_size); 
-			
 			// Add the agent to the current list
 			add_agent(state, agent);
 
+			// NOTE: we do not rely on the proper event to change the destination
+			// since it is intended to change the destination before to have reached
+			// the current destionation
+			if (get_agent_current_cell(agent) == get_agent_current_destination(agent)) {
+				steps = compute_agent_path(&agent, obstacles);
+				if (steps == UINT_MAX) {
+					error(false, "Impossible to determine a new destination for the agent %llu\n", agent->uuid);
+				}
+			}
+
 			// Schedule a leave event
 			ScheduleNewEvent(me, now + Expent(RESIDENCE_TIME), AGENT_OUT, &agent->uuid, sizeof(agent->uuid));
-		
+
+			break;
+
+		case AGENT_CHANGE_DEST:
+			// Find the agent indentified by the UUId provided in the event's content
+			agent = find_agent(state, *(unsigned long long *)event_content);
+
+			// Compute a new destinaion cell for that agent
+			steps = compute_agent_path(&agent, obstacles);
+			if (steps == UINT_MAX) {
+				error(false, "Impossible to determine a new destination for the agent %llu\n", agent->uuid);
+			}
+
+			// Schedule the event to leave the current cell towards the destination one
+			ScheduleNewEvent(me, now + Expent(RESIDENCE_TIME), AGENT_OUT, &agent->uuid, sizeof(agent->uuid));
+
+			break;
+
 		default:
 			printf("%s:%d: Unsupported event: %d\n", __FILE__, __LINE__, event_type);
 			exit(EXIT_FAILURE);

@@ -87,17 +87,17 @@ static void dump_token(jsmntok_t *t) {
 // Get the range of tokens which belong to a certain parent.
 // The parent must exist.
 static void get_token_range(int parent, int *start, int *end) {
-        int i;
-        jsmntok_t *t;
+		int i;
+		jsmntok_t *t;
 
 	*start = -1;
 	*end = -1;
 
-        for(i = 0; i < JSON_LENGTH/16; i++) {
-                t = &tokens[i];
+		for(i = 0; i < JSON_LENGTH/16; i++) {
+				t = &tokens[i];
 
-                if(t->type == JSMN_UNDEFINED)
-                        break;
+				if(t->type == JSMN_UNDEFINED)
+						break;
 
 		if(t->parent != parent && *start == -1)
 			continue;
@@ -107,7 +107,7 @@ static void get_token_range(int parent, int *start, int *end) {
 		if(*start == -1)
 			*start = i;
 		*end = i;
-        }
+		}
 }
 
 // Find a token by its parent, its type and its content.
@@ -175,27 +175,27 @@ static int find_region_config_value(char *name, char *me_str) {
 }
 
 static int find_agent_config(char *agent, char *name) {
-        int idx;
-        int start, end;
-        int start2, end2;
-        int i;
-        jsmntok_t *t;
+		int idx;
+		int start, end;
+		int start2, end2;
+		int i;
+		jsmntok_t *t;
 
-        idx = get_token_by_content(0, JSMN_STRING, "agents");
-        get_token_range(idx + 1, &start, &end);
-        for(i = start; i < end; i++) {
-                if(tokens[i].type == JSMN_OBJECT) { 
-                        get_token_range(i, &start2, &end2);
-                        idx = get_token_value_in_range(start2, end2, "id");
-                        t = &tokens[idx];
+		idx = get_token_by_content(0, JSMN_STRING, "agents");
+		get_token_range(idx + 1, &start, &end);
+		for(i = start; i < end; i++) {
+				if(tokens[i].type == JSMN_OBJECT) { 
+						get_token_range(i, &start2, &end2);
+						idx = get_token_value_in_range(start2, end2, "id");
+						t = &tokens[idx];
 
-                        if(strncmp(&json_config[t->start], agent, t->end - t->start) == 0) {
+						if(strncmp(&json_config[t->start], agent, t->end - t->start) == 0) {
 				return get_token_value_in_range(start2, end2, name);
-                        }
-                }
-        }
+						}
+				}
+		}
 
-        return -1;
+		return -1;
 }
 
 
@@ -307,7 +307,7 @@ agent_t *get_next_agent(unsigned int me) {
 
 	}
 
-    out:
+	out:
 	if(new_agent == NULL)
 		last_agent_token = -1;
 
@@ -342,7 +342,7 @@ void region_config(lp_state_t *state, unsigned int me) {
 } 
 
 void initialize_obstacles(obstacles_t **obstacles) {
-        unsigned int i;
+	int i;
 	int start, end;
 	int idx;
 	jsmntok_t *t;
@@ -352,13 +352,13 @@ void initialize_obstacles(obstacles_t **obstacles) {
 	idx = get_token_by_content(0, JSMN_STRING, "obstacles") + 1;
 	get_token_range(idx, &start, &end);
 	
-        SetupObstacles(obstacles);
-        for(i = start; i <= end; i++) {
+		SetupObstacles(obstacles);
+		for(i = start; i <= end; i++) {
 		t = &tokens[i];
 		strncpy(buff, &json_config[t->start], t->end - t->start);
-                AddObstacle(*obstacles, atoi(buff));
-                printf("Cell %d is a obstacle\n", atoi(buff));
-        }
+				AddObstacle(*obstacles, atoi(buff));
+				printf("Cell %d is a obstacle\n", atoi(buff));
+		}
 }
 
 
