@@ -14,9 +14,9 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, void *event_co
 	agent_t *agent;
 	agent_node_t *agent_node;
 
-	switch(event_type) {
+	printf("[LP%d] :: Event %d at time %.7f\n", me, event_type, now);
 
-		printf("=> Event %d <=\n", event_type);
+	switch(event_type) {
 
 		case INIT:
 
@@ -69,21 +69,31 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, void *event_co
 		case AGENT_OUT:
 			// Sanity check: does the cell host any agent?
 			if (state->num_agents == 0) {
-				printf("Agent %llu leaving from a cell that has no agent", *(unsigned long long *)event_content);
-				exit(EXIT_FAILURE);
+				//printf("Agent %llu leaving from a cell that has no agent", *(unsigned long long *)event_content);
+				//exit(EXIT_FAILURE);
+				error(true, "Agent %d is leaving region %d, though it has no agents\n", *(unsigned long long *)event_content, me);
 			}
-
-			// Decrement the number of the agents in the current cell
-			state->num_agents--;
 
 			// This agent is leaving: remove from the list
 			agent = remove_agent(state, *(unsigned long long *)event_content);
 
+			// Once we have a cpoy of the agent to work with, we need
+			// to decide whether the agent has a path to reach its destination;
+			// To do that we invoke the 'copmute_agent_path()' function
+			// if the action contained in the next task region is different
+			// from TRAVERSE and the time is not defined yet.
+			visit_t next = agent->visit_list[agent->visited];
+			if(next.action == TRAVERSE && next.time == INFTY) {
+				printf("Agent '%s' computes a new route to %d\n", agent->name, get_agent_current_destination(agent));
+				compute_agent_path(&agent, obstacles);
+			}
+
 			// Send the agent to the destination cell
 			// NOTE: since the array of visit_list is zero-based and the visited cell c
 			// NOTE2: the list of cell to be visited does not include the current cell
-			ScheduleNewEvent(agent->visit_list[agent->visited - 1].region, now, AGENT_IN, agent, sizeof(agent_t) + sizeof(unsigned int) * agent->visit_list_size);
+			ScheduleNewEvent(next.region, now, AGENT_IN, agent, sizeof(agent_t) + sizeof(unsigned int) * agent->visit_list_size);
 
+			printf("Agent '%s' (uuid:%d) wants to move in region '%d' towards destination '%d'\n", agent->name, agent->uuid, get_agent_current_region(agent), get_agent_current_destination(agent));
 			// The agent has been copined by the platform into the event's content, now it possible to free that buffer
 			free(agent);
 			break;
@@ -94,9 +104,6 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, void *event_co
 				printf("Obstacle %u is requested to host agent%llu\n", me, ((agent_t *)event_content)->uuid);
 				exit(EXIT_FAILURE);
 			}
-
-			// Increment the number of the agents in the current cell
-			state->num_agents++;
 
 			// Get the agent by copying the 'one' provoded into the event's payload
 			// so that we still work in data separation
@@ -113,7 +120,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, void *event_co
 			// NOTE: we do not rely on the proper event to change the destination
 			// since it is intended to change the destination before to have reached
 			// the current destionation
-			if (get_agent_current_cell(agent) == get_agent_current_destination(agent)) {
+			if (get_agent_current_region(agent) == get_agent_current_destination(agent)) {
 				steps = compute_agent_path(&agent, obstacles);
 				if (steps == UINT_MAX) {
 					error(false, "Impossible to determine a new destination for the agent %llu\n", agent->uuid);

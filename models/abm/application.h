@@ -24,7 +24,7 @@
 	if(critical) exit(EXIT_FAILURE); \
 }
 
-#define get_agent_current_cell(agent) ((agent)->visit_list[(agent)->visited - 1].region)
+#define get_agent_current_region(agent) ((agent)->visit_list[(agent)->visited - 1].region)
 
 
 typedef struct _neighbour_state_t {

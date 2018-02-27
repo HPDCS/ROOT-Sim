@@ -187,6 +187,9 @@ static int find_agent_config(char *agent, char *name) {
 				if(tokens[i].type == JSMN_OBJECT) { 
 						get_token_range(i, &start2, &end2);
 						idx = get_token_value_in_range(start2, end2, "id");
+						if(idx < 0)
+							continue;
+
 						t = &tokens[idx];
 
 						if(strncmp(&json_config[t->start], agent, t->end - t->start) == 0) {
@@ -199,15 +202,23 @@ static int find_agent_config(char *agent, char *name) {
 }
 
 
-// Get the number of tasks to be performed by an agent
+/**
+ * Get the number of tasks to be performed by an agent.
+ * @param idx The index of the array containing the task list tokens
+ */
 static int agent_get_task_list_size(int idx) {
 	int i = 0;
 	int parent = idx;
-	jsmntok_t *curr = &tokens[idx + 1];
+
+	// Move inside the list to point the first element of the task list
+	idx++;
+	jsmntok_t *curr = &tokens[idx];
 	
+	// Look for the first token which has a parent different by the
+	// initial array passsed.
 	while(curr->parent == parent) {
 		i++;
-		idx++;
+		idx += 3; // 3 is the sum of the 2 tokens inside the task and 1 jump to reach the next task token
 		curr = &tokens[idx];
 	}
 
@@ -225,13 +236,16 @@ agent_t *get_next_agent(unsigned int me) {
 	int i, idx;
 	int start, end;
 	int task_number;
-	int task_list_tok;
+	int task_list_tok, task_idx;
 	jsmntok_t *t, *agent_name;
 	agent_t *new_agent = NULL;
 
 	// Get the tokens which are related to region agents.
 	snprintf(me_str, 64, "%u", me);
 	idx = find_region_config_value("agents", me_str);
+	if(idx < 0) {
+		return NULL;
+	}
 	get_token_range(idx, &start, &end);
 	
 	if(last_agent_token == -1) {
@@ -240,13 +254,12 @@ agent_t *get_next_agent(unsigned int me) {
 		last_agent_token = start;	
 	}
 
-	if(last_agent_token + 1 > end)
+	if(last_agent_token > end)
 		goto out;
 
 	// Get the actual token describing the agent
 	t = &tokens[last_agent_token++];
-	strncpy(name, &json_config[t->start], t->end - t->start);
-	name[t->end - t->start] = '\0';
+	copy_content(name, t);
 
 	// Get pointers to attributes of interest
 	idx = find_agent_config(name, "name");
@@ -254,7 +267,7 @@ agent_t *get_next_agent(unsigned int me) {
 
 	// You can add here more of them
 
-	idx = find_agent_config(name, "task-list") + 1;
+	idx = find_agent_config(name, "task-list");
 	task_list_tok = idx;
 	printf("Task list token for agent %s is at %d\n", name, task_list_tok);
 	task_number = agent_get_task_list_size(idx) + 1;
@@ -276,24 +289,26 @@ agent_t *get_next_agent(unsigned int me) {
 	new_agent->visit_list[0].time = 0;
 	new_agent->visit_list[0].region = me;
 	new_agent->visit_list[0].action = START_POSITION;
-	
+
 	// Populate the visit list with the tasks that we have to do. It will
 	// be later populated with the path to follow to reach the destinations.
-	for(i = 1; i < task_number; i++) {
+	for(i = 0; i < (task_number - 1); i++) {
 		new_agent->visit_list[i].time = INFTY; // Still have to visit this cell
 		// Copy the destination region id
 		
-		t = &tokens[(task_list_tok + 1) * (i * 2)];
-		dump_token(t);
-		
-		copy_content(buff, &tokens[(task_list_tok + 1) * (i * 2)]);
+		task_idx = task_list_tok + (i * 3) + 1;
+
+		t = &tokens[task_idx + 1];
+		//dump_token(t);
+
+		copy_content(buff, t);
 		new_agent->visit_list[i].region = atoi(buff);
 
 		// Set the action
-		t = &tokens[(task_list_tok + 1) * (i * 2) + 1];
-		dump_token(t);
+		t = &tokens[task_idx + 2];
+		//dump_token(t);
 
-		strncpy(buff, &json_config[t->start], t->end - t->start);
+		copy_content(buff, t);
 		if(strcmp(buff, "Action A") == 0) {
 			new_agent->visit_list[i].action = ACTION_A;
 		} else if(strcmp(buff, "Action B") == 0) {
@@ -341,12 +356,26 @@ void region_config(lp_state_t *state, unsigned int me) {
 	}
 } 
 
+
+inline static int parse_int(jsmntok_t *t) {
+	char buff[64];
+	size_t size;
+
+	size = t->end - t->start;
+	strncpy(buff, &json_config[t->start], size);
+	buff[size] = 0;
+
+	return atoi(buff);
+}
+
+
 void initialize_obstacles(obstacles_t **obstacles) {
 	int i;
 	int start, end;
 	int idx;
 	jsmntok_t *t;
 	char buff[64];
+	int cell;
 
 	// Get the list of obstacles
 	idx = get_token_by_content(0, JSMN_STRING, "obstacles") + 1;
@@ -355,9 +384,10 @@ void initialize_obstacles(obstacles_t **obstacles) {
 		SetupObstacles(obstacles);
 		for(i = start; i <= end; i++) {
 		t = &tokens[i];
-		strncpy(buff, &json_config[t->start], t->end - t->start);
-				AddObstacle(*obstacles, atoi(buff));
-				printf("Cell %d is a obstacle\n", atoi(buff));
+		copy_content(buff, t);
+		cell = atoi(buff);
+			AddObstacle(*obstacles, cell);
+			printf("Cell %d is a obstacle\n", cell);
 		}
 }
 

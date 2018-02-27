@@ -34,7 +34,7 @@ agent_t *find_agent(lp_state_t *state, unsigned long long uuid) {
 int add_agent(lp_state_t *state, agent_t *agent) {
 	agent_node_t *node;
 
-	printf("Add agent %llu to state %p\n", agent->uuid, state);
+	printf("Add agent '%s' (uuid: %llu) to region '%s' (%p)\n", agent->name, agent->uuid, state->name, state);
 
 	// Fill the agent structure
 	node = malloc(sizeof(agent_node_t));
@@ -95,7 +95,7 @@ unsigned int compute_agent_path(agent_t **agent, obstacles_t *obstacles) {
 	if (*agent == NULL)
 		return UINT_MAX;
 
-	steps = ComputeMinTour(&list, obstacles, TOPOLOGY, get_agent_current_cell(*agent), get_agent_current_destination(*agent));
+	steps = ComputeMinTour(&list, obstacles, TOPOLOGY, get_agent_current_region(*agent), get_agent_current_destination(*agent));
 	if(steps == UINT_MAX) {
 		error(true, "Picked an unreachable cell\n");
 	}

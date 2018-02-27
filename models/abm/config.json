@@ -20,7 +20,7 @@
 		  "agents": ["agent1"]
 	  }
   ],
-  "obstacles": [4, 3, 2, 1, 16, 23],
+  "obstacles": [3],
   "agents":
   [
 	  {
