@@ -371,6 +371,29 @@ then
 		])
 	fi
 
+	# Power Management Subsystem Configuration
+	ac_power_management=yes
+	AC_CHECK_FILE("/sys/devices/system/cpu/cpu0/cpufreq/scaling_governors",, [ac_power_management=no])
+	AC_CHECK_FILE("/sys/devices/system/cpu/cpu0/cpufreq/scaling_available_frequencies",, [ac_power_management=no])
+	AC_CHECK_FILE("/sys/devices/system/cpu/cpu0/cpufreq/scaling_setspeed",, [ac_power_management=no])
+	AC_CHECK_FILE("/sys/class/powercap/intel-rapl/intel-rapl:0/energy_uj",, [ac_power_management=no])
+
+	if test "x$ac_power_management" = "xyes"
+	then
+		#
+		# We have found everything that we need, but the user can disable the subsystem
+		#
+
+		AC_ARG_ENABLE([pmanagement],
+		AS_HELP_STRING([--disable-pmanagement], [Disable the Power Management Subsystem]))
+
+		AS_IF([test "x$enable_pmanagement" != "xno"], [
+			AC_DEFINE([HAVE_POWER_MANAGEMENT])
+			ac_have_power_management=yes
+		])
+	fi
+
+
 
 	# Test for linux headers, to compile kernel modules
 	ac_kernel_headers=no
@@ -636,6 +659,19 @@ else
 	fi
 fi
 
+# Compose the message regarding Power Management
+if test "x$ac_have_power_management" = "xyes"
+then
+	ac_power="Enabled"
+else
+	if test "x$enable_pmanagement" = "xno"
+	then
+		ac_power="Disabled by the user"
+	else
+		ac_power="Disabled (kernel files not found)"
+	fi
+fi
+
 
 # Compose message to tell whether modules are disabled
 ac_modules="Enabled"
@@ -665,6 +701,7 @@ Parallel Allocator........ : ${ac_parallel_allocator}
 NUMA Subsystem............ : ${numa_subsystem}
 LP Preemption Support..... : ${ac_preemption}
 LP Rebinding.............. : ${ac_lp_rebinding}
+Power Management.......... : ${ac_power}
 Linux Kernel Modules...... : ${ac_modules}
 Event Cross State......... : ${ac_ecs}
 

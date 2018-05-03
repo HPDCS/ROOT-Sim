@@ -255,7 +255,7 @@ void simulation_shutdown(int code) {
 			scheduler_fini();
 			gvt_fini();
 			communication_fini();
-			#ifdef POWER_MANAGEMENT	
+			#ifdef HAVE_POWER_MANAGEMENT	
 			shutdown_powercap_module();
 			#endif
 			base_fini();

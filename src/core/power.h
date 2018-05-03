@@ -24,8 +24,6 @@
 
 #pragma once
 
-// #define POWER_MANAGEMENT
-
 // #define OVERHEAD_POWER
 
 /*

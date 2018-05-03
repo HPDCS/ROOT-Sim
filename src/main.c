@@ -134,7 +134,7 @@ static void *main_simulation_loop(void *arg) {
 		// We assume that thread with tid 0 should be a controller. 
 		// Should be adapted for MPI. 
 		
-		#ifdef POWER_MANAGEMENT
+		#ifdef HAVE_POWER_MANAGEMENT
 		if(master_thread()){
 			powercap_state_machine();
 		}
@@ -238,7 +238,7 @@ static void *main_simulation_loop(void *arg) {
 	while (!end_computing()) {
 		
 		// This should be only called when power mode is enabled 
-		#ifdef POWER_MANAGEMENT
+		#ifdef HAVE_POWER_MANAGEMENT
 		if(master_thread()){
 			powercap_state_machine();
 		}
