@@ -373,7 +373,7 @@ then
 
 	# Power Management Subsystem Configuration
 	ac_power_management=yes
-	AC_CHECK_FILE("/sys/devices/system/cpu/cpu0/cpufreq/scaling_governors",, [ac_power_management=no])
+	AC_CHECK_FILE("/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor",, [ac_power_management=no])
 	AC_CHECK_FILE("/sys/devices/system/cpu/cpu0/cpufreq/scaling_available_frequencies",, [ac_power_management=no])
 	AC_CHECK_FILE("/sys/devices/system/cpu/cpu0/cpufreq/scaling_setspeed",, [ac_power_management=no])
 	AC_CHECK_FILE("/sys/class/powercap/intel-rapl/intel-rapl:0/energy_uj",, [ac_power_management=no])
