@@ -141,7 +141,8 @@ void DiscardObstacles(obstacles_t *obstacles);
 bool IsObstacle(obstacles_t *obstacles, int cell);
 
 // Function to return a list of LP IDs to be visited in order to reach a given cell.
-unsigned int ComputeMinTour(unsigned int **list, obstacles_t *obstacles, int topology, unsigned int source, unsigned int dest);
+// @param[out] list Pointer to a memory region with at least sizeof(unsigned)*n_prc_tot bytes available which will hold the result
+unsigned int ComputeMinTour(unsigned int *list, obstacles_t *obstacles, int topology, unsigned int source, unsigned int dest);
 
 // Expose to the application level the command line parameter parsers
 int GetParameterInt(void *args, char *name);
