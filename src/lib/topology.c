@@ -615,7 +615,7 @@ static void a_star(	unsigned int *visited_bitmap, int topology, unsigned int cur
 	return;
 }
 
-unsigned int ComputeMinTour(unsigned int **list, obstacles_t *obstacles, int topology, unsigned int source, unsigned int dest) {
+unsigned int ComputeMinTour(unsigned int *list, obstacles_t *obstacles, int topology, unsigned int source, unsigned int dest) {
 
 	unsigned int a_star_solution[n_prc_tot];
 	unsigned int min_steps[n_prc_tot];
@@ -645,14 +645,11 @@ unsigned int ComputeMinTour(unsigned int **list, obstacles_t *obstacles, int top
 		return UINT_MAX;
 	}
 
-	*list = NULL;
-
 	compute_edge();
 	a_star(a_star_bitmap, topology, source, dest, 0, min_steps, a_star_solution);
 
 	if (min_steps[dest] != UINT_MAX) {
-		*list = __wrap_malloc(sizeof(unsigned int) * min_steps[dest]);
-		memcpy(*list, a_star_solution, sizeof(unsigned int) * min_steps[dest]);
+		memcpy(list, a_star_solution, sizeof(unsigned int) * min_steps[dest]);
 	}
 
 	return min_steps[dest];
