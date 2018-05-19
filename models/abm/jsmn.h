@@ -4,6 +4,7 @@
 #include <stddef.h>
 
 #define JSMN_PARENT_LINKS
+#define JSMN_STRICT
 
 #ifdef __cplusplus
 extern "C" {

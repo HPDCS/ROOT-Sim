@@ -1,452 +1,492 @@
+#include "config.h"
+
 #include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
 #include <string.h>
-#include <errno.h>
-#include <stdbool.h>
+#include <pthread.h>
+#include <alloca.h> // TODO: get rid of this, find a cleaner way to instantiate new agents
 
-#include <ROOT-Sim.h>
-
-#include "application.h"
 #include "jsmn.h"
+#include "jsmn_helper.h"
+#include "user.h"
+#include "logger.h"
 
-// Buffer to store in memory the JSON configuration file.
-// This must be a power of 2.
-#define JSON_LENGTH	4096
+static char json_config[CONFIG_FILE_MAX_LENGTH];
+static jsmntok_t tokens[CONFIG_FILE_MAX_LENGTH / 16];
+static int tokens_count = -1;
 
-// We rely on per-thread variables since INIT events are
-// executed concurrently by the available workers.
-// We don't use dynamic memory here as we want to keep the
-// configuration out of the simulation state of the LPs and
-// to allow for the reuse of the already parsed data.
-static __thread char json_config[JSON_LENGTH];
-static __thread bool conf_loaded = false;
-static __thread jsmntok_t tokens[JSON_LENGTH/16];
+#define root_token (&tokens[0])
 
+// These things here assure we load the file exactly once per machine
+// TODO more diversified mutexes could improve performances during initialization
+static pthread_mutex_t user_config_lock = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t config_lock = PTHREAD_MUTEX_INITIALIZER;
 
-// This is a state variable which tells what is the token
-// associated with the last agent which has been
-// returned by a get_next_agent() call. When the function
-// returns NULL to notify that no more agents are present,
-// this variable is automatically set to -1
-static __thread int last_agent_token = -1;
+static bool load_config_done = false;
+static config_error_t load_config_ret;
 
+static bool topology_config_done = false;
+static config_error_t topology_config_ret;
 
-// This function returns the size of a token's content.
-// This is useful for sanity checks, e.g. if you have to
-// copy some text into an array of chars.
-static size_t get_content_size(jsmntok_t *t) {
-	return t->end - t->start;
+static void relocate_object_token(jsmntok_t *t_obj, const char **new_base_p, int *old_parent);
+static void undo_relocate_object_token(jsmntok_t *t_obj, const char *new_base, int old_parent);
+static c_jsmntok_t* get_region_token_by_lp_id(unsigned int me);
+static c_jsmntok_t* get_agent_token_by_key_token(c_jsmntok_t *t_key);
+static agent_t* get_agent_by_token(c_jsmntok_t *t, unsigned int start_region);
+static config_error_t load_config(void);
+static config_error_t general_config(void);
+
+config_error_t init_config(void) {
+
+	int ret = load_config();
+	if (ret < 0)
+		return ret;
+
+	ret = general_config();
+	if (ret < 0)
+		return ret;
+
+	return CONFIG_SUCCESS;
 }
 
-// Copy the content of a token into a given buffer. The destination
-// buffer must have enough space.
-static void copy_content(char *dest, jsmntok_t *t) {
-	strncpy(dest, &json_config[t->start], t->end - t->start);
-	dest[t->end - t->start] = '\0';
-}
+config_error_t get_region_config(unsigned int me, region_t **result) {
 
-// Dump the content of a token. Useful for debugging your
-// initialization
-static void dump_content(jsmntok_t *t) {
-	printf("%.*s\n", t->end - t->start, &json_config[t->start]);
-}
+	agent_t *agent;
+	region_t *region;
+	c_jsmntok_t *t, *t_aux, *t_reg;
+	jsmntok_t *t_usr;
 
-// Dump a whole token information. Useful for debugging
-// your initialization.
-static void dump_token(jsmntok_t *t) {
-	char *type;
+	*result = NULL;
 
-	switch(t->type) {
-		case JSMN_UNDEFINED:
-			type = "undefined";
-			break;
-		case JSMN_OBJECT:
-			type = "object";
-			break;
-		case JSMN_ARRAY:
-			type = "array";
-			break;
-		case JSMN_STRING:
-			type = "string";
-			break;
-		case JSMN_PRIMITIVE:
-			type = "primitive";
-			break;
-	}
-	printf("Token %ld\n", t - tokens);
-	printf("\ttype: %s\n", type);
-	printf("\tstart: %d\n", t->start);
-	printf("\tend: %d\n", t->end);
-	printf("\tsize: %d\n", t->size);
-	printf("\tparent: %d\n", t->parent);
-	printf("\tcontent: ");
-	dump_content(t);
-}
+	t_reg = get_region_token_by_lp_id(me);
+	if (t_reg == NULL)
+		return CONFIG_BAD_REGION;
 
-// Get the range of tokens which belong to a certain parent.
-// The parent must exist.
-static void get_token_range(int parent, int *start, int *end) {
-		int i;
-		jsmntok_t *t;
+	// Verify user_data existence
+	t_usr = (jsmntok_t*) get_value_token_by_key(root_token, json_config, t_reg, "data");
+	if (t_usr == NULL || t_usr->type != JSMN_OBJECT)
+		return CONFIG_BAD_REGION;
 
-	*start = -1;
-	*end = -1;
+	// Retrieve agent list
+	t = get_value_token_by_key(root_token, json_config, t_reg, "agents");
+	if (t == NULL || t->type != JSMN_ARRAY)
+		return CONFIG_BAD_REGION;
 
-		for(i = 0; i < JSON_LENGTH/16; i++) {
-				t = &tokens[i];
+	region = new_region(me);
+	if (region == NULL)
+		return CONFIG_BAD_REGION;
 
-				if(t->type == JSMN_UNDEFINED)
-						break;
+	pthread_mutex_lock(&user_config_lock);
+	const char *new_base;
+	int old_parent;
+	relocate_object_token(t_usr, &new_base, &old_parent);
 
-		if(t->parent != parent && *start == -1)
-			continue;
-		if(t->parent < parent)
-			break;
-
-		if(*start == -1)
-			*start = i;
-		*end = i;
-		}
-}
-
-// Find a token by its parent, its type and its content.
-// This is useful to match keys.
-static int get_token_by_content(int parent, unsigned int type, char *content) {
-	int i, ret = -1;
-	jsmntok_t *t;
-
-	for(i = 0; i < JSON_LENGTH/16; i++) {
-		t = &tokens[i];
-
-		if(t->type == JSMN_UNDEFINED)
-			break;
-
-		if(t->type != type || t->parent != parent)
-			continue;
-
-		if(strncmp(&json_config[t->start], content, t->end - t->start) == 0) {
-			ret = i;
-			break;
-		}
+	if (user_init_region(region, t_usr, new_base) < 0) {
+		free_region(region);
+		return CONFIG_BAD_USER_REGION;
 	}
 
-	return ret;
-}
+	undo_relocate_object_token(t_usr, new_base, old_parent);
 
-// In a range of tokens, look for named objects.
-static int get_token_value_in_range(int start, int end, char *name) {
-	int i;
-	jsmntok_t *t;
+	pthread_mutex_unlock(&user_config_lock);
 
-	for(i = start; i <= end; i += 2) {
-		t = &tokens[i];
+	if (!is_obstacle_region_id(me)) {
 
-		if(strncmp(&json_config[t->start], name, t->end - t->start) == 0) {
-			return i + 1;
-		}
-	}
+		struct _gnt_closure_t closure = GNT_CLOSURE_INITIALIZER;
 
-	return -1;
-}
+		while ((t_aux = get_next_token(root_token, t, &closure)) != NULL) {
 
-static int find_region_config_value(char *name, char *me_str) {
-	int idx;
-	int start, end;
-	int start2, end2;
-	int i;
-	jsmntok_t *t;
+			if (t_aux->type != JSMN_STRING) {
+				free_region(region);
+				return CONFIG_BAD_REGION;
+			}
 
-	idx = get_token_by_content(0, JSMN_STRING, "regions");
-	get_token_range(idx + 1, &start, &end);
-	for(i = start; i < end; i++) {
-		if(tokens[i].type == JSMN_OBJECT) {
-			get_token_range(i, &start2, &end2);
-			idx = get_token_value_in_range(start2, end2, "id");
-			t = &tokens[idx];
+			t_aux = get_agent_token_by_key_token(t_aux);
+			if (t_aux == NULL) {
+				free_region(region);
+				return CONFIG_BAD_AGENT;
+			}
 
-			if(strncmp(&json_config[t->start], me_str, t->end - t->start) == 0) {
-				return get_token_value_in_range(start2, end2, name);
+			agent = get_agent_by_token(t_aux, me);
+			if (agent == NULL || visit_agent_region(region, agent, 0.0) < 0) {
+				free_region(region);
+				return CONFIG_BAD_AGENT;
 			}
 		}
 	}
 
-	return -1;
+	*result = region;
+
+	return CONFIG_SUCCESS;
 }
-
-static int find_agent_config(char *agent, char *name) {
-		int idx;
-		int start, end;
-		int start2, end2;
-		int i;
-		jsmntok_t *t;
-
-		idx = get_token_by_content(0, JSMN_STRING, "agents");
-		get_token_range(idx + 1, &start, &end);
-		for(i = start; i < end; i++) {
-				if(tokens[i].type == JSMN_OBJECT) { 
-						get_token_range(i, &start2, &end2);
-						idx = get_token_value_in_range(start2, end2, "id");
-						if(idx < 0)
-							continue;
-
-						t = &tokens[idx];
-
-						if(strncmp(&json_config[t->start], agent, t->end - t->start) == 0) {
-				return get_token_value_in_range(start2, end2, name);
-						}
-				}
-		}
-
-		return -1;
-}
-
 
 /**
- * Get the number of tasks to be performed by an agent.
- * @param idx The index of the array containing the task list tokens
+ * This is a generic function to load and parse a JSON configuration file.
+ * It can be re-used verbatim for any ABM simulation model.
  */
-static int agent_get_task_list_size(int idx) {
-	int i = 0;
-	int parent = idx;
+static config_error_t load_config(void) {
 
-	// Move inside the list to point the first element of the task list
-	idx++;
-	jsmntok_t *curr = &tokens[idx];
-	
-	// Look for the first token which has a parent different by the
-	// initial array passsed.
-	while(curr->parent == parent) {
-		i++;
-		idx += 3; // 3 is the sum of the 2 tokens inside the task and 1 jump to reach the next task token
-		curr = &tokens[idx];
-	}
+	long int jslen;
 
-	return i;
-}
-
-
-// This function returns a malloc'd agent_t for the next agent
-// which is born in a certain region. If no such agent exists,
-// it returns NULL.
-agent_t *get_next_agent(unsigned int me) {
-	char me_str[64];
-	char name[64];
-	char buff[64];
-	int i, idx;
-	int start, end;
-	int task_number;
-	int task_list_tok, task_idx;
-	jsmntok_t *t, *agent_name;
-	agent_t *new_agent = NULL;
-
-	// Get the tokens which are related to region agents.
-	snprintf(me_str, 64, "%u", me);
-	idx = find_region_config_value("agents", me_str);
-	if(idx < 0) {
-		return NULL;
-	}
-	get_token_range(idx, &start, &end);
-	
-	if(last_agent_token == -1) {
-		// This is the first call to this function by a
-		// region initialization.
-		last_agent_token = start;	
-	}
-
-	if(last_agent_token > end)
-		goto out;
-
-	// Get the actual token describing the agent
-	t = &tokens[last_agent_token++];
-	copy_content(name, t);
-
-	// Get pointers to attributes of interest
-	idx = find_agent_config(name, "name");
-	agent_name = &tokens[idx];
-
-	// You can add here more of them
-
-	idx = find_agent_config(name, "task-list");
-	task_list_tok = idx;
-	printf("Task list token for agent %s is at %d\n", name, task_list_tok);
-	task_number = agent_get_task_list_size(idx) + 1;
-
-	// Allocate the agent struct and populate the entries
-	new_agent = malloc(sizeof(agent_t) + sizeof(visit_t) * task_number);
-	bzero(new_agent, sizeof(agent_t) + sizeof(visit_t) * task_number);
-	if(new_agent == NULL) {
-		fprintf(stderr, "Error allocating agent_t structure.\n");
-		exit(EXIT_FAILURE);
-	}
-
-	strncpy(new_agent->name, &json_config[agent_name->start], agent_name->end - agent_name->start);
-	new_agent->uuid = GenerateUniqueId();
-	new_agent->visited = 1; // We already visited the initial region
-	new_agent->visit_list_size = task_number;
-
-	// First visit is the origin region
-	new_agent->visit_list[0].time = 0;
-	new_agent->visit_list[0].region = me;
-	new_agent->visit_list[0].action = START_POSITION;
-
-	// Populate the visit list with the tasks that we have to do. It will
-	// be later populated with the path to follow to reach the destinations.
-	for(i = 0; i < (task_number - 1); i++) {
-		new_agent->visit_list[i].time = INFTY; // Still have to visit this cell
-		// Copy the destination region id
-		
-		task_idx = task_list_tok + (i * 3) + 1;
-
-		t = &tokens[task_idx + 1];
-		//dump_token(t);
-
-		copy_content(buff, t);
-		new_agent->visit_list[i].region = atoi(buff);
-
-		// Set the action
-		t = &tokens[task_idx + 2];
-		//dump_token(t);
-
-		copy_content(buff, t);
-		if(strcmp(buff, "Action A") == 0) {
-			new_agent->visit_list[i].action = ACTION_A;
-		} else if(strcmp(buff, "Action B") == 0) {
-			new_agent->visit_list[i].action = ACTION_B;
-		} else if(strcmp(buff, "Action C") == 0) {
-			new_agent->visit_list[i].action = ACTION_C;
-		} else {
-			fprintf(stderr, "Unrecognized action: %s\n", buff);
-			exit(EXIT_FAILURE);
-		}
-
-	}
-
-	out:
-	if(new_agent == NULL)
-		last_agent_token = -1;
-
-	return new_agent;
-}
-
-
-// This is the core configuration function where the logic to setup the
-// simulation state should be implemented.
-void region_config(lp_state_t *state, unsigned int me) {
-	int idx, start, end;
-	char me_str[64];
-
-	// Initialize my state using the general configuration information
-	idx = get_token_by_content(0, JSMN_STRING, "general");
-	get_token_range(idx + 1, &start, &end);
-
-	idx = get_token_value_in_range(start, end, "name");
-	if(idx < 0) {
-		fprintf(stderr, "Invalid general configuration\n");
-		exit(EXIT_FAILURE);
-	}
-	copy_content(state->name, &tokens[idx]);
-
-	// Find a (possibly non-existent) specific configuration for me
-	snprintf(me_str, 64, "%u", me);
-
-	idx = find_region_config_value("name", me_str);
-	if(idx != -1) {
-		copy_content(state->name, &tokens[idx]);
-	}
-} 
-
-
-inline static int parse_int(jsmntok_t *t) {
-	char buff[64];
-	size_t size;
-
-	size = t->end - t->start;
-	strncpy(buff, &json_config[t->start], size);
-	buff[size] = 0;
-
-	return atoi(buff);
-}
-
-
-void initialize_obstacles(obstacles_t **obstacles) {
-	int i;
-	int start, end;
-	int idx;
-	jsmntok_t *t;
-	char buff[64];
-	int cell;
-
-	// Get the list of obstacles
-	idx = get_token_by_content(0, JSMN_STRING, "obstacles") + 1;
-	get_token_range(idx, &start, &end);
-	
-		SetupObstacles(obstacles);
-		for(i = start; i <= end; i++) {
-		t = &tokens[i];
-		copy_content(buff, t);
-		cell = atoi(buff);
-			AddObstacle(*obstacles, cell);
-			printf("Cell %d is a obstacle\n", cell);
-		}
-}
-
-
-
-// This is a generic function to load and parse a JSON configuration file.
-// It can be re-used verbatim for any ABM simulation model. The logic to
-// handle different configurations of the LPs should be implemented in the
-// setup_config() function above.
-void load_config(void) {
-	int r;
-	size_t jslen = 0;
 	FILE *config;
 	jsmn_parser p;
 
-	// Load and parse only once for a given thread.
-	// This allows all LPs bound to the same worker to
-	// reuse the already-parsed information.
-	if(conf_loaded == true)
-		return;
+	pthread_mutex_lock(&config_lock);
+	if (load_config_done)
+		// Done already by some other thread
+		goto end;
 
 	/* Prepare parser */
 	jsmn_init(&p);
 
 	// Load configuration file
 	config = fopen(CONFIG_FILE, "r");
-	if(config == NULL) {
-		fprintf(stderr, "Error opening configuration file %s: ", CONFIG_FILE);
-		perror("");
-		exit(EXIT_FAILURE);
+	if (config == NULL) {
+		load_config_ret = CONFIG_FILE_CANT_OPEN;
+		goto end;
 	}
 
 	// Sanity check on the config length
 	fseek(config, 0, SEEK_END);
 	jslen = ftell(config);
+	if (ferror(config)) {
+		load_config_ret = CONFIG_FILE_CANT_OPEN;
+		goto end;
+	}
 	rewind(config);
-	if(jslen >= JSON_LENGTH) {
-		fprintf(stderr, "Error: config file is too long. Recompile the model setting JSON_LENGTH to a larger size\n");
-		exit(EXIT_FAILURE);
+	if (jslen >= CONFIG_FILE_MAX_LENGTH) {
+		load_config_ret = CONFIG_FILE_TOO_LARGE;
+		goto end;
 	}
 
-
 	// Load the whole JSON file from disk
-	fread(json_config, jslen, 1, config);
-	if(ferror(config)) {
-		fprintf(stderr, "Error loading the configuration file: ");
-		perror("");
-		exit(EXIT_FAILURE);
+	if (fread(json_config, (size_t) jslen, 1, config) == 0 || ferror(config)) {
+		load_config_ret = CONFIG_FILE_CANT_OPEN;
+		goto end;
 	}
 
 	// Parse the loaded JSON file
-	r = jsmn_parse(&p, json_config, jslen, tokens, JSON_LENGTH/16);
-	if (r < 0) {
-		if (r == JSMN_ERROR_NOMEM) {
-			fprintf(stderr, "Error parsing token: out of memory. Recompile the model increasing JSON_LENGTH.\n");
-			exit(EXIT_FAILURE);
+	tokens_count = jsmn_parse(&p, json_config, (size_t) jslen, tokens,
+	CONFIG_FILE_MAX_LENGTH / 16);
+	if (tokens_count < 0) {
+		switch (tokens_count) {
+		case JSMN_ERROR_NOMEM:
+			load_config_ret = CONFIG_FILE_TOO_LARGE;
+			break;
+		case JSMN_ERROR_INVAL:
+		case JSMN_ERROR_PART:
+			load_config_ret = CONFIG_FILE_BAD_FORMAT;
+			break;
+		default:
+			load_config_ret = CONFIG_UNKNOWN_ERROR;
+			break;
 		}
+		goto end;
 	}
-
-	conf_loaded = true;
+	load_config_ret = CONFIG_SUCCESS;
+	end:
+	load_config_done = true;
+	pthread_mutex_unlock(&config_lock);
+	return load_config_ret;
 }
 
+/**
+ * This function initializes the topology and the obstacles of
+ * the regions grid.
+ */
+static config_error_t general_config(void) {
+
+	unsigned u_value;
+	c_jsmntok_t *t, *t_aux;
+
+	pthread_mutex_lock(&config_lock);
+	if (topology_config_done) {
+		// Done already by some other thread
+		goto end;
+	}
+	// Get the list of actions
+	t = get_value_token_by_key(root_token, json_config, root_token, "actions");
+	if (t == NULL || t->type != JSMN_ARRAY) {
+		topology_config_ret = CONFIG_BAD_ACTIONS;
+		goto end;
+	}
+
+	struct _gnt_closure_t closure_ac = GNT_CLOSURE_INITIALIZER;
+
+	while ((t_aux = get_next_token(root_token, t, &closure_ac)) != NULL) {
+
+		if (t_aux->type != JSMN_STRING) {
+			topology_config_ret = CONFIG_BAD_ACTIONS;
+			goto end;
+		}
+
+		// NOTE: this should work safely since we are the only thread here;
+		// moreover we only read this stuff once
+		json_config[t_aux->end] = '\0';
+
+		if (register_action(&json_config[t_aux->start]) == ACTION_INVALID) {
+			topology_config_ret = CONFIG_BAD_ACTIONS;
+			goto end;
+		}
+
+	}
+
+	// Get the topology value
+	t = get_value_token_by_key(root_token, json_config, root_token, "topology");
+	if (t == NULL || t->type != JSMN_STRING) {
+		topology_config_ret = CONFIG_BAD_TOPOLOGY;
+		goto end;
+	}
+	if (strcmp_token(json_config, t, "HEXAGON")) {
+		if (strcmp_token(json_config, t, "SQUARE")) {
+			topology_config_ret = CONFIG_BAD_TOPOLOGY;
+			goto end;
+		} else
+			set_topology(TOPOLOGY_SQUARE);
+	} else
+		set_topology(TOPOLOGY_HEXAGON);
+
+	// Get the list of obstacles
+	t = get_value_token_by_key(root_token, json_config, root_token, "obstacles");
+	if (t == NULL || t->type != JSMN_ARRAY) {
+		topology_config_ret = CONFIG_BAD_OBSTACLES;
+		goto end;
+	}
+
+	struct _gnt_closure_t closure_ob = GNT_CLOSURE_INITIALIZER;
+
+	while ((t_aux = get_next_token(root_token, t, &closure_ob)) != NULL) {
+
+		if (parse_unsigned_token(json_config, t_aux, &u_value) < 0) {
+			topology_config_ret = CONFIG_BAD_OBSTACLES;
+			goto end;
+		}
+
+		set_obstacle_region_id(u_value);
+	}
+
+	topology_config_ret = CONFIG_SUCCESS;
+	end:
+	topology_config_done = true;
+	pthread_mutex_unlock(&config_lock);
+	return topology_config_ret;
+}
+
+static c_jsmntok_t* get_region_token_by_lp_id(unsigned int me) {
+
+	c_jsmntok_t *t, *t_aux, *t_arr;
+	unsigned u_value;
+
+	t_arr = get_value_token_by_key(root_token, json_config, root_token, "regions");
+	if (t_arr == NULL || t_arr->type != JSMN_ARRAY)
+		return NULL;
+
+	struct _gnt_closure_t closure = GNT_CLOSURE_INITIALIZER;
+
+	while ((t = get_next_token(root_token, t_arr, &closure)) != NULL) {
+		// a valid region object must have a valid id key-value pair
+		t_aux = get_value_token_by_key(root_token, json_config, t, "id");
+		if (t_aux == NULL || parse_unsigned_token(json_config, t_aux, &u_value) < 0)
+			return NULL;
+
+		if (u_value == me)
+			return t;
+	}
+	return NULL;
+}
+
+/**
+ * This function gets a string token,
+ * returns the corresponding object token representing the agent with that ID
+ */
+static c_jsmntok_t* get_agent_token_by_key_token(c_jsmntok_t *t_key) {
+
+	c_jsmntok_t *t_agents_array, *t_aux, *t_agt;
+	const char *cmp_str;
+	int cmp_str_len;
+
+	if (t_key->type != JSMN_STRING)
+		return NULL;
+
+	cmp_str = &json_config[t_key->start];
+	cmp_str_len = t_key->end - t_key->start;
+
+	t_agents_array = get_value_token_by_key(root_token, json_config, root_token, "agents");
+	if (t_agents_array == NULL || t_agents_array->type != JSMN_ARRAY)
+		return NULL;
+
+	struct _gnt_closure_t closure = GNT_CLOSURE_INITIALIZER;
+
+	while ((t_agt = get_next_token(root_token, t_agents_array, &closure)) != NULL) {
+
+		t_aux = get_value_token_by_key(root_token, json_config, t_agt, "id");
+		if (t_aux == NULL || t_aux->type != JSMN_STRING)
+			return NULL;
+
+		if (cmp_str_len == (t_aux->end - t_aux->start)
+				&& strncmp(cmp_str, &json_config[t_aux->start], (size_t) cmp_str_len) == 0)
+			return t_agt;
+	}
+
+	return NULL;
+}
+
+static agent_t* get_agent_by_token(c_jsmntok_t *t_agt, unsigned int start_region) {
+
+	c_jsmntok_t *t, *t_aux, *t_arr;
+	jsmntok_t *t_usr;
+
+	unsigned int *destinations;
+	unsigned int dest_count;
+	agent_action_t *actions;
+	agent_t *agent;
+
+	t_arr = get_value_token_by_key(root_token, json_config, t_agt, "task-list");
+	if (t_arr == NULL || t_arr->type != JSMN_ARRAY)
+		return NULL;
+
+	destinations = alloca(t_arr->size * (sizeof(unsigned))); // todo alloca is always a bit scary, get rid of it
+	actions = alloca(t_arr->size * (sizeof(agent_action_t)));
+
+	struct _gnt_closure_t closure = GNT_CLOSURE_INITIALIZER;
+
+	dest_count = 0;
+	while ((t = get_next_token(root_token, t_arr, &closure)) != NULL) {
+
+		t_aux = get_value_token_by_key(root_token, json_config, t, "cell");
+		if (t_aux == NULL || parse_unsigned_token(json_config, t_aux, destinations + dest_count) < 0)
+			return NULL;
+
+		t_aux = get_value_token_by_key(root_token, json_config, t, "action");
+		if (t_aux == NULL || t_aux->type != JSMN_STRING) {
+			return NULL;
+		}
+
+		actions[dest_count] = retrieve_action(&json_config[t_aux->start], t_aux->end - t_aux->start);
+		if (actions[dest_count] == ACTION_INVALID) {
+			abm_log(ABM_LOG_DEBUG, "Found a malformed action in an agent with starting region %u", start_region);
+			return NULL;
+		}
+		dest_count++;
+	}
+
+	t_usr = (jsmntok_t*) get_value_token_by_key(root_token, json_config, t_agt, "data");
+	if (t_usr == NULL || t_usr->type != JSMN_OBJECT) {
+		abm_log(ABM_LOG_DEBUG, "Couldn't find custom data field of an agent with starting region %u", start_region);
+		return NULL;
+	}
+
+	agent = new_agent(start_region, dest_count, destinations, actions);
+	if (agent == NULL) {
+		abm_log(ABM_LOG_DEBUG, "Couldn't instantiate agent with starting region %u", start_region);
+		return NULL;
+	}
+
+	pthread_mutex_lock(&user_config_lock);
+	const char *new_base;
+	int old_parent;
+
+	relocate_object_token(t_usr, &new_base, &old_parent);
+
+	if (user_init_agent(agent, t_usr, new_base) < 0) {
+		free_agent(agent);
+		abm_log(ABM_LOG_DEBUG, "Failed user initialization for agent in region %u", start_region);
+		return NULL;
+	}
+
+	undo_relocate_object_token(t_usr, new_base, old_parent);
+
+	pthread_mutex_unlock(&user_config_lock);
+
+	return agent;
+}
+
+/**
+ * This function modifies t_obj and his children token so that they look like
+ * the result of parsing a file containing only the object represented by t_obj and his children.
+ * This is useful so that we can pass the user's tokens to him without him having to manage the root token and all that stuff
+ */
+static void relocate_object_token(jsmntok_t *t_obj, const char **new_base_p, int *old_parent) {
+	jsmntok_t *t;
+	int c_offset, t_offset;
+
+	c_offset = t_obj->start;
+	t_offset = t_obj - root_token;
+
+	t = t_obj + 1;
+	while (t->end <= t_obj->end) {
+		t->start -= c_offset;
+		t->end -= c_offset;
+		t->parent -= t_offset;
+		t++;
+	}
+
+	t_obj->start -= c_offset;
+	t_obj->end -= c_offset;
+	*old_parent = t_obj->parent;
+	t_obj->parent = root_token->parent;
+
+	*new_base_p = json_config + c_offset;
+
+	return;
+}
+
+static void undo_relocate_object_token(jsmntok_t *t_obj, const char *new_base, int old_parent) {
+	jsmntok_t *t;
+	int c_offset, t_offset;
+
+	c_offset = new_base - json_config;
+	t_offset = t_obj - root_token;
+
+	t_obj->start += c_offset;
+	t_obj->end += c_offset;
+	t_obj->parent = old_parent;
+
+	t = t_obj + 1;
+	while (t->end <= t_obj->end) {
+		t->start += c_offset;
+		t->end += c_offset;
+		t->parent += t_offset;
+		t++;
+	}
+
+	return;
+}
+
+#define MISS_STR " specification is missing or malformed"
+
+const char * const config_error_str[CONFIG_ERROR_COUNT] = {
+
+[CONFIG_SUCCESS] = "success",
+
+[-CONFIG_FILE_CANT_OPEN] = "unable to access the configuration file",
+
+[-CONFIG_FILE_TOO_LARGE] = "the configuration file is too large,"
+		" recompile with bigger CONFIG_FILE_MAX_LENGTH",
+
+[-CONFIG_FILE_BAD_FORMAT] = "bad json format in the configuration file",
+
+[-CONFIG_BAD_TOPOLOGY] = "topology" MISS_STR,
+
+[-CONFIG_BAD_OBSTACLES] = "obstacles" MISS_STR,
+
+[-CONFIG_BAD_REGION] = "region" MISS_STR,
+
+[-CONFIG_BAD_AGENT] = "agent" MISS_STR,
+
+[-CONFIG_BAD_ACTIONS] = "actions" MISS_STR,
+
+[-CONFIG_BAD_USER_REGION] = "(user.h) custom region" MISS_STR,
+
+[-CONFIG_BAD_USER_AGENT] = "(user.h) custom agent" MISS_STR,
+
+[-CONFIG_UNKNOWN_ERROR] = "no idea..."
+
+};
+
+#undef MISS_STR
+
+const char* error_msg_config(config_error_t cfg_err) {
+	if (cfg_err > 0 || cfg_err <= -CONFIG_ERROR_COUNT)
+		return NULL;
+	return config_error_str[-cfg_err];
+}

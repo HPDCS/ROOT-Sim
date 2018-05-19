@@ -2,8 +2,8 @@
 
 CC=rootsim-cc
 CFLAGS=-g -Wall -Wextra
-DEPS = application.h jsmn.h
-OBJS = application.o functions.o jsmn.o config.o
+DEPS = agent.h application.h config.h jsmn.h jsmn_helper.h logger.h user.h
+OBJS = agent.o application.o config.o jsmn.o jsmn_helper.o logger.o user.o
 MODEL = abm
 
 %.o: %.c $(DEPS)

@@ -1,56 +1,202 @@
 {
-  "name": "Agent-Based PDES Model Configuration",
-  "description": "This is a generic configuration file for the ABM simulation model",
-  "general":
-  {
-	"name": "Region",
-	"description": "This is the generic configuration for a region. Put here all shared attributes"
-  },
-  "regions": 
-  [
-	  {
-		  "id": 0,
-		  "name": "Region 0",
-		  "description": "Put here all attributes for a specific region",
-		  "agents": ["agent2", "agent3"]
-	  },
-	  {
-		  "id": 1,
-		  "name": "Region 1",
-		  "agents": ["agent1"]
-	  }
-  ],
-  "obstacles": [3],
-  "agents":
-  [
-	  {
-		  "id": "agent1",
-		  "name": "Foo Agent",
-		  "task-list": 
-		  [
-			  { "0": "Action A" },
-			  { "10": "Action B" },
-			  { "64": "Action A"}
-		  ]
-	  },
-  	  {
-		  "id": "agent2",
-		  "name": "Bar Agent",
-		  "task-list":
-		  [
-			  { "3": "Action C" },
-			  { "64": "Action C" }, 
-			  { "1": "Action A"}
-		  ]
-	  },
-  	  {
-		  "id": "agent3",
-		  "name": "FooBar Agent",
-		  "task-list":
-		  [
-			  { "21": "Action B" }
-		  ]
-	  }
-  ]
-
+	"greetings": "ciao belli",
+	"topology":"HEXAGON",
+	"actions":["Action A", "Action B", "Action C", "Action D"],
+	"regions":[
+		{
+			"id": 0,
+			"data": {"name": "Region 0"},
+			"agents": []
+		},
+		{
+			"id": 1,
+			"data": {"name": "Region 1"},
+			"agents": ["agent1"]
+		},
+		{
+			"id": 2,
+			"data": {"name": "Region 2"},
+			"agents": []
+		},
+		{
+			"id": 3,
+			"data": {"name": "Region 3"},
+			"agents": []
+		},
+		{
+			"id": 4,
+			"data": {"name": "Region 4"},
+			"agents": []
+		},
+		{
+			"id": 5,
+			"data": {"name": "Region 5"},
+			"agents": []
+		},
+		{
+			"id": 6,
+			"data": {"name": "Region 6"},
+			"agents": ["agent3"]
+		},
+		{
+			"id": 7,
+			"data": {"name": "Region 7"},
+			"agents": []
+		},
+		{
+			"id": 8,
+			"data": {"name": "Region 8"},
+			"agents": []
+		},
+		{
+			"id": 9,
+			"data": {"name": "Region 9"},
+			"agents": []
+		},
+		{
+			"id": 10,
+			"data": {"name": "Region 10"},
+			"agents": []
+		},
+		{
+			"id": 11,
+			"data": {"name": "Region 11"},
+			"agents": []
+		},
+		{
+			"id": 12,
+			"data": {"name": "Region 12"},
+			"agents": []
+		},
+		{
+			"id": 13,
+			"data": {"name": "Region 13"},
+			"agents": []
+		},
+		{
+			"id": 14,
+			"data": {"name": "Region 14"},
+			"agents": ["agent4"]
+		},
+		{
+			"id": 15,
+			"data": {"name": "Region 15"},
+			"agents": []
+		},
+		{
+			"id": 16,
+			"data": {"name": "Region 16"},
+			"agents": ["agent2"]
+		},
+		{
+			"id": 17,
+			"data": {"name": "Region 17"},
+			"agents": []
+		},
+		{
+			"id": 18,
+			"data": {"name": "Region 18"},
+			"agents": []
+		},
+		{
+			"id": 19,
+			"data": {"name": "Region 19"},
+			"agents": []
+		},
+		{
+			"id": 20,
+			"data": {"name": "Region 20"},
+			"agents": ["agent5"]
+		},
+		{
+			"id": 21,
+			"data": {"name": "Region 21"},
+			"agents": []
+		},
+		{
+			"id": 22,
+			"data": {"name": "Region 22"},
+			"agents": []
+		},
+		{
+			"id": 23,
+			"data": {"name": "Region 23"},
+			"agents": []
+		},
+		{
+			"id": 24,
+			"data": {"name": "Region 24"},
+			"agents": ["agent6", "agent7"]
+		}
+	],
+	"obstacles": [ 5, 6, 8, 17],
+	"agents":[
+		{
+			"id": "agent1",
+			"data": {"name": "Agent Smith"},
+			"task-list":
+			[
+				{ "action": "Action A", "cell": 10},
+				{ "action": "Action B", "cell": 13},
+				{ "action": "Action A", "cell": 21}
+			]
+		},
+		{
+			"id": "agent2",
+			"data": {"name": "Agent O' Love"},
+			"task-list":
+			[
+				{  "action": "Action C", "cell": 23},
+				{  "action": "Action C", "cell": 1}, 
+				{  "action": "Action D", "cell": 9},
+				{  "action": "Action D", "cell": 12}
+			]
+		},
+		{
+			"id": "agent3",
+			"data": {"name": "Agent James"},
+			"task-list":
+			[
+				{ "action": "Action B", "cell": 13}
+			]
+		},
+		{
+			"id": "agent4",
+			"data": {"name": "Agent Sully"},
+			"task-list":
+			[
+				{ "action": "Action A", "cell": 20},
+				{ "action": "Action C", "cell": 14},
+				{ "action": "Action B", "cell": 10}
+			]
+		},
+		{
+			"id": "agent5",
+			"data": {"name": "Agent Alex P"},
+			"task-list":
+			[
+				{  "action": "Action C", "cell": 3},
+				{  "action": "Action D", "cell": 18}, 
+				{  "action": "Action A", "cell": 16}
+			]
+		},
+		{
+			"id": "agent6",
+			"data": {"name": "Agent Andy P"},
+			"task-list":
+			[
+				{ "action": "Action B", "cell": 0},
+				{ "action": "Action C", "cell": 24}
+			]
+		},
+		{
+			"id": "agent7",
+			"data": {"name": "Agent M Cell One"},
+			"task-list":
+			[
+				{ "action": "Action A", "cell": 13},
+				{ "action": "Action C", "cell": 12}
+			]
+		}
+	]
 }

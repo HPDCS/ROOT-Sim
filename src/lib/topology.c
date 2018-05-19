@@ -5,224 +5,222 @@
 #include <stdarg.h>
 #include <math.h>
 #include <scheduler/scheduler.h>
-#include <mm/dymelor.h>
+#include <datatypes/bitmap.h>
 
 static unsigned int edge; // Don't recompute every time the square root
 
 static void compute_edge(void) {
 	static bool first_call = true;
-	if (first_call) {
+	if(first_call) {
 		first_call = false;
 
 		edge = sqrt(n_prc_tot);
 
 		// Sanity check!
-		// XXX : verify check is needed for all topologies
-		if (edge * edge != n_prc_tot) {
+		if(edge * edge != n_prc_tot) {
 			rootsim_error(true, "Map wrongly specified!\n");
 		}
 	}
 }
 
 // TODO: we do not check here for a valid topology
-unsigned int FindReceiver(int topology) {
-	double u;
+unsigned int FindReceiver(topology_t topology) {
 	// These must be unsigned. They are not checked for negative (wrong) values,
 	// but they would overflow, and are caught by a different check.
 	unsigned int x, y, nx, ny;
-	int direction;
+	direction_t direction;
 	GID_t receiver;
 	GID_t sender = LidToGid(current_lp);
 
 	switch_to_platform_mode();
 
-	compute_edge();
-
 	// Very simple case!
-	if (n_prc_tot == 1) {
+	if(n_prc_tot == 1) {
 		receiver = sender;
 		goto out;
 	}
 
 	switch (topology) {
 
-	case TOPOLOGY_HEXAGON:
+		case TOPOLOGY_HEXAGON:
 
-		// Convert linear coords to hexagonal coords
-		x = gid_to_int(sender) % edge;
-		y = gid_to_int(sender) / edge;
+			compute_edge();
+			// Convert linear coords to hexagonal coords
+			x = gid_to_int(sender) % edge;
+			y = gid_to_int(sender) / edge;
 
-		// Find a random neighbour
-		do {
-			// Select a random neighbour once, then move counter clockwise
-			direction = 6 * Random() + 2;
+			// Find a random neighbour
+			do {
+				// Select a random neighbour once, then move counter clockwise
+				direction = 6 * Random() + 2;
 
-			switch (direction) {
-			case DIRECTION_NW:
-				nx = (y % 2 == 0 ? x - 1 : x);
-				ny = y - 1;
-				break;
-			case DIRECTION_NE:
-				nx = (y % 2 == 0 ? x : x + 1);
-				ny = y - 1;
-				break;
-			case DIRECTION_SW:
-				nx = (y % 2 == 0 ? x - 1 : x);
-				ny = y + 1;
-				break;
-			case DIRECTION_SE:
-				nx = (y % 2 == 0 ? x : x + 1);
-				ny = y + 1;
-				break;
-			case DIRECTION_E:
-				nx = x + 1;
-				ny = y;
-				break;
-			case DIRECTION_W:
-				nx = x - 1;
-				ny = y;
-				break;
-			default:
-				rootsim_error(true, "Met an impossible condition at %s:%d. Aborting...\n", __FILE__, __LINE__);
-			}
+				switch (direction) {
+					case DIRECTION_NW:
+						nx = (y % 2 == 0 ? x - 1 : x);
+						ny = y - 1;
+						break;
+					case DIRECTION_NE:
+						nx = (y % 2 == 0 ? x : x + 1);
+						ny = y - 1;
+						break;
+					case DIRECTION_SW:
+						nx = (y % 2 == 0 ? x - 1 : x);
+						ny = y + 1;
+						break;
+					case DIRECTION_SE:
+						nx = (y % 2 == 0 ? x : x + 1);
+						ny = y + 1;
+						break;
+					case DIRECTION_E:
+						nx = x + 1;
+						ny = y;
+						break;
+					case DIRECTION_W:
+						nx = x - 1;
+						ny = y;
+						break;
+					default:
+						rootsim_error(true, "Met an impossible condition at %s:%d. Aborting...\n", __FILE__, __LINE__);
+				}
 
-			// We don't check is nx < 0 || ny < 0, as they are unsigned and therefore overflow
-		} while (nx >= edge || ny >= edge);
+				// We don't check is nx < 0 || ny < 0, as they are unsigned and therefore overflow
+			} while (nx >= edge || ny >= edge);
 
-		// Convert back to linear coordinates (this is a GID)
-		set_gid(receiver, ny * edge + nx);
+			// Convert back to linear coordinates (this is a GID)
+			set_gid(receiver, ny * edge + nx);
 
-		break;
+			break;
 
-	case TOPOLOGY_SQUARE:
+		case TOPOLOGY_SQUARE:
 
-		// Convert linear coords to square coords
-		x = gid_to_int(sender) % edge;
-		y = gid_to_int(sender) / edge;
+			compute_edge();
 
-		// Find a random neighbour
-		do {
+			// Convert linear coords to square coords
+			x = gid_to_int(sender) % edge;
+			y = gid_to_int(sender) / edge;
+
+			// Find a random neighbour
+			do {
+
+				direction = 4 * Random();
+
+				switch (direction) {
+					case DIRECTION_N:
+						nx = x;
+						ny = y - 1;
+						break;
+					case DIRECTION_S:
+						nx = x;
+						ny = y + 1;
+						break;
+					case DIRECTION_E:
+						nx = x + 1;
+						ny = y;
+						break;
+					case DIRECTION_W:
+						nx = x - 1;
+						ny = y;
+						break;
+					default:
+						rootsim_error(true, "Met an impossible condition at %s:%d. Aborting...\n", __FILE__, __LINE__);
+				}
+
+				// We don't check is nx < 0 || ny < 0, as they are unsigned and therefore overflow
+			} while (nx >= edge || ny >= edge);
+
+			// Convert back to linear coordinates
+			set_gid(receiver, ny * edge + nx);
+
+			break;
+
+		case TOPOLOGY_TORUS:
+
+			compute_edge();
+
+			// Convert linear coords to square coords
+			x = gid_to_int(sender) % edge;
+			y = gid_to_int(sender) / edge;
 
 			direction = 4 * Random();
 
 			switch (direction) {
-			case DIRECTION_N:
-				nx = x;
-				ny = y - 1;
-				break;
-			case DIRECTION_S:
-				nx = x;
-				ny = y + 1;
-				break;
-			case DIRECTION_E:
-				nx = x + 1;
-				ny = y;
-				break;
-			case DIRECTION_W:
-				nx = x - 1;
-				ny = y;
-				break;
-			default:
-				rootsim_error(true, "Met an impossible condition at %s:%d. Aborting...\n", __FILE__, __LINE__);
+				case DIRECTION_N:
+					nx = x;
+					ny = y - 1;
+					break;
+				case DIRECTION_S:
+					nx = x;
+					ny = y + 1;
+					break;
+				case DIRECTION_E:
+					nx = x + 1;
+					ny = y;
+					break;
+				case DIRECTION_W:
+					nx = x - 1;
+					ny = y;
+					break;
+				default:
+					rootsim_error(true, "Met an impossible condition at %s:%d. Aborting...\n", __FILE__, __LINE__);
 			}
 
-			// We don't check is nx < 0 || ny < 0, as they are unsigned and therefore overflow
-		} while (nx >= edge || ny >= edge);
+			// Check for wrapping around
+			if(nx >= edge)
+				nx = nx % edge;
+			if(ny >= edge)
+				ny = ny % edge;
 
-		// Convert back to linear coordinates
-		set_gid(receiver, ny * edge + nx);
+			// Convert back to linear coordinates
+			set_gid(receiver, ny * edge + nx);
 
-		break;
-
-	case TOPOLOGY_TORUS:
-
-		// Convert linear coords to square coords
-		x = gid_to_int(sender) % edge;
-		y = gid_to_int(sender) / edge;
-
-		direction = 4 * Random();
-
-		switch (direction) {
-		case DIRECTION_N:
-			nx = x;
-			ny = y - 1;
 			break;
-		case DIRECTION_S:
-			nx = x;
-			ny = y + 1;
+
+		case TOPOLOGY_MESH:
+
+			set_gid(receiver, (unsigned int )(n_prc_tot * Random()));
+
 			break;
-		case DIRECTION_E:
-			nx = x + 1;
-			ny = y;
-			break;
-		case DIRECTION_W:
-			nx = x - 1;
-			ny = y;
-			break;
-		default:
-			rootsim_error(true, "Met an impossible condition at %s:%d. Aborting...\n", __FILE__, __LINE__);
-		}
 
-		// Check for wrapping around
-		if (nx >= edge)
-			nx = nx % edge;
-		if (ny >= edge)
-			ny = ny % edge;
+		case TOPOLOGY_BIDRING:
 
-		// Convert back to linear coordinates
-		set_gid(receiver, ny * edge + nx);
-
-		break;
-
-	case TOPOLOGY_MESH:
-
-		set_gid(receiver, (unsigned int)(n_prc_tot * Random()));
-		break;
-
-	case TOPOLOGY_BIDRING:
-
-		u = Random();
-
-		if (u < 0.5) {
-			if (gid_to_int(sender) == 0) {
-				set_gid(receiver, n_prc_tot - 1);
+			if(Random() < 0.5) {
+				if(gid_to_int(sender) == 0) {
+					set_gid(receiver, n_prc_tot - 1);
+				} else {
+					set_gid(receiver, gid_to_int(sender) - 1);
+				}
 			} else {
-				set_gid(receiver, gid_to_int(sender) - 1);
+				set_gid(receiver, gid_to_int(sender) + 1);
+
+				if(gid_to_int(sender) == n_prc_tot) {
+					set_gid(receiver, 0);
+				}
 			}
-		} else {
+
+			break;
+
+		case TOPOLOGY_RING:
+
 			set_gid(receiver, gid_to_int(sender) + 1);
 
-			if (gid_to_int(sender) == n_prc_tot) {
+			if(gid_to_int(receiver) == n_prc_tot) {
 				set_gid(receiver, 0);
 			}
-		}
 
-		break;
+			break;
 
-	case TOPOLOGY_RING:
+		case TOPOLOGY_STAR:
 
-		set_gid(receiver, gid_to_int(sender) + 1);
+			if(gid_to_int(sender) == 0) {
+				set_gid(receiver, (unsigned int )((n_prc_tot - 1) * Random()) + 1);
+			} else {
+				set_gid(receiver, 0);
+			}
 
-		if (gid_to_int(receiver) == n_prc_tot) {
-			set_gid(receiver, 0);
-		}
+			break;
 
-		break;
-
-	case TOPOLOGY_STAR:
-
-		if (gid_to_int(sender) == 0) {
-			do {
-				set_gid(receiver, (unsigned int)(n_prc_tot * Random()));
-			} while (gid_to_int(receiver) == n_prc_tot);
-		} else {
-			set_gid(receiver, 0);
-		}
-
-		break;
-
-	default:
-		rootsim_error(true, "Wrong topology code specified: %d. Aborting...\n", topology);
+		default:
+			rootsim_error(true, "Wrong topology code specified: %d. Aborting...\n", topology);
 	}
 
 	out:
@@ -232,164 +230,167 @@ unsigned int FindReceiver(int topology) {
 }
 
 // TODO: we do not check here for a valid topology nor direction
-unsigned int GetReceiver(int topology, unsigned int from, int direction) {
+unsigned int GetReceiver(topology_t topology, unsigned int from, direction_t direction) {
 	GID_t receiver, sender;
 	unsigned int x, y, nx, ny;
 
 	switch_to_platform_mode();
 
-	//sender = LidToGid(current_lp);
 	set_gid(sender, from);
-	set_gid(receiver, INVALID_DIRECTION);
-
-	compute_edge();
-
-	// Convert linear coords to square coords
-	x = gid_to_int(sender) % edge;
-	y = gid_to_int(sender) / edge;
+	set_gid(receiver, DIRECTION_INVALID);
 
 	switch (topology) {
 
-	case TOPOLOGY_HEXAGON:
+		case TOPOLOGY_HEXAGON:
 
-		switch (direction) {
-		case DIRECTION_NW:
-			nx = (y % 2 == 0 ? x - 1 : x);
-			ny = y - 1;
-			break;
-		case DIRECTION_NE:
-			nx = (y % 2 == 0 ? x : x + 1);
-			ny = y - 1;
-			break;
-		case DIRECTION_SW:
-			nx = (y % 2 == 0 ? x - 1 : x);
-			ny = y + 1;
-			break;
-		case DIRECTION_SE:
-			nx = (y % 2 == 0 ? x : x + 1);
-			ny = y + 1;
-			break;
-		case DIRECTION_N:
-			nx = x;
-			ny = y - 1;
-			break;
-		case DIRECTION_S:
-			nx = x;
-			ny = y + 1;
-			break;
-		case DIRECTION_E:
-			nx = x + 1;
-			ny = y;
-			break;
-		case DIRECTION_W:
-			nx = x - 1;
-			ny = y;
-			break;
-		default:
-			goto out;
-		}
+			compute_edge();
+			// Convert linear coords to square coords
+			x = gid_to_int(sender) % edge;
+			y = gid_to_int(sender) / edge;
 
-		if (nx >= edge || ny >= edge)
-			set_gid(receiver, INVALID_DIRECTION);
-		else
+			switch (direction) {
+				case DIRECTION_NW:
+					nx = (y % 2 == 0 ? x - 1 : x);
+					ny = y - 1;
+					break;
+				case DIRECTION_NE:
+					nx = (y % 2 == 0 ? x : x + 1);
+					ny = y - 1;
+					break;
+				case DIRECTION_SW:
+					nx = (y % 2 == 0 ? x - 1 : x);
+					ny = y + 1;
+					break;
+				case DIRECTION_SE:
+					nx = (y % 2 == 0 ? x : x + 1);
+					ny = y + 1;
+					break;
+				case DIRECTION_E:
+					nx = x + 1;
+					ny = y;
+					break;
+				case DIRECTION_W:
+					nx = x - 1;
+					ny = y;
+					break;
+				default:
+					goto out;
+			}
+
+			if(nx >= edge || ny >= edge)
+				set_gid(receiver, DIRECTION_INVALID);
+			else
+				set_gid(receiver, ny * edge + nx);
+
+			break;
+
+		case TOPOLOGY_SQUARE:
+
+			compute_edge();
+			// Convert linear coords to square coords
+			x = gid_to_int(sender) % edge;
+			y = gid_to_int(sender) / edge;
+
+			switch (direction) {
+				case DIRECTION_N:
+					nx = x;
+					ny = y - 1;
+					break;
+				case DIRECTION_S:
+					nx = x;
+					ny = y + 1;
+					break;
+				case DIRECTION_E:
+					nx = x + 1;
+					ny = y;
+					break;
+				case DIRECTION_W:
+					nx = x - 1;
+					ny = y;
+					break;
+				default:
+					goto out;
+			}
+
+			if(nx >= edge || ny >= edge)
+				set_gid(receiver, DIRECTION_INVALID);
+			else
+				set_gid(receiver, ny * edge + nx);
+
+			break;
+
+		case TOPOLOGY_TORUS:
+
+			compute_edge();
+			// Convert linear coords to square coords
+			x = gid_to_int(sender) % edge;
+			y = gid_to_int(sender) / edge;
+
+			switch (direction) {
+				case DIRECTION_N:
+					nx = x;
+					ny = y - 1;
+					break;
+				case DIRECTION_S:
+					nx = x;
+					ny = y + 1;
+					break;
+				case DIRECTION_E:
+					nx = x + 1;
+					ny = y;
+					break;
+				case DIRECTION_W:
+					nx = x - 1;
+					ny = y;
+					break;
+				default:
+					goto out;
+			}
+
+			// Check for wrapping around
+			if(nx >= edge)
+				nx = nx % edge;
+			if(ny >= edge)
+				ny = ny % edge;
+
+			// Convert back to linear coordinates
 			set_gid(receiver, ny * edge + nx);
 
-		break;
+			break;
 
-	case TOPOLOGY_SQUARE:
+		case TOPOLOGY_BIDRING:
 
-		switch (direction) {
-		case DIRECTION_N:
-			nx = x;
-			ny = y - 1;
+			if(direction == DIRECTION_W)
+				set_gid(receiver, gid_to_int(sender) - 1);
+			else if(direction == DIRECTION_E)
+				set_gid(receiver, gid_to_int(sender) + 1);
+			else
+				goto out;
+
+			if(gid_to_int(receiver) == UINT_MAX) {
+				set_gid(receiver, n_prc_tot - 1);
+			}
+			if(gid_to_int(receiver) == n_prc_tot) {
+				set_gid(receiver, 0);
+			}
+
 			break;
-		case DIRECTION_S:
-			nx = x;
-			ny = y + 1;
+
+		case TOPOLOGY_RING:
+
+			if(direction == DIRECTION_E)
+				set_gid(receiver, gid_to_int(sender) + 1);
+			else
+				goto out;
+
+			if(gid_to_int(receiver) == n_prc_tot) {
+				set_gid(receiver, 0);
+			}
+
 			break;
-		case DIRECTION_E:
-			nx = x + 1;
-			ny = y;
-			break;
-		case DIRECTION_W:
-			nx = x - 1;
-			ny = y;
-			break;
+
 		default:
-			goto out;
-		}
-
-		if (nx >= edge || ny >= edge)
-			set_gid(receiver, INVALID_DIRECTION);
-		else
-			set_gid(receiver, ny * edge + nx);
-
-		break;
-
-	case TOPOLOGY_TORUS:
-
-		switch (direction) {
-		case DIRECTION_N:
-			nx = x;
-			ny = y - 1;
-			break;
-		case DIRECTION_S:
-			nx = x;
-			ny = y + 1;
-			break;
-		case DIRECTION_E:
-			nx = x + 1;
-			ny = y;
-			break;
-		case DIRECTION_W:
-			nx = x - 1;
-			ny = y;
-			break;
-		default:
-			goto out;
-		}
-
-		// Check for wrapping around
-		if (nx >= edge)
-			nx = nx % edge;
-		if (ny >= edge)
-			ny = ny % edge;
-
-		// Convert back to linear coordinates
-		set_gid(receiver, ny * edge + nx);
-
-		break;
-
-	case TOPOLOGY_BIDRING:
-
-		if (direction == DIRECTION_W)
-			set_gid(receiver, gid_to_int(sender) - 1);
-		else if (direction == DIRECTION_E)
-			set_gid(receiver, gid_to_int(sender) + 1);
-		else
-			goto out;
-
-		if (gid_to_int(receiver) == UINT_MAX) {
-			set_gid(receiver, n_prc_tot - 1);
-		}
-		if (gid_to_int(receiver) == n_prc_tot) {
-			set_gid(receiver, 0);
-		}
-
-		break;
-
-	case TOPOLOGY_RING:
-
-		if (direction == DIRECTION_E)
-			set_gid(receiver, gid_to_int(sender) + 1);
-		else
-			goto out;
-
-		if (gid_to_int(receiver) == n_prc_tot) {
-			set_gid(receiver, 0);
-		}
-
-		break;
+			rootsim_error(true, "Wrong topology code specified: %d. Aborting...\n", topology);
 	}
 
 	out:
@@ -398,94 +399,90 @@ unsigned int GetReceiver(int topology, unsigned int from, int direction) {
 
 }
 
-// TODO: again, we should have a generic bitmap type in the simulator.
-#define NUM_CHUNKS_PER_BLOCK 32
+struct obstacles_t {
+	void* fake_member;
+};
 
-#define SET_BIT_AT(B, K) ( B |= (MASK << K) )
-#define UNSET_BIT_AT(B, K) ( B &= ~(MASK << K) )
-#define CHECK_BIT_AT(B, K) ( B & (MASK << K) )
+obstacles_t* NewObstacles(void) {
 
-#define CHECK_BIT(A, I) CHECK_BIT_AT((A)[(unsigned)(I / NUM_CHUNKS_PER_BLOCK)], (unsigned)(I % NUM_CHUNKS_PER_BLOCK))
-#define SET_BIT(A, I) SET_BIT_AT((A)[(unsigned)(I / NUM_CHUNKS_PER_BLOCK)], (unsigned)(I % NUM_CHUNKS_PER_BLOCK))
-#define UNSET_BIT(A, I) UNSET_BIT_AT((A)[(unsigned)(I / NUM_CHUNKS_PER_BLOCK)], (unsigned)(I % NUM_CHUNKS_PER_BLOCK))
+	obstacles_t *ret = __wrap_malloc(bitmap_required_size(n_prc_tot));
 
-void SetupObstacles(obstacles_t **obstacles) {
-	int bitmap_blocks;
-
-	*obstacles = NULL;
-
-	compute_edge();
-
-	// Allocate a bitmap
-	bitmap_blocks = n_prc_tot / NUM_CHUNKS_PER_BLOCK + (n_prc_tot % NUM_CHUNKS_PER_BLOCK != 0);
-	*obstacles = __wrap_malloc(sizeof(obstacles_t) + sizeof(unsigned int) * bitmap_blocks);
-
-	if (*obstacles == NULL)
+	if(ret == NULL)
 		rootsim_error(true, "Unable to allocate the obstacle grid\n");
-	(*obstacles)->size = n_prc_tot;
-	bzero((*obstacles)->grid, sizeof(unsigned int) * bitmap_blocks);
+
+	bitmap_initialize(ret, n_prc_tot);
+
+	return ret;
+
 }
 
-void AddObstacles(obstacles_t *obstacles, int num, ...) {
+int AddObstacles(obstacles_t *obstacles, unsigned int num, ...) {
 	va_list args;
-	int i, cell;
+	unsigned int cell;
 
 	// Process variadic arguments
 	va_start(args, num);
 
-	for (i = 0; i < num; i++) {
+	while (num--) {
 		// Get the next cell to be set as an obstacle and set
 		// it into the bitmap
-		cell = va_arg(args, int);
-		SET_BIT(obstacles->grid, cell);
+		cell = va_arg(args, unsigned int);
+		if(cell >= n_prc_tot)
+			return -1;
+		bitmap_set(obstacles, cell);
 	}
 
 	va_end(args);
+	return 0;
 }
 
-void AddObstacle(obstacles_t *obstacles, int cell) {
-	SET_BIT(obstacles->grid, cell);
+int AddObstacle(obstacles_t *obstacles, unsigned int cell) {
+	if(cell >= n_prc_tot)
+		return -1;
+	bitmap_set(obstacles, cell);
+	return 0;
 }
 
-void DiscardObstacles(obstacles_t *obstacles) {
+void FreeObstacles(obstacles_t *obstacles) {
 	__wrap_free(obstacles);
 }
 
-bool IsObstacle(obstacles_t *obstacles, int cell) {
-	return CHECK_BIT(obstacles->grid, cell);
+bool IsObstacle(obstacles_t *obstacles, unsigned int cell) {
+	if(cell >= n_prc_tot)
+		return false;
+	return bitmap_check(obstacles, cell);
 }
 
 #define ABS_VAL(x) ((x) > 0 ? (x) : -(x))
 
 // this computes the vector connecting cell "from" to cell "to", it is needed for later computation
-static void compute_vector(int topology, unsigned int from, unsigned int to, int *vx, int *vy){
-	if (topology == TOPOLOGY_SQUARE) {
+static void compute_vector(int topology, unsigned int from, unsigned int to, int *vx, int *vy) {
+	if(topology == TOPOLOGY_SQUARE) {
 
 		// directed vector on plane
 		*vx = (int) (to % edge) - (int) (from % edge);
 		*vy = (int) (to / edge) - (int) (from / edge);
 
-
-	} else if (topology == TOPOLOGY_HEXAGON) {
+	} else if(topology == TOPOLOGY_HEXAGON) {
 
 		// directed vector in axial coordinates (my reference: https://www.redblobgames.com/grids/hexagons/)
 		*vx = (to % edge) - (to / edge) / 2 - (from % edge) + (from / edge) / 2;
-		*vy = (to / edge) - (from/edge);
+		*vy = (to / edge) - (from / edge);
 
-	} else{
+	} else {
 		rootsim_error(true, "Met an impossible condition at %s:%d. Aborting...\n", __FILE__, __LINE__);
 	}
 }
 
 // this computes the minimum possible tour length between two cells
 static unsigned int min_distance(int topology, int vx, int vy) {
-	if (topology == TOPOLOGY_SQUARE) {
+	if(topology == TOPOLOGY_SQUARE) {
 
 		return (unsigned int) ABS_VAL(vx) + (unsigned int) ABS_VAL(vy);
 
-	} else if (topology == TOPOLOGY_HEXAGON) {
+	} else if(topology == TOPOLOGY_HEXAGON) {
 
-		return ((unsigned int) ABS_VAL(vx) + (unsigned int) ABS_VAL(vy) + (unsigned int) ABS_VAL(vx+vy))/2;
+		return ((unsigned int) ABS_VAL(vx) + (unsigned int) ABS_VAL(vy) + (unsigned int) ABS_VAL(vx + vy)) / 2;
 	}
 
 	rootsim_error(true, "Met an impossible condition at %s:%d. Aborting...\n", __FILE__, __LINE__);
@@ -493,14 +490,14 @@ static unsigned int min_distance(int topology, int vx, int vy) {
 }
 
 /* a simple heuristics which assumes it is more likely to find an optimal path
-*  if we go in the destination's direction. This returns the directions ordered by "likelihood".
-*/
+ *  if we go in the destination's direction. This returns the directions ordered by "likelihood".
+ */
 static void likely_directions(int topology, int vx, int vy, unsigned int directions[6]) {
 	int i, dir_ne, dir_e, dir_nw;
-	if (topology == TOPOLOGY_SQUARE) {
+	if(topology == TOPOLOGY_SQUARE) {
 
 		// check whether x component is more relevant than y component
-		if (ABS_VAL(vx) > ABS_VAL(vy)) {
+		if(ABS_VAL(vx) > ABS_VAL(vy)) {
 			// simple cartesian considerations
 			directions[0] = vx > 0 ? DIRECTION_E : DIRECTION_W;
 			directions[1] = vy > 0 ? DIRECTION_S : DIRECTION_N;
@@ -514,24 +511,24 @@ static void likely_directions(int topology, int vx, int vy, unsigned int directi
 			directions[3] = vy > 0 ? DIRECTION_N : DIRECTION_S;
 		}
 
-	} else if (topology == TOPOLOGY_HEXAGON) {
+	} else if(topology == TOPOLOGY_HEXAGON) {
 		// these are the projections on the directions EAST, NORTHEAST, NORTHWEST
 		dir_e = vx - vy;
-		dir_ne = 2*vx + vy;
-		dir_nw = 2*vy + vx;
+		dir_ne = 2 * vx + vy;
+		dir_nw = 2 * vy + vx;
 
 		// this is a little generalization of the square case written in a more concise pattern
 		i = (ABS_VAL(dir_e) < ABS_VAL(dir_ne)) + (ABS_VAL(dir_e) < ABS_VAL(dir_nw));
 		directions[i] = (dir_e) > 0 ? DIRECTION_E : DIRECTION_W;
-		directions[5-i] = (dir_e) > 0 ? DIRECTION_W : DIRECTION_E;
+		directions[5 - i] = (dir_e) > 0 ? DIRECTION_W : DIRECTION_E;
 
 		i = (ABS_VAL(dir_ne) <= ABS_VAL(dir_e)) + (ABS_VAL(dir_ne) < ABS_VAL(dir_nw));
 		directions[i] = (dir_ne) > 0 ? DIRECTION_NE : DIRECTION_SW;
-		directions[5-i] = (dir_ne) > 0 ? DIRECTION_SW : DIRECTION_NE;
+		directions[5 - i] = (dir_ne) > 0 ? DIRECTION_SW : DIRECTION_NE;
 
 		i = (ABS_VAL(dir_nw) <= ABS_VAL(dir_e)) + (ABS_VAL(dir_nw) <= ABS_VAL(dir_ne));
 		directions[i] = (dir_nw) > 0 ? DIRECTION_NW : DIRECTION_SE;
-		directions[5-i] = (dir_nw) > 0 ? DIRECTION_SE : DIRECTION_NW;
+		directions[5 - i] = (dir_nw) > 0 ? DIRECTION_SE : DIRECTION_NW;
 
 	} else {
 		rootsim_error(true, "Met an impossible condition at %s:%d. Aborting...\n", __FILE__, __LINE__);
@@ -547,8 +544,8 @@ static void likely_directions(int topology, int vx, int vy, unsigned int directi
  * 					visited cells, min_steps[dest] will hold the number of steps of the best tour or UINT_MAX if that tour doesn't exist
  * @param solution: a reference to an array which will hold the solution.
  */
-static void a_star(	unsigned int *visited_bitmap, int topology, unsigned int current_cell, unsigned int dest,
-					unsigned int step, unsigned int min_steps[n_prc_tot], unsigned int solution[n_prc_tot]) {
+static void a_star(char *visited_bitmap, int topology, unsigned int current_cell, unsigned int dest, unsigned int step,
+		unsigned int min_steps[n_prc_tot], unsigned int solution[n_prc_tot]) {
 
 	unsigned int ordered_directions[6];
 	unsigned int i;
@@ -563,21 +560,21 @@ static void a_star(	unsigned int *visited_bitmap, int topology, unsigned int cur
 	compute_vector(topology, current_cell, dest, &vx, &vy);
 
 	// we are processing a useless path since we already found a necessarily shorter one
-	if (step >= min_steps[current_cell] || step + min_distance(topology, vx, vy) >= min_steps[dest]) {
+	if(step >= min_steps[current_cell] || step + min_distance(topology, vx, vy) >= min_steps[dest]) {
 		return;
 	}
 	// this is the best route found so far from the initial source to this cell
 	min_steps[current_cell] = step;
 
 	// Is this the target?
-	if (current_cell == dest) {
+	if(current_cell == dest) {
 		//printf("Destination reached! %u\n", step);
-		solution[step-1] = current_cell;
+		solution[step - 1] = current_cell;
 		return;
 	}
 
 	// Mark this cell as visited
-	SET_BIT(visited_bitmap, current_cell);
+	bitmap_set(visited_bitmap, current_cell);
 
 	// Save current minimum steps count
 	tentative_steps = min_steps[dest];
@@ -591,65 +588,67 @@ static void a_star(	unsigned int *visited_bitmap, int topology, unsigned int cur
 		tentative_cell = GetReceiver(topology, current_cell, ordered_directions[i]);
 
 		// Try all reachable unvisited cells
-		if (tentative_cell == INVALID_DIRECTION || CHECK_BIT(visited_bitmap, tentative_cell))
+		if(tentative_cell == DIRECTION_INVALID || bitmap_check(visited_bitmap, tentative_cell))
 			continue;
 
 		// Get closer to the destination
 		a_star(visited_bitmap, topology, tentative_cell, dest, step + 1, min_steps, solution);
 
 		// if min_steps decreased than it means we found a candidate solution
-		if (min_steps[dest] < tentative_steps) {
+		if(min_steps[dest] < tentative_steps) {
 			found_solution = true;
 		}
 
 	}
 
 	// Mark this cell as not visited
-	UNSET_BIT(visited_bitmap, current_cell);
+	bitmap_reset(visited_bitmap, current_cell);
 
 	// If this recursion branch is part of a candidate solution then we keep track of it
 	// Last candidate solution must be the best one. (We don't mark the original source)
-	if (found_solution && step)
-		solution[step-1] = current_cell;
+	if(found_solution && step)
+		solution[step - 1] = current_cell;
 
 	return;
 }
 
-unsigned int ComputeMinTour(unsigned int *list, obstacles_t *obstacles, int topology, unsigned int source, unsigned int dest) {
+unsigned int ComputeMinTour(unsigned int result[n_prc_tot], obstacles_t *obstacles, topology_t topology,
+		unsigned int source, unsigned int dest) {
 
 	unsigned int a_star_solution[n_prc_tot];
 	unsigned int min_steps[n_prc_tot];
 
-	// TODO: again, we need a generic bitmap type in ROOT-Sim
-	unsigned int a_star_bitmap[n_prc_tot / NUM_CHUNKS_PER_BLOCK + (n_prc_tot % NUM_CHUNKS_PER_BLOCK != 0)];
+	char visited_bitmap[bitmap_required_size(n_prc_tot)];
 
-	memset(min_steps, UCHAR_MAX, sizeof(unsigned int)*n_prc_tot);
+	// This sets the min_steps entries at UINT_MAX
+	memset(min_steps, UCHAR_MAX, sizeof(unsigned int) * n_prc_tot);
 
 	// It is sufficient to mark the obstacles as visited to skip them, this saves several resources
-	memcpy(a_star_bitmap, obstacles->grid, sizeof(unsigned int) * (n_prc_tot / NUM_CHUNKS_PER_BLOCK + (n_prc_tot % NUM_CHUNKS_PER_BLOCK != 0)));
+	memcpy(visited_bitmap, obstacles, bitmap_required_size(n_prc_tot));
+
 	// Sanity checks
-	if (topology != TOPOLOGY_HEXAGON && topology != TOPOLOGY_SQUARE) {
+	if(topology != TOPOLOGY_HEXAGON && topology != TOPOLOGY_SQUARE) {
 		rootsim_error(true, "Invalid topology passed to ComputeMinTour().\n");
 		return UINT_MAX;
 	}
-	if (source >= n_prc_tot) {
+	if(source >= n_prc_tot) {
 		rootsim_error(true, "Invalid source passed to ComputeMinTour(): %u.\n", source);
 		return UINT_MAX;
 	}
-	if (dest >= n_prc_tot) {
+	if(dest >= n_prc_tot) {
 		rootsim_error(true, "Invalid destination passed to ComputeMinTour(): %u.\n", dest);
 		return UINT_MAX;
 	}
-	if (source == dest) {
+	if(source == dest) {
 		rootsim_error(true, "Asking ComputeMinTour() to find a path from a source equal to the destination\n");
 		return UINT_MAX;
 	}
 
 	compute_edge();
-	a_star(a_star_bitmap, topology, source, dest, 0, min_steps, a_star_solution);
+	a_star(visited_bitmap, topology, source, dest, 0, min_steps, a_star_solution);
 
-	if (min_steps[dest] != UINT_MAX) {
-		memcpy(list, a_star_solution, sizeof(unsigned int) * min_steps[dest]);
+	if(min_steps[dest] != UINT_MAX) {
+		memcpy(result, a_star_solution, sizeof(unsigned int) * min_steps[dest]);
 	}
 
 	return min_steps[dest];
