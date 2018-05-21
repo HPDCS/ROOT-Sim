@@ -159,7 +159,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, void *event_co
 		ScheduleNewEvent(me, now+10, HEARTBEAT, NULL, 0);
 
 	// we check whether we need to update our neighbours
-	if (need_refresh_region(state)){
+	if (need_refresh_region(state, now)){
 		abm_log(ABM_LOG_DEBUG, "[LP %u, time %.3f] :: sending updates!", me, now);
 		send_updates(now, state);
 	}

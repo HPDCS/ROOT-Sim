@@ -456,7 +456,7 @@ bool IsObstacle(obstacles_t *obstacles, unsigned int cell) {
 #define ABS_VAL(x) ((x) > 0 ? (x) : -(x))
 
 // this computes the vector connecting cell "from" to cell "to", it is needed for later computation
-static void compute_vector(int topology, unsigned int from, unsigned int to, int *vx, int *vy) {
+static void compute_vector(topology_t topology, unsigned int from, unsigned int to, int *vx, int *vy) {
 	if(topology == TOPOLOGY_SQUARE) {
 
 		// directed vector on plane
@@ -475,7 +475,7 @@ static void compute_vector(int topology, unsigned int from, unsigned int to, int
 }
 
 // this computes the minimum possible tour length between two cells
-static unsigned int min_distance(int topology, int vx, int vy) {
+static unsigned int min_distance(topology_t topology, int vx, int vy) {
 	if(topology == TOPOLOGY_SQUARE) {
 
 		return (unsigned int) ABS_VAL(vx) + (unsigned int) ABS_VAL(vy);
@@ -492,7 +492,7 @@ static unsigned int min_distance(int topology, int vx, int vy) {
 /* a simple heuristics which assumes it is more likely to find an optimal path
  *  if we go in the destination's direction. This returns the directions ordered by "likelihood".
  */
-static void likely_directions(int topology, int vx, int vy, unsigned int directions[6]) {
+static void likely_directions(topology_t topology, int vx, int vy, direction_t directions[6]) {
 	int i, dir_ne, dir_e, dir_nw;
 	if(topology == TOPOLOGY_SQUARE) {
 
@@ -544,10 +544,10 @@ static void likely_directions(int topology, int vx, int vy, unsigned int directi
  * 					visited cells, min_steps[dest] will hold the number of steps of the best tour or UINT_MAX if that tour doesn't exist
  * @param solution: a reference to an array which will hold the solution.
  */
-static void a_star(char *visited_bitmap, int topology, unsigned int current_cell, unsigned int dest, unsigned int step,
+static void a_star(rootsim_bitmap *visited_bitmap, topology_t topology, unsigned int current_cell, unsigned int dest, unsigned int step,
 		unsigned int min_steps[n_prc_tot], unsigned int solution[n_prc_tot]) {
 
-	unsigned int ordered_directions[6];
+	direction_t ordered_directions[6];
 	unsigned int i;
 	unsigned int tentative_cell;
 	unsigned int tentative_steps;
@@ -618,7 +618,7 @@ unsigned int ComputeMinTour(unsigned int result[n_prc_tot], obstacles_t *obstacl
 	unsigned int a_star_solution[n_prc_tot];
 	unsigned int min_steps[n_prc_tot];
 
-	char visited_bitmap[bitmap_required_size(n_prc_tot)];
+	rootsim_bitmap visited_bitmap[bitmap_required_size(n_prc_tot)];
 
 	// This sets the min_steps entries at UINT_MAX
 	memset(min_steps, UCHAR_MAX, sizeof(unsigned int) * n_prc_tot);

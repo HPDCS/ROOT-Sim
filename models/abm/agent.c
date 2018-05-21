@@ -3,12 +3,12 @@
 #include "logger.h"
 
 static obstacles_t* a_obstacles;
-static int a_topology = TOPOLOGY_INVALID;
+static topology_t a_topology = TOPOLOGY_INVALID;
 static unsigned int reg_actions_count = 0;
 static const char* reg_actions_names[MAX_USER_ACTIONS] = { 0 };
 
 static unsigned int valid_directions_count = 0;
-static int valid_directions[] = { DIRECTION_INVALID, DIRECTION_INVALID, DIRECTION_INVALID, DIRECTION_INVALID,
+static direction_t valid_directions[] = { DIRECTION_INVALID, DIRECTION_INVALID, DIRECTION_INVALID, DIRECTION_INVALID,
 		DIRECTION_INVALID, DIRECTION_INVALID };
 
 typedef struct _visit_t {
@@ -522,9 +522,9 @@ bool iterate_neighbour_data_region(const region_t *region, const neighbour_state
 	return true;
 }
 
-bool need_refresh_region(region_t *region) {
+bool need_refresh_region(region_t *region, simtime_t now) {
 	neighbour_state_t new_n_data = region->update.n_data;
-	user_compile_neighbour_state(region, &(region->update.n_data));
+	user_compile_neighbour_state(region, &(region->update.n_data), now);
 	return memcmp(&(region->update.n_data), &new_n_data, sizeof(neighbour_state_t)) != 0;
 }
 

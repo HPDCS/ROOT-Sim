@@ -77,7 +77,7 @@ config_error_t get_region_config(unsigned int me, region_t **result);
 
 /**
  * This function returns a printable null terminated string giving a brief textual description of the error code.
- * @param me the error code we are interested in.
+ * @param cfg_err the error code we are interested in.
  * @return a null terminated string, NULL in case of failure.
  * Failure happens if cfg_err is an invalid error code.
  */

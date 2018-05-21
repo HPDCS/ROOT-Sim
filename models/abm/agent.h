@@ -254,7 +254,7 @@ void				free_agent				(agent_t *agent);
  * @return a non-negative value in case of success, a negative value otherwise.
  * Failure happens if the region isn't in the agent planned tour
  * (agents don't go on vacations during missions :))
- * or if the user decides so
+ * or if the user decides so.
  */
 int 				visit_agent_region		(region_t *region, agent_t *agent, simtime_t now);
 
@@ -264,7 +264,7 @@ int 				visit_agent_region		(region_t *region, agent_t *agent, simtime_t now);
  * @param agent the agent uuid
  * @param now the current simulation time
  * @return the pointer to the agent struct, NULL in case of failure
- * Failure happens if the agent couldn't be retrieved or if the user decides so
+ * Failure happens if the agent couldn't be retrieved or if the user decides so.
  */
 agent_t*			leave_agent_by_id_region(region_t *region, unsigned long long uuid, simtime_t now);
 
@@ -276,11 +276,44 @@ bool				iterate_c_agent_region	(const region_t *region, const agent_t **agent_p)
 
 bool				iterate_neighbour_data_region(const region_t *region, const neighbour_state_t **neighbour_p, unsigned int *neighbour_id, direction_t *direction);
 
+/*****************************************************************************/
+/***********************MANAGING NEIGHBOURS UPDATES***************************/
+/*****************************************************************************/
+
+/**
+ * This checks if the region wants to send new data to its neighbours.
+ * @param region the region to be checked
+ * @return true if this region needs to throw a round of updates, false otherwise
+ */
 bool				need_refresh_region		(region_t *region);
-bool				iterate_neighbour_update_region(region_t *region, unsigned int *neighbour_i, void **update);
+
+/**
+ * This iterates over the updates the region has prepared for its neighbours
+ * @param region the region to be checked.
+ * @param[out] neighbour_id the LP id of the intended recipient of the current update.
+ * @param[out] update the pointer to the update data, this needs be set to a variable pointing to NULL at first.
+ * @return true if there are more updates to be thrown, false otherwise.
+ */
+bool				iterate_neighbour_update_region(region_t *region, unsigned int *neighbour_id, void **update);
+
+/**
+ * This notifies the region of an update it received.
+ * @param region the region which received an update
+ * @param update the update data sent to the region
+ */
 void				apply_update_region		(region_t *region, void *update);
+
+/**
+ * This returns the size in bytes of the update
+ * @param update the update data sent to the region
+ * @return the size expressed in number of bytes, of the update
+ */
 size_t				size_update_region		(void);
 
-void 				print_region			(region_t *state);
+/**
+ * This prints on stdout a very scarce summary of the region's state
+ * @param region the region to be printed
+ */
+void 				print_region			(region_t *region);
 
 #endif /* ABM_AGENT_H_ */
