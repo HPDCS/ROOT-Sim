@@ -19,7 +19,7 @@ typedef enum _log_level_t {
 } log_level_t;
 
 // this way the software can programmatically change the logging level
-unsigned int abm_log_level_prog = ABM_LOG_FATAL;
+extern unsigned int abm_log_level_prog;
 // this is good because useless logs would be compiled away by dead code elimination
 #define abm_log_level ABM_LOG_TRACE
 // we wrap in a do while cycle to keep the ; syntax

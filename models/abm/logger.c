@@ -4,6 +4,8 @@
 #include <time.h>
 #include <pthread.h>
 
+unsigned int abm_log_level_prog = ABM_LOG_FATAL;
+
 static pthread_mutex_t log_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static const char *const level_names[] = { "TRACE", "DEBUG", "INFO", "WARN", "ERROR", "FATAL" };

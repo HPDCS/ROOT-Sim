@@ -140,6 +140,8 @@ bool IsObstacle(obstacles_t *obstacles, unsigned int cell);
 unsigned int ComputeMinTour(unsigned int result[n_prc_tot], obstacles_t *obstacles, topology_t topology, unsigned int source,
 		unsigned int dest);
 
+// This can be implemented by the model: it is a pointer to a struct argp
+__attribute((weak)) extern void *model_argp;
 // Expose to the application level the command line parameter parsers
 int GetParameterInt(void *args, char *name);
 float GetParameterFloat(void *args, char *name);

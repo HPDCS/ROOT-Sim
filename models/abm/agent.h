@@ -283,9 +283,10 @@ bool				iterate_neighbour_data_region(const region_t *region, const neighbour_st
 /**
  * This checks if the region wants to send new data to its neighbours.
  * @param region the region to be checked
+ * @param now the logical time when the check is made
  * @return true if this region needs to throw a round of updates, false otherwise
  */
-bool				need_refresh_region		(region_t *region);
+bool				need_refresh_region		(region_t *region, simtime_t now);
 
 /**
  * This iterates over the updates the region has prepared for its neighbours

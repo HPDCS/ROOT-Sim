@@ -68,7 +68,7 @@ int user_on_leave(const region_t *region, const agent_t *agent, simtime_t now){
 	return 0;
 }
 
-int	user_compile_neighbour_state(const region_t *region, neighbour_state_t *neighbour_state){
+int	user_compile_neighbour_state(const region_t *region, neighbour_state_t *neighbour_state, simtime_t now){
 	return 0;
 }
 

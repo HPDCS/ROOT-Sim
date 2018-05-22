@@ -121,8 +121,13 @@ char *GetParameterString(void *args, char *name) {
 
 
 bool IsParameterPresent(void *args, char *name) {
-	// TODO: There is a serious bug with the new no-copy message system...
-	return false;
-	return (seek_param(args, name) != -1);
+	/// XXX: the "legacy" argument API must need to distinguish between the case in which we
+	/// are interested in only knowing if a certain argument is specified and the case in
+	/// which instead we are interested in retrieving the argument following one with a certain
+	/// name. In the latter case we need to ensure the following argument actually exists.
+	/// It seems this was overlooked so I added an (ugly) check to make sure of this.
+	/// Notice this breaks perfectly legal invocation where we only specify a single model argument!
+	int ret = seek_param(args, name);
+	return ret != -1  && getPar(args, ret+1);
 }
 
