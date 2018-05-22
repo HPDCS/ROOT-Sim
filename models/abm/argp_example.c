@@ -6,6 +6,7 @@
  */
 
 #include <argp.h>
+#include <stdlib.h>
 #include "logger.h"
 
 error_t my_parse(int key, char* arg, struct argp_state *state) {
