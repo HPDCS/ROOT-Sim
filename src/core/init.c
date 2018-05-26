@@ -54,7 +54,6 @@
 #endif
 
 // This is the list of mnemonics for arguments
-
 enum _opt_codes{
  OPT_FIRST = 127, // this is used as an offset to the enum values, so that argp doesn't assign short options
 
@@ -87,11 +86,7 @@ enum _opt_codes{
 #ifdef HAVE_PARALLEL_ALLOCATOR
  OPT_ALLOCATOR,
 #endif
-
- OPT_LAST // used to count at compile time the effective number of options
 };
-
-#define OPT_COUNT (OPT_LAST-OPT_FIRST-1)
 
 // TODO!!!!!
 const char *argp_program_version = "ROOT-Sim 0.0";
@@ -183,7 +178,7 @@ static struct argp_option argp_options[] = {
 /// To let the parallel initialization access the user-level command line arguments
 struct app_arguments model_parameters;
 
-#define complain_and_exit() argp_error(state, "invalid value \"%s\" in --%s option", arg, argp_options[key].arg)
+#define complain_and_exit() rootsim_error(true, "invalid value \"%s\" in --%s option", arg, argp_options[key].arg)
 
 #define parse_ullong_limits(low, high) ({\
 					unsigned long long int __value;\
@@ -228,7 +223,7 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state){
 			if (rootsim_config.checkpointing == INVALID_STATE_SAVING) {
 				rootsim_config.checkpointing = COPY_STATE_SAVING;
 			} else {
-				argp_failure(state, 0, 0, "Some options are conflicting: I'm requested to run non piece-wise deterministically,"
+				argp_failure(state, 0, 0, "some options are conflicting: I'm requested to run non piece-wise deterministically,"
 						" but a checkpointing interval is set already. Skipping the -npwd option.");
 			}
 			break;
@@ -237,7 +232,7 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state){
 			//TODO: I think the policy for argument overriding needs to be consistent,
 			//if for other options earlier settings get overridden by later ones, this should do the same instead of ignoring it
 			if(rootsim_config.checkpointing == COPY_STATE_SAVING) {
-				argp_failure(state, 0, 0, "Some options are conflicting: Copy State Saving is selected, but I'm requested to set a checkpointing interval. Skipping the -p option.");
+				argp_failure(state, 0, 0, "some options are conflicting: Copy State Saving is selected, but I'm requested to set a checkpointing interval. Skipping the -p option.");
 			} else {
 				rootsim_config.checkpointing = PERIODIC_STATE_SAVING;
 				rootsim_config.ckpt_period = parse_ullong_limits(1, 40);
@@ -287,6 +282,7 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state){
 			break;
 
 		case OPT_SIMULATION_TIME:
+//needed in order to suppress warning in comparison between unsigned and 0
 #pragma GCC diagnostic ignored "-Wtype-limits"
 			rootsim_config.simulation_time = parse_ullong_limits(0, INT_MAX);
 #pragma GCC diagnostic pop
@@ -333,6 +329,7 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state){
 			break;
 
 		case OPT_SEED:
+//needed in order to suppress warning in comparison between unsigned and 0
 #pragma GCC diagnostic ignored "-Wtype-limits"
 			rootsim_config.set_seed = parse_ullong_limits(0, UINT64_MAX);
 #pragma GCC diagnostic pop
@@ -392,22 +389,22 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state){
 
 			// sanity checks
 			if(n_cores > get_cores())
-				argp_failure(state, EX_USAGE, 0, "demanding %u cores, which are more than available (%d)", n_cores, get_cores());
+				rootsim_error(true, "Demanding %u cores, which are more than available (%d)", n_cores, get_cores());
 
 			if(n_cores > MAX_THREADS_PER_KERNEL)
-				argp_failure(state, EX_USAGE, 0, "too many threads, maximum supported number is %u", MAX_THREADS_PER_KERNEL);
+				rootsim_error(true, "Too many threads, maximum supported number is %u", MAX_THREADS_PER_KERNEL);
 
 			if(n_prc_tot > MAX_LPs)
-				argp_failure(state, EX_USAGE, 0, "too many LPs, maximum supported number is %u", MAX_LPs);
+				rootsim_error(true, "Too many LPs, maximum supported number is %u", MAX_LPs);
 
 			if(!rootsim_config.serial && n_cores == 0)
-				argp_failure(state, EX_USAGE, 0, "number of cores was not provided \"--np\"");
+				rootsim_error(true, "Number of cores was not provided \"--np\"");
 
 			if(n_prc_tot == 0)
-				argp_failure(state, EX_USAGE, 0, "number of LPs was not provided \"--nprc\"");
+				rootsim_error(true, "Number of LPs was not provided \"--nprc\"");
 
 			if(!rootsim_config.serial && n_prc_tot < n_cores)
-				argp_failure(state, EX_USAGE, 0, "requested a simulation run with %u LPs and %u worker threads: the mapping is not possible", n_prc_tot, n_cores);
+				rootsim_error(true, "Requested a simulation run with %u LPs and %u worker threads: the mapping is not possible", n_prc_tot, n_cores);
 
 			// setting default options
 			if(rootsim_config.output_dir == NULL){
@@ -420,7 +417,7 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state){
 
 			if (!rootsim_config.serial && rootsim_config.checkpointing == INVALID_STATE_SAVING)
 				rootsim_config.checkpointing = PERIODIC_STATE_SAVING;
-
+			// this is the workaround the get the last scanned argument needed to show to "legacy" models only needed arguments
 			if(state->input)
 				*((int*)state->input) = state->next -1;
 			break;
@@ -484,7 +481,7 @@ void SystemInit(int argc, char **argv) {
 	/// This is magic, model_argp is defined as a weak symbol;
 	/// if the model defines it, his address would be not null
 	if(&model_argp){
-		argp_child[0].argp = model_argp;
+		argp_child[0].argp = &model_argp;
 
 		argp_parse (&argp, argc, argv, 0, NULL, NULL);
 
@@ -493,9 +490,9 @@ void SystemInit(int argc, char **argv) {
 	}else{
 		int w = 0;
 	/// if we deal with an old model we make argp stop at the first unknown option instead of exiting
-	/// we print errors nonetheless so the model user can see if some option has been ignored
-	/// XXX i found a bug in argp; apparently arg_index is not set if an error is encountered parsing an OPTION
-	/// the behaviour is correct if instead an unknown ARGUMENT is encountered
+	/// we print errors nonetheless so the model user can see if some option has been ignored.
+	/// XXX: I found a bug in argp; apparently arg_index is not set if an error is encountered parsing an OPTION
+	/// the behaviour is correct if instead an unknown ARGUMENT is encountered so we use a mostly working work-around
 		argp_parse (&argp, argc, argv, ARGP_NO_EXIT, NULL, &w);
 
 		model_parameters.arguments = argv + w;

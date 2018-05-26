@@ -36,6 +36,7 @@
 #include <stdbool.h>
 #include <float.h>
 #include <limits.h>
+#include <argp.h>
 
 #ifdef INIT
 #undef INIT
@@ -141,7 +142,7 @@ unsigned int ComputeMinTour(unsigned int result[n_prc_tot], obstacles_t *obstacl
 		unsigned int dest);
 
 // This can be implemented by the model: it is a pointer to a struct argp
-__attribute((weak)) extern void *model_argp;
+__attribute((weak)) extern struct argp model_argp;
 // Expose to the application level the command line parameter parsers
 int GetParameterInt(void *args, char *name);
 float GetParameterFloat(void *args, char *name);

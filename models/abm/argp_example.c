@@ -21,6 +21,5 @@ error_t my_parse(int key, char* arg, struct argp_state *state) {
 
 struct argp_option my_options[2] = { { "log-level", 'l', "LEVEL", 0, "sets the logging level", 0 }, { 0 } };
 
-struct argp my_argp = { my_options, my_parse, "", "", 0, 0, 0 };
+struct argp model_argp = { my_options, my_parse, "", "", 0, 0, 0 };
 
-void *model_argp = &my_argp;
