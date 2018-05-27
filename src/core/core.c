@@ -154,8 +154,6 @@ void base_init(void) {
 }
 
 
-
-
 /**
 * This function finalizes the core structures of ROOT-Sim, just before terminating a simulation
 *
@@ -171,8 +169,32 @@ void base_fini(void){
 	rsfree(ProcessEvent);
 }
 
+/**
+* This function initializes the ROOT-Sim environment for serial execution
+*
+*/
+// TODO: this is actually a not that great workaround
+// to let serial execution use the same message structure
+// Maybe find a better way?
+void base_serial_init(void){
+	unsigned int i;
+// We need this stuff to mimic the same event handling of the parallel case
+	to_gid = rsalloc(sizeof(unsigned int) * n_prc_tot);
+	to_lid = to_gid;
 
+	for (i = 0; i < n_prc_tot; i++)
+		to_gid[i] = i;
 
+}
+
+/**
+* This function finalizes the ROOT-Sim environment for serial execution
+*
+*/
+// TODO: see base_serial_init()
+void base_serial_fini(void){
+	rsfree(to_gid);
+}
 
 
 /**
@@ -251,6 +273,11 @@ void simulation_shutdown(int code) {
 		}
 
 		thread_barrier(&all_thread_barrier);
+
+	}else {
+
+		base_serial_fini();
+
 	}
 
 	exit(code);

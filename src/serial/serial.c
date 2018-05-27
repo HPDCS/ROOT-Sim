@@ -50,12 +50,20 @@ void SerialScheduleNewEvent(unsigned int rcv, simtime_t stamp, unsigned int even
 	event->size = event_size;
 	memcpy(event->event_content, event_content, event_size); // TODO: not compliant with the new structure
 
-	// Put the event in the Calenda Queue
+	// Put the event in the Calendar Queue
 	calqueue_put(stamp, event);
 }
 
-void serial_init(int argc, char **argv, int app_arg) {
+void serial_init(void) {
 	register unsigned int t;
+
+	// Sanity check on the number of LPs
+	if(n_prc_tot == 0) {
+		rootsim_error(true, "You must specify the total number of Logical Processes\n");
+	}
+
+	// Initialize base environment
+	base_serial_init();
 
 	// Initialize the calendar queue
 	calqueue_init();
@@ -68,27 +76,17 @@ void serial_init(int argc, char **argv, int app_arg) {
 	bzero(serial_states, sizeof(void *) * n_prc_tot);
 	bzero(serial_completed_simulation, sizeof(bool) * n_prc_tot);
 
-	// Sanity check on the number of LPs
-	if(n_prc_tot == 0) {
-		rootsim_error(true, "You must specify the total number of Logical Processes\n");
-	}
-
-	// We must pass the application-level args to the LP in the INIT event.
-	// Skip all the NULL args (if any)
-	while (argv[app_arg] != NULL && (argv[app_arg][0] == '\0' || argv[app_arg][0] == ' ')) {
-		app_arg++;
-	}
-
 	// Generate the INIT events for all the LPs
 	for (t = 0; t < n_prc_tot; t++) {
+		// We set the current_lp to the one doing the INIT
+		set_lid(current_lp, t);
 
-		// Copy the relevant string pointers to the INIT event payload
-		if((argc - app_arg) > 0) {
-			SerialScheduleNewEvent(t, 0.0, INIT, &argv[app_arg], (argc - app_arg) * sizeof(char *));
-		} else {
-			SerialScheduleNewEvent(t, 0.0, INIT, NULL, 0);
-		}
+		// Copy the string pointers to the INIT event payload
+		SerialScheduleNewEvent(t, 0.0, INIT, model_parameters.arguments, model_parameters.size);
 	}
+
+	// initialize idle identifier
+	set_lid(idle_process, UINT_MAX);
 
 	// No LP is scheduled now
 	current_lp = idle_process;

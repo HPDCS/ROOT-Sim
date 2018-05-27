@@ -32,29 +32,22 @@
 
 
 
-static int seek_param(void **args, char *name) {
+static int seek_param(void *args, char *name) {
 	int i = 0;
-	bool parse_end = false;
+// SANITY CHECK !!!
+	if(args == NULL)
+		return -1;
 
-	while(true) {
-
-		if(getPar(args, i) == NULL) {
-			parse_end = true;
-			break;
-		}
+	while(getPar(args, i) != NULL) {
 
 		if(strcmp(getPar(args, i), name) == 0) {
-			break;
+			return i;
 		}
 
 		i++;
 	}
 
-	if(parse_end) {
-		i = -1;
-	}
-
-	return i;
+	return -1;
 }
 
 
@@ -121,12 +114,12 @@ char *GetParameterString(void *args, char *name) {
 
 
 bool IsParameterPresent(void *args, char *name) {
-	/// XXX: the "legacy" argument API must need to distinguish between the case in which we
-	/// are interested in only knowing if a certain argument is specified and the case in
-	/// which instead we are interested in retrieving the argument following one with a certain
-	/// name. In the latter case we need to ensure the following argument actually exists.
-	/// It seems this was overlooked so I added an (ugly) check to make sure of this.
-	/// Notice this breaks perfectly legal invocation where we only specify a single model argument!
+	// XXX: the "legacy" argument API must need to distinguish between the case in which we
+	// are interested in only knowing if a certain argument is specified and the case in
+	// which instead we are interested in retrieving the argument following one with a certain
+	// name. In the latter case we need to ensure the following argument actually exists.
+	// It seems this was overlooked so I added an (ugly) check to make sure of this.
+	// Notice this breaks perfectly legal invocation where we only specify a single model argument!
 	int ret = seek_param(args, name);
 	return ret != -1  && getPar(args, ret+1);
 }

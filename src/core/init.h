@@ -61,8 +61,8 @@ typedef struct _simulation_configuration {
 extern simulation_configuration rootsim_config;
 
 struct app_arguments {
-	char **arguments; /// This has the same semantic and properties as the usual argv
-	int size; /// This has the same semantic and properties as the usual argc
+	char **arguments; /// These are the model specific arguments
+	unsigned int size; /// This is the size in bytes of arguments
 };
 extern struct app_arguments model_parameters;
 

@@ -89,31 +89,31 @@ enum _opt_codes{
 };
 
 // TODO!!!!!
-const char *argp_program_version = "ROOT-Sim 0.0";
+const char *argp_program_version = "ROOT-Sim branch: abm_basic";
 // TODO!!!!!
-const char *argp_program_bug_address = "<no@spammerino>";
+const char *argp_program_bug_address = "<pellegrini@diag.uniroma1.it>";
 // TODO!!!!!
 static char doc[] = "please say something";
 // TODO!!!!!
 static char args_doc[] = "HUH";
 
 static struct argp_option argp_options[] = {
-	{"np",					OPT_NP, 					"np_val", 		0,
+	{"np",					OPT_NP, 					"VALUE", 		0,
 			"Number of total cores being used by the simulation", 0},
 
-	{"nprc",				OPT_NPRC, 					"nprc_val",		0,
+	{"nprc",				OPT_NPRC, 					"VALUE",		0,
 			"Total number of Logical Processes being lunched at simulation startup", 0},
 
-	{"output-dir",	 		OPT_OUTPUT_DIR, 			"out_dir", 		0,
+	{"output-dir",	 		OPT_OUTPUT_DIR, 			"PATH", 		0,
 			"Path to a folder where execution statistics are stored. If not present, it is created", 0},
 
-	{"scheduler",			OPT_SCHEDULER, 				"sched_type", 	0,
+	{"scheduler",			OPT_SCHEDULER, 				"TYPE", 	0,
 			"LP Scheduling algorithm. Supported values are: stf", 0},
 
 	{"npwd",	  			OPT_NPWD, 					0,				0,
 			"Non Piece-Wise-Deterministic simulation model. See manpage for accurate description", 0},
 
-	{"p",					OPT_P, 						"p_val", 		0,
+	{"p",					OPT_P, 						"VALUE", 		0,
 			"Checkpointing interval", 0},
 
 	{"full",				OPT_FULL, 					0,				0,
@@ -125,34 +125,34 @@ static struct argp_option argp_options[] = {
 	{"A",		  			OPT_A, 						0,				0,
 			"Autonomic subsystem: set checkpointing interval and log mode automatically at runtime (still to be released)", 0},
 
-	{"gvt",					OPT_GVT, 					"gvt_val",		0,
+	{"gvt",					OPT_GVT, 					"VALUE",		0,
 			"Time between two GVT reductions (in milliseconds)", 0},
 
-	{"cktrm_mode",			OPT_CKTRM_MODE,				"cktrm_type",	0,
+	{"cktrm_mode",			OPT_CKTRM_MODE,				"TYPE",	0,
 			"Termination Detection mode. Supported values: standard, incremental", 0},
 
 	{"blocking_gvt",		OPT_BLOCKING_GVT, 			0,				0,
 			"Blocking GVT. All distributed nodes block until a consensus is agreed", 0},
 
-	{"gvt_snapshot_cycles",	OPT_GVT_SNAPSHOT_CYCLES,	"gvtsnap_val",	0,
+	{"gvt_snapshot_cycles",	OPT_GVT_SNAPSHOT_CYCLES,	"VALUE",	0,
 			"Termination detection is invoked after this number of GVT reductions", 0},
 
-	{"simulation_time", 	OPT_SIMULATION_TIME,		"simtime_val",	0,
+	{"simulation_time", 	OPT_SIMULATION_TIME,		"VALUE",	0,
 			"Halt the simulation when all LPs reach this logical time. 0 means infinite", 0},
 
-	{"lps_distribution",	OPT_LPS_DISTRIBUTION,		"lpsdist_type",	0,
+	{"lps_distribution",	OPT_LPS_DISTRIBUTION,		"TYPE",	0,
 			"LPs distributions over simulation kernels policies. Supported values: block, circular", 0},
 
 	{"deterministic_seed",	OPT_DETERMINISTIC_SEED,		0,				0,
 			"Do not change the initial random seed for LPs. Enforces different deterministic simulation runs", 0},
 
-	{"verbose",				OPT_VERBOSE, 				"v_type",		0,
+	{"verbose",				OPT_VERBOSE, 				"TYPE",		0,
 			"Verbose execution", 0},
 
-	{"stats",				OPT_STATS, 					"stats_type",	0,
+	{"stats",				OPT_STATS, 					"TYPE",	0,
 			"Level of detail in the output statistics", 0},
 
-	{"seed",				OPT_SEED, 					"seed_val",		0,
+	{"seed",				OPT_SEED, 					"VALUE",		0,
 			"Manually specify the initial random seed", 0},
 
 	{"serial",				OPT_SERIAL, 				0,				0,
@@ -478,8 +478,8 @@ void SystemInit(int argc, char **argv) {
 	ecs_init();
 	#endif
 
-	/// This is magic, model_argp is defined as a weak symbol;
-	/// if the model defines it, his address would be not null
+	// This is magic, model_argp is defined as a weak symbol;
+	// if the model defines it, his address would be not null
 	if(&model_argp){
 		argp_child[0].argp = &model_argp;
 
@@ -489,14 +489,21 @@ void SystemInit(int argc, char **argv) {
 		model_parameters.size = 0;
 	}else{
 		int w = 0;
-	/// if we deal with an old model we make argp stop at the first unknown option instead of exiting
-	/// we print errors nonetheless so the model user can see if some option has been ignored.
-	/// XXX: I found a bug in argp; apparently arg_index is not set if an error is encountered parsing an OPTION
-	/// the behaviour is correct if instead an unknown ARGUMENT is encountered so we use a mostly working work-around
+
+	// if we deal with an old model we make argp stop at the first unknown option instead of exiting;
+	// we print errors nonetheless so the model user can see if some option has been ignored.
+	// XXX: I found a bug in argp; apparently arg_index is not set if an error is encountered parsing an OPTION
+	// the behaviour is correct if instead an unknown ARGUMENT is encountered so we use a mostly working work-around
 		argp_parse (&argp, argc, argv, ARGP_NO_EXIT, NULL, &w);
 
+		// TODO: is this needed?
+		// We must pass the application-level args to the LPs in the INIT event.
+		// Skip all the NULL args (if any)
+		while (argv[w] != NULL && (argv[w][0] == '\0' || argv[w][0] == ' '))
+			w++;
+
 		model_parameters.arguments = argv + w;
-		model_parameters.size = argc - w;
+		model_parameters.size = (argc - w + 1)*sizeof(char*);
 	}
 
 	// If we're going to run a serial simulation, configure the simulation to support it
@@ -506,7 +513,7 @@ void SystemInit(int argc, char **argv) {
 		numerical_init();
 		//dymelor_init();
 		statistics_init();
-		serial_init(argc, model_parameters.arguments, model_parameters.size);
+		serial_init();
 		return;
 	} else {
 		SetState = ParallelSetState;

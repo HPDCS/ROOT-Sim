@@ -220,6 +220,8 @@ extern void (**ProcessEvent)(unsigned int me, simtime_t now, int event_type, voi
 
 extern void base_init(void);
 extern void base_fini(void);
+extern void base_serial_init(void);
+extern void base_serial_fini(void);
 extern GID_t LidToGid(LID_t lid);
 extern LID_t GidToLid(GID_t gid);
 extern unsigned int GidToKernel(GID_t gid);
