@@ -117,18 +117,17 @@ void receive_remote_msgs(void){
 	int size;
 	msg_t *msg;
 	MPI_Status status;
+	MPI_Message mpi_msg;
 	int pending;
 
-	if(!spin_trylock(&msgs_lock))
-		return;
 	while(true){
 		lock_mpi();
-		MPI_Iprobe(MPI_ANY_SOURCE, MSG_EVENT, MPI_COMM_WORLD, &pending, &status);
+		MPI_Improbe(MPI_ANY_SOURCE, MSG_EVENT, MPI_COMM_WORLD, &pending, &mpi_msg, &status);
 		unlock_mpi();
 
 		if(!pending)
-			goto out;
-		
+			return;
+	
 		MPI_Get_count(&status, MPI_BYTE, &size);
 
 		if(size <= SLAB_MSG_SIZE)
@@ -147,24 +146,17 @@ void receive_remote_msgs(void){
 
 		// Receive the message
 		lock_mpi();
-		MPI_Recv(msg, SLAB_MSG_SIZE, MPI_BYTE, MPI_ANY_SOURCE, MSG_EVENT, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+		MPI_Mrecv(msg, size, MPI_BYTE, &mpi_msg, MPI_STATUS_IGNORE);
 		unlock_mpi();
 
 		msg->alloc_tid = thr;
 		msg->next = NULL;
 		msg->prev = NULL;
 
-		/*Note: variable array member of the struct could overlap the struct itself
-		if(MSG_PADDING + size > sizeof(msg_t) + msg->size){
-			printf("%d + %d > %d + %d\n",MSG_PADDING,size,sizeof(msg_t),msg->size);
-			abort();
-		}*/
-
 		validate_msg(msg);
 		insert_bottom_half(msg);
 	}
-out:
-	spin_unlock(&msgs_lock);
+
 }
 
 

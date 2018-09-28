@@ -39,7 +39,7 @@
 #define WINDOW_DIMENSION	50
 
 
-#define SLAB_MSG_SIZE		8192
+#define SLAB_MSG_SIZE	512	
 
 
 
