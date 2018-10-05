@@ -46,7 +46,7 @@
 # Arguments to this function:
 #  - RDI: pointer to the CPU context where to store the current (before call) context
 
-.align 4
+.align 8
 .globl _set_jmp
 .type _set_jmp, @function
 _set_jmp:
@@ -114,7 +114,7 @@ _set_jmp:
 # the caller and the stack of the destination of the long jump are different.
 
 
-.align 4
+.align 8
 .globl _long_jmp
 .type _long_jmp, @function	
 _long_jmp:
@@ -159,5 +159,146 @@ _long_jmp:
 	ret			# do the long jump
 	
 .size   _long_jmp, .-_long_jmp
+
+
+
+# This function creates a new execution context for a new ULT
+# by entirely cloning both the stack frame of the current function at the
+# bottom of the alternate stack memory area and the current machine context
+# where the BP and SP values come to be updated with the new values.
+#
+#  _OLD_SP____\ |_______________|
+#             / |______RET______|
+#               |__DISPLACEMENT_|
+#               |_____NEW_SP____|
+#               |_____NEW_BP____|
+#               |_____OLD_SP____|  |\ CLONED   |_______________| /____NEW_SP_
+#               |_____OLD_BP____|  | \         |______RET______| \
+#               |___STACK_SIZE__|   \ \        |__DISPLACEMENT_|
+#               |_____STACK_____|    \ \ |\    |_____NEW_SP____|
+#               |____CREATED____|     \ \| \   |_____NEW_BP____|
+#  _OLD_BP____\ |____CREATOR____|      \    \  |_____OLD_SP____|
+#             / |_____FLAGS_____|       \   /  |_____OLD_BP____|
+#               |______RBP______|        | /   |___STACK_SIZE__|
+#               |______RAX______|        |/    |_____STACK_____|
+#               |___Ret._Addr.__|              |____CREATED____|
+#               |               |              |____CREATOR____| /____NEW_BP_
+#                                                                \
+#
+# When execution flow associated to the new context will take control it
+# will start working by accessing the cloned data, while the control flow
+# associated to the old context will continue along its original path.
+#
+# Parameters to this function are as follows:
+# exec_context_t *caller, exec_context_t *creat, void (*fn)(void *), void *args, void *stack, size_t stack_size
+# namely:
+# - RDI: caller context (1st argument)
+# - RSI: context to be setup (2nd argument)
+# - RDX: function to be activated in the new ULT (3rd argument)
+# - RCX: arguments to be passed to the above function (4th argument)
+# - R8: a pointer to the newly allocated stack (5th argument)
+# - R9: the size of the newly allocated stack (6th argument)
+
+.align 8
+.globl _context_create
+.type _context_create, @function
+_context_create:
+
+	pushq	%rbp
+
+	movq	%rsp, %rbp
+	subq	$0x50, %rsp
+	movq	%rdi, -0x8(%rbp)	# caller context
+	movq	%rsi, -0x10(%rbp)	# context to be created
+	movq	%r8,  -0x18(%rbp)	# stack
+	movq	%r9,  -0x20(%rbp)	# stack size
+	movq	$0x0, -0x28(%rbp)	# old_BP
+	movq	$0x0, -0x30(%rbp)	# old_SP
+	movq	$0x0, -0x38(%rbp)	# new_BP
+	movq	$0x0, -0x40(%rbp)	# new_SP
+	movq	$0x0, -0x48(%rbp)	# displacement
+	movq	$0x0, -0x50(%rbp)	# ret
+	movq	%rdx, -0x58(%rbp)	# function to be activated
+	movq	%rcx, -0x60(%rbp)	# arguments to the function
+
+	# Save the current context of the caller
+	xorq	%rax, %rax
+	movq	-0x8(%rbp), %rdi
+	callq	_set_jmp
+
+	# Are we returning for a context creation or restore?
+	movq	%rax, -0x50(%rbp)	# ret
+	cmpq	$0x0, %rax
+	jne	.L1
+
+	# Make a copy of the context in the new context using a movs
+	movq	$0x290, %rcx		# context_size
+	movq	-0x8(%rbp), %rsi	# creator
+	movq	-0x10(%rbp), %rdi	# created
+	movq	0x28(%rsi), %rax	# old_BP
+	movq	%rax, -0x28(%rbp)	# old_BP
+	movq	0x20(%rsi), %rax	# old_SP
+	movq	%rax, -0x30(%rbp)	# old_SP
+
+	cld
+	rep movsb
+
+	# Make a copy of the stack in the new context
+	movq	-0x28(%rbp), %rcx	# old_BP
+	movq	-0x30(%rbp), %rsi	# old_SP
+	subq	%rsi, %rcx		# displacement
+	movq	-0x18(%rbp), %rdi	# stack
+	movq	-0x20(%rbp), %rax	# stack_size
+	addq	%rax, %rdi		# new_BP
+	xorq	%rax, %rax
+	movq	$0x3f, %rax
+	notq	%rax
+	andq	%rax, %rdi		# new_BP = new_BP & ~0x3F
+	movq	%rdi, -0x38(%rbp)	# new_BP
+	subq	%rcx, %rdi		# new_SP (1st arg)
+	movq	%rdi, -0x40(%rbp)	# new_SP
+
+	rep movsb			# cld is not needed here, it
+					# was issued before in the function
+
+	# MAGIC_NUMBER is used to prevent the context from which we
+	# are creating the new one to call into `context_create_boot`
+	movq	$0x1ae7, %rsi		# MAGIC_NUMBER (2nd arg)
+	movq	-0x10(%rbp), %rdi	# created (1st arg)
+	movq	-0x38(%rbp), %rax	# new_BP
+	movq	%rax, 0x28(%rdi)	# created->rbp = new_BP
+	movq	-0x40(%rbp), %rax	# new_SP
+	movq	%rax, 0x20(%rdi)	# created->rsp = new_SP
+
+	callq	_long_jmp
+
+    .align 8
+    .L1:
+	# Make a sanity check on the magic number. If we get here in the
+	# context from which the new one was created, just leave!
+	cmpq	$0x1ae7, -0x50(%rbp)
+	jne	.L2
+
+	movq	-0x8(%rbp), %rdi	# creator (1st arg)
+	movq	-0x10(%rbp), %rsi	# created (2nd arg)
+	movq	-0x58(%rbp), %rdx	# function (3rd arg)
+	movq	-0x60(%rbp), %rcx	# arguments (4th arg)
+
+	callq	context_create_boot
+
+    .align 8
+    .L2:
+	# Get out of here!
+	movq	-0x20(%rbp), %rcx
+	movq	-0x18(%rbp), %rdx
+	movq	-0x10(%rbp), %rsi
+	movq	-0x8(%rbp), %rdi
+	movq	%rbp, %rsp
+
+	popq	%rbp
+
+	ret
+
+.size   _context_create, .-_context_create
 
 #endif /* OS_LINUX */

@@ -59,9 +59,23 @@ typedef exec_context_t kernel_context_t;
 	if(set_jmp(context_old) == 0) \
 		long_jmp(context_new, 1)
 
+
+/// Setup machine context for userspace context switch.
+#define context_create(created, fn, args, stack, stack_size) \
+      _context_create(&kernel_context, created, fn, args, stack, stack_size)
+
 extern void *get_ult_stack(size_t size);
 
+__attribute__ ((noreturn))
+void context_create_boot(exec_context_t *caller, exec_context_t *creat, void (*fn)(void *), void *args);
+
+
+
+
 #elif defined(OS_CYGWIN) || defined(OS_WINDOWS) /* OS_LINUX || OS_CYGWIN */
+
+
+
 
 #include <windows.h>
 #if defined(_WIN32_WINNT) && _WIN32_WINNT >= 0x0400
@@ -98,10 +112,10 @@ typedef struct __execution_context_t kernel_context_t;
 #define context_save(context) {}
 #define context_restore(context) {}
 
-#endif /* OS */
-
-// These are the APIs that, independently of the underlying arch, must be exposed by this module
+// This is a function which creates a new fiber when running on Windows
 extern void context_create(LP_context_t *context, void (*entry_point)(void *), void *args, void *stack, size_t stack_size);
+
+#endif /* OS */
 
 // This is the current KLT main execution context
 extern __thread kernel_context_t kernel_context;
