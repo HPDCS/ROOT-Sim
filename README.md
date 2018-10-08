@@ -1,4 +1,7 @@
-# The ROme OpTimistic Simulator (ROOT-Sim) [![Build Status](https://travis-ci.org/HPDCS/ROOT-Sim.svg?branch=master)](https://travis-ci.org/HPDCS/ROOT-Sim)
+# The ROme OpTimistic Simulator (ROOT-Sim) 
+
+[![Build Status](https://travis-ci.org/HPDCS/ROOT-Sim.svg?branch=master)](https://travis-ci.org/HPDCS/ROOT-Sim)
+[![codecov.io](https://codecov.io/gh/HPDCS/ROOT-Sim/branch/master/graphs/badge.svg)](http://codecov.io/github/HPDCS/ROOT-Sim)
 
 *Brought to you by the High Performance and Dependable Computing Systems (HPDCS)
 at Sapienza, University of Rome*
