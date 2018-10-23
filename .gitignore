@@ -8,6 +8,8 @@
 *.so.*
 *.dylib
 *.out
+*.gcno
+*.gcda
 
 Makefile
 Makefile.in

@@ -157,7 +157,6 @@ bool receive_control_msg(msg_t *msg) {
 			break;
 
 		case RENDEZVOUS_ACK:
-			printf("Received ACK\n");
 			if(LPS(lid_receiver)->state == LP_STATE_ROLLBACK ||
 					LPS(lid_receiver)->state == LP_STATE_SILENT_EXEC) {
 				break;
@@ -215,11 +214,13 @@ bool process_control_msg(msg_t *msg) {
 
 #ifdef HAVE_CROSS_STATE
 	LID_t lid_receiver = GidToLid(msg->receiver);
-
+	msg_t *copy; 
 	switch(msg->type) {
 
 		case RENDEZVOUS_START:
-			list_insert(lid_receiver, LPS(lid_receiver)->rendezvous_queue, timestamp, msg);
+			copy = rsalloc(sizeof(msg_t));
+			*copy = *msg;	
+			list_insert(LPS(lid_receiver)->rendezvous_queue, timestamp, copy);
 			// Place this into input queue
 			LPS(lid_receiver)->wait_on_rendezvous = msg->rendezvous_mark;
 

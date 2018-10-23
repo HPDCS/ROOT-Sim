@@ -46,6 +46,7 @@
 #include <mm/mm.h>
 #include <scheduler/scheduler.h>
 #include <scheduler/process.h>
+#include <communication/communication.h>
 #include <arch/ult.h>
 #include <arch/x86.h>
 
@@ -69,10 +70,10 @@ static __thread fault_info_t fault_info;
 // Declared in ecsstub.S
 extern void rootsim_cross_state_dependency_handler(void);
 
-GID_t target_gid;
 // This handler is only called in case of a remote ECS
 void ecs_secondary(void) {
 
+	GID_t target_gid;
 	// target_address is filled by the ROOT-Sim fault handler at kernel level before triggering the signal
 	long long target_address = fault_info.target_address;
 	unsigned char *faulting_insn = (unsigned char *)fault_info.rip;
@@ -114,8 +115,9 @@ void ecs_secondary(void) {
 
 void ecs_initiate(void) {
 	msg_t *control_msg;
-	msg_hdr_t msg_hdr;
+	msg_hdr_t *msg_hdr;
 
+	GID_t target_gid;
 	// Generate a unique mark for this ECS
 	current_evt->rendezvous_mark = generate_mark(current_lp);
 	LPS(current_lp)->wait_on_rendezvous = current_evt->rendezvous_mark;
@@ -127,8 +129,9 @@ void ecs_initiate(void) {
 	control_msg->mark = generate_mark(current_lp);
 
 	// This message must be stored in the output queue as well, in case this LP rollbacks
-	msg_to_hdr(&msg_hdr, control_msg);
-	(void)list_insert(current_lp, LPS(current_lp)->queue_out, send_time, &msg_hdr);
+	msg_hdr =  get_msg_hdr_from_slab();
+	msg_to_hdr(msg_hdr, control_msg);
+	list_insert(LPS(current_lp)->queue_out, send_time, msg_hdr);
 
 	// Block the execution of this LP
 	LPS(current_lp)->state = LP_STATE_WAIT_FOR_SYNCH;
@@ -185,7 +188,7 @@ void ECS(void) {
 }
 
 void ecs_init(void) {
-	printf("Invocation of ECS Init\n");
+	//printf("Invocation of ECS Init\n");
 	ioctl_fd = open("/dev/ktblmgr", O_RDONLY);
 	if (ioctl_fd <= -1) {
 		rootsim_error(true, "Error in opening special device file. ROOT-Sim is compiled for using the ktblmgr linux kernel module, which seems to be not loaded.");
@@ -203,7 +206,7 @@ void lp_alloc_thread_init(void) {
 	lp_memory_ioctl_info.ds = -1;
 	ptr = get_base_pointer(LP0); // LP 0 is the first allocated one, and it's memory stock starts from the beginning of the PML4
 	lp_memory_ioctl_info.addr = ptr;
-	lp_memory_ioctl_info.mapped_processes = n_prc;
+	lp_memory_ioctl_info.mapped_processes = n_prc_tot;
 
 	callback_function =  rootsim_cross_state_dependency_handler;
 	lp_memory_ioctl_info.callback = (ulong) callback_function;
@@ -215,7 +218,6 @@ void lp_alloc_thread_init(void) {
 
 	/* required to manage the per-thread memory view */
 	pgd_ds = ioctl(ioctl_fd, IOCTL_GET_PGD, &fault_info);  //ioctl call
-	fault_info.target_gid = 3;
 }
 
 void lp_alloc_schedule(void) {
@@ -225,7 +227,7 @@ void lp_alloc_schedule(void) {
 
 	sched_info.ds = pgd_ds;
 	sched_info.count = LPS(current_lp)->ECS_index + 1; // it's a counter
-	sched_info.objects = LPS(current_lp)->ECS_synch_table; // pgd descriptor range from 0 to number threads - a subset of object ids
+	sched_info.objects = (unsigned int*) LPS(current_lp)->ECS_synch_table; // pgd descriptor range from 0 to number threads - a subset of object ids
 
 	/* passing into LP mode - here for the pgd_ds-th LP */
 	ioctl(ioctl_fd,IOCTL_SCHEDULE_ON_PGD, &sched_info);
@@ -247,7 +249,7 @@ void setup_ecs_on_segment(msg_t *msg) {
 
 	// In case of a remote ECS, protect the memory
 	if(GidToKernel(msg->sender) != kid) {
-		printf("Mi sincronizzo con un LP remoto e proteggo la memoria\n");
+		//printf("Mi sincronizzo con un LP remoto e proteggo la memoria\n");
 		bzero(&sched_info, sizeof(ioctl_info));
 		sched_info.base_address = get_base_pointer(msg->sender);
 		ioctl(ioctl_fd, IOCTL_PROTECT_REMOTE_LP, &sched_info);
@@ -268,7 +270,7 @@ void ecs_send_pages(msg_t *msg) {
 	the_pages->base_address = the_request->base_address;
 	the_pages->count = the_request->count;
 
-	printf("LP %d sending %d pages from %p to %d\n", msg->receiver, the_request->count, the_request->base_address, msg->sender);
+	//printf("LP %d sending %d pages from %p to %d\n", msg->receiver, the_request->count, the_request->base_address, msg->sender);
 	fflush(stdout);
 
 	memcpy(the_pages->buffer, the_request->base_address, the_request->count * PAGE_SIZE);
@@ -286,12 +288,12 @@ void ecs_install_pages(msg_t *msg) {
 	ecs_page_request_t *the_pages = (ecs_page_request_t *)&(msg->event_content);
 	ioctl_info sched_info;
 
-	printf("LP %d receiving %d pages from %p from %d\n", msg->receiver, the_pages->count, the_pages->base_address, msg->sender);
+	//printf("LP %d receiving %d pages from %p from %d\n", msg->receiver, the_pages->count, the_pages->base_address, msg->sender);
 	fflush(stdout);
 
 	memcpy(the_pages->base_address, the_pages->buffer, the_pages->count * PAGE_SIZE);
 
-	printf("Completed the installation of the page copying %d bytes\n", the_pages->count * PAGE_SIZE);
+	//printf("Completed the installation of the page copying %d bytes\n", the_pages->count * PAGE_SIZE);
 	fflush(stdout);
 
 	bzero(&sched_info, sizeof(ioctl_info));
@@ -302,7 +304,7 @@ void ecs_install_pages(msg_t *msg) {
 	// TODO: se accedo in write non devo fare questa chiamata!
 //	ioctl(ioctl_fd, IOCTL_SET_PAGE_PRIVILEGE, &sched_info);
 
-	printf("Completato il setup dei privilegi\n");
+	//printf("Completato il setup dei privilegi\n");
 	fflush(stdout);
 }
 
@@ -311,7 +313,6 @@ void unblock_synchronized_objects(LID_t localID) {
 	msg_t *control_msg;
 	
 	for(i = 1; i <= LPS(localID)->ECS_index; i++) {
-		LPS(localID)->ECS_synch_table[i];
 		pack_msg(&control_msg, LidToGid(localID), LPS(localID)->ECS_synch_table[i], RENDEZVOUS_UNBLOCK, lvt(localID), lvt(localID), 0, NULL);
 		control_msg->rendezvous_mark = LPS(localID)->wait_on_rendezvous;
 		Send(control_msg);

@@ -13,6 +13,10 @@ m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 AC_ARG_ENABLE([debug],
     AS_HELP_STRING([--enable-debug], [Enable debugging of the platform]))
 
+# Run code coverage?
+AC_ARG_ENABLE([coverage],
+    AS_HELP_STRING([--enable-coverage], [Enable code coverage]))
+
 AM_CONDITIONAL([DEBUG], [test x$enable_debug = xyes])
 
 # Setup compilation flags
@@ -20,10 +24,15 @@ CFLAGS_COMMON="-std=c11 -fno-omit-frame-pointer -ffloat-store -fno-common -fstri
 CFLAGS_WARNINGS="-Wall -Wextra -Wcast-align -Wpointer-arith -Wstrict-overflow=5 -Wstrict-prototypes -Winline -Wundef -Wnested-externs -Wshadow -Wunreachable-code -Wfloat-equal -Wredundant-decls -Wold-style-definition -Wno-switch-enum"
 #FLAGS_WARNINGS="$CFLAGS_WARNINGS -Wconversion"
 
+# Flag to enable debugging the platform
 AS_IF([test x$enable_debug = xyes],
       [CFLAGS="-g3 -O0 $CFLAGS_COMMON $CFLAGS_WARNINGS"],
       [CFLAGS="-O3 $CFLAGS_COMMON"]
       AC_DEFINE([NDEBUG]))
+
+# Flag to enable code coverage
+AS_IF([test x$enable_coverage = xyes],
+      [CFLAGS="$CFLAGS -coverage"])
 
 
 # Extra check flags
