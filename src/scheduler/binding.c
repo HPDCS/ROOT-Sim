@@ -36,7 +36,6 @@
 #include <statistics/statistics.h>
 #include <gvt/gvt.h>
 
-#include <mm/numa.h>
 #include <arch/thread.h>
 
 
@@ -231,11 +230,6 @@ static void install_binding(void) {
 			LPS_bound_set(n_prc_per_thread++, LPS(lid));
 
 			if(local_tid != LPS(lid)->worker_thread) {
-
-				#ifdef HAVE_NUMA
-				numa_move_request(i, get_numa_node(running_core()));
-				#endif
-
 				LPS(lid)->worker_thread = local_tid;
 			}
 		}

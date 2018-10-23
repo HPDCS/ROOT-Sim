@@ -34,11 +34,7 @@
 
 
 static struct _buddy **buddies;
-// This vector is accessed by the numa.c module to migrate pages
-#ifndef HAVE_NUMA
-static
-#endif
-void **mem_areas;
+static void **mem_areas;
 
 static inline int left_child(int idx) {
     return ((idx << 1) + 1);
@@ -254,10 +250,6 @@ bool allocator_init(void) {
 			(void)get_segment(gid);
 		}
 	}
-
-#ifdef HAVE_NUMA
-	numa_init();
-#endif
 
 	return true;
 }
