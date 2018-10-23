@@ -75,7 +75,7 @@ Then, to run it in parallel, type
 
 To run in a distributed environment, you can use standard MPI commands,
 such as:    
-`mpiexec -n 2 -f hosts ./model --np 2 --nprc 16`
+`mpiexec -n 2 --hostfile hosts --map-by node ./model --np 2 --nprc 16`
 
 This command runs the simulation model on two nodes (`-n 2`) specified in the
 `hosts` file. Each node uses two concurrent threads (`--np 2`). The simulation
