@@ -294,7 +294,7 @@ void initialize_worker_thread(void) {
 		initialize_LP(lid);
 
 		// Schedule an INIT event to the newly instantiated LP
-		pack_msg(&init_event, gid, gid, INIT, 0.0, 0.0, model_parameters.size, model_parameters.arguments);
+		pack_msg(&init_event, gid, gid, INIT, 0.0, 0.0, 0, NULL);
 	        init_event->mark = generate_mark(lid);
 
 		list_insert_head(LPS(lid)->queue_in, init_event);

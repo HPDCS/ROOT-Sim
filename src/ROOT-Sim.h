@@ -38,6 +38,7 @@
 #include <stdbool.h>
 #include <float.h>
 #include <limits.h>
+#include <argp.h>
 
 
 #ifdef INIT
@@ -104,7 +105,8 @@ typedef double simtime_t;
 /// This is the definition of the number of LPs running in the current simulation
 extern unsigned int n_prc_tot;
 
-
+/// This can be implemented by the model for smart argument handling
+__attribute((weak)) extern struct argp model_argp;
 
 // Topology library
 #define TOPOLOGY_HEXAGON	1000

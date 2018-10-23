@@ -60,12 +60,6 @@ typedef struct _simulation_configuration {
 
 extern simulation_configuration rootsim_config;
 
-struct app_arguments {
-	char **arguments;
-	int size;
-};
-extern struct app_arguments model_parameters;
-
 extern void SystemInit(int argc, char **argv);
 
 #endif /* _INIT_H */
