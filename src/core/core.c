@@ -186,7 +186,15 @@ void base_fini(void){
 */
 GID_t LidToGid(LID_t lid) {
 	GID_t ret;
-	set_gid(ret, to_gid[lid_to_int(lid)]);
+
+	// In sequential simulation we don't actually have the notion of GIDs and LIDs,
+	// as everything happens in a single process on a single node. Anyhow, we must
+	// preserve type safety, and we do it here
+	if(!rootsim_config.serial)
+		set_gid(ret, to_gid[lid_to_int(lid)]);
+	else
+		set_gid(ret, lid_to_int(lid));
+
 	return ret;
 }
 
@@ -202,7 +210,15 @@ GID_t LidToGid(LID_t lid) {
 */
 LID_t GidToLid(GID_t gid) {
 	LID_t ret;
-	set_lid(ret, to_lid[gid_to_int(gid)]);
+
+	// In sequential simulation we don't actually have the notion of GIDs and LIDs,
+	// as everything happens in a single process on a single node. Anyhow, we must
+	// preserve type safety, and we do it here
+	if(!rootsim_config.serial)
+		set_lid(ret, to_lid[gid_to_int(gid)]);
+	else
+		set_lid(ret, gid_to_int(gid));
+
 	return ret;
 }
 
