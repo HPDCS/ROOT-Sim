@@ -368,7 +368,7 @@ void activate_LP(LID_t lp, simtime_t lvt, void *evt, void *state) {
 	lp_alloc_schedule();
 	#endif
 
-	if(is_blocked_state(LPS(lp)->state)){
+	if(unlikely(is_blocked_state(LPS(lp)->state))) {
 		rootsim_error(true, "Critical condition: LP %d has a wrong state -> %d. Aborting...\n", gid_to_int(LidToGid(lp)), LPS(lp)->state);
 	}
 
@@ -471,11 +471,11 @@ void schedule(void) {
 	// at least one event to be executed. If advance_to_next_event() returns
 	// NULL, it means that lid has no events to be executed. This is
 	// a critical condition and we abort.
-	if(event == NULL) {
+	if(unlikely(event == NULL)) {
 		rootsim_error(true, "Critical condition: LP %d seems to have events to be processed, but I cannot find them. Aborting...\n", lid);
 	}
 
-	if(!process_control_msg(event)) {
+	if(unlikely(!process_control_msg(event))) {
 		return;
 	}
 

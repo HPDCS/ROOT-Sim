@@ -24,14 +24,14 @@ unsigned int FindReceiver(int topology) {
 	switch_to_platform_mode();
 
 
-	if(first_call) {
+	if(unlikely(first_call)) {
 		edge = sqrt(n_prc_tot);
 		first_call = false;
 	}
 
 
 	// Very simple case!
-	if(n_prc_tot == 1) {
+	if(unlikely(n_prc_tot == 1)) {
 		receiver = sender;
 		goto out;
 	}
@@ -40,7 +40,7 @@ unsigned int FindReceiver(int topology) {
 
 		case TOPOLOGY_HEXAGON:
 			// Sanity check!
-			if(edge * edge != n_prc_tot) {
+			if(unlikely(edge * edge != n_prc_tot)) {
 				rootsim_error(true, "Hexagonal map wrongly specified!\n");
 				return 0;
 			}
@@ -95,7 +95,7 @@ unsigned int FindReceiver(int topology) {
 
 		case TOPOLOGY_SQUARE:
 			// Sanity check!
-			if(edge * edge != n_prc_tot) {
+			if(unlikely(edge * edge != n_prc_tot)) {
 				rootsim_error(true, "Hexagonal map wrongly specified!\n");
 				return 0;
 			}
@@ -108,7 +108,7 @@ unsigned int FindReceiver(int topology) {
 			do {
 
 				direction = 4 * Random();
-				if(direction == 4) {
+				if(unlikely(direction == 4)) {
 					direction = 3;
 				}
 
@@ -143,7 +143,7 @@ unsigned int FindReceiver(int topology) {
 
 		case TOPOLOGY_TORUS:
 			// Sanity check!
-			if(edge * edge != n_prc_tot) {
+			if(unlikely(edge * edge != n_prc_tot)) {
 				rootsim_error(true, "Hexagonal map wrongly specified!\n");
 				return 0;
 			}
@@ -153,7 +153,7 @@ unsigned int FindReceiver(int topology) {
 			y = gid_to_int(sender) / edge;
 
 			direction = 4 * Random();
-			if(direction == 4) {
+			if(unlikely(direction == 4)) {
 				direction = 3;
 			}
 
@@ -265,12 +265,12 @@ unsigned int GetReceiver(int topology, int direction) {
 	sender = LidToGid(current_lp);
 	set_gid(receiver, INVALID_DIRECTION);
 
-	if(first_call) {
+	if(unlikely(first_call)) {
 		first_call = false;
 
 		edge = sqrt(n_prc_tot);
 		// Sanity check!
-		if(edge * edge != n_prc_tot) {
+		if(unlikely(edge * edge != n_prc_tot)) {
 			rootsim_error(true, "Hexagonal map wrongly specified!\n");
 			return 0;
 		}
@@ -313,7 +313,7 @@ unsigned int GetReceiver(int topology, int direction) {
 					goto out;
 			}
 
-			if(nx >= edge || ny >= edge)
+			if(unlikely(nx >= edge || ny >= edge))
 				set_gid(receiver, INVALID_DIRECTION);
 			else
 				set_gid(receiver, ny * edge + nx);
@@ -344,7 +344,7 @@ unsigned int GetReceiver(int topology, int direction) {
 					goto out;
 			}
 
-			if(nx >= edge || ny >= edge)
+			if(unlikely(x >= edge || ny >= edge))
 				set_gid(receiver, INVALID_DIRECTION);
 			else
 				set_gid(receiver, ny * edge + nx);
@@ -439,11 +439,11 @@ void SetupObstacles(obstacles_t **obstacles)  {
 	*obstacles = NULL;
 
 	// Valid only for square regions
-	if(first_call) {
+	if(unlikely(first_call)) {
 		edge = sqrt(n_prc_tot);
 		first_call = false;
 	}
-	if(edge * edge != n_prc_tot) {
+	if(unlikely(edge * edge != n_prc_tot)) {
 		rootsim_error(true, "Hexagonal map wrongly specified!\n");
 		return;
 	}

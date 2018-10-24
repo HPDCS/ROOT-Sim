@@ -251,7 +251,7 @@ static void install_binding(void) {
 */
 void rebind_LPs(void) {
 
-	if(first_lp_binding) {
+	if(unlikely(first_lp_binding)) {
 		first_lp_binding = false;
 
 		initialize_binding_blocks();
@@ -273,7 +273,7 @@ void rebind_LPs(void) {
 
 #ifdef HAVE_LP_REBINDING
 	if(master_thread()) {
-		if(timer_value_seconds(rebinding_timer) >= REBIND_INTERVAL) {
+		if(unlikely(timer_value_seconds(rebinding_timer) >= REBIND_INTERVAL)) {
 			timer_restart(rebinding_timer);
 			binding_phase++;
 		}

@@ -29,6 +29,7 @@
 #include <sys/mman.h>
 #include <errno.h>
 
+#include <core/core.h>
 #include <mm/dymelor.h>
 #include <mm/mm.h>
 
@@ -57,7 +58,7 @@ static struct _buddy *buddy_new(unsigned int num_of_fragments) {
 
     int i;
 
-    if (num_of_fragments < 1 || !IS_POWEROF2(num_of_fragments)) {
+    if (unlikely(num_of_fragments < 1 || !IS_POWEROF2(num_of_fragments))) {
         return NULL;
     }
 
@@ -110,14 +111,14 @@ static unsigned choose_better_child(struct _buddy *self, unsigned idx, size_t si
  * @return the offset from the beginning of memory to be managed */
 static long long buddy_alloc(struct _buddy *self, size_t size) {
 
-    if (self == NULL || self->size < size) {
+    if (unlikely(self == NULL || self->size < size)) {
 	rootsim_error(true,"size is %u < %u\n",self->size,size);
         return -1;
     }
     size = POWEROF2(size);
 
     unsigned idx = 0;
-    if (self->longest[idx] < size) {
+    if (unlikely(self->longest[idx] < size)) {
 		rootsim_error(true,"self->longest %u < %u\n",self->longest[idx],size);
         return -1;
     }
@@ -141,7 +142,7 @@ static long long buddy_alloc(struct _buddy *self, size_t size) {
 }
 
 static void buddy_free(struct _buddy *self, int offset) {
-    if (self == NULL || offset < 0 || offset > (int)self->size) {
+    if (unlikely(self == NULL || offset < 0 || offset > (int)self->size)) {
         return;
     }
 
@@ -187,7 +188,7 @@ void *pool_get_memory(LID_t lid, size_t size) {
 	offset = buddy_alloc(buddies[lid_to_int(lid)], fragments);
 	displacement = offset * BUDDY_GRANULARITY;
 
-	if(offset == -1)
+	if(unlikely(offset == -1))
 		return NULL;
 
 	return (void *)((char *)mem_areas[lid_to_int(lid)] + displacement);
@@ -207,7 +208,7 @@ void free_pages(void *ptr, size_t length) {
 	int ret;
 
 	ret = munmap(ptr, length);
-	if(ret < 0)
+	if(unlikely(ret < 0))
 		perror("free_pages(): unable to deallocate memory");
 }
 

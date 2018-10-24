@@ -32,7 +32,7 @@ void SerialScheduleNewEvent(unsigned int rcv, simtime_t stamp, unsigned int even
 	msg_t *event;
 
 	// Sanity checks
-	if(stamp < current_lvt) {
+	if(unlikely(stamp < current_lvt)) {
 		rootsim_error(true, "LP %d is trying to send events in the past. Current time: %f, scheduled time: %f\n", current_lp, current_lvt, stamp);
 	}
 
@@ -69,7 +69,7 @@ void serial_init(int argc, char **argv, int app_arg) {
 	bzero(serial_completed_simulation, sizeof(bool) * n_prc_tot);
 
 	// Sanity check on the number of LPs
-	if(n_prc_tot == 0) {
+	if(unlikely(n_prc_tot == 0)) {
 		rootsim_error(true, "You must specify the total number of Logical Processes\n");
 	}
 
@@ -113,7 +113,7 @@ void serial_simulation(void) {
 	while(!serial_simulation_complete) {
 
 		event = (msg_t *)calqueue_get();
-		if(event == NULL) {
+		if(unlikely(event == NULL)) {
 			rootsim_error(true, "No events to process!\n");
 		}
 
@@ -145,12 +145,12 @@ void serial_simulation(void) {
 		current_lp = idle_process;
 
 		// Termination detection can happen only after the state is initialized
-		if(serial_states[gid_to_int(event->receiver)] != NULL) {
+		if(likely(serial_states[gid_to_int(event->receiver)] != NULL)) {
 			// Should we terminate the simulation?
 			if(!serial_completed_simulation[gid_to_int(event->receiver)] && OnGVT_light(gid_to_int(event->receiver), serial_states[gid_to_int(event->receiver)])) {
 				completed++;
 				serial_completed_simulation[gid_to_int(event->receiver)] = true;
-				if(completed == n_prc_tot) {
+				if(unlikely(completed == n_prc_tot)) {
 					serial_simulation_complete = true;
 				}
 			}

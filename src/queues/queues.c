@@ -71,11 +71,11 @@ simtime_t next_event_timestamp(LID_t lid) {
 	msg_t *evt;
 
 	// The bound can be NULL in the first execution or if it has gone back
-	if (LPS(lid)->bound == NULL && !list_empty(LPS(lid)->queue_in)) {
+	if (unlikely(LPS(lid)->bound == NULL && !list_empty(LPS(lid)->queue_in))) {
 		return list_head(LPS(lid)->queue_in)->timestamp;
 	} else {
 		evt = list_next(LPS(lid)->bound);
-		if(evt != NULL) {
+		if(likely(evt != NULL)) {
 			return evt->timestamp;
 		}
 	}
@@ -99,14 +99,14 @@ simtime_t next_event_timestamp(LID_t lid) {
 */
 msg_t *advance_to_next_event(LID_t lid) {
 
-	if (LPS(lid)->bound == NULL) {
-		if (!list_empty(LPS(lid)->queue_in)) {
+	if (unlikely(LPS(lid)->bound == NULL)) {
+		if (likely(!list_empty(LPS(lid)->queue_in))) {
 			LPS(lid)->bound = list_head(LPS(lid)->queue_in);
 		} else {
 			return NULL;
 		}
 	} else {
-		if (list_next(LPS(lid)->bound) != NULL) {
+		if (likely(list_next(LPS(lid)->bound) != NULL)) {
 			LPS(lid)->bound = list_next(LPS(lid)->bound);
 		} else {
 			return NULL;
@@ -158,12 +158,13 @@ void process_bottom_halves(void) {
 		while((msg_to_process = get_msg(LPS_bound(i)->bottom_halves)) != NULL) {
 			lid_receiver = GidToLid(msg_to_process->receiver);
 			receiver = LPS(lid_receiver);
-			
-			if(msg_to_process->timestamp < get_last_gvt())
-				printf("ERRORE\n");
+
+			// Sanity check
+			if(unlikely(msg_to_process->timestamp < get_last_gvt()))
+				rootsim_error(true, "The impossible happened: I'm receiving a message before the GVT\n");
 
 			// Handle control messages
-			if(!receive_control_msg(msg_to_process)) {
+			if(unlikely(!receive_control_msg(msg_to_process))) {
 				msg_release(msg_to_process);
 				continue;
 			}
@@ -182,10 +183,10 @@ void process_bottom_halves(void) {
 					}
 
 					// Sanity check
-					if(matched_msg == NULL) {
+					if(unlikely(matched_msg == NULL)) {
 						rootsim_error(false, "LP %d Received an antimessage, but no such mark has been found!\n", lid_to_int(lid_receiver));
 						dump_msg_content(msg_to_process);
-						abort();
+						rootsim_error(true, "Aborting...\n");
 					} 
 
 					// If the matched message is in the past, we have to rollback

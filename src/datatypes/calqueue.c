@@ -6,6 +6,7 @@
 #include <math.h>
 #include <stdbool.h>
 
+#include <core/core.h>
 #include <datatypes/calqueue.h>
 #include <mm/dymelor.h>
 
@@ -95,7 +96,7 @@ static double new_width(void) {
 	for (i = 0; i < nsamples; i++) {
 		// Dequeue nodes to get a test sample and sum up the differences in time
 		temp[i] = calqueue_deq();
-		if (i > 0)
+		if (likely(i > 0))
 			average += temp[i]->timestamp - temp[i - 1]->timestamp;
 	}
 
@@ -189,7 +190,7 @@ static calqueue_node *calqueue_deq(void) {
 		// Check bucket i
 		if (calendar[i] != NULL && calendar[i]->timestamp < buckettop) {
 
- calendar_process:
+	    calendar_process:
 
 			// Found an item to be processed
 			e = calendar[i];
@@ -291,7 +292,7 @@ void *calqueue_get(void) {
 	void *payload;
 
 	node = calqueue_deq();
-	if (node == NULL) {
+	if (unlikely(node == NULL)) {
 		return NULL;
 	}
 

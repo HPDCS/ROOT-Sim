@@ -32,7 +32,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+
 #include <arch/ult.h>
+#include <core/core.h>
 #include <scheduler/process.h>
 #include <mm/dymelor.h>
 
@@ -71,16 +73,18 @@ static __thread void			*context_creat_arg;
 void *get_ult_stack(size_t size) {
 	void *stack;
 	size_t reminder;
+	size_t page_size;
 
 	// Sanity check
-	if (size <= 0) {
+	if (unlikely(size <= 0)) {
 		size = LP_STACK_SIZE;
 	}
 
 	// Align the size to the page boundary (by increasing the stack size)
-	reminder = size % getpagesize();
-	if (reminder != 0) {
-		size += getpagesize() - reminder;
+	page_size = getpagesize();
+	reminder = size % page_size;
+	if (unlikely(reminder != 0)) {
+		size += page_size - reminder;
 	}
 
 	// The first call to the LP malloc subsystem gives page-aligned memory
@@ -194,7 +198,7 @@ void context_create(LP_context_t *context, void (*entry_point)(void *), void *ar
 
 	static bool once = false;
 
-	if(once == false) {
+	if(unlikely(once == false)) {
 		once = true;
 		// Convert the current thread to a fiber. This allows to schedule other fibers.
 		kernel_context.jb = ConvertThreadToFiber(NULL);

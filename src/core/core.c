@@ -95,10 +95,10 @@ bool init_complete = false;
  */
 void exit_from_simulation_model(void) {
 
-	if(!init_complete)
+	if(likely(!init_complete))
 		return;
 
-	if(!exit_silently_from_kernel) {
+	if(unlikely(!exit_silently_from_kernel)) {
 		exit_silently_from_kernel = true;
 
 		printf("Warning: exit() has been called from the model.\n"
@@ -190,10 +190,10 @@ GID_t LidToGid(LID_t lid) {
 	// In sequential simulation we don't actually have the notion of GIDs and LIDs,
 	// as everything happens in a single process on a single node. Anyhow, we must
 	// preserve type safety, and we do it here
-	if(!rootsim_config.serial)
-		set_gid(ret, to_gid[lid_to_int(lid)]);
-	else
+	if(unlikely(rootsim_config.serial))
 		set_gid(ret, lid_to_int(lid));
+	else
+		set_gid(ret, to_gid[lid_to_int(lid)]);
 
 	return ret;
 }
@@ -214,10 +214,10 @@ LID_t GidToLid(GID_t gid) {
 	// In sequential simulation we don't actually have the notion of GIDs and LIDs,
 	// as everything happens in a single process on a single node. Anyhow, we must
 	// preserve type safety, and we do it here
-	if(!rootsim_config.serial)
-		set_lid(ret, to_lid[gid_to_int(gid)]);
-	else
+	if(unlikely(rootsim_config.serial))
 		set_lid(ret, gid_to_int(gid));
+	else
+		set_lid(ret, to_lid[gid_to_int(gid)]);
 
 	return ret;
 }
@@ -253,7 +253,7 @@ void simulation_shutdown(int code) {
 
 	statistics_stop(code);
 
-	if(!rootsim_config.serial) {
+	if(likely(rootsim_config.serial == false)) {
 
 		thread_barrier(&all_thread_barrier);
 

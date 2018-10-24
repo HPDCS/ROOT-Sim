@@ -48,9 +48,13 @@ void outgoing_window_init(void){
 void outgoing_window_finalize(void){
 	prune_outgoing_queues();
 	size_t pending_out_msgs = outgoing_queues_size();
-	if(pending_out_msgs > 0)
+
+	// TODO: this is an error condition
+	if(unlikely(pending_out_msgs > 0))
 		printf("Outgoing queues not empty on exit: %zu\n", outgoing_queues_size());
-	//TODO should free each queue that was allocate with the new_list call
+
+	// TODO: I think this doesn't hold anymore (Alessandro)
+	// TODO: should free each queue that was allocate with the new_list call
 	rsfree(outgoing_queues);
 }
 
