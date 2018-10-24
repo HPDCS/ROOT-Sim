@@ -121,7 +121,10 @@ AC_PROG_MAKE_SET
 AC_PROG_MKDIR_P
 AC_PROG_CC_C_O
 AM_PROG_CC_C_O
-m4_ifdef([AM_PROG_AR], [AM_PROG_AR])
+AM_PROG_AR
+# Silence warning: ar: 'u' modifier ignored since 'D' is the default
+AC_SUBST(AR_FLAGS, [cr])
+AC_SUBST(ARFLAGS, [cr])
 AM_PROG_AS
 LT_INIT
 
