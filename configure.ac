@@ -332,7 +332,6 @@ AS_IF([test "x$enable_allocator" != "xno"], [
 # On other architectures all these checks are just skipped
 #------------------------------------------------------------
 ac_preemption=no
-ac_have_numa=no
 ac_have_cross_state=no
 ac_kernel_headers=no
 ac_disable_modules=yes
@@ -358,28 +357,6 @@ then
 			CFLAGS="$CFLAGS -ltimestretch"
 		])
 	fi
-
-	# If we are on a NUMA system, try to use the NUMA subsystem
-	AC_CHECK_LIB(numa, numa_num_possible_nodes, [numa_cv_libnuma=yes], [numa_cv_libnuma=no])
-	AC_CHECK_HEADER(numa.h, [numa_cv_numa_h=yes], [numa_cv_numa_h=no])
-	AC_CHECK_PROG([numactl],[numactl],[yes],[no])
-
-	if test "x$numa_cv_libnuma" = "xyes" -a "x$numa_cv_numa_h" = "xyes" -a "x$numactl" = "xyes" -a "x$ac_have_parallel_allocator" = "xyes"
-	then
-			#
-			# We have found everything that we need, but the user can disable the subsystem
-			#
-
-		AC_ARG_ENABLE([numa],
-		AS_HELP_STRING([--disable-numa], [Disable NUMA subsystem on NUMA machines]))
-
-		AS_IF([test "x$enable_numa" != "xno"], [
-			AC_DEFINE([HAVE_NUMA])
-			ac_have_numa=yes
-			CFLAGS="$CFLAGS -lnuma"
-		])
-	fi
-
 
 	# Test for linux headers, to compile kernel modules
 	ac_kernel_headers=no
@@ -562,42 +539,6 @@ else
 fi
 
 
-# Compose the message regarding the NUMA subsystem
-if test "x$ac_have_numa" = "xyes"
-then
-	numa_subsystem="Enabled (by default on NUMA machines, use --disable-numa if not wanted)"
-else
-	numa_subsystem="Disabled ("
-	if test "x$numa_cv_libnuma" = "xno"
-	then
-		numa_subsystem="${numa_subsystem}libnuma "
-	fi
-
-	if test "x$numa_cv_numa_h" = "xno"
-	then
-		numa_subsystem="${numa_subsystem}numa.h "
-	fi
-
-	if test "x$numactl" = "xno"
-	then
-		numa_subsystem="${numa_subsystem}numactl "
-	fi
-
-	numa_subsystem="${numa_subsystem}not found)"
-
-	if test "x$numa_cv_libnuma" = "xyes" -a "x$numa_cv_numa_h" = "xyes" -a "x$numactl" = "xyes"
-	then
-		numa_subsystem="Disabled (manually excluded)"
-	fi
-
-	if test "x$ac_have_parallel_allocator" != "xyes"
-	then
-		numa_subsystem="Disabled (Parallel Allocator is required)"
-
-	fi
-fi
-
-
 # Compose the message regarding Preemptive Time Warp
 if test "x$ac_have_preemption" = "xyes"
 then
@@ -671,7 +612,6 @@ Debugging Support......... : ${enable_debug}
 MPI....................... : ${enable_mpi}
 User-Level Threads........ : ${ac_enable_ult}
 Parallel Allocator........ : ${ac_parallel_allocator}
-NUMA Subsystem............ : ${numa_subsystem}
 LP Preemption Support..... : ${ac_preemption}
 LP Rebinding.............. : ${ac_lp_rebinding}
 Linux Kernel Modules...... : ${ac_modules}

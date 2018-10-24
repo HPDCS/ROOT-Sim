@@ -130,7 +130,7 @@ void malloc_state_init(bool recoverable, malloc_state *state) {
 	state->is_incremental = false;
 
 	state->areas = (malloc_area*)rsalloc(state->max_num_areas * sizeof(malloc_area));
-	if(state->areas == NULL)
+	if(unlikely(state->areas == NULL))
 		rootsim_error(true, "Unable to allocate memory at %s:%d\n", __FILE__, __LINE__);
 
 	chunk_size = MIN_CHUNK_SIZE;
@@ -168,7 +168,7 @@ static size_t compute_size(size_t size){
 	size_t size_new;
 
 	size_new = POWEROF2(size);
-	if(size_new < MIN_CHUNK_SIZE)
+	if(unlikely(size_new < MIN_CHUNK_SIZE))
 		size_new = MIN_CHUNK_SIZE;
 
 	return size_new;
@@ -217,7 +217,7 @@ void *do_malloc(LID_t lid, malloc_state *mem_pool, size_t size) {
 
 	size = compute_size(size);
 
-	if(size > MAX_CHUNK_SIZE){
+	if(unlikely(size > MAX_CHUNK_SIZE)) {
 		rootsim_error(false, "Requested a memory allocation of %d but the limit is %d. Reconfigure MAX_CHUNK_SIZE. Returning NULL.\n", size, MAX_CHUNK_SIZE);
 		return NULL;
 	}
@@ -234,9 +234,9 @@ void *do_malloc(LID_t lid, malloc_state *mem_pool, size_t size) {
 			m_area = &(mem_pool->areas[m_area->next]);
 	}
 
-	if(m_area == NULL){
+	if(m_area == NULL) {
 
-		if(mem_pool->num_areas == mem_pool->max_num_areas){
+		if(mem_pool->num_areas == mem_pool->max_num_areas) {
 
 			malloc_area *tmp = NULL;
 
@@ -247,7 +247,7 @@ void *do_malloc(LID_t lid, malloc_state *mem_pool, size_t size) {
 
 			rootsim_error(true, "To reimplement\n");
 //			tmp = (malloc_area *)pool_realloc_memory(mem_pool->areas, mem_pool->max_num_areas * sizeof(malloc_area));
-			if(tmp == NULL){
+			if(tmp == NULL) {
 
 				/**
 				* @todo can we find a better way to handle the realloc failure?
@@ -292,7 +292,7 @@ void *do_malloc(LID_t lid, malloc_state *mem_pool, size_t size) {
 		bzero(m_area->self_pointer, area_size);
 		#endif
 
-		if(m_area->self_pointer == NULL){
+		if(unlikely(m_area->self_pointer == NULL)) {
 			printf("Is recoverable: ");
 			printf(is_recoverable ? "true\n" : "false\n");
 			rootsim_error(true, "DyMeLoR: error allocating space\n");
@@ -308,7 +308,7 @@ void *do_malloc(LID_t lid, malloc_state *mem_pool, size_t size) {
 		m_area->area = (void *)((char*)m_area->use_bitmap + bitmap_blocks * BLOCK_SIZE * 2);
 	}
 
-	if(m_area->area == NULL) {
+	if(unlikely(m_area->area == NULL)) {
 		rootsim_error(true, "Error while allocating memory at %s:%d\n", __FILE__, __LINE__);
 	}
 
@@ -322,7 +322,7 @@ void *do_malloc(LID_t lid, malloc_state *mem_pool, size_t size) {
 		bitmap_blocks = 1;
 
 	if(m_area->is_recoverable) {
-		if(m_area->alloc_chunks == 0){
+		if(m_area->alloc_chunks == 0) {
 			mem_pool->bitmap_size += bitmap_blocks * BLOCK_SIZE;
 			mem_pool->busy_areas++;
 		}
@@ -335,8 +335,8 @@ void *do_malloc(LID_t lid, malloc_state *mem_pool, size_t size) {
 		m_area->state_changed = 1;
 		m_area->last_access = current_lvt;
 
-		if(!CHECK_LOG_MODE_BIT(m_area)){
-			if((double)m_area->alloc_chunks / (double)m_area->num_chunks > MAX_LOG_THRESHOLD){
+		if(!CHECK_LOG_MODE_BIT(m_area)) {
+			if((double)m_area->alloc_chunks / (double)m_area->num_chunks > MAX_LOG_THRESHOLD) {
 				SET_LOG_MODE_BIT(m_area);
 				mem_pool->total_log_size += (m_area->num_chunks - (m_area->alloc_chunks - 1)) * size;
 			} else
@@ -377,18 +377,18 @@ void do_free(LID_t lid, malloc_state *mem_pool, void *ptr) {
 	int idx, bitmap_blocks;
 	size_t chunk_size;
 
-	if(rootsim_config.serial) {
+	if(unlikely(rootsim_config.serial)) {
 		rsfree(ptr);
 		return;
 	}
 
-	if(ptr == NULL) {
+	if(unlikely(ptr == NULL)) {
 		rootsim_error(false, "Invalid pointer during free\n");
 		return;
 	}
 
 	m_area = get_area(ptr);
-	if(m_area == NULL){
+	if(unlikely(m_area == NULL)) {
 		rootsim_error(false, "Invalid pointer during free: malloc_area NULL\n");
 		return;
 	}
@@ -416,7 +416,7 @@ void do_free(LID_t lid, malloc_state *mem_pool, void *ptr) {
 		}
 
 
-		if(CHECK_DIRTY_BIT(m_area, idx)){
+		if(CHECK_DIRTY_BIT(m_area, idx)) {
 			RESET_DIRTY_BIT(m_area, idx);
 			m_area->dirty_chunks--;
 
@@ -425,7 +425,7 @@ void do_free(LID_t lid, malloc_state *mem_pool, void *ptr) {
 
 			mem_pool->total_inc_size -= chunk_size;
 
-			if (m_area->dirty_chunks < 0) {
+			if (unlikely(m_area->dirty_chunks < 0)) {
 				rootsim_error(true, "%s:%d: negative number of chunks\n", __FILE__, __LINE__);
 			}
 		}

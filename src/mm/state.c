@@ -59,7 +59,7 @@ bool LogState(LID_t lid) {
 	bool take_snapshot = false;
 	state_t *new_state; 
 
-	if(is_blocked_state(LPS(lid)->state)) {
+	if(unlikely(is_blocked_state(LPS(lid)->state))) {
 		return take_snapshot;
 	}
 
@@ -162,7 +162,7 @@ unsigned int silent_execution(LID_t lid, void *state_buffer, msg_t *evt, msg_t *
 	// the simulation has been already executed at least once
 	while(evt != NULL && evt != final_evt) {
 
-		if(!reprocess_control_msg(evt)) {
+		if(unlikely(!reprocess_control_msg(evt))) {
 			evt = list_next(evt);
 			continue;
 		}
@@ -198,7 +198,7 @@ void rollback(LID_t lid) {
 
 
 	// Sanity check
-	if(LPS(lid)->state != LP_STATE_ROLLBACK) {
+	if(unlikely(LPS(lid)->state != LP_STATE_ROLLBACK)) {
 		rootsim_error(false, "I'm asked to roll back LP %d's execution, but rollback_bound is not set. Ignoring...\n", LidToGid(lid));
 		return;
 	}
@@ -257,7 +257,7 @@ state_t *find_time_barrier(LID_t lid, simtime_t simtime) {
 
 	state_t *barrier_state;
 
-	if(D_EQUAL(simtime, 0.0)) {
+	if(unlikely(D_EQUAL(simtime, 0.0))) {
 		return list_head(LPS(lid)->queue_states);
 	}
 

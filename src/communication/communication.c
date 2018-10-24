@@ -122,7 +122,7 @@ msg_t *get_msg_from_slab(void) {
 	// current allocation.
 	to_release = treiber_detach(msg_treiber[local_tid]);
 	while(to_release != NULL) {
-		if(msg == NULL) {
+		if(unlikely(msg == NULL)) {
 			msg = to_release->data;
 		} else {
 			slab_free(&msg_slab[local_tid], to_release->data);
@@ -132,7 +132,7 @@ msg_t *get_msg_from_slab(void) {
 		to_release = to_release_nxt;
 	}
 
-	if(msg != NULL) {
+	if(likely(msg != NULL)) {
 		goto out;
 	}
 
@@ -147,7 +147,7 @@ msg_t *get_msg_from_slab(void) {
 void msg_release(msg_t *msg) {
 	unsigned int thr;
 
-	if(sizeof(msg_t) + msg->size <= SLAB_MSG_SIZE) {
+	if(likely(sizeof(msg_t) + msg->size <= SLAB_MSG_SIZE)) {
 		thr = msg->alloc_tid;
 		if(local_tid == thr) {
 			slab_free(&msg_slab[thr], msg);
@@ -183,23 +183,23 @@ void ParallelScheduleNewEvent(unsigned int gid_receiver, simtime_t timestamp, un
 	set_gid(receiver, gid_receiver);
 
 	// In Silent execution, we do not send again already sent messages
-	if(LPS(current_lp)->state == LP_STATE_SILENT_EXEC) {
+	if(unlikely(LPS(current_lp)->state == LP_STATE_SILENT_EXEC)) {
 		return;
 	}
 
 	// Check whether the destination LP is out of range
-	if(receiver.id > n_prc_tot - 1) { // It's unsigned, so no need to check whether it's < 0
+	if(unlikely(receiver.id > n_prc_tot - 1)) { // It's unsigned, so no need to check whether it's < 0
 		rootsim_error(false, "Warning: the destination LP %u is out of range. The event has been ignored\n", receiver.id);
 		goto out;
 	}
 
 	// Check if the associated timestamp is negative
-	if(timestamp < lvt(current_lp)) {
+	if(unlikely(timestamp < lvt(current_lp))) {
 		rootsim_error(true, "LP %u is trying to generate an event (type %d) to %u in the past! (Current LVT = %f, generated event's timestamp = %f) Aborting...\n", current_lp, event_type, receiver.id, lvt(current_lp), timestamp);
 	}
 
 	// Check if the event type is mapped to an internal control message
-	if(event_type >= MIN_VALUE_CONTROL) {
+	if(unlikely(event_type >= MIN_VALUE_CONTROL)) {
 		rootsim_error(true, "LP %u is generating an event with type %d which is a reserved type. Switch event type to a value less than %d. Aborting...\n", current_lp, event_type, MIN_VALUE_CONTROL);
 	}
 
@@ -208,7 +208,7 @@ void ParallelScheduleNewEvent(unsigned int gid_receiver, simtime_t timestamp, un
 	pack_msg(&event, LidToGid(current_lp), receiver, event_type, timestamp, lvt(current_lp), event_size, event_content);
 	event->mark = generate_mark(current_lp);
 
-	if(event->type == RENDEZVOUS_START) {
+	if(unlikely(event->type == RENDEZVOUS_START)) {
 		event->rendezvous_mark = current_evt->rendezvous_mark;
 		printf("rendezvous_start mark=%llu\n",event->rendezvous_mark);
 		fflush(stdout);
@@ -236,9 +236,7 @@ void send_antimessages(LID_t lid, simtime_t after_simtime) {
 	msg_hdr_t *anti_msg, *anti_msg_prev;
 	msg_t *msg;
 
-//	printf("send_antimessages lid: %d after: %f\n", lid, after_simtime);
-
-	if (list_empty(LPS(lid)->queue_out))
+	if (unlikely(list_empty(LPS(lid)->queue_out)))
 		return;
 
 	// Scan the output queue backwards, sending all required antimessages
@@ -316,7 +314,7 @@ void Send(msg_t *msg) {
 void insert_outgoing_msg(msg_t *msg) {
 
 	// if the model is generating many events at the same time, reallocate the outgoing buffer
-	if(LPS(current_lp)->outgoing_buffer.size == LPS(current_lp)->outgoing_buffer.max_size){
+	if(unlikely(LPS(current_lp)->outgoing_buffer.size == LPS(current_lp)->outgoing_buffer.max_size)) {
 		LPS(current_lp)->outgoing_buffer.max_size *= 2;
 		LPS(current_lp)->outgoing_buffer.outgoing_msgs = rsrealloc(LPS(current_lp)->outgoing_buffer.outgoing_msgs, sizeof(msg_t *) * LPS(current_lp)->outgoing_buffer.max_size);
 	}
@@ -357,7 +355,7 @@ void send_outgoing_msgs(LID_t lid) {
 void pack_msg(msg_t **msg, GID_t sender, GID_t receiver, int type, simtime_t timestamp, simtime_t send_time, size_t size, void *payload) {
 
 	// Check if we can rely on a slab to initialize the message
-	if(sizeof(msg_t) + size <= SLAB_MSG_SIZE) {
+	if(likely(sizeof(msg_t) + size <= SLAB_MSG_SIZE)) {
 		*msg = get_msg_from_slab();
 	} else {
 		*msg = rsalloc(sizeof(msg_t) + size);

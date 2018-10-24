@@ -49,7 +49,7 @@ static double do_random(void) {
 	uint32_t *seed1;
 	uint32_t *seed2;
 
-	if(rootsim_config.serial) {
+	if(unlikely(rootsim_config.serial)) {
 		seed1 = (uint32_t *)&master_seed;
 		seed2 = (uint32_t *)((char *)&master_seed + (sizeof(uint32_t)));
 	} else {
@@ -126,7 +126,7 @@ double Expent(double mean) {
 	double ret;
 	switch_to_platform_mode();
 
-	if(mean < 0) {
+	if(unlikely(mean < 0)) {
 		rootsim_error(true, "Expent() has been passed a negative mean value\n");
 	}
 
@@ -190,7 +190,7 @@ double Gamma(int ia) {
 	int j;
 	double am, e, s, v1, v2, x, y;
 
-	if(ia < 1) {
+	if(unlikely(ia < 1)) {
 		rootsim_error(false, "Gamma distribution must have a ia value >= 1. Defaulting to 1...");
 		ia = 1;
 	}

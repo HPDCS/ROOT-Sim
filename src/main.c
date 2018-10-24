@@ -31,10 +31,6 @@
 #include <math.h>
 #include <string.h>
 
-#ifdef HAVE_NUMA
-#include <numa.h>
-#endif
-
 #include <core/core.h>
 #include <arch/thread.h>
 #include <statistics/statistics.h>
@@ -178,14 +174,6 @@ static void *main_simulation_loop(void *arg) {
 */
 int main(int argc, char **argv) {
 
-	// Runtime NUMA check
-	#ifdef HAVE_NUMA
-	if(numa_available() < 0) {
-		fprintf(stderr, "Your system does not support NUMA API\n");
-		exit(EXIT_FAILURE);
-	}
-	#endif
-		
 	SystemInit(argc, argv);
 
 

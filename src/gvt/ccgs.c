@@ -69,7 +69,7 @@ void ccgs_reduce_termination(void) {
 	/* If terminated locally check for global termination
 	 * All other kernel need to terminated
 	 */
-	if(!ccgs_completed_simulation && termination){
+	if(unlikely(!ccgs_completed_simulation && termination)) {
 		broadcast_termination();
 	}
 	#endif

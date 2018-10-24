@@ -87,7 +87,7 @@ void *log_full(LID_t the_lid) {
 
 	ckpt = rsalloc(size);
 
-	if(ckpt == NULL) {
+	if(unlikely(ckpt == NULL)) {
 		rootsim_error(true, "(%d) Unable to acquire memory for checkpointing the current state (memory exhausted?)");
 	}
 
@@ -112,12 +112,13 @@ void *log_full(LID_t the_lid) {
 			bitmap_blocks = 1;
 
 		// Check if there is at least one chunk used in the area
-		if(m_area->alloc_chunks == 0){
+		if(unlikely(m_area->alloc_chunks == 0)) {
 
 			m_area->dirty_chunks = 0;
 			m_area->state_changed = 0;
 
-			if (m_area->use_bitmap != NULL) {
+			if (likely(m_area->use_bitmap != NULL)) {
+				// TODO: switch to a memset
 				for(j = 0; j < bitmap_blocks; j++)
 					m_area->dirty_bitmap[j] = 0;
 			}
@@ -138,7 +139,7 @@ void *log_full(LID_t the_lid) {
 
 		// Check whether the area should be completely copied (not on a per-chunk basis)
 		// using a threshold-based heuristic
-		if(CHECK_LOG_MODE_BIT(m_area)){
+		if(CHECK_LOG_MODE_BIT(m_area)) {
 
 			// If the malloc_area is almost (over a threshold) full, copy it entirely
 			memcpy(ptr, m_area->area, m_area->num_chunks * chunk_size);
@@ -177,9 +178,8 @@ void *log_full(LID_t the_lid) {
 	} // For each m_area in recoverable_state
 
 	// Sanity check
-	if ((char *)ckpt + size != ptr){
+	if (unlikely((char *)ckpt + size != ptr))
 		rootsim_error(true, "Actual (full) ckpt size is wrong by %d bytes!\nlid = %d ckpt = %p size = %#x (%d), ptr = %p, ckpt + size = %p\n", (char *)ckpt + size - (char *)ptr, lid, ckpt, size, size, ptr, (char *)ckpt + size);
-	}
 
 	recoverable_state[lid]->dirty_areas = 0;
 	recoverable_state[lid]->dirty_bitmap_size = 0;
@@ -281,16 +281,19 @@ void restore_full(LID_t the_lid, void *ckpt) {
 
 			m_area->dirty_chunks = 0;
 			m_area->state_changed = 0;
-			if (m_area->use_bitmap != NULL){
+			if (likely(m_area->use_bitmap != NULL)) {
+				// TODO: switch to a memset
 				for(j = 0; j < bitmap_blocks; j++) {
-				  m_area->dirty_bitmap[j] = 0;
+					m_area->dirty_bitmap[j] = 0;
 				}
 			}
 			m_area->alloc_chunks = 0;
 			m_area->next_chunk = 0;
 			RESET_LOG_MODE_BIT(m_area);
 			RESET_AREA_LOCK_BIT(m_area);
-			if (m_area->use_bitmap != NULL) {
+			
+			if (likely(m_area->use_bitmap != NULL)) {
+				// TODO: switch to memset
 				for(j = 0; j < bitmap_blocks; j++)
 					m_area->use_bitmap[j] = 0;
 				for(j = 0; j < bitmap_blocks; j++)
@@ -323,7 +326,7 @@ void restore_full(LID_t the_lid, void *ckpt) {
 		RESET_BIT_AT(chunk_size, 1);
 
 		// Check how the area has been logged
-		if(CHECK_LOG_MODE_BIT(m_area)){
+		if(CHECK_LOG_MODE_BIT(m_area)) {
 			// The area has been entirely logged
 			memcpy(m_area->area, ptr, m_area->num_chunks * chunk_size);
 			ptr = (void*)((char*)ptr + m_area->num_chunks * chunk_size);
@@ -332,7 +335,7 @@ void restore_full(LID_t the_lid, void *ckpt) {
 			// The area was partially logged.
 			// Logged chunks are the ones associated with a used bit whose value is 1
 			// Their number is in the alloc_chunks counter
-			for(j = 0; j < bitmap_blocks; j++){
+			for(j = 0; j < bitmap_blocks; j++) {
 
 				bitmap = m_area->use_bitmap[j];
 
@@ -343,9 +346,9 @@ void restore_full(LID_t the_lid, void *ckpt) {
 
 				} else {
 					// Scan the bitmap on a per-bit basis
-					for(k = 0; k < NUM_CHUNKS_PER_BLOCK; k++){
+					for(k = 0; k < NUM_CHUNKS_PER_BLOCK; k++) {
 
-						if(CHECK_BIT_AT(bitmap, k)){
+						if(CHECK_BIT_AT(bitmap, k)) {
 
 							idx = j * NUM_CHUNKS_PER_BLOCK + k;
 							memcpy((void*)((char*)m_area->area + (idx * chunk_size)), ptr, chunk_size);
@@ -361,9 +364,9 @@ void restore_full(LID_t the_lid, void *ckpt) {
 
 
 	// Check whether there are more allocated areas which are not present in the log
-	if(original_num_areas > recoverable_state[lid]->num_areas){
+	if(original_num_areas > recoverable_state[lid]->num_areas) {
 
-		for(i = recoverable_state[lid]->num_areas; i < original_num_areas; i++){
+		for(i = recoverable_state[lid]->num_areas; i < original_num_areas; i++) {
 
 			m_area = &recoverable_state[lid]->areas[i];
 			m_area->alloc_chunks = 0;
@@ -376,11 +379,12 @@ void restore_full(LID_t the_lid, void *ckpt) {
 			RESET_LOG_MODE_BIT(m_area);
 			RESET_AREA_LOCK_BIT(m_area);
 
-			if (m_area->use_bitmap != NULL) {
+			if (likely(m_area->use_bitmap != NULL)) {
 				bitmap_blocks = m_area->num_chunks / NUM_CHUNKS_PER_BLOCK;
 				if(bitmap_blocks < 1)
 					bitmap_blocks = 1;
 
+				// TODO: switch to memset
 				for(j = 0; j < bitmap_blocks; j++)
 					m_area->use_bitmap[j] = 0;
 				for(j = 0; j < bitmap_blocks; j++)
@@ -432,7 +436,7 @@ void log_restore(LID_t lid, state_t *state_queue_node) {
 *
 */
 void log_delete(void *ckpt){
-	if(ckpt != NULL) {
+	if(likely(ckpt != NULL)) {
 		rsfree(ckpt);
 	}
 }

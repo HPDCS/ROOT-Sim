@@ -29,7 +29,7 @@ before_script:
 
 script:
   - ./autogen.sh
-  - ./configure --disable-numa --enable-debug --enable-mpi --enable-coverage --prefix=$HOME
+  - ./configure --enable-debug --enable-mpi --enable-coverage --prefix=$HOME
   - make
   - make install
   - export PATH=$PATH:$HOME

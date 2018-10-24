@@ -38,7 +38,7 @@ LID_t smallest_timestamp_first(void) {
 			return 0; // continue to the next element
 		}
 	
-		//If the LP is in READY_FOR_SYNCH has to handle the same messagge of ECS
+		// If the LP is in READY_FOR_SYNCH it has to handle the same ECS message
 		if(lp->state == LP_STATE_READY_FOR_SYNCH) {
 			// The LP handles the suspended event as the next event
 			evt_time = lvt(lid);

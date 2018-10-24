@@ -36,7 +36,6 @@
 #include <statistics/statistics.h>
 #include <gvt/gvt.h>
 
-#include <mm/numa.h>
 #include <arch/thread.h>
 
 
@@ -231,11 +230,6 @@ static void install_binding(void) {
 			LPS_bound_set(n_prc_per_thread++, LPS(lid));
 
 			if(local_tid != LPS(lid)->worker_thread) {
-
-				#ifdef HAVE_NUMA
-				numa_move_request(i, get_numa_node(running_core()));
-				#endif
-
 				LPS(lid)->worker_thread = local_tid;
 			}
 		}
@@ -257,7 +251,7 @@ static void install_binding(void) {
 */
 void rebind_LPs(void) {
 
-	if(first_lp_binding) {
+	if(unlikely(first_lp_binding)) {
 		first_lp_binding = false;
 
 		initialize_binding_blocks();
@@ -279,7 +273,7 @@ void rebind_LPs(void) {
 
 #ifdef HAVE_LP_REBINDING
 	if(master_thread()) {
-		if(timer_value_seconds(rebinding_timer) >= REBIND_INTERVAL) {
+		if(unlikely(timer_value_seconds(rebinding_timer) >= REBIND_INTERVAL)) {
 			timer_restart(rebinding_timer);
 			binding_phase++;
 		}
