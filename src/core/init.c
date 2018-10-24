@@ -88,101 +88,59 @@ enum _opt_codes{
 #endif
 };
 
-// TODO!!!!!
-const char *argp_program_version = "ROOT-Sim 2.0";
-// TODO!!!!!
-const char *argp_program_bug_address = "<pellegrini@diag.uniroma1.it>";
+const char *argp_program_version 		= PACKAGE_STRING;
+const char *argp_program_bug_address 	= PACKAGE_BUGREPORT;
 // TODO!!!!!
 static char doc[] = "todo";
 // TODO!!!!!
 static char args_doc[] = "todo";
 
 static const struct argp_option argp_options[] = {
-	{"np",					OPT_NP, 					"VALUE", 		0,
-			"Number of total cores being used by the simulation", 0},
+	{"np", 			OPT_NP,		"VALUE", 	0, "Number of total cores being used by the simulation", 0},
+	{"nprc", 		OPT_NPRC, 	"VALUE", 	0, "Total number of Logical Processes being lunched at simulation startup", 0},
+	{"output-dir",	OPT_OUTPUT_DIR, "PATH", 0, "Path to a folder where execution statistics are stored. If not present, it is created", 0},
+	{"scheduler",	OPT_SCHEDULER, "TYPE", 	0, "LP Scheduling algorithm. Supported values are: stf", 0},
+	{"npwd",	  	OPT_NPWD,	0,			0, "Non Piece-Wise-Deterministic simulation model. See manpage for accurate description", 0},
+	{"p",			OPT_P,		"VALUE",	0, "Checkpointing interval", 0},
+	{"full",		OPT_FULL,	0,			0, "Take only full logs", 0},
+	{"inc",			OPT_INC,	0,			0, "Take only incremental logs (still to be released)", 0},
+	{"A",		  	OPT_A,		0,			0, "Autonomic subsystem: set checkpointing interval and log mode automatically at runtime (still to be released)", 0},
+	{"gvt",			OPT_GVT,	"VALUE",	0, "Time between two GVT reductions (in milliseconds)", 0},
+	{"cktrm-mode", 	OPT_CKTRM_MODE, "TYPE",	0, "Termination Detection mode. Supported values: standard, incremental", 0},
+	{"blocking-gvt", 		OPT_BLOCKING_GVT, 		0,		0, 	"Blocking GVT. All distributed nodes block until a consensus is agreed", 0},
+	{"gvt-snapshot-cycles",	OPT_GVT_SNAPSHOT_CYCLES, "VALUE", 0, "Termination detection is invoked after this number of GVT reductions", 0},
+	{"simulation-time", 	OPT_SIMULATION_TIME, 	"VALUE", 0,	"Halt the simulation when all LPs reach this logical time. 0 means infinite", 0},
+	{"lps-distribution", 	OPT_LPS_DISTRIBUTION, 	"TYPE", 0, 	"LPs distributions over simulation kernels policies. Supported values: block, circular", 0},
+	{"deterministic-seed",	OPT_DETERMINISTIC_SEED, 0, 0, 		"Do not change the initial random seed for LPs. Enforces different deterministic simulation runs", 0},
+	{"verbose",		OPT_VERBOSE, "TYPE",	0, "Verbose execution", 0},
+	{"stats",		OPT_STATS, 	"TYPE",		0, "Level of detail in the output statistics", 0},
+	{"seed",		OPT_SEED,	"VALUE",	0, "Manually specify the initial random seed", 0},
+	{"serial",		OPT_SERIAL,	0,			0, "Run a serial simulation (using Calendar Queues)", 0},
+	{"sequential",	OPT_SERIAL,	0,			OPTION_ALIAS, NULL, 0},
+	{"no-core-binding", 	OPT_NO_CORE_BINDING, 	0,		0, 	"Disable the binding of threads to specific physical processing cores", 0},
 
-	{"nprc",				OPT_NPRC, 					"VALUE",		0,
-			"Total number of Logical Processes being lunched at simulation startup", 0},
-
-	{"output-dir",	 		OPT_OUTPUT_DIR, 			"PATH", 		0,
-			"Path to a folder where execution statistics are stored. If not present, it is created", 0},
-
-	{"scheduler",			OPT_SCHEDULER, 				"TYPE", 	0,
-			"LP Scheduling algorithm. Supported values are: stf", 0},
-
-	{"npwd",	  			OPT_NPWD, 					0,				0,
-			"Non Piece-Wise-Deterministic simulation model. See manpage for accurate description", 0},
-
-	{"p",					OPT_P, 						"VALUE", 		0,
-			"Checkpointing interval", 0},
-
-	{"full",				OPT_FULL, 					0,				0,
-			"Take only full logs", 0},
-
-	{"inc",					OPT_INC, 					0,				0,
-			"Take only incremental logs (still to be released)", 0},
-
-	{"A",		  			OPT_A, 						0,				0,
-			"Autonomic subsystem: set checkpointing interval and log mode automatically at runtime (still to be released)", 0},
-
-	{"gvt",					OPT_GVT, 					"VALUE",		0,
-			"Time between two GVT reductions (in milliseconds)", 0},
-
-	{"cktrm_mode",			OPT_CKTRM_MODE,				"TYPE",	0,
-			"Termination Detection mode. Supported values: standard, incremental", 0},
-
-	{"blocking_gvt",		OPT_BLOCKING_GVT, 			0,				0,
-			"Blocking GVT. All distributed nodes block until a consensus is agreed", 0},
-
-	{"gvt_snapshot_cycles",	OPT_GVT_SNAPSHOT_CYCLES,	"VALUE",	0,
-			"Termination detection is invoked after this number of GVT reductions", 0},
-
-	{"simulation_time", 	OPT_SIMULATION_TIME,		"VALUE",	0,
-			"Halt the simulation when all LPs reach this logical time. 0 means infinite", 0},
-
-	{"lps_distribution",	OPT_LPS_DISTRIBUTION,		"TYPE",	0,
-			"LPs distributions over simulation kernels policies. Supported values: block, circular", 0},
-
-	{"deterministic_seed",	OPT_DETERMINISTIC_SEED,		0,				0,
-			"Do not change the initial random seed for LPs. Enforces different deterministic simulation runs", 0},
-
-	{"verbose",				OPT_VERBOSE, 				"TYPE",		0,
-			"Verbose execution", 0},
-
-	{"stats",				OPT_STATS, 					"TYPE",	0,
-			"Level of detail in the output statistics", 0},
-
-	{"seed",				OPT_SEED, 					"VALUE",		0,
-			"Manually specify the initial random seed", 0},
-
-	{"serial",				OPT_SERIAL, 				0,				0,
-			"Run a serial simulation (using Calendar Queues)", 0},
-	{"sequential",			OPT_SERIAL, 				0,				OPTION_ALIAS, NULL, 0},
-
-	{"no-core-binding", 	OPT_NO_CORE_BINDING, 		0,				0,
-			"Disable the binding of threads to specific physical processing cores", 0},
-
-#ifdef HAVE_PREEMPTION
-	{"no-preemption",		OPT_PREEMPTION, 			0,				0,
-			"Disable Preemptive Time Warp", 0},
+	#ifdef HAVE_PREEMPTION
+	{"no-preemption", OPT_PREEMPTION, 0,	0, "Disable Preemptive Time Warp", 0},
 #endif
 
 #ifdef HAVE_PARALLEL_ALLOCATOR
-	{"no-allocator",		OPT_ALLOCATOR,				0,				0,
-			"Disable parallel allocator", 0},
+	{"no-allocator", OPT_ALLOCATOR, 0,		0, "Disable parallel allocator", 0},
 #endif
 
 	{0}
 };
 
-#define complain_and_exit() rootsim_error(true, "invalid value \"%s\" in --%s option", arg, argp_options[key].arg)
+#define malformed_option_failure() rootsim_error(true, "invalid value \"%s\" in --%s option", arg, argp_options[key].arg)
 
+#define conflicting_option_failure(msg) argp_failure(state, EXIT_FAILURE, EINVAL, "some options are conflicting: " msg "\nAborting");
+
+// the compound expression equivalent to __value >= low is needed in order to suppress a warning when low == 0
 #define parse_ullong_limits(low, high) ({\
 					unsigned long long int __value;\
 					char *__endptr;\
 					__value = strtoull(arg, &__endptr, 10);\
-					if(!(*arg != '\0' && *__endptr == '\0' && __value >= low && __value <= high)) {\
-						complain_and_exit();\
+					if(!(*arg != '\0' && *__endptr == '\0' && (__value > low || __value == low) && __value <= high)) {\
+						malformed_option_failure();\
 					}\
 					__value;\
 				     })
@@ -190,7 +148,10 @@ static const struct argp_option argp_options[] = {
 static error_t parse_opt (int key, char *arg, struct argp_state *state){
 
 	switch (key) {
-
+		// TODO since we check for some conflicting options we may as well
+		// restrict the user from entering twice the same option.
+		// For example, right now, executing ./model --nprc 6--np 3 --np 4 leads to a run
+		// with option np set to the latest value inserted (in this case 4) instead of throwing an error.
 		case OPT_NP:
 			n_cores = parse_ullong_limits(1, UINT_MAX);
 			break;
@@ -200,60 +161,51 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state){
 			break;
 
 		case OPT_OUTPUT_DIR:
-			// TODO: is this copy really needed?
-			rsfree(rootsim_config.output_dir);
-			rootsim_config.output_dir = rsalloc(strlen(arg) + 1);
-			strcpy(rootsim_config.output_dir, arg);
+			rootsim_config.output_dir = arg;
 			break;
 
 		case OPT_SCHEDULER:
 			if(strcmp(arg, "stf") == 0) {
 				rootsim_config.scheduler = SMALLEST_TIMESTAMP_FIRST;
 			} else {
-				complain_and_exit();
+				malformed_option_failure();
 			}
 			break;
 
 		case OPT_NPWD:
-			//TODO: I think the policy for argument overriding needs to be consistent,
-			//if for other options earlier settings get overridden by later ones, this should do the same instead of ignoring it
 			if (rootsim_config.checkpointing == INVALID_STATE_SAVING) {
 				rootsim_config.checkpointing = COPY_STATE_SAVING;
 			} else {
-				argp_failure(state, 0, 0, "some options are conflicting: I'm requested to run non piece-wise deterministically,"
-						" but a checkpointing interval is set already. Skipping the -npwd option.");
+				conflicting_option_failure("I'm requested to run non piece-wise deterministically, but a checkpointing interval is set already.");
 			}
 			break;
 
 		case OPT_P:
-			//TODO: I think the policy for argument overriding needs to be consistent,
-			//if for other options earlier settings get overridden by later ones, this should do the same instead of ignoring it
 			if(rootsim_config.checkpointing == COPY_STATE_SAVING) {
-				argp_failure(state, 0, 0, "some options are conflicting: Copy State Saving is selected, but I'm requested to set a checkpointing interval. Skipping the -p option.");
+				conflicting_option_failure("Copy State Saving is selected, but I'm requested to set a checkpointing interval.");
 			} else {
 				rootsim_config.checkpointing = PERIODIC_STATE_SAVING;
 				rootsim_config.ckpt_period = parse_ullong_limits(1, 40);
 				// This is a micro optimization that makes the LogState function to avoid checking the checkpointing interval and keeping track of the logs taken
-				if(rootsim_config.ckpt_period == 1) {
+				if(rootsim_config.ckpt_period == 1)
 					rootsim_config.checkpointing = COPY_STATE_SAVING;
-				}
 			}
 			break;
 
 		case OPT_FULL:
-			//TODO: I think the policy for argument overriding needs to be consistent,
-			//if for other options earlier settings get overridden by later ones, this should do the same instead of ignoring it
 			if (rootsim_config.snapshot == INVALID_SNAPSHOT) {
 				rootsim_config.snapshot = FULL_SNAPSHOT;
+			} else {
+				conflicting_option_failure("a state saving option has already been set.");
 			}
 			break;
 
 		case OPT_INC:
-			argp_failure(state, 0, ENOSYS, "incremental state saving is not supported in stable version yet...");
+			argp_failure(state, EXIT_FAILURE, ENOSYS, "incremental state saving is not supported in stable version yet...\nAborting");
 			break;
 
 		case OPT_A:
-			argp_failure(state, 0, ENOSYS, "autonomic state saving is not supported in stable version yet...");
+			argp_failure(state, EXIT_FAILURE, ENOSYS, "autonomic state saving is not supported in stable version yet...\nAborting");
 			break;
 
 		case OPT_GVT:
@@ -266,7 +218,7 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state){
 			} else if(strcmp(arg, "incremental") == 0) {
 				rootsim_config.check_termination_mode = INCR_CKTRM;
 			} else {
-				complain_and_exit();
+				malformed_option_failure();
 			}
 			break;
 
@@ -279,10 +231,7 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state){
 			break;
 
 		case OPT_SIMULATION_TIME:
-//needed in order to suppress warning in comparison between unsigned and 0
-#pragma GCC diagnostic ignored "-Wtype-limits"
 			rootsim_config.simulation_time = parse_ullong_limits(0, INT_MAX);
-#pragma GCC diagnostic pop
 			break;
 
 		case OPT_LPS_DISTRIBUTION:
@@ -291,7 +240,7 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state){
 			} else if(strcmp(arg, "circular") == 0) {
 				rootsim_config.lps_distribution = LP_DISTRIBUTION_CIRCULAR;
 			} else {
-				complain_and_exit();
+				malformed_option_failure();
 			}
 			break;
 
@@ -307,7 +256,7 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state){
 			} else if(strcmp(arg, "no") == 0) {
 				rootsim_config.verbose = VERBOSE_NO;
 			} else {
-				complain_and_exit();
+				malformed_option_failure();
 			}
 			break;
 
@@ -321,15 +270,12 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state){
 			} else if(strcmp(arg, "global") == 0) {
 				rootsim_config.stats = STATS_GLOBAL;
 			} else {
-				complain_and_exit();
+				malformed_option_failure();
 			}
 			break;
 
 		case OPT_SEED:
-//needed in order to suppress warning in comparison between unsigned and 0
-#pragma GCC diagnostic ignored "-Wtype-limits"
 			rootsim_config.set_seed = parse_ullong_limits(0, UINT64_MAX);
-#pragma GCC diagnostic pop
 			break;
 
 		case OPT_SERIAL:
@@ -354,7 +300,7 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state){
 
 		case ARGP_KEY_INIT:
 			// Store the predefined values, before reading any overriding one
-			rootsim_config.output_dir = NULL;
+			rootsim_config.output_dir = DEFAULT_OUTPUT_DIR;
 			rootsim_config.gvt_time_period = 1000;
 			rootsim_config.scheduler = SMALLEST_TIMESTAMP_FIRST;
 			rootsim_config.checkpointing = INVALID_STATE_SAVING;
@@ -404,11 +350,6 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state){
 				rootsim_error(true, "Requested a simulation run with %u LPs and %u worker threads: the mapping is not possible\n", n_prc_tot, n_cores);
 
 			// setting default options
-			if(rootsim_config.output_dir == NULL){
-				rootsim_config.output_dir = rsalloc(strlen(DEFAULT_OUTPUT_DIR) + 1);
-				strcpy(rootsim_config.output_dir, DEFAULT_OUTPUT_DIR);// xxx we duplicate since we do the same during the parsing
-			}
-
 			if (!rootsim_config.serial && rootsim_config.snapshot == INVALID_SNAPSHOT)
 				rootsim_config.snapshot = FULL_SNAPSHOT; // TODO: in the future, default to AUTONOMIC_
 
@@ -431,7 +372,8 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state){
 }
 
 #undef parse_long_limits
-#undef complain_and_exit
+#undef conflicting_option_failure
+#undef malformed_option_failure
 
 static struct argp_child argp_child[2] = {
 		{0, 0, "Model specific options", 1},
@@ -466,6 +408,7 @@ void SystemInit(int argc, char **argv) {
 	ecs_init();
 	#endif
 
+	// this retrieves the model's argp parser if declared by the developer
 	argp_child[0].argp = &model_argp;
 
 	argp_parse (&argp, argc, argv, 0, NULL, NULL);

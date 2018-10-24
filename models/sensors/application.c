@@ -7,15 +7,6 @@
 #include "link_layer.h"
 #include <limits.h>
 
-/*
- * Default values of the parameters of the simulation
- */
-
-unsigned long collected_packets_goal=COLLECTED_DATA_PACKETS_GOAL;
-double max_simulation_time=MAX_TIME;
-double failure_lambda=FAILURE_LAMBDA;
-double failure_threshold=FAILURE_THRESHOLD;
-
 /* GLOBAL VARIABLES (shared among all logical processes) - start */
 
 /*
@@ -26,31 +17,19 @@ double failure_threshold=FAILURE_THRESHOLD;
 node_statistics* node_statistics_list;
 FILE* file; // Pointer to the file object associated to the configuration file
 
-/*
- * ID of the node chosen as root of the collection tree => all the data packets will (hopefully) be collected by this
- * node.
- * If the ID of the node is not specified as parameter of the simulation, the default root is the node with ID=0
- */
-
-unsigned int ctp_root=UINT_MAX;
-
 /* GLOBAL VARIABLES (shared among all logical processes) - end */
 
 /* FORWARD DECLARATIONS */
 
 void read_input_file(const char* path);
-void parse_simulation_parameters(void* event_content);
 void start_routing_engine(node_state* state);
 bool is_failed(simtime_t now);
 void new_pending_transmission(node_state* state, double gain, unsigned char type,void* frame,double duration);
-void transmission_finished(node_state* state,pending_transmission* finished_transmission);
 void print_statistics(unsigned int root);
 
 extern gain_entry** gains_list;
 extern noise_entry* noise_list;
-extern double update_route_timer;
-extern double send_packet_timer;
-extern double create_packet_timer;
+
 /*
  * Application-level callback: this is the interface between the simulator and the model being simulated
  */
@@ -163,7 +142,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, void *event_co
                          * Initialize the state structure
                          */
 
-                        bzero(state, sizeof(node_state));
+                        memset(state, 0, sizeof(node_state));
 
                         /*
                          * Set the RUNNING flag in the state object
@@ -172,86 +151,10 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, void *event_co
                         state->state|=RUNNING;
 
                         /*
-                         * Get the ID of the root node; if the user does not provide this parameter, the default root
-                         * is node 0.
-                         * The node chosen as root node sets the corresponding global variable to its own ID
-                         */
-
-                        if(IsParameterPresent(event_content, "root"))
-                        {
-
-                                /*
-                                 * The ID of the node
-                                 */
-
-                                unsigned int root=(unsigned int)GetParameterInt(event_content,"root");
-
-                                /*
-                                 * The user indicated the ID of the root node => check if it's valid and, if so, set
-                                 * the corresponding global value
-                                 */
-
-                                if(root<n_prc_tot) {
-                                        if(me==root)
-                                                ctp_root = root;
-                                }
-                                else{
-
-                                        /*
-                                         * Abort because of invalid "root" parameter
-                                         */
-
-                                        printf("[FATAL ERROR] The given root ID is not valid: it has to be less that"
-                                                       "the number of LPs\n");
-                                        free((state));
-                                        exit(EXIT_FAILURE);
-                                }
-                        }
-                        else{
-
-                                /*
-                                 * The user did not choose any node as root => the node with ID 0 declares itself to
-                                 * be the root
-                                 */
-
-                                if(!me)
-                                        ctp_root=0;
-                        }
-
-                        /*
                          * All logical processes (except root node) stop here, waiting for the signal to start the node
                          */
 
                         if(me==ctp_root){
-
-                                /* READ INPUT FILE (ONLY THE ROOT NODE) - start */
-
-                                /*
-                                 * Parse the input file containing all the links of the network, including their gains,
-                                 * and the noise affecting all the nodes: if the path to the file is not given, return
-                                 * with error
-                                 */
-
-                                if(IsParameterPresent(event_content, "input")) {
-                                        read_input_file(GetParameterString(event_content, "input"));
-                                }
-                                else{
-                                        printf("[FATAL ERROR] The path to a file containing the configuration  of the "
-                                                       "network"
-                                                       " is mandatory => "
-                                                       "specify it after "
-                                                       "the argument \"path\"\n");
-                                        free((state));
-                                        exit(EXIT_FAILURE);
-                                }
-
-                                /* READ INPUT FILE (ONLY THE ROOT NODE) - end */
-
-                                /*
-                                 * Now parse all the other parameters of the simulation
-                                 */
-
-                                parse_simulation_parameters(event_content);
 
                                 /*
                                  * Set the "root" flag in the state object
@@ -269,7 +172,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, void *event_co
                                  * Initialize elements to 0
                                  */
 
-                                bzero(node_statistics_list,sizeof(node_statistics)*n_prc_tot);
+                                memset(node_statistics_list, 0, sizeof(node_statistics)*n_prc_tot);
 
                                 /*
                                  * All the parameters of the configuration have been parsed => tell all the processes
@@ -944,7 +847,7 @@ void parse_noise_entry(const char* tokens[]){
          * ID of the node
          */
 
-        unsigned int node;
+        unsigned int node_id;
 
         /*
          * Noise floor
@@ -962,7 +865,7 @@ void parse_noise_entry(const char* tokens[]){
          * Parse parameters
          */
 
-        sscanf(tokens[0],"%d",&node);
+        sscanf(tokens[0],"%d",&node_id);
         sscanf(tokens[1],"%lf",&floor);
         sscanf(tokens[2],"%lf",&range);
 
@@ -970,7 +873,7 @@ void parse_noise_entry(const char* tokens[]){
          * Store parameters in a new instance of type "noise_entry"
          */
 
-        add_noise_entry(node,floor,range);
+        add_noise_entry(node_id,floor,range);
 }
 
 /*
@@ -1190,30 +1093,6 @@ void read_input_file(const char* path){
 }
 
 /*
- * PARSE SIMULATION PARAMETERS
- *
- * Parse all the simulation parameters other than the "root" of the network and the path of the input file: if these are
- * not specified by the user, their default value is used
- */
-
-void parse_simulation_parameters(void* event_content) {
-
-        parse_physical_layer_parameters(event_content);
-        parse_link_layer_parameters(event_content);
-        parse_link_estimator_parameters(event_content);
-        parse_routing_engine_parameters(event_content);
-        parse_forwarding_engine_parameters(event_content);
-        if(IsParameterPresent(event_content, "failure_lambda"))
-                failure_lambda=GetParameterDouble(event_content,"failure_lambda");
-        if(IsParameterPresent(event_content, "failure_threshold"))
-                failure_threshold=GetParameterDouble(event_content,"failure_threshold");
-        if(IsParameterPresent(event_content, "max_simulation_time"))
-                max_simulation_time = GetParameterDouble(event_content, "max_simulation_time");
-        if(IsParameterPresent(event_content, "collected_packets_goal"))
-                collected_packets_goal=(unsigned long long)GetParameterInt(event_content,"collected_packets_goal");
-}
-
-/*
  * CHECK IF FAILED
  *
  * Nodes can fail, so they are associated with an exponential failure distribution: this tells at every instant of time,
@@ -1338,7 +1217,7 @@ void print_statistics(unsigned int root){
          * Index variable used to iterate through nodes of the simulation
          */
 
-        int i=0;
+        unsigned i=0;
 
         /*
          * Print statistics about the single node

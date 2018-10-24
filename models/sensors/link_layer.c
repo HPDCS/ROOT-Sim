@@ -1,6 +1,7 @@
 #include <math.h>
 #include "link_layer.h"
 #include "physical_layer.h"
+#include "parameters.h"
 
 /*
  * LINK LAYER
@@ -33,62 +34,7 @@
  * The initial value for the backoff time is selected in the range [CSMA_INIT_LOW,CSMA_INIT_HIGH]
  */
 
-/* GLOBAL VARIABLES - start
- *
- * Default values of the parameters for the link layer (check link_layer.h for a description)
- */
-
-unsigned int csma_symbols_per_sec=CSMA_SYMBOLS_PER_SEC;
-unsigned int csma_bits_per_symbol=CSMA_BITS_PER_SYMBOL;
-unsigned int csma_min_free_samples=CSMA_MIN_FREE_SAMPLES;
-unsigned int csma_max_free_samples=CSMA_MAX_FREE_SAMPLES;
-unsigned int csma_high=CSMA_HIGH;
-unsigned int csma_low=CSMA_LOW;
-unsigned int csma_init_high=CSMA_INIT_HIGH;
-unsigned int csma_init_low=CSMA_INIT_LOW;
-unsigned int csma_rxtx_delay=CSMA_RXTX_DELAY;
-unsigned int csma_exponent_base=CSMA_EXPONENT_BASE;
-unsigned int csma_preamble_length=CSMA_PREAMBLE_LENGTH;
-unsigned int csma_ack_time=CSMA_ACK_TIME;
-double csma_sensitivity=CSMA_SENSITIVITY;
-
-/* GLOBAL VARIABLES - end */
-
 extern node_statistics* node_statistics_list;
-
-/*
- * PARSE SIMULATION PARAMETERS FOR THE LINK LAYER
- */
-
-void parse_link_layer_parameters(void* event_content){
-
-        if(IsParameterPresent(event_content, "csma_symbols_per_sec"))
-                csma_symbols_per_sec=(unsigned int)GetParameterInt(event_content,"csma_symbols_per_sec");
-        if(IsParameterPresent(event_content, "csma_bits_per_symbol"))
-                csma_bits_per_symbol=(unsigned int)GetParameterInt(event_content,"csma_bits_per_symbol");
-        if(IsParameterPresent(event_content, "csma_min_free_samples"))
-                csma_min_free_samples=(unsigned int)GetParameterInt(event_content,"csma_min_free_samples");
-        if(IsParameterPresent(event_content, "csma_max_free_samples"))
-                csma_max_free_samples=(unsigned int)GetParameterInt(event_content,"csma_max_free_samples");
-        if(IsParameterPresent(event_content, "csma_high"))
-                csma_high=(unsigned int)GetParameterInt(event_content,"csma_high");
-        if(IsParameterPresent(event_content, "csma_low"))
-                csma_low=(unsigned int)GetParameterInt(event_content,"csma_low");
-        if(IsParameterPresent(event_content, "csma_init_high"))
-                csma_init_high=(unsigned int)GetParameterInt(event_content,"csma_init_high");
-        if(IsParameterPresent(event_content, "csma_init_low"))
-                csma_init_low=(unsigned int)GetParameterInt(event_content,"csma_init_low");
-        if(IsParameterPresent(event_content, "csma_rxtx_delay"))
-                csma_rxtx_delay=(unsigned int)GetParameterInt(event_content,"csma_rxtx_delay");
-        if(IsParameterPresent(event_content, "csma_exponent_base"))
-                csma_exponent_base=(unsigned int)GetParameterInt(event_content,"csma_exponent_base");
-        if(IsParameterPresent(event_content, "csma_pramble_length"))
-                csma_preamble_length=(unsigned int)GetParameterInt(event_content,"csma_pramble_length");
-        if(IsParameterPresent(event_content, "csma_ack_time"))
-                csma_ack_time=(unsigned int)GetParameterInt(event_content,"csma_ack_time");
-        if(IsParameterPresent(event_content, "csma_sensitivity"))
-                csma_sensitivity = GetParameterDouble(event_content, "csma_sensitivity");
-}
 
 /*
  * INITIALIZE THE LINK LAYER

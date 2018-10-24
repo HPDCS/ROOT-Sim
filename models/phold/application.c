@@ -19,66 +19,42 @@ enum{
 };
 
 const struct argp_option model_options[] = {
-		{"object-total-size", OPT_OTS, "INT", 0, NULL, 0},
+		{"object-total-size", 		OPT_OTS, "INT", 0, NULL, 0},
 		{"time-stamp-distribution", OPT_TSD, "INT", 0, NULL, 0},
-		{"max-size", OPT_MAXS, "INT", 0, NULL, 0},
-		{"min-size", OPT_MINS, "INT", 0, NULL, 0},
-		{"num-buffers",	OPT_NB, "INT", 0, NULL, 0},
-		{"complete-alloc", OPT_CA, "INT", 0, NULL, 0},
-		{"read-correction", OPT_RC, "INT", 0, NULL, 0},
-		{"write-correction", OPT_WC, "FLOAT", 0, NULL, 0},
-		{"write-distribution", OPT_WD, "FLOAT", 0, NULL, 0},
-		{"read-distribution", OPT_RD, "FLOAT", 0, NULL, 0},
-		{"tau", OPT_TAU, "FLOAT", 0, NULL, 0},
+		{"max-size", 				OPT_MAXS, "INT", 0, NULL, 0},
+		{"min-size", 				OPT_MINS, "INT", 0, NULL, 0},
+		{"num-buffers",				OPT_NB, "INT", 0, NULL, 0},
+		{"complete-alloc", 			OPT_CA, "INT", 0, NULL, 0},
+		{"read-correction", 		OPT_RC, "INT", 0, NULL, 0},
+		{"write-correction", 		OPT_WC, "DOUBLE", 0, NULL, 0},
+		{"write-distribution", 		OPT_WD, "DOUBLE", 0, NULL, 0},
+		{"read-distribution", 		OPT_RD, "DOUBLE", 0, NULL, 0},
+		{"tau", 					OPT_TAU, "DOUBLE", 0, NULL, 0},
 		{0}
 };
 
+#define HANDLE_ARGP_CASE(label, fmt, var)	\
+	case label: \
+		if(sscanf(arg, fmt, &var) != 1){ \
+			return ARGP_ERR_UNKNOWN; \
+		} \
+	break
+
 static error_t model_parse(int key, char *arg, struct argp_state *state) {
 	switch (key) {
-		case OPT_OTS:
-			if(!arg || sscanf(arg, "%d", &object_total_size) != 1)
-				return ARGP_ERR_UNKNOWN;
-			break;
-		case OPT_TSD:
-			if(!arg || sscanf(arg, "%d", &timestamp_distribution) != 1)
-				return ARGP_ERR_UNKNOWN;
-			break;
-		case OPT_MAXS:
-			if(!arg || sscanf(arg, "%d", &max_size) != 1)
-				return ARGP_ERR_UNKNOWN;
-			break;
-		case OPT_MINS:
-			if(!arg || sscanf(arg, "%d", &min_size) != 1)
-				return ARGP_ERR_UNKNOWN;
-			break;
-		case OPT_NB:
-			if(!arg || sscanf(arg, "%d", &num_buffers) != 1)
-				return ARGP_ERR_UNKNOWN;
-			break;
-		case OPT_CA:
-			if(!arg || sscanf(arg, "%d", &complete_alloc) != 1)
-				return ARGP_ERR_UNKNOWN;
-			break;
-		case OPT_RC:
-			if(!arg || sscanf(arg, "%d", &read_correction) != 1)
-				return ARGP_ERR_UNKNOWN;
-			break;
-		case OPT_WC:
-			if(!arg || sscanf(arg, "%d", &write_correction) != 1)
-				return ARGP_ERR_UNKNOWN;
-			break;
-		case OPT_WD:
-			if(!arg || sscanf(arg, "%lf", &write_distribution) != 1)
-				return ARGP_ERR_UNKNOWN;
-			break;
-		case OPT_RD:
-			if(!arg || sscanf(arg, "%lf", &read_distribution) != 1)
-				return ARGP_ERR_UNKNOWN;
-			break;
-		case OPT_TAU:
-			if(!arg || sscanf(arg, "%lf", &tau) != 1)
-				return ARGP_ERR_UNKNOWN;
-			break;
+
+		HANDLE_ARGP_CASE(OPT_OTS, 	"%d", 	object_total_size);
+		HANDLE_ARGP_CASE(OPT_TSD, 	"%d", 	timestamp_distribution);
+		HANDLE_ARGP_CASE(OPT_MAXS, 	"%d", 	max_size);
+		HANDLE_ARGP_CASE(OPT_MINS, 	"%d", 	min_size);
+		HANDLE_ARGP_CASE(OPT_NB, 	"%d", 	num_buffers);
+		HANDLE_ARGP_CASE(OPT_CA, 	"%d", 	complete_alloc);
+		HANDLE_ARGP_CASE(OPT_RC, 	"%d", 	read_correction);
+		HANDLE_ARGP_CASE(OPT_WC, 	"%lf", 	write_correction);
+		HANDLE_ARGP_CASE(OPT_WD, 	"%lf", 	write_distribution);
+		HANDLE_ARGP_CASE(OPT_RD, 	"%lf", 	read_distribution);
+		HANDLE_ARGP_CASE(OPT_TAU, 	"%lf", 	tau);
+
 		case ARGP_KEY_SUCCESS:
 			printf("\t* ROOT-Sim's PHOLD Benchmark - Current Configuration *\n");
 			printf("object_total_size: %d\n"
@@ -99,6 +75,8 @@ static error_t model_parse(int key, char *arg, struct argp_state *state) {
 	}
 	return 0;
 }
+
+#undef HANDLE_ARGP_CASE
 
 struct argp model_argp = {model_options, model_parse, NULL, NULL, NULL, NULL, NULL};
 

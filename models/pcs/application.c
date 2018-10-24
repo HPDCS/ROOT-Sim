@@ -37,40 +37,32 @@ const struct argp_option model_options[] = {
 		{0}
 };
 
+// this macro abuse looks so elegant though...
+#define HANDLE_CASE(label, fmt, var)	\
+	case label: \
+		if(sscanf(arg, fmt, &var) != 1){ \
+			return ARGP_ERR_UNKNOWN; \
+		} \
+	break
+
 static error_t model_parse (int key, char *arg, struct argp_state *state){
 	switch (key) {
+		HANDLE_CASE(OPT_TA, "%lf", ref_ta);
+		HANDLE_CASE(OPT_TAD, "%lf", ta_duration);
+		HANDLE_CASE(OPT_TAC, "%lf", ta_change);
+		HANDLE_CASE(OPT_CPC, "%u", channels_per_cell);
+		HANDLE_CASE(OPT_CC, "%u", complete_calls);
+
 		case OPT_STAT:
-			if(arg) return ARGP_ERR_UNKNOWN;
 			pcs_statistics = true;
 			break;
-		case OPT_TA:
-			if(!arg || sscanf(arg, "%lf", &ref_ta) != 1)
-				return ARGP_ERR_UNKNOWN;
-			break;
-		case OPT_TAD:
-			if(!arg || sscanf(arg, "%lf", &ta_duration) != 1)
-				return ARGP_ERR_UNKNOWN;
-			break;
-		case OPT_TAC:
-			if(!arg || sscanf(arg, "%lf", &ta_change) != 1)
-				return ARGP_ERR_UNKNOWN;
-			break;
-		case OPT_CPC:
-			if(!arg || sscanf(arg, "%u", &channels_per_cell) != 1)
-				return ARGP_ERR_UNKNOWN;
-			break;
-		case OPT_CC:
-			if(!arg || sscanf(arg, "%u", &complete_calls) != 1)
-				return ARGP_ERR_UNKNOWN;
-			break;
 		case OPT_FR:
-			if(arg) return ARGP_ERR_UNKNOWN;
 			fading_check = true;
 			break;;
 		case OPT_VTA:
-			if(arg) return ARGP_ERR_UNKNOWN;
 			variable_ta = true;
 			break;
+
 		case ARGP_KEY_SUCCESS:
 			printf(
 					"CURRENT CONFIGURATION:\ncomplete calls: %d\nTA: %f\nta_duration: %f\nta_change: %f\nchannels_per_cell: %d\nfading_recheck: %d\nvariable_ta: %d\n",
@@ -83,6 +75,8 @@ static error_t model_parse (int key, char *arg, struct argp_state *state){
 	}
 	return 0;
 }
+
+#undef HANDLE_CASE
 
 struct argp model_argp = {model_options, model_parse, NULL, NULL, NULL, NULL, NULL};
 

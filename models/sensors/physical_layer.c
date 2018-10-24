@@ -1,6 +1,7 @@
 #include <math.h>
 #include "physical_layer.h"
 #include "link_layer.h"
+#include "parameters.h"
 
 /*
  * PHYSICAL LAYER MODEL
@@ -20,17 +21,6 @@
  * threshold.
  */
 
-/* GLOBAL VARIABLES - start
- *
- * Default values of the parameters for the physical layer (check physical_layer.h for a description)
- */
-
-double white_noise_mean=WHITE_NOISE_MEAN;
-double channel_free_threshold=CHANNEL_FREE_THRESHOLD;
-
-/* GLOBAL VARIABLES - end */
-
-extern double csma_sensitivity;
 extern node_statistics* node_statistics_list;
 typedef struct _pending_transmission pending_transmission;
 
@@ -57,18 +47,6 @@ gain_entry** gains_list=NULL;
 noise_entry* noise_list=NULL;
 
 extern FILE* file;
-
-/*
- * PARSE SIMULATION PARAMETERS FOR THE PHYSICAL LAYER
- */
-
-void parse_physical_layer_parameters(void* event_content){
-
-        if(IsParameterPresent(event_content, "white_noise_mean"))
-                white_noise_mean=GetParameterDouble(event_content,"white_noise_mean");
-        if(IsParameterPresent(event_content, "channel_free_threshold"))
-                channel_free_threshold=GetParameterDouble(event_content,"channel_free_threshold");
-}
 
 /*
  * INIT RADIO
@@ -125,7 +103,7 @@ pending_transmission* create_pending_transmission(unsigned char type,void* frame
          * Set to zero the allocated buffer
          */
 
-        bzero(new_transmission,sizeof(pending_transmission));
+        memset(new_transmission, 0, sizeof(pending_transmission));
 
         /*
          * Parse the content of the frame
@@ -237,7 +215,7 @@ void add_gain_entry(unsigned int source, unsigned int sink, double gain){
          * Check that the first two parameters correspond to valid node IDs
          */
 
-        if(source<0 || sink <0 || source>=n_prc_tot || sink>=n_prc_tot){
+        if(source>=n_prc_tot || sink>=n_prc_tot){
                 printf("[FATAL ERROR] Node IDs of the link are not valid\n");
                 fclose(file);
                 exit(EXIT_FAILURE);
@@ -317,7 +295,7 @@ void add_gain_entry(unsigned int source, unsigned int sink, double gain){
  * The function aborts the simulation if any of the parameters is not valid
  */
 
-void add_noise_entry(unsigned int node, double noise_floor, double white_noise){
+void add_noise_entry(unsigned int node_id, double noise_floor, double white_noise){
 
         /*
          * Pointer to the new noise_entry
@@ -329,7 +307,7 @@ void add_noise_entry(unsigned int node, double noise_floor, double white_noise){
          * Check that the first parameter corresponds to valid node ID
          */
 
-        if(node<0 || node>=n_prc_tot){
+        if(node_id>=n_prc_tot){
                 printf("[FATAL ERROR] Node IDs of the link are not valid\n");
                 fclose(file);
                 exit(EXIT_FAILURE);
@@ -339,7 +317,7 @@ void add_noise_entry(unsigned int node, double noise_floor, double white_noise){
          * Initialize the entry of node i to the i-the entry of the noise_list array
          */
 
-        entry=&noise_list[node];
+        entry=&noise_list[node_id];
 
         /*
          * Set the value of noise floor in the entry
@@ -847,7 +825,7 @@ void transmission_finished(node_state* state,pending_transmission* finished_tran
  * exactly a number of elements equal to n_prc_tot-1: if this two conditions are not verified, the simulation is aborted
  */
 
-void check_gains_list(){
+void check_gains_list(void){
 
         /*
          * Counter of elements in each list
@@ -923,7 +901,7 @@ void check_gains_list(){
  * if this condition is not verified, the simulation is aborted
  */
 
-void check_noises_list(){
+void check_noises_list(void){
 
         /*
          * Index of the node
