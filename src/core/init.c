@@ -400,7 +400,9 @@ static int parse_cmd_line(int argc, char **argv) {
 				break;
 
 			case OPT_SERIAL:
+				// A sequential simulation doesn't need to obey core binding
 				rootsim_config.serial = true;
+				rootsim_config.core_binding = false;
 				break;
 
 			case OPT_NO_CORE_BINDING:

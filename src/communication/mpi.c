@@ -117,14 +117,15 @@ void receive_remote_msgs(void){
 	int size;
 	msg_t *msg;
 	MPI_Status status;
+	MPI_Message mpi_msg;
 	int pending;
 
 	if(!spin_trylock(&msgs_lock))
 		return;
-	
+
 	while(true){
 		lock_mpi();
-		MPI_Iprobe(MPI_ANY_SOURCE, MSG_EVENT, MPI_COMM_WORLD, &pending, &status);
+		MPI_Improbe(MPI_ANY_SOURCE, MSG_EVENT, MPI_COMM_WORLD, &pending, &mpi_msg, &status);
 		unlock_mpi();
 
 		if(!pending)
@@ -146,7 +147,7 @@ void receive_remote_msgs(void){
 
 		// Receive the message
 		lock_mpi();
-		MPI_Recv(((char*)msg) + MSG_PADDING, size, MPI_BYTE, MPI_ANY_SOURCE, MSG_EVENT, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+		MPI_Mrecv(((char*)msg) + MSG_PADDING, size, MPI_BYTE, &mpi_msg, MPI_STATUS_IGNORE);
 		unlock_mpi();
 
 		validate_msg(msg);

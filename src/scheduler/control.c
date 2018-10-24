@@ -157,7 +157,6 @@ bool receive_control_msg(msg_t *msg) {
 			break;
 
 		case RENDEZVOUS_ACK:
-			printf("Received ACK\n");
 			if(LPS(lid_receiver)->state == LP_STATE_ROLLBACK ||
 					LPS(lid_receiver)->state == LP_STATE_SILENT_EXEC) {
 				break;
