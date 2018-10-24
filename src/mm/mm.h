@@ -52,11 +52,6 @@ struct _buddy {
 #define MAX_MMAP	(131072L * PAGE_SIZE) // This is the maximum amount of memory that a single mmap() call is able to serve. TODO: this should be checked within configure.ac
 #define NUM_MMAP	PER_LP_PREALLOCATED_MEMORY / MAX_MMAP
 
-
-#ifdef HAVE_NUMA
-extern void **mem_areas;
-#endif
-
 // TODO: no need to keep a structure anymore...
 // This is for the segment allocator
 typedef struct _lp_mem_region{

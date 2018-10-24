@@ -143,7 +143,7 @@ void dirty_mem(void *base, int size) {
 
 	malloc_area *m_area = get_area(base);
 
-	if(m_area != NULL){
+	if(m_area != NULL) {
 
 		chk_size = m_area->chunk_size;
 		RESET_BIT_AT(chk_size, 0);
@@ -201,7 +201,7 @@ void dirty_mem(void *base, int size) {
 *
 */
 size_t get_log_size(malloc_state *logged_state){
-	if (logged_state == NULL)
+	if (unlikely(logged_state == NULL))
 		return 0;
 
 	if (is_incremental(logged_state)) {
@@ -235,7 +235,7 @@ void *__wrap_malloc(size_t size) {
 
 	switch_to_platform_mode();
 
-	if(rootsim_config.serial) {
+	if(unlikely(rootsim_config.serial)) {
 		ptr = rsalloc(size);
 		goto out;
 	}
@@ -268,7 +268,7 @@ void *__wrap_malloc(size_t size) {
 void __wrap_free(void *ptr) {
 	switch_to_platform_mode();
 
-	if(rootsim_config.serial) {
+	if(unlikely(rootsim_config.serial)) {
 		rsfree(ptr);
 		goto out;
 	}
@@ -298,17 +298,17 @@ void *__wrap_realloc(void *ptr, size_t size){
 	size_t old_size;
 	malloc_area *m_area;
 
-	if(rootsim_config.serial) {
+	if(unlikely(rootsim_config.serial)) {
 		return rsrealloc(ptr, size);
 	}
 
 	// If ptr is NULL realloc is equivalent to the malloc
-	if (ptr == NULL) {
+	if (unlikely(ptr == NULL)) {
 		return __wrap_malloc(size);
 	}
 
 	// If ptr is not NULL and the size is 0 realloc is equivalent to the free
-	if (size == 0) {
+	if (unlikely(size == 0)) {
 		__wrap_free(ptr);
 		return NULL;
 	}
@@ -321,7 +321,7 @@ void *__wrap_realloc(void *ptr, size_t size){
 
 	new_buffer = __wrap_malloc(size);
 
-	if (new_buffer == NULL)
+	if (unlikely(new_buffer == NULL))
 		return NULL;
 
 	memcpy(new_buffer, ptr, size > old_size ? size : old_size);
@@ -346,15 +346,15 @@ void *__wrap_calloc(size_t nmemb, size_t size){
 
 	void *buffer;
 
-	if(rootsim_config.serial) {
+	if(unlikely(rootsim_config.serial)) {
 		return rscalloc(nmemb, size);
 	}
 
-	if (nmemb == 0 || size == 0)
+	if (unlikely(nmemb == 0 || size == 0))
 		return NULL;
 
 	buffer = __wrap_malloc(nmemb * size);
-	if (buffer == NULL)
+	if (unlikely(buffer == NULL))
 		return NULL;
 
 	bzero(buffer, nmemb * size);
@@ -377,7 +377,7 @@ void clean_buffers_on_gvt(LID_t lid, simtime_t time_barrier){
 	for(i = NUM_AREAS; i < state->num_areas; i++){
 		m_area = &state->areas[i];
 
-		if(m_area->alloc_chunks == 0 && m_area->last_access < time_barrier && !CHECK_AREA_LOCK_BIT(m_area)){
+		if(m_area->alloc_chunks == 0 && m_area->last_access < time_barrier && !CHECK_AREA_LOCK_BIT(m_area)) {
 
 			if(m_area->self_pointer != NULL) {
 

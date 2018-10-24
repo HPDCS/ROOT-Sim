@@ -151,7 +151,7 @@ void ECS(void) __attribute__((__used__));
 void ECS(void) {
 	// ECS cannot happen in silent execution, as we take a log after the completion
 	// of an event which involves one or multiple ecs
-	if(LPS(current_lp)->state == LP_STATE_SILENT_EXEC) {
+	if(unlikely(LPS(current_lp)->state == LP_STATE_SILENT_EXEC)) {
 		rootsim_error(true,"----ERROR---- ECS in Silent Execution LP[%d] Hit:%llu Timestamp:%f\n",
 		current_lp, fault_info.target_gid, current_lvt);
 	}

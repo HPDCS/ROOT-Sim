@@ -117,14 +117,15 @@ void receive_remote_msgs(void){
 	int size;
 	msg_t *msg;
 	MPI_Status status;
+	MPI_Message mpi_msg;
 	int pending;
 
 	if(!spin_trylock(&msgs_lock))
 		return;
-	
+
 	while(true){
 		lock_mpi();
-		MPI_Iprobe(MPI_ANY_SOURCE, MSG_EVENT, MPI_COMM_WORLD, &pending, &status);
+		MPI_Improbe(MPI_ANY_SOURCE, MSG_EVENT, MPI_COMM_WORLD, &pending, &mpi_msg, &status);
 		unlock_mpi();
 
 		if(!pending)
@@ -132,7 +133,7 @@ void receive_remote_msgs(void){
 
 		MPI_Get_count(&status, MPI_BYTE, &size);
 
-		if(MSG_PADDING + size <= SLAB_MSG_SIZE)
+		if(likely(MSG_PADDING + size <= SLAB_MSG_SIZE))
 			msg = get_msg_from_slab();
 		else{
 			msg = rsalloc(MSG_PADDING + size);
@@ -146,13 +147,13 @@ void receive_remote_msgs(void){
 
 		// Receive the message
 		lock_mpi();
-		MPI_Recv(((char*)msg) + MSG_PADDING, size, MPI_BYTE, MPI_ANY_SOURCE, MSG_EVENT, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+		MPI_Mrecv(((char*)msg) + MSG_PADDING, size, MPI_BYTE, &mpi_msg, MPI_STATUS_IGNORE);
 		unlock_mpi();
 
 		validate_msg(msg);
 		insert_bottom_half(msg);
 	}
-out:
+    out:
 	spin_unlock(&msgs_lock);
 }
 
@@ -176,15 +177,17 @@ bool all_kernels_terminated(void){
  * This function is thread-safe
  */
 void collect_termination(void){
-	if(terminated == 0 || !spin_trylock(&msgs_fini)) return;
-
 	int res;
 	unsigned int tdata;
-	while(pending_msgs(MSG_FINI)){
+	
+	if(terminated == 0 || !spin_trylock(&msgs_fini))
+		return;
+
+	while(pending_msgs(MSG_FINI)) {
 		lock_mpi();
 		res = MPI_Recv(&tdata, 1, MPI_UNSIGNED, MPI_ANY_SOURCE, MSG_FINI, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 		unlock_mpi();
-		if(res != 0){
+		if(unlikely(res != 0)) {
 			rootsim_error(true, "MPI_Recv did not complete correctly");
 			return;
 		}
@@ -210,8 +213,8 @@ void collect_termination(void){
 void broadcast_termination(void){
 	unsigned int i;
 	lock_mpi();
-	for(i = 0; i < n_ker; i++){
-		if(i==kid)
+	for(i = 0; i < n_ker; i++) {
+		if(i == kid)
 			continue;
 		MPI_Isend(&i, 1, MPI_UNSIGNED, i, MSG_FINI, MPI_COMM_WORLD, &termination_reqs[i]);
 	}
@@ -252,7 +255,7 @@ void dist_termination_finalize(void){
  * have already entered this function.
  */
 void syncronize_all(void){
-	if(master_thread()){
+	if(master_thread()) {
 		MPI_Comm comm;
 		MPI_Comm_dup(MPI_COMM_WORLD, &comm);
 		MPI_Barrier(comm);
@@ -287,7 +290,7 @@ void mpi_init(int *argc, char ***argv){
 }
 
 
-void inter_kernel_comm_init(void){
+void inter_kernel_comm_init(void) {
 	spinlock_init(&msgs_lock);
 
 	outgoing_window_init();
@@ -296,18 +299,18 @@ void inter_kernel_comm_init(void){
 }
 
 
-void inter_kernel_comm_finalize(void){
+void inter_kernel_comm_finalize(void) {
 	dist_termination_finalize();
 	//outgoing_window_finalize();
 	gvt_comm_finalize();
 }
 
 
-void mpi_finalize(void){
-	if(master_thread()){
+void mpi_finalize(void) {
+	if(master_thread()) {
 		MPI_Barrier(MPI_COMM_WORLD);
 		MPI_Finalize();
-	}else{
+	} else {
 		rootsim_error(true, "MPI finalize has been invoked by a non master thread: T%u\n", local_tid);
 	}
 }

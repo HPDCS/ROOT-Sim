@@ -62,6 +62,13 @@
 #define VERBOSE_NO	1702
 
 
+
+/// Optimize the branch as likely taken
+#define likely(exp) __builtin_expect(exp, 1)
+/// Optimize the branch as likely not taken
+#define unlikely(exp) __builtin_expect(exp, 0)
+
+
 // XXX Do we still use transient time?
 /// Transient duration (in msec)
 #define STARTUP_TIME	0
@@ -199,7 +206,11 @@ typedef struct _msg_hdr_t {
 	unsigned long long	mark;
 } msg_hdr_t;
 
-
+// This is a structure used to setup an obstacle map in a grid of cells
+typedef struct obstacles_t {
+	size_t size;
+	unsigned int grid[];
+} obstacles_t;
 
 
 /// Barrier for all worker threads

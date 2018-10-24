@@ -13,6 +13,10 @@ m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 AC_ARG_ENABLE([debug],
     AS_HELP_STRING([--enable-debug], [Enable debugging of the platform]))
 
+# Run code coverage?
+AC_ARG_ENABLE([coverage],
+    AS_HELP_STRING([--enable-coverage], [Enable code coverage]))
+
 AM_CONDITIONAL([DEBUG], [test x$enable_debug = xyes])
 
 # Setup compilation flags
@@ -20,10 +24,15 @@ CFLAGS_COMMON="-std=c11 -fno-omit-frame-pointer -ffloat-store -fno-common -fstri
 CFLAGS_WARNINGS="-Wall -Wextra -Wcast-align -Wpointer-arith -Wstrict-overflow=5 -Wstrict-prototypes -Winline -Wundef -Wnested-externs -Wshadow -Wunreachable-code -Wfloat-equal -Wredundant-decls -Wold-style-definition -Wno-switch-enum"
 #FLAGS_WARNINGS="$CFLAGS_WARNINGS -Wconversion"
 
+# Flag to enable debugging the platform
 AS_IF([test x$enable_debug = xyes],
       [CFLAGS="-g3 -O0 $CFLAGS_COMMON $CFLAGS_WARNINGS"],
       [CFLAGS="-O3 $CFLAGS_COMMON"]
       AC_DEFINE([NDEBUG]))
+
+# Flag to enable code coverage
+AS_IF([test x$enable_coverage = xyes],
+      [CFLAGS="$CFLAGS -coverage"])
 
 
 # Extra check flags
@@ -323,7 +332,6 @@ AS_IF([test "x$enable_allocator" != "xno"], [
 # On other architectures all these checks are just skipped
 #------------------------------------------------------------
 ac_preemption=no
-ac_have_numa=no
 ac_have_cross_state=no
 ac_kernel_headers=no
 ac_disable_modules=yes
@@ -349,28 +357,6 @@ then
 			CFLAGS="$CFLAGS -ltimestretch"
 		])
 	fi
-
-	# If we are on a NUMA system, try to use the NUMA subsystem
-	AC_CHECK_LIB(numa, numa_num_possible_nodes, [numa_cv_libnuma=yes], [numa_cv_libnuma=no])
-	AC_CHECK_HEADER(numa.h, [numa_cv_numa_h=yes], [numa_cv_numa_h=no])
-	AC_CHECK_PROG([numactl],[numactl],[yes],[no])
-
-	if test "x$numa_cv_libnuma" = "xyes" -a "x$numa_cv_numa_h" = "xyes" -a "x$numactl" = "xyes" -a "x$ac_have_parallel_allocator" = "xyes"
-	then
-			#
-			# We have found everything that we need, but the user can disable the subsystem
-			#
-
-		AC_ARG_ENABLE([numa],
-		AS_HELP_STRING([--disable-numa], [Disable NUMA subsystem on NUMA machines]))
-
-		AS_IF([test "x$enable_numa" != "xno"], [
-			AC_DEFINE([HAVE_NUMA])
-			ac_have_numa=yes
-			CFLAGS="$CFLAGS -lnuma"
-		])
-	fi
-
 
 	# Test for linux headers, to compile kernel modules
 	ac_kernel_headers=no
@@ -553,42 +539,6 @@ else
 fi
 
 
-# Compose the message regarding the NUMA subsystem
-if test "x$ac_have_numa" = "xyes"
-then
-	numa_subsystem="Enabled (by default on NUMA machines, use --disable-numa if not wanted)"
-else
-	numa_subsystem="Disabled ("
-	if test "x$numa_cv_libnuma" = "xno"
-	then
-		numa_subsystem="${numa_subsystem}libnuma "
-	fi
-
-	if test "x$numa_cv_numa_h" = "xno"
-	then
-		numa_subsystem="${numa_subsystem}numa.h "
-	fi
-
-	if test "x$numactl" = "xno"
-	then
-		numa_subsystem="${numa_subsystem}numactl "
-	fi
-
-	numa_subsystem="${numa_subsystem}not found)"
-
-	if test "x$numa_cv_libnuma" = "xyes" -a "x$numa_cv_numa_h" = "xyes" -a "x$numactl" = "xyes"
-	then
-		numa_subsystem="Disabled (manually excluded)"
-	fi
-
-	if test "x$ac_have_parallel_allocator" != "xyes"
-	then
-		numa_subsystem="Disabled (Parallel Allocator is required)"
-
-	fi
-fi
-
-
 # Compose the message regarding Preemptive Time Warp
 if test "x$ac_have_preemption" = "xyes"
 then
@@ -662,7 +612,6 @@ Debugging Support......... : ${enable_debug}
 MPI....................... : ${enable_mpi}
 User-Level Threads........ : ${ac_enable_ult}
 Parallel Allocator........ : ${ac_parallel_allocator}
-NUMA Subsystem............ : ${numa_subsystem}
 LP Preemption Support..... : ${ac_preemption}
 LP Rebinding.............. : ${ac_lp_rebinding}
 Linux Kernel Modules...... : ${ac_modules}

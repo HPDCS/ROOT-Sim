@@ -27,6 +27,7 @@
 #include <string.h>
 
 #include <arch/atomic.h>
+#include <core/core.h>
 #include <communication/communication.h>
 #include <datatypes/list.h>
 #include <datatypes/msgchannel.h>
@@ -92,12 +93,12 @@ void insert_msg(msg_channel *mc, msg_t *msg) {
 
 	// Reallocate the live BH buffer. Don't touch the other buffer,
 	// as in this way the critical section is much shorter
-	if(mc->buffers[M_WRITE]->written == mc->buffers[M_WRITE]->size) {
+	if(unlikely(mc->buffers[M_WRITE]->written == mc->buffers[M_WRITE]->size)) {
 
 		mc->buffers[M_WRITE]->size *= 2;
 		mc->buffers[M_WRITE]->buffer = rsrealloc((void *)mc->buffers[M_WRITE]->buffer, mc->buffers[M_WRITE]->size * sizeof(msg_t *));
 
-		if(mc->buffers[M_WRITE]->buffer == NULL)
+		if(unlikely(mc->buffers[M_WRITE]->buffer == NULL))
 			rootsim_error(true, "%s:%d: Unable to reallocate message channel\n", __FILE__, __LINE__);
 
 	}
@@ -115,13 +116,13 @@ void insert_msg(msg_channel *mc, msg_t *msg) {
 void *get_msg(msg_channel *mc) {
 	msg_t *msg = NULL;
 
-	if(mc->buffers[M_READ]->read == mc->buffers[M_READ]->written) {
+	if(unlikely(mc->buffers[M_READ]->read == mc->buffers[M_READ]->written)) {
 		spin_lock(&mc->write_lock);
 		switch_channel_buffers(mc);
 		spin_unlock(&mc->write_lock);
 	}
 
-	if(mc->buffers[M_READ]->read == mc->buffers[M_READ]->written) {
+	if(unlikely(mc->buffers[M_READ]->read == mc->buffers[M_READ]->written)) {
 		goto leave;
 	}
 

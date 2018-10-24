@@ -49,7 +49,7 @@ void *get_segment(GID_t gid) {
 
 	for(i = 0; i < NUM_MMAP; i++) {
 		mmapped[i] = mmap(the_address, MAX_MMAP, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS|MAP_FIXED, 0, 0);
-		if(mmapped[i] == MAP_FAILED) {
+		if(unlikely(mmapped[i] == MAP_FAILED)) {
 			rootsim_error(true, "Unable to mmap LPs memory\n");
 			return NULL;
 		}
@@ -70,7 +70,7 @@ void *get_segment(GID_t gid) {
 	int return_value;
 	for(i=0;i<sobjs;i++){
 		return_value = munmap(mem_region[i].base_pointer,PER_LP_PREALLOCATED_MEMORY);
-		if(return_value){
+		if(unlikely(return_value)) {
 			printf("ERROR on release value:%d\n",return_value);
 			break;
 		}
