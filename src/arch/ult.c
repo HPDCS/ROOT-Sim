@@ -24,10 +24,6 @@
 */
 
 
-#ifdef ENABLE_ULT
-
-
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -100,6 +96,4 @@ void context_create(LP_context_t *context, void (*entry_point)(void *), void *ar
 }
 
 #endif /* OS */
-
-#endif /* ENABLE_ULT */
 

@@ -25,12 +25,8 @@
 
 
 #pragma once
-#ifndef __ULT_H
-#define __ULT_H
 
 #include <core/core.h>
-
-#ifdef ENABLE_ULT
 
 #if defined(OS_LINUX)
 
@@ -110,10 +106,4 @@ extern void context_create(LP_context_t *context, void (*entry_point)(void *), v
 
 // This is the current KLT main execution context
 extern __thread kernel_context_t kernel_context;
-
-#endif /* #define __ULT_H */
-
-#endif /* ENABLE_ULT */
-
-
 

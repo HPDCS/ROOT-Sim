@@ -205,9 +205,7 @@ void rollback(LID_t lid) {
 
 
 	// Discard any possible execution state related to a blocked execution
-	#ifdef ENABLE_ULT
 	memcpy(&LPS(lid)->context, &LPS(lid)->default_context, sizeof(LP_context_t));
-	#endif
 
 	statistics_post_lp_data(lid, STAT_ROLLBACK, 1.0);
 

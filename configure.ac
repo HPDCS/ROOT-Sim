@@ -288,17 +288,6 @@ AC_MSG_RESULT([no])
 #----------------------------------------------------------------------------
 
 
-# Disable ULT. Everything is run in the same context, in the same stack
-
-AC_ARG_ENABLE([ult],
-    AS_HELP_STRING([--disable-ult], [Disable User-Level Threads for LP scheduling]))
-
-AS_IF([test "x$enable_ult" != "xno"], [
-  AC_DEFINE([ENABLE_ULT])
-  ac_enable_ult=yes
-])
-
-
 # LP binding support
 AC_ARG_ENABLE([rebinding],
 AS_HELP_STRING([--disable-rebinding], [Disable LPs Rebinding (Enabled by default)]))
@@ -335,7 +324,7 @@ then
 
 	# If our libtimestretch library is installed, then we can use Preemptive Time Warp
 	AC_CHECK_LIB(timestretch, ts_start, [libtimestretch=yes], [libtimestretch=no])
-	if test "x$libtimestretch" = "xyes" -a "x$enable_ult" != "xno"
+	if test "x$libtimestretch" = "xyes"
 	then
 			#
 			# We have found everything that we need, but the user can disable the subsystem
@@ -515,14 +504,6 @@ else
 	enable_debug="Disabled (use --enable-debug if wanted)"
 fi
 
-# Compose the ULT message
-if test "x$ac_enable_ult" = "xyes"
-then
-	ac_enable_ult="Enabled (use --disable-ult if not wanted)"
-else
-	ac_enable_ult="Disabled"
-fi
-
 # Compose the message regarding MPI
 if test x"$enable_mpi" == xyes
 then
@@ -596,16 +577,11 @@ then
 	ac_preemption="Enabled (by default with libtimestretch, use --disable-preemption if not wanted)"
 else
 	ac_preemption="Disabled"
-	if test "x$enable_ult" = "xno"
+	if test "x$libtimestretch" = "xyes"
 	then
-		ac_preemption="${ac_preemption} (User-Level Threads are necessary)"
+		ac_preemption="${ac_preemption} by the user"
 	else
-		if test "x$libtimestretch" = "xyes"
-		then
-			ac_preemption="${ac_preemption} by the user"
-		else
-			ac_preemption="${ac_preemption} (libtimestretch not found)"
-		fi
+		ac_preemption="${ac_preemption} (libtimestretch not found)"
 	fi
 fi
 
@@ -661,7 +637,6 @@ CPU Architecture.......... : ${current_cpu}
 Operating System.......... : ${host_os}
 Debugging Support......... : ${enable_debug}
 MPI....................... : ${enable_mpi}
-User-Level Threads........ : ${ac_enable_ult}
 Parallel Allocator........ : ${ac_parallel_allocator}
 NUMA Subsystem............ : ${numa_subsystem}
 LP Preemption Support..... : ${ac_preemption}

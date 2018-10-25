@@ -61,7 +61,6 @@
 
 
 typedef struct _LP_state {
-#ifdef ENABLE_ULT
 	/// LP execution state.
 	LP_context_t		context;
 
@@ -70,7 +69,6 @@ typedef struct _LP_state {
 
 	/// Process' stack
 	void 			*stack;
-#endif /* ENABLE_ULT */
 
 	/// Local ID of the LP
 	LID_t 			lid;
