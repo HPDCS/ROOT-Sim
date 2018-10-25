@@ -1,6 +1,6 @@
 AC_PREREQ([2.67])
 
-AC_INIT([ROOT-Sim],[2.0.0],[rootsim@googlegroups.com],[rootsim],[http://www.dis.uniroma1.it/~hpdcs/ROOT-Sim/])
+AC_INIT([ROOT-Sim],[2.0.0],[rootsim@googlegroups.com],[rootsim],[https://github.com/HPDCS/ROOT-Sim/])
 AC_CONFIG_SRCDIR([src])
 AM_INIT_AUTOMAKE([-Wno-portability 1.10.1 -Wall foreign subdir-objects])
 
@@ -126,6 +126,7 @@ AM_PROG_AR
 AC_SUBST(AR_FLAGS, [cr])
 AC_SUBST(ARFLAGS, [cr])
 AM_PROG_AS
+AC_PROG_AWK
 LT_INIT
 
 

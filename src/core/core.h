@@ -234,9 +234,9 @@ extern void (**ProcessEvent)(unsigned int me, simtime_t now, int event_type, voi
 
 extern void base_init(void);
 extern void base_fini(void);
-extern GID_t LidToGid(LID_t lid);
-extern LID_t GidToLid(GID_t gid);
-extern unsigned int GidToKernel(GID_t gid);
+extern GID_t LidToGid(LID_t lid) __attribute__ ((pure));
+extern LID_t GidToLid(GID_t gid) __attribute__ ((pure));
+extern unsigned int GidToKernel(GID_t gid) __attribute__ ((pure));
 extern void rootsim_error(bool fatal, const char *msg, ...);
 extern void distribute_lps_on_kernels(void);
 extern void simulation_shutdown(int code) __attribute__((noreturn));
