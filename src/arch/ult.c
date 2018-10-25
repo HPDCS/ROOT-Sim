@@ -80,25 +80,6 @@ void *get_ult_stack(size_t size) {
 }
 
 
-/**
- * This function is called from the assembly _setup_jmp in order to create
- * a fresh stack frame on top of the one which has just been cloned.
- * Additionally, it prepares the ULT to be ready to start executing from the
- * function which has been passed as a parameter when the ULT was created.
- * This entry point function is supposed to be implemented as it
- * never returns!
- */
-void context_create_boot(exec_context_t *caller, exec_context_t *creat, void (*fn)(void *), void *args) {
-
-	// Go back where the thread was created, being ready to restart from here when the user thread is scheduled!
-	context_switch(creat, caller);
-
-	// Start the ULT with the specified parameters
-	fn(args);
-	
-	abort();
-}
-
 #elif defined(OS_WINDOWS) || defined(OS_CYGWIN)
 
 void context_create(LP_context_t *context, void (*entry_point)(void *), void *args, void *stack, size_t stack_size) {

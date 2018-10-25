@@ -49,8 +49,8 @@ typedef struct __exec_context_t {
 	unsigned long long rip;
 	unsigned long long flags;
 
-	// Space for other registers
-	unsigned char others[512] __attribute__((aligned(16))); // fxsave wants 16-byte aligned memory
+	// Space for FPU registers
+	unsigned char fpu[512] __attribute__((aligned(16))); // fxsave wants 16-byte aligned memory
 } exec_context_t;
 
 long long _set_jmp(exec_context_t *env);
@@ -58,7 +58,7 @@ long long _set_jmp(exec_context_t *env);
 __attribute__ ((__noreturn__))
 void _long_jmp(exec_context_t *env, long long val);
 
-extern void _context_create(exec_context_t *caller, exec_context_t *creat, void (*fn)(void *), void *args, void *stack, size_t stack_size);
+extern void context_create(exec_context_t *creat, void (*fn)(void *), void *args, void *stack, size_t stack_size);
 
 #define set_jmp(env) 		({\
 					int _set_ret;\

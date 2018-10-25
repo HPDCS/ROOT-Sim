@@ -60,16 +60,7 @@ typedef exec_context_t kernel_context_t;
 		long_jmp(context_new, 1)
 
 
-/// Setup machine context for userspace context switch.
-#define context_create(created, fn, args, stack, stack_size) \
-      _context_create(&kernel_context, created, fn, args, stack, stack_size)
-
 extern void *get_ult_stack(size_t size);
-
-__attribute__ ((noreturn))
-void context_create_boot(exec_context_t *caller, exec_context_t *creat, void (*fn)(void *), void *args);
-
-
 
 
 #elif defined(OS_CYGWIN) || defined(OS_WINDOWS) /* OS_LINUX || OS_CYGWIN */
