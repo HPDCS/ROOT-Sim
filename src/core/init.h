@@ -45,7 +45,7 @@ typedef struct _simulation_configuration {
 	bool deterministic_seed;	/// Does not change the seed value config file that will be read during the next runs
 	int verbose;			/// Kernel verbose
 	enum stat_levels stats;		/// Produce performance statistic file (default STATS_ALL)
-	bool serial;			// If the simulation must be run serially
+	bool serial;			/// If the simulation must be run serially
 	seed_type set_seed;		/// The master seed to be used in this run
 	bool core_binding;		/// Bind threads to specific core ( reduce context switches and cache misses )
 

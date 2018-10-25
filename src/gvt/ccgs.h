@@ -29,10 +29,11 @@
 #ifndef __CCGS_H
 #define __CCGS_H
 
-/// Normal CheckTermination
-#define NORM_CKTRM	0
-/// Incremental CheckTermination
-#define INCR_CKTRM	1
+enum{
+	CKTRM_INVALID = 0,	/// By convention 0 is the invalid field
+	CKTRM_NORMAL,		/// Normal CheckTermination
+	CKTRM_INCREMENTAL	/// Incremental CheckTermination
+};
 
 #include <mm/state.h>
 

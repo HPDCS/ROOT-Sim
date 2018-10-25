@@ -434,12 +434,12 @@ void schedule(void) {
 	// Find next LP to be executed, depending on the chosen scheduler
 	switch (rootsim_config.scheduler) {
 
-		case SMALLEST_TIMESTAMP_FIRST:
+		case SCHEDULER_STF:
 			lid = smallest_timestamp_first();
 			break;
 
 		default:
-			lid = smallest_timestamp_first();
+			rootsim_error(true, "unrecognized scheduler!");
 	}
 
 	// No logical process found with events to be processed

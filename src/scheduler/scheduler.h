@@ -41,9 +41,10 @@
 /// This macro defines after how many idle cycles the simulation is stopped
 #define MAX_CONSECUTIVE_IDLE_CYCLES	1000
 
-
-/// Smallest Timestamp Scheduler's Code
-#define SMALLEST_TIMESTAMP_FIRST	0
+enum {
+	SCHEDULER_INVALID = 0,	/// By convention 0 is the invalid field
+	SCHEDULER_STF			/// Smallest Timestamp First Scheduler's Code
+};
 
 /* Functions invoked by other modules */
 extern void scheduler_init(void);

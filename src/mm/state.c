@@ -77,11 +77,11 @@ bool LogState(LID_t lid) {
 	// Switch on the checkpointing mode
 	switch(rootsim_config.checkpointing) {
 
-		case COPY_STATE_SAVING:
+		case STATE_SAVING_COPY:
 			take_snapshot = true;
 			break;
 
-		case PERIODIC_STATE_SAVING:
+		case STATE_SAVING_PERIODIC:
 			if(LPS(lid)->from_last_ckpt >= LPS(lid)->ckpt_period) {
 				take_snapshot = true;
 				LPS(lid)->from_last_ckpt = 0;

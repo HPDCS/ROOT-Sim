@@ -83,11 +83,7 @@
 #define STAT_GET_EVENT_TIME_LP		15002
 
 
-
-enum stat_levels {STATS_GLOBAL, STATS_PERF, STATS_LP, STATS_ALL};
-
-
-
+enum stat_levels {STATS_INVALID = 0, STATS_GLOBAL, STATS_PERF, STATS_LP, STATS_ALL};
 
 // Structure to keep track of (incremental) statistics
 struct stat_t {
