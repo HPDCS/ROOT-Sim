@@ -56,7 +56,7 @@
 
 /// This is the list of mnemonics for arguments
 enum _opt_codes{
- OPT_FIRST = 128, /// this is used as an offset to the enum values, so that argp doesn't assign short options
+ OPT_FIRST = 128, /**< this is used as an offset to the enum values, so that argp doesn't assign short options */
 
  OPT_SCHEDULER = OPT_FIRST,
  OPT_CKTRM_MODE,
@@ -94,63 +94,59 @@ enum _opt_codes{
  OPT_LAST
 };
 
-// XXX move to bitmap and force exact dimensions
-// this is used later in order to ensure that the user doesn't use duplicate options
-static bool scanned[OPT_LAST-OPT_FIRST];
-
-// XXX this wastes 128 * 5 * sizeof(pointer) static storage bytes :| (I have in mind some workaround if necessary)
+// XXX we offset the first level with OPT_FIRST so remember about it when you index it!
 static const char* param_to_text[][5] = {
-	[OPT_SCHEDULER] = {
+	[OPT_SCHEDULER - OPT_FIRST] = {
 			[SCHEDULER_INVALID] = "invalid scheduler",
 			[SCHEDULER_STF] = "stf",
 	},
-	[OPT_CKTRM_MODE] = {
+	[OPT_CKTRM_MODE - OPT_FIRST] = {
 			[CKTRM_INVALID] = "invalid termination checking",
 			[CKTRM_NORMAL] = "normal",
 			[CKTRM_INCREMENTAL] = "incremental"
 	},
-	[OPT_LPS_DISTRIBUTION] = {
+	[OPT_LPS_DISTRIBUTION - OPT_FIRST] = {
 			[LP_DISTRIBUTION_INVALID] = "invalid LPs distribution",
 			[LP_DISTRIBUTION_BLOCK] = "block",
 			[LP_DISTRIBUTION_CIRCULAR] = "circular"
 	},
-	[OPT_VERBOSE] = {
+	[OPT_VERBOSE - OPT_FIRST] = {
 			[VERBOSE_INVALID] = "invalid verbose specification",
 			[VERBOSE_INFO] = "info",
 			[VERBOSE_DEBUG] = "debug",
 			[VERBOSE_NO] = "no"
 	},
-	[OPT_STATS] = {
+	[OPT_STATS - OPT_FIRST] = {
 			[STATS_INVALID] = "invalid statistics specification",
 			[STATS_GLOBAL] = "global",
 			[STATS_PERF] = "performance",
 			[STATS_LP] = "lp",
 			[STATS_ALL] = "all"
 	},
-	[OPT_STATE_SAVING] = {
+	[OPT_STATE_SAVING - OPT_FIRST] = {
 			[STATE_SAVING_INVALID] = "invalid checkpointing specification",
 			[STATE_SAVING_COPY] = "copy",
 			[STATE_SAVING_PERIODIC] = "periodic",
 	},
-	[OPT_SNAPSHOT] = {
+	[OPT_SNAPSHOT - OPT_FIRST] = {
 			[SNAPSHOT_INVALID] = "invalid snapshot specification",
 			[SNAPSHOT_FULL] = "full",
 	}
 };
 
-const char *argp_program_version 		= PACKAGE_STRING;
+const char *argp_program_version 		= PACKAGE_STRING "\nCopyright (C) 2008-2018 HPDCS Group";
 const char *argp_program_bug_address 	= PACKAGE_BUGREPORT;
 
-// TODO fill out in a proper manner! Directly from argp documentation:
+// Directly from argp documentation:
 // If non-zero, a string containing extra text to be printed before and after the options in a long help message,
 // with the two sections separated by a vertical tab ('\v', '\013') character.
 // By convention, the documentation before the options is just a short string explaining what the program does.
 // Documentation printed after the options describe behavior in more detail.
-static char doc[] = "Rootsim is a cool software! \v Thanks for your support!";
+static char doc[] = "ROOT-Sim - a fast distributed multithreaded Parallel Discrete Event Simulator \v For more information check the official wiki at https://github.com/HPDCS/ROOT-Sim/wiki";
 
 // this isn't needed (we haven't got non option arguments to document)
 static char args_doc[] = "";
-
+// the options recognized by argp
 static const struct argp_option argp_options[] = {
 	{"np", 			OPT_NP,		"VALUE", 	0, "Number of total cores being used by the simulation", 0},
 	{"nprc", 		OPT_NPRC, 	"VALUE", 	0, "Total number of Logical Processes being lunched at simulation startup", 0},
@@ -186,7 +182,7 @@ static const struct argp_option argp_options[] = {
 	{0}
 };
 
-#define malformed_option_failure() 		argp_error(state, "invalid value \"%s\" in %s option.\nAborting!", arg, state->argv[state->next-2])
+#define malformed_option_failure() 		argp_error(state, "invalid value \"%s\" in %s option.\nAborting!", arg, state->argv[state->next -1 -(arg != NULL)])
 
 #define conflicting_option_failure(msg) argp_error(state, "the requested option %s with value \"%s\" is conflicting: " msg "\nAborting!", state->argv[state->next -1 -(arg != NULL)], arg)
 
@@ -197,11 +193,11 @@ static const struct argp_option argp_options[] = {
 	({\
 		unsigned __i = 1; \
 		while(1) { \
-			if(strcmp(arg, param_to_text[key][__i]) == 0) {\
+			if(strcmp(arg, param_to_text[key - OPT_FIRST][__i]) == 0) {\
 				var = __i; \
 				break; \
 			}\
-			if(!param_to_text[key][++__i]) \
+			if(!param_to_text[key - OPT_FIRST][++__i]) \
 				malformed_option_failure(); \
 		} \
 	}); \
@@ -222,8 +218,11 @@ static const struct argp_option argp_options[] = {
 
 static error_t parse_opt (int key, char *arg, struct argp_state *state){
 
+	// TODO use bitmap type and force exact dimensions
+	// this is used in order to ensure that the user doesn't use duplicate options
+	static bool scanned[OPT_LAST-OPT_FIRST];
+
 	if(key >= OPT_FIRST && key < OPT_LAST){
-		// the array scanned is used to guard against the user asking twice for the same option
 		if(scanned[key-OPT_FIRST])
 			conflicting_option_failure("this option has already been specified");
 
@@ -333,6 +332,8 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state){
 			rootsim_config.check_termination_mode = CKTRM_NORMAL;
 			rootsim_config.stats = STATS_ALL;
 			rootsim_config.verbose = VERBOSE_INFO;
+			rootsim_config.snapshot = SNAPSHOT_FULL; // TODO: in the future, default to AUTONOMIC_
+			rootsim_config.checkpointing = STATE_SAVING_PERIODIC;
 			rootsim_config.gvt_time_period = 1000;
 			rootsim_config.gvt_snapshot_cycles = 2;
 			rootsim_config.ckpt_period = 10;
@@ -356,6 +357,12 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state){
 		case ARGP_KEY_SUCCESS:
 
 			// sanity checks
+			if(!rootsim_config.serial && !scanned[OPT_NP - OPT_FIRST])
+				rootsim_error(true, "Number of cores was not provided \"--np\"\n");
+
+			if(!scanned[OPT_NPRC - OPT_FIRST])
+				rootsim_error(true, "Number of LPs was not provided \"--nprc\"\n");
+
 			if(n_cores > get_cores())
 				rootsim_error(true, "Demanding %u cores, which are more than available (%d)\n", n_cores, get_cores());
 
@@ -365,21 +372,8 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state){
 			if(n_prc_tot > MAX_LPs)
 				rootsim_error(true, "Too many LPs, maximum supported number is %u\n", MAX_LPs);
 
-			if(!rootsim_config.serial && n_cores == 0)
-				rootsim_error(true, "Number of cores was not provided \"--np\"\n");
-
-			if(n_prc_tot == 0)
-				rootsim_error(true, "Number of LPs was not provided \"--nprc\"\n");
-
 			if(!rootsim_config.serial && n_prc_tot < n_cores)
 				rootsim_error(true, "Requested a simulation run with %u LPs and %u worker threads: the mapping is not possible\n", n_prc_tot, n_cores);
-
-			// setting default options
-			if (!rootsim_config.serial && !rootsim_config.snapshot)
-				rootsim_config.snapshot = SNAPSHOT_FULL; // TODO: in the future, default to AUTONOMIC_
-
-			if (!rootsim_config.serial && !rootsim_config.checkpointing)
-				rootsim_config.checkpointing = STATE_SAVING_PERIODIC;
 
 			break;
 			/* these functionalities are not needed
@@ -396,13 +390,13 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state){
 	return 0;
 }
 
-#undef parse_long_limits
+#undef parse_ullong_limits
 #undef handle_string_option
 #undef conflicting_option_failure
 #undef malformed_option_failure
 
 static struct argp_child argp_child[2] = {
-		{0, 0, "Model specific options", 1},
+		{0, 0, "Model specific options", 0},
 		{0}
 };
 
@@ -481,17 +475,17 @@ void SystemInit(int argc, char **argv) {
 			n_cores,
 			n_prc_tot,
 			rootsim_config.output_dir,
-			param_to_text[OPT_SCHEDULER][rootsim_config.scheduler],
+			param_to_text[OPT_SCHEDULER - OPT_FIRST][rootsim_config.scheduler],
 			#ifdef HAVE_MPI
 			((mpi_support_multithread)? "yes":"no"),
 			#endif
 			rootsim_config.gvt_time_period / 1000.0,
-			param_to_text[OPT_STATE_SAVING][rootsim_config.checkpointing],
+			param_to_text[OPT_STATE_SAVING - OPT_FIRST][rootsim_config.checkpointing],
 			rootsim_config.ckpt_period,
-			param_to_text[OPT_SNAPSHOT][rootsim_config.snapshot],
+			param_to_text[OPT_SNAPSHOT - OPT_FIRST][rootsim_config.snapshot],
 			rootsim_config.simulation_time,
-			param_to_text[OPT_LPS_DISTRIBUTION][rootsim_config.lps_distribution],
-			param_to_text[OPT_CKTRM_MODE][rootsim_config.check_termination_mode],
+			param_to_text[OPT_LPS_DISTRIBUTION - OPT_FIRST][rootsim_config.lps_distribution],
+			param_to_text[OPT_CKTRM_MODE - OPT_FIRST][rootsim_config.check_termination_mode],
 			((rootsim_config.blocking_gvt)? "yes":"no"),
 			rootsim_config.set_seed);
 	}

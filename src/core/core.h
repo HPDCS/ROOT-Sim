@@ -48,8 +48,8 @@
 
 // XXX: This should be moved to state or queues
 enum{
-	SNAPSHOT_INVALID = 0,	/// By convention 0 is the invalid field
-	SNAPSHOT_FULL,
+	SNAPSHOT_INVALID = 0,	/**< By convention 0 is the invalid field */
+	SNAPSHOT_FULL,			/**< xxx documentation */
 };
 
 /// Maximum number of kernels the distributed simulator can handle
@@ -60,10 +60,10 @@ enum{
 
 // XXX: this should be moved somewhere else...
 enum{
-	VERBOSE_INVALID = 0,	/// By convention 0 is the invalid field
-	VERBOSE_INFO,
-	VERBOSE_DEBUG,
-	VERBOSE_NO
+	VERBOSE_INVALID = 0,	/**< By convention 0 is the invalid field */
+	VERBOSE_INFO,			/**< xxx documentation */
+	VERBOSE_DEBUG,			/**< xxx documentation */
+	VERBOSE_NO				/**< xxx documentation */
 };
 
 
@@ -72,9 +72,9 @@ enum{
 #define STARTUP_TIME	0
 
 enum{
-	LP_DISTRIBUTION_INVALID = 0,	/// By convention 0 is the invalid field
-	LP_DISTRIBUTION_BLOCK,			/// Distribute exceeding LPs according to a block policy
-	LP_DISTRIBUTION_CIRCULAR		/// Distribute exceeding LPs according to a circular policy
+	LP_DISTRIBUTION_INVALID = 0,	/**< By convention 0 is the invalid field */
+	LP_DISTRIBUTION_BLOCK,			/**< Distribute exceeding LPs according to a block policy */
+	LP_DISTRIBUTION_CIRCULAR		/**< Distribute exceeding LPs according to a circular policy */
 };
 
 

@@ -42,8 +42,8 @@
 #define MAX_CONSECUTIVE_IDLE_CYCLES	1000
 
 enum {
-	SCHEDULER_INVALID = 0,	/// By convention 0 is the invalid field
-	SCHEDULER_STF			/// Smallest Timestamp First Scheduler's Code
+	SCHEDULER_INVALID = 0,	/**< By convention 0 is the invalid field */
+	SCHEDULER_STF			/**< Smallest Timestamp First Scheduler's Code */
 };
 
 /* Functions invoked by other modules */
