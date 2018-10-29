@@ -73,8 +73,9 @@
 void *log_full(LID_t the_lid) {
 
 	void *ptr = NULL, *ckpt = NULL;
-	int i, j, k, idx, bitmap_blocks;
-	size_t size, chunk_size;
+	int i;
+	unsigned int bitmap, j, k;
+	size_t size, chunk_size, bitmap_size;
 	malloc_area *m_area;
 	unsigned int lid = lid_to_int(the_lid);
 
@@ -107,9 +108,8 @@ void *log_full(LID_t the_lid) {
 		m_area = &recoverable_state[lid]->areas[i];
 
 		// Copy the bitmap
-		bitmap_blocks = m_area->num_chunks / NUM_CHUNKS_PER_BLOCK;
-		if (bitmap_blocks < 1)
-			bitmap_blocks = 1;
+
+		bitmap_size = bitmap_required_size(m_area->num_chunks);
 
 		// Check if there is at least one chunk used in the area
 		if(unlikely(m_area->alloc_chunks == 0)) {
@@ -118,9 +118,7 @@ void *log_full(LID_t the_lid) {
 			m_area->state_changed = 0;
 
 			if (likely(m_area->use_bitmap != NULL)) {
-				// TODO: switch to a memset
-				for(j = 0; j < bitmap_blocks; j++)
-					m_area->dirty_bitmap[j] = 0;
+				memset(m_area->dirty_bitmap, 0, bitmap_size);
 			}
 
 			continue;
@@ -130,12 +128,10 @@ void *log_full(LID_t the_lid) {
 		memcpy(ptr, m_area, sizeof(malloc_area));
 		ptr = (void*)((char*)ptr + sizeof(malloc_area));
 
-		memcpy(ptr, m_area->use_bitmap, bitmap_blocks * BLOCK_SIZE);
-		ptr = (void*)((char*)ptr + bitmap_blocks * BLOCK_SIZE);
+		memcpy(ptr, m_area->use_bitmap, bitmap_size);
+		ptr = (void*)((char*)ptr + bitmap_size);
 
-		chunk_size = m_area->chunk_size;
-		RESET_BIT_AT(chunk_size, 0);	// ckpt Mode bit
-		RESET_BIT_AT(chunk_size, 1);	// Lock bit
+		chunk_size = UNTAGGED_CHUNK_SIZE(m_area);
 
 		// Check whether the area should be completely copied (not on a per-chunk basis)
 		// using a threshold-based heuristic
@@ -147,21 +143,16 @@ void *log_full(LID_t the_lid) {
 
 		} else {
 			// Copy only the allocated chunks
-			for(j = 0; j < bitmap_blocks; j++){
+			for(j = 0; j < bitmap_size; j += B_BLOCK_SIZE){
 
+				bitmap = B_SAFE_CAST_TO_BLOCK(m_area->use_bitmap + j)[0];
 				// Check the allocation bitmap on a per-block basis, to enhance scan speed
-				if(m_area->use_bitmap[j] == 0) {
-					// Empty (no-chunks-allocated) block: skip to the next
-					continue;
-
-				} else {
+				if(bitmap != 0) {
 					// At least one chunk is allocated: per-bit scan of the block is required
-					for(k = 0; k < NUM_CHUNKS_PER_BLOCK; k++){
+					for(k = 0; k < B_BITS_PER_BLOCK; k++){
 
-						if(CHECK_BIT_AT(m_area->use_bitmap[j], k)){
-
-							idx = j * NUM_CHUNKS_PER_BLOCK + k;
-							memcpy(ptr, (void*)((char*)m_area->area + (idx * chunk_size)), chunk_size);
+						if(B_CHECK_BIT_AT(bitmap, k)){
+							memcpy(ptr, (void*)((char*)m_area->area + ((j * CHAR_BIT + k) * chunk_size)), chunk_size);
 							ptr = (void*)((char*)ptr + chunk_size);
 
 						}
@@ -173,7 +164,7 @@ void *log_full(LID_t the_lid) {
 		// Reset Dirty Bitmap, as there is a full ckpt in the chain now
 		m_area->dirty_chunks = 0;
 		m_area->state_changed = 0;
-		bzero((void *)m_area->dirty_bitmap, bitmap_blocks * BLOCK_SIZE);
+		bzero((void *)m_area->dirty_bitmap, bitmap_size);
 
 	} // For each m_area in recoverable_state
 
@@ -244,9 +235,9 @@ void *log_state(LID_t lid) {
 void restore_full(LID_t the_lid, void *ckpt) {
 
 	void * ptr;
-	int i, j, k, bitmap_blocks, idx, original_num_areas, restored_areas;
-	unsigned int bitmap;
-	size_t chunk_size;
+	int i, original_num_areas, restored_areas;
+	unsigned int bitmap, j, k;
+	size_t chunk_size, bitmap_size;
 	malloc_area *m_area, *new_area;
 	unsigned int lid = lid_to_int(the_lid);
 
@@ -273,31 +264,20 @@ void restore_full(LID_t the_lid, void *ckpt) {
 
 		m_area = &recoverable_state[lid]->areas[i];
 
-		bitmap_blocks = m_area->num_chunks / NUM_CHUNKS_PER_BLOCK;
-		if(bitmap_blocks < 1)
-			bitmap_blocks = 1;
+		bitmap_size = bitmap_required_size(m_area->num_chunks);
 
 		if(restored_areas == recoverable_state[lid]->busy_areas || m_area->idx != ((malloc_area*)ptr)->idx){
 
 			m_area->dirty_chunks = 0;
 			m_area->state_changed = 0;
-			if (likely(m_area->use_bitmap != NULL)) {
-				// TODO: switch to a memset
-				for(j = 0; j < bitmap_blocks; j++) {
-					m_area->dirty_bitmap[j] = 0;
-				}
-			}
 			m_area->alloc_chunks = 0;
 			m_area->next_chunk = 0;
 			RESET_LOG_MODE_BIT(m_area);
 			RESET_AREA_LOCK_BIT(m_area);
 			
 			if (likely(m_area->use_bitmap != NULL)) {
-				// TODO: switch to memset
-				for(j = 0; j < bitmap_blocks; j++)
-					m_area->use_bitmap[j] = 0;
-				for(j = 0; j < bitmap_blocks; j++)
-					m_area->dirty_bitmap[j] = 0;
+				memset(m_area->use_bitmap, 0, bitmap_size);
+				memset(m_area->dirty_bitmap, 0, bitmap_size);
 			}
 			m_area->last_access = recoverable_state[lid]->timestamp;
 
@@ -312,18 +292,16 @@ void restore_full(LID_t the_lid, void *ckpt) {
 		restored_areas++;
 
 		// Restore use bitmap
-		memcpy(m_area->use_bitmap, ptr, bitmap_blocks * BLOCK_SIZE);
-		ptr = (void*)((char*)ptr + bitmap_blocks * BLOCK_SIZE);
+		memcpy(m_area->use_bitmap, ptr, bitmap_size);
+		ptr = (void*)((char*)ptr + bitmap_size);
 
 		// Reset dirty bitmap
-		bzero(m_area->dirty_bitmap, bitmap_blocks * BLOCK_SIZE);
+		bzero(m_area->dirty_bitmap, bitmap_size);
 		m_area->dirty_chunks = 0;
 		m_area->state_changed = 0;
 
 
-		chunk_size = m_area->chunk_size;
-		RESET_BIT_AT(chunk_size, 0);
-		RESET_BIT_AT(chunk_size, 1);
+		chunk_size = UNTAGGED_CHUNK_SIZE(m_area);
 
 		// Check how the area has been logged
 		if(CHECK_LOG_MODE_BIT(m_area)) {
@@ -335,25 +313,17 @@ void restore_full(LID_t the_lid, void *ckpt) {
 			// The area was partially logged.
 			// Logged chunks are the ones associated with a used bit whose value is 1
 			// Their number is in the alloc_chunks counter
-			for(j = 0; j < bitmap_blocks; j++) {
+			for(j = 0; j < bitmap_size; j += B_BLOCK_SIZE){
 
-				bitmap = m_area->use_bitmap[j];
-
+				bitmap = B_SAFE_CAST_TO_BLOCK(m_area->use_bitmap + j)[0];
 				// Check the allocation bitmap on a per-block basis, to enhance scan speed
-				if(bitmap == 0){
-					// Empty (no-chunks-allocated) block: skip to the next
-					continue;
+				if(bitmap != 0) {
+					// At least one chunk is allocated: per-bit scan of the block is required
+					for(k = 0; k < B_BITS_PER_BLOCK; k++){
 
-				} else {
-					// Scan the bitmap on a per-bit basis
-					for(k = 0; k < NUM_CHUNKS_PER_BLOCK; k++) {
-
-						if(CHECK_BIT_AT(bitmap, k)) {
-
-							idx = j * NUM_CHUNKS_PER_BLOCK + k;
-							memcpy((void*)((char*)m_area->area + (idx * chunk_size)), ptr, chunk_size);
+						if(B_CHECK_BIT_AT(bitmap, k)){
+							memcpy((void*)((char*)m_area->area + ((j*CHAR_BIT + k) * chunk_size)), ptr, chunk_size);
 							ptr = (void*)((char*)ptr + chunk_size);
-
 						}
 					}
 				}
@@ -380,15 +350,10 @@ void restore_full(LID_t the_lid, void *ckpt) {
 			RESET_AREA_LOCK_BIT(m_area);
 
 			if (likely(m_area->use_bitmap != NULL)) {
-				bitmap_blocks = m_area->num_chunks / NUM_CHUNKS_PER_BLOCK;
-				if(bitmap_blocks < 1)
-					bitmap_blocks = 1;
+				bitmap_size = bitmap_required_size(m_area->num_chunks);
 
-				// TODO: switch to memset
-				for(j = 0; j < bitmap_blocks; j++)
-					m_area->use_bitmap[j] = 0;
-				for(j = 0; j < bitmap_blocks; j++)
-                        	        m_area->dirty_bitmap[j] = 0;
+				memset(m_area->use_bitmap, 0, bitmap_size);
+				memset(m_area->dirty_bitmap, 0, bitmap_size);
 			}
 		}
 		recoverable_state[lid]->num_areas = original_num_areas;
