@@ -219,6 +219,14 @@ static error_t model_parse(int key, char *arg, struct argp_state *state) {
 		HANDLE_ARGP_CASE(OPT_F_CPT, 	"%lf", 	create_packet_timer);
 
 		case ARGP_KEY_SUCCESS:
+			if(!config_file_path)
+				argp_failure(state, EXIT_FAILURE, 0, "[FATAL ERROR] The path to a file "
+						"containing the configuration  of the network is mandatory => "
+						"specify it after the option \"--input\"\n");
+
+			if(ctp_root >= n_prc_tot)
+				argp_failure(state, EXIT_FAILURE, 0, "[FATAL ERROR] The given root ID "
+						"is not valid: it has to be less that the number of LPs\n");
 			break;
 		default:
 			return ARGP_ERR_UNKNOWN;

@@ -156,6 +156,13 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, void *event_co
 
                         if(me==ctp_root){
 
+                        		/*
+								 * Parse the input file containing all the links of the network, including their gains,
+								 * and the noise affecting all the nodes.
+								 */
+
+                        	 	read_input_file(config_file_path);
+
                                 /*
                                  * Set the "root" flag in the state object
                                  */
