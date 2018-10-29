@@ -270,7 +270,7 @@ void *do_malloc(LID_t lid, malloc_state *mem_pool, size_t size) {
 
 	if(m_area->area == NULL) {
 
-		bitmap_size = m_area->num_chunks;
+		bitmap_size = bitmap_required_size(m_area->num_chunks);
 
 		area_size = sizeof(malloc_area *) + bitmap_size * 2 + m_area->num_chunks * size;
 
