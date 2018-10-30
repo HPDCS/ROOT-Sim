@@ -294,7 +294,7 @@ void initialize_worker_thread(void) {
 		initialize_LP(lid);
 
 		// Schedule an INIT event to the newly instantiated LP
-		pack_msg(&init_event, gid, gid, INIT, 0.0, 0.0, model_parameters.size, model_parameters.arguments);
+		pack_msg(&init_event, gid, gid, INIT, 0.0, 0.0, 0, NULL);
 	        init_event->mark = generate_mark(lid);
 
 		list_insert_head(LPS(lid)->queue_in, init_event);
@@ -434,12 +434,12 @@ void schedule(void) {
 	// Find next LP to be executed, depending on the chosen scheduler
 	switch (rootsim_config.scheduler) {
 
-		case SMALLEST_TIMESTAMP_FIRST:
+		case SCHEDULER_STF:
 			lid = smallest_timestamp_first();
 			break;
 
 		default:
-			lid = smallest_timestamp_first();
+			rootsim_error(true, "unrecognized scheduler!");
 	}
 
 	// No logical process found with events to be processed

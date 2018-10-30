@@ -4,20 +4,95 @@
 
 #include "application.h"
 
+enum{
+	OPT_OTS = 128, /// this tells argp to not assign short options
+	OPT_TSD,
+	OPT_MAXS,
+	OPT_MINS,
+	OPT_NB,
+	OPT_CA,
+	OPT_RC,
+	OPT_WC,
+	OPT_WD,
+	OPT_RD,
+	OPT_TAU
+};
+
+const struct argp_option model_options[] = {
+		{"object-total-size", 		OPT_OTS, "INT", 0, NULL, 0},
+		{"time-stamp-distribution", OPT_TSD, "INT", 0, NULL, 0},
+		{"max-size", 				OPT_MAXS, "INT", 0, NULL, 0},
+		{"min-size", 				OPT_MINS, "INT", 0, NULL, 0},
+		{"num-buffers",				OPT_NB, "INT", 0, NULL, 0},
+		{"complete-alloc", 			OPT_CA, "INT", 0, NULL, 0},
+		{"read-correction", 		OPT_RC, "INT", 0, NULL, 0},
+		{"write-correction", 		OPT_WC, "DOUBLE", 0, NULL, 0},
+		{"write-distribution", 		OPT_WD, "DOUBLE", 0, NULL, 0},
+		{"read-distribution", 		OPT_RD, "DOUBLE", 0, NULL, 0},
+		{"tau", 					OPT_TAU, "DOUBLE", 0, NULL, 0},
+		{0}
+};
+
+#define HANDLE_ARGP_CASE(label, fmt, var)	\
+	case label: \
+		if(sscanf(arg, fmt, &var) != 1){ \
+			return ARGP_ERR_UNKNOWN; \
+		} \
+	break
+
+static error_t model_parse(int key, char *arg, struct argp_state *state) {
+	switch (key) {
+
+		HANDLE_ARGP_CASE(OPT_OTS, 	"%d", 	object_total_size);
+		HANDLE_ARGP_CASE(OPT_TSD, 	"%d", 	timestamp_distribution);
+		HANDLE_ARGP_CASE(OPT_MAXS, 	"%d", 	max_size);
+		HANDLE_ARGP_CASE(OPT_MINS, 	"%d", 	min_size);
+		HANDLE_ARGP_CASE(OPT_NB, 	"%d", 	num_buffers);
+		HANDLE_ARGP_CASE(OPT_CA, 	"%d", 	complete_alloc);
+		HANDLE_ARGP_CASE(OPT_RC, 	"%d", 	read_correction);
+		HANDLE_ARGP_CASE(OPT_WC, 	"%lf", 	write_correction);
+		HANDLE_ARGP_CASE(OPT_WD, 	"%lf", 	write_distribution);
+		HANDLE_ARGP_CASE(OPT_RD, 	"%lf", 	read_distribution);
+		HANDLE_ARGP_CASE(OPT_TAU, 	"%lf", 	tau);
+
+		case ARGP_KEY_SUCCESS:
+			printf("\t* ROOT-Sim's PHOLD Benchmark - Current Configuration *\n");
+			printf("object_total_size: %d\n"
+					"timestamp_distribution:%d\n"
+					"max_size: %d\n"
+					"min_size: %d\n"
+					"num_buffers: %d\n"
+					"complete_alloc:%d\n"
+					"write_distribution: %f\n"
+					"read_distribution: %f\n"
+					"tau: %f\n"
+					"write-correction: %d\n", object_total_size, timestamp_distribution, max_size, min_size,
+					num_buffers, complete_alloc, write_distribution, read_distribution, tau, write_correction);
+			printf("\n");
+			break;
+		default:
+			return ARGP_ERR_UNKNOWN;
+	}
+	return 0;
+}
+
+#undef HANDLE_ARGP_CASE
+
+struct argp model_argp = {model_options, model_parse, NULL, NULL, NULL, NULL, NULL};
 
 // These global variables are used to store execution configuration values
-// They will be set by every LP on every Simulation Kernel upon INIT execution
-int	object_total_size,
-	timestamp_distribution,
-	max_size,
-	min_size,
-	num_buffers,
-	complete_alloc,
-	read_correction,
-	write_correction;
-double	write_distribution,
-	read_distribution,
-	tau;
+// They are initialised to some default values but then the initialization could change those
+int	object_total_size = OBJECT_TOTAL_SIZE,
+	timestamp_distribution = EXPO,
+	max_size = MAX_SIZE,
+	min_size = MIN_SIZE,
+	num_buffers = NUM_BUFFERS,
+	complete_alloc = COMPLETE_ALLOC,
+	read_correction = NO_DISTR,
+	write_correction = NO_DISTR;
+double	write_distribution = WRITE_DISTRIBUTION,
+	read_distribution = READ_DISTRIBUTION,
+	tau = TAU;
 
 
 void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *event_content, unsigned int size, void *state) {
@@ -69,79 +144,6 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 			} else {
 
 				state_ptr->traditional = false;
-
-				// Store predefined values
-				object_total_size = OBJECT_TOTAL_SIZE;
-				timestamp_distribution = EXPO;
-				max_size = MAX_SIZE;
-				min_size = MIN_SIZE;
-				num_buffers = NUM_BUFFERS;
-				complete_alloc = COMPLETE_ALLOC;
-				write_distribution = WRITE_DISTRIBUTION;
-				read_distribution = READ_DISTRIBUTION;
-				tau = TAU;
-	
-				// Read runtime parameters
-				if(IsParameterPresent(event_content, "object_total_size"))
-					object_total_size = GetParameterInt(event_content, "object_total_size");
-	
-				if(IsParameterPresent(event_content, "timestamp_distribution"))
-					timestamp_distribution = GetParameterInt(event_content, "timestamp_distribution");
-	
-				if(IsParameterPresent(event_content, "max_size"))
-					max_size = GetParameterInt(event_content, "max_size");
-	
-				if(IsParameterPresent(event_content, "min_size"))
-					min_size = GetParameterInt(event_content, "min_size");
-	
-				if(IsParameterPresent(event_content, "num_buffers"))
-					num_buffers = GetParameterInt(event_content, "num_buffers");
-	
-				if(IsParameterPresent(event_content, "complete_alloc"))
-					complete_alloc = GetParameterInt(event_content, "complete_alloc");
-	
-				if(IsParameterPresent(event_content, "read_correction"))
-					read_correction = GetParameterInt(event_content, "read_correction");
-	
-				if(IsParameterPresent(event_content, "write_correction"))
-					write_correction = GetParameterInt(event_content, "write_correction");
-	
-				if(IsParameterPresent(event_content, "write_distribution"))
-					write_distribution = GetParameterDouble(event_content, "write_distribution");
-	
-				if(IsParameterPresent(event_content, "read_distribution"))
-					read_distribution = GetParameterDouble(event_content, "read_distribution");
-	
-				if(IsParameterPresent(event_content, "tau"))
-					tau = GetParameterDouble(event_content, "tau");
-	
-				// Print out current configuration (only once)
-				if(me == 0) {
-					 printf("\t* ROOT-Sim's PHOLD Benchmark - Current Configuration *\n");
-					 printf("object_total_size: %d\n"
-						"timestamp_distribution:%d\n"
-						"max_size: %d\n"
-						"min_size: %d\n"
-						"num_buffers: %d\n"
-						"complete_alloc:%d\n"
-						"write_distribution: %f\n"
-						"read_distribution: %f\n"
-						"tau: %f\n"
-						"write-correction: %d\n",
-						object_total_size,
-						timestamp_distribution,
-						max_size,
-						min_size,
-						num_buffers,
-						complete_alloc,
-						write_distribution,
-						read_distribution,
-						tau,
-						write_correction);
-					 printf("\n");
-				}
-	
-
 				state_ptr->actual_size = 0;
 				state_ptr->num_elementi = 0;
 				state_ptr->total_size = 0;

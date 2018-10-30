@@ -133,7 +133,7 @@ void base_init(void) {
 
 	for (i = 0; i < n_prc_tot; i++) {
 
-		if (rootsim_config.snapshot == FULL_SNAPSHOT) {
+		if (rootsim_config.snapshot == SNAPSHOT_FULL) {
 			OnGVT[i] = &OnGVT_light;
 			ProcessEvent[i] = &ProcessEvent_light;
 		} // TODO: add here an else for ISS

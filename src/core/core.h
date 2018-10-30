@@ -47,8 +47,10 @@
 #define master_kernel() (kid == 0)
 
 // XXX: This should be moved to state or queues
-#define INVALID_SNAPSHOT	2000
-#define FULL_SNAPSHOT		2001
+enum{
+	SNAPSHOT_INVALID = 0,	/**< By convention 0 is the invalid field */
+	SNAPSHOT_FULL,			/**< xxx documentation */
+};
 
 /// Maximum number of kernels the distributed simulator can handle
 #define N_KER_MAX	128
@@ -57,9 +59,12 @@
 #define MAX_LPs		16384		// This is 2^14
 
 // XXX: this should be moved somewhere else...
-#define VERBOSE_INFO	1700
-#define VERBOSE_DEBUG	1701
-#define VERBOSE_NO	1702
+enum{
+	VERBOSE_INVALID = 0,	/**< By convention 0 is the invalid field */
+	VERBOSE_INFO,			/**< xxx documentation */
+	VERBOSE_DEBUG,			/**< xxx documentation */
+	VERBOSE_NO				/**< xxx documentation */
+};
 
 
 
@@ -73,10 +78,11 @@
 /// Transient duration (in msec)
 #define STARTUP_TIME	0
 
-/// Distribute exceeding LPs according to a block policy
-#define LP_DISTRIBUTION_BLOCK 0
-/// Distribute exceeding LPs according to a circular policy
-#define LP_DISTRIBUTION_CIRCULAR 1
+enum{
+	LP_DISTRIBUTION_INVALID = 0,	/**< By convention 0 is the invalid field */
+	LP_DISTRIBUTION_BLOCK,			/**< Distribute exceeding LPs according to a block policy */
+	LP_DISTRIBUTION_CIRCULAR		/**< Distribute exceeding LPs according to a circular policy */
+};
 
 
 // XXX should be moved to a more librarish header

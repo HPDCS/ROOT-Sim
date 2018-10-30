@@ -54,7 +54,7 @@ void SerialScheduleNewEvent(unsigned int rcv, simtime_t stamp, unsigned int even
 	calqueue_put(stamp, event);
 }
 
-void serial_init(int argc, char **argv, int app_arg) {
+void serial_init(void) {
 	register unsigned int t;
 
 	// Initialize the calendar queue
@@ -73,21 +73,9 @@ void serial_init(int argc, char **argv, int app_arg) {
 		rootsim_error(true, "You must specify the total number of Logical Processes\n");
 	}
 
-	// We must pass the application-level args to the LP in the INIT event.
-	// Skip all the NULL args (if any)
-	while (argv[app_arg] != NULL && (argv[app_arg][0] == '\0' || argv[app_arg][0] == ' ')) {
-		app_arg++;
-	}
-
 	// Generate the INIT events for all the LPs
 	for (t = 0; t < n_prc_tot; t++) {
-
-		// Copy the relevant string pointers to the INIT event payload
-		if((argc - app_arg) > 0) {
-			SerialScheduleNewEvent(t, 0.0, INIT, &argv[app_arg], (argc - app_arg) * sizeof(char *));
-		} else {
-			SerialScheduleNewEvent(t, 0.0, INIT, NULL, 0);
-		}
+		SerialScheduleNewEvent(t, 0.0, INIT, NULL, 0);
 	}
 
 	// No LP is scheduled now
