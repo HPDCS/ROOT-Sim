@@ -142,23 +142,15 @@ void *log_full(LID_t the_lid) {
 			ptr = (void*)((char*)ptr + m_area->num_chunks * chunk_size);
 
 		} else {
+
+#define copy_from_area(x) ({\
+			memcpy(ptr, (void*)((char*)m_area->area + ((x) * chunk_size)), chunk_size);\
+			ptr = (void*)((char*)ptr + chunk_size);})
+
 			// Copy only the allocated chunks
-			for(j = 0; j < bitmap_size; j += B_BLOCK_SIZE){
+			bitmap_foreach_set(m_area->use_bitmap, bitmap_size, copy_from_area);
 
-				bitmap = B_SAFE_CAST_TO_BLOCK(m_area->use_bitmap + j)[0];
-				// Check the allocation bitmap on a per-block basis, to enhance scan speed
-				if(bitmap != 0) {
-					// At least one chunk is allocated: per-bit scan of the block is required
-					for(k = 0; k < B_BITS_PER_BLOCK; k++){
-
-						if(B_CHECK_BIT_AT(bitmap, k)){
-							memcpy(ptr, (void*)((char*)m_area->area + ((j * CHAR_BIT + k) * chunk_size)), chunk_size);
-							ptr = (void*)((char*)ptr + chunk_size);
-
-						}
-					}
-				}
-			}
+#undef copy_from_area
 		}
 
 		// Reset Dirty Bitmap, as there is a full ckpt in the chain now
@@ -313,21 +305,14 @@ void restore_full(LID_t the_lid, void *ckpt) {
 			// The area was partially logged.
 			// Logged chunks are the ones associated with a used bit whose value is 1
 			// Their number is in the alloc_chunks counter
-			for(j = 0; j < bitmap_size; j += B_BLOCK_SIZE){
 
-				bitmap = B_SAFE_CAST_TO_BLOCK(m_area->use_bitmap + j)[0];
-				// Check the allocation bitmap on a per-block basis, to enhance scan speed
-				if(bitmap != 0) {
-					// At least one chunk is allocated: per-bit scan of the block is required
-					for(k = 0; k < B_BITS_PER_BLOCK; k++){
+#define copy_to_area(x) ({\
+		memcpy((void*)((char*)m_area->area + ((x) * chunk_size)), ptr, chunk_size);\
+		ptr = (void*)((char*)ptr + chunk_size);})
 
-						if(B_CHECK_BIT_AT(bitmap, k)){
-							memcpy((void*)((char*)m_area->area + ((j*CHAR_BIT + k) * chunk_size)), ptr, chunk_size);
-							ptr = (void*)((char*)ptr + chunk_size);
-						}
-					}
-				}
-			}
+			bitmap_foreach_set(m_area->use_bitmap, bitmap_size, copy_to_area);
+
+#undef copy_to_area
 		}
 
 	}
