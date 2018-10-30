@@ -74,7 +74,6 @@ void *log_full(LID_t the_lid) {
 
 	void *ptr = NULL, *ckpt = NULL;
 	int i;
-	unsigned int bitmap, j, k;
 	size_t size, chunk_size, bitmap_size;
 	malloc_area *m_area;
 	unsigned int lid = lid_to_int(the_lid);
@@ -228,7 +227,6 @@ void restore_full(LID_t the_lid, void *ckpt) {
 
 	void * ptr;
 	int i, original_num_areas, restored_areas;
-	unsigned int bitmap, j, k;
 	size_t chunk_size, bitmap_size;
 	malloc_area *m_area, *new_area;
 	unsigned int lid = lid_to_int(the_lid);

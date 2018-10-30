@@ -43,9 +43,10 @@ typedef unsigned char rootsim_bitmap;
 /* macros for internal use */
 
 #define B_BLOCK_TYPE unsigned
-#define B_BLOCK_SIZE sizeof(B_BLOCK_TYPE)
+#define B_BLOCK_SIZE ((unsigned)sizeof(B_BLOCK_TYPE))
 #define B_BITS_PER_BLOCK (B_BLOCK_SIZE*CHAR_BIT)
 #define B_MASK ((B_BLOCK_TYPE)1U)
+#define B_UNION_CAST(bitmap) UNION_CAST(((rootsim_bitmap*)(bitmap)), B_BLOCK_TYPE*)
 
 // we leverage the fact that B_BITS_PER_BLOCK is a power of 2 in any real architecture
 #define B_MOD_OF_BPB(n) (((unsigned)(n)) & ((unsigned)(B_BITS_PER_BLOCK - 1)))
@@ -110,7 +111,7 @@ typedef unsigned char rootsim_bitmap;
  *
  * 	Care to avoid side effects in the arguments because they may be evaluated more than once
  */
-#define bitmap_set(bitmap, bit_index) (B_SET_BIT(UNION_CAST((bitmap), B_BLOCK_TYPE*), ((unsigned)(bit_index))))
+#define bitmap_set(bitmap, bit_index) (B_SET_BIT(B_UNION_CAST(bitmap), ((unsigned)(bit_index))))
 
 /*!
  * @brief This resets the bit with index @a bit_index of the bitmap @a bitmap
@@ -119,7 +120,7 @@ typedef unsigned char rootsim_bitmap;
  *
  * 	Care to avoid side effects in the arguments because they may be evaluated more than once
  */
-#define bitmap_reset(bitmap, bit_index) (B_RESET_BIT(UNION_CAST((bitmap), B_BLOCK_TYPE*), ((unsigned)(bit_index))))
+#define bitmap_reset(bitmap, bit_index) (B_RESET_BIT(B_UNION_CAST(bitmap), ((unsigned)(bit_index))))
 
 /*!
  * @brief This checks if the bit with index @a bit_index of the bitmap @a bitmap is set or unset.
@@ -129,7 +130,7 @@ typedef unsigned char rootsim_bitmap;
  *
  * 	Care to avoid side effects in the arguments because they may be evaluated more than once
  */
-#define bitmap_check(bitmap, bit_index) (B_CHECK_BIT(UNION_CAST((bitmap), B_BLOCK_TYPE*), ((unsigned)(bit_index))) != 0)
+#define bitmap_check(bitmap, bit_index) (B_CHECK_BIT(B_UNION_CAST(bitmap), ((unsigned)(bit_index))) != 0)
 
 /*!
  * @brief This counts the occurrences of cleared bits in the bitmap @a bitmap.
@@ -141,16 +142,16 @@ typedef unsigned char rootsim_bitmap;
  *	This macro expects the number of bits in the bitmap to be a multiple of B_BITS_PER_BLOCK.
  * 	Care to avoid side effects in the arguments because they may be evaluated more than once
  */
-#define bitmap_count_reset(bitmap, bitmap_size) ({									\
-		unsigned __i, __blocks = bitmap_size / B_BLOCK_SIZE;						\
-		unsigned __ret = bitmap_size * CHAR_BIT;									\
-		B_BLOCK_TYPE __cur_block, *__block_b = UNION_CAST((bitmap), B_BLOCK_TYPE*);	\
-		for(__i = 0; __i < __blocks; ++__i){										\
-			if((__cur_block = __block_b[__i])){										\
-				__ret -= B_POPC(__cur_block);											\
-			}																		\
-		}																			\
-		__ret; 																		\
+#define bitmap_count_reset(bitmap, bitmap_size) ({					\
+		unsigned __i, __blocks = bitmap_size / B_BLOCK_SIZE;		\
+		unsigned __ret = bitmap_size * CHAR_BIT;					\
+		B_BLOCK_TYPE __cur_block, *__block_b = B_UNION_CAST(bitmap);\
+		for(__i = 0; __i < __blocks; ++__i){						\
+			if((__cur_block = __block_b[__i])){						\
+				__ret -= B_POPC(__cur_block);						\
+			}														\
+		}															\
+		__ret; 														\
 	})
 
 /*!
@@ -163,17 +164,17 @@ typedef unsigned char rootsim_bitmap;
  *	This macro expects the number of bits in the bitmap to be a multiple of B_BITS_PER_BLOCK.
  * 	Care to avoid side effects in the arguments because they may be evaluated more than once
  */
-#define bitmap_first_reset(bitmap, bitmap_size)	({									\
-		unsigned __i, __blocks = bitmap_size / B_BLOCK_SIZE;						\
-		unsigned __ret = UINT_MAX;													\
-		B_BLOCK_TYPE __cur_block, *__block_b = UNION_CAST((bitmap), B_BLOCK_TYPE*);	\
-		for(__i = 0; __i < __blocks; ++__i){										\
-			if((__cur_block = ~__block_b[__i])){									\
-				__ret = B_CTZ(__cur_block);											\
-				break;																\
-			}																		\
-		}																			\
-		__ret; \
+#define bitmap_first_reset(bitmap, bitmap_size)	({					\
+		unsigned __i, __blocks = bitmap_size / B_BLOCK_SIZE;		\
+		unsigned __ret = UINT_MAX;									\
+		B_BLOCK_TYPE __cur_block, *__block_b = B_UNION_CAST(bitmap);\
+		for(__i = 0; __i < __blocks; ++__i){						\
+			if((__cur_block = ~__block_b[__i])){					\
+				__ret = B_CTZ(__cur_block);							\
+				break;												\
+			}														\
+		}															\
+		__ret; 														\
 	})
 
 /*!
@@ -186,18 +187,18 @@ typedef unsigned char rootsim_bitmap;
  *	This macro expects the number of bits in the bitmap to be a multiple of B_BITS_PER_BLOCK.
  * 	Care to avoid side effects in the arguments because they may be evaluated more than once
  */
-#define bitmap_foreach_set(bitmap, bitmap_size, func) ({ 							\
-		unsigned __i, __fnd, __blocks = bitmap_size / B_BLOCK_SIZE;					\
-		B_BLOCK_TYPE __cur_block, *__block_b = UNION_CAST((bitmap), B_BLOCK_TYPE*);	\
-		for(__i = 0; __i < __blocks; ++__i){										\
-			if((__cur_block = __block_b[__i])){										\
-				do{																	\
-					__fnd = B_CTZ(__cur_block);										\
-					B_RESET_BIT_AT(__cur_block, __fnd);								\
-					func((__fnd + __i * B_BITS_PER_BLOCK));							\
-				}while(__cur_block);												\
-			}																		\
-		}																			\
+#define bitmap_foreach_set(bitmap, bitmap_size, func) ({ 			\
+		unsigned __i, __fnd, __blocks = bitmap_size / B_BLOCK_SIZE;	\
+		B_BLOCK_TYPE __cur_block, *__block_b = B_UNION_CAST(bitmap);\
+		for(__i = 0; __i < __blocks; ++__i){						\
+			if((__cur_block = __block_b[__i])){						\
+				do{													\
+					__fnd = B_CTZ(__cur_block);						\
+					B_RESET_BIT_AT(__cur_block, __fnd);				\
+					func((__fnd + __i * B_BITS_PER_BLOCK));			\
+				}while(__cur_block);								\
+			}														\
+		}															\
 	})
 
 #endif /* __BITMAP_DATATYPE_H_ */
