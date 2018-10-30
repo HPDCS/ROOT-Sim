@@ -24,10 +24,6 @@
 */
 
 
-#ifdef ENABLE_ULT
-
-
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -43,21 +39,6 @@ __thread kernel_context_t kernel_context;
 
 
 #if defined(OS_LINUX)
-
-
-#include <unistd.h>
-#include <signal.h>
-#include <assert.h>
-#include <errno.h>
-#include <sys/mman.h>
-
-
-static __thread LP_context_t		context_caller;
-static __thread volatile sig_atomic_t	context_called;
-
-static __thread LP_context_t		*context_creat;
-static __thread void			(*context_creat_func)(void *);
-static __thread void			*context_creat_arg;
 
 
 /**
@@ -99,103 +80,13 @@ void *get_ult_stack(size_t size) {
 }
 
 
-
-/**
-* This function is called within the already-created user-level thread. The goal of this function is to
-* setup a new (clean) frame (we're coming back from a signal handler!) and to prepare the user-level thread
-* to jump into its entry point. This entry point is supposed to be implemented as it never returns!
-* For further details, refer to the paper:
-*
-* Ralf S. Engelschall
-* "Portable Multithreading: the Signal Stack Trick for User-Space Thread Creation"
-* Proceedings of the 2000 USENIX Annual Technical Conference
-* June 2000
-*
-* @author Ralf Engelschall
-*/
-static void context_create_boot(void) __attribute__ ((noreturn));
-static void context_create_boot(void) {
-
-	void (*context_start_func)(void *);
-	void *context_start_arg;
-
-	context_start_func = context_creat_func;
-	context_start_arg = context_creat_arg;
-
-	// Go back where the thread was created, being ready to restart from here when the user thread is scheduled!
-	context_switch(context_creat, &context_caller);
-
-	// Magically start the thread
-	context_start_func(context_start_arg);
-
-	// you should never reach this!
-	abort();
-}
-
-
-/**
-* This function is executed within a manually-induced signal handler, which allows to create a new execution
-* context and set the LP stack. We save the context and then return, to leave the signal scope.
-* After the signal handler returns, the context_creat context is restored, so that the final bootstrap function
-* is actually executed.
-*/
-static void context_create_trampoline(int sig) {
-	(void)sig;
-
-	if(context_save(context_creat) == 0)
-		return;
-
-	context_create_boot();
-}
-
-
-/**
-* This function is executed within a manually-induced signal handler, which allows to create a new execution
-* context and set the LP stack. We save the context and then return, to leave the signal scope.
-* After the signal handler returns, the context_creat context is restored, so that the final bootstrap function
-* is actually executed.
-*
-* @param context the variable where to store the execution context for the created user-level thread
-* @param entry_point the function which must be executed when the newly created thread is first activated
-* @param args pointer to arguments to be passed to the thread entry point
-* @param stack a pointer to a memory area to be used as LP stack
-* @param stack_size size of the memory area to be used as stack
-*/
-void context_create(LP_context_t *context, void (*entry_point)(void *), void *args, void *stack, size_t stack_size) {
-	struct sigaction sa;
-	stack_t ss;
-	stack_t oss;
-
-	bzero((void *)&sa, sizeof(struct sigaction));
-	sa.sa_handler = context_create_trampoline;
-	sa.sa_flags = SA_ONSTACK;
-	sigfillset(&sa.sa_mask);
-	sigdelset(&sa.sa_mask, SIGUSR1);
-	sigaction(SIGUSR1, &sa, NULL);
-
-	ss.ss_sp = stack;
-	ss.ss_size = stack_size;
-	ss.ss_flags = 0;
-	sigaltstack(&ss, &oss);
-
-	context_creat = context;
-	context_creat_func = entry_point;
-	context_creat_arg = args;
-	context_called = false;
-	raise(SIGUSR1);
-	sigaltstack(&oss, NULL);
-
-//	printf("Print to context_switch\n"); // NON LEVARE QUESTA PRINTF
-	context_switch_create(&context_caller, context);
-}
-
-
 #elif defined(OS_WINDOWS) || defined(OS_CYGWIN)
 
 void context_create(LP_context_t *context, void (*entry_point)(void *), void *args, void *stack, size_t stack_size) {
 
 	(void)stack;
 
+	// BUG? was this intended to be used when the contexts were setup by a single thread?
 	static bool once = false;
 
 	if(unlikely(once == false)) {
@@ -204,11 +95,9 @@ void context_create(LP_context_t *context, void (*entry_point)(void *), void *ar
 		kernel_context.jb = ConvertThreadToFiber(NULL);
 	}
 
-	// Create a new fiber for the LP
+	// Create a new fiber
 	context->jb = CreateFiber(stack_size, (LPFIBER_START_ROUTINE)entry_point, args);
 }
 
 #endif /* OS */
-
-#endif /* ENABLE_ULT */
 

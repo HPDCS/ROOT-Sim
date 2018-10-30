@@ -184,6 +184,7 @@ void base_fini(void){
 * @param lid The logical process' local identifier
 * @return The global identifier of the logical process locally identified by lid
 */
+__attribute__ ((pure))
 GID_t LidToGid(LID_t lid) {
 	GID_t ret;
 
@@ -208,6 +209,7 @@ GID_t LidToGid(LID_t lid) {
 * @param gid The logical process' global identifier
 * @return The local identifier of the logical process globally identified by gid
 */
+__attribute__ ((pure))
 LID_t GidToLid(GID_t gid) {
 	LID_t ret;
 
@@ -231,6 +233,7 @@ LID_t GidToLid(GID_t gid) {
 * @param gid The logical process' global identifier
 * @return The id of the kernel currently hosting the logical process
 */
+__attribute__ ((pure))
 unsigned int GidToKernel(GID_t gid) {
 	// restituisce il kernel su cui si trova il processo identificato da gid
 	return kernel[gid_to_int(gid)];
