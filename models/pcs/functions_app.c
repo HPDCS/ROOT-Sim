@@ -124,7 +124,7 @@ int allocation(lp_state_type *pointer) {
 	channel *c, *ch;
 
 	index = -1;
-	for(i = 0; i < pointer->channels_per_cell; i++){
+	for(i = 0; i < channels_per_cell; i++){
 		if(!CHECK_CHANNEL(pointer,i)){
 			index = i;
 			break;

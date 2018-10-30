@@ -9,7 +9,7 @@
 extern void SerialSetState(void *);
 extern void SerialScheduleNewEvent(unsigned int, simtime_t, unsigned int, void *, unsigned int);
 
-extern void serial_init(int, char **, int);
+extern void serial_init(void);
 extern void serial_simulation(void) __attribute__((noreturn));
 
 

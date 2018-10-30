@@ -101,9 +101,7 @@ static void destroy_LPs(void) {
 //		rsfree(LPS(i)->rendezvous_queue);
 
 		// Destroy stacks
-		#ifdef ENABLE_ULT
 //		rsfree(LPS(i)->stack);
-		#endif
 	}
 
 }
@@ -158,9 +156,7 @@ static void LP_main_loop(void *args) {
 	(void)args; // this is to make the compiler stop complaining about unused args
 
 	// Save a default context
-	#ifdef ENABLE_ULT
 	context_save(&LPS(current_lp)->default_context);
-	#endif
 
 	while(true) {
 
@@ -194,11 +190,7 @@ static void LP_main_loop(void *args) {
 		statistics_post_lp_data(current_lp, STAT_EVENT_TIME, delta_event_timer);
 
 		// Give back control to the simulation kernel's user-level thread
-		#ifdef ENABLE_ULT
 		context_switch(&LPS(current_lp)->context, &kernel_context);
-		#else
-		return;
-		#endif
 	}
 }
 
@@ -223,10 +215,7 @@ void initialize_LP(LID_t lp) {
 	unsigned int i;
 
 	// Allocate LP stack
-	#ifdef ENABLE_ULT
 	LPS(lp)->stack = get_ult_stack(LP_STACK_SIZE);
-	#endif
-
 
 	// Set the initial checkpointing period for this LP.
 	// If the checkpointing period is fixed, this will not change during the
@@ -265,9 +254,7 @@ void initialize_LP(LID_t lp) {
 	#endif
 
 	// Create user thread
-	#ifdef ENABLE_ULT
 	context_create(&LPS(lp)->context, LP_main_loop, NULL, LPS(lp)->stack, LP_STACK_SIZE);
-	#endif
 }
 
 
@@ -294,7 +281,7 @@ void initialize_worker_thread(void) {
 		initialize_LP(lid);
 
 		// Schedule an INIT event to the newly instantiated LP
-		pack_msg(&init_event, gid, gid, INIT, 0.0, 0.0, model_parameters.size, model_parameters.arguments);
+		pack_msg(&init_event, gid, gid, INIT, 0.0, 0.0, 0, NULL);
 	        init_event->mark = generate_mark(lid);
 
 		list_insert_head(LPS(lid)->queue_in, init_event);
@@ -372,12 +359,7 @@ void activate_LP(LID_t lp, simtime_t lvt, void *evt, void *state) {
 		rootsim_error(true, "Critical condition: LP %d has a wrong state -> %d. Aborting...\n", gid_to_int(LidToGid(lp)), LPS(lp)->state);
 	}
 
-	#ifdef ENABLE_ULT
 	context_switch(&kernel_context, &LPS(lp)->context);
-	#else
-	LP_main_loop(NULL);
-	#endif
-
 
 //	#ifdef HAVE_PREEMPTION
 //        if(!rootsim_config.disable_preemption)
@@ -434,12 +416,12 @@ void schedule(void) {
 	// Find next LP to be executed, depending on the chosen scheduler
 	switch (rootsim_config.scheduler) {
 
-		case SMALLEST_TIMESTAMP_FIRST:
+		case SCHEDULER_STF:
 			lid = smallest_timestamp_first();
 			break;
 
 		default:
-			lid = smallest_timestamp_first();
+			rootsim_error(true, "unrecognized scheduler!");
 	}
 
 	// No logical process found with events to be processed

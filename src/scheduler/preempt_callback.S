@@ -32,6 +32,8 @@
 
 #ifdef HAVE_PREEMPTION
 
+#include <arch/asm_defines.h>
+
 .text
 .globl preempt_callback
 .type preempt_callback, @function

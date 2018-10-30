@@ -77,11 +77,11 @@ bool LogState(LID_t lid) {
 	// Switch on the checkpointing mode
 	switch(rootsim_config.checkpointing) {
 
-		case COPY_STATE_SAVING:
+		case STATE_SAVING_COPY:
 			take_snapshot = true;
 			break;
 
-		case PERIODIC_STATE_SAVING:
+		case STATE_SAVING_PERIODIC:
 			if(LPS(lid)->from_last_ckpt >= LPS(lid)->ckpt_period) {
 				take_snapshot = true;
 				LPS(lid)->from_last_ckpt = 0;
@@ -205,9 +205,7 @@ void rollback(LID_t lid) {
 
 
 	// Discard any possible execution state related to a blocked execution
-	#ifdef ENABLE_ULT
 	memcpy(&LPS(lid)->context, &LPS(lid)->default_context, sizeof(LP_context_t));
-	#endif
 
 	statistics_post_lp_data(lid, STAT_ROLLBACK, 1.0);
 

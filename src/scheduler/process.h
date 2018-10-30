@@ -61,8 +61,7 @@
 
 
 typedef struct _LP_state {
-#ifdef ENABLE_ULT
-	/// LP execution state. This **MUST** be the first declared field in the struct
+	/// LP execution state.
 	LP_context_t		context;
 
 	/// LP execution state when blocked during the execution of an event
@@ -70,7 +69,6 @@ typedef struct _LP_state {
 
 	/// Process' stack
 	void 			*stack;
-#endif /* ENABLE_ULT */
 
 	/// Local ID of the LP
 	LID_t 			lid;
