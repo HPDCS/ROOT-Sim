@@ -73,17 +73,12 @@ extern __thread unsigned int local_tid;
 /// Thread barrier definition
 typedef struct {
 	int num_threads;
-	atomic_t c1;
-	atomic_t c2;
+	atomic_t pass;
 	atomic_t barr;
 } barrier_t;
 
 /// Reset operation on a thread barrier
-#define thread_barrier_reset(b)		do { \
-						(atomic_set((&b->c1), (b)->num_threads)); \
-						(atomic_set((&b->c2), (b)->num_threads)); \
-						(atomic_set((&b->barr), -1)); \
-					} while (0)
+#define thread_barrier_reset(b)	atomic_set(&(b)->barr, 0)
 
 
 extern void barrier_init(barrier_t *b, int t);

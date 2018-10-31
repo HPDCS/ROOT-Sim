@@ -27,6 +27,7 @@
 
 #include <ROOT-Sim.h>
 #include <arch/thread.h>
+#include <arch/atomic.h>
 #include <gvt/gvt.h>
 #include <gvt/ccgs.h>
 #include <core/core.h>
@@ -39,6 +40,9 @@
 #include <mm/dymelor.h>
 #include <communication/mpi.h>
 #include <communication/gvt.h>
+
+/// A constant 1 to be used in CAS operations to set tokens
+__thread const atomic_int one = 1;
 
 enum kernel_phases {
 	kphase_start,
@@ -70,17 +74,17 @@ timer gvt_round_timer;
 
 
 #ifdef HAVE_MPI
-static unsigned int init_kvt_tkn;
-static unsigned int commit_gvt_tkn;
+static atomic_t init_kvt_tkn;
+static atomic_t commit_gvt_tkn;
 #endif
 
 /* Data shared across threads */
 
-static volatile enum kernel_phases kernel_phase = kphase_idle;
+static volatile _Atomic enum kernel_phases kernel_phase = kphase_idle;
 
-static unsigned int init_completed_tkn;
-static unsigned int commit_kvt_tkn;
-static unsigned int idle_tkn;
+static atomic_t init_completed_tkn;
+static atomic_t commit_kvt_tkn;
+static atomic_t idle_tkn;
 
 static atomic_t counter_initialized;
 static atomic_t counter_kvt;
@@ -88,7 +92,7 @@ static atomic_t counter_finalized;
 
 
 /// To be used with CAS to determine who is starting the next GVT reduction phase
-static volatile unsigned int current_GVT_round = 0;
+static atomic_t current_GVT_round = 0;
 
 /// How many threads have left phase A?
 static atomic_t counter_A;
@@ -116,7 +120,7 @@ static volatile simtime_t new_gvt = 0.0;
 static __thread enum thread_phases thread_phase = tphase_idle;
 
 /// Per-thread GVT round counter
-static __thread unsigned int my_GVT_round = 0;
+static __thread atomic_t my_GVT_round = 0;
 
 /// The local (per-thread) minimum. It's not TLS, rather an array, to allow reduction by master thread
 static simtime_t *local_min;
@@ -293,7 +297,7 @@ simtime_t gvt_operations(void) {
 	if( kernel_phase == kphase_idle ) {
 
 		if (start_new_gvt() &&
-			iCAS(&current_GVT_round, my_GVT_round, my_GVT_round + 1)) {
+			cmpxchg(&current_GVT_round, &my_GVT_round, my_GVT_round + 1)) {
 
 			timer_start(gvt_round_timer);
 
@@ -355,7 +359,7 @@ simtime_t gvt_operations(void) {
 		thread_phase = tphase_A;
 		atomic_dec(&counter_initialized);
 		if(atomic_read(&counter_initialized) == 0){
-			if(iCAS(&init_completed_tkn, 1, 0)){
+			if(cmpxchg(&init_completed_tkn, &one, 0)){
 				#ifdef HAVE_MPI
 				join_white_msg_redux();
 				kernel_phase = kphase_white_msg_redux;
@@ -370,7 +374,7 @@ simtime_t gvt_operations(void) {
 
 #ifdef HAVE_MPI
 	if( kernel_phase == kphase_white_msg_redux && white_msg_redux_completed() && all_white_msg_received() ){
-		if(iCAS(&init_kvt_tkn, 1, 0)){
+		if(cmpxchg(&init_kvt_tkn, one, 0)){
 			flush_white_msg_sent();
 			kernel_phase = kphase_kvt;
 		}
@@ -384,7 +388,7 @@ simtime_t gvt_operations(void) {
 	if( kernel_phase == kphase_kvt && thread_phase != tphase_aware ) {
 		simtime_t kvt = GVT_phases();
 		if( D_DIFFER(kvt, -1.0) ){
-			if( iCAS(&commit_kvt_tkn, 1, 0)){
+			if(cmpxchg(&commit_kvt_tkn, &one, 0)) {
 
 				#ifdef HAVE_MPI
 				join_gvt_redux(kvt);
@@ -403,7 +407,7 @@ simtime_t gvt_operations(void) {
 
 #ifdef HAVE_MPI
 	if( kernel_phase == kphase_gvt_redux && gvt_redux_completed() ){
-		if(iCAS(&commit_gvt_tkn, 1, 0)){
+		if(cmpxchg(&commit_gvt_tkn, &one, 0)){
 			int gvt_round_time = timer_value_micro(gvt_round_timer);
 			statistics_post_other_data(STAT_GVT_ROUND_TIME, gvt_round_time);
 
@@ -436,7 +440,7 @@ simtime_t gvt_operations(void) {
 		atomic_dec(&counter_finalized);
 
 		if(atomic_read(&counter_finalized) == 0){
-			if(iCAS(&idle_tkn, 1, 0)){
+			if(cmpxchg(&idle_tkn, &one, 0)){
 				kernel_phase = kphase_idle;
 			}
 		}
