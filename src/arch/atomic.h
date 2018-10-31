@@ -46,9 +46,9 @@
 #define __atomic_sub(P, V) atomic_fetch_sub_explicit((P), (V), memory_order_relaxed)
 
 
-
-/// Atomic counter definition
+/// Atomic type definition
 typedef atomic_int atomic_t;
+#define atomic _Atomic
 
 #define atomic_add(P, V)	__atomic_add((P), (V))
 #define atomic_inc(P)		atomic_add((P), 1)
@@ -63,7 +63,13 @@ typedef atomic_int atomic_t;
 
 
 
-/// Spinlock definition
+/**
+ * Spinlock definition. We use a ticket lock here. The ticket lock
+ * can be extremely slow when the number of threads exceeds the
+ * number of CPUs. This is something which we explicitly forbid in
+ * ROOT-Sim, so this is the locking strategy which we use. Indeed,
+ * fairness is quite important here.
+ */
 typedef union ticketlock spinlock_t;
 union ticketlock {
     unsigned u;
@@ -95,9 +101,9 @@ static inline bool spin_trylock(spinlock_t *t) {
     unsigned cmp = ((unsigned) me << 16) + me;
     unsigned cmpnew = ((unsigned) menew << 16) + me;
 
-    if (cmpxchg(&t->u, &cmp, cmpnew) == cmp)
+    if (cmpxchg(&t->u, &cmp, cmpnew))
 	return true;
     
-    return false; // Busy
+    return false;
 }
 
