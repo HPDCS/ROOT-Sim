@@ -123,23 +123,6 @@ void create_threads(unsigned short int n, void *(*start_routine)(void*), void *a
 }
 
 
-
-
-
-/**
-* This function initializes a thread barrier. If more than the hereby specified
-* number of threads try to synchronize on the barrier, the behaviour is undefined.
-*
-* @author Alessandro Pellegrini
-*
-* @param b the thread barrier to initialize
-* @param t the number of threads which will synchronize on the barrier
-*/
-void barrier_init(barrier_t *b, int t) {
-	b->num_threads = t;
-	thread_barrier_reset(b);
-}
-
 /**
 * This function synchronizes all the threads. After a thread leaves this function,
 * it is guaranteed that no other thread has (at least) not entered the function,

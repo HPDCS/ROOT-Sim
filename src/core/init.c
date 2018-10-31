@@ -35,7 +35,6 @@
 #include <errno.h>
 
 #include <ROOT-Sim.h>
-#include <arch/os.h>
 #include <arch/thread.h>
 #include <communication/communication.h>
 #include <core/core.h>

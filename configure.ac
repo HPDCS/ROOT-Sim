@@ -447,7 +447,7 @@ AC_CONFIG_FILES([Makefile
 		 man/Makefile
 		 scripts/Makefile
 		 src/Makefile
-		 src/arch/linux/modules/Makefile])
+		 src/arch/x86/linux/Makefile])
 AC_OUTPUT
 
 

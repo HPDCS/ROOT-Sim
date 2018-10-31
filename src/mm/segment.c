@@ -26,7 +26,7 @@
 #include <mm/mm.h>
 
 #include <mm/ecs.h>
-#include <arch/linux/modules/cross_state_manager/cross_state_manager.h>
+#include <arch/x86/linux/cross_state_manager/cross_state_manager.h>
 #include <fcntl.h>
 #include <sys/types.h>
 
