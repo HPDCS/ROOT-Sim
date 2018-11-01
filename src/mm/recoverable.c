@@ -138,16 +138,15 @@ void dirty_mem(void *base, int size) {
 	int 	first_chunk,
 		last_chunk,
 		i,
-		chk_size,
-		bitmap_blocks;
+		chk_size;
+
+	size_t bitmap_size;
 
 	malloc_area *m_area = get_area(base);
 
 	if(m_area != NULL) {
 
-		chk_size = m_area->chunk_size;
-		RESET_BIT_AT(chk_size, 0);
-		RESET_BIT_AT(chk_size, 1);
+		chk_size = UNTAGGED_CHUNK_SIZE(m_area->chunk_size);
 
 		// Compute the number of chunks affected by the write
 		first_chunk = (int)(((char *)base - (char *)m_area->area) / chk_size);
@@ -161,24 +160,22 @@ void dirty_mem(void *base, int size) {
 		else
 			last_chunk = (int)(((char *)base + size - 1 - (char *)m_area->area) / chk_size);
 
-		bitmap_blocks = m_area->num_chunks / NUM_CHUNKS_PER_BLOCK;
-                if(bitmap_blocks < 1)
-                       bitmap_blocks = 1;
+		bitmap_size = bitmap_required_size(m_area->num_chunks);
 
 		if (m_area->state_changed == 1){
                         if (m_area->dirty_chunks == 0)
-                                recoverable_state[current_lp]->dirty_bitmap_size += bitmap_blocks * BLOCK_SIZE;
+                                recoverable_state[current_lp]->dirty_bitmap_size += bitmap_size;
                 } else {
                         recoverable_state[current_lp]->dirty_areas++;
-                        recoverable_state[current_lp]->dirty_bitmap_size += bitmap_blocks * BLOCK_SIZE * 2;
+                        recoverable_state[current_lp]->dirty_bitmap_size += bitmap_size * 2;
                         m_area->state_changed = 1;
                 }
 
                 for(i = first_chunk; i <= last_chunk; i++){
 
                         // If it is dirtied a clean chunk, set it dirty and increase dirty object count for the malloc_area
-                        if (!CHECK_DIRTY_BIT(m_area, i)){
-                                SET_DIRTY_BIT(m_area, i);
+                        if (!bitmap_check(m_area->dirty_bitmap, i)){
+                        		bitmap_set(m_area->dirty_bitmap, i);
                                 recoverable_state[current_lp]->total_inc_size += chk_size;
 
                                 m_area->dirty_chunks++;

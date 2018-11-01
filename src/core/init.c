@@ -40,6 +40,7 @@
 #include <communication/communication.h>
 #include <core/core.h>
 #include <core/init.h>
+#include <datatypes/bitmap.h>
 #include <scheduler/process.h>
 #include <gvt/gvt.h>
 #include <gvt/ccgs.h>
@@ -218,15 +219,14 @@ static const struct argp_option argp_options[] = {
 
 static error_t parse_opt (int key, char *arg, struct argp_state *state){
 
-	// TODO use bitmap type and force exact dimensions
 	// this is used in order to ensure that the user doesn't use duplicate options
-	static bool scanned[OPT_LAST-OPT_FIRST];
+	static rootsim_bitmap scanned[bitmap_required_size(OPT_LAST - OPT_FIRST)];
 
 	if(key >= OPT_FIRST && key < OPT_LAST){
-		if(scanned[key-OPT_FIRST])
+		if(bitmap_check(scanned, key - OPT_FIRST))
 			conflicting_option_failure("this option has already been specified");
 
-		scanned[key-OPT_FIRST] = true;
+		bitmap_set(scanned, key - OPT_FIRST);
 	}
 
 	switch (key) {
@@ -250,7 +250,7 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state){
 		handle_string_option(OPT_LPS_DISTRIBUTION, rootsim_config.lps_distribution);
 
 		case OPT_NPWD:
-			if (scanned[OPT_P-OPT_FIRST]) {
+			if (bitmap_check(scanned, OPT_P-OPT_FIRST)) {
 				conflicting_option_failure("I'm requested to run non piece-wise deterministically, but a checkpointing interval is set already.");
 			} else {
 				rootsim_config.checkpointing = STATE_SAVING_COPY;
@@ -258,7 +258,7 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state){
 			break;
 
 		case OPT_P:
-			if(scanned[OPT_NPWD-OPT_FIRST]) {
+			if(bitmap_check(scanned, OPT_NPWD-OPT_FIRST)) {
 				conflicting_option_failure("Copy State Saving is selected, but I'm requested to set a checkpointing interval.");
 			} else {
 				rootsim_config.checkpointing = STATE_SAVING_PERIODIC;
@@ -357,10 +357,10 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state){
 		case ARGP_KEY_SUCCESS:
 
 			// sanity checks
-			if(!rootsim_config.serial && !scanned[OPT_NP - OPT_FIRST])
+			if(!rootsim_config.serial && !bitmap_check(scanned, OPT_NP - OPT_FIRST))
 				rootsim_error(true, "Number of cores was not provided \"--np\"\n");
 
-			if(!scanned[OPT_NPRC - OPT_FIRST])
+			if(!bitmap_check(scanned, OPT_NPRC - OPT_FIRST))
 				rootsim_error(true, "Number of LPs was not provided \"--nprc\"\n");
 
 			if(n_cores > get_cores())
