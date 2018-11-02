@@ -7,9 +7,9 @@ AUTOMAKE_OPTIONS = subdir-objects
 if NO_KERNEL_MODULES
 SUBDIRS = 
 else
-SUBDIRS = arch/linux/modules
+SUBDIRS = arch/x86/linux
 endif
-DIST_SUBDIRS = arch/linux/modules
+DIST_SUBDIRS = arch/x86/linux
 
 # We need to generate some constants at compile time which
 # are used by assembly code. The following lines do exactly that.
@@ -19,7 +19,7 @@ DIST_SUBDIRS = arch/linux/modules
 # that it is an actual constant.
 BUILT_SOURCES = src/arch/asm_defines.h
 CLEANFILES = src/arch/asm_defines.h
-src/arch/asm_defines.h: arch/asm_defines.c scheduler/process.h
+src/arch/asm_defines.h: arch/asm_defines.c
 	echo "Generating defines for assembly modules..."
 	$(COMPILE) -S $< -o - | $(AWK) '($$1 == "->") { print "#define " $$2 " " substr($$3, 2) }' > $(top_srcdir)/$@ 
 
@@ -30,42 +30,42 @@ librootsim_includedir = $(includedir)
 lib_LIBRARIES = librootsim.a libwrapperl.a libdymelor.a
 
 librootsim_a_SOURCES =	main.c \
-			lib/numerical.c \
-			lib/topology.c \
 			arch/memusage.c \
 			arch/thread.c \
 			arch/ult.c \
 			arch/x86.c \
-			arch/linux/jmp.S \
+			arch/x86/disassemble.c \
+			arch/x86/jmp.S \
+			arch/x86/ecs_callback.S \
+			arch/x86/preempt_callback.S \
+			communication/wnd.c \
+			communication/communication.c \
+			communication/gvt.c \
+			communication/mpi.c \
+			core/init.c \
+			core/core.c \
 			datatypes/array.c \
 			datatypes/calqueue.c \
 			datatypes/msgchannel.c \
 			datatypes/slab.c \
 			datatypes/treiber.c \
+			gvt/gvt.c \
+			gvt/fossil.c \
+			gvt/ccgs.c \
+			lib/numerical.c \
+			lib/topology.c \
 			mm/state.c \
 			mm/ecs.c \
-			mm/ecs_callback.S \
 			queues/queues.c \
 			queues/xxhash.c \
-			core/init.c \
-			core/core.c \
 			scheduler/binding.c \
 			scheduler/control.c \
 			scheduler/preempt.c \
-			scheduler/preempt_callback.S \
 			scheduler/process.c \
 			scheduler/stf.c \
 			scheduler/scheduler.c \
 			serial/serial.c \
-			statistics/statistics.c \
-			gvt/gvt.c \
-			gvt/fossil.c \
-			gvt/ccgs.c \
-			communication/wnd.c\
-			communication/communication.c\
-			communication/gvt.c\
-			communication/mpi.c\
-			arch/parse-x86.c
+			statistics/statistics.c
 
 libwrapperl_a_SOURCES = lib-wrapper/wrapper.c
 

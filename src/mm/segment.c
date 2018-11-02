@@ -28,11 +28,11 @@
 
 #include <mm/mm.h>
 #include <mm/ecs.h>
-#include <arch/linux/modules/cross_state_manager/cross_state_manager.h>
+#include <arch/x86/linux/cross_state_manager/cross_state_manager.h>
 #include <fcntl.h>
 #include <sys/types.h>
 
-size_t __page_size = -1;
+size_t __page_size = 0;
 
 //TODO: document this magic! This is related to the pml4 index intialized in the ECS kernel module
 static unsigned char *init_address = (unsigned char *)(10LL << 39);

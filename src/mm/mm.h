@@ -45,7 +45,7 @@ struct _buddy {
 
 extern size_t __page_size;
 #define PAGE_SIZE ({ \
-			if(unlikely(__page_size == -1))\
+			if(unlikely(__page_size == 0))\
 				__page_size = getpagesize();\
 			__page_size;\
 		  })
