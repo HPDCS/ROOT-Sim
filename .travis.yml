@@ -1,14 +1,12 @@
-sudo: false
 language: c
 compiler: gcc
-dist: trusty
-
 sudo: false
-  git:
-    depth: 1
-  branches:
-    except:
-     - gh-pages
+
+git:
+  depth: 1
+branches:
+  except:
+   - gh-pages
 
 matrix:
   include:
