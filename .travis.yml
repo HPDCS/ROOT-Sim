@@ -3,6 +3,13 @@ language: c
 compiler: gcc
 dist: trusty
 
+sudo: false
+  git:
+    depth: 1
+  branches:
+    except:
+     - gh-pages
+
 matrix:
   include:
     - os: linux
@@ -11,25 +18,24 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
           packages:
-            - g++-7
-            - mpich 
+            - g++-8
+            - mpich
             - libmpich-dev
-      env:
-        - MATRIX_EVAL="CC=gcc-7 && CXX=g++-7"
 
 before_install:
-    - eval "${MATRIX_EVAL}"
-    - test -n $CC  && unset CC   # MPI support is quite broken on Travis
-    - test -n $CXX && unset CXX
+  - export CC=mpicc
+  - export MPICH_CC=gcc-8
 
 before_script:
+  - mpicc --version
+  - $CC --version
   - m4 --version
   - automake --version
   - autoconf --version
 
 script:
   - ./autogen.sh
-  - ./configure --enable-debug --enable-mpi --enable-coverage --prefix=$HOME
+  - ./configure --enable-mpi --enable-coverage --prefix=$HOME
   - make
   - make install
   - export PATH=$PATH:$HOME

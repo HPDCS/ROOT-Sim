@@ -28,7 +28,40 @@
 
 #include <stdbool.h>
 #include <arch/atomic.h>
-#include <arch/os.h>
+
+
+#if defined(OS_LINUX)
+ #include <sched.h>
+#include <unistd.h>
+#include <pthread.h>
+ // Macros to get information about the hosting machine
+ #define get_cores() (sysconf( _SC_NPROCESSORS_ONLN ))
+ // How do we identify a thread?
+typedef pthread_t tid_t;
+ /// Spawn a new thread
+#define new_thread(entry, arg)	pthread_create(&os_tid, NULL, entry, arg)
+ static inline void set_affinity(int core) {
+	cpu_set_t cpuset;
+	CPU_ZERO(&cpuset);
+	CPU_SET(core, &cpuset);
+	// 0 is the current thread
+	sched_setaffinity(0, sizeof(cpuset), &cpuset);
+}
+ #elif defined(OS_WINDOWS)
+ #include <windows.h>
+ #define get_cores() ({\
+			SYSTEM_INFO _sysinfo;\
+			GetSystemInfo( &_sysinfo );\
+			_sysinfo.dwNumberOfProcessors;\
+			})
+ // How do we identify a thread?
+typedef HANDLE tid_t;
+ /// Spawn a new thread
+#define new_thread(entry, arg)	CreateThread(NULL, 0, entry, arg, 0, &os_tid)
+ #define set_affinity(core) SetThreadAffinityMask(GetCurrentThread(), 1<<core)
+ #else /* OS_LINUX || OS_WINDOWS */
+#error Unsupported operating system
+#endif
 
 
 
