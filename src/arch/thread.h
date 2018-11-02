@@ -23,46 +23,59 @@
 */
 
 #pragma once
-#ifndef __ROOTSIM_THREAD_H
-#define __ROOTSIM_THREAD_H
 
 #include <stdbool.h>
 #include <arch/atomic.h>
 
 
 #if defined(OS_LINUX)
- #include <sched.h>
+
+#include <sched.h>
 #include <unistd.h>
 #include <pthread.h>
- // Macros to get information about the hosting machine
- #define get_cores() (sysconf( _SC_NPROCESSORS_ONLN ))
- // How do we identify a thread?
+
+
+// Macros to get information about the hosting machine
+
+#define get_cores() (sysconf( _SC_NPROCESSORS_ONLN ))
+
+
+
+// How do we identify a thread?
 typedef pthread_t tid_t;
- /// Spawn a new thread
+
+/// Spawn a new thread
 #define new_thread(entry, arg)	pthread_create(&os_tid, NULL, entry, arg)
- static inline void set_affinity(int core) {
+
+static inline void set_affinity(int core) {
 	cpu_set_t cpuset;
 	CPU_ZERO(&cpuset);
 	CPU_SET(core, &cpuset);
 	// 0 is the current thread
 	sched_setaffinity(0, sizeof(cpuset), &cpuset);
 }
- #elif defined(OS_WINDOWS)
- #include <windows.h>
- #define get_cores() ({\
+
+#elif defined(OS_WINDOWS)
+
+#include <windows.h>
+
+#define get_cores() ({\
 			SYSTEM_INFO _sysinfo;\
 			GetSystemInfo( &_sysinfo );\
 			_sysinfo.dwNumberOfProcessors;\
 			})
- // How do we identify a thread?
+
+// How do we identify a thread?
 typedef HANDLE tid_t;
- /// Spawn a new thread
+
+/// Spawn a new thread
 #define new_thread(entry, arg)	CreateThread(NULL, 0, entry, arg, 0, &os_tid)
- #define set_affinity(core) SetThreadAffinityMask(GetCurrentThread(), 1<<core)
- #else /* OS_LINUX || OS_WINDOWS */
+
+#define set_affinity(core) SetThreadAffinityMask(GetCurrentThread(), 1<<core)
+
+#else /* OS_LINUX || OS_WINDOWS */
 #error Unsupported operating system
 #endif
-
 
 
 
@@ -106,25 +119,22 @@ extern __thread unsigned int local_tid;
 /// Thread barrier definition
 typedef struct {
 	int num_threads;
-	atomic_t c1;
-	atomic_t c2;
+	atomic_t pass;
 	atomic_t barr;
 } barrier_t;
 
 /// Reset operation on a thread barrier
-#define thread_barrier_reset(b)		do { \
-						(atomic_set((&b->c1), (b)->num_threads)); \
-						(atomic_set((&b->c2), (b)->num_threads)); \
-						(atomic_set((&b->barr), -1)); \
-					} while (0)
+#define thread_barrier_reset(b)	atomic_set(&(b)->barr, 0)
+
+/**
+* Initialize a thread barrier. If more than the hereby specified
+* number of threads try to synchronize on the barrier, the behaviour is undefined.
+**/
+#define barrier_init(B, T) do {\
+				(B)->num_threads = T;\
+				thread_barrier_reset(B);\
+			   } while(0)
 
 
-extern void barrier_init(barrier_t *b, int t);
 extern bool thread_barrier(barrier_t *b);
-bool reserve_barrier(barrier_t *b);
-void release_barrier(barrier_t *b);
-
-
-#endif /* __ROOTSIM_THREAD_H */
-
 

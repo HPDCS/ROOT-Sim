@@ -25,7 +25,9 @@
 
 
 #include <stdbool.h>
+
 #include <arch/thread.h>
+#include <arch/atomic.h>
 #include <core/init.h>
 #include <mm/dymelor.h>
 
@@ -34,7 +36,7 @@ static tid_t os_tid;
 __thread unsigned int tid;
 __thread unsigned int local_tid;
 
-static unsigned int thread_counter = 0;
+static volatile unsigned int thread_counter = 0;
 
 
 /**
@@ -62,7 +64,7 @@ static void *__helper_create_thread(void *arg) {
 	while(true) {
 		old_counter = thread_counter;
 		_local_tid = old_counter + 1;
-		if(iCAS(&thread_counter, old_counter, _local_tid)) {
+		if(cmpxchg(&thread_counter, &old_counter, _local_tid)) {
 			break;
 		}
 	}
@@ -121,23 +123,6 @@ void create_threads(unsigned short int n, void *(*start_routine)(void*), void *a
 }
 
 
-
-
-
-/**
-* This function initializes a thread barrier. If more than the hereby specified
-* number of threads try to synchronize on the barrier, the behaviour is undefined.
-*
-* @author Alessandro Pellegrini
-*
-* @param b the thread barrier to initialize
-* @param t the number of threads which will synchronize on the barrier
-*/
-void barrier_init(barrier_t *b, int t) {
-	b->num_threads = t;
-	thread_barrier_reset(b);
-}
-
 /**
 * This function synchronizes all the threads. After a thread leaves this function,
 * it is guaranteed that no other thread has (at least) not entered the function,
@@ -155,34 +140,21 @@ void barrier_init(barrier_t *b, int t) {
 * @return true to only one of the threads which synchronized on the barrier
 */
 bool thread_barrier(barrier_t *b) {
+	int old_pass = atomic_load_explicit(&b->pass, memory_order_relaxed);
 
-	// Wait for the leader to finish resetting the barrier
-	while(atomic_read(&b->barr) != -1);
-
-	// Wait for all threads to synchronize
-	atomic_dec(&b->c1);
-	while(atomic_read(&b->c1));
-
-	// Leader election
-	if(unlikely(atomic_inc_and_test(&b->barr))) {
-
-		// I'm sync'ed!
-		atomic_dec(&b->c2);
-
-		// Wait all the other threads to leave the first part of the barrier
-		while(atomic_read(&b->c2));
-
-		// Reset the barrier to its initial values
+	if(atomic_fetch_add(&b->barr, 1) == (b->num_threads - 1)) {
+		// Last thread, resets the barrier and becomes leader
 		thread_barrier_reset(b);
+		barrier();
+		atomic_store_explicit(&b->pass, old_pass + 1, memory_order_release);
 
 		return true;
+	} else {
+		while(old_pass == atomic_load_explicit(&b->pass, memory_order_relaxed));
+		atomic_thread_fence(memory_order_acquire);
 	}
-
-	// I'm sync'ed!
-	atomic_dec(&b->c2);
 
 	return false;
 }
-
 
 

@@ -59,10 +59,10 @@ static unsigned int *new_LPS_binding;
 static timer rebinding_timer;
 
 #ifdef HAVE_LP_REBINDING
-static int binding_acquire_phase = 0;
+static atomic_t binding_acquire_phase = 0;
 static __thread int local_binding_acquire_phase = 0;
 
-static int binding_phase = 0;
+static atomic_t binding_phase = 0;
 static __thread int local_binding_phase = 0;
 #endif
 
@@ -246,7 +246,6 @@ static void install_binding(void) {
 * because no runtime data is available at the time, so we "share" the load
 * as the number of LPs.
 * Then, successive invocations, will use the knapsack load sharing policy
-
 * @author Alessandro Pellegrini
 */
 void rebind_LPs(void) {
@@ -275,25 +274,25 @@ void rebind_LPs(void) {
 	if(master_thread()) {
 		if(unlikely(timer_value_seconds(rebinding_timer) >= REBIND_INTERVAL)) {
 			timer_restart(rebinding_timer);
-			binding_phase++;
+			atomic_inc(&binding_phase);
 		}
 
 		if(atomic_read(&worker_thread_reduction) == 0) {
 
 			LP_knapsack();
 
-			binding_acquire_phase++;
+			atomic_inc(&binding_acquire_phase);
 		}
 	}
 
-	if(local_binding_phase < binding_phase) {
-		local_binding_phase = binding_phase;
+	if(local_binding_phase < atomic_read(&binding_phase)) {
+		local_binding_phase = atomic_read(&binding_phase);
 		post_local_reduction();
 		atomic_dec(&worker_thread_reduction);
 	}
 
-	if(local_binding_acquire_phase < binding_acquire_phase) {
-		local_binding_acquire_phase = binding_acquire_phase;
+	if(local_binding_acquire_phase < atomic_read(&binding_acquire_phase)) {
+		local_binding_acquire_phase = atomic_read(&binding_acquire_phase);
 
 		install_binding();
 

@@ -33,7 +33,6 @@ librootsim_a_SOURCES =	main.c \
 			arch/memusage.c \
 			arch/thread.c \
 			arch/ult.c \
-			arch/x86.c \
 			arch/x86/disassemble.c \
 			arch/x86/jmp.S \
 			arch/x86/ecs_callback.S \
