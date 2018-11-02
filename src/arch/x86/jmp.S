@@ -26,6 +26,7 @@
 .file "jmp.S"
 
 #ifdef OS_LINUX
+#if defined(__x86_64__)
 
 #include <arch/asm_defines.h>
 
@@ -233,4 +234,6 @@ context_create:
 
 .size   context_create, .-context_create
 
+#endif /* defined(__x86_64__) */
 #endif /* OS_LINUX */
+

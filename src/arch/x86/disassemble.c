@@ -25,15 +25,15 @@
 * @author Alice Porfirio
 */
 
+#if defined(__x86_64__)
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "instruction.h"
-#include "instruction_2.h"
-#include "x86.h"
+#include <arch/x86/disassemble.h>
 
 /* Prototipi delle funzioni */
 
@@ -5260,10 +5260,10 @@ void x86_disassemble_instruction (unsigned char *text, unsigned long *pos, insn_
 		format_addr_op(&state, state.addr[k], state.op[k]);
 		state.read_dest = true;
 
-    // [SE] Hack terribile per capire se un registro è usato come destinazione
-    if (k == 0 && state.addr[k] == ADDR_G) {
-      state.instrument->dest_is_reg = true;
-    }
+		// [SE] Hack terribile per capire se un registro è usato come destinazione
+		if (k == 0 && state.addr[k] == ADDR_G) {
+			state.instrument->dest_is_reg = true;
+		}
 	}
 
 	// Copia i byte dell'istruzione
@@ -5283,14 +5283,17 @@ void x86_disassemble_instruction (unsigned char *text, unsigned long *pos, insn_
 	// Copia i byte dell'opcode
 	memcpy(state.instrument->opcode, state.opcode, 2);
 
-  // [SE] Copia i rimanenti campi
-  state.instrument->rex = state.rex;
-  state.instrument->modrm = state.modrm;
-  state.instrument->sib = state.sib;
-  state.instrument->sse_prefix = state.sse_prefix;
-  memcpy(state.instrument->prefix, state.prefix, 4);
+	// [SE] Copia i rimanenti campi
+	state.instrument->rex = state.rex;
+	state.instrument->modrm = state.modrm;
+	state.instrument->sib = state.sib;
+	state.instrument->sse_prefix = state.sse_prefix;
+	memcpy(state.instrument->prefix, state.prefix, 4);
 
 	state.instrument->insn_size = (state.pos - *pos);
 	*pos = state.pos;
 
 }
+
+#endif /* defined(__x86_64__) */
+
