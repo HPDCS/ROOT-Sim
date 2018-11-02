@@ -82,6 +82,7 @@ void ecs_secondary(void) {
 	unsigned long i=0;
 	msg_t *control_msg;
 	ecs_page_request_t page_req;
+	ecs_page_node_t *page_node;
 
 	// Disassemble the faulting instruction to get necessary information
 	x86_disassemble_instruction(faulting_insn, &i, &insn_disasm, DATA_64 | ADDR_64);
@@ -99,6 +100,16 @@ void ecs_secondary(void) {
 
 //	printf("ECS Page Fault: LP %d accessing %d pages from %p on LP %lu in %s mode\n", current_lp, page_req.count, (void *)page_req.base_address, fault_info.target_gid, (page_req.write_mode ? "write" : "read"));
 	fflush(stdout);
+
+	/*printf("lp %d (kid %d) list size is %d\n", current_lp, kid, list_sizeof(LPS(current_lp)->ECS_read_list));
+	for (j = 0; j < page_req.count; j++){
+		page_node = rsalloc(sizeof(ecs_page_node_t));
+		page_node->page_address = (target_address & (~((long long)PAGE_SIZE-1))) + PAGE_SIZE*j;
+		list_insert_tail(LPS(current_lp)->ECS_read_list, page_node);
+		//printf("LP %d (kid %d ) inserting in read list page with address %llu\n",current_lp, kid, page_node->page_address);
+		//fflush(stdout);
+		//LPS(current_lp)->state = LP_STATE_READY_FOR_SYNCH;
+	}*/
 
 	// Send the page lease request control message. This is not incorporated into the input queue at the receiver
 	// so we do not place it into the output queue
@@ -146,9 +157,12 @@ void ecs_initiate(void) {
 	long_jmp(&kernel_context, kernel_context.rax);
 }
 
+
+
 // This handler is called to initiate an ECS, both in the local and in the distributed case
 void ECS(void) __attribute__((__used__));
 void ECS(void) {
+	ecs_page_node_t *page_node;
 	// ECS cannot happen in silent execution, as we take a log after the completion
 	// of an event which involves one or multiple ecs
 	if(LPS(current_lp)->state == LP_STATE_SILENT_EXEC) {
@@ -311,12 +325,20 @@ void ecs_install_pages(msg_t *msg) {
 void unblock_synchronized_objects(LID_t localID) {
 	unsigned int i;
 	msg_t *control_msg;
-	
+	ecs_page_node_t *page_node;
+
 	for(i = 1; i <= LPS(localID)->ECS_index; i++) {
 		pack_msg(&control_msg, LidToGid(localID), LPS(localID)->ECS_synch_table[i], RENDEZVOUS_UNBLOCK, lvt(localID), lvt(localID), 0, NULL);
 		control_msg->rendezvous_mark = LPS(localID)->wait_on_rendezvous;
 		Send(control_msg);
 	}
+
+	/*page_node = list_head(LPS(localID)->ECS_read_list);
+	while(page_node != NULL){
+		//printf("LP %d (kid %d) deleting from read list  page with adddress %llu\n", localID, kid, (void *) page_node->page_address);
+		list_delete_by_content(LPS(localID)->ECS_read_list, page_node);
+		page_node = list_head(LPS(localID)->ECS_read_list);
+	}*/
 
 	LPS(localID)->wait_on_rendezvous = 0;
 	LPS(localID)->ECS_index = 0;
