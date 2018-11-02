@@ -43,14 +43,15 @@ struct _buddy {
 	size_t longest[1];
 };
 
-#ifndef PAGE_SIZE
-#define PAGE_SIZE (4<<10)
-#endif
+extern size_t __page_size;
+#define PAGE_SIZE ({ \
+			if(unlikely(__page_size == -1))\
+				__page_size = getpagesize();\
+			__page_size;\
+		  })
 
 #define PER_LP_PREALLOCATED_MEMORY (262144L * PAGE_SIZE) // This should be power of 2 multiplied by a page size. This is 1GB per LP.
 #define BUDDY_GRANULARITY PAGE_SIZE	// This is the smallest chunk released by the buddy in bytes. PER_LP_PREALLOCATED_MEMORY/BUDDY_GRANULARITY must be integer and a power of 2
-#define MAX_MMAP	(131072L * PAGE_SIZE) // This is the maximum amount of memory that a single mmap() call is able to serve. TODO: this should be checked within configure.ac
-#define NUM_MMAP	PER_LP_PREALLOCATED_MEMORY / MAX_MMAP
 
 // TODO: no need to keep a structure anymore...
 // This is for the segment allocator
@@ -67,5 +68,6 @@ typedef struct _lp_mem_region{
 
 extern bool allocator_init(void);
 extern void allocator_fini(void);
+extern void segment_init(void);
 extern void *get_segment(GID_t i);
-void *get_base_pointer(GID_t gid);
+extern void *get_base_pointer(GID_t gid);

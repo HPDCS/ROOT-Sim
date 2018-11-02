@@ -36,12 +36,9 @@
 #include <unistd.h>
 #include <pthread.h>
 
-
 // Macros to get information about the hosting machine
 
 #define get_cores() (sysconf( _SC_NPROCESSORS_ONLN ))
-
-
 
 // How do we identify a thread?
 typedef pthread_t tid_t;

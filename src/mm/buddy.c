@@ -230,6 +230,9 @@ void allocator_fini(void) {
 bool allocator_init(void) {
 	unsigned int i;
 
+	// Initialize the underlying segment allocator
+	segment_init();
+
 	// These are a vector of pointers which are later initialized
 	buddies = rsalloc(sizeof(struct _buddy *) * n_prc);
 	mem_areas = rsalloc(sizeof(void *) * n_prc);

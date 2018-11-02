@@ -23,12 +23,16 @@
 * @author Francesco Quaglia
 */
 
-#include <mm/mm.h>
+#include <sys/time.h>
+#include <sys/resource.h>
 
+#include <mm/mm.h>
 #include <mm/ecs.h>
 #include <arch/linux/modules/cross_state_manager/cross_state_manager.h>
 #include <fcntl.h>
 #include <sys/types.h>
+
+size_t __page_size = -1;
 
 //TODO: document this magic! This is related to the pml4 index intialized in the ECS kernel module
 static unsigned char *init_address = (unsigned char *)(10LL << 39);
@@ -39,26 +43,34 @@ void *get_base_pointer(GID_t gid){
 }
 
 void *get_segment(GID_t gid) {
-	int i;
 	void *the_address;
-
-	void *mmapped[NUM_MMAP];
+	void *mapped;
 
 	// Addresses are determined in the same way across all kernel instances
 	the_address = init_address + PER_LP_PREALLOCATED_MEMORY * gid_to_int(gid);
 
-	for(i = 0; i < NUM_MMAP; i++) {
-		mmapped[i] = mmap(the_address, MAX_MMAP, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS|MAP_FIXED, 0, 0);
-		if(unlikely(mmapped[i] == MAP_FAILED)) {
-			rootsim_error(true, "Unable to mmap LPs memory\n");
-			return NULL;
-		}
-		// Access the memory in write mode to force the kernel to create the page table entries
-		*((char *)mmapped[i]) = 'x';
-		the_address = (char *)the_address + MAX_MMAP;
+	mapped = mmap(the_address, PER_LP_PREALLOCATED_MEMORY, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS|MAP_FIXED, 0, 0);
+	if(unlikely(mapped == MAP_FAILED)) {
+		rootsim_error(true, "Unable to mmap LPs memory\n");
+		return NULL;
 	}
+	// Access the memory in write mode to force the kernel to create the page table entries
+	*((char *)mapped) = 'x';
 
-	return mmapped[0];
+	return mapped;
+}
+
+void segment_init(void) {
+	struct rlimit limit;
+	size_t max_address_space = PER_LP_PREALLOCATED_MEMORY * n_prc_tot * 2;
+
+	limit.rlim_cur = max_address_space;
+	limit.rlim_max = max_address_space;
+  
+	if (setrlimit(RLIMIT_AS, &limit) != 0) {
+		perror("Unable to set the maximum address space");
+		rootsim_error(true, "Unable to pre-allocate per-LP memory. Aborting...\n");
+	}
 }
 
 /*

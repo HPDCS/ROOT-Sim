@@ -97,8 +97,7 @@ static int slab_is_valid(const struct slab_chain *const sch)
 }
 #endif
 
-void slab_init(struct slab_chain *const sch, const size_t itemsize)
-{
+void slab_init(struct slab_chain *const sch, const size_t itemsize) {
     assert(sch != NULL);
     assert(itemsize >= 1 && itemsize <= SIZE_MAX);
     assert(POWEROF2(PAGE_SIZE));
