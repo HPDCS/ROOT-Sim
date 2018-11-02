@@ -206,6 +206,7 @@ static inline void reduce_local_gvt(void) {
 
 		local_min[local_tid] = min(local_min[local_tid], LPS_bound(i)->bound->timestamp);
 	}
+	atomic_thread_fence(memory_order_acquire);
 }
 
 
@@ -381,6 +382,7 @@ simtime_t gvt_operations(void) {
 				#endif
 			}
 		}
+
 		return -1.0;
 	}
 

@@ -215,6 +215,7 @@ static void post_local_reduction(void) {
 		lp_cost[lid_id].workload_factor *= statistics_get_lp_data(STAT_GET_EVENT_TIME_LP, lid);
 		lp_cost[lid_id].workload_factor /= ( last_evt->timestamp - first_evt->timestamp );
 	}
+	atomic_thread_fence(memory_order_acquire);
 }
 
 static void install_binding(void) {
