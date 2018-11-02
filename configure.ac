@@ -539,7 +539,7 @@ fi
 # Compose the message regarding ECS
 if test "x$ac_have_cross_state" = "xyes"
 then
-	ac_ecs="Enabled)"
+	ac_ecs="Enabled"
 else
 	ac_ecs="Disabled"
 	if test "x$ac_on_linux" = "xyes"
