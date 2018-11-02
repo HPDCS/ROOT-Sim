@@ -36,19 +36,18 @@ void SerialScheduleNewEvent(unsigned int rcv, simtime_t stamp, unsigned int even
 		rootsim_error(true, "LP %d is trying to send events in the past. Current time: %f, scheduled time: %f\n", current_lp, current_lvt, stamp);
 	}
 
-	// TODO: use pack function
 	// Populate the message data structure
 	set_gid(receiver, rcv);
 	size_t size = sizeof(msg_t) + event_size;
 	event = rsalloc(size);
-	bzero(event, sizeof(msg_t));
+	bzero(event, size);
 	event->sender = LidToGid(current_lp);
 	event->receiver = receiver;
 	event->timestamp = stamp;
 	event->send_time = current_lvt;
 	event->type = event_type;
 	event->size = event_size;
-	memcpy(event->event_content, event_content, event_size); // TODO: not compliant with the new structure
+	memcpy(event->event_content, event_content, event_size);
 
 	// Put the event in the Calenda Queue
 	calqueue_put(stamp, event);
@@ -88,6 +87,7 @@ void serial_simulation(void) {
 	timer serial_gvt_timer;
 	msg_t *event;
 	unsigned int completed = 0;
+	void *content = NULL;
 
 	#ifdef EXTRA_CHECKS
         unsigned long long hash1, hash2;
@@ -113,11 +113,15 @@ void serial_simulation(void) {
 
 		current_lp = GidToLid(event->receiver);
 		current_lvt = event->timestamp;
-		timer_start(serial_event_execution);
-		ProcessEvent_light(lid_to_int(current_lp), current_lvt, event->type, event->event_content, event->size, serial_states[lid_to_int(current_lp)]);
 
-		statistics_post_lp_data(current_lp, STAT_EVENT, 1.0);
+		content = event->size > 0 ? event->event_content : NULL;
+
+		timer_start(serial_event_execution);
+
+		ProcessEvent_light(lid_to_int(current_lp), current_lvt, event->type, content, event->size, serial_states[lid_to_int(current_lp)]);
+
 		statistics_post_lp_data(current_lp, STAT_EVENT_TIME, timer_value_seconds(serial_event_execution) );
+		statistics_post_lp_data(current_lp, STAT_EVENT, 1.0);
 
 		#ifdef EXTRA_CHECKS
 		if(event->size > 0) {
