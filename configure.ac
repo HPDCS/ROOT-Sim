@@ -200,96 +200,6 @@ case $host_os in
         ;;
 esac
 
-
-
-
-
-#----------------------------------------------------------------------------
-# Check if we can use the tick timer
-#----------------------------------------------------------------------------
-
-
-AC_MSG_CHECKING([if assembler knows rdtsc instruction])
-
-AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[]], [[
-  do {
-    unsigned int lo;
-    unsigned int hi;
-    __asm__ __volatile__ ("rdtsc" : "=a" (lo), "=d" (hi));
-    ((unsigned long long)hi) << 32 | lo;
-  }
-  while (0)
-]])], [
-AC_DEFINE([HAVE_RDTSC])
-AC_MSG_RESULT([yes])
-ac_have_as_rdtsc=yes
-], [
-AC_MSG_RESULT([no])
-])
-
-
-#----------------------------------------------------------------------------
-# Family instructions checks.
-# These are used to support a specific version of the memcmp for the
-# early check termination.
-#----------------------------------------------------------------------------
-
-
-# does the assembler understand SSE3 instructions?
-AC_MSG_CHECKING([if assembler knows SSE3])
-
-AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[]], [[
-  do { long long int x;
-     __asm__ __volatile__("fisttpq (%0)" : :"r"(&x) ); }
-  while (0)
-]])], [
-AC_DEFINE([HAVE_SSE3])
-AC_MSG_RESULT([yes])
-ac_have_as_sse3=yes
-], [
-AC_MSG_RESULT([no])
-])
-
-# does the assembler understand SSSE3 instructions?
-AC_MSG_CHECKING([if assembler knows SSSE3])
-
-save_CFLAGS="$CFLAGS"
-CFLAGS="$CFLAGS -msse"
-AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[]], [[
-  do { long long int x;
-   __asm__ __volatile__(
-      "pabsb (%0),%%xmm7" : : "r"(&x) : "xmm7" ); }
-  while (0)
-]])], [
-AC_DEFINE([HAVE_SSSE3])
-AC_MSG_RESULT([yes])
-ac_have_as_ssse3=yes
-], [
-AC_MSG_RESULT([no])
-])
-CFLAGS="$save_CFLAGS"
-
-# does the assembler understand SSE 4.2 instructions?
-AC_MSG_CHECKING([if assembler knows SSE4.2])
-
-AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[]], [[
-  do { long long int x;
-   __asm__ __volatile__(
-      "crc32q %%r15,%%r15" : : : "r15" );
-   __asm__ __volatile__(
-      "pblendvb (%%rcx), %%xmm11" : : : "memory", "xmm11");
-   __asm__ __volatile__(
-      "aesdec %%xmm2, %%xmm1" : : : "xmm2", "xmm1"); }
-  while (0)
-]])], [
-AC_DEFINE([HAVE_SSE42])
-AC_MSG_RESULT([yes])
-ac_have_as_sse42=yes
-], [
-AC_MSG_RESULT([no])
-])
-
-
 #----------------------------------------------------------------------------
 # COMPILE TIME OPTIONS
 #
@@ -458,30 +368,6 @@ AC_OUTPUT
 # autoconfigured stuff.
 #----------------------------------------------------------------------------
 
-# Compose the message regarding the CPU
-current_cpu="${host_cpu} (available supports:"
-if test "x$ac_have_as_rdtsc" = "xyes"
-then
-	current_cpu="${current_cpu} rdtcs"
-fi
-
-if test "x$ac_have_as_sse3" = "xyes"
-then
-	current_cpu="${current_cpu} SSE3"
-fi
-
-if test "x$ac_have_as_ssse3" = "xyes"
-then
-	current_cpu="${current_cpu} SSSE3"
-fi
-
-if test "x$ac_have_as_sse42" = "xyes"
-then
-	current_cpu="${current_cpu} SSE4.2"
-fi
-current_cpu="${current_cpu})"
-
-
 # Compose the debugging message
 if test "x$enable_debug" = "xyes"
 then
@@ -583,7 +469,7 @@ cat<<EOF
 
    * ROOT-Sim Configuration on Current Machine *
 
-CPU Architecture.......... : ${current_cpu}
+CPU Architecture.......... : ${host_cpu}
 Operating System.......... : ${host_os}
 Debugging Support......... : ${enable_debug}
 MPI....................... : ${enable_mpi}
