@@ -69,7 +69,7 @@ void ccgs_reduce_termination(void) {
 	/* If terminated locally check for global termination
 	 * All other kernel need to terminated
 	 */
-	if(!ccgs_completed_simulation && termination){
+	if(unlikely(!ccgs_completed_simulation && termination)) {
 		broadcast_termination();
 	}
 	#endif
@@ -104,7 +104,7 @@ void ccgs_compute_snapshot(state_t *time_barrier_pointer[], simtime_t gvt) {
 		lid = LPS_bound(i)->lid;
 
 		// If termination detection is incremental, we skip the current LP
-		if(rootsim_config.check_termination_mode == INCR_CKTRM && lps_termination[lid_to_int(lid)]) {
+		if(rootsim_config.check_termination_mode == CKTRM_INCREMENTAL && lps_termination[lid_to_int(lid)]) {
 			continue;
 		}
 
@@ -146,7 +146,7 @@ void ccgs_compute_snapshot(state_t *time_barrier_pointer[], simtime_t gvt) {
 		check_res &= lps_termination[lid_to_int(lid)];
 
 		// Early stop
-		if(rootsim_config.check_termination_mode == INCR_CKTRM && !check_res) {
+		if(rootsim_config.check_termination_mode == CKTRM_INCREMENTAL && !check_res) {
 			break;
 		}
 

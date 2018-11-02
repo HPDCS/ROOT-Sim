@@ -31,10 +31,6 @@
 #include <math.h>
 #include <string.h>
 
-#ifdef HAVE_NUMA
-#include <numa.h>
-#endif
-
 #include <core/core.h>
 #include <arch/thread.h>
 #include <statistics/statistics.h>
@@ -180,14 +176,7 @@ int main(int argc, char **argv) {
 	if((getenv("WGDB")) != NULL && *(getenv("WGDB")) == '1'){
 		int i = 0; char hostname[256]; gethostname(hostname, sizeof(hostname)); printf("PID %d on %s ready for attach\n", getpid(), hostname); fflush(stdout); while (0 == i) sleep(5);
 	}
-	// Runtime NUMA check
-	#ifdef HAVE_NUMA
-	if(numa_available() < 0) {
-		fprintf(stderr, "Your system does not support NUMA API\n");
-		exit(EXIT_FAILURE);
-	}
-	#endif
-		
+
 	SystemInit(argc, argv);
 
 

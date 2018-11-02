@@ -165,7 +165,7 @@ void ECS(void) {
 	ecs_page_node_t *page_node;
 	// ECS cannot happen in silent execution, as we take a log after the completion
 	// of an event which involves one or multiple ecs
-	if(LPS(current_lp)->state == LP_STATE_SILENT_EXEC) {
+	if(unlikely(LPS(current_lp)->state == LP_STATE_SILENT_EXEC)) {
 		rootsim_error(true,"----ERROR---- ECS in Silent Execution LP[%d] Hit:%llu Timestamp:%f\n",
 		current_lp, fault_info.target_gid, current_lvt);
 	}
@@ -202,7 +202,7 @@ void ECS(void) {
 }
 
 void ecs_init(void) {
-	printf("Invocation of ECS Init\n");
+	//printf("Invocation of ECS Init\n");
 	ioctl_fd = open("/dev/ktblmgr", O_RDONLY);
 	if (ioctl_fd <= -1) {
 		rootsim_error(true, "Error in opening special device file. ROOT-Sim is compiled for using the ktblmgr linux kernel module, which seems to be not loaded.");

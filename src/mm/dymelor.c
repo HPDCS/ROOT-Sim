@@ -76,8 +76,6 @@ void dymelor_fini(void){
 */
 static void malloc_area_init(bool recoverable, malloc_area *m_area, size_t size, int num_chunks){
 
-	int bitmap_blocks;
-
 	m_area->is_recoverable = recoverable;
 	m_area->chunk_size = size;
 	m_area->alloc_chunks = 0;
@@ -90,10 +88,6 @@ static void malloc_area_init(bool recoverable, malloc_area *m_area, size_t size,
 	m_area->dirty_bitmap = NULL;
 	m_area->self_pointer = NULL;
 	m_area->area = NULL;
-
-	bitmap_blocks = num_chunks / NUM_CHUNKS_PER_BLOCK;
-	if(bitmap_blocks < 1)
-		bitmap_blocks = 1;
 
 	m_area->prev = -1;
 	m_area->next = -1;
@@ -130,7 +124,7 @@ void malloc_state_init(bool recoverable, malloc_state *state) {
 	state->is_incremental = false;
 
 	state->areas = (malloc_area*)rsalloc(state->max_num_areas * sizeof(malloc_area));
-	if(state->areas == NULL)
+	if(unlikely(state->areas == NULL))
 		rootsim_error(true, "Unable to allocate memory at %s:%d\n", __FILE__, __LINE__);
 
 	chunk_size = MIN_CHUNK_SIZE;
@@ -168,7 +162,7 @@ static size_t compute_size(size_t size){
 	size_t size_new;
 
 	size_new = POWEROF2(size);
-	if(size_new < MIN_CHUNK_SIZE)
+	if(unlikely(size_new < MIN_CHUNK_SIZE))
 		size_new = MIN_CHUNK_SIZE;
 
 	return size_new;
@@ -192,7 +186,7 @@ static void find_next_free(malloc_area *m_area){
 
 	while(m_area->next_chunk < m_area->num_chunks){
 
-		if(!CHECK_USE_BIT(m_area, m_area->next_chunk))
+		if(!bitmap_check(m_area->use_bitmap, m_area->next_chunk))
 			break;
 
 		m_area->next_chunk++;
@@ -206,8 +200,7 @@ static void find_next_free(malloc_area *m_area){
 void *do_malloc(LID_t lid, malloc_state *mem_pool, size_t size) {
 	malloc_area *m_area, *prev_area;
 	void *ptr;
-	int bitmap_blocks, num_chunks;
-	size_t area_size;
+	size_t area_size, bitmap_size;
 	bool is_recoverable;
 	int j;
 
@@ -217,7 +210,7 @@ void *do_malloc(LID_t lid, malloc_state *mem_pool, size_t size) {
 
 	size = compute_size(size);
 
-	if(size > MAX_CHUNK_SIZE){
+	if(unlikely(size > MAX_CHUNK_SIZE)) {
 		rootsim_error(false, "Requested a memory allocation of %d but the limit is %d. Reconfigure MAX_CHUNK_SIZE. Returning NULL.\n", size, MAX_CHUNK_SIZE);
 		return NULL;
 	}
@@ -234,9 +227,9 @@ void *do_malloc(LID_t lid, malloc_state *mem_pool, size_t size) {
 			m_area = &(mem_pool->areas[m_area->next]);
 	}
 
-	if(m_area == NULL){
+	if(m_area == NULL) {
 
-		if(mem_pool->num_areas == mem_pool->max_num_areas){
+		if(mem_pool->num_areas == mem_pool->max_num_areas) {
 
 			malloc_area *tmp = NULL;
 
@@ -247,7 +240,7 @@ void *do_malloc(LID_t lid, malloc_state *mem_pool, size_t size) {
 
 			rootsim_error(true, "To reimplement\n");
 //			tmp = (malloc_area *)pool_realloc_memory(mem_pool->areas, mem_pool->max_num_areas * sizeof(malloc_area));
-			if(tmp == NULL){
+			if(tmp == NULL) {
 
 				/**
 				* @todo can we find a better way to handle the realloc failure?
@@ -277,12 +270,9 @@ void *do_malloc(LID_t lid, malloc_state *mem_pool, size_t size) {
 
 	if(m_area->area == NULL) {
 
-		num_chunks = m_area->num_chunks;
-		bitmap_blocks = num_chunks / NUM_CHUNKS_PER_BLOCK;
-		if(bitmap_blocks < 1)
-			bitmap_blocks = 1;
+		bitmap_size = bitmap_required_size(m_area->num_chunks);
 
-		area_size = sizeof(malloc_area *) + bitmap_blocks * BLOCK_SIZE * 2 + num_chunks * size;
+		area_size = sizeof(malloc_area *) + bitmap_size * 2 + m_area->num_chunks * size;
 
 		#ifdef HAVE_PARALLEL_ALLOCATOR
 		//insert is recoverable in pool_get_memory (was in GLP)
@@ -292,7 +282,7 @@ void *do_malloc(LID_t lid, malloc_state *mem_pool, size_t size) {
 		bzero(m_area->self_pointer, area_size);
 		#endif
 
-		if(m_area->self_pointer == NULL){
+		if(unlikely(m_area->self_pointer == NULL)) {
 			printf("Is recoverable: ");
 			printf(is_recoverable ? "true\n" : "false\n");
 			rootsim_error(true, "DyMeLoR: error allocating space\n");
@@ -301,42 +291,40 @@ void *do_malloc(LID_t lid, malloc_state *mem_pool, size_t size) {
 		m_area->dirty_chunks = 0;
 		*(unsigned long long *)(m_area->self_pointer) = (unsigned long long)m_area;
 
-		m_area->use_bitmap = (unsigned int *)((char *)m_area->self_pointer + sizeof(malloc_area *));
+		m_area->use_bitmap = ((unsigned char *)m_area->self_pointer + sizeof(malloc_area *));
 
-		m_area->dirty_bitmap = (unsigned int*)((char *)m_area->use_bitmap + bitmap_blocks * BLOCK_SIZE);
+		m_area->dirty_bitmap = ((unsigned char *)m_area->use_bitmap + bitmap_size);
 
-		m_area->area = (void *)((char*)m_area->use_bitmap + bitmap_blocks * BLOCK_SIZE * 2);
+		m_area->area = (void *)((char*)m_area->use_bitmap + bitmap_size * 2);
 	}
 
-	if(m_area->area == NULL) {
+	if(unlikely(m_area->area == NULL)) {
 		rootsim_error(true, "Error while allocating memory at %s:%d\n", __FILE__, __LINE__);
 	}
 
 	// TODO: ricontrollare come viene inizializzato next_chunk
 	ptr = (void*)((char*)m_area->area + (m_area->next_chunk * size));
 
-	SET_USE_BIT(m_area, m_area->next_chunk);
+	bitmap_set(m_area->use_bitmap, m_area->next_chunk);
 
-	bitmap_blocks = m_area->num_chunks / NUM_CHUNKS_PER_BLOCK;
-	if(bitmap_blocks < 1)
-		bitmap_blocks = 1;
+	bitmap_size = bitmap_required_size(m_area->num_chunks);
 
 	if(m_area->is_recoverable) {
-		if(m_area->alloc_chunks == 0){
-			mem_pool->bitmap_size += bitmap_blocks * BLOCK_SIZE;
+		if(m_area->alloc_chunks == 0) {
+			mem_pool->bitmap_size += bitmap_size;
 			mem_pool->busy_areas++;
 		}
 
 		if(m_area->state_changed == 0) {
-			mem_pool->dirty_bitmap_size += bitmap_blocks * BLOCK_SIZE;
+			mem_pool->dirty_bitmap_size += bitmap_size;
 			mem_pool->dirty_areas++;
 		}
 
 		m_area->state_changed = 1;
 		m_area->last_access = current_lvt;
 
-		if(!CHECK_LOG_MODE_BIT(m_area)){
-			if((double)m_area->alloc_chunks / (double)m_area->num_chunks > MAX_LOG_THRESHOLD){
+		if(!CHECK_LOG_MODE_BIT(m_area)) {
+			if((double)m_area->alloc_chunks / (double)m_area->num_chunks > MAX_LOG_THRESHOLD) {
 				SET_LOG_MODE_BIT(m_area);
 				mem_pool->total_log_size += (m_area->num_chunks - (m_area->alloc_chunks - 1)) * size;
 			} else
@@ -374,58 +362,61 @@ void do_free(LID_t lid, malloc_state *mem_pool, void *ptr) {
 	
 
 	malloc_area * m_area;
-	int idx, bitmap_blocks;
-	size_t chunk_size;
+	int idx;
+	size_t chunk_size, bitmap_size;
 
-	if(rootsim_config.serial) {
+	if(unlikely(rootsim_config.serial)) {
 		rsfree(ptr);
 		return;
 	}
 
-	if(ptr == NULL) {
+	if(unlikely(ptr == NULL)) {
 		rootsim_error(false, "Invalid pointer during free\n");
 		return;
 	}
 
 	m_area = get_area(ptr);
-	if(m_area == NULL){
+	if(unlikely(m_area == NULL)) {
 		rootsim_error(false, "Invalid pointer during free: malloc_area NULL\n");
 		return;
 	}
 
-	chunk_size = m_area->chunk_size;
-	RESET_BIT_AT(chunk_size, 0);
-	RESET_BIT_AT(chunk_size, 1);
+	chunk_size = UNTAGGED_CHUNK_SIZE(m_area);
+
 	idx = (int)((char *)ptr - (char *)m_area->area) / chunk_size;
 
-	if(!CHECK_USE_BIT(m_area, idx)) {
+	if(!bitmap_check(m_area->use_bitmap, idx)) {
 		fprintf(stderr, "%s:%d: double free() corruption or address not malloc'd\n", __FILE__, __LINE__);
 		abort();
 	}
-	RESET_USE_BIT(m_area, idx);
+	bitmap_reset(m_area->use_bitmap, idx);
 
-        bitmap_blocks = m_area->num_chunks / NUM_CHUNKS_PER_BLOCK;
-        if(bitmap_blocks < 1)
-                bitmap_blocks = 1;
+	bitmap_size = bitmap_required_size(m_area->num_chunks);
 
+	m_area->alloc_chunks--;
+
+	if(m_area->alloc_chunks == 0) {
+		mem_pool->bitmap_size -= bitmap_size;
+		mem_pool->busy_areas--;
+	}
 
 	if(m_area->is_recoverable) {
 		if (m_area->state_changed == 0) {
-			mem_pool->dirty_bitmap_size += bitmap_blocks * BLOCK_SIZE;
+			mem_pool->dirty_bitmap_size += bitmap_size;
 			mem_pool->dirty_areas++;
 		}
 
 
-		if(CHECK_DIRTY_BIT(m_area, idx)){
-			RESET_DIRTY_BIT(m_area, idx);
+		if(bitmap_check(m_area->dirty_bitmap, idx)) {
+			bitmap_reset(m_area->dirty_bitmap, idx);
 			m_area->dirty_chunks--;
 
 			if (m_area->state_changed == 1 && m_area->dirty_chunks == 0)
-				mem_pool->dirty_bitmap_size -= bitmap_blocks * BLOCK_SIZE;
+				mem_pool->dirty_bitmap_size -= bitmap_size;
 
 			mem_pool->total_inc_size -= chunk_size;
 
-			if (m_area->dirty_chunks < 0) {
+			if (unlikely(m_area->dirty_chunks < 0)) {
 				rootsim_error(true, "%s:%d: negative number of chunks\n", __FILE__, __LINE__);
 			}
 		}
@@ -433,19 +424,7 @@ void do_free(LID_t lid, malloc_state *mem_pool, void *ptr) {
 		m_area->state_changed = 1;
 
 		m_area->last_access = current_lvt;
-	}
 
-	if(idx < m_area->next_chunk)
-		m_area->next_chunk = idx;
-
-	m_area->alloc_chunks--;
-
-	if(m_area->alloc_chunks == 0) {
-		mem_pool->bitmap_size -= bitmap_blocks * BLOCK_SIZE;
-		mem_pool->busy_areas--;
-	}
-
-	if(m_area->is_recoverable) {
 		if(CHECK_LOG_MODE_BIT(m_area)){
 			if((double)m_area->alloc_chunks / (double)m_area->num_chunks < MIN_LOG_THRESHOLD){
 				RESET_LOG_MODE_BIT(m_area);
@@ -454,6 +433,10 @@ void do_free(LID_t lid, malloc_state *mem_pool, void *ptr) {
 		} else
 			mem_pool->total_log_size -= chunk_size;
 	}
+
+	if(idx < m_area->next_chunk)
+		m_area->next_chunk = idx;
+
 	// TODO: when do we free unrecoverable areas?
 }
 

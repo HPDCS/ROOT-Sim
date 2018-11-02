@@ -29,6 +29,8 @@
 
 #ifdef OS_LINUX
 
+#include <arch/asm_defines.h>
+
 .extern ECS
 .extern lps_blocks
 
@@ -63,6 +65,7 @@ rootsim_cross_state_dependency_handler:
 	# Access to context field of LPS[current_lp]
 	movl %fs:current_lp@tpoff, %edi
 	movq lps_blocks(%rip), %rsi
+	addq $offsetof_LP_State_context, %rsi
 	leaq (%rsi, %rdi, 8), %rdi
 	movq (%rdi), %rdi
 	

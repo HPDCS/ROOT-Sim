@@ -32,13 +32,11 @@
 #include <ROOT-Sim.h>
 #include <core/core.h>
 
-
-/// Checkpointing interval not yet set
-#define  INVALID_STATE_SAVING 		0
-/// Copy State Saving checkpointing interval
-#define  COPY_STATE_SAVING 		1
-/// Periodic State Saving checkpointing interval
-#define  PERIODIC_STATE_SAVING		2
+enum{
+	STATE_SAVING_INVALID = 0,	/**< By convention 0 is the invalid field */
+	STATE_SAVING_COPY,			/**< Copy State Saving checkpointing interval */
+	STATE_SAVING_PERIODIC		/**< Periodic State Saving checkpointing interval */
+};
 
 
 /// Structure for LP's state

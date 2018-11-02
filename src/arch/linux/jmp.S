@@ -27,9 +27,13 @@
 
 #ifdef OS_LINUX
 
+#include <arch/asm_defines.h>
+
 .text
 
-# Stack organization of this function after the first three push:
+# _set_jmp: create a snapshot of the current running ULT, for later restore.
+#
+# Stack organization of this function after the first three push instruction:
 #
 #    _______________
 #    |    FLAGS    |
@@ -45,8 +49,18 @@
 #
 # Arguments to this function:
 #  - RDI: pointer to the CPU context where to store the current (before call) context
+#
+# The following defines keep the offsets described in the picture above
+# starting from the stack pointer. This is because this function does
+# not actually creates a valid stack frame, to save some registers
 
-.align 4
+#define old_flags	0
+#define old_r11		8
+#define old_rax		16
+#define ret_addr	24
+#define old_rdi		32
+
+.align 8
 .globl _set_jmp
 .type _set_jmp, @function
 _set_jmp:
@@ -60,44 +74,60 @@ _set_jmp:
 
 	# Save the context
 	movq %rdi, %rax 	# rax points to the context
-	movq 16(%rsp), %r11 	# r11 keeps the 'old' rax
-	movq %r11, (%rax)	# rax is the first field of the context
-	movq %rdx, 8(%rax)
-	movq %rcx, 16(%rax)
-	movq %rbx, 24(%rax)
-	movq %rsp, 32(%rax)
-	addq $16, 32(%rax)	# saved rsp must point one quadword above the old return address
-	movq %rbp, 40(%rax)
-	movq %rsi, 48(%rax)
-	movq 32(%rsp), %r11	# old 'rdi' was pushed by the surrounding macro
-	movq %r11, 56(%rax)
-	movq %r8, 64(%rax)
-	movq %r9, 72(%rax)
-	movq %r10, 80(%rax)
-	movq 8(%rsp), %r11 	# r11 keeps the 'old' r11
-	movq %r11, 88(%rax)	# r11 is the 12-th field of the context
-	movq %r12, 96(%rax)
-	movq %r13, 104(%rax)
-	movq %r14, 112(%rax)
-	movq %r15, 120(%rax)
-	movq (%rsp), %rdx
-	movq %rdx, 136(%rax)	# (%rsp) is flags
-	
-	movq 24(%rsp), %r11	# Save the original return address
-	movq %r11, 128(%rax)
+	movq old_rax(%rsp), %r11 	# r11 keeps the 'old' rax
+	# Save GP registers at appropriate offsets
+	movq %r11, offsetof_exec_context_t_rax(%rax)
+	movq %rdx, offsetof_exec_context_t_rdx(%rax)
+	movq %rcx, offsetof_exec_context_t_rcx(%rax)
+	movq %rbx, offsetof_exec_context_t_rbx(%rax)
+	movq %rsp, offsetof_exec_context_t_rsp(%rax)
+	# saved rsp must point one quadword above the old return address
+	addq $16,  offsetof_exec_context_t_rsp(%rax)
+	movq %rbp, offsetof_exec_context_t_rbp(%rax)
+	movq %rsi, offsetof_exec_context_t_rsi(%rax)
+	# old 'rdi' was pushed by the surrounding macro
+	movq old_rdi(%rsp), %r11
+	movq %r11, offsetof_exec_context_t_rdi(%rax)
+	movq %r8, offsetof_exec_context_t_r8(%rax)
+	movq %r9, offsetof_exec_context_t_r9(%rax)
+	movq %r10, offsetof_exec_context_t_r10(%rax)
+	# make r11 keep the 'old' r11
+	movq old_r11(%rsp), %r11
+	movq %r11, offsetof_exec_context_t_r11(%rax)
+	movq %r12, offsetof_exec_context_t_r12(%rax)
+	movq %r13, offsetof_exec_context_t_r13(%rax)
+	movq %r14, offsetof_exec_context_t_r14(%rax)
+	movq %r15, offsetof_exec_context_t_r15(%rax)
+	# save flags, pushed at the beginning of this function
+	movq old_flags(%rsp), %rdx
+	movq %rdx, offsetof_exec_context_t_flags(%rax)
+
+	# Save the original return address
+	movq ret_addr(%rsp), %r11
+	movq %r11, offsetof_exec_context_t_rip(%rax)
 
 	# Now save other registers. fxsave wants memory aligned to 16 byte.
 	# The context structure is aligned to 16 bytes. We have 18 8-byte
 	# registers, so the next address is exactly the 'others' buffer.
-	fxsave 144(%rax)
-	
+	fxsave offsetof_exec_context_t_fpu(%rax)
+
 	addq $24, %rsp
 	xorq %rax, %rax		# return 0 because the context is being created
 	ret
-	
+
 .size   _set_jmp, .-_set_jmp
 
 
+#undef old_flags
+#undef old_r11
+#undef old_rax
+#undef ret_addr
+#undef old_rdi
+
+
+
+# _long_jmp: restore a previously saved ULT context.
+#
 # This long_jmp version does not restore RAX. In fact, the common usage is to
 # call longjmp(context, val); and RAX is set to val. This function respects this,
 # so that if RAX should be restored as well, it is possible to call
@@ -114,50 +144,93 @@ _set_jmp:
 # the caller and the stack of the destination of the long jump are different.
 
 
-.align 4
+.align 8
 .globl _long_jmp
-.type _long_jmp, @function	
+.type _long_jmp, @function
 _long_jmp:
-	movq %rdi, %rax		# rax points to the context
+	movq %rdi, %rax		# rax now points to the context
 
-	movq 128(%rax), %r10	# This is the old return address
-	movq 32(%rax), %r11	# r11 is the old rsp
+	movq offsetof_exec_context_t_rip(%rax), %r10	# This is the old return address
+	movq offsetof_exec_context_t_rsp(%rax), %r11	# r11 is the old rsp
 	movq %r10, 8(%r11)	# restore the old return address
 
 	movq %rsi, (%r11)	# Put on the old stack the desired return value
-	
-	movq 8(%rax), %rdx	# rdx is the second field of the context
-	movq 16(%rax), %rcx 
-	movq 24(%rax), %rbx 
-	movq 32(%rax), %rsp 
-	movq 40(%rax), %rbp
-	movq 48(%rax), %rsi
-	movq 64(%rax), %r8
-	movq 72(%rax), %r9
-	movq 80(%rax), %r10	# Finish to restore GP registers
-	movq 88(%rax), %r11
-	movq 96(%rax), %r12
-	movq 104(%rax), %r13
-	movq 112(%rax), %r14
+
+	# Restore GP registers from the saved context
+	movq offsetof_exec_context_t_rdx(%rax), %rdx
+	movq offsetof_exec_context_t_rcx(%rax), %rcx
+	movq offsetof_exec_context_t_rbx(%rax), %rbx
+	movq offsetof_exec_context_t_rsp(%rax), %rsp
+	movq offsetof_exec_context_t_rbp(%rax), %rbp
+	movq offsetof_exec_context_t_rsi(%rax), %rsi
+	movq offsetof_exec_context_t_r8(%rax), %r8
+	movq offsetof_exec_context_t_r9(%rax), %r9
+	movq offsetof_exec_context_t_r10(%rax), %r10
+	movq offsetof_exec_context_t_r11(%rax), %r11
+	movq offsetof_exec_context_t_r12(%rax), %r12
+	movq offsetof_exec_context_t_r13(%rax), %r13
+	movq offsetof_exec_context_t_r14(%rax), %r14
 
 	# Restore FLAGS
-	movq 136(%rax), %rax	# this is flags
+	movq offsetof_exec_context_t_flags(%rax), %rax	# this is flags
 	addb $0x7f, %al		# Overflows if OF was set
 	sahf
-	
-	
+
 	# Restore remaining rdi and r15
 	movq %rdi, %rax		# rax now points again to context
-	movq 56(%rax), %rdi
-	movq 120(%rax), %r15
+	movq offsetof_exec_context_t_rdi(%rax), %rdi
+	movq offsetof_exec_context_t_r15(%rax), %r15
 
 	# Restore other registers
-	fxrstor 144(%rax)
-	
-	movq 32(%rax), %rsp	# (possibly) change stack
-	popq %rax		# Set the desired return value
+	fxrstor offsetof_exec_context_t_fpu(%rax)
+
+	# (possibly) change stack
+	movq offsetof_exec_context_t_rsp(%rax), %rsp
+	# Set the desired return value. This was RSI passed to the function,
+	# which was moved on top of the new stack (now restored) at the
+	# beginning of this function
+	popq %rax
 	ret			# do the long jump
-	
+
 .size   _long_jmp, .-_long_jmp
+
+
+
+
+
+# _context_create: create a context for a new ULT. The new ULT is assumed
+# to never return from the first function it starts in (no valid return
+# address is stored in the initial context).
+#
+# Parameters to this function are as follows:
+# - RDI: context to be setup (2nd argument)
+# - RSI: function to be activated in the new ULT (3rd argument)
+# - RDX: arguments to be passed to the above function (4th argument)
+# - RCX: a pointer to the newly allocated stack (5th argument)
+# - R8: the size of the newly allocated stack (6th argument)
+#
+# We do not clobber any callee-save register here.
+
+.align 8
+.globl context_create
+.type context_create, @function
+context_create:
+
+	# Initialize the FPU context to the values kept in this function
+	# (we do not care about the values, but FPU configuration is saved)
+	fxsave offsetof_exec_context_t_fpu(%rdi)
+
+	# Compute and store the stack pointer
+	addq %r8, %rcx
+	subq $8, %rcx
+	movq %rcx, offsetof_exec_context_t_rsp(%rdi)
+
+	# Set the function to be activated and its parameter
+	movq %rsi, offsetof_exec_context_t_rip(%rdi)
+	movq %rdx, offsetof_exec_context_t_rdi(%rdi)
+
+	ret
+
+.size   context_create, .-context_create
 
 #endif /* OS_LINUX */

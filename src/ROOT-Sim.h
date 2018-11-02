@@ -38,6 +38,7 @@
 #include <stdbool.h>
 #include <float.h>
 #include <limits.h>
+#include <argp.h>
 
 
 #ifdef INIT
@@ -104,7 +105,8 @@ typedef double simtime_t;
 /// This is the definition of the number of LPs running in the current simulation
 extern unsigned int n_prc_tot;
 
-
+/// This can be implemented by the model for smart argument handling
+__attribute((weak)) extern struct argp model_argp;
 
 // Topology library
 #define TOPOLOGY_HEXAGON	1000
@@ -127,8 +129,20 @@ unsigned int FindReceiver(int topology);
 
 #define INVALID_DIRECTION UINT_MAX
 
+/// This is a type used to setup obstacles in a grid of cells
+typedef struct obstacles_t obstacles_t;
+
 // Returns INVALID_DIRECTION if a movement is not possible according to the given topology
 unsigned int GetReceiver(int topology, int direction);
+
+// Setup and discard an obstacle grid. num is the number of integers passed to the variadic function
+void SetupObstacles(obstacles_t **obstacles);
+void AddObstacles(obstacles_t *obstacles, int num, ...);
+void AddObstacle(obstacles_t *obstacles, int cell);
+void DiscardObstacles(obstacles_t *obstacles);
+
+// Function to return a list of LP IDs to be visited in order to reach a given cell.
+unsigned int ComputeMinTour(unsigned int **list, obstacles_t *obstacles, int topology, unsigned int source, unsigned int dest);
 
 // Expose to the application level the command line parameter parsers
 int GetParameterInt(void *args, char *name);

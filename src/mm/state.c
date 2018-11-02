@@ -59,7 +59,7 @@ bool LogState(LID_t lid) {
 	bool take_snapshot = false;
 	state_t *new_state; 
 
-	if(is_blocked_state(LPS(lid)->state)) {
+	if(unlikely(is_blocked_state(LPS(lid)->state))) {
 		return take_snapshot;
 	}
 
@@ -77,11 +77,11 @@ bool LogState(LID_t lid) {
 	// Switch on the checkpointing mode
 	switch(rootsim_config.checkpointing) {
 
-		case COPY_STATE_SAVING:
+		case STATE_SAVING_COPY:
 			take_snapshot = true;
 			break;
 
-		case PERIODIC_STATE_SAVING:
+		case STATE_SAVING_PERIODIC:
 			if(LPS(lid)->from_last_ckpt >= LPS(lid)->ckpt_period) {
 				take_snapshot = true;
 				LPS(lid)->from_last_ckpt = 0;
@@ -162,7 +162,7 @@ unsigned int silent_execution(LID_t lid, void *state_buffer, msg_t *evt, msg_t *
 	// the simulation has been already executed at least once
 	while(evt != NULL && evt != final_evt) {
 
-		if(!reprocess_control_msg(evt)) {
+		if(unlikely(!reprocess_control_msg(evt))) {
 			evt = list_next(evt);
 			continue;
 		}
@@ -198,16 +198,14 @@ void rollback(LID_t lid) {
 
 
 	// Sanity check
-	if(LPS(lid)->state != LP_STATE_ROLLBACK) {
+	if(unlikely(LPS(lid)->state != LP_STATE_ROLLBACK)) {
 		rootsim_error(false, "I'm asked to roll back LP %d's execution, but rollback_bound is not set. Ignoring...\n", LidToGid(lid));
 		return;
 	}
 
 
 	// Discard any possible execution state related to a blocked execution
-	#ifdef ENABLE_ULT
 	memcpy(&LPS(lid)->context, &LPS(lid)->default_context, sizeof(LP_context_t));
-	#endif
 
 	statistics_post_lp_data(lid, STAT_ROLLBACK, 1.0);
 
@@ -257,7 +255,7 @@ state_t *find_time_barrier(LID_t lid, simtime_t simtime) {
 
 	state_t *barrier_state;
 
-	if(D_EQUAL(simtime, 0.0)) {
+	if(unlikely(D_EQUAL(simtime, 0.0))) {
 		return list_head(LPS(lid)->queue_states);
 	}
 

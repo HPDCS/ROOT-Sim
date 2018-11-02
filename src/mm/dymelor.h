@@ -36,6 +36,7 @@
 
 
 #include <core/core.h>
+#include <datatypes/bitmap.h>
 #include <mm/state.h>
 #include <core/timer.h>
 
@@ -49,11 +50,6 @@
 //ADDED BY MAT 0x00000200000000000
 #define LP_PREALLOCATION_INITIAL_ADDRESS	(void *)0x0000008000000000
 #define MASK 0x00000001		// Mask used to check, set and unset bits
-
-
-//#define NUM_CHUNKS_PER_BLOCK 32
-#define NUM_CHUNKS_PER_BLOCK 32
-#define BLOCK_SIZE sizeof(unsigned int)
 
 
 #define MIN_CHUNK_SIZE 128	// Size (in bytes) of the smallest chunk provideable by DyMeLoR
@@ -87,40 +83,16 @@
 // This macro is used to retrieve a cache line in O(1)
 #define GET_CACHE_LINE_NUMBER(P) ((unsigned long)((P >> 4) & (CACHE_SIZE - 1)))
 
-// Macros to check, set and unset bits in the malloc_area masks
-#define CHECK_USE_BIT(A,I) ( CHECK_BIT_AT(									\
-			((unsigned int*)(((malloc_area*)A)->use_bitmap))[(int)((int)I / NUM_CHUNKS_PER_BLOCK)],	\
-			((int)I % NUM_CHUNKS_PER_BLOCK)) )
-#define SET_USE_BIT(A,I) ( SET_BIT_AT(										\
-			((unsigned int*)(((malloc_area*)A)->use_bitmap))[(int)((int)I / NUM_CHUNKS_PER_BLOCK)],	\
-			((int)I % NUM_CHUNKS_PER_BLOCK)) )
-#define RESET_USE_BIT(A,I) ( RESET_BIT_AT(									\
-			((unsigned int*)(((malloc_area*)A)->use_bitmap))[(int)((int)I / NUM_CHUNKS_PER_BLOCK)],	\
-			((int)I % NUM_CHUNKS_PER_BLOCK)) )
-
-#define CHECK_DIRTY_BIT(A,I) ( CHECK_BIT_AT(									\
-			((unsigned int*)(((malloc_area*)A)->dirty_bitmap))[(int)((int)I / NUM_CHUNKS_PER_BLOCK)],\
-			((int)I % NUM_CHUNKS_PER_BLOCK)) )
-#define SET_DIRTY_BIT(A,I) ( SET_BIT_AT(									\
-			((unsigned int*)(((malloc_area*)A)->dirty_bitmap))[(int)((int)I / NUM_CHUNKS_PER_BLOCK)],\
-			((int)I % NUM_CHUNKS_PER_BLOCK)) )
-#define RESET_DIRTY_BIT(A,I) ( RESET_BIT_AT(									\
-			((unsigned int*)(((malloc_area*)A)->dirty_bitmap))[(int)((int)I / NUM_CHUNKS_PER_BLOCK)],\
-			((int)I % NUM_CHUNKS_PER_BLOCK)) )
-
-
 // Macros uset to check, set and unset special purpose bits
-#define SET_LOG_MODE_BIT(A)     ( SET_BIT_AT(((malloc_area*)A)->chunk_size, 0) )
-#define RESET_LOG_MODE_BIT(A) ( RESET_BIT_AT(((malloc_area*)A)->chunk_size, 0) )
-#define CHECK_LOG_MODE_BIT(A) ( CHECK_BIT_AT(((malloc_area*)A)->chunk_size, 0) )
+#define SET_LOG_MODE_BIT(m_area)	(((malloc_area*)(m_area))->chunk_size |=  (MASK << 0))
+#define RESET_LOG_MODE_BIT(m_area)	(((malloc_area*)(m_area))->chunk_size &= ~(MASK << 0))
+#define CHECK_LOG_MODE_BIT(m_area)	(((malloc_area*)(m_area))->chunk_size &   (MASK << 0))
 
-#define SET_AREA_LOCK_BIT(A)     ( SET_BIT_AT(((malloc_area*)A)->chunk_size, 1) )
-#define RESET_AREA_LOCK_BIT(A) ( RESET_BIT_AT(((malloc_area*)A)->chunk_size, 1) )
-#define CHECK_AREA_LOCK_BIT(A) ( CHECK_BIT_AT(((malloc_area*)A)->chunk_size, 1) )
+#define SET_AREA_LOCK_BIT(m_area)	(((malloc_area*)(m_area))->chunk_size |=  (MASK << 1))
+#define RESET_AREA_LOCK_BIT(m_area)	(((malloc_area*)(m_area))->chunk_size &= ~(MASK << 1))
+#define CHECK_AREA_LOCK_BIT(m_area)	(((malloc_area*)(m_area))->chunk_size &   (MASK << 1))
 
-#define SET_BIT_AT(B,K) ( B |= (MASK << K) )
-#define RESET_BIT_AT(B,K) ( B &= ~(MASK << K) )
-#define CHECK_BIT_AT(B,K) ( B & (MASK << K) )
+#define UNTAGGED_CHUNK_SIZE(m_area)	(((malloc_area*)(m_area))->chunk_size & ~((MASK << 0) | (MASK << 1)))
 
 #define POWEROF2(x) (1UL << (1 + (63 - __builtin_clzl((x) - 1))))
 #define IS_POWEROF2(x) ((x) != 0 && ((x) & ((x) - 1)) == 0)
@@ -137,8 +109,8 @@ struct _malloc_area {
 	int state_changed;
 	simtime_t last_access;
 	struct _malloc_area *self_pointer; // This pointer is used in a free operation. Each chunk points here. If malloc_area is moved, only this is updated.
-	unsigned int *use_bitmap;
-	unsigned int *dirty_bitmap;
+	rootsim_bitmap *use_bitmap;
+	rootsim_bitmap *dirty_bitmap;
 	void *area;
 	int prev;
 	int next;

@@ -25,12 +25,8 @@
 
 
 #pragma once
-#ifndef __ULT_H
-#define __ULT_H
 
 #include <core/core.h>
-
-#ifdef ENABLE_ULT
 
 #if defined(OS_LINUX)
 
@@ -59,9 +55,14 @@ typedef exec_context_t kernel_context_t;
 	if(set_jmp(context_old) == 0) \
 		long_jmp(context_new, 1)
 
+
 extern void *get_ult_stack(size_t size);
 
+
 #elif defined(OS_CYGWIN) || defined(OS_WINDOWS) /* OS_LINUX || OS_CYGWIN */
+
+
+
 
 #include <windows.h>
 #if defined(_WIN32_WINNT) && _WIN32_WINNT >= 0x0400
@@ -98,17 +99,11 @@ typedef struct __execution_context_t kernel_context_t;
 #define context_save(context) {}
 #define context_restore(context) {}
 
-#endif /* OS */
-
-// These are the APIs that, independently of the underlying arch, must be exposed by this module
+// This is a function which creates a new fiber when running on Windows
 extern void context_create(LP_context_t *context, void (*entry_point)(void *), void *args, void *stack, size_t stack_size);
+
+#endif /* OS */
 
 // This is the current KLT main execution context
 extern __thread kernel_context_t kernel_context;
-
-#endif /* #define __ULT_H */
-
-#endif /* ENABLE_ULT */
-
-
 

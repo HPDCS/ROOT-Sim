@@ -72,7 +72,7 @@ static void *__helper_create_thread(void *arg) {
 
 
 	// Set the affinity on a CPU core, for increased performance
-	if(rootsim_config.core_binding)
+	if(likely(rootsim_config.core_binding))
 		set_affinity(local_tid);
 
 	// Now get into the real thread's entry point
@@ -164,7 +164,7 @@ bool thread_barrier(barrier_t *b) {
 	while(atomic_read(&b->c1));
 
 	// Leader election
-	if(atomic_inc_and_test(&b->barr)) {
+	if(unlikely(atomic_inc_and_test(&b->barr))) {
 
 		// I'm sync'ed!
 		atomic_dec(&b->c2);

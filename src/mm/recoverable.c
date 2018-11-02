@@ -138,16 +138,15 @@ void dirty_mem(void *base, int size) {
 	int 	first_chunk,
 		last_chunk,
 		i,
-		chk_size,
-		bitmap_blocks;
+		chk_size;
+
+	size_t bitmap_size;
 
 	malloc_area *m_area = get_area(base);
 
-	if(m_area != NULL){
+	if(m_area != NULL) {
 
-		chk_size = m_area->chunk_size;
-		RESET_BIT_AT(chk_size, 0);
-		RESET_BIT_AT(chk_size, 1);
+		chk_size = UNTAGGED_CHUNK_SIZE(m_area->chunk_size);
 
 		// Compute the number of chunks affected by the write
 		first_chunk = (int)(((char *)base - (char *)m_area->area) / chk_size);
@@ -161,24 +160,22 @@ void dirty_mem(void *base, int size) {
 		else
 			last_chunk = (int)(((char *)base + size - 1 - (char *)m_area->area) / chk_size);
 
-		bitmap_blocks = m_area->num_chunks / NUM_CHUNKS_PER_BLOCK;
-                if(bitmap_blocks < 1)
-                       bitmap_blocks = 1;
+		bitmap_size = bitmap_required_size(m_area->num_chunks);
 
 		if (m_area->state_changed == 1){
                         if (m_area->dirty_chunks == 0)
-                                recoverable_state[current_lp]->dirty_bitmap_size += bitmap_blocks * BLOCK_SIZE;
+                                recoverable_state[current_lp]->dirty_bitmap_size += bitmap_size;
                 } else {
                         recoverable_state[current_lp]->dirty_areas++;
-                        recoverable_state[current_lp]->dirty_bitmap_size += bitmap_blocks * BLOCK_SIZE * 2;
+                        recoverable_state[current_lp]->dirty_bitmap_size += bitmap_size * 2;
                         m_area->state_changed = 1;
                 }
 
                 for(i = first_chunk; i <= last_chunk; i++){
 
                         // If it is dirtied a clean chunk, set it dirty and increase dirty object count for the malloc_area
-                        if (!CHECK_DIRTY_BIT(m_area, i)){
-                                SET_DIRTY_BIT(m_area, i);
+                        if (!bitmap_check(m_area->dirty_bitmap, i)){
+                        		bitmap_set(m_area->dirty_bitmap, i);
                                 recoverable_state[current_lp]->total_inc_size += chk_size;
 
                                 m_area->dirty_chunks++;
@@ -201,7 +198,7 @@ void dirty_mem(void *base, int size) {
 *
 */
 size_t get_log_size(malloc_state *logged_state){
-	if (logged_state == NULL)
+	if (unlikely(logged_state == NULL))
 		return 0;
 
 	if (is_incremental(logged_state)) {
@@ -235,7 +232,7 @@ void *__wrap_malloc(size_t size) {
 
 	switch_to_platform_mode();
 
-	if(rootsim_config.serial) {
+	if(unlikely(rootsim_config.serial)) {
 		ptr = rsalloc(size);
 		goto out;
 	}
@@ -268,7 +265,7 @@ void *__wrap_malloc(size_t size) {
 void __wrap_free(void *ptr) {
 	switch_to_platform_mode();
 
-	if(rootsim_config.serial) {
+	if(unlikely(rootsim_config.serial)) {
 		rsfree(ptr);
 		goto out;
 	}
@@ -298,17 +295,17 @@ void *__wrap_realloc(void *ptr, size_t size){
 	size_t old_size;
 	malloc_area *m_area;
 
-	if(rootsim_config.serial) {
+	if(unlikely(rootsim_config.serial)) {
 		return rsrealloc(ptr, size);
 	}
 
 	// If ptr is NULL realloc is equivalent to the malloc
-	if (ptr == NULL) {
+	if (unlikely(ptr == NULL)) {
 		return __wrap_malloc(size);
 	}
 
 	// If ptr is not NULL and the size is 0 realloc is equivalent to the free
-	if (size == 0) {
+	if (unlikely(size == 0)) {
 		__wrap_free(ptr);
 		return NULL;
 	}
@@ -321,7 +318,7 @@ void *__wrap_realloc(void *ptr, size_t size){
 
 	new_buffer = __wrap_malloc(size);
 
-	if (new_buffer == NULL)
+	if (unlikely(new_buffer == NULL))
 		return NULL;
 
 	memcpy(new_buffer, ptr, size > old_size ? size : old_size);
@@ -346,15 +343,15 @@ void *__wrap_calloc(size_t nmemb, size_t size){
 
 	void *buffer;
 
-	if(rootsim_config.serial) {
+	if(unlikely(rootsim_config.serial)) {
 		return rscalloc(nmemb, size);
 	}
 
-	if (nmemb == 0 || size == 0)
+	if (unlikely(nmemb == 0 || size == 0))
 		return NULL;
 
 	buffer = __wrap_malloc(nmemb * size);
-	if (buffer == NULL)
+	if (unlikely(buffer == NULL))
 		return NULL;
 
 	bzero(buffer, nmemb * size);
@@ -377,7 +374,7 @@ void clean_buffers_on_gvt(LID_t lid, simtime_t time_barrier){
 	for(i = NUM_AREAS; i < state->num_areas; i++){
 		m_area = &state->areas[i];
 
-		if(m_area->alloc_chunks == 0 && m_area->last_access < time_barrier && !CHECK_AREA_LOCK_BIT(m_area)){
+		if(m_area->alloc_chunks == 0 && m_area->last_access < time_barrier && !CHECK_AREA_LOCK_BIT(m_area)) {
 
 			if(m_area->self_pointer != NULL) {
 

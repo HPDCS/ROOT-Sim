@@ -11,6 +11,7 @@
 #include <math.h>
 #include <assert.h>
 
+#include <core/core.h>
 #include <mm/mm.h>
 
 #define SLOTS_ALL_ZERO ((uint64_t) 0)
@@ -26,9 +27,6 @@
     )
 
 #define POWEROF2(x) ((x) != 0 && ((x) & ((x) - 1)) == 0)
-
-#define LIKELY(exp) __builtin_expect(exp, 1)
-#define UNLIKELY(exp) __builtin_expect(exp, 0)
 
 #ifndef NDEBUG
 static int slab_is_valid(const struct slab_chain *const sch)
@@ -139,20 +137,20 @@ void *slab_alloc(struct slab_chain *const sch)
     assert(sch != NULL);
     assert(slab_is_valid(sch));
 
-    if (LIKELY(sch->partial != NULL)) {
+    if (likely(sch->partial != NULL)) {
         /* found a partial slab, locate the first free slot */
         register const size_t slot = FIRST_FREE_SLOT(sch->partial->slots);
         sch->partial->slots ^= SLOTS_FIRST << slot;
 
-        if (UNLIKELY(sch->partial->slots == SLOTS_ALL_ZERO)) {
+        if (unlikely(sch->partial->slots == SLOTS_ALL_ZERO)) {
             /* slab has become full, change state from partial to full */
             struct slab_header *const tmp = sch->partial;
 
             /* skip first slab from partial list */
-            if (LIKELY((sch->partial = sch->partial->next) != NULL))
+            if (likely((sch->partial = sch->partial->next) != NULL))
                 sch->partial->prev = NULL;
 
-            if (LIKELY((tmp->next = sch->full) != NULL))
+            if (likely((tmp->next = sch->full) != NULL))
                 sch->full->prev = tmp;
 
             sch->full = tmp;
@@ -160,15 +158,15 @@ void *slab_alloc(struct slab_chain *const sch)
         } else {
             return sch->partial->data + slot * sch->itemsize;
         }
-    } else if (LIKELY((sch->partial = sch->empty) != NULL)) {
+    } else if (likely((sch->partial = sch->empty) != NULL)) {
         /* found an empty slab, change state from empty to partial */
-        if (LIKELY((sch->empty = sch->empty->next) != NULL))
+        if (likely((sch->empty = sch->empty->next) != NULL))
             sch->empty->prev = NULL;
 
         sch->partial->next = NULL;
 
         /* slab is located either at the beginning of page, or beyond */
-        UNLIKELY(sch->partial->refcount != 0) ?
+        unlikely(sch->partial->refcount != 0) ?
             sch->partial->refcount++ : sch->partial->page->refcount++;
 
         sch->partial->slots = sch->initial_slotmask;
@@ -179,13 +177,13 @@ void *slab_alloc(struct slab_chain *const sch)
             sch->partial = mmap(NULL, sch->pages_per_alloc,
                 PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 
-            if (UNLIKELY(sch->partial == MAP_FAILED))
+            if (unlikely(sch->partial == MAP_FAILED))
                 return perror("mmap"), sch->partial = NULL;
         } else {
             const int err = posix_memalign((void **) &sch->partial,
                 sch->slabsize, sch->pages_per_alloc);
 
-            if (UNLIKELY(err != 0)) {
+            if (unlikely(err != 0)) {
                 fprintf(stderr, "posix_memalign(align=%zu, size=%zu): %d\n",
                     sch->slabsize, sch->pages_per_alloc, err);
 
@@ -211,14 +209,14 @@ void *slab_alloc(struct slab_chain *const sch)
         sch->partial->refcount = 1;
         sch->partial->slots = sch->initial_slotmask;
 
-        if (LIKELY(curr.c != page_end)) {
+        if (likely(curr.c != page_end)) {
             curr.s->prev = NULL;
             curr.s->refcount = 0;
             curr.s->page = sch->partial;
             curr.s->slots = sch->empty_slotmask;
             sch->empty = prev = curr.s;
 
-            while (LIKELY((curr.c += sch->slabsize) != page_end)) {
+            while (likely((curr.c += sch->slabsize) != page_end)) {
                 prev->next = curr.s;
                 curr.s->prev = prev;
                 curr.s->refcount = 0;
@@ -248,39 +246,39 @@ void slab_free(struct slab_chain *const sch, const void *const addr)
     register const int slot = ((char *) addr - (char *) slab -
         offsetof(struct slab_header, data)) / sch->itemsize;
 
-    if (UNLIKELY(slab->slots == SLOTS_ALL_ZERO)) {
+    if (unlikely(slab->slots == SLOTS_ALL_ZERO)) {
         /* target slab is full, change state to partial */
         slab->slots = SLOTS_FIRST << slot;
 
-        if (LIKELY(slab != sch->full)) {
-            if (LIKELY((slab->prev->next = slab->next) != NULL))
+        if (likely(slab != sch->full)) {
+            if (likely((slab->prev->next = slab->next) != NULL))
                 slab->next->prev = slab->prev;
 
             slab->prev = NULL;
-        } else if (LIKELY((sch->full = sch->full->next) != NULL)) {
+        } else if (likely((sch->full = sch->full->next) != NULL)) {
             sch->full->prev = NULL;
         }
 
         slab->next = sch->partial;
 
-        if (LIKELY(sch->partial != NULL))
+        if (likely(sch->partial != NULL))
             sch->partial->prev = slab;
 
         sch->partial = slab;
-    } else if (UNLIKELY(ONE_USED_SLOT(slab->slots, sch->empty_slotmask))) {
+    } else if (unlikely(ONE_USED_SLOT(slab->slots, sch->empty_slotmask))) {
         /* target slab is partial and has only one filled slot */
-        if (UNLIKELY(slab->refcount == 1 || (slab->refcount == 0 &&
+        if (unlikely(slab->refcount == 1 || (slab->refcount == 0 &&
             slab->page->refcount == 1))) {
 
             /* unmap the whole page if this slab is the only partial one */
-            if (LIKELY(slab != sch->partial)) {
-                if (LIKELY((slab->prev->next = slab->next) != NULL))
+            if (likely(slab != sch->partial)) {
+                if (likely((slab->prev->next = slab->next) != NULL))
                     slab->next->prev = slab->prev;
-            } else if (LIKELY((sch->partial = sch->partial->next) != NULL)) {
+            } else if (likely((sch->partial = sch->partial->next) != NULL)) {
                 sch->partial->prev = NULL;
             }
 
-            void *const page = UNLIKELY(slab->refcount != 0) ? slab : slab->page;
+            void *const page = unlikely(slab->refcount != 0) ? slab : slab->page;
             const char *const page_end = (char *) page + sch->pages_per_alloc;
             char found_head = 0;
 
@@ -290,19 +288,19 @@ void slab_free(struct slab_chain *const sch, const void *const addr)
             } s;
 
             for (s.c = page; s.c != page_end; s.c += sch->slabsize) {
-                if (UNLIKELY(s.s == sch->empty))
+                if (unlikely(s.s == sch->empty))
                     found_head = 1;
-                else if (UNLIKELY(s.s == slab))
+                else if (unlikely(s.s == slab))
                     continue;
-                else if (LIKELY((s.s->prev->next = s.s->next) != NULL))
+                else if (likely((s.s->prev->next = s.s->next) != NULL))
                     s.s->next->prev = s.s->prev;
             }
 
-            if (UNLIKELY(found_head && (sch->empty = sch->empty->next) != NULL))
+            if (unlikely(found_head && (sch->empty = sch->empty->next) != NULL))
                 sch->empty->prev = NULL;
 
             if (sch->slabsize <= PAGE_SIZE) {
-                if (UNLIKELY(munmap(page, sch->pages_per_alloc) == -1))
+                if (unlikely(munmap(page, sch->pages_per_alloc) == -1))
                     perror("munmap");
             } else {
                 free(page);
@@ -310,23 +308,23 @@ void slab_free(struct slab_chain *const sch, const void *const addr)
         } else {
             slab->slots = sch->empty_slotmask;
 
-            if (LIKELY(slab != sch->partial)) {
-                if (LIKELY((slab->prev->next = slab->next) != NULL))
+            if (likely(slab != sch->partial)) {
+                if (likely((slab->prev->next = slab->next) != NULL))
                     slab->next->prev = slab->prev;
 
                 slab->prev = NULL;
-            } else if (LIKELY((sch->partial = sch->partial->next) != NULL)) {
+            } else if (likely((sch->partial = sch->partial->next) != NULL)) {
                 sch->partial->prev = NULL;
             }
 
             slab->next = sch->empty;
 
-            if (LIKELY(sch->empty != NULL))
+            if (likely(sch->empty != NULL))
                 sch->empty->prev = slab;
 
             sch->empty = slab;
 
-            UNLIKELY(slab->refcount != 0) ?
+            unlikely(slab->refcount != 0) ?
                 slab->refcount-- : slab->page->refcount--;
         }
     } else {
@@ -383,7 +381,7 @@ void slab_destroy(const struct slab_chain *const sch)
                 struct slab_header *const page = slab;
                 slab = slab->next;
 
-                if (UNLIKELY(pages_head == NULL))
+                if (unlikely(pages_head == NULL))
                     pages_head = page;
                 else
                     pages_tail->next = page;
@@ -395,7 +393,7 @@ void slab_destroy(const struct slab_chain *const sch)
         }
     }
 
-    if (LIKELY(pages_head != NULL)) {
+    if (likely(pages_head != NULL)) {
         pages_tail->next = NULL;
         struct slab_header *page = pages_head;
 
@@ -404,7 +402,7 @@ void slab_destroy(const struct slab_chain *const sch)
                 void *const target = page;
                 page = page->next;
 
-                if (UNLIKELY(munmap(target, sch->pages_per_alloc) == -1))
+                if (unlikely(munmap(target, sch->pages_per_alloc) == -1))
                     perror("munmap");
             } while (page != NULL);
         } else {

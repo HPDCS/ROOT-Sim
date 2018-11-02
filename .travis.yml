@@ -1,31 +1,44 @@
-sudo: required
+sudo: false
 language: c
 compiler: gcc
 dist: trusty
 
-addons:
-  apt:
-    sources:
-    - ubuntu-toolchain-r-test
-    packages:
-    - gcc-5
-    - g++-5
+matrix:
+  include:
+    - os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - g++-7
+            - mpich 
+            - libmpich-dev
+      env:
+        - MATRIX_EVAL="CC=gcc-7 && CXX=g++-7"
 
-install:
-  - sudo apt-get update -qq
-  - sudo apt-get install -qq automake pkg-config build-essential libtool automake autoconf m4 libnuma-dev numactl gcc-5
+before_install:
+    - eval "${MATRIX_EVAL}"
+    - test -n $CC  && unset CC   # MPI support is quite broken on Travis
+    - test -n $CXX && unset CXX
 
 before_script:
-  - sudo chmod -R 644 /boot/
-  - sudo ldconfig
-  - autoupdate
   - m4 --version
   - automake --version
   - autoconf --version
 
 script:
-  - sudo unlink /usr/bin/gcc && sudo ln -s /usr/bin/gcc-5 /usr/bin/gcc
-  - gcc --version
   - ./autogen.sh
-  - ./configure
+  - ./configure --enable-debug --enable-mpi --enable-coverage --prefix=$HOME
   - make
+  - make install
+  - export PATH=$PATH:$HOME
+  - cd models/pcs/
+  - rootsim-cc *.c -o model
+  - cd ../..
+  - cp models/pcs/model .
+  - mpiexec --np 2 ./model --np 2 --nprc 16 --no-core-binding
+  - ./model --sequential --nprc 1
+
+after_success:
+  - bash <(curl -s https://codecov.io/bash)

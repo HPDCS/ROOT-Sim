@@ -116,14 +116,14 @@ void gvt_comm_finalize(void){
 
 
 	unsigned int i;
-	for(i=0; i<n_ker; i++){
-		if(gvt_init_reqs[i] != MPI_REQUEST_NULL){
+	for(i = 0; i < n_ker; i++){
+		if(gvt_init_reqs[i] != MPI_REQUEST_NULL) {
 			MPI_Cancel(&gvt_init_reqs[i]);
 			MPI_Request_free(&gvt_init_reqs[i]);
 		}
 	}
 
-	if(gvt_init_pending()){
+	if(gvt_init_pending()) {
 		gvt_init_clear();
 	}
 
@@ -144,8 +144,8 @@ void gvt_comm_finalize(void){
  * An error will be raised in the case the calling thread is already into
  * a red phase.
  */
-void enter_red_phase(void){
-	if(in_red_phase()){
+void enter_red_phase(void) {
+	if(in_red_phase()) {
 		rootsim_error(true, "Thread %u cannot enter in red phase "
 				"because is already in red phase.\n");
 	}
@@ -161,8 +161,8 @@ void enter_red_phase(void){
  *
  * An error will be raised in the case the calling thread is not in red phase.
  */
-void exit_red_phase(void){
-	if(!in_red_phase()){
+void exit_red_phase(void) {
+	if(!in_red_phase()) {
 		rootsim_error(true, "Thread %u cannot exit from red phase "
 				"because it wasn't in red phase.\n");
 	}
@@ -183,9 +183,9 @@ void exit_red_phase(void){
  * will hold the number of white message sent by all the other kernel to this during
  * the last white phase.
  */
-void join_white_msg_redux(void){
+void join_white_msg_redux(void) {
 	unsigned int i;
-	for(i=0; i<n_ker; i++){
+	for(i = 0; i < n_ker; i++) {
 		white_msg_sent_buff[i] = atomic_read(&white_msg_sent[i]);
 	}
 
@@ -198,8 +198,9 @@ void join_white_msg_redux(void){
 /*
  * Test completion of white message reduction collective operation.
  */
-bool white_msg_redux_completed(void){
-	if(!spin_trylock(&white_count_lock)) return false;
+bool white_msg_redux_completed(void) {
+	if(!spin_trylock(&white_count_lock))
+		return false;
 
 	bool compl = false;
 	compl = is_request_completed(&white_count_req);
@@ -212,7 +213,7 @@ bool white_msg_redux_completed(void){
 /*
  * Syncronously wait for the completion of white message reduction collective operation.
  */
-void wait_white_msg_redux(void){
+void wait_white_msg_redux(void) {
 	MPI_Wait(&white_count_req, MPI_STATUS_IGNORE);
 }
 
@@ -221,7 +222,7 @@ void wait_white_msg_redux(void){
  * Check if the number of white message received is equal to
  * the expected ones (retrieved through the white message reduction).
  */
-bool all_white_msg_received(void){
+bool all_white_msg_received(void) {
 	return ( atomic_read(white_msg_recv) == expected_white_msg );
 }
 
@@ -229,7 +230,7 @@ bool all_white_msg_received(void){
 void flush_white_msg_recv(void){
 	// santy check: Exactly the expected number of white
 	// messages should have been arrived in the last GVT round
-	if(atomic_read(white_msg_recv) != expected_white_msg){
+	if(atomic_read(white_msg_recv) != expected_white_msg) {
 		rootsim_error(true,
 			"unexpected number of white messages received in the last GVT round: [expected: %d, received: %d]\n",
 			expected_white_msg, atomic_read(white_msg_recv));
@@ -238,37 +239,40 @@ void flush_white_msg_recv(void){
 	// prepare the white msg counter for the next GVT round
 	atomic_set(white_msg_recv, 0);
 
-	if(white_msg_recv == &white_0_msg_recv){
+	if(white_msg_recv == &white_0_msg_recv) {
 		white_msg_recv = &white_1_msg_recv;
-	}else{
+	} else {
 		white_msg_recv = &white_0_msg_recv;
 	}
 }
 
 
-void flush_white_msg_sent(void){
+void flush_white_msg_sent(void) {
 	unsigned int i;
+	
 	//sanity check
-	for(i = 0; i < n_cores; i++){
+	#ifndef NDEBUG
+	for(i = 0; i < n_cores; i++) {
 		if(!is_red_colour(threads_phase_colour[i]))
 			rootsim_error(true, "flushing outgoing white message counter while some thread are not in red phase\n");
 	}
+	#endif
 
-	for(i = 0; i < n_ker; i++){
+	for(i = 0; i < n_ker; i++) {
 		atomic_set(&white_msg_sent[i], 0);
 	}
 }
 
 
-void broadcast_gvt_init(unsigned int round){
+void broadcast_gvt_init(unsigned int round) {
 	unsigned int i;
 
 	gvt_init_round = round;
 
 	for(i = 0; i < n_ker; i++){
-		if(i==kid)
+		if(i == kid)
 			continue;
-		if(!is_request_completed(&(gvt_init_reqs[i]))){
+		if(!is_request_completed(&(gvt_init_reqs[i]))) {
 			rootsim_error(true, "Failed to send new GVT init round to kernel %u, "
 					"because the old init request is still pending\n");
 		}
@@ -279,12 +283,12 @@ void broadcast_gvt_init(unsigned int round){
 }
 
 
-bool gvt_init_pending(void){
+bool gvt_init_pending(void) {
 	return pending_msgs(MSG_NEW_GVT);
 }
 
 
-void gvt_init_clear(void){
+void gvt_init_clear(void) {
 	unsigned int new_gvt_round;
 	lock_mpi();
 	MPI_Recv(&new_gvt_round, 1, MPI_UNSIGNED, MPI_ANY_SOURCE, MSG_NEW_GVT, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
@@ -292,7 +296,7 @@ void gvt_init_clear(void){
 }
 
 
-void join_gvt_redux(simtime_t local_vt){
+void join_gvt_redux(simtime_t local_vt) {
 	local_vt_buff = local_vt;
 	lock_mpi();
 	MPI_Iallreduce(&local_vt_buff, &reduced_gvt, 1, MPI_DOUBLE, MPI_MIN, gvt_reduction_comm, &gvt_reduction_req);
@@ -300,7 +304,7 @@ void join_gvt_redux(simtime_t local_vt){
 }
 
 
-bool gvt_redux_completed(void){
+bool gvt_redux_completed(void) {
 	if(!spin_trylock(&gvt_reduction_lock)) return false;
 
 	bool compl = false;
@@ -311,7 +315,7 @@ bool gvt_redux_completed(void){
 }
 
 
-simtime_t last_reduced_gvt(void){
+simtime_t last_reduced_gvt(void) {
 	return reduced_gvt;
 }
 

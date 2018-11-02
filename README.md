@@ -1,17 +1,23 @@
-# The ROme OpTimistic Simulator (ROOT-Sim) [![Build Status](https://travis-ci.org/HPDCS/ROOT-Sim.svg?branch=master)](https://travis-ci.org/HPDCS/ROOT-Sim)
+# The ROme OpTimistic Simulator (ROOT-Sim) 2.0.0
+
+[![Build Status](https://travis-ci.org/HPDCS/ROOT-Sim.svg?branch=master)](https://travis-ci.org/HPDCS/ROOT-Sim)
+[![codecov.io](https://codecov.io/gh/HPDCS/ROOT-Sim/branch/master/graphs/badge.svg)](http://codecov.io/github/HPDCS/ROOT-Sim)
 
 *Brought to you by the High Performance and Dependable Computing Systems (HPDCS)
 at Sapienza, University of Rome*
 
 ----------------------------------------------------------------------------------------
 
-The ROme OpTimistic Simulator is an x86-64 Open Source, multithreaded parallel simulation platform
-developed using C/POSIX technology. It transparently supports all the mechanisms associated
-with parallelization (e.g., mapping of simulation objects on different kernel instances) and
-optimistic synchronization (e.g., state recoverability).
+The ROme OpTimistic Simulator is an x86-64 Open Source, distributed multithreaded parallel
+simulation library developed using C/POSIX technology. It transparently supports all the
+mechanisms associated with parallelization and distribution of workload across the nodes
+(e.g., mapping of simulation objects on different kernel instances) and
+optimistic synchronization (e.g., state recoverability).    
+Distributed simulations rely on MPI3. In particular, global synchronization across
+the different nodes relies on asynchronous MPI primitives, for increased efficiency.
 
 The programming model supported by ROOT-Sim allows the simulation model developer 
-to use a simple application-callback function named ProcessEvent() as the event handler,
+to use a simple application-callback function named `ProcessEvent()` as the event handler,
 whose parameters determine which simulation object is currently taking control for
 processing its next event, and where the state of this object is located in memory. 
 An object is a data structure, whose state can be scattered on dynamically allocated
@@ -19,22 +25,8 @@ memory chunks, hence the memory address passed to the callback locates a top lev
 data structure implementing the object state-layout.
 
 ROOT-Sim's development started as a research project late back in 1987, and is currently
-run by the High Performance and Dependable Computing Systems group at the 
-Dipartimento di Ingegneria Informatica, Automatica e Gestionale, Sapienza, University of Rome.
-
-## About this Version
-
-This version of ROOT-Sim stands as the latest development branch of the simulator.
-Currently, it supports a high-performance multithreaded execution on multicore environments.
-The goal of this ultimate version of the simulator is to port all the lessons learned during
-almost 30 years of research on more modern multicore architectures. While the current
-version still does not allow to run on distributed environments, it will in the near
-future, after that many low-level optimizations are completed.
-
-This new version strives to be as backwards compatible as possible, letting all the
-historic simulation models developed on ROOT-Sim be compatible, although some
-recent changes in the simulator's architecture require minor modifications to
-the original models' sources (which are nevertheless being updated in the current branch).
+maintained by the High Performance and Dependable Computing Systems group, a joint
+research group between Sapienza, University of Rome and University of Rome "Tor Vergata".
 
 ## Installation Notes
 
@@ -59,22 +51,12 @@ absolute path name.
 ROOT-Sim uses many `gcc` extensions, so the currently supported
 compiler is only `gcc`.
 
-
-### Optional Features
-
-When running the simulation model, ROOT-Sim allocates a separate
-stack for each Logical Process, so as to completely separate
-their execution contexts, using custom User-Level Threads.
-This could require longer simulation startup
-time, which could be avoided during model development by passing
-`configure` the option `--disable-ult`
-
-When debugging the platform, it is suggested to pass 
-`configure` the option `--enable-debug` to compile the simulator
-with more strict error checking, and to include all debugging symbols.
+For full configuration notes, and a discussion on the subsystems
+which this simulation library offers, please refer to the 
+[wiki](https://github.com/HPDCS/ROOT-Sim/wiki).
 
 
-## Usage
+## Usage Notes
 
 When running `make install`, the `rootsim-cc` compiler is added to the path.
 
@@ -84,9 +66,17 @@ executable, which is the model code already linked with the ROOT-sim library.
 `rootsim-cc` ultimately relies on `gcc`, so any flag supported by
 `gcc` can be passed to `rootsim-cc`.
 
-To test the correctness of the model, it can be run sequentially, typing
+To test the correctness of the model, it can be run sequentially, typing    
 `./model --sequential --nprc <number of required LPs>`
 This allows to spot errors in the implementation more easily.
 
-Then, to run it in parallel, type
+Then, to run it in parallel, type    
 `./model --np <number of available Cores> --nprc <number of required LPs>`
+
+To run in a distributed environment, you can use standard MPI commands,
+such as:    
+`mpiexec -n 2 --hostfile hosts --map-by node ./model --np 2 --nprc 16`
+
+This command runs the simulation model on two nodes (`-n 2`) specified in the
+`hosts` file. Each node uses two concurrent threads (`--np 2`). The simulation
+involves 16 total Logical Processes (`--nprc 16`).

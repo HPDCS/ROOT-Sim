@@ -28,54 +28,14 @@
 
 #include "application.h"
 #include "link_layer.h"
+#include "parameters.h"
 
 
 /* FORWARD DECLARATIONS */
 
 void cache_remove(unsigned char offset,node_state* state);
 
-/* GLOBAL VARIABLES - start
- *
- * Default values of the parameters for the forwarding engine (check forwarding_engine.h for a description)
- */
-
-unsigned int max_retries=MAX_RETRIES;
-double data_packet_transmission_offset=DATA_PACKET_RETRANSMISSION_OFFSET;
-double data_packet_transmission_delta=DATA_PACKET_RETRANSMISSION_DELTA;
-double no_route_offset=NO_ROUTE_OFFSET;
-double send_packet_timer=SEND_PACKET_TIMER;
-double create_packet_timer=CREATE_PACKET_TIMER;
-unsigned int min_payload=MIN_PAYLOAD;
-unsigned int max_payload=MAX_PAYLOAD;
-
-
-/* GLOBAL VARIABLES - end */
-
 extern node_statistics* node_statistics_list;
-
-/*
- * PARSE SIMULATION PARAMETERS FOR THE FOWARDING ENGINE
- */
-
-void parse_forwarding_engine_parameters(void* event_content) {
-
-        if (IsParameterPresent(event_content, "max_retries"))
-                max_retries = (unsigned int) GetParameterInt(event_content, "max_retries");
-        if (IsParameterPresent(event_content, "data_packet_transmission_offset"))
-                data_packet_transmission_offset = GetParameterDouble(event_content,"data_packet_transmission_offset");
-        if (IsParameterPresent(event_content, "data_packet_transmission_delta"))
-                data_packet_transmission_delta = GetParameterDouble(event_content, "data_packet_transmission_delta");
-        if (IsParameterPresent(event_content, "no_route_offset"))
-                no_route_offset = GetParameterDouble(event_content,"no_route_offset");
-        if (IsParameterPresent(event_content, "send_packet_timer"))
-                send_packet_timer = GetParameterDouble(event_content,"send_packet_timer");
-        if (IsParameterPresent(event_content, "create_packet_timer"))
-                create_packet_timer = GetParameterDouble(event_content,"create_packet_timer");
-        if (IsParameterPresent(event_content, "min_payload"))
-                min_payload = (unsigned int) GetParameterInt(event_content,"min_payload");
-        if (IsParameterPresent(event_content, "max_payload"))
-                max_payload = (unsigned int) GetParameterInt(event_content,"max_payload");
-}
 
 /* FORWARDING POOL - start */
 
@@ -1327,7 +1287,7 @@ void transmitted_data_packet(node_state* state,bool result) {
                                  * Reset the last packet acked
                                  */
 
-                                bzero(&state->last_packet_acked,sizeof(ctp_data_packet));
+                                memset(&state->last_packet_acked, 0, sizeof(ctp_data_packet));
                         }
                 else{
 

@@ -84,7 +84,7 @@ inline int LPS_bound_foreach(int (*f)(LID_t, GID_t, unsigned int, void *), void 
 		lid = LPS_bound(i)->lid;
                 gid = LidToGid(lid);
                 ret = f(lid, gid, lid_to_int(lid), data);
-                if(ret != 0)
+                if(unlikely(ret != 0))
                         break;
         }
 
@@ -102,7 +102,7 @@ inline int LPS_foreach(int (*f)(LID_t, GID_t, unsigned int, void *), void *data)
 		set_lid(lid, i);
 		gid = LidToGid(lid);
 		ret = f(lid, gid, i, data);
-		if(ret != 0) 
+		if(unlikely(ret != 0))
 			break;
 	}
 
