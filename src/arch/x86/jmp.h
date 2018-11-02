@@ -26,6 +26,7 @@
 #pragma once
 
 #ifdef OS_LINUX
+#if defined(__x86_64__)
 
 /// This structure is used to maintain execution context for LPs' userspace threads
 typedef struct __exec_context_t {
@@ -70,5 +71,6 @@ extern void context_create(exec_context_t *creat, void (*fn)(void *), void *args
 
 #define long_jmp(env, val)	_long_jmp(env, val)
 
+#endif /* defined(__x86_64__) */
 #endif /* OS_LINUX */
 

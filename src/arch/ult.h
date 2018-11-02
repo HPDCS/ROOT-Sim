@@ -30,9 +30,13 @@
 
 #if defined(OS_LINUX)
 
+#if !defined(__x86_64__)
+  #error Unsupported architecture
+#endif
+
 #pragma GCC poison setjmp longjmp
 
-#include <arch/linux/jmp.h>
+#include <arch/jmp.h>
 
 typedef exec_context_t LP_context_t;
 typedef exec_context_t kernel_context_t;
