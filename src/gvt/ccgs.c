@@ -94,10 +94,10 @@ void ccgs_compute_snapshot(state_t *time_barrier_pointer[], simtime_t gvt) {
 	bool check_res = true;
 	register unsigned int i;
 	LID_t lid;
-
 	state_t temporary_log;
-//	msg_t *realignment_evt;
-	(void)gvt; // This is required in state reconstruction which is currently commented out
+
+	(void)gvt; // This is used for state reconstruction which is currently commented out
+	//msg_t *realignment_evt;
 
 	for(i = 0; i < n_prc_per_thread; i++) {
 
@@ -128,20 +128,22 @@ void ccgs_compute_snapshot(state_t *time_barrier_pointer[], simtime_t gvt) {
 
 /*
 		// If the LP is not blocked, we can reconstruct the state exactly to the GVT
-		if(!is_blocked_state(LPS[lid]->state))  {
+		if(!is_blocked_state(LPS(lid)->state)) {
 			// Realign the state to the current GVT value
-			realignment_evt = list_next(time_barrier_pointer[i]->last_event);
-			while(realignment_evt != NULL && realignment_evt->timestamp < gvt) {
-				realignment_evt = list_next(realignment_evt);
+			if(list_next(time_barrier_pointer[i]->last_event) != NULL) {
+				realignment_evt = list_next(time_barrier_pointer[i]->last_event);
+				while(realignment_evt != NULL && realignment_evt->timestamp < gvt) {
+					realignment_evt = list_next(realignment_evt);
+				}
+				realignment_evt = list_prev(realignment_evt);
+
+				// TODO: LPS[lid]->current_base_pointer can be removed as a parameter
+				silent_execution(lid, LPS(lid)->current_base_pointer, list_next(time_barrier_pointer[i]->last_event), realignment_evt);
 			}
-
-			// TODO: LPS[lid]->current_base_pointer can be removed as a parameter
-			silent_execution(lid, LPS[lid]->current_base_pointer, list_next(time_barrier_pointer[i]->last_event), realignment_evt);
 		}
-*/
 
+*/
 		// Call the application to check termination
-//		printf("[%d] inside OnGVT CBP: %p\n",lid,LPS[lid]->current_base_pointer);
 		lps_termination[lid_to_int(lid)] = OnGVT[lid_to_int(lid)](gid_to_int(LidToGid(lid)), LPS(lid)->current_base_pointer);
 		check_res &= lps_termination[lid_to_int(lid)];
 
