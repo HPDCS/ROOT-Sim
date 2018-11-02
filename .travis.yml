@@ -37,12 +37,7 @@ script:
   - make
   - make install
   - export PATH=$PATH:$HOME
-  - cd models/pcs/
-  - rootsim-cc *.c -o model
-  - cd ../..
-  - cp models/pcs/model .
-  - mpiexec --np 2 ./model --np 2 --nprc 16 --no-core-binding
-  - ./model --sequential --nprc 1
+  - ./tests.sh
 
 after_success:
   - bash <(curl -s https://codecov.io/bash)
