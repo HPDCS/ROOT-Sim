@@ -32,7 +32,7 @@
 #define SIZEOF(s) DEFINE(sizeof_##s, sizeof(s));
 
 #include <scheduler/process.h>
-#include <arch/linux/jmp.h>
+#include <arch/x86/jmp.h>
 
 void foo(void) {
 	// We need the offset of the LP State to make a context switch in ECS

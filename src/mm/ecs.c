@@ -48,9 +48,9 @@
 #include <scheduler/process.h>
 #include <communication/communication.h>
 #include <arch/ult.h>
-#include <arch/x86.h>
+#include <arch/x86/disassemble.h>
 
-#include <arch/linux/modules/cross_state_manager/cross_state_manager.h>
+#include <arch/x86/linux/cross_state_manager/cross_state_manager.h>
 
 #define __NR_OPEN 2
 

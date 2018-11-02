@@ -447,7 +447,7 @@ AC_CONFIG_FILES([Makefile
 		 man/Makefile
 		 scripts/Makefile
 		 src/Makefile
-		 src/arch/linux/modules/Makefile])
+		 src/arch/x86/linux/Makefile])
 AC_OUTPUT
 
 
@@ -459,25 +459,25 @@ AC_OUTPUT
 #----------------------------------------------------------------------------
 
 # Compose the message regarding the CPU
-current_cpu="${host_cpu} (available supports: "
+current_cpu="${host_cpu} (available supports:"
 if test "x$ac_have_as_rdtsc" = "xyes"
 then
-	current_cpu="${current_cpu}rdtcs "
+	current_cpu="${current_cpu} rdtcs"
 fi
 
 if test "x$ac_have_as_sse3" = "xyes"
 then
-	current_cpu="${current_cpu}SSE3 "
+	current_cpu="${current_cpu} SSE3"
 fi
 
 if test "x$ac_have_as_ssse3" = "xyes"
 then
-	current_cpu="${current_cpu}SSSE3 "
+	current_cpu="${current_cpu} SSSE3"
 fi
 
 if test "x$ac_have_as_sse42" = "xyes"
 then
-	current_cpu="${current_cpu}SSE4.2 "
+	current_cpu="${current_cpu} SSE4.2"
 fi
 current_cpu="${current_cpu})"
 
