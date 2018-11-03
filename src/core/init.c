@@ -57,14 +57,14 @@
 /// This is the list of mnemonics for arguments
 enum _opt_codes{
  OPT_FIRST = 128, /**< this is used as an offset to the enum values, so that argp doesn't assign short options */
-
- OPT_SCHEDULER = OPT_FIRST,
- OPT_CKTRM_MODE,
- OPT_LPS_DISTRIBUTION,
- OPT_VERBOSE,
- OPT_STATS,
- OPT_STATE_SAVING,
- OPT_SNAPSHOT,
+/// make sure these ones are mapped correctly to the external enum param_codes,
+ OPT_SCHEDULER = 		OPT_FIRST + PARAM_SCHEDULER,
+ OPT_CKTRM_MODE = 		OPT_FIRST + PARAM_CKTRM_MODE,
+ OPT_LPS_DISTRIBUTION = OPT_FIRST + PARAM_LPS_DISTRIBUTION,
+ OPT_VERBOSE = 			OPT_FIRST + PARAM_VERBOSE,
+ OPT_STATS = 			OPT_FIRST + PARAM_STATS,
+ OPT_STATE_SAVING = 	OPT_FIRST + PARAM_STATE_SAVING,
+ OPT_SNAPSHOT = 		OPT_FIRST + PARAM_SNAPSHOT,
 
  OPT_NP,
  OPT_NPRC,
@@ -95,7 +95,7 @@ enum _opt_codes{
 };
 
 // XXX we offset the first level with OPT_FIRST so remember about it when you index it!
-static const char* param_to_text[][5] = {
+const char const* param_to_text[][5] = {
 	[OPT_SCHEDULER - OPT_FIRST] = {
 			[SCHEDULER_INVALID] = "invalid scheduler",
 			[SCHEDULER_STF] = "stf",
@@ -446,48 +446,7 @@ void SystemInit(int argc, char **argv) {
 		ScheduleNewEvent = ParallelScheduleNewEvent;
 	}
 
-
-	if (master_kernel()) {
-
-		 printf("****************************\n"
-			"*  ROOT-Sim Configuration  *\n"
-			"****************************\n"
-			"Kernels: %u\n"
-			"Cores: %ld available, %d used\n"
-			"Number of Logical Processes: %u\n"
-			"Output Statistics Directory: %s\n"
-			"Scheduler: %s\n"
-			#ifdef HAVE_MPI
-			"MPI multithread support: %s\n"
-			#endif
-			"GVT Time Period: %.2f seconds\n"
-			"Checkpointing Type: %s\n"
-			"Checkpointing Period: %d\n"
-			"Snapshot Reconstruction Type: %s\n"
-			"Halt Simulation After: %d\n"
-			"LPs Distribution Mode across Kernels: %s\n"
-			"Check Termination Mode: %s\n"
-			"Blocking GVT: %s\n"
-			"Set Seed: %ld\n",
-			n_ker,
-			get_cores(),
-			n_cores,
-			n_prc_tot,
-			rootsim_config.output_dir,
-			param_to_text[OPT_SCHEDULER - OPT_FIRST][rootsim_config.scheduler],
-			#ifdef HAVE_MPI
-			((mpi_support_multithread)? "yes":"no"),
-			#endif
-			rootsim_config.gvt_time_period / 1000.0,
-			param_to_text[OPT_STATE_SAVING - OPT_FIRST][rootsim_config.checkpointing],
-			rootsim_config.ckpt_period,
-			param_to_text[OPT_SNAPSHOT - OPT_FIRST][rootsim_config.snapshot],
-			rootsim_config.simulation_time,
-			param_to_text[OPT_LPS_DISTRIBUTION - OPT_FIRST][rootsim_config.lps_distribution],
-			param_to_text[OPT_CKTRM_MODE - OPT_FIRST][rootsim_config.check_termination_mode],
-			((rootsim_config.blocking_gvt)? "yes":"no"),
-			rootsim_config.set_seed);
-	}
+	print_config();
 
 	distribute_lps_on_kernels();
 

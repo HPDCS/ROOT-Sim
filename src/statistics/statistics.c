@@ -22,25 +22,29 @@
 #include <core/init.h>
 #include <core/timer.h>
 
-
-#define GVT_BUFF_SIZE	2048
+#define GVT_BUFF_ROWS   50
 
 struct _gvt_buffer {
 	unsigned int pos;
-	char buff[GVT_BUFF_SIZE];
+	struct _gvt_buffer_row_t{
+		double exec_time;
+		double gvt;
+		unsigned committed;
+		unsigned cumulated;
+	}row[GVT_BUFF_ROWS];
 };
 
 
 /// This structure is used to buffer statistics gathered on GVT computation
-__thread struct _gvt_buffer gvt_buffer;
+__thread struct _gvt_buffer gvt_buf;
 
 /// This is a timer that start during the initialization of statistics subsystem and can be used to know the total simulation time
-timer simulation_timer;
+static timer simulation_timer;
 
 /// Pointers to unique files
-static FILE **unique_files;
+static FILE *unique_files[NUM_STAT_FILE_U];
 /// Pointers to per-thread files
-static FILE ***thread_files;
+static FILE **thread_files[NUM_STAT_FILE_T];
 
 /// Keeps statistics on a per-LP basis
 static struct stat_t *lp_stats;
@@ -56,101 +60,44 @@ static struct stat_t system_wide_stats;
 
 
 /**
-* This function creates a new file
-*
-* @author Roberto Vitali
-*
-* @param file_name The name of the file. If the file is local to each kernel, the kernel id is suffixed at the file name
-* @param type It indicates if the file is kernel-wide (one file per kernel), or system-wide (a unique file)
-* @param idx The index where to store the file in the corresponding array
-*
-*/
-static void new_file(char *file_name, int type, int idx) {
-	register unsigned int i;
-	FILE	*f;
-	char	f_name[MAX_PATHLEN];
-
-	// Sanity checks
-	if(idx >= NUM_FILES) {
-		rootsim_error(true, "Asking for too many statistics files. Check the value of NUM_FILES. Aborting...\n");
-	}
-
-	if(type != STAT_PER_THREAD && type != STAT_UNIQUE)
-		rootsim_error(true, "Wrong type of statistics file specified at %s:%d\n", __FILE__, __LINE__);
-
-	// Create the actual file(s)
-	if ( (type == STAT_UNIQUE && master_kernel() && master_thread()) ) {
-		snprintf(f_name, MAX_PATHLEN, "%s/%s", rootsim_config.output_dir, file_name);
-
-		if ( (f = fopen(f_name, "w")) == NULL)  {
-			rootsim_error(true, "Cannot open %s\n", f_name);
-		}
-		unique_files[idx] = f;
-
-	} else if (type == STAT_PER_THREAD) {
-		for(i = 0; i < n_cores; i++) {
-			snprintf(f_name, MAX_PATHLEN, "%s/thread_%d_%d/%s", rootsim_config.output_dir, kid, i, file_name);
-			if ( (f = fopen(f_name, "w")) == NULL)  {
-				rootsim_error(true, "Cannot open %s\n", f_name);
-			}
-			thread_files[i][idx] = f;
-		}
-	}
-}
-
-
-static inline FILE *get_file(unsigned int type, unsigned idx) {
-			FILE *f;
-
-			if(type == STAT_PER_THREAD)
-				f = thread_files[local_tid][idx];
-			else if(type == STAT_UNIQUE)
-				f = unique_files[idx];
-			return f;
-}
-
-
-/**
 * This is an helper-function to recursively delete the whole content of a folder
 *
 * @param path The path of the directory to purge
 */
 static void _rmdir(const char *path) {
 	char buf[MAX_PATHLEN];
-        struct stat st;
-        struct dirent *dirt;
-        DIR *dir;
+	struct stat st;
+	struct dirent *dirt;
+	DIR *dir;
 
 	// We could be asked to remove a non-existing folder. In that case, do nothing!
-        if (!(dir = opendir(path))) {
-                return;
-        }
+	if (!(dir = opendir(path))) {
+		return;
+	}
 
-        while ( (dirt = readdir(dir))) {
-                if ((strcmp(dirt->d_name, ".") == 0) || (strcmp(dirt->d_name, "..") == 0))
-                        continue;
-                snprintf(buf, MAX_PATHLEN, "%s/%s", path, dirt->d_name);
+	while ( (dirt = readdir(dir))) {
+		if ((strcmp(dirt->d_name, ".") == 0) || (strcmp(dirt->d_name, "..") == 0))
+			continue;
+		snprintf(buf, MAX_PATHLEN, "%s/%s", path, dirt->d_name);
 
-                if (stat(buf, &st) == -1) {
-                        rootsim_error(false, "stat() file \"%s\" failed, %s\n", buf, strerror(errno));
-                        continue;
-                }
+		if (stat(buf, &st) == -1) {
+			rootsim_error(false, "stat() file \"%s\" failed, %s\n", buf, strerror(errno));
+			continue;
+		}
 
-                if (S_ISLNK(st.st_mode) || S_ISREG(st.st_mode)) {
-                        if (unlink(buf) == -1)
-                                rootsim_error(false, "unlink() file \"%s\" failed, %s\n", buf, strerror(errno));
-                }
-                else if (S_ISDIR(st.st_mode)) {
-                        _rmdir(buf);
-                }
-        }
-        closedir(dir);
+		if (S_ISLNK(st.st_mode) || S_ISREG(st.st_mode)) {
+			if (unlink(buf) == -1)
+				rootsim_error(false, "unlink() file \"%s\" failed, %s\n", buf, strerror(errno));
+		}
+		else if (S_ISDIR(st.st_mode)) {
+			_rmdir(buf);
+		}
+	}
+	closedir(dir);
 
-        if (rmdir(path) == -1)
-                rootsim_error(false, "rmdir() directory \"%s\" failed, %s\n", buf, strerror(errno));
+	if (rmdir(path) == -1)
+		rootsim_error(false, "rmdir() directory \"%s\" failed, %s\n", buf, strerror(errno));
 }
-
-
 
 
 /**
@@ -196,6 +143,53 @@ void _mkdir(const char *path) {
 	}
 }
 
+
+static void print_config_to_file(FILE *f){
+	 fprintf(f,
+		"****************************\n"
+		"*  ROOT-Sim Configuration  *\n"
+		"****************************\n"
+		"Kernels: %u\n"
+		"Cores: %ld available, %d used\n"
+		"Number of Logical Processes: %u\n"
+		"Output Statistics Directory: %s\n"
+		"Scheduler: %s\n"
+		#ifdef HAVE_MPI
+		"MPI multithread support: %s\n"
+		#endif
+		"GVT Time Period: %.2f seconds\n"
+		"Checkpointing Type: %s\n"
+		"Checkpointing Period: %d\n"
+		"Snapshot Reconstruction Type: %s\n"
+		"Halt Simulation After: %d\n"
+		"LPs Distribution Mode across Kernels: %s\n"
+		"Check Termination Mode: %s\n"
+		"Blocking GVT: %s\n"
+		"Set Seed: %ld\n",
+		n_ker,
+		get_cores(),
+		n_cores,
+		n_prc_tot,
+		rootsim_config.output_dir,
+		param_to_text[PARAM_SCHEDULER][rootsim_config.scheduler],
+		#ifdef HAVE_MPI
+		((mpi_support_multithread)? "yes":"no"),
+		#endif
+		rootsim_config.gvt_time_period / 1000.0,
+		param_to_text[PARAM_STATE_SAVING][rootsim_config.checkpointing],
+		rootsim_config.ckpt_period,
+		param_to_text[PARAM_SNAPSHOT][rootsim_config.snapshot],
+		rootsim_config.simulation_time,
+		param_to_text[PARAM_LPS_DISTRIBUTION][rootsim_config.lps_distribution],
+		param_to_text[PARAM_CKTRM_MODE][rootsim_config.check_termination_mode],
+		((rootsim_config.blocking_gvt)? "yes":"no"),
+		rootsim_config.set_seed);
+}
+
+
+void print_config(void){print_config_to_file(stdout);}
+
+
 /**
 * This function manage the simulation time used to in the statistics, and print to the output file the starting simulation header
 *
@@ -203,14 +197,15 @@ void _mkdir(const char *path) {
 * @author Roberto Vitali
 *
 */
-static void statistics_start(void) {
+void statistics_start(void) {
 	register unsigned int i;
 
 	// Print the header of GVT statistics files
 	if (!rootsim_config.serial && (rootsim_config.stats == STATS_ALL || rootsim_config.stats == STATS_PERF)) {
 		for(i = 0; i < n_cores; i++) {
-			fprintf(thread_files[i][GVT_STAT], "#\"WCT\"\t\"GVT VALUE\"\t\"COMM EVENTS\"\t\"CUMULATED COMM EVENTS\"\t\n");
-			fflush(thread_files[i][GVT_STAT]);
+			fprintf(thread_files[STAT_FILE_T_GVT][i], "#%15.15s    %15.15s    %15.15s    %15.15s\n",
+					"\"WCT\"", "\"GVT VALUE\"", "\"EVENTS\"", "\"CUMUL EVENTS\"");
+			fflush(thread_files[STAT_FILE_T_GVT][i]);
 		}
 	}
 
@@ -242,7 +237,7 @@ static char *format_size(double size) {
 		divisor = 1024 * 1024 * 1024;
 	}
 
-	sprintf(size_str, fmt, size / divisor);
+	snprintf(size_str, 32, fmt, size / divisor);
 
 	return size_str;
 }
@@ -250,12 +245,15 @@ static char *format_size(double size) {
 
 static inline void statistics_flush_gvt_buffer(void) {
 	FILE *f;
-
-	f = get_file(STAT_PER_THREAD, GVT_STAT);
-	fprintf(f, "%s", gvt_buffer.buff);
+	unsigned i, len;
+	f = thread_files[STAT_FILE_T_GVT][local_tid];
+	len = gvt_buf.pos;
+	for(i = 0; i < len; ++i){
+		fprintf(f, " %15lf    %15lf    %15u    %15u\n",
+				gvt_buf.row[i].exec_time, gvt_buf.row[i].gvt,gvt_buf.row[i].committed, gvt_buf.row[i].cumulated);
+	}
 	fflush(f);
-	gvt_buffer.pos = 0;
-	gvt_buffer.buff[0] = '\0';
+	gvt_buf.pos = 0;
 }
 
 
@@ -282,15 +280,11 @@ void statistics_stop(int exit_code) {
 
 
 	if(rootsim_config.serial) {
+		f = unique_files[STAT_FILE_U_GLOBAL];
 
 		// Stop timers
 		timer_start(simulation_finished);
 		total_time = timer_value_seconds(simulation_timer);
-
-		sprintf(f_name, "%s/sequential_stats", rootsim_config.output_dir);
-		if ( (f = fopen(f_name, "w")) == NULL)  {
-			rootsim_error(true, "Cannot open %s\n", f_name);
-		}
 
 		fprintf(f, "------------------------------------------------------------\n");
 		fprintf(f, "-------------------- SERIAL STATISTICS ---------------------\n");
@@ -338,37 +332,28 @@ void statistics_stop(int exit_code) {
 		/* dump per-LP statistics if required. They are already reduced during the GVT phase */
 
 		if(rootsim_config.stats == STATS_LP || rootsim_config.stats == STATS_ALL) {
-			f = get_file(STAT_PER_THREAD, LP_STATS);
+			f = thread_files[STAT_FILE_T_LP][local_tid];
 
-			fprintf(f, "#\"GID\"\t"
-				   "\"LID\"\t"
-				   "\"TOTAL EVENTS\"\t"
-				   "\"COMMITTED EVENTS\"\t"
-				   "\"REPROCESSED EVENTS\"\t"
-				   "\"ROLLBACKS\"\t"
-				   "\"ANTIMESSAGES\"\t"
-				   "\"AVERAGE EVENT COST\"\t"
-				   "\"AVERAGE CKPT COST\"\t"
-				   "\"AVERAGE RECOVERY COST\"\t"
-				   "\"IDLE CYCLES\"\t"
-				   "\n");
+			fprintf(f, "#%15.15s   %15.15s   %15.15s   %15.15s   %15.15s   %15.15s   %15.15s   %15.15s   %15.15s   %15.15s   %15.15s\n",
+					"\"GID\"", "\"LID\"", "\"TOTAL EVENTS\"", "\"COMM EVENTS\"", "\"REPROC EVENTS\"", "\"ROLLBACKS\"", "\"ANTIMSG\"",
+					"\"AVG EVT COST\"", "\"AVG CKPT COST\"", "\"AVG REC COST\"", "\"IDLE CYCLES\"");
 
 
 			// TODO: switch to foreach
 			for(i = 0; i < n_prc_per_thread; i++) {
 				LID_t the_lid = LPS_bound(i)->lid;
 				unsigned int lid = lid_to_int(the_lid);
-				fprintf(f, "%d\t", gid_to_int(LidToGid(the_lid)));
-				fprintf(f, "%d\t", lid);
-				fprintf(f, "%d\t", (int)lp_stats[lid].tot_events);
-				fprintf(f, "%d\t", (int)lp_stats[lid].committed_events);
-				fprintf(f, "%d\t", (int)lp_stats[lid].reprocessed_events);
-				fprintf(f, "%d\t", (int)lp_stats[lid].tot_rollbacks);
-				fprintf(f, "%d\t", (int)lp_stats[lid].tot_antimessages);
-				fprintf(f, "%f\t", lp_stats[lid].event_time / lp_stats[lid].tot_events);
-				fprintf(f, "%f\t", lp_stats[lid].ckpt_time / lp_stats[lid].tot_ckpts);
-				fprintf(f, "%f\t", ((int)lp_stats[lid].tot_rollbacks > 0 ? lp_stats[lid].recovery_time / lp_stats[lid].tot_recoveries : 0));
-				fprintf(f, "%d\t", (int)lp_stats[lid].idle_cycles);
+				fprintf(f, " %15u   ", 		gid_to_int(LidToGid(the_lid)));
+				fprintf(f, "%15u   ", 		lid);
+				fprintf(f, "%15.0lf   ", 	lp_stats[lid].tot_events);
+				fprintf(f, "%15.0lf   ", 	lp_stats[lid].committed_events);
+				fprintf(f, "%15.0lf   ", 	lp_stats[lid].reprocessed_events);
+				fprintf(f, "%15.0lf   ", 	lp_stats[lid].tot_rollbacks);
+				fprintf(f, "%15.0lf   ", 	lp_stats[lid].tot_antimessages);
+				fprintf(f, "%15lf   ", 		lp_stats[lid].event_time / lp_stats[lid].tot_events);
+				fprintf(f, "%15.0lf   ", 	lp_stats[lid].ckpt_time / lp_stats[lid].tot_ckpts);
+				fprintf(f, "%15.0lf   ", 	(lp_stats[lid].tot_rollbacks > 0 ? lp_stats[lid].recovery_time / lp_stats[lid].tot_recoveries : 0));
+				fprintf(f, "%15.0lf   ", 	lp_stats[lid].idle_cycles);
 				fprintf(f, "\n");
 			}
 		}
@@ -397,7 +382,7 @@ void statistics_stop(int exit_code) {
 		thread_stats[local_tid].exponential_event_time /= n_prc_per_thread;
 
 		// Compute derived statistics and dump everything
-		f = get_file(STAT_PER_THREAD, THREAD_STAT);
+		f = thread_files[STAT_FILE_T_THREAD][local_tid];;
 		rollback_frequency = (thread_stats[local_tid].tot_rollbacks / thread_stats[local_tid].tot_events);
 		rollback_length = (thread_stats[local_tid].tot_rollbacks > 0
 				   ? (thread_stats[local_tid].tot_events - thread_stats[local_tid].committed_events) / thread_stats[local_tid].tot_rollbacks
@@ -440,8 +425,6 @@ void statistics_stop(int exit_code) {
 
 		fflush(f);
 
-
-
 		/* Reduce and dump per-thread statistics */
 		/* (only one thread does the reduction, not necessarily the master) */
 
@@ -474,14 +457,16 @@ void statistics_stop(int exit_code) {
 			system_wide_stats.gvt_computations += thread_stats[0].gvt_computations;
 
 			// Compute derived statistics and dump everything
-			f = get_file(STAT_UNIQUE, GLOBAL_STAT); // TODO: quando reintegriamo il distribuito, la selezione del file qui deve cambiare
+			f = unique_files[STAT_FILE_U_GLOBAL]; // TODO: quando reintegriamo il distribuito, la selezione del file qui deve cambiare
 			rollback_frequency = (system_wide_stats.tot_rollbacks / system_wide_stats.tot_events);
 			rollback_length = (system_wide_stats.tot_rollbacks > 0
 					   ? (system_wide_stats.tot_events - system_wide_stats.committed_events) / system_wide_stats.tot_rollbacks
 					   : 0);
 			efficiency = (1 - rollback_frequency * rollback_length) * 100;
 
+			print_config_to_file(f);
 
+			fprintf(f, "\n");
 			fprintf(f, "------------------------------------------------------------\n");
 			fprintf(f, "-------------------- GLOBAL STATISTICS ---------------------\n");
 			fprintf(f, "------------------------------------------------------------\n\n");
@@ -550,42 +535,98 @@ void statistics_stop(int exit_code) {
 }
 
 
-static inline void statistics_flush_gvt(double gvt) {
-	register unsigned int i;
+// Sum up all that happened in the last GVT phase, in case it is required,
+// dump a line on the corresponding statistics file
+inline void statistics_on_gvt(double gvt) {
+	unsigned int i, lid, keep_exponential_event_time;
 	unsigned int committed = 0;
 	static __thread unsigned int cumulated = 0;
-	double exec_time;
+	double exec_time, simtime_advancement;
 	char gvt_line[512];
 	int gvt_line_len;
 
 	// Dump on file only if required
-	if( rootsim_config.stats != STATS_ALL && rootsim_config.stats != STATS_PERF) {
-		return;
-	}
+	if(rootsim_config.stats == STATS_ALL || rootsim_config.stats == STATS_PERF || rootsim_config.stats == STATS_LP) {
+		exec_time = timer_value_seconds(simulation_timer);
 
-	exec_time = timer_value_seconds(simulation_timer);
+		// Reduce the committed events from all LPs
+		for(i = 0; i < n_prc_per_thread; i++) {
+			committed += lp_stats_gvt[lid_to_int(LPS_bound(i)->lid)].committed_events;
+		}
+		cumulated += committed;
 
-	// Reduce the committed events from all LPs
-	for(i = 0; i < n_prc_per_thread; i++) {
-		committed += lp_stats_gvt[lid_to_int(LPS_bound(i)->lid)].committed_events;
-	}
-	cumulated += committed;
-
-	// If we are using a higher level of statistics, buffer data and eventually dump on file
-	if(rootsim_config.stats == STATS_PERF || rootsim_config.stats == STATS_LP || rootsim_config.stats ==  STATS_ALL) {
-
-		snprintf(gvt_line, 512, "%f\t%f\t%d\t%d\n", exec_time, gvt, committed, cumulated);
-		gvt_line_len = strlen(gvt_line);
-
-		if(gvt_buffer.pos + gvt_line_len > GVT_BUFF_SIZE - 2) {
+		// fill the row
+		gvt_buf.row[gvt_buf.pos] = (struct _gvt_buffer_row_t){exec_time, gvt, committed, cumulated};
+		gvt_buf.pos++;
+		// check if buffer is full
+		if(gvt_buf.pos >= GVT_BUFF_ROWS){
 			statistics_flush_gvt_buffer();
 		}
+	}
 
-		strcat(gvt_buffer.buff, gvt_line);
-		gvt_buffer.pos += gvt_line_len;
+	thread_stats[local_tid].memory_usage += (double)getCurrentRSS();
+	thread_stats[local_tid].gvt_computations += 1.0;
+
+	simtime_advancement = gvt - thread_stats[local_tid].gvt_time;
+	if(D_DIFFER_ZERO(thread_stats[local_tid].simtime_advancement)) {
+		// Exponential moving average
+		thread_stats[local_tid].simtime_advancement =
+			0.1 * simtime_advancement +
+			0.9 * thread_stats[local_tid].simtime_advancement;
+	} else {
+		thread_stats[local_tid].simtime_advancement = simtime_advancement;
+	}
+	thread_stats[local_tid].gvt_time = gvt;
+
+	for(i = 0; i < n_prc_per_thread; i++) {
+		lid = lid_to_int(LPS_bound(i)->lid);
+
+		// todo: vectorize this using builtins or whatever is needed
+		lp_stats[lid].tot_antimessages += lp_stats_gvt[lid].tot_antimessages;
+		lp_stats[lid].tot_events += lp_stats_gvt[lid].tot_events;
+		lp_stats[lid].committed_events += lp_stats_gvt[lid].committed_events;
+		lp_stats[lid].reprocessed_events += lp_stats_gvt[lid].reprocessed_events;
+		lp_stats[lid].tot_rollbacks += lp_stats_gvt[lid].tot_rollbacks;
+		lp_stats[lid].tot_ckpts += lp_stats_gvt[lid].tot_ckpts;
+		lp_stats[lid].ckpt_time += lp_stats_gvt[lid].ckpt_time;
+		lp_stats[lid].ckpt_mem += lp_stats_gvt[lid].ckpt_mem;
+		lp_stats[lid].tot_recoveries += lp_stats_gvt[lid].tot_recoveries;
+		lp_stats[lid].recovery_time += lp_stats_gvt[lid].recovery_time;
+		lp_stats[lid].event_time += lp_stats_gvt[lid].event_time;
+
+		lp_stats[lid].exponential_event_time = lp_stats_gvt[lid].exponential_event_time;
+
+		keep_exponential_event_time = lp_stats_gvt[lid].exponential_event_time;
+		bzero(&lp_stats_gvt[lid_to_int(LPS_bound(i)->lid)], sizeof(struct stat_t));
+		lp_stats_gvt[lid].exponential_event_time = keep_exponential_event_time;
 	}
 }
 
+
+inline void statistics_on_gvt_serial(double gvt){
+	system_wide_stats.gvt_computations += 1.0;
+	system_wide_stats.memory_usage += (double)getCurrentRSS();
+
+	double simtime_advancement = gvt - system_wide_stats.gvt_time;
+	if(D_DIFFER_ZERO(system_wide_stats.simtime_advancement)) {
+		// Exponential moving average
+		system_wide_stats.simtime_advancement =
+			0.1 * simtime_advancement +
+			0.9 * system_wide_stats.simtime_advancement;
+	} else {
+		system_wide_stats.simtime_advancement = simtime_advancement;
+	}
+
+	system_wide_stats.gvt_time = gvt;
+}
+
+
+#define assign_new_file(destination, format, ...) \
+	do{\
+		snprintf(name_buf, MAX_PATHLEN, "%s/"format, rootsim_config.output_dir, ##__VA_ARGS__);\
+		if (((destination) = fopen(name_buf, "w")) == NULL)\
+			rootsim_error(true, "Cannot open %s\n", name_buf);\
+	}while(0)
 
 /**
 * This function initializes the Statistics subsystem
@@ -593,54 +634,58 @@ static inline void statistics_flush_gvt(double gvt) {
 * @author Alessandro Pellegrini
 */
 void statistics_init(void) {
-	register unsigned int i;
-	char thread_dir[MAX_PATHLEN];
+	unsigned int i;
+	char name_buf[MAX_PATHLEN];
+
+	// Purge old output dir if present
+	_rmdir(rootsim_config.output_dir);
+	_mkdir(rootsim_config.output_dir);
 
 	// The whole reduction for the sequential simulation is simply done at the end
-	if(rootsim_config.serial) {
-		// Purge old output dir if present and create new one
-		_rmdir(rootsim_config.output_dir);
-		_mkdir(rootsim_config.output_dir);
-
+	if(rootsim_config.serial){
+		assign_new_file(unique_files[STAT_FILE_U_GLOBAL], "sequential_stats");
 		return;
 	}
 
-
-	// Master thread directories to keep
-	// statistics from all threads
-	if(master_thread()) {
-		// Purge old output dir if present
-		_mkdir(rootsim_config.output_dir);
-
-		for(i = 0; i < n_cores; i++) {
-			sprintf(thread_dir, "%s/thread_%d_%d/", rootsim_config.output_dir, kid, i);
-			_rmdir(thread_dir);
-			_mkdir(thread_dir);
-		}
+	for(i = 0; i < n_cores; i++) {
+		snprintf(name_buf, MAX_PATHLEN, "%s/thread_%d_%d/", rootsim_config.output_dir, kid, i);
+		_rmdir(name_buf);
+		_mkdir(name_buf);
 	}
-	sprintf(thread_dir, "%s/thread_%d_%d/", rootsim_config.output_dir, kid, local_tid);
 
 	// Allocate entries for file arrays (and set them to NULL, for later closing)
-	thread_files = rsalloc(sizeof(FILE **) * n_cores);
-	bzero(thread_files, sizeof(FILE **) * n_cores);
-
-	for(i = 0; i < n_cores; i++) {
-		thread_files[i] = rsalloc(sizeof(FILE *) * NUM_FILES);
-		bzero(thread_files[i], sizeof(FILE *) * NUM_FILES);
+	bzero(unique_files, sizeof(FILE *) * NUM_STAT_FILE_U);
+	for(i = 0; i < NUM_STAT_FILE_T; i++) {
+		thread_files[i] = rsalloc(sizeof(FILE *) * n_cores);
+		bzero(thread_files[i], sizeof(FILE *) * n_cores);
 	}
-	unique_files = rsalloc(sizeof(FILE *) * NUM_FILES);
-	bzero(unique_files, sizeof(FILE *) * NUM_FILES);
+
+	// Create the actual file(s)
+
+	// create the unique files
+	assign_new_file(unique_files[STAT_FILE_U_GLOBAL], STAT_FILE_NAME_GLOBAL);
 
 	// Create files depending on the actual level of verbosity
-	new_file(GLOBAL_STAT_NAME, STAT_UNIQUE, GLOBAL_STAT);
-
-	new_file(THREAD_STAT_NAME, STAT_PER_THREAD, THREAD_STAT);
-
-	if(rootsim_config.stats == STATS_PERF || rootsim_config.stats == STATS_ALL)
-		new_file(GVT_STAT_NAME, STAT_PER_THREAD, GVT_STAT);
-
-	if(rootsim_config.stats == STATS_ALL)
-		new_file(LP_STATS_NAME, STAT_PER_THREAD, LP_STATS);
+	switch(rootsim_config.stats){
+		case STATS_ALL:
+			for(i = 0; i < n_cores; ++i) {
+				assign_new_file(thread_files[STAT_FILE_T_LP][i], "thread_%d_%d/%s", kid, i, STAT_FILE_NAME_LP);
+			}
+			/* fall through */
+		case STATS_PERF:
+			for(i = 0; i < n_cores; ++i) {
+				assign_new_file(thread_files[STAT_FILE_T_GVT][i], "thread_%d_%d/%s", kid, i, STAT_FILE_NAME_GVT);
+			}
+			/* fall through */
+		case STATS_GLOBAL:
+		case STATS_LP:
+			for(i = 0; i < n_cores; ++i) {
+				assign_new_file(thread_files[STAT_FILE_T_THREAD][i], "thread_%d_%d/%s", kid, i, STAT_FILE_NAME_THREAD);
+			}
+		break;
+		default:
+			rootsim_error(true, "unrecognized statistics option '%d'!", rootsim_config.stats);
+	}
 
 	// Initialize data structures to keep information
 	lp_stats = rsalloc(n_prc * sizeof(struct stat_t));
@@ -650,11 +695,12 @@ void statistics_init(void) {
 	thread_stats = rsalloc(n_cores * sizeof(struct stat_t));
 	bzero(thread_stats, n_cores * sizeof(struct stat_t));
 
+	memset(&system_wide_stats, 0, sizeof(struct stat_t));
 
 	system_wide_stats.gvt_round_time_min = INFTY;
-	system_wide_stats.gvt_round_time_max = 0;
-	system_wide_stats.gvt_round_time = 0;
 }
+
+#undef assign_new_file
 
 
 /**
@@ -665,191 +711,95 @@ void statistics_init(void) {
 void statistics_fini(void) {
 	register unsigned int i, j;
 
-	for(i = 0; i < NUM_FILES; i++) {
+	for(i = 0; i < NUM_STAT_FILE_U; i++) {
 		if(unique_files[i] != NULL)
 			fclose(unique_files[i]);
 	}
-	rsfree(unique_files);
 
-	for(i = 0; i < n_cores; i++) {
-		for(j = 0; j < NUM_FILES; j++) {
+	for(i = 0; i < NUM_STAT_FILE_T; i++) {
+		for(j = 0; j < n_cores; j++) {
 			if(thread_files[i][j] != NULL)
 				fclose(thread_files[i][j]);
 		}
 		rsfree(thread_files[i]);
 	}
-	rsfree(thread_files);
 
 	rsfree(thread_stats);
 	rsfree(lp_stats);
+	rsfree(lp_stats_gvt);
 }
 
 
-void statistics_post_lp_data(LID_t the_lid, unsigned int type, double data) {
+void statistics_post_data_serial(enum stat_msg_t type, double data) {
+	switch(type) {
+		case STAT_EVENT:
+			system_wide_stats.tot_events += 1.0;
+			break;
+
+		case STAT_EVENT_TIME:
+			system_wide_stats.event_time += data;
+			system_wide_stats.exponential_event_time = 0.1 * data + 0.9 * system_wide_stats.exponential_event_time;
+			break;
+
+		default:
+			rootsim_error(true, "Wrong LP statistics post type: %d. Aborting...\n", type);
+	}
+}
+
+
+void statistics_post_data(LID_t the_lid, enum stat_msg_t type, double data) {
 	unsigned int lid = lid_to_int(the_lid);
-
-	if(rootsim_config.serial) {
-
-		switch(type) {
-			case STAT_EVENT:
-				system_wide_stats.tot_events += 1.0;
-				break;
-
-			case STAT_EVENT_TIME:
-				system_wide_stats.event_time += data;
-				system_wide_stats.exponential_event_time = 0.1 * data + 0.9 * system_wide_stats.exponential_event_time;
-				break;
-
-			default:
-				rootsim_error(true, "Wrong LP statistics post type: %d. Aborting...\n", type);
-		}
-
-	} else {
-
-		switch(type) {
-
-			case STAT_ANTIMESSAGE:
-				lp_stats_gvt[lid].tot_antimessages += 1.0;
-				break;
-
-			case STAT_EVENT:
-				lp_stats_gvt[lid].tot_events += 1.0;
-				break;
-
-			case STAT_EVENT_TIME:
-				lp_stats_gvt[lid].event_time += data;
-				lp_stats_gvt[lid].exponential_event_time = 0.1 * data + 0.9 * lp_stats_gvt[lid].exponential_event_time;
-				break;
-
-			case STAT_COMMITTED:
-				lp_stats_gvt[lid].committed_events += data;
-				break;
-
-			case STAT_ROLLBACK:
-				lp_stats_gvt[lid].tot_rollbacks += 1.0;
-				break;
-
-			case STAT_CKPT:
-				lp_stats_gvt[lid].tot_ckpts += 1.0;
-				break;
-
-			case STAT_CKPT_MEM:
-				lp_stats_gvt[lid].ckpt_mem += data;
-				break;
-
-			case STAT_CKPT_TIME:
-				lp_stats_gvt[lid].ckpt_time += data;
-				break;
-
-			case STAT_RECOVERY:
-				lp_stats_gvt[lid].tot_recoveries++;
-				break;
-
-			case STAT_RECOVERY_TIME:
-				lp_stats_gvt[lid].recovery_time += data;
-				break;
-
-			case STAT_IDLE_CYCLES:
-				thread_stats[local_tid].idle_cycles++;
-				break;
-
-			case STAT_SILENT:
-				lp_stats_gvt[lid].reprocessed_events += data;
-				break;
-
-			default:
-				rootsim_error(true, "Wrong LP statistics post type: %d. Aborting...\n", type);
-		}
-	}
-}
-
-
-void statistics_post_other_data(unsigned int type, double data) {
-	register unsigned int i;
-	double simtime_advancement;
-
-	if(rootsim_config.serial) {
-		switch(type) {
-
-			case STAT_SIM_START:
-				statistics_start();
-				break;
-
-			case STAT_GVT:
-				system_wide_stats.gvt_computations += 1.0;
-				system_wide_stats.memory_usage += (double)getCurrentRSS();
-
-				simtime_advancement = data - system_wide_stats.gvt_time;
-				if(D_DIFFER_ZERO(system_wide_stats.simtime_advancement)) {
-					// Exponential moving average
-					system_wide_stats.simtime_advancement =
-						0.1 * simtime_advancement +
-						0.9 * system_wide_stats.simtime_advancement;
-				} else {
-					system_wide_stats.simtime_advancement = simtime_advancement;
-				}
-
-				system_wide_stats.gvt_time = data;
-				break;
-
-			default:
-				rootsim_error(true, "Wrong statistics post type: %d. Aborting...\n", type);
-		}
-
-		return;
-	}
-
 	switch(type) {
 
-		case STAT_SIM_START:
-			statistics_start();
+		case STAT_ANTIMESSAGE:
+			lp_stats_gvt[lid].tot_antimessages += 1.0;
 			break;
 
-		// Sum up all that happened in the last GVT phase, in case it is required,
-		// dump a line on the corresponding statistics file
-		case STAT_GVT:
-
-			statistics_flush_gvt(data);
-
-			thread_stats[local_tid].memory_usage += (double)getCurrentRSS();
-			thread_stats[local_tid].gvt_computations += 1.0;
-			simtime_advancement = data - thread_stats[local_tid].gvt_time;
-
-			if(D_DIFFER_ZERO(thread_stats[local_tid].simtime_advancement)) {
-				// Exponential moving average
-				thread_stats[local_tid].simtime_advancement =
-					0.1 * simtime_advancement +
-					0.9 * thread_stats[local_tid].simtime_advancement;
-			} else {
-				thread_stats[local_tid].simtime_advancement = simtime_advancement;
-			}
-
-			thread_stats[local_tid].gvt_time = data;
-
-			for(i = 0; i < n_prc_per_thread; i++) {
-				unsigned int lid = lid_to_int(LPS_bound(i)->lid);
-				double keep_exponential_event_time;
-
-				lp_stats[lid].tot_antimessages += lp_stats_gvt[lid].tot_antimessages;
-				lp_stats[lid].tot_events += lp_stats_gvt[lid].tot_events;
-				lp_stats[lid].event_time += lp_stats_gvt[lid].event_time;
-				lp_stats[lid].exponential_event_time = lp_stats_gvt[lid].exponential_event_time;
-				lp_stats[lid].committed_events += lp_stats_gvt[lid].committed_events;
-				lp_stats[lid].tot_rollbacks += lp_stats_gvt[lid].tot_rollbacks;
-				lp_stats[lid].tot_ckpts += lp_stats_gvt[lid].tot_ckpts;
-				lp_stats[lid].ckpt_mem += lp_stats_gvt[lid].ckpt_mem;
-				lp_stats[lid].ckpt_time += lp_stats_gvt[lid].ckpt_time;
-				lp_stats[lid].tot_recoveries += lp_stats_gvt[lid].tot_recoveries;
-				lp_stats[lid].recovery_time += lp_stats_gvt[lid].recovery_time;
-				lp_stats[lid].reprocessed_events += lp_stats_gvt[lid].reprocessed_events;
-
-				keep_exponential_event_time = lp_stats_gvt[lid].exponential_event_time;
-				bzero(&lp_stats_gvt[lid_to_int(LPS_bound(i)->lid)], sizeof(struct stat_t));
-				lp_stats_gvt[lid].exponential_event_time = keep_exponential_event_time;
-			}
+		case STAT_EVENT:
+			lp_stats_gvt[lid].tot_events += 1.0;
 			break;
-			
 
+		case STAT_EVENT_TIME:
+			lp_stats_gvt[lid].event_time += data;
+			lp_stats_gvt[lid].exponential_event_time = 0.1 * data + 0.9 * lp_stats_gvt[lid].exponential_event_time;
+			break;
+
+		case STAT_COMMITTED:
+			lp_stats_gvt[lid].committed_events += data;
+			break;
+
+		case STAT_ROLLBACK:
+			lp_stats_gvt[lid].tot_rollbacks += 1.0;
+			break;
+
+		case STAT_CKPT:
+			lp_stats_gvt[lid].tot_ckpts += 1.0;
+			break;
+
+		case STAT_CKPT_MEM:
+			lp_stats_gvt[lid].ckpt_mem += data;
+			break;
+
+		case STAT_CKPT_TIME:
+			lp_stats_gvt[lid].ckpt_time += data;
+			break;
+
+		case STAT_RECOVERY:
+			lp_stats_gvt[lid].tot_recoveries++;
+			break;
+
+		case STAT_RECOVERY_TIME:
+			lp_stats_gvt[lid].recovery_time += data;
+			break;
+
+		case STAT_IDLE_CYCLES:
+			thread_stats[local_tid].idle_cycles++;
+			break;
+
+		case STAT_SILENT:
+			lp_stats_gvt[lid].reprocessed_events += data;
+			break;
+		// TODO this is currently unused, what is this supposed to calculate?
 		case STAT_GVT_ROUND_TIME:
 			if(data < system_wide_stats.gvt_round_time_min)
 				system_wide_stats.gvt_round_time_min = data;
@@ -858,25 +808,22 @@ void statistics_post_other_data(unsigned int type, double data) {
 			system_wide_stats.gvt_round_time += data;
 			break;
 
-
 		default:
-			rootsim_error(true, "Wrong statistics post type: %d. Aborting...\n", type);
+			rootsim_error(true, "Wrong LP statistics post type: %d. Aborting...\n", type);
 	}
 }
 
 
-double statistics_get_lp_data(unsigned int type, LID_t lid) {
-	double ret;
+double statistics_get_lp_data(LID_t lid, unsigned int type) {
 
 	switch(type) {
 
 		case STAT_GET_EVENT_TIME_LP:
-			ret = lp_stats[lid_to_int(lid)].exponential_event_time;
-			break;
+			return lp_stats[lid_to_int(lid)].exponential_event_time;
 
 		default:
 			rootsim_error(true, "Wrong statistics get type: %d. Aborting...\n", type);
 	}
 
-	return ret;
+	return 0.0;
 }

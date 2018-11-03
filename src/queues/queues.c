@@ -174,7 +174,7 @@ void process_bottom_halves(void) {
 				// It's an antimessage
 				case negative:
 
-					statistics_post_lp_data(lid_receiver, STAT_ANTIMESSAGE, 1.0);
+					statistics_post_data(lid_receiver, STAT_ANTIMESSAGE, 1.0);
 
 					// Find the message matching the antimessage
 					matched_msg = list_tail(receiver->queue_in);

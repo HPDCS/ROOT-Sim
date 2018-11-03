@@ -30,6 +30,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <limits.h>
+#include <signal.h>
 
 #include <arch/thread.h>
 #include <core/core.h>
@@ -110,6 +111,16 @@ void exit_from_simulation_model(void) {
 }
 
 
+static void handle_signal(int signum){
+	if(signum == SIGINT){
+		//TODO gracefully end the simulation and flush statistics
+		rootsim_error(false, "this should end the simulation and flush statistics,"
+				"this feature is currently being implemented!"
+				"send this signal again to kill the simulation the old way");
+	}
+}
+
+
 /**
 * This function initilizes basic functionalities within ROOT-Sim. In particular, it
 * creates a mapping between logical processes and kernel instances.
@@ -122,6 +133,8 @@ void exit_from_simulation_model(void) {
 void base_init(void) {
 	register unsigned int i;
 	GID_t gid;
+	// we set the signal action so that it auto disarms itself after the first invocation
+	struct sigaction new_act = {.sa_handler = handle_signal, .sa_flags = SA_RESETHAND, .sa_mask = 0};
 
 	barrier_init(&all_thread_barrier, n_cores);
 
@@ -150,10 +163,11 @@ void base_init(void) {
 		}
 	}
 
+	// register the signal handler
+	sigaction(SIGINT, &new_act, NULL);
+	// register the exit function
 	atexit(exit_from_simulation_model);
 }
-
-
 
 
 /**

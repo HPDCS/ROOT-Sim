@@ -428,7 +428,7 @@ simtime_t gvt_operations(void) {
 		adopt_new_gvt(new_gvt);
 
 		// Dump statistics
-		statistics_post_other_data(STAT_GVT, new_gvt);
+		statistics_on_gvt(new_gvt);
 
 		last_gvt = new_gvt;
 
