@@ -21,6 +21,9 @@
 #include <core/core.h>
 #include <core/init.h>
 #include <core/timer.h>
+#ifdef HAVE_MPI
+#include <communication/mpi.h>
+#endif
 
 #define GVT_BUFF_ROWS   50
 
