@@ -374,6 +374,8 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state){
 			if(!rootsim_config.serial && n_prc_tot < n_cores)
 				rootsim_error(true, "Requested a simulation run with %u LPs and %u worker threads: the mapping is not possible\n", n_prc_tot, n_cores);
 
+			print_config();
+
 			break;
 			/* these functionalities are not needed
 		case ARGP_KEY_ARGS:
@@ -445,8 +447,6 @@ void SystemInit(int argc, char **argv) {
 		SetState = ParallelSetState;
 		ScheduleNewEvent = ParallelScheduleNewEvent;
 	}
-
-	print_config();
 
 	distribute_lps_on_kernels();
 

@@ -72,8 +72,8 @@ enum stat_msg_t{
 	STAT_EVENT_TIME,
 	STAT_IDLE_CYCLES,
 	STAT_SILENT,
-	STAT_GVT_ROUND_TIME,	// TODO this is currently unused, what is this supposed to calculate?
-//	STAT_GET_SIMTIME_ADVANCEMENT, xxx totally unused
+	STAT_GVT_ROUND_TIME,
+	STAT_GET_SIMTIME_ADVANCEMENT, //xxx totally unused
 	STAT_GET_EVENT_TIME_LP
 };
 
@@ -85,28 +85,37 @@ enum stats_levels {
 	STATS_ALL			/**< xxx documentation */
 };
 
+// this is used in order to have more efficient stats additions during gvt reductions
+typedef double vec_double __attribute__ ((vector_size (16*sizeof(double))));
+
 // Structure to keep track of (incremental) statistics
 struct stat_t {
-	double 	tot_antimessages,
-		tot_events,
-		committed_events,
-		reprocessed_events,
-		tot_rollbacks,
-		tot_ckpts,
-		ckpt_time,
-		ckpt_mem,
-		tot_recoveries,
-		recovery_time,
-		event_time,
-		idle_cycles,
-		memory_usage,
-		gvt_computations,
+	union{
+		struct{
+			double 	tot_antimessages,
+					tot_events,
+					committed_events,
+					reprocessed_events,
+					tot_rollbacks,
+					tot_ckpts,
+					ckpt_time,
+					ckpt_mem,
+					tot_recoveries,
+					recovery_time,
+					event_time,
+					idle_cycles,
+					memory_usage,
+					simtime_advancement,
+					gvt_computations,
+					exponential_event_time;
+		};
+		vec_double vec;
+	};
+	double
 		gvt_time,
-		gvt_round_time_min,	// TODO this is currently unused, what is this supposed to calculate?
-		gvt_round_time_max,	// TODO this is currently unused, what is this supposed to calculate?
 		gvt_round_time,
-		simtime_advancement,
-		exponential_event_time;
+		gvt_round_time_min,
+		gvt_round_time_max;
 };
 
 extern void _mkdir(const char *path);

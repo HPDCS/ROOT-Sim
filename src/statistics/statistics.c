@@ -146,7 +146,6 @@ void _mkdir(const char *path) {
 	}
 }
 
-
 static void print_config_to_file(FILE *f){
 	 fprintf(f,
 		"****************************\n"
@@ -255,10 +254,8 @@ static inline void statistics_flush_gvt_buffer(void) {
 		fprintf(f, " %15lf    %15lf    %15u    %15u\n",
 				gvt_buf.row[i].exec_time, gvt_buf.row[i].gvt,gvt_buf.row[i].committed, gvt_buf.row[i].cumulated);
 	}
-	fflush(f);
 	gvt_buf.pos = 0;
 }
-
 
 /**
 * This function print in the output file all the statistics associated with the simulation
@@ -279,7 +276,6 @@ void statistics_stop(int exit_code) {
 	       efficiency;
 	timer simulation_finished;
 	char timer_string[64]; // 64 chars is the size required by the macro to convert timers to string
-	char f_name[MAX_PATHLEN]; // Used only for sequential statistics
 
 
 	if(rootsim_config.serial) {
@@ -298,7 +294,6 @@ void statistics_stop(int exit_code) {
 		timer_tostring(simulation_finished, timer_string);
 		fprintf(f, "SIMULATION FINISHED AT .... : %s \n", 		timer_string);
 		fprintf(f, "TOTAL SIMULATION TIME ..... : %.03f seconds \n",	total_time);
-
 		fprintf(f, "\n");
 		fprintf(f, "TOTAL LPs.................. : %d \n", 		n_prc_tot);
 		fprintf(f, "TOTAL EXECUTED EVENTS ..... : %.0f \n", 		system_wide_stats.tot_events);
@@ -331,9 +326,9 @@ void statistics_stop(int exit_code) {
 
 		/* Finish flushing GVT statistics */
 		statistics_flush_gvt_buffer();
+		fflush(thread_files[STAT_FILE_T_GVT][local_tid]);
 
 		/* dump per-LP statistics if required. They are already reduced during the GVT phase */
-
 		if(rootsim_config.stats == STATS_LP || rootsim_config.stats == STATS_ALL) {
 			f = thread_files[STAT_FILE_T_LP][local_tid];
 
@@ -341,12 +336,9 @@ void statistics_stop(int exit_code) {
 					"\"GID\"", "\"LID\"", "\"TOTAL EVENTS\"", "\"COMM EVENTS\"", "\"REPROC EVENTS\"", "\"ROLLBACKS\"", "\"ANTIMSG\"",
 					"\"AVG EVT COST\"", "\"AVG CKPT COST\"", "\"AVG REC COST\"", "\"IDLE CYCLES\"");
 
-
-			// TODO: switch to foreach
-			for(i = 0; i < n_prc_per_thread; i++) {
-				LID_t the_lid = LPS_bound(i)->lid;
-				unsigned int lid = lid_to_int(the_lid);
-				fprintf(f, " %15u   ", 		gid_to_int(LidToGid(the_lid)));
+			int __helper_show_lp_stats(LID_t the_lid, GID_t the_gid, unsigned lid, void *unused){
+				(void)unused, (void)the_lid;
+				fprintf(f, " %15u   ", 		gid_to_int(the_gid));
 				fprintf(f, "%15u   ", 		lid);
 				fprintf(f, "%15.0lf   ", 	lp_stats[lid].tot_events);
 				fprintf(f, "%15.0lf   ", 	lp_stats[lid].committed_events);
@@ -358,34 +350,25 @@ void statistics_stop(int exit_code) {
 				fprintf(f, "%15.0lf   ", 	(lp_stats[lid].tot_rollbacks > 0 ? lp_stats[lid].recovery_time / lp_stats[lid].tot_recoveries : 0));
 				fprintf(f, "%15.0lf   ", 	lp_stats[lid].idle_cycles);
 				fprintf(f, "\n");
+				return 0; // process each lp
 			}
+			LPS_bound_foreach(__helper_show_lp_stats, NULL);
 		}
 
 
 		/* Reduce and dump per-thread statistics */
 
 		// Sum up all LPs statistics
-		for(i = 0; i < n_prc_per_thread; i++) {
-			unsigned int lid = lid_to_int(LPS_bound(i)->lid);
-
-			thread_stats[local_tid].tot_antimessages += lp_stats[lid].tot_antimessages;
-			thread_stats[local_tid].tot_events += lp_stats[lid].tot_events;
-			thread_stats[local_tid].committed_events += lp_stats[lid].committed_events;
-			thread_stats[local_tid].reprocessed_events += lp_stats[lid].reprocessed_events;
-			thread_stats[local_tid].tot_rollbacks += lp_stats[lid].tot_rollbacks;
-			thread_stats[local_tid].tot_ckpts += lp_stats[lid].tot_ckpts;
-			thread_stats[local_tid].ckpt_time += lp_stats[lid].ckpt_time;
-			thread_stats[local_tid].ckpt_mem += lp_stats[lid].ckpt_mem;
-			thread_stats[local_tid].tot_recoveries += lp_stats[lid].tot_recoveries;
-			thread_stats[local_tid].recovery_time += lp_stats[lid].recovery_time;
-			thread_stats[local_tid].event_time += lp_stats[lid].event_time;
-			thread_stats[local_tid].exponential_event_time += lp_stats[lid].exponential_event_time;
-			thread_stats[local_tid].idle_cycles += lp_stats[lid].idle_cycles;
+		int __helper_sum_lp_stats(LID_t the_lid, GID_t the_gid, unsigned lid, void *unused){
+			(void)unused, (void)the_lid, (void)the_gid;
+			thread_stats[local_tid].vec += lp_stats[lid].vec;
+			return 0;
 		}
+		LPS_bound_foreach(__helper_sum_lp_stats, NULL);
 		thread_stats[local_tid].exponential_event_time /= n_prc_per_thread;
 
 		// Compute derived statistics and dump everything
-		f = thread_files[STAT_FILE_T_THREAD][local_tid];;
+		f = thread_files[STAT_FILE_T_THREAD][local_tid];
 		rollback_frequency = (thread_stats[local_tid].tot_rollbacks / thread_stats[local_tid].tot_events);
 		rollback_length = (thread_stats[local_tid].tot_rollbacks > 0
 				   ? (thread_stats[local_tid].tot_events - thread_stats[local_tid].committed_events) / thread_stats[local_tid].tot_rollbacks
@@ -395,6 +378,7 @@ void statistics_stop(int exit_code) {
 		fprintf(f, "------------------------------------------------------------\n");
 		fprintf(f, "-------------------- THREAD STATISTICS ---------------------\n");
 		fprintf(f, "------------------------------------------------------------\n\n");
+
 		fprintf(f, "KERNEL ID ................. : %d \n", 		kid);
 		fprintf(f, "LPs HOSTED BY KERNEL....... : %d \n", 		n_prc);
 		fprintf(f, "TOTAL_THREADS ............. : %d \n", 		n_cores);
@@ -438,26 +422,12 @@ void statistics_stop(int exit_code) {
 
 			// Sum up all threads statistics
 			for(i = 0; i < n_cores; i++) {
-				system_wide_stats.tot_antimessages += thread_stats[i].tot_antimessages;
-				system_wide_stats.tot_events += thread_stats[i].tot_events;
-				system_wide_stats.committed_events += thread_stats[i].committed_events;
-				system_wide_stats.reprocessed_events += thread_stats[i].reprocessed_events;
-				system_wide_stats.tot_rollbacks += thread_stats[i].tot_rollbacks;
-				system_wide_stats.tot_ckpts += thread_stats[i].tot_ckpts;
-				system_wide_stats.ckpt_time += thread_stats[i].ckpt_time;
-				system_wide_stats.ckpt_mem += thread_stats[i].ckpt_mem;
-				system_wide_stats.tot_recoveries += thread_stats[i].tot_recoveries;
-				system_wide_stats.recovery_time += thread_stats[i].recovery_time;
-				system_wide_stats.event_time += thread_stats[i].event_time;
-				system_wide_stats.exponential_event_time += thread_stats[i].exponential_event_time;
-				system_wide_stats.idle_cycles += thread_stats[i].idle_cycles;
-				system_wide_stats.memory_usage += thread_stats[i].memory_usage;
-				system_wide_stats.simtime_advancement += thread_stats[i].simtime_advancement;
+				system_wide_stats.vec += thread_stats[i].vec;
 			}
 			system_wide_stats.exponential_event_time /= n_cores;
 
 			// GVT computations are the same for all threads
-			system_wide_stats.gvt_computations += thread_stats[0].gvt_computations;
+			system_wide_stats.gvt_computations /= n_cores;
 
 			// Compute derived statistics and dump everything
 			f = unique_files[STAT_FILE_U_GLOBAL]; // TODO: quando reintegriamo il distribuito, la selezione del file qui deve cambiare
@@ -505,34 +475,29 @@ void statistics_stop(int exit_code) {
 			fprintf(f, "IDLE CYCLES................ : %.0f\n",		system_wide_stats.idle_cycles);
 			fprintf(f, "LAST COMMITTED GVT ........ : %f\n",		get_last_gvt());
 			fprintf(f, "NUMBER OF GVT REDUCTIONS... : %.0f\n",		system_wide_stats.gvt_computations);
-			
-			fprintf(f, "MIN GVT ROUND TIME......... : %.2f us\n",    system_wide_stats.gvt_round_time_min);
+			#ifdef HAVE_MPI
+			fprintf(f, "MIN GVT ROUND TIME......... : %.2f us\n",	system_wide_stats.gvt_round_time_min);
 			fprintf(f, "MAX GVT ROUND TIME......... : %.2f us\n",	system_wide_stats.gvt_round_time_max);
 			fprintf(f, "AVERAGE GVT ROUND TIME..... : %.2f us\n",	system_wide_stats.gvt_round_time / system_wide_stats.gvt_computations);
+			#endif
 			fprintf(f, "SIMULATION TIME SPEED...... : %.2f units per GVT\n",system_wide_stats.simtime_advancement);
 			fprintf(f, "AVERAGE MEMORY USAGE....... : %s\n",		format_size(system_wide_stats.memory_usage / system_wide_stats.gvt_computations));
 			fprintf(f, "PEAK MEMORY USAGE.......... : %s\n",		format_size(getPeakRSS()));
 
+			// TODO: quando reintegriamo la parte distribuita, qui si deve fare la riduzione tra tutti i kernel
+
+			// Write the final outcome of the simulation on screen
+
 			if(exit_code == EXIT_FAILURE) {
 				fprintf(f, "\n--------- SIMULATION ABNORMALLY TERMINATED ----------\n");
-			}
-			if(exit_code == EXIT_SUCCESS) {
-				fprintf(f, "\n--------- SIMULATION CORRECTLY COMPLETED ----------\n");
-			}
-
-			fflush(f);
-		}
-
-		// TODO: quando reintegriamo la parte distribuita, qui si deve fare la riduzione tra tutti i kernel
-
-		// Write the final outcome of the simulation on screen
-		if (master_kernel() && master_thread()) {
-			if(exit_code == EXIT_FAILURE) {
 				printf("\n--------- SIMULATION ABNORMALLY TERMINATED ----------\n");
 			}
 			if(exit_code == EXIT_SUCCESS) {
+				fprintf(f, "\n--------- SIMULATION CORRECTLY COMPLETED ----------\n");
 				printf("\n--------- SIMULATION CORRECTLY COMPLETED ----------\n");
 			}
+
+			fflush(f);
 		}
 	}
 }
@@ -549,7 +514,7 @@ inline void statistics_on_gvt(double gvt) {
 	int gvt_line_len;
 
 	// Dump on file only if required
-	if(rootsim_config.stats == STATS_ALL || rootsim_config.stats == STATS_PERF || rootsim_config.stats == STATS_LP) {
+	if(rootsim_config.stats == STATS_ALL || rootsim_config.stats == STATS_PERF) {
 		exec_time = timer_value_seconds(simulation_timer);
 
 		// Reduce the committed events from all LPs
@@ -584,18 +549,7 @@ inline void statistics_on_gvt(double gvt) {
 	for(i = 0; i < n_prc_per_thread; i++) {
 		lid = lid_to_int(LPS_bound(i)->lid);
 
-		// todo: vectorize this using builtins or whatever is needed
-		lp_stats[lid].tot_antimessages += lp_stats_gvt[lid].tot_antimessages;
-		lp_stats[lid].tot_events += lp_stats_gvt[lid].tot_events;
-		lp_stats[lid].committed_events += lp_stats_gvt[lid].committed_events;
-		lp_stats[lid].reprocessed_events += lp_stats_gvt[lid].reprocessed_events;
-		lp_stats[lid].tot_rollbacks += lp_stats_gvt[lid].tot_rollbacks;
-		lp_stats[lid].tot_ckpts += lp_stats_gvt[lid].tot_ckpts;
-		lp_stats[lid].ckpt_time += lp_stats_gvt[lid].ckpt_time;
-		lp_stats[lid].ckpt_mem += lp_stats_gvt[lid].ckpt_mem;
-		lp_stats[lid].tot_recoveries += lp_stats_gvt[lid].tot_recoveries;
-		lp_stats[lid].recovery_time += lp_stats_gvt[lid].recovery_time;
-		lp_stats[lid].event_time += lp_stats_gvt[lid].event_time;
+		lp_stats[lid].vec += lp_stats_gvt[lid].vec;
 
 		lp_stats[lid].exponential_event_time = lp_stats_gvt[lid].exponential_event_time;
 
@@ -663,17 +617,17 @@ void statistics_init(void) {
 		bzero(thread_files[i], sizeof(FILE *) * n_cores);
 	}
 
-	// Create the actual file(s)
-
-	// create the unique files
+	// create the unique file
 	assign_new_file(unique_files[STAT_FILE_U_GLOBAL], STAT_FILE_NAME_GLOBAL);
 
 	// Create files depending on the actual level of verbosity
 	switch(rootsim_config.stats){
 		case STATS_ALL:
+		case STATS_LP:
 			for(i = 0; i < n_cores; ++i) {
 				assign_new_file(thread_files[STAT_FILE_T_LP][i], "thread_%d_%d/%s", kid, i, STAT_FILE_NAME_LP);
 			}
+			if(rootsim_config.stats == STATS_LP) goto stats_lp_jump;
 			/* fall through */
 		case STATS_PERF:
 			for(i = 0; i < n_cores; ++i) {
@@ -681,7 +635,7 @@ void statistics_init(void) {
 			}
 			/* fall through */
 		case STATS_GLOBAL:
-		case STATS_LP:
+			stats_lp_jump:
 			for(i = 0; i < n_cores; ++i) {
 				assign_new_file(thread_files[STAT_FILE_T_THREAD][i], "thread_%d_%d/%s", kid, i, STAT_FILE_NAME_THREAD);
 			}
@@ -802,7 +756,7 @@ void statistics_post_data(LID_t the_lid, enum stat_msg_t type, double data) {
 		case STAT_SILENT:
 			lp_stats_gvt[lid].reprocessed_events += data;
 			break;
-		// TODO this is currently unused, what is this supposed to calculate?
+
 		case STAT_GVT_ROUND_TIME:
 			if(data < system_wide_stats.gvt_round_time_min)
 				system_wide_stats.gvt_round_time_min = data;
