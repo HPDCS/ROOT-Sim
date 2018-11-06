@@ -111,7 +111,6 @@ static void _rmdir(const char *path) {
 * @param path The path of the new directory to create
 */
 void _mkdir(const char *path) {
-
 	char opath[MAX_PATHLEN];
 	char *p;
 	size_t len;
@@ -475,11 +474,11 @@ void statistics_stop(int exit_code) {
 			fprintf(f, "IDLE CYCLES................ : %.0f\n",		system_wide_stats.idle_cycles);
 			fprintf(f, "LAST COMMITTED GVT ........ : %f\n",		get_last_gvt());
 			fprintf(f, "NUMBER OF GVT REDUCTIONS... : %.0f\n",		system_wide_stats.gvt_computations);
-			#ifdef HAVE_MPI
-			fprintf(f, "MIN GVT ROUND TIME......... : %.2f us\n",	system_wide_stats.gvt_round_time_min);
-			fprintf(f, "MAX GVT ROUND TIME......... : %.2f us\n",	system_wide_stats.gvt_round_time_max);
-			fprintf(f, "AVERAGE GVT ROUND TIME..... : %.2f us\n",	system_wide_stats.gvt_round_time / system_wide_stats.gvt_computations);
-			#endif
+			if(n_ker > 1){
+				fprintf(f, "MIN GVT ROUND TIME......... : %.2f us\n",	system_wide_stats.gvt_round_time_min);
+				fprintf(f, "MAX GVT ROUND TIME......... : %.2f us\n",	system_wide_stats.gvt_round_time_max);
+				fprintf(f, "AVERAGE GVT ROUND TIME..... : %.2f us\n",	system_wide_stats.gvt_round_time / system_wide_stats.gvt_computations);
+			}
 			fprintf(f, "SIMULATION TIME SPEED...... : %.2f units per GVT\n",system_wide_stats.simtime_advancement);
 			fprintf(f, "AVERAGE MEMORY USAGE....... : %s\n",		format_size(system_wide_stats.memory_usage / system_wide_stats.gvt_computations));
 			fprintf(f, "PEAK MEMORY USAGE.......... : %s\n",		format_size(getPeakRSS()));
@@ -506,12 +505,10 @@ void statistics_stop(int exit_code) {
 // Sum up all that happened in the last GVT phase, in case it is required,
 // dump a line on the corresponding statistics file
 inline void statistics_on_gvt(double gvt) {
-	unsigned int i, lid, keep_exponential_event_time;
+	unsigned int i, lid;
 	unsigned int committed = 0;
 	static __thread unsigned int cumulated = 0;
-	double exec_time, simtime_advancement;
-	char gvt_line[512];
-	int gvt_line_len;
+	double exec_time, simtime_advancement, keep_exponential_event_time;
 
 	// Dump on file only if required
 	if(rootsim_config.stats == STATS_ALL || rootsim_config.stats == STATS_PERF) {
@@ -580,7 +577,7 @@ inline void statistics_on_gvt_serial(double gvt){
 
 #define assign_new_file(destination, format, ...) \
 	do{\
-		snprintf(name_buf, MAX_PATHLEN, "%s/"format, rootsim_config.output_dir, ##__VA_ARGS__);\
+		snprintf(name_buf, MAX_PATHLEN, "%s/"format, base_path, ##__VA_ARGS__);\
 		if (((destination) = fopen(name_buf, "w")) == NULL)\
 			rootsim_error(true, "Cannot open %s\n", name_buf);\
 	}while(0)
@@ -593,10 +590,16 @@ inline void statistics_on_gvt_serial(double gvt){
 void statistics_init(void) {
 	unsigned int i;
 	char name_buf[MAX_PATHLEN];
+	char base_path[MAX_PATHLEN];
+
+	if(n_ker > 1)
+		snprintf(base_path, MAX_PATHLEN, "%s_%u", rootsim_config.output_dir, kid);
+	else
+		snprintf(base_path, MAX_PATHLEN, "%s", rootsim_config.output_dir);
 
 	// Purge old output dir if present
-	_rmdir(rootsim_config.output_dir);
-	_mkdir(rootsim_config.output_dir);
+	_rmdir(base_path);
+	_mkdir(base_path);
 
 	// The whole reduction for the sequential simulation is simply done at the end
 	if(rootsim_config.serial){
@@ -605,7 +608,7 @@ void statistics_init(void) {
 	}
 
 	for(i = 0; i < n_cores; i++) {
-		snprintf(name_buf, MAX_PATHLEN, "%s/thread_%d_%d/", rootsim_config.output_dir, kid, i);
+		snprintf(name_buf, MAX_PATHLEN, "%s/thread_%u/", base_path, i);
 		_rmdir(name_buf);
 		_mkdir(name_buf);
 	}
@@ -625,19 +628,19 @@ void statistics_init(void) {
 		case STATS_ALL:
 		case STATS_LP:
 			for(i = 0; i < n_cores; ++i) {
-				assign_new_file(thread_files[STAT_FILE_T_LP][i], "thread_%d_%d/%s", kid, i, STAT_FILE_NAME_LP);
+				assign_new_file(thread_files[STAT_FILE_T_LP][i], "thread_%u/%s", i, STAT_FILE_NAME_LP);
 			}
 			if(rootsim_config.stats == STATS_LP) goto stats_lp_jump;
 			/* fall through */
 		case STATS_PERF:
 			for(i = 0; i < n_cores; ++i) {
-				assign_new_file(thread_files[STAT_FILE_T_GVT][i], "thread_%d_%d/%s", kid, i, STAT_FILE_NAME_GVT);
+				assign_new_file(thread_files[STAT_FILE_T_GVT][i], "thread_%u/%s", i, STAT_FILE_NAME_GVT);
 			}
 			/* fall through */
 		case STATS_GLOBAL:
 			stats_lp_jump:
 			for(i = 0; i < n_cores; ++i) {
-				assign_new_file(thread_files[STAT_FILE_T_THREAD][i], "thread_%d_%d/%s", kid, i, STAT_FILE_NAME_THREAD);
+				assign_new_file(thread_files[STAT_FILE_T_THREAD][i], "thread_%u/%s", i, STAT_FILE_NAME_THREAD);
 			}
 		break;
 		default:
