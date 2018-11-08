@@ -85,6 +85,9 @@ bool exit_silently_from_kernel = false;
 bool init_complete = false;
 
 
+bool user_exit_flag = false;
+
+
 
 /**
  * This function is used to terminate with not much pain the simulation
@@ -111,12 +114,14 @@ void exit_from_simulation_model(void) {
 }
 
 
+inline bool user_requested_exit(void){
+	return user_exit_flag;
+}
+
+
 static void handle_signal(int signum){
 	if(signum == SIGINT){
-		//TODO gracefully end the simulation and flush statistics
-		rootsim_error(false, "this should end the simulation and flush statistics,"
-				"this feature is currently being implemented!"
-				"send this signal again to kill the simulation the old way");
+		user_exit_flag = true;
 	}
 }
 
@@ -133,8 +138,7 @@ static void handle_signal(int signum){
 void base_init(void) {
 	register unsigned int i;
 	GID_t gid;
-	// we set the signal action so that it auto disarms itself after the first invocation
-	struct sigaction new_act = {.sa_handler = handle_signal, .sa_flags = SA_RESETHAND, .sa_mask = 0};
+	struct sigaction new_act = {0};
 
 	barrier_init(&all_thread_barrier, n_cores);
 
@@ -163,6 +167,10 @@ void base_init(void) {
 		}
 	}
 
+	// complete the sigaction struct init
+	new_act.sa_handler = handle_signal;
+	// we set the signal action so that it auto disarms itself after the first invocation
+	new_act.sa_flags = SA_RESETHAND;
 	// register the signal handler
 	sigaction(SIGINT, &new_act, NULL);
 	// register the exit function

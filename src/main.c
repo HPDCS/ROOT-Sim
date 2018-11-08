@@ -74,6 +74,9 @@ static bool end_computing(void) {
 		return true;
 	}
 
+	if(user_requested_exit())
+		return true;
+
 	return false;
 }
 

@@ -95,7 +95,7 @@ enum _opt_codes{
 };
 
 // XXX we offset the first level with OPT_FIRST so remember about it when you index it!
-const char const* param_to_text[][5] = {
+const char * const param_to_text[][5] = {
 	[OPT_SCHEDULER - OPT_FIRST] = {
 			[SCHEDULER_INVALID] = "invalid scheduler",
 			[SCHEDULER_STF] = "stf",

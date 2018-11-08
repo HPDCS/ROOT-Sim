@@ -246,6 +246,7 @@ extern unsigned int GidToKernel(GID_t gid) __attribute__ ((pure));
 extern void rootsim_error(bool fatal, const char *msg, ...);
 extern void distribute_lps_on_kernels(void);
 extern void simulation_shutdown(int code) __attribute__((noreturn));
+extern inline bool user_requested_exit(void);
 extern inline bool simulation_error(void);
 extern void initialization_complete(void);
 

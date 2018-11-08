@@ -47,7 +47,7 @@ enum param_codes{
  * for the second level you have to refer to the enumerations
  * listed in relevant modules headers.
  */
-extern const char const* param_to_text[][5];
+extern const char * const param_to_text[][5];
 
 /// Configuration of the execution of the simulator
 typedef struct _simulation_configuration {

@@ -188,7 +188,7 @@ static void print_config_to_file(FILE *f){
 }
 
 
-void print_config(void){print_config_to_file(stdout);}
+void print_config(void)	{if(master_kernel()) print_config_to_file(stdout);}
 
 
 /**
@@ -318,7 +318,7 @@ void statistics_stop(int exit_code) {
 	} else { /* Parallel simulation */
 
 		// Stop the simulation timer immediately to avoid considering the statistics reduction time
-		if (master_kernel() && master_thread()) {
+		if (master_thread()) {
 			timer_start(simulation_finished);
 			total_time = timer_value_seconds(simulation_timer);
 		}
@@ -417,7 +417,7 @@ void statistics_stop(int exit_code) {
 
 		thread_barrier(&all_thread_barrier);
 
-		if(master_kernel() && master_thread()) {
+		if(master_thread()) {
 
 			// Sum up all threads statistics
 			for(i = 0; i < n_cores; i++) {
@@ -443,7 +443,6 @@ void statistics_stop(int exit_code) {
 			fprintf(f, "-------------------- GLOBAL STATISTICS ---------------------\n");
 			fprintf(f, "------------------------------------------------------------\n\n");
 
-			// TODO: quando reintegriamo il distribuito, queste stampe vanno nel file globale
 			timer_tostring(simulation_timer, timer_string);
 			fprintf(f, "SIMULATION STARTED AT ..... : %s \n", 		timer_string);
 			bzero(timer_string, 64);
@@ -483,20 +482,25 @@ void statistics_stop(int exit_code) {
 			fprintf(f, "AVERAGE MEMORY USAGE....... : %s\n",		format_size(system_wide_stats.memory_usage / system_wide_stats.gvt_computations));
 			fprintf(f, "PEAK MEMORY USAGE.......... : %s\n",		format_size(getPeakRSS()));
 
-			// TODO: quando reintegriamo la parte distribuita, qui si deve fare la riduzione tra tutti i kernel
-
-			// Write the final outcome of the simulation on screen
-
 			if(exit_code == EXIT_FAILURE) {
 				fprintf(f, "\n--------- SIMULATION ABNORMALLY TERMINATED ----------\n");
-				printf("\n--------- SIMULATION ABNORMALLY TERMINATED ----------\n");
 			}
 			if(exit_code == EXIT_SUCCESS) {
 				fprintf(f, "\n--------- SIMULATION CORRECTLY COMPLETED ----------\n");
-				printf("\n--------- SIMULATION CORRECTLY COMPLETED ----------\n");
 			}
 
 			fflush(f);
+
+			if(master_kernel()){
+				// TODO: do the statistics reduction between all the MPI kernels in another file
+				// Write the final outcome of the simulation on screen
+				if(exit_code == EXIT_FAILURE) {
+					printf("\n--------- SIMULATION ABNORMALLY TERMINATED ----------\n");
+				}
+				if(exit_code == EXIT_SUCCESS) {
+					printf("\n--------- SIMULATION CORRECTLY COMPLETED ----------\n");
+				}
+			}
 		}
 	}
 }
