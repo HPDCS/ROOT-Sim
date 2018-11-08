@@ -61,6 +61,27 @@ static struct stat_t *thread_stats;
 /// Keeps global statistics
 static struct stat_t system_wide_stats;
 
+/*!
+ * @brief This is a pseudo asprintf() implementation needed in order to stop GCC 8 from complaining
+ * @param format the format string as in the real asprintf()
+ * @param ... the arguments list as in the real asprintf()
+ * @returns a mallocated string containing the snprintf()-processed string
+ *
+ *	TODO: transform into a function for safety
+ * GCC 8 cares a lot for our security so we have to be sure snprintf() doesn't truncate.
+ */
+#define safe_asprintf(ret_addr, format, ...) ({					\
+		char *__pstr = NULL;									\
+		int __ret = snprintf(0, 0, format, ##__VA_ARGS__);		\
+		if(__ret < 0)											\
+			rootsim_error(true, "Error in snprintf()!");		\
+		__pstr = rsalloc(__ret + 1);							\
+		__ret = snprintf(__pstr, __ret + 1, format, ##__VA_ARGS__);\
+		if(__ret < 0)											\
+			rootsim_error(true, "Error in snprintf()!");		\
+		*(ret_addr) = __pstr;									\
+})
+
 
 /**
 * This is an helper-function to recursively delete the whole content of a folder
@@ -68,7 +89,7 @@ static struct stat_t system_wide_stats;
 * @param path The path of the directory to purge
 */
 static void _rmdir(const char *path) {
-	char buf[MAX_PATHLEN];
+	char *buf;
 	struct stat st;
 	struct dirent *dirt;
 	DIR *dir;
@@ -81,25 +102,25 @@ static void _rmdir(const char *path) {
 	while ( (dirt = readdir(dir))) {
 		if ((strcmp(dirt->d_name, ".") == 0) || (strcmp(dirt->d_name, "..") == 0))
 			continue;
-		snprintf(buf, MAX_PATHLEN, "%s/%s", path, dirt->d_name);
+
+		safe_asprintf(&buf, "%s/%s", path, dirt->d_name);
 
 		if (stat(buf, &st) == -1) {
 			rootsim_error(false, "stat() file \"%s\" failed, %s\n", buf, strerror(errno));
-			continue;
-		}
-
-		if (S_ISLNK(st.st_mode) || S_ISREG(st.st_mode)) {
+		}else if (S_ISLNK(st.st_mode) || S_ISREG(st.st_mode)) {
 			if (unlink(buf) == -1)
 				rootsim_error(false, "unlink() file \"%s\" failed, %s\n", buf, strerror(errno));
 		}
 		else if (S_ISDIR(st.st_mode)) {
 			_rmdir(buf);
 		}
+
+		rsfree(buf);
 	}
 	closedir(dir);
 
 	if (rmdir(path) == -1)
-		rootsim_error(false, "rmdir() directory \"%s\" failed, %s\n", buf, strerror(errno));
+		rootsim_error(false, "rmdir() directory \"%s\" failed, %s\n", path, strerror(errno));
 }
 
 
@@ -581,9 +602,10 @@ inline void statistics_on_gvt_serial(double gvt){
 
 #define assign_new_file(destination, format, ...) \
 	do{\
-		snprintf(name_buf, MAX_PATHLEN, "%s/"format, base_path, ##__VA_ARGS__);\
+		safe_asprintf(&name_buf, "%s/" format, base_path, ##__VA_ARGS__);\
 		if (((destination) = fopen(name_buf, "w")) == NULL)\
 			rootsim_error(true, "Cannot open %s\n", name_buf);\
+		rsfree(name_buf);\
 	}while(0)
 
 /**
@@ -593,13 +615,17 @@ inline void statistics_on_gvt_serial(double gvt){
 */
 void statistics_init(void) {
 	unsigned int i;
-	char name_buf[MAX_PATHLEN];
-	char base_path[MAX_PATHLEN];
+	char *name_buf = NULL;
+	char *base_path = NULL;
 
-	if(n_ker > 1)
-		snprintf(base_path, MAX_PATHLEN, "%s_%u", rootsim_config.output_dir, kid);
-	else
-		snprintf(base_path, MAX_PATHLEN, "%s", rootsim_config.output_dir);
+	// this is needed in order to suppress a race condition when multiple kernels
+	// share the same filesystem
+	if(n_ker > 1){
+		safe_asprintf(&base_path, "%s_%u", rootsim_config.output_dir, kid);
+	}
+	else{
+		safe_asprintf(&base_path, "%s", rootsim_config.output_dir);
+	}
 
 	// Purge old output dir if present
 	_rmdir(base_path);
@@ -608,13 +634,15 @@ void statistics_init(void) {
 	// The whole reduction for the sequential simulation is simply done at the end
 	if(rootsim_config.serial){
 		assign_new_file(unique_files[STAT_FILE_U_GLOBAL], "sequential_stats");
+		rsfree(base_path);
 		return;
 	}
 
 	for(i = 0; i < n_cores; i++) {
-		snprintf(name_buf, MAX_PATHLEN, "%s/thread_%u/", base_path, i);
+		safe_asprintf(&name_buf, "%s/thread_%u/", base_path, i);
 		_rmdir(name_buf);
 		_mkdir(name_buf);
+		rsfree(name_buf);
 	}
 
 	// Allocate entries for file arrays (and set them to NULL, for later closing)
@@ -650,6 +678,8 @@ void statistics_init(void) {
 		default:
 			rootsim_error(true, "unrecognized statistics option '%d'!", rootsim_config.stats);
 	}
+
+	rsfree(base_path);
 
 	// Initialize data structures to keep information
 	lp_stats = rsalloc(n_prc * sizeof(struct stat_t));
