@@ -56,7 +56,8 @@ enum _control_msgs {
 	RENDEZVOUS_ROLLBACK,
 	RENDEZVOUS_GET_PAGE,
 	RENDEZVOUS_GET_PAGE_ACK,
-	RENDEZVOUS_PAGE_WRITE_BACK,
+	RENDEZVOUS_WRITE_PAGE,
+	RENDEZVOUS_WRITE_PAGE_ACK,
 	MAX_VALUE_CONTROL
 };
 
@@ -65,7 +66,7 @@ enum _control_msgs {
 // Message Codes for PVM
 #define MSG_INIT_MPI		200
 #define MSG_EVENT		2
-#define MSG_EVENT_LARGER	3
+#define MSG_EVENT_BIG	3
 //#define MSG_ACKNOWLEDGE		3
 #define MSG_GVT			10
 #define MSG_UNLOCK		11
@@ -81,6 +82,7 @@ enum _control_msgs {
 #define MSG_TIME_BARRIER	53 /// Slaves communicate their maximum time barrier
 #define MSG_SNAPSHOT		54 /// Retrieve termination result
 #define MSG_FINI			55
+#define MSG_STATS			56
 
 
 #define INIT_OUTGOING_MSG	10

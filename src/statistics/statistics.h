@@ -70,6 +70,7 @@
 #define STAT_EVENT_TIME		10
 #define STAT_IDLE_CYCLES	11
 #define STAT_SILENT		12
+#define STAT_ECS		13
 
 
 /* Definition of Global Statistics Post Messages */
@@ -81,6 +82,7 @@
 /* Definition of Thread Statistics Get Messages */
 #define STAT_GET_SIMTIME_ADVANCEMENT	15001
 #define STAT_GET_EVENT_TIME_LP		15002
+#define STAT_GET_TOT_ECS			15003
 
 
 
@@ -110,6 +112,7 @@ struct stat_t {
 		gvt_round_time_min,
 		gvt_round_time_max,
 		gvt_round_time,
+		tot_ecs,
 		simtime_advancement;
 };
 
@@ -120,7 +123,7 @@ extern void statistics_stop(int exit_code);
 extern inline void statistics_post_lp_data(LID_t lid, unsigned int type, double data);
 extern inline void statistics_post_other_data(unsigned int type, double data);
 extern double statistics_get_lp_data(unsigned int type, LID_t lid);
-
+extern double statistics_get_system_wide_data(unsigned int type);
 
 
 #endif /* _STATISTICS_H */

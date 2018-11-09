@@ -5,7 +5,7 @@
 #define TX_OP_ARRIVAL	250
 #define MIN_OP_COUNT	500
 #define MAX_OP_COUNT	1000
-#define MAX_RS_SIZE		1000
+#define MAX_RS_SIZE		2000
 #define MAX_WS_SIZE		1000
 #define TOTAL_COMMITTED_TX 3
 

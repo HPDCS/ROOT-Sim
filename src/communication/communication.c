@@ -145,7 +145,7 @@ msg_t *get_msg_from_slab(void) {
 }
 
 void msg_release(msg_t *msg) {
-	int thr;
+	unsigned int thr;
 
 	if(sizeof(msg_t) + msg->size <= SLAB_MSG_SIZE) {
 		thr = msg->alloc_tid;
@@ -400,7 +400,7 @@ void hdr_to_msg(msg_hdr_t *hdr, msg_t *msg) {
 
 void dump_msg_content(msg_t *msg) {
 	printf("\tsender: %u\n", gid_to_int(msg->sender));
-	printf("\treceiver: %u\n", gid_to_int(msg->sender));
+	printf("\treceiver: %u\n", gid_to_int(msg->receiver));
 	#ifdef HAVE_MPI
 	printf("\tcolour: %d\n", msg->colour);
 	#endif

@@ -393,6 +393,7 @@ void statistics_stop(int exit_code) {
 			thread_stats[local_tid].event_time += lp_stats[lid].event_time;
 			thread_stats[local_tid].exponential_event_time += lp_stats[lid].exponential_event_time;
 			thread_stats[local_tid].idle_cycles += lp_stats[lid].idle_cycles;
+			thread_stats[local_tid].tot_ecs += lp_stats[lid].tot_ecs;
 		}
 		thread_stats[local_tid].exponential_event_time /= n_prc_per_thread;
 
@@ -417,6 +418,7 @@ void statistics_stop(int exit_code) {
 		fprintf(f, "TOTAL COMMITTED EVENTS..... : %.0f \n", 		thread_stats[local_tid].committed_events);
 		fprintf(f, "TOTAL REPROCESSED EVENTS... : %.0f \n", 		thread_stats[local_tid].reprocessed_events);
 		fprintf(f, "TOTAL ROLLBACKS EXECUTED... : %.0f \n", 		thread_stats[local_tid].tot_rollbacks);
+		fprintf(f, "TOTAL ECS EXECUTED......... : %.0f \n",			thread_stats[local_tid].tot_ecs);
 		fprintf(f, "TOTAL ANTIMESSAGES......... : %.0f \n", 		thread_stats[local_tid].tot_antimessages);
 		fprintf(f, "ROLLBACK FREQUENCY......... : %.2f %%\n",		rollback_frequency * 100);
 		fprintf(f, "ROLLBACK LENGTH............ : %.2f events\n",	rollback_length);
@@ -449,7 +451,6 @@ void statistics_stop(int exit_code) {
 		thread_barrier(&all_thread_barrier);
 
 		if(master_kernel() && master_thread()) {
-
 			// Sum up all threads statistics
 			for(i = 0; i < n_cores; i++) {
 				system_wide_stats.tot_antimessages += thread_stats[i].tot_antimessages;
@@ -467,6 +468,7 @@ void statistics_stop(int exit_code) {
 				system_wide_stats.idle_cycles += thread_stats[i].idle_cycles;
 				system_wide_stats.memory_usage += thread_stats[i].memory_usage;
 				system_wide_stats.simtime_advancement += thread_stats[i].simtime_advancement;
+				system_wide_stats.tot_ecs += thread_stats[i].tot_ecs;
 			}
 			system_wide_stats.exponential_event_time /= n_cores;
 
@@ -504,6 +506,7 @@ void statistics_stop(int exit_code) {
 			fprintf(f, "TOTAL COMMITTED EVENTS..... : %.0f \n", 		system_wide_stats.committed_events);
 			fprintf(f, "TOTAL REPROCESSED EVENTS... : %.0f \n", 		system_wide_stats.reprocessed_events);
 			fprintf(f, "TOTAL ROLLBACKS EXECUTED... : %.0f \n", 		system_wide_stats.tot_rollbacks);
+			fprintf(f, "TOTAL ECS EXECUTED......... : %.0f \n",			system_wide_stats.tot_ecs);
 			fprintf(f, "TOTAL ANTIMESSAGES......... : %.0f \n", 		system_wide_stats.tot_antimessages);
 			fprintf(f, "ROLLBACK FREQUENCY......... : %.2f %%\n",		rollback_frequency * 100);
 			fprintf(f, "ROLLBACK LENGTH............ : %.2f events\n",	rollback_length);
@@ -756,6 +759,9 @@ void statistics_post_lp_data(LID_t the_lid, unsigned int type, double data) {
 			case STAT_SILENT:
 				lp_stats_gvt[lid].reprocessed_events += data;
 				break;
+			case STAT_ECS:
+				lp_stats_gvt[lid].tot_ecs += data;
+				break;
 
 			default:
 				rootsim_error(true, "Wrong LP statistics post type: %d. Aborting...\n", type);
@@ -842,6 +848,7 @@ void statistics_post_other_data(unsigned int type, double data) {
 				lp_stats[lid].tot_recoveries += lp_stats_gvt[lid].tot_recoveries;
 				lp_stats[lid].recovery_time += lp_stats_gvt[lid].recovery_time;
 				lp_stats[lid].reprocessed_events += lp_stats_gvt[lid].reprocessed_events;
+				lp_stats[lid].tot_ecs += lp_stats_gvt[lid].tot_ecs;
 
 				keep_exponential_event_time = lp_stats_gvt[lid].exponential_event_time;
 				bzero(&lp_stats_gvt[lid_to_int(LPS_bound(i)->lid)], sizeof(struct stat_t));
@@ -857,6 +864,11 @@ void statistics_post_other_data(unsigned int type, double data) {
 				system_wide_stats.gvt_round_time_max = data;
 			system_wide_stats.gvt_round_time += data;
 			break;
+
+		case STAT_ECS:
+				system_wide_stats.tot_ecs += data;
+				break;
+
 
 
 		default:
@@ -878,5 +890,30 @@ double statistics_get_lp_data(unsigned int type, LID_t lid) {
 			rootsim_error(true, "Wrong statistics get type: %d. Aborting...\n", type);
 	}
 
+	return ret;
+}
+
+double statistics_get_system_ecs_data(void){
+	return system_wide_stats.tot_ecs;
+}
+
+double statistics_get_system_wide_data(unsigned int type){
+	double ret;
+	int i;
+	LID_t temp;
+
+	switch(type){
+		
+		case STAT_GET_TOT_ECS:
+			for(i = 0; i < n_prc_per_thread; i++){
+				temp.id = i;
+				ret += lp_stats[lid_to_int(temp)].tot_ecs;
+			}
+			break;
+		default:
+			rootsim_error(true, "Wrong statistics get type: %d. Aborting...\n", type);
+	
+	}
+	ret = system_wide_stats.tot_ecs;
 	return ret;
 }

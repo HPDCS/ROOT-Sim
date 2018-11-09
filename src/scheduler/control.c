@@ -143,8 +143,24 @@ bool receive_control_msg(msg_t *msg) {
 		case RENDEZVOUS_GET_PAGE:
 			ecs_send_pages(msg);
 			break;
+		
+		case RENDEZVOUS_WRITE_PAGE:
+			ecs_install_pages(msg);
+			break;
 
-		case RENDEZVOUS_PAGE_WRITE_BACK:
+		case RENDEZVOUS_WRITE_PAGE_ACK:
+			printf("LP %d getting write_page_ack from LP %d with mark %llu\n", msg->receiver, msg->sender, msg->rendezvous_mark);
+			fflush(stdout);
+			if(LPS(lid_receiver)->state == LP_STATE_ROLLBACK ||
+					LPS(lid_receiver)->state == LP_STATE_SILENT_EXEC) {
+				break;
+			}
+			if(LPS(lid_receiver)->wait_on_rendezvous == msg->rendezvous_mark) {
+				LPS(lid_receiver)->state = LP_STATE_READY_FOR_SYNCH;
+			}
+
+			break;
+
 		case RENDEZVOUS_GET_PAGE_ACK:
 			if(LPS(lid_receiver)->state == LP_STATE_ROLLBACK ||
 					LPS(lid_receiver)->state == LP_STATE_SILENT_EXEC) {
@@ -169,6 +185,8 @@ bool receive_control_msg(msg_t *msg) {
 			break;
 
 		case RENDEZVOUS_UNBLOCK:
+			printf("LP %d getting unblock\n", msg->receiver);
+			fflush(stdout);
 			if(LPS(lid_receiver)->state == LP_STATE_ROLLBACK ||
 				LPS(lid_receiver)->state == LP_STATE_SILENT_EXEC)  {
 				break;
@@ -178,7 +196,7 @@ bool receive_control_msg(msg_t *msg) {
 				LPS(lid_receiver)->wait_on_rendezvous = 0;
 				LPS(lid_receiver)->state = LP_STATE_READY;
 			}
-			
+		
 			current_lp = GidToLid(msg->receiver);
 			current_lvt = msg->timestamp;
 			force_LP_checkpoint(current_lp);

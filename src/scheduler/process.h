@@ -55,6 +55,8 @@
 #define LP_STATE_WAIT_FOR_SYNCH		0x01001
 #define LP_STATE_WAIT_FOR_UNBLOCK	0x01002
 #define LP_STATE_WAIT_FOR_DATA		0x01004
+#define LP_STATE_READY_FOR_DATA		0x01005
+#define LP_STATE_WAIT_FOR_WRITE		0X01006
 
 #define BLOCKED_STATE			0x01000
 #define is_blocked_state(state)	(bool)(state & BLOCKED_STATE)
@@ -126,6 +128,7 @@ typedef struct _LP_state {
 	#ifdef HAVE_CROSS_STATE
 	GID_t			ECS_synch_table[MAX_CROSS_STATE_DEPENDENCIES];
 	unsigned int 	ECS_index;
+	list(ecs_page_node_t)	ECS_page_list;
 	#endif
 
 	unsigned long long	wait_on_rendezvous;

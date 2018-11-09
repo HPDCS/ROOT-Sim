@@ -132,21 +132,19 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 			break;
 
         	case PREPARE:
-
 			for(i = 0; i < event_content->size; i++) {
 				#ifdef ECS
+				target = event_content->read_set_ptr[i];
 				//event_content->read_set_ptr[i] = me;
-				target = event_content->read_set_ptr[i] ;
 				#else
-				//event_content->read_set[i] = me;
 				target = event_content->read_set[i] ;
 				#endif
 				state->write_set[i] = target;
 			}
-			#ifdef ECS
-		 	memset((void*)event_content->read_set_ptr,0,sizeof(int)*MAX_RS_SIZE);
-			#endif
 
+			#ifdef ECS
+			//memset((void*)event_content->read_set_ptr,0,sizeof(int)*MAX_RS_SIZE);
+			#endif
 			timestamp= now + (simtime_t)Expent(50);
 
 			if(event_content->second) {
@@ -156,6 +154,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 				new_event_content.second = false;
 			}
 //			ScheduleNewEvent(event_content->from, timestamp, COMMIT, &event_content, sizeof(new_event_content));
+			timestamp= now + (simtime_t)Expent(50);
 			ScheduleNewEvent(me, timestamp, COMMIT, &event_content, sizeof(new_event_content));
 //
 			break;
@@ -174,7 +173,6 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 						//found conflicting item
 					}
 				}
-
 //			printf("aborting transaction\n");
 
 //			break;

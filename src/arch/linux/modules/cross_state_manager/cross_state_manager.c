@@ -279,6 +279,7 @@ static void set_page_privilege(ioctl_info *info) {
 				SET_BIT(&pte[j], 1);
 			} else {
 				CLR_BIT(&pte[j], 1);
+				SET_BIT(&pte[j], 63);
 			}
 		}
 	}
@@ -369,6 +370,7 @@ void root_sim_page_fault(struct pt_regs* regs, long error_code, do_page_fault_t 
 						}
 						return;
 					} else {
+						printk("Detected page change mode at %p\n", target_address);
 						root_sim_fault_info[i]->fault_type = ECS_CHANGE_PAGE_PRIVILEGE;
 
 						info.base_address = (void *)((long long)target_address & (~(PAGE_SIZE-1)));
@@ -386,7 +388,6 @@ void root_sim_page_fault(struct pt_regs* regs, long error_code, do_page_fault_t 
 			printk("Activating userspace handler\n");
 
 			rs_ktblmgr_ioctl(NULL, IOCTL_UNSCHEDULE_ON_PGD, (int)i);
-
 			// Pass the address of the faulting instruction to userland
 			auxiliary_stack_pointer = (ulong *)regs->sp;
 			auxiliary_stack_pointer--;

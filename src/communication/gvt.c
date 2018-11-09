@@ -323,7 +323,6 @@ void register_outgoing_msg(const msg_t* msg) {
 #endif
 
 	unsigned int dst_kid = GidToKernel(msg->receiver);						
-			
 	if(dst_kid == kid) return;
 
 	if(is_red_colour(msg->colour)) {

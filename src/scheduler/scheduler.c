@@ -246,7 +246,7 @@ void initialize_LP(LID_t lp) {
 	LPS(lp)->queue_out = new_list(msg_hdr_t);
 	LPS(lp)->queue_states = new_list(state_t);
 	LPS(lp)->rendezvous_queue = new_list(msg_t);
-
+	LPS(lp)->ECS_page_list = new_list(ecs_page_node_t);
 	// Initialize the LP lock
 	spinlock_init(&LPS(lp)->lock);
 
@@ -509,7 +509,7 @@ void schedule(void) {
 		//printf("ECS event is finished at LP %d mark %llu !!!\n", lid_to_int(lid), LPS(lid)->wait_on_rendezvous);
 		fflush(stdout);
 		unblock_synchronized_objects(lid);
-
+		statistics_post_lp_data(lid, STAT_ECS, 1.0);
 		// This is to avoid domino effect when relying on rendezvous messages
 		force_LP_checkpoint(lid);
 	}
