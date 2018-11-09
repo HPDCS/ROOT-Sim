@@ -192,6 +192,8 @@ bool receive_control_msg(msg_t *msg) {
 				break;
 			}
 
+			reinstall_writeback_pages(msg);
+
 			if(LPS(lid_receiver)->wait_on_rendezvous == msg->rendezvous_mark) {
 				LPS(lid_receiver)->wait_on_rendezvous = 0;
 				LPS(lid_receiver)->state = LP_STATE_READY;

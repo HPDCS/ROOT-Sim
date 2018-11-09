@@ -75,7 +75,7 @@ static __thread fault_info_t fault_info;
 extern void rootsim_cross_state_dependency_handler(void);
 
 static ecs_page_node_t *add_page_node(long long address, size_t pages, LID_t lid) {
-	ecs_page_node_t *page_node;
+	ecs_page_node_t *page_node, *p;
 
 	page_node = rsalloc(sizeof(ecs_page_node_t) + bitmap_required_size(pages));
 	page_node->page_address = address;
@@ -83,6 +83,8 @@ static ecs_page_node_t *add_page_node(long long address, size_t pages, LID_t lid
 	bitmap_initialize(page_node->write_mode, pages);
 
 	list_insert_head(LPS(lid)->ECS_page_list, page_node);
+
+	p = list_head(LPS(lid)->ECS_page_list);
 
 	return page_node;
 }
@@ -357,6 +359,24 @@ void ecs_send_pages(msg_t *msg) {
 	rsfree(the_pages);
 }
 
+void reinstall_writeback_pages(msg_t *msg) {
+	ecs_writeback_t *wb;
+	void *dest;
+	void *source;
+	int i;
+
+	if(msg->size == 0)
+		return;
+
+	wb = (ecs_writeback_t *)(msg->event_content);
+
+	for(i = 0; i < wb->count; i++) {
+		dest = (void *)(wb->pages[i].address);
+		source = wb->pages[i].page;
+		memcpy(dest, source, PAGE_SIZE);
+	}
+}
+
 void ecs_install_pages(msg_t *msg) {
 	ecs_page_node_t *node;
 	int i;
@@ -406,39 +426,21 @@ void unblock_synchronized_objects(LID_t lid) {
 
 	#define add_page(x) ({ wb = add_writeback_page(wb, node->page_address + (x) * PAGE_SIZE); })
 
-
-	foo("1");
-
 	for(i = 1; i <= LPS(lid)->ECS_index; i++) {
 		wb = writeback_init();
 
-		foo("2");
-
-		node = LPS(lid)->ECS_page_list;
+		node = list_head(LPS(lid)->ECS_page_list);
 		while(node != NULL) {
-
-			printf("node->page_address: %lld\n", node->page_address);
-			printf("node->pages: %lu\n", node->pages);
-			printf("node->write_mode: %p\n", node->write_mode);
-
 			bitmap_foreach_set(node->write_mode, bitmap_required_size(node->pages), add_page);
-			foo(":");
 			node = list_next(node);
-			foo("!");
 		}
-
-		foo("3");
 
 		wb_final = wb->count == 0 ? NULL : wb;
 		wb_size = wb->count == 0 ? 0 : sizeof(ecs_writeback_t) + wb->count * sizeof(writeback_page_t);
 	
-		foo("4");
-
 		pack_msg(&control_msg, LidToGid(lid), LPS(lid)->ECS_synch_table[i], RENDEZVOUS_UNBLOCK, lvt(lid), lvt(lid), wb_size, wb_final);
 		control_msg->rendezvous_mark = LPS(lid)->wait_on_rendezvous;
 		Send(control_msg);
-
-		foo("5");
 
 		rsfree(wb);
 	}
