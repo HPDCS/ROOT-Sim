@@ -251,9 +251,13 @@ void ECS(void) {
 			printf("Devo cambiare modo\n"); fflush(stdout);
 			printf("target address : %p target gid %d lid %d ker %d me %d\n", fault_info.target_address, target_gid, GidToLid(target_gid), GidToKernel(target_gid), kid); fflush(stdout);
 			node = find_page(fault_info.target_address, current_lp, &pos);
+			foo("1");
 			set_write_mode(node, pos);
+			foo("2");
 			ecs_secondary(target_gid);
+			foo("3");
 			lp_alloc_schedule(); // We moved to the original view in the kernel module: we do not unschedule the LP here
+			foo("4");
 			break;
 
 		default:

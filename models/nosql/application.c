@@ -134,8 +134,8 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
         	case PREPARE:
 			for(i = 0; i < event_content->size; i++) {
 				#ifdef ECS
-				target = event_content->read_set_ptr[i];
-				//event_content->read_set_ptr[i] = me;
+				//target = event_content->read_set_ptr[i];
+				event_content->read_set_ptr[i] = me;
 				#else
 				target = event_content->read_set[i] ;
 				#endif
