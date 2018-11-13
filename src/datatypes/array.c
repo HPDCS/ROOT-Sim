@@ -24,4 +24,5 @@
 */
 
 
-// STILL TO COME!
+#include "array.h"
+ // xxx UNUSED, can be eliminated
