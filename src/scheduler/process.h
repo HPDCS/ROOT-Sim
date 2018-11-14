@@ -41,7 +41,7 @@
 #include <arch/ult.h>
 #include <lib/numerical.h>
 #include <communication/communication.h>
-#include <arch/x86/linux/cross_state_manager/cross_state_manager.h>
+#include <arch/x86/linux/rootsim/ioctl.h>
 
 #define LP_STACK_SIZE	4194304	// 4 MB
 

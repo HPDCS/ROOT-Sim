@@ -54,7 +54,7 @@
 #include <communication/communication.h>
 #include <gvt/gvt.h>
 #include <statistics/statistics.h>
-#include <arch/x86/linux/cross_state_manager/cross_state_manager.h>
+#include <arch/x86/linux/rootsim/ioctl.h>
 #include <queues/xxhash.h>
 
 /// This is used to keep track of how many LPs were bound to the current KLT
