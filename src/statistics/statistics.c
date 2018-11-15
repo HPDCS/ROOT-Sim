@@ -26,6 +26,11 @@
 #endif
 
 #define GVT_BUFF_ROWS   50
+// Format string length + the width of a field * fields count + 20 for good measure
+#define GVT_LINE_BUFF_LEN ((sizeof(GVT_FORMAT_STR) + 15 * 4 + 20) * GVT_BUFF_ROWS)
+
+/// This is the format string used to print periodically the gvt statistics
+#define GVT_FORMAT_STR 	" %15lf    %15lf    %15u    %15u\n"
 
 struct _gvt_buffer {
 	unsigned int pos;
@@ -35,8 +40,8 @@ struct _gvt_buffer {
 		unsigned committed;
 		unsigned cumulated;
 	}row[GVT_BUFF_ROWS];
+	char line_buffer[GVT_LINE_BUFF_LEN];
 };
-
 
 /// This structure is used to buffer statistics gathered on GVT computation
 __thread struct _gvt_buffer gvt_buf;
@@ -71,15 +76,15 @@ static struct stat_t system_wide_stats;
  * GCC 8 cares a lot for our security so we have to be sure snprintf() doesn't truncate.
  */
 #define safe_asprintf(ret_addr, format, ...) ({					\
-		char *__pstr = NULL;									\
+		char *__pstr = NULL;						\
 		int __ret = snprintf(0, 0, format, ##__VA_ARGS__);		\
-		if(__ret < 0)											\
+		if(__ret < 0)							\
 			rootsim_error(true, "Error in snprintf()!");		\
-		__pstr = rsalloc(__ret + 1);							\
-		__ret = snprintf(__pstr, __ret + 1, format, ##__VA_ARGS__);\
-		if(__ret < 0)											\
+		__pstr = rsalloc(__ret + 1);					\
+		__ret = snprintf(__pstr, __ret + 1, format, ##__VA_ARGS__);	\
+		if(__ret < 0)							\
 			rootsim_error(true, "Error in snprintf()!");		\
-		*(ret_addr) = __pstr;									\
+		*(ret_addr) = __pstr;						\
 })
 
 
@@ -266,14 +271,22 @@ static char *format_size(double size) {
 
 
 static inline void statistics_flush_gvt_buffer(void) {
-	FILE *f;
-	unsigned i, len;
-	f = thread_files[STAT_FILE_T_GVT][local_tid];
-	len = gvt_buf.pos;
+	unsigned i, len = gvt_buf.pos;
+	size_t used = 0;
+	char *buf = gvt_buf.line_buffer;
+	// fill the "line" buffer with content
+	// xxx this clearly isn't exactly 100% safe:
+	// printf() width specifiers are MINIMUM bounds
 	for(i = 0; i < len; ++i){
-		fprintf(f, " %15lf    %15lf    %15u    %15u\n",
+		used += snprintf(buf + used, GVT_LINE_BUFF_LEN - used, GVT_FORMAT_STR,
 				gvt_buf.row[i].exec_time, gvt_buf.row[i].gvt,gvt_buf.row[i].committed, gvt_buf.row[i].cumulated);
+
+		if(used >= GVT_LINE_BUFF_LEN){
+			buf[GVT_LINE_BUFF_LEN - 1] = '\0';
+			break;
+		}
 	}
+	fprintf(thread_files[STAT_FILE_T_GVT][local_tid], "%s", buf);
 	gvt_buf.pos = 0;
 }
 
