@@ -224,3 +224,24 @@ hash_map_pair_t* hash_map_remove(rootsim_hash_map_t *hmap, unsigned long long ke
 	_hash_map_shrink(hmap);
 	return ret;
 }
+
+hash_map_pair_t* hash_map_iter(rootsim_hash_map_t *hmap, map_size_t *closure){
+	// simply walk the nodes array skipping empty slots
+	while(1){
+		if(*closure > hmap->capacity_mo){
+			// finished our iteration; reset the closure and return NULL
+			(*closure) = 0;
+			return NULL;
+		}
+		if(hmap->nodes[*closure] == NULL)
+			// skip this empty slot
+			(*closure)++;
+		else
+			// return the pair and increment the closure
+			return hmap->nodes[(*closure)++];
+	}
+}
+
+inline map_size_t hash_map_count(rootsim_hash_map_t *hmap){
+	return hmap->count;
+}

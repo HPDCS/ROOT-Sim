@@ -28,11 +28,10 @@
 
 #include <mm/dymelor.h>
 
-#include <stddef.h>
 #include <memory.h>
 
 // (TODO: maybe add a define to choose between wrapped and actual malloc calls)
-// TODO: add some type checking and size checking
+// TODO: add some type checking and size checking (is it necessary?)
 // TODO: add all the other useful functions
 
 #define INIT_SIZE_ARRAY 8
@@ -40,7 +39,7 @@
 #define rootsim_array(type) \
 		struct { \
 			type *items; \
-			size_t count, capacity; \
+			unsigned count, capacity; \
 		}
 
 // you can use the array to directly index items, but do at your risk and peril
@@ -136,7 +135,7 @@
 	})
 
 #define array_remove(self, elem) ({ \
-		size_t __cntr = array_count(self); \
+		typeof(array_count(self)) __cntr = array_count(self); \
 		while(__cntr--){ \
 			if(array_items(self)[__cntr] == (elem)){\
 				array_remove_at(self, __cntr); \
@@ -152,19 +151,19 @@
 #define array_empty(self) (array_count(self) == 0)
 
 #define array_required_bytes_dump(self) ({ \
-		sizeof(size_t) + array_count(self)*sizeof(*array_items(self)); \
+		sizeof(array_count(self)) + array_count(self)*sizeof(*array_items(self)); \
 	})
 
 #define array_dump(self, mem_area) ({ \
-		memcpy((mem_area), &array_count(self), sizeof(size_t)); \
-		(mem_area) = ((unsigned char *)(mem_area)) + sizeof(size_t); \
+		memcpy((mem_area), &array_count(self), sizeof(array_count(self))); \
+		(mem_area) = ((unsigned char *)(mem_area)) + sizeof(array_count(self)); \
 		memcpy((mem_area), array_items(self), array_count(self) * sizeof(*array_items(self))); \
 		mem_area = ((unsigned char *)(mem_area)) + array_count(self) * sizeof(*array_items(self)); \
 	})
 
 #define array_load(self, mem_area) ({ \
-		memcpy(&array_count(self), (mem_area), sizeof(size_t)); \
-		(mem_area) = ((unsigned char *)(mem_area)) + sizeof(size_t); \
+		memcpy(&array_count(self), (mem_area), sizeof(array_count(self))); \
+		(mem_area) = ((unsigned char *)(mem_area)) + sizeof(array_count(self)); \
 		array_capacity(self) = array_count(self); \
 		\
 		array_items(self) = __wrap_malloc(array_capacity(self) * sizeof(*array_items(self))); \

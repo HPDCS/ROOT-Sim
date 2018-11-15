@@ -35,6 +35,8 @@
 
 #include <stdint.h>
 
+// TODO DOCUMENTATION!!!
+
 #define MAX_LOAD_FACTOR 0.85
 #define MIN_LOAD_FACTOR 0.05
 
@@ -57,10 +59,16 @@ struct _rootsim_hash_map_t{
 
 typedef struct _rootsim_hash_map_t rootsim_hash_map_t;
 
+
+// XXX returning and requesting a hash_map_pair_t forces a lot of ugly casts, change it somehow!
 void 		hash_map_init	(rootsim_hash_map_t *hmap);
 void		hash_map_fini	(rootsim_hash_map_t *hmap);
 void 		hash_map_add	(rootsim_hash_map_t *hmap, hash_map_pair_t *pair);
 hash_map_pair_t* hash_map_lookup(rootsim_hash_map_t *hmap, unsigned long long key);
 hash_map_pair_t* hash_map_remove(rootsim_hash_map_t *hmap, unsigned long long key);
+// closure points to a zero-initialized variable, to iter simply call repeatedly this function
+hash_map_pair_t* hash_map_iter	(rootsim_hash_map_t *hmap, map_size_t *closure);
+
+inline map_size_t hash_map_count(rootsim_hash_map_t *hmap);
 
 #endif /* SRC_DATATYPES_HASH_MAP_H_ */
