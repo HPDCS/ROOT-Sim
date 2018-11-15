@@ -66,6 +66,11 @@ static struct stat_t *thread_stats;
 /// Keeps global statistics
 static struct stat_t system_wide_stats;
 
+#ifdef HAVE_MPI
+/// Keep statistics reduced globally across MPI ranks
+struct stat_t global_stats;
+#endif
+
 /*!
  * @brief This is a pseudo asprintf() implementation needed in order to stop GCC 8 from complaining
  * @param format the format string as in the real asprintf()
@@ -98,6 +103,8 @@ static void _rmdir(const char *path) {
 	struct stat st;
 	struct dirent *dirt;
 	DIR *dir;
+
+	// TODO: mettere spinlock
 
 	// We could be asked to remove a non-existing folder. In that case, do nothing!
 	if (!(dir = opendir(path))) {
@@ -474,7 +481,7 @@ void statistics_stop(int exit_code) {
 
 			fprintf(f, "\n");
 			fprintf(f, "------------------------------------------------------------\n");
-			fprintf(f, "-------------------- GLOBAL STATISTICS ---------------------\n");
+			fprintf(f, "--------------------- NODE STATISTICS ----------------------\n");
 			fprintf(f, "------------------------------------------------------------\n\n");
 
 			timer_tostring(simulation_timer, timer_string);
@@ -525,8 +532,12 @@ void statistics_stop(int exit_code) {
 
 			fflush(f);
 
+			#ifdef HAVE_MPI
+			mpi_reduce_statistics(&global_stats, &system_wide_stats);
+			#endif
+
 			if(master_kernel()){
-				// TODO: do the statistics reduction between all the MPI kernels in another file
+				// TODO: dump global statistics here
 				// Write the final outcome of the simulation on screen
 				if(exit_code == EXIT_FAILURE) {
 					printf("\n--------- SIMULATION ABNORMALLY TERMINATED ----------\n");

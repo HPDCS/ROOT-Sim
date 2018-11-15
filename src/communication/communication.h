@@ -70,6 +70,7 @@ enum _control_msgs {
 #define MSG_UNLOCK		11
 #define MSG_GO_TO_FINAL_BARRIER	12
 #define MSG_GVT_ACK		13
+#define MSG_REDUCE_STATS	20
 
 
 
