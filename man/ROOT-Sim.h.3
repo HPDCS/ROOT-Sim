@@ -3,10 +3,12 @@
 .\" Sapienza, University of Rome
 .\" http://www.dis.uniroma1.it/~hpdcs
 .\"
+.\" Nov 15 2018, Alessandro Pellegrini
+.\" 	Revised manpages
 .\" May 09 2011, Alessandro Pellegrini
 .\" 	First version of the manpages
 
-.TH ROOT-Sim.h 3 2011-05-09 "The ROme OpTimistic Simulator"
+.TH ROOT-Sim.h 3 2018-11-15 "The ROme OpTimistic Simulator"
 
 .SH NAME
 ROOT-Sim.h - The main ROOT-Sim header file.
@@ -27,13 +29,8 @@ all the logical processes can instantiate their data structures, according to th
 which are passed as a payload of this special purpose event in the form of a NULL-terminated array.
 
 .IP
-.B \fIbool\fP data type:
-on systems where the 'bool' data type is not defined, the header provides support for it, along with
-the values \fItrue\fP and \fIfalse\fP.
-
-.IP
 .B int \fIn_prc_tot\fP:
-the total number of the logical processes hosted at runtime by ROOT-Sim's kernel is stored into this
+the total number of the Logical Processes hosted at runtime by ROOT-Sim's kernel is stored into this
 global variable, which is accessible from the application-level software. If an application has to set
 a range of global ids defining the processes involved in the simulation, it can rely on it.
 
@@ -49,7 +46,7 @@ The ROOT-Sim's API exposed by this header consists of the following functions:
 
 .PP
 
-To find more information on them, read their specifica manpages.
+To find more information on them, read their specific manpages.
 
 In addition, in ROOT-Sim.h the following functions, belonging to the simulator's internal numerical library,
 are exposed to the application level code:
