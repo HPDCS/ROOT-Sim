@@ -1,7 +1,7 @@
 PROJECT_NAME = "The ROme OpTimistic Simulator"
-PROJECT_LOGO = "rs.png"
+PROJECT_LOGO = "img/rs.png"
 PROJECT_NUMBER = "@PACKAGE_VERSION@"
-PROJECT_BRIEF = "An Open Source General Purpose Simulation Platform"
+PROJECT_BRIEF = "A General-Purpose Multithreaded Parallel/Distributed Simulation Platform"
 OUTPUT_LANGUAGE = "English"
 OUTPUT_DIRECTORY = "." 
 GENERATE_HTML = YES
@@ -25,9 +25,7 @@ ALPHABETICAL_INDEX = YES
 GENERATE_TODOLIST = NO
 GENERATE_BUGLIST = NO
 INPUT = @top_srcdir@/src/
-#FILE_PATTERNS += *.md
 
-# Uncomment this to generate call graph
 HAVE_DOT = YES
 CALL_GRAPH = YES
 CALLER_GRAPH = YES
