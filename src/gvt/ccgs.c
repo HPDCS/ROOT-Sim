@@ -147,17 +147,18 @@ void ccgs_compute_snapshot(state_t *time_barrier_pointer[], simtime_t gvt) {
 		lps_termination[lid_to_int(lid)] = OnGVT[lid_to_int(lid)](gid_to_int(LidToGid(lid)), LPS(lid)->current_base_pointer);
 		check_res &= lps_termination[lid_to_int(lid)];
 
-		// Early stop
-		if(rootsim_config.check_termination_mode == CKTRM_INCREMENTAL && !check_res) {
-			break;
-		}
-
 		// Restore the current state
 		current_lvt = lvt(lid);
 		LPS(lid)->state = temporary_log.state;
 		LPS(lid)->current_base_pointer = temporary_log.base_pointer;
 		log_restore(lid, &temporary_log);
 		log_delete(temporary_log.log);
+
+		// Early stop
+		if(rootsim_config.check_termination_mode == CKTRM_INCREMENTAL && !check_res) {
+			break;
+		}
+
 	}
 
 	// No real LP is running now!
