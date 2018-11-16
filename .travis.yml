@@ -39,16 +39,12 @@ before_script:
   - autoconf --version
 
 script:
-  - "./autogen.sh"
-  - "./configure --enable-mpi --enable-coverage --prefix=$HOME"
+  - ./autogen.sh
+  - ./configure --enable-mpi --enable-coverage --prefix=$HOME
   - make
   - make install
   - export PATH=$PATH:$HOME
-  - cd models/pcs/
-  - rootsim-cc *.c -o model
-  - cd ../..
-  - cp models/pcs/model .
-  - "./model --sequential --nprc 1"
+  - ./tests.sh
   - # Build the docs
   - cd docs
   - make
@@ -57,6 +53,9 @@ script:
   - mkdir -p ROOT-Sim/docs/
   - mv docs/html ROOT-Sim/docs/$TRAVIS_BRANCH
   - cp README.md ROOT-Sim
+
+after_success:
+  - bash <(curl -s https://codecov.io/bash)
 
 # Documentation autodeploy script
 deploy:
