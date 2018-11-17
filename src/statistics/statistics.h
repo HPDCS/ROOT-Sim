@@ -37,12 +37,14 @@
 
 
 enum stat_file_unique{
-	STAT_FILE_U_GLOBAL = 0,
+	STAT_FILE_U_NODE = 0,
+	STAT_FILE_U_GLOBAL,
 	NUM_STAT_FILE_U
 };
 
 /* Definition of statistics file names/indices for unique files */
-#define STAT_FILE_NAME_GLOBAL	"execution_stats"
+#define STAT_FILE_NAME_NODE		"execution_stats"
+#define STAT_FILE_NAME_GLOBAL		"global_execution_stats"
 
 
 enum stat_file_per_thread{
@@ -80,39 +82,38 @@ enum stat_msg_t{
 enum stats_levels {
 	STATS_INVALID = 0,	/**< By convention 0 is the invalid field */
 	STATS_GLOBAL,		/**< xxx documentation */
-	STATS_PERF,			/**< xxx documentation */
-	STATS_LP,			/**< xxx documentation */
-	STATS_ALL			/**< xxx documentation */
+	STATS_PERF,		/**< xxx documentation */
+	STATS_LP,		/**< xxx documentation */
+	STATS_ALL		/**< xxx documentation */
 };
 
 // this is used in order to have more efficient stats additions during gvt reductions
-typedef double vec_double __attribute__ ((vector_size (16*sizeof(double))));
+typedef double vec_double __attribute__ ((vector_size (16 * sizeof(double))));
 
 // Structure to keep track of (incremental) statistics
 struct stat_t {
 	union{
 		struct{
 			double 	tot_antimessages,
-					tot_events,
-					committed_events,
-					reprocessed_events,
-					tot_rollbacks,
-					tot_ckpts,
-					ckpt_time,
-					ckpt_mem,
-					tot_recoveries,
-					recovery_time,
-					event_time,
-					idle_cycles,
-					memory_usage,
-					simtime_advancement,
-					gvt_computations,
-					exponential_event_time;
+				tot_events,
+				committed_events,
+				reprocessed_events,
+				tot_rollbacks,
+				tot_ckpts,
+				ckpt_time,
+				ckpt_mem,
+				tot_recoveries,
+				recovery_time,
+				event_time,
+				idle_cycles,
+				memory_usage,
+				simtime_advancement,
+				gvt_computations,
+				exponential_event_time;
 		};
 		vec_double vec;
 	};
-	double
-		gvt_time,
+	double	gvt_time,
 		gvt_round_time,
 		gvt_round_time_min,
 		gvt_round_time_max;

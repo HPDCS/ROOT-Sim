@@ -229,94 +229,43 @@ void broadcast_termination(void){
 }
 
 /*
- *The datatype argument is a handle to the data type that was passed into the call to MPI_Reduce.
- * The user reduce function should be written such that the following holds:
- * Let u[0], ..., u[len-1] be the len elements in the communication buffer described by
- * the arguments invec, len, and datatype when the function is invoked;
- * let v[0], ..., v[len-1] be len elements in the communication buffer
- * described by the arguments inoutvec, len, and datatype when the function is invoked;
- * let w[0], ..., w[len-1] be len elements in the communication buffer described by the
- * arguments inoutvec, len, and datatype when the function returns;
- * then w[i] = u[i] o v[i], for i=0 ,..., len-1,
- * where o is the reduce operation that the function computes.
- *
- * Informally, we can think of invec and inoutvec as arrays of len elements that
- * function is combining. The result of the reduction over-writes values in inoutvec,
- * hence the name. Each invocation of the function results in the pointwise evaluation
- * of the reduce operator on len elements: i.e, the function returns in inoutvec[i]
- * the value invec[i] o inoutvec[i], for i = 0,..., count-1, where o is the combining
- * operation computed by the function.
+ * This is the reduce operation for statistics,
  */
 static void reduce_stat_vector(struct stat_t *in, struct stat_t *inout, int *len, MPI_Datatype *dptr) {
+	int i = 0;
+	for(i = 0; i < *len; ++i){
+		inout[i].vec += in[i].vec;
+		// FIXME, what do we do with the other gvt statistics values?
+	}
 }
 
-/*
- * void complexcompare(Complex * in, Complex * inout, int * len, MPI_Datatype * dptr)
-{
- int i;
-  Complex c;
-  for (i = 0; i < *len; i++) {
-    if (((in->real*in->real) + (in->imag*in->imag))  >
-    ((inout->real*inout->real)+(inout->imag*inout->imag))){
-      // compares the module of the complex in *in and the complex in *inout
-      *inout = *in;
-    }
-   in++;
-   inout++;
- }
-}
-*/
+// this assumes struct stat_t contains only double floating point variables
+#define MPI_TYPE_STAT_LEN (sizeof(struct stat_t)/sizeof(double))
 
 static void stats_reduction_init(void) {
+	// this is a compilation time fail-safe
+	static_assert(offsetof(struct stat_t, gvt_round_time_max) == (sizeof(double) * 19),
+			"The packing assumptions on struct stat_t are wrong or its definition has been modified");
 
-	#define NUM_MEMBERS 7
-
-	msg_t* msg = NULL;
-	int base;
-	unsigned int i;
-	int type_size;
-	int header_size = 0;
-
-	MPI_Datatype type[NUM_MEMBERS] = {MPI_UNSIGNED,
-					  MPI_UNSIGNED_CHAR,
-					  MPI_INT,
-					  MPI_DOUBLE,
-					  MPI_UNSIGNED_LONG_LONG,
-					  MPI_INT,
-					  MPI_CHAR};
-
-
-	// The last entry of the array is dynamically populated below
-	int blocklen[NUM_MEMBERS] = {2, 1, 2, 2, 2, 1, 0};
-	for(i = 0; i < (NUM_MEMBERS - 1); i++) {
-		MPI_Type_size(type[i], &type_size);
-		type_size *= blocklen[i];
-		header_size += type_size;
+	unsigned i;
+	// boilerplate to create a new MPI data type
+	MPI_Datatype type[MPI_TYPE_STAT_LEN];
+	MPI_Aint disp[MPI_TYPE_STAT_LEN];
+	int block_lengths[MPI_TYPE_STAT_LEN];
+	// init those arrays (we asssume that struct stat_t is packed tightly)
+	for(i = 0; i < MPI_TYPE_STAT_LEN; ++i){
+		type[i] = MPI_DOUBLE;
+		disp[i] = i * sizeof(double);
+		block_lengths[i] = 1;
 	}
-	blocklen[NUM_MEMBERS - 1] = SLAB_MSG_SIZE - header_size;
-
-	MPI_Aint disp[NUM_MEMBERS];
-	MPI_Get_address(&msg->sender, disp);
-	MPI_Get_address(&msg->colour, disp + 1);
-	MPI_Get_address(&msg->type, disp + 2);
-	MPI_Get_address(&msg->timestamp, disp + 3);
-	MPI_Get_address(&msg->mark, disp + 4);
-	MPI_Get_address(&msg->size, disp + 5);
-	MPI_Get_address(&msg->event_content, disp + 6);
-	base = disp[0];
-	for (i = 0; i < sizeof(disp) / sizeof(disp[0]); i++) {
-		disp[i] = MPI_Aint_diff(disp[i], base);
-	}
-	MPI_Type_create_struct(7, blocklen, disp, type, &stats_mpi_t);
+	// create the custom type and commit the changes
+	MPI_Type_create_struct(MPI_TYPE_STAT_LEN, block_lengths, disp, type, &stats_mpi_t);
 	MPI_Type_commit(&stats_mpi_t);
-
-	#undef NUM_MEMBERS
-
-
-	if(master_thread()) {
+	// create the mpi operation needed to reduce stats
+	if(master_thread())
 		MPI_Op_create((MPI_User_function *)reduce_stat_vector, true, &reduce_stats_op);
-	}
 }
+#undef MPI_TYPE_STAT_LEN
 
 
 void mpi_reduce_statistics(struct stat_t *global, struct stat_t *local) {

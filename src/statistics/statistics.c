@@ -26,11 +26,6 @@
 #endif
 
 #define GVT_BUFF_ROWS   50
-// Format string length + the width of a field * fields count + 20 for good measure
-#define GVT_LINE_BUFF_LEN ((sizeof(GVT_FORMAT_STR) + 15 * 4 + 20) * GVT_BUFF_ROWS)
-
-/// This is the format string used to print periodically the gvt statistics
-#define GVT_FORMAT_STR 	" %15lf    %15lf    %15u    %15u\n"
 
 struct _gvt_buffer {
 	unsigned int pos;
@@ -39,20 +34,21 @@ struct _gvt_buffer {
 		double gvt;
 		unsigned committed;
 		unsigned cumulated;
-	}row[GVT_BUFF_ROWS];
-	char line_buffer[GVT_LINE_BUFF_LEN];
+	}rows[GVT_BUFF_ROWS];
 };
 
 /// This structure is used to buffer statistics gathered on GVT computation
-__thread struct _gvt_buffer gvt_buf;
+static __thread struct _gvt_buffer gvt_buf = {0};
+
+/// Pointers to the files used as binary buffer for the GVT statistics
+static FILE **thread_blob_files = {0};
+/// Pointers to unique files
+static FILE *unique_files[NUM_STAT_FILE_U] = {0};
+/// Pointers to per-thread files
+static FILE **thread_files[NUM_STAT_FILE_T] = {0};
 
 /// This is a timer that start during the initialization of statistics subsystem and can be used to know the total simulation time
 static timer simulation_timer;
-
-/// Pointers to unique files
-static FILE *unique_files[NUM_STAT_FILE_U];
-/// Pointers to per-thread files
-static FILE **thread_files[NUM_STAT_FILE_T];
 
 /// Keeps statistics on a per-LP basis
 static struct stat_t *lp_stats;
@@ -104,8 +100,6 @@ static void _rmdir(const char *path) {
 	struct dirent *dirt;
 	DIR *dir;
 
-	// TODO: mettere spinlock
-
 	// We could be asked to remove a non-existing folder. In that case, do nothing!
 	if (!(dir = opendir(path))) {
 		return;
@@ -149,6 +143,7 @@ void _mkdir(const char *path) {
 	size_t len;
 
 	strncpy(opath, path, sizeof(opath));
+	opath[MAX_PATHLEN - 1] = '\0';
 	len = strlen(opath);
 	if(opath[len - 1] == '/')
 		opath[len - 1] = '\0';
@@ -232,17 +227,6 @@ void print_config(void)	{if(master_kernel()) print_config_to_file(stdout);}
 *
 */
 void statistics_start(void) {
-	register unsigned int i;
-
-	// Print the header of GVT statistics files
-	if (!rootsim_config.serial && (rootsim_config.stats == STATS_ALL || rootsim_config.stats == STATS_PERF)) {
-		for(i = 0; i < n_cores; i++) {
-			fprintf(thread_files[STAT_FILE_T_GVT][i], "#%15.15s    %15.15s    %15.15s    %15.15s\n",
-					"\"WCT\"", "\"GVT VALUE\"", "\"EVENTS\"", "\"CUMUL EVENTS\"");
-			fflush(thread_files[STAT_FILE_T_GVT][i]);
-		}
-	}
-
 	timer_start(simulation_timer);
 }
 
@@ -276,25 +260,104 @@ static char *format_size(double size) {
 	return size_str;
 }
 
+#define HEADER_STR "------------------------------------------------------------"
+static void print_header(FILE *f, const char *title){
+	char buf[sizeof(HEADER_STR)] = HEADER_STR;
+	unsigned title_len = strlen(title);
+	assert(title_len < sizeof(HEADER_STR));
+	memcpy(buf + ((sizeof(HEADER_STR) - title_len) / 2), title, title_len);
+	fprintf(f, HEADER_STR "\n%s\n" HEADER_STR "\n\n", buf);
+}
 
-static inline void statistics_flush_gvt_buffer(void) {
-	unsigned i, len = gvt_buf.pos;
-	size_t used = 0;
-	char *buf = gvt_buf.line_buffer;
-	// fill the "line" buffer with content
-	// xxx this clearly isn't exactly 100% safe:
-	// printf() width specifiers are MINIMUM bounds
-	for(i = 0; i < len; ++i){
-		used += snprintf(buf + used, GVT_LINE_BUFF_LEN - used, GVT_FORMAT_STR,
-				gvt_buf.row[i].exec_time, gvt_buf.row[i].gvt,gvt_buf.row[i].committed, gvt_buf.row[i].cumulated);
 
-		if(used >= GVT_LINE_BUFF_LEN){
-			buf[GVT_LINE_BUFF_LEN - 1] = '\0';
-			break;
-		}
+static void print_timer_stats(FILE *f, timer *start_timer, timer *stop_timer, double total_time){
+	char timer_string[TIMER_BUFFER_LEN];
+	timer_tostring(*start_timer, timer_string);
+	fprintf(f, "SIMULATION STARTED AT ..... : %s \n", 		timer_string);
+	timer_tostring(*stop_timer, timer_string);
+	fprintf(f, "SIMULATION FINISHED AT .... : %s \n", 		timer_string);
+	fprintf(f, "TOTAL SIMULATION TIME ..... : %.03f seconds \n\n",	total_time);
+}
+
+
+static void print_common_stats(FILE *f, struct stat_t *stats_p, bool want_thread_stats){
+
+	double rollback_frequency = (stats_p->tot_rollbacks / stats_p->tot_events);
+	double rollback_length = (stats_p->tot_rollbacks > 0 ? (stats_p->tot_events - stats_p->committed_events) / stats_p->tot_rollbacks : 0);
+	double efficiency = (1 - rollback_frequency * rollback_length) * 100;
+
+	fprintf(f, "TOTAL KERNELS ............. : %d \n", 		n_ker);
+	fprintf(f, "KERNEL ID ................. : %d \n", 		kid);
+	fprintf(f, "LPs HOSTED BY KERNEL....... : %d \n", 		n_prc);
+	fprintf(f, "TOTAL_THREADS ............. : %d \n", 		n_cores);
+	if(want_thread_stats){
+		fprintf(f, "THREAD ID ................. : %d \n", 	local_tid);
+		fprintf(f, "LPs HOSTED BY THREAD ...... : %d \n", 	n_prc_per_thread);
 	}
-	fprintf(thread_files[STAT_FILE_T_GVT][local_tid], "%s", buf);
-	gvt_buf.pos = 0;
+	fprintf(f, "\n");
+	fprintf(f, "TOTAL EXECUTED EVENTS ..... : %.0f \n", 		stats_p->tot_events);
+	fprintf(f, "TOTAL COMMITTED EVENTS..... : %.0f \n", 		stats_p->committed_events);
+	fprintf(f, "TOTAL REPROCESSED EVENTS... : %.0f \n", 		stats_p->reprocessed_events);
+	fprintf(f, "TOTAL ROLLBACKS EXECUTED... : %.0f \n", 		stats_p->tot_rollbacks);
+	fprintf(f, "TOTAL ANTIMESSAGES......... : %.0f \n", 		stats_p->tot_antimessages);
+	fprintf(f, "ROLLBACK FREQUENCY......... : %.2f %%\n",		rollback_frequency * 100);
+	fprintf(f, "ROLLBACK LENGTH............ : %.2f events\n",	rollback_length);
+	fprintf(f, "EFFICIENCY................. : %.2f %%\n",		efficiency);
+	fprintf(f, "AVERAGE EVENT COST......... : %.2f us\n",		stats_p->event_time / stats_p->tot_events);
+	fprintf(f, "AVERAGE EVENT COST (EMA)... : %.2f us\n",		stats_p->exponential_event_time);
+	fprintf(f, "AVERAGE CHECKPOINT COST.... : %.2f us\n",		stats_p->ckpt_time / stats_p->tot_ckpts);
+	fprintf(f, "AVERAGE RECOVERY COST...... : %.2f us\n",		(stats_p->tot_recoveries > 0 ? stats_p->recovery_time / stats_p->tot_recoveries : 0));
+	fprintf(f, "AVERAGE LOG SIZE........... : %s\n",		format_size(stats_p->ckpt_mem / stats_p->tot_ckpts));
+	fprintf(f, "\n");
+	fprintf(f, "IDLE CYCLES................ : %.0f\n",		stats_p->idle_cycles);
+	if(!want_thread_stats){
+		fprintf(f, "LAST COMMITTED GVT ........ : %f\n",	get_last_gvt());
+	}
+	fprintf(f, "NUMBER OF GVT REDUCTIONS... : %.0f\n",		stats_p->gvt_computations);
+	if(!want_thread_stats && n_ker > 1){
+		fprintf(f, "MIN GVT ROUND TIME......... : %.2f us\n",	stats_p->gvt_round_time_min);
+		fprintf(f, "MAX GVT ROUND TIME......... : %.2f us\n",	stats_p->gvt_round_time_max);
+		fprintf(f, "AVERAGE GVT ROUND TIME..... : %.2f us\n",	stats_p->gvt_round_time / stats_p->gvt_computations);
+	}
+	fprintf(f, "SIMULATION TIME SPEED...... : %.2f units per GVT\n",stats_p->simtime_advancement);
+	fprintf(f, "AVERAGE MEMORY USAGE....... : %s\n",		format_size(stats_p->memory_usage / stats_p->gvt_computations));
+	if(!want_thread_stats)
+		fprintf(f, "PEAK MEMORY USAGE.......... : %s\n",	format_size(getPeakRSS()));
+}
+
+
+static void print_termination_status(FILE *f, int exit_code){
+	switch(exit_code){
+		case EXIT_SUCCESS:
+			fprintf(f, "\n--------- SIMULATION CORRECTLY COMPLETED ----------\n");
+			break;
+		case EXIT_FAILURE:
+		default:
+			fprintf(f, "\n--------- SIMULATION ABNORMALLY TERMINATED ----------\n");
+	}
+}
+
+void print_gvt_stats_file(void){
+	size_t elems, i;
+	FILE *f_blob = thread_blob_files[local_tid];
+	FILE *f_final = thread_files[STAT_FILE_T_GVT][local_tid];
+	// last flush of our buffer in the blob file
+	fwrite(gvt_buf.rows, sizeof(struct _gvt_buffer_row_t), gvt_buf.pos, f_blob);
+	// print the header
+	fprintf(f_final, "#%15.15s    %15.15s    ", "\"WCT\"", "\"GVT VALUE\"");
+	fprintf(f_final, "%15.15s    %15.15s\n", "\"EVENTS\"", "\"CUMUL EVENTS\"");
+	// prepare to read back the blob
+	rewind(f_blob);
+	do{
+		// read the blob file back to the buffer piece to piece
+		elems = fread(gvt_buf.rows, sizeof(struct _gvt_buffer_row_t), GVT_BUFF_ROWS, f_blob);
+		for(i = 0; i < elems; ++i){
+			// write line per line
+			fprintf(f_final, " %15lf    %15lf    ", gvt_buf.rows[i].exec_time, gvt_buf.rows[i].gvt);
+			fprintf(f_final, "%15u    %15u\n", gvt_buf.rows[i].committed, gvt_buf.rows[i].cumulated);
+		}
+	}while(!feof(f_blob));
+	fflush(f_final);
 }
 
 /**
@@ -311,12 +374,7 @@ void statistics_stop(int exit_code) {
 	register unsigned int i;
 	FILE *f;
 	double total_time;
-	double rollback_frequency,
-	       rollback_length,
-	       efficiency;
 	timer simulation_finished;
-	char timer_string[64]; // 64 chars is the size required by the macro to convert timers to string
-
 
 	if(rootsim_config.serial) {
 		f = unique_files[STAT_FILE_U_GLOBAL];
@@ -325,16 +383,8 @@ void statistics_stop(int exit_code) {
 		timer_start(simulation_finished);
 		total_time = timer_value_seconds(simulation_timer);
 
-		fprintf(f, "------------------------------------------------------------\n");
-		fprintf(f, "-------------------- SERIAL STATISTICS ---------------------\n");
-		fprintf(f, "------------------------------------------------------------\n\n");
-
-		timer_tostring(simulation_timer, timer_string);
-		fprintf(f, "SIMULATION STARTED AT ..... : %s \n", 		timer_string);
-		timer_tostring(simulation_finished, timer_string);
-		fprintf(f, "SIMULATION FINISHED AT .... : %s \n", 		timer_string);
-		fprintf(f, "TOTAL SIMULATION TIME ..... : %.03f seconds \n",	total_time);
-		fprintf(f, "\n");
+		print_header(f, "SERIAL STATISTICS");
+		print_timer_stats(f, &simulation_timer, &simulation_finished, total_time);
 		fprintf(f, "TOTAL LPs.................. : %d \n", 		n_prc_tot);
 		fprintf(f, "TOTAL EXECUTED EVENTS ..... : %.0f \n", 		system_wide_stats.tot_events);
 		fprintf(f, "AVERAGE EVENT COST......... : %.3f us\n",		total_time / system_wide_stats.tot_events * 1000 * 1000);
@@ -344,17 +394,10 @@ void statistics_stop(int exit_code) {
 		fprintf(f, "SIMULATION TIME SPEED...... : %.2f units per GVT\n",system_wide_stats.simtime_advancement);
 		fprintf(f, "AVERAGE MEMORY USAGE....... : %s\n",		format_size(system_wide_stats.memory_usage / system_wide_stats.gvt_computations));
 		fprintf(f, "PEAK MEMORY USAGE.......... : %s\n",		format_size(getPeakRSS()));
-
-		if(exit_code == EXIT_FAILURE) {
-			fprintf(f, "\n--------- SIMULATION ABNORMALLY TERMINATED ----------\n");
-			printf("\n--------- SIMULATION ABNORMALLY TERMINATED ----------\n");
-		}
-		if(exit_code == EXIT_SUCCESS) {
-			fprintf(f, "\n--------- SIMULATION CORRECTLY COMPLETED ----------\n");
-			printf("\n--------- SIMULATION CORRECTLY COMPLETED ----------\n");
-		}
-
+		print_termination_status(f, exit_code);
 		fflush(f);
+
+		print_termination_status(stdout, exit_code);
 
 	} else { /* Parallel simulation */
 
@@ -364,17 +407,16 @@ void statistics_stop(int exit_code) {
 			total_time = timer_value_seconds(simulation_timer);
 		}
 
-		/* Finish flushing GVT statistics */
-		statistics_flush_gvt_buffer();
-		fflush(thread_files[STAT_FILE_T_GVT][local_tid]);
+		if((rootsim_config.stats == STATS_ALL || rootsim_config.stats == STATS_PERF))
+			print_gvt_stats_file();
 
 		/* dump per-LP statistics if required. They are already reduced during the GVT phase */
 		if(rootsim_config.stats == STATS_LP || rootsim_config.stats == STATS_ALL) {
 			f = thread_files[STAT_FILE_T_LP][local_tid];
 
-			fprintf(f, "#%15.15s   %15.15s   %15.15s   %15.15s   %15.15s   %15.15s   %15.15s   %15.15s   %15.15s   %15.15s   %15.15s\n",
-					"\"GID\"", "\"LID\"", "\"TOTAL EVENTS\"", "\"COMM EVENTS\"", "\"REPROC EVENTS\"", "\"ROLLBACKS\"", "\"ANTIMSG\"",
-					"\"AVG EVT COST\"", "\"AVG CKPT COST\"", "\"AVG REC COST\"", "\"IDLE CYCLES\"");
+			fprintf(f, "#%15.15s   %15.15s   %15.15s   %15.15s", "\"GID\"", "\"LID\"", "\"TOTAL EVENTS\"", "\"COMM EVENTS\"");
+			fprintf(f, "   %15.15s   %15.15s   %15.15s   %15.15s", "\"REPROC EVENTS\"", "\"ROLLBACKS\"", "\"ANTIMSG\"", "\"AVG EVT COST\"");
+			fprintf(f, "   %15.15s   %15.15s   %15.15s\n", "\"AVG CKPT COST\"", "\"AVG REC COST\"", "\"IDLE CYCLES\"");
 
 			int __helper_show_lp_stats(LID_t the_lid, GID_t the_gid, unsigned lid, void *unused){
 				(void)unused, (void)the_lid;
@@ -395,7 +437,6 @@ void statistics_stop(int exit_code) {
 			LPS_bound_foreach(__helper_show_lp_stats, NULL);
 		}
 
-
 		/* Reduce and dump per-thread statistics */
 
 		// Sum up all LPs statistics
@@ -409,143 +450,51 @@ void statistics_stop(int exit_code) {
 
 		// Compute derived statistics and dump everything
 		f = thread_files[STAT_FILE_T_THREAD][local_tid];
-		rollback_frequency = (thread_stats[local_tid].tot_rollbacks / thread_stats[local_tid].tot_events);
-		rollback_length = (thread_stats[local_tid].tot_rollbacks > 0
-				   ? (thread_stats[local_tid].tot_events - thread_stats[local_tid].committed_events) / thread_stats[local_tid].tot_rollbacks
-				   : 0);
-		efficiency = (1 - rollback_frequency * rollback_length) * 100;
-
-		fprintf(f, "------------------------------------------------------------\n");
-		fprintf(f, "-------------------- THREAD STATISTICS ---------------------\n");
-		fprintf(f, "------------------------------------------------------------\n\n");
-
-		fprintf(f, "KERNEL ID ................. : %d \n", 		kid);
-		fprintf(f, "LPs HOSTED BY KERNEL....... : %d \n", 		n_prc);
-		fprintf(f, "TOTAL_THREADS ............. : %d \n", 		n_cores);
-		fprintf(f, "THREAD ID ................. : %d \n", 		local_tid);
-		fprintf(f, "LPs HOSTED BY THREAD ...... : %d \n", 		n_prc_per_thread);
-		fprintf(f, "\n");
-		fprintf(f, "TOTAL EXECUTED EVENTS ..... : %.0f \n", 		thread_stats[local_tid].tot_events);
-		fprintf(f, "TOTAL COMMITTED EVENTS..... : %.0f \n", 		thread_stats[local_tid].committed_events);
-		fprintf(f, "TOTAL REPROCESSED EVENTS... : %.0f \n", 		thread_stats[local_tid].reprocessed_events);
-		fprintf(f, "TOTAL ROLLBACKS EXECUTED... : %.0f \n", 		thread_stats[local_tid].tot_rollbacks);
-		fprintf(f, "TOTAL ANTIMESSAGES......... : %.0f \n", 		thread_stats[local_tid].tot_antimessages);
-		fprintf(f, "ROLLBACK FREQUENCY......... : %.2f %%\n",		rollback_frequency * 100);
-		fprintf(f, "ROLLBACK LENGTH............ : %.2f events\n",	rollback_length);
-		fprintf(f, "EFFICIENCY................. : %.2f %%\n",		efficiency);
-		fprintf(f, "AVERAGE EVENT COST......... : %.2f us\n",		thread_stats[local_tid].event_time / thread_stats[local_tid].tot_events);
-		fprintf(f, "AVERAGE EVENT COST (EMA)... : %.2f us\n",		thread_stats[local_tid].exponential_event_time);
-		fprintf(f, "AVERAGE CHECKPOINT COST.... : %.2f us\n",		thread_stats[local_tid].ckpt_time / thread_stats[local_tid].tot_ckpts);
-		fprintf(f, "AVERAGE RECOVERY COST...... : %.2f us\n",		(thread_stats[local_tid].tot_recoveries > 0 ? thread_stats[local_tid].recovery_time / thread_stats[local_tid].tot_recoveries : 0));
-		fprintf(f, "AVERAGE LOG SIZE........... : %s\n",		format_size(thread_stats[local_tid].ckpt_mem / thread_stats[local_tid].tot_ckpts));
-		fprintf(f, "IDLE CYCLES................ : %.0f\n",		thread_stats[local_tid].idle_cycles);
-		fprintf(f, "NUMBER OF GVT REDUCTIONS... : %.0f\n",		thread_stats[local_tid].gvt_computations);
-		fprintf(f, "SIMULATION TIME SPEED...... : %.2f units per GVT\n",thread_stats[local_tid].simtime_advancement);
-		fprintf(f, "AVERAGE MEMORY USAGE....... : %s\n",		format_size(thread_stats[local_tid].memory_usage / thread_stats[local_tid].gvt_computations));
-
-		if(exit_code == EXIT_FAILURE) {
-			fprintf(f, "\n--------- SIMULATION ABNORMALLY TERMINATED ----------\n");
-		}
-		if(exit_code == EXIT_SUCCESS) {
-			fprintf(f, "\n--------- SIMULATION CORRECTLY COMPLETED ----------\n");
-		}
-
+		print_header(f, "THREAD STATISTICS");
+		print_common_stats(f, &thread_stats[local_tid], true);
+		print_termination_status(f, exit_code);
 		fflush(f);
 
 		/* Reduce and dump per-thread statistics */
 		/* (only one thread does the reduction, not necessarily the master) */
-
-
-		thread_barrier(&all_thread_barrier);
-
-		if(master_thread()) {
-
+		if(thread_barrier(&all_thread_barrier)) {
 			// Sum up all threads statistics
 			for(i = 0; i < n_cores; i++) {
 				system_wide_stats.vec += thread_stats[i].vec;
 			}
 			system_wide_stats.exponential_event_time /= n_cores;
-
 			// GVT computations are the same for all threads
 			system_wide_stats.gvt_computations /= n_cores;
 
 			// Compute derived statistics and dump everything
-			f = unique_files[STAT_FILE_U_GLOBAL]; // TODO: quando reintegriamo il distribuito, la selezione del file qui deve cambiare
-			rollback_frequency = (system_wide_stats.tot_rollbacks / system_wide_stats.tot_events);
-			rollback_length = (system_wide_stats.tot_rollbacks > 0
-					   ? (system_wide_stats.tot_events - system_wide_stats.committed_events) / system_wide_stats.tot_rollbacks
-					   : 0);
-			efficiency = (1 - rollback_frequency * rollback_length) * 100;
-
+			f = unique_files[STAT_FILE_U_NODE];
 			print_config_to_file(f);
-
 			fprintf(f, "\n");
-			fprintf(f, "------------------------------------------------------------\n");
-			fprintf(f, "--------------------- NODE STATISTICS ----------------------\n");
-			fprintf(f, "------------------------------------------------------------\n\n");
-
-			timer_tostring(simulation_timer, timer_string);
-			fprintf(f, "SIMULATION STARTED AT ..... : %s \n", 		timer_string);
-			bzero(timer_string, 64);
-			timer_tostring(simulation_finished, timer_string);
-			fprintf(f, "SIMULATION FINISHED AT .... : %s \n", 		timer_string);
-			fprintf(f, "TOTAL SIMULATION TIME ..... : %.03f seconds \n",	total_time);
-
-			fprintf(f, "\n");
-			fprintf(f, "TOTAL KERNELS ............. : %d \n", 		n_ker);
-			fprintf(f, "KERNEL ID ................. : %d \n", 		kid);
-			fprintf(f, "LPs HOSTED BY KERNEL....... : %d \n", 		n_prc);
-			fprintf(f, "TOTAL_THREADS ............. : %d \n", 		n_cores);
-			fprintf(f, "\n");
-			fprintf(f, "TOTAL EXECUTED EVENTS ..... : %.0f \n", 		system_wide_stats.tot_events);
-			fprintf(f, "TOTAL COMMITTED EVENTS..... : %.0f \n", 		system_wide_stats.committed_events);
-			fprintf(f, "TOTAL REPROCESSED EVENTS... : %.0f \n", 		system_wide_stats.reprocessed_events);
-			fprintf(f, "TOTAL ROLLBACKS EXECUTED... : %.0f \n", 		system_wide_stats.tot_rollbacks);
-			fprintf(f, "TOTAL ANTIMESSAGES......... : %.0f \n", 		system_wide_stats.tot_antimessages);
-			fprintf(f, "ROLLBACK FREQUENCY......... : %.2f %%\n",		rollback_frequency * 100);
-			fprintf(f, "ROLLBACK LENGTH............ : %.2f events\n",	rollback_length);
-			fprintf(f, "EFFICIENCY................. : %.2f %%\n",		efficiency);
-			fprintf(f, "AVERAGE EVENT COST......... : %.2f us\n",		system_wide_stats.event_time / system_wide_stats.tot_events);
-			fprintf(f, "AVERAGE EVENT COST (EMA)... : %.2f us\n",		system_wide_stats.exponential_event_time);
-			fprintf(f, "AVERAGE CHECKPOINT COST.... : %.2f us\n",		system_wide_stats.ckpt_time / system_wide_stats.tot_ckpts);
-			fprintf(f, "AVERAGE RECOVERY COST...... : %.3f us\n",		(system_wide_stats.tot_recoveries > 0 ? system_wide_stats.recovery_time / system_wide_stats.tot_recoveries : 0 ));
-			fprintf(f, "AVERAGE LOG SIZE........... : %s\n",		format_size(system_wide_stats.ckpt_mem / system_wide_stats.tot_ckpts));
-			fprintf(f, "\n");
-			fprintf(f, "IDLE CYCLES................ : %.0f\n",		system_wide_stats.idle_cycles);
-			fprintf(f, "LAST COMMITTED GVT ........ : %f\n",		get_last_gvt());
-			fprintf(f, "NUMBER OF GVT REDUCTIONS... : %.0f\n",		system_wide_stats.gvt_computations);
-			if(n_ker > 1){
-				fprintf(f, "MIN GVT ROUND TIME......... : %.2f us\n",	system_wide_stats.gvt_round_time_min);
-				fprintf(f, "MAX GVT ROUND TIME......... : %.2f us\n",	system_wide_stats.gvt_round_time_max);
-				fprintf(f, "AVERAGE GVT ROUND TIME..... : %.2f us\n",	system_wide_stats.gvt_round_time / system_wide_stats.gvt_computations);
-			}
-			fprintf(f, "SIMULATION TIME SPEED...... : %.2f units per GVT\n",system_wide_stats.simtime_advancement);
-			fprintf(f, "AVERAGE MEMORY USAGE....... : %s\n",		format_size(system_wide_stats.memory_usage / system_wide_stats.gvt_computations));
-			fprintf(f, "PEAK MEMORY USAGE.......... : %s\n",		format_size(getPeakRSS()));
-
-			if(exit_code == EXIT_FAILURE) {
-				fprintf(f, "\n--------- SIMULATION ABNORMALLY TERMINATED ----------\n");
-			}
-			if(exit_code == EXIT_SUCCESS) {
-				fprintf(f, "\n--------- SIMULATION CORRECTLY COMPLETED ----------\n");
-			}
-
+			print_header(f, "NODE STATISTICS");
+			print_timer_stats(f, &simulation_timer, &simulation_finished, total_time);
+			print_common_stats(f, &system_wide_stats, false);
+			print_termination_status(f, exit_code);
 			fflush(f);
 
 			#ifdef HAVE_MPI
 			mpi_reduce_statistics(&global_stats, &system_wide_stats);
-			#endif
-
-			if(master_kernel()){
-				// TODO: dump global statistics here
-				// Write the final outcome of the simulation on screen
-				if(exit_code == EXIT_FAILURE) {
-					printf("\n--------- SIMULATION ABNORMALLY TERMINATED ----------\n");
-				}
-				if(exit_code == EXIT_SUCCESS) {
-					printf("\n--------- SIMULATION CORRECTLY COMPLETED ----------\n");
-				}
+			if(master_kernel() && n_ker > 1){
+				global_stats.exponential_event_time /= n_ker;
+				// GVT computations are the same for all kernels
+				global_stats.gvt_computations /= n_ker;
+				// FIXME how do we treat gvt round time statistics?
+				f = unique_files[STAT_FILE_U_GLOBAL];
+				print_config_to_file(f);
+				fprintf(f, "\n");
+				print_header(f, "GLOBAL STATISTICS");
+				print_timer_stats(f, &simulation_timer, &simulation_finished, total_time);
+				print_common_stats(f, &global_stats, false);
+				print_termination_status(f, exit_code);
+				fflush(f);
 			}
+			#endif
+			if(master_kernel())
+				print_termination_status(stdout, exit_code);
 		}
 	}
 }
@@ -570,11 +519,12 @@ inline void statistics_on_gvt(double gvt) {
 		cumulated += committed;
 
 		// fill the row
-		gvt_buf.row[gvt_buf.pos] = (struct _gvt_buffer_row_t){exec_time, gvt, committed, cumulated};
-		gvt_buf.pos++;
+		gvt_buf.rows[gvt_buf.pos++] = (struct _gvt_buffer_row_t){exec_time, gvt, committed, cumulated};
 		// check if buffer is full
 		if(gvt_buf.pos >= GVT_BUFF_ROWS){
-			statistics_flush_gvt_buffer();
+			// flush our buffer in the blob file
+			fwrite(gvt_buf.rows, sizeof(struct _gvt_buffer_row_t), gvt_buf.pos, thread_blob_files[local_tid]);
+			gvt_buf.pos = 0;
 		}
 	}
 
@@ -600,7 +550,7 @@ inline void statistics_on_gvt(double gvt) {
 		lp_stats[lid].exponential_event_time = lp_stats_gvt[lid].exponential_event_time;
 
 		keep_exponential_event_time = lp_stats_gvt[lid].exponential_event_time;
-		bzero(&lp_stats_gvt[lid_to_int(LPS_bound(i)->lid)], sizeof(struct stat_t));
+		bzero(&lp_stats_gvt[lid], sizeof(struct stat_t));
 		lp_stats_gvt[lid].exponential_event_time = keep_exponential_event_time;
 	}
 }
@@ -626,8 +576,8 @@ inline void statistics_on_gvt_serial(double gvt){
 
 #define assign_new_file(destination, format, ...) \
 	do{\
-		safe_asprintf(&name_buf, "%s/" format, base_path, ##__VA_ARGS__);\
-		if (((destination) = fopen(name_buf, "w")) == NULL)\
+		safe_asprintf(&name_buf, "%s/" format, rootsim_config.output_dir, ##__VA_ARGS__);\
+		if (((destination) = fopen(name_buf, "w+")) == NULL)\
 			rootsim_error(true, "Cannot open %s\n", name_buf);\
 		rsfree(name_buf);\
 	}while(0)
@@ -638,72 +588,63 @@ inline void statistics_on_gvt_serial(double gvt){
 * @author Alessandro Pellegrini
 */
 void statistics_init(void) {
+
 	unsigned int i;
 	char *name_buf = NULL;
-	char *base_path = NULL;
 
-	// this is needed in order to suppress a race condition when multiple kernels
-	// share the same filesystem
-	if(n_ker > 1){
-		safe_asprintf(&base_path, "%s_%u", rootsim_config.output_dir, kid);
-	}
-	else{
-		safe_asprintf(&base_path, "%s", rootsim_config.output_dir);
-	}
-
-	// Purge old output dir if present
-	_rmdir(base_path);
-	_mkdir(base_path);
+	// Make output dir if non existant
+	_mkdir(rootsim_config.output_dir);
 
 	// The whole reduction for the sequential simulation is simply done at the end
 	if(rootsim_config.serial){
 		assign_new_file(unique_files[STAT_FILE_U_GLOBAL], "sequential_stats");
-		rsfree(base_path);
 		return;
 	}
 
 	for(i = 0; i < n_cores; i++) {
-		safe_asprintf(&name_buf, "%s/thread_%u/", base_path, i);
-		_rmdir(name_buf);
+		safe_asprintf(&name_buf, "%s/thread_%u_%u/", rootsim_config.output_dir, kid, i);
 		_mkdir(name_buf);
 		rsfree(name_buf);
 	}
-
-	// Allocate entries for file arrays (and set them to NULL, for later closing)
-	bzero(unique_files, sizeof(FILE *) * NUM_STAT_FILE_U);
-	for(i = 0; i < NUM_STAT_FILE_T; i++) {
-		thread_files[i] = rsalloc(sizeof(FILE *) * n_cores);
-		bzero(thread_files[i], sizeof(FILE *) * n_cores);
-	}
-
 	// create the unique file
-	assign_new_file(unique_files[STAT_FILE_U_GLOBAL], STAT_FILE_NAME_GLOBAL);
-
+#ifdef HAVE_MPI
+	if(n_ker > 1){
+		assign_new_file(unique_files[STAT_FILE_U_NODE], STAT_FILE_NAME_NODE"_%u", kid);
+		if(master_kernel())
+			assign_new_file(unique_files[STAT_FILE_U_GLOBAL], STAT_FILE_NAME_GLOBAL);
+	}else
+#endif
+	{
+		assign_new_file(unique_files[STAT_FILE_U_NODE], STAT_FILE_NAME_NODE);
+	}
 	// Create files depending on the actual level of verbosity
 	switch(rootsim_config.stats){
 		case STATS_ALL:
 		case STATS_LP:
+			thread_files[STAT_FILE_T_LP] = rsalloc(sizeof(FILE *) * n_cores);
 			for(i = 0; i < n_cores; ++i) {
-				assign_new_file(thread_files[STAT_FILE_T_LP][i], "thread_%u/%s", i, STAT_FILE_NAME_LP);
+				assign_new_file(thread_files[STAT_FILE_T_LP][i], "thread_%u_%u/%s", kid, i, STAT_FILE_NAME_LP);
 			}
 			if(rootsim_config.stats == STATS_LP) goto stats_lp_jump;
 			/* fall through */
 		case STATS_PERF:
+			thread_files[STAT_FILE_T_GVT] = rsalloc(sizeof(FILE *) * n_cores);
+			thread_blob_files = rsalloc(sizeof(FILE *) * n_cores);
 			for(i = 0; i < n_cores; ++i) {
-				assign_new_file(thread_files[STAT_FILE_T_GVT][i], "thread_%u/%s", i, STAT_FILE_NAME_GVT);
+				assign_new_file(thread_files[STAT_FILE_T_GVT][i], "thread_%u_%u/%s", kid, i, STAT_FILE_NAME_GVT);
+				assign_new_file(thread_blob_files[i], "thread_%u_%u/.%s_blob", kid, i, STAT_FILE_NAME_GVT);
 			}
 			/* fall through */
 		case STATS_GLOBAL:
 			stats_lp_jump:
+			thread_files[STAT_FILE_T_THREAD] = rsalloc(sizeof(FILE *) * n_cores);
 			for(i = 0; i < n_cores; ++i) {
-				assign_new_file(thread_files[STAT_FILE_T_THREAD][i], "thread_%u/%s", i, STAT_FILE_NAME_THREAD);
+				assign_new_file(thread_files[STAT_FILE_T_THREAD][i], "thread_%u_%u/%s", kid, i, STAT_FILE_NAME_THREAD);
 			}
 		break;
 		default:
 			rootsim_error(true, "unrecognized statistics option '%d'!", rootsim_config.stats);
 	}
-
-	rsfree(base_path);
 
 	// Initialize data structures to keep information
 	lp_stats = rsalloc(n_prc * sizeof(struct stat_t));
@@ -735,6 +676,7 @@ void statistics_fini(void) {
 	}
 
 	for(i = 0; i < NUM_STAT_FILE_T; i++) {
+		if(!thread_files[i]) continue;
 		for(j = 0; j < n_cores; j++) {
 			if(thread_files[i][j] != NULL)
 				fclose(thread_files[i][j]);
@@ -833,7 +775,6 @@ void statistics_post_data(LID_t the_lid, enum stat_msg_t type, double data) {
 
 
 double statistics_get_lp_data(LID_t lid, unsigned int type) {
-
 	switch(type) {
 
 		case STAT_GET_EVENT_TIME_LP:
@@ -842,6 +783,5 @@ double statistics_get_lp_data(LID_t lid, unsigned int type) {
 		default:
 			rootsim_error(true, "Wrong statistics get type: %d. Aborting...\n", type);
 	}
-
 	return 0.0;
 }
