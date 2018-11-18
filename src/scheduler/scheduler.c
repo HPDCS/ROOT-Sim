@@ -186,8 +186,8 @@ static void LP_main_loop(void *args) {
 		}
 		#endif
 
-		statistics_post_lp_data(current_lp, STAT_EVENT, 1.0);
-		statistics_post_lp_data(current_lp, STAT_EVENT_TIME, delta_event_timer);
+		statistics_post_data(current_lp, STAT_EVENT, 1.0);
+		statistics_post_data(current_lp, STAT_EVENT_TIME, delta_event_timer);
 
 		// Give back control to the simulation kernel's user-level thread
 		context_switch(&LPS(current_lp)->context, &kernel_context);
@@ -426,7 +426,7 @@ void schedule(void) {
 
 	// No logical process found with events to be processed
 	if (lid_equals(lid, idle_process)) {
-		statistics_post_lp_data(lid, STAT_IDLE_CYCLES, 1.0);
+		statistics_post_data(lid, STAT_IDLE_CYCLES, 1.0);
 		return;
 	}
 

@@ -405,7 +405,7 @@ simtime_t gvt_operations(void) {
 	if( kernel_phase == kphase_gvt_redux && gvt_redux_completed() ){
 		if(iCAS(&commit_gvt_tkn, 1, 0)){
 			int gvt_round_time = timer_value_micro(gvt_round_timer);
-			statistics_post_other_data(STAT_GVT_ROUND_TIME, gvt_round_time);
+			statistics_post_data(current_lp, STAT_GVT_ROUND_TIME, gvt_round_time);
 
 			new_gvt = last_reduced_gvt();
 			kernel_phase = kphase_fossil;
@@ -428,7 +428,7 @@ simtime_t gvt_operations(void) {
 		adopt_new_gvt(new_gvt);
 
 		// Dump statistics
-		statistics_post_other_data(STAT_GVT, new_gvt);
+		statistics_on_gvt(new_gvt);
 
 		last_gvt = new_gvt;
 

@@ -167,8 +167,8 @@ void *log_full(LID_t the_lid) {
 	recoverable_state[lid]->dirty_bitmap_size = 0;
 	recoverable_state[lid]->total_inc_size = 0;
 
-	statistics_post_lp_data(the_lid, STAT_CKPT_TIME, (double)timer_value_micro(checkpoint_timer));
-	statistics_post_lp_data(the_lid, STAT_CKPT_MEM, (double)size);
+	statistics_post_data(the_lid, STAT_CKPT_TIME, (double)timer_value_micro(checkpoint_timer));
+	statistics_post_data(the_lid, STAT_CKPT_MEM, (double)size);
 
 	return ckpt;
 }
@@ -194,7 +194,7 @@ void *log_full(LID_t the_lid) {
 *         along with the relative meta-data which can be used to perform a restore operation.
 */
 void *log_state(LID_t lid) {
-	statistics_post_lp_data(lid, STAT_CKPT, 1.0);
+	statistics_post_data(lid, STAT_CKPT, 1.0);
 	return log_full(lid);
 }
 
@@ -349,7 +349,7 @@ void restore_full(LID_t the_lid, void *ckpt) {
 	recoverable_state[lid]->total_inc_size = 0;
 
 	int recovery_time = timer_value_micro(recovery_timer);
-	statistics_post_lp_data(the_lid, STAT_RECOVERY_TIME, (double)recovery_time);
+	statistics_post_data(the_lid, STAT_RECOVERY_TIME, (double)recovery_time);
 }
 
 
@@ -367,7 +367,7 @@ void restore_full(LID_t the_lid, void *ckpt) {
 * @param queue_node a pointer to the simulation state which must be restored in the logical process
 */
 void log_restore(LID_t lid, state_t *state_queue_node) {
-	statistics_post_lp_data(lid, STAT_RECOVERY, 1.0);
+	statistics_post_data(lid, STAT_RECOVERY, 1.0);
 	restore_full(lid, state_queue_node->log);
 }
 

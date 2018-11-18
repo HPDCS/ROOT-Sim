@@ -96,7 +96,7 @@ void serial_simulation(void) {
 
 	timer_start(serial_gvt_timer);
 
-	statistics_post_other_data(STAT_SIM_START, 0.0);
+	statistics_start();
 
 	while(!serial_simulation_complete) {
 
@@ -116,8 +116,8 @@ void serial_simulation(void) {
 		timer_start(serial_event_execution);
 		ProcessEvent_light(lid_to_int(current_lp), current_lvt, event->type, event->event_content, event->size, serial_states[lid_to_int(current_lp)]);
 
-		statistics_post_lp_data(current_lp, STAT_EVENT, 1.0);
-		statistics_post_lp_data(current_lp, STAT_EVENT_TIME, timer_value_seconds(serial_event_execution) );
+		statistics_post_data_serial(STAT_EVENT, 1.0);
+		statistics_post_data_serial(STAT_EVENT_TIME, timer_value_seconds(serial_event_execution) );
 
 		#ifdef EXTRA_CHECKS
 		if(event->size > 0) {
@@ -153,7 +153,7 @@ void serial_simulation(void) {
 	        if (timer_value_milli(serial_gvt_timer) > (int)rootsim_config.gvt_time_period) {
 	                timer_restart(serial_gvt_timer);
 	                printf("TIME BARRIER: %f\n", current_lvt);
-	                statistics_post_other_data(STAT_GVT, current_lvt);
+	                statistics_on_gvt_serial(current_lvt);
 		}
 
 		rsfree(event);
