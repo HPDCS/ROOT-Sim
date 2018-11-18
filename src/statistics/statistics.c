@@ -60,11 +60,11 @@ static struct stat_t *lp_stats_gvt;
 static struct stat_t *thread_stats;
 
 /// Keeps global statistics
-static struct stat_t system_wide_stats;
+static struct stat_t system_wide_stats = {.gvt_round_time_min = INFTY};
 
 #ifdef HAVE_MPI
 /// Keep statistics reduced globally across MPI ranks
-struct stat_t global_stats;
+struct stat_t global_stats = {.gvt_round_time_min = INFTY};
 #endif
 
 /*!
@@ -280,16 +280,21 @@ static void print_timer_stats(FILE *f, timer *start_timer, timer *stop_timer, do
 }
 
 
-static void print_common_stats(FILE *f, struct stat_t *stats_p, bool want_thread_stats){
+static void print_common_stats(FILE *f, struct stat_t *stats_p, bool want_thread_stats, bool want_local_stats){
 
 	double rollback_frequency = (stats_p->tot_rollbacks / stats_p->tot_events);
 	double rollback_length = (stats_p->tot_rollbacks > 0 ? (stats_p->tot_events - stats_p->committed_events) / stats_p->tot_rollbacks : 0);
 	double efficiency = (1 - rollback_frequency * rollback_length) * 100;
 
 	fprintf(f, "TOTAL KERNELS ............. : %d \n", 		n_ker);
-	fprintf(f, "KERNEL ID ................. : %d \n", 		kid);
-	fprintf(f, "LPs HOSTED BY KERNEL....... : %d \n", 		n_prc);
-	fprintf(f, "TOTAL_THREADS ............. : %d \n", 		n_cores);
+	if(want_local_stats){
+		fprintf(f, "KERNEL ID ................. : %d \n", 	kid);
+		fprintf(f, "LPs HOSTED BY KERNEL....... : %d \n", 	n_prc);
+		fprintf(f, "TOTAL_THREADS ............. : %d \n", 	n_cores);
+	}else{
+		fprintf(f, "TOTAL_THREADS ............. : %d \n", 	n_cores * n_ker);
+		fprintf(f, "TOTAL LPs.................. : %d \n", 	n_prc_tot);
+	}
 	if(want_thread_stats){
 		fprintf(f, "THREAD ID ................. : %d \n", 	local_tid);
 		fprintf(f, "LPs HOSTED BY THREAD ...... : %d \n", 	n_prc_per_thread);
@@ -322,7 +327,7 @@ static void print_common_stats(FILE *f, struct stat_t *stats_p, bool want_thread
 	fprintf(f, "SIMULATION TIME SPEED...... : %.2f units per GVT\n",stats_p->simtime_advancement);
 	fprintf(f, "AVERAGE MEMORY USAGE....... : %s\n",		format_size(stats_p->memory_usage / stats_p->gvt_computations));
 	if(!want_thread_stats)
-		fprintf(f, "PEAK MEMORY USAGE.......... : %s\n",	format_size(getPeakRSS()));
+		fprintf(f, "PEAK MEMORY USAGE.......... : %s\n",	format_size(stats_p->max_resident_set));
 }
 
 
@@ -451,7 +456,7 @@ void statistics_stop(int exit_code) {
 		// Compute derived statistics and dump everything
 		f = thread_files[STAT_FILE_T_THREAD][local_tid];
 		print_header(f, "THREAD STATISTICS");
-		print_common_stats(f, &thread_stats[local_tid], true);
+		print_common_stats(f, &thread_stats[local_tid], true, true);
 		print_termination_status(f, exit_code);
 		fflush(f);
 
@@ -463,6 +468,7 @@ void statistics_stop(int exit_code) {
 				system_wide_stats.vec += thread_stats[i].vec;
 			}
 			system_wide_stats.exponential_event_time /= n_cores;
+			system_wide_stats.max_resident_set = getPeakRSS();
 			// GVT computations are the same for all threads
 			system_wide_stats.gvt_computations /= n_cores;
 
@@ -472,7 +478,7 @@ void statistics_stop(int exit_code) {
 			fprintf(f, "\n");
 			print_header(f, "NODE STATISTICS");
 			print_timer_stats(f, &simulation_timer, &simulation_finished, total_time);
-			print_common_stats(f, &system_wide_stats, false);
+			print_common_stats(f, &system_wide_stats, false, true);
 			print_termination_status(f, exit_code);
 			fflush(f);
 
@@ -482,13 +488,12 @@ void statistics_stop(int exit_code) {
 				global_stats.exponential_event_time /= n_ker;
 				// GVT computations are the same for all kernels
 				global_stats.gvt_computations /= n_ker;
-				// FIXME how do we treat gvt round time statistics?
 				f = unique_files[STAT_FILE_U_GLOBAL];
 				print_config_to_file(f);
 				fprintf(f, "\n");
 				print_header(f, "GLOBAL STATISTICS");
 				print_timer_stats(f, &simulation_timer, &simulation_finished, total_time);
-				print_common_stats(f, &global_stats, false);
+				print_common_stats(f, &global_stats, false, false);
 				print_termination_status(f, exit_code);
 				fflush(f);
 			}
@@ -653,10 +658,6 @@ void statistics_init(void) {
 	bzero(lp_stats_gvt, n_prc * sizeof(struct stat_t));
 	thread_stats = rsalloc(n_cores * sizeof(struct stat_t));
 	bzero(thread_stats, n_cores * sizeof(struct stat_t));
-
-	memset(&system_wide_stats, 0, sizeof(struct stat_t));
-
-	system_wide_stats.gvt_round_time_min = INFTY;
 }
 
 #undef assign_new_file
@@ -761,10 +762,8 @@ void statistics_post_data(LID_t the_lid, enum stat_msg_t type, double data) {
 			break;
 
 		case STAT_GVT_ROUND_TIME:
-			if(data < system_wide_stats.gvt_round_time_min)
-				system_wide_stats.gvt_round_time_min = data;
-			if(data > system_wide_stats.gvt_round_time_max)
-				system_wide_stats.gvt_round_time_max = data;
+			system_wide_stats.gvt_round_time_min = fmin(data, system_wide_stats.gvt_round_time_min);
+			system_wide_stats.gvt_round_time_max = fmax(data, system_wide_stats.gvt_round_time_max);
 			system_wide_stats.gvt_round_time += data;
 			break;
 

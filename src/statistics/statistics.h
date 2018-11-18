@@ -116,7 +116,8 @@ struct stat_t {
 	double	gvt_time,
 		gvt_round_time,
 		gvt_round_time_min,
-		gvt_round_time_max;
+		gvt_round_time_max,
+		max_resident_set;
 };
 
 extern void _mkdir(const char *path);

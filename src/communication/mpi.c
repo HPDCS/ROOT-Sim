@@ -235,7 +235,10 @@ static void reduce_stat_vector(struct stat_t *in, struct stat_t *inout, int *len
 	int i = 0;
 	for(i = 0; i < *len; ++i){
 		inout[i].vec += in[i].vec;
-		// FIXME, what do we do with the other gvt statistics values?
+		inout[i].gvt_round_time += in[i].gvt_round_time;
+		inout[i].gvt_round_time_min = fmin(inout[i].gvt_round_time_min, in[i].gvt_round_time_min);
+		inout[i].gvt_round_time_max = fmax(inout[i].gvt_round_time_max, in[i].gvt_round_time_max);
+		inout[i].max_resident_set += in[i].max_resident_set;
 	}
 }
 
