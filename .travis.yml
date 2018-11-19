@@ -4,21 +4,28 @@ sudo: false
 
 git:
   depth: 1
+
 branches:
   except:
-   - gh-pages
+  - gh-pages
 
 matrix:
   include:
-    - os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-          packages:
-            - g++-8
-            - mpich
-            - libmpich-dev
+  - os: linux
+    addons:
+      apt:
+        sources:
+        - ubuntu-toolchain-r-test
+        packages:
+        - g++-8
+        - mpich
+        - libmpich-dev
+        - doxygen
+        - graphviz
+
+env:
+  matrix:
+    secure: JvReZBJUpYGDbrSbsshimBKu2HXLA3nniHSTVdTdWCOIo2mwAAU/qBh3gqExTsihdI9/6OaK4RoL6kvgRoKZ4HllkKxHtP5ttKpVguRYAzWLJWnlJm7s7v1AEs1txdQLa9kgGGHJsNnMYI+dX5BCG+huVdI+phf8BhVcCi04EGw=
 
 before_install:
   - export CC=mpicc
@@ -37,12 +44,36 @@ script:
   - make
   - make install
   - export PATH=$PATH:$HOME
-  - cd models/pcs/
-  - rootsim-cc *.c -o model
-  - cd ../..
-  - cp models/pcs/model .
-  - mpiexec --np 2 ./model --np 2 --nprc 16 --no-core-binding
-  - ./model --sequential --nprc 1
+  - ./tests.sh
+  - # Build the docs
+  - cd docs
+  - make
+  - cd ..
+  - git clone --depth=1 -b gh-pages --single-branch https://github.com/HPDCS/ROOT-Sim.git
+  - mkdir -p ROOT-Sim/docs/
+  - mv docs/html ROOT-Sim/docs/$TRAVIS_BRANCH
+  - cp README.md ROOT-Sim
 
 after_success:
   - bash <(curl -s https://codecov.io/bash)
+
+# Documentation autodeploy script
+deploy:
+  provider: pages
+  skip-cleanup: true
+  github-token: $DOCS_SECRET
+  keep-history: true
+  local-dir: ROOT-Sim
+  verbose: true
+  on:
+    branch: master
+
+deploy:
+  provider: pages
+  skip-cleanup: true
+  github-token: $DOCS_SECRET
+  keep-history: true
+  local-dir: ROOT-Sim
+  verbose: true
+  on:
+    branch: develop
