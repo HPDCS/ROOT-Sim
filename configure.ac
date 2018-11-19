@@ -53,6 +53,19 @@ AS_IF([test "x$enable_profile" = "xyes"], [
 
 
 #----------------------------------------------------------------------------
+# Doxygen Documentation
+#
+# If doxygen is installed on the box, generate a commodity Makefile in the
+# doc subfolder to generate the documentation. This must be called explicitly,
+# as it is separated from the main Makefile.
+#----------------------------------------------------------------------------
+AC_CHECK_PROGS([DOXYGEN], [doxygen])
+AM_CONDITIONAL([HAVE_DOXYGEN], [test -n "$DOXYGEN"])
+AM_COND_IF([HAVE_DOXYGEN], [AC_CONFIG_FILES([docs/doxy.conf])])
+AM_COND_IF([HAVE_DOXYGEN], [AC_CONFIG_FILES([docs/Makefile])])
+
+
+#----------------------------------------------------------------------------
 # Check for the availability of a suitable MPI environment
 #----------------------------------------------------------------------------
 AC_ARG_ENABLE([mpi],
@@ -355,7 +368,6 @@ AC_MSG_RESULT([ok])
 
 
 # Generate Makefiles for all these subfolders
-#AC_OUTPUT
 AC_CONFIG_FILES([Makefile
 		 man/Makefile
 		 scripts/Makefile
