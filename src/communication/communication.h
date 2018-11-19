@@ -49,7 +49,12 @@
 
 /// Simulation Platform Control Messages
 enum _control_msgs {
-	MIN_VALUE_CONTROL=65537,
+	RESERVED_MSG_CODE = 65532,
+	TOPOLOGY_UPDATE,		/**< Used by the topology API to convey remote updates on costs/probabilities */
+	ABM_UPDATE,			/**< Used by ABM API, right now these are treated as normal positive messages */
+	ABM_VISITING,			/**< Used by ABM API, right now these are treated as normal positive messages */
+	ABM_LEAVING,			/**< Used by ABM API, right now these are treated as normal positive messages */
+	MIN_VALUE_CONTROL = 65537,
 	RENDEZVOUS_START,
 	RENDEZVOUS_ACK,
 	RENDEZVOUS_UNBLOCK,
@@ -62,26 +67,13 @@ enum _control_msgs {
 
 #define is_control_msg(type)	(type >= MIN_VALUE_CONTROL && type != RENDEZVOUS_START)
 
+enum _mpi_msg_code{
 // Message Codes for PVM
-#define MSG_INIT_MPI		200
-#define MSG_EVENT		2
-//#define MSG_ACKNOWLEDGE		3
-#define MSG_GVT			10
-#define MSG_UNLOCK		11
-#define MSG_GO_TO_FINAL_BARRIER	12
-#define MSG_GVT_ACK		13
-#define MSG_REDUCE_STATS	20
-
-
-
+	MSG_EVENT = 		2,
 // Message Codes for GVT operations
-#define MSG_COMPUTE_GVT		50 /// Master asks for tables
-#define MSG_INFO_GVT		51 /// Slaves reply with their information
-#define MSG_NEW_GVT		52 /// Master notifies the new GVT
-#define MSG_TIME_BARRIER	53 /// Slaves communicate their maximum time barrier
-#define MSG_SNAPSHOT		54 /// Retrieve termination result
-#define MSG_FINI			55
-
+	MSG_NEW_GVT = 		52, /**< Master notifies the new GVT */
+	MSG_FINI = 		55
+};
 
 #define INIT_OUTGOING_MSG	10
 
@@ -101,21 +93,11 @@ extern void communication_init(void);
 extern void communication_fini(void);
 extern int comm_finalize(void);
 extern void Send(msg_t *msg);
-extern simtime_t receive_time_barrier(simtime_t max);
-extern int messages_checking(void);
 extern void insert_outgoing_msg(msg_t *msg);
 extern void send_outgoing_msgs(LID_t);
 extern void send_antimessages(LID_t, simtime_t);
 extern void communication_fini_thread(void);
 extern void communication_init_thread(void);
-
-/* In window.c */
-extern void windows_init(void);
-extern void register_msg(msg_t *msg);
-extern void receive_ack(void);
-extern void send_forced_ack(void);
-extern simtime_t local_min_timestamp(void);
-extern void start_ack_timer(void);
 
 
 extern void msg_hdr_release(msg_hdr_t *msg);

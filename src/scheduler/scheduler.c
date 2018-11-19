@@ -170,10 +170,15 @@ static void LP_main_loop(void *args) {
 		timer_start(event_timer);
 
 		// Process the event
-		switch_to_application_mode();
-		ProcessEvent[lid_to_int(current_lp)](gid_to_int(LidToGid(current_lp)), current_evt->timestamp, current_evt->type, current_evt->event_content, current_evt->size, current_state);
-		switch_to_platform_mode();
-
+		if(&abm_settings){
+			ProcessEventABM();
+		}else if (&topology_settings){
+			ProcessEventTopology();
+		}else{
+			switch_to_application_mode();
+			ProcessEvent[lid_to_int(current_lp)](gid_to_int(LidToGid(current_lp)), current_evt->timestamp, current_evt->type, current_evt->event_content, current_evt->size, current_state);
+			switch_to_platform_mode();
+		}
 		int delta_event_timer = timer_value_micro(event_timer);
 
 		#ifdef EXTRA_CHECKS
@@ -235,9 +240,6 @@ void initialize_LP(LID_t lp) {
 	LPS(lp)->queue_out = new_list(msg_hdr_t);
 	LPS(lp)->queue_states = new_list(state_t);
 	LPS(lp)->rendezvous_queue = new_list(msg_t);
-
-	// Initialize the LP lock
-	spinlock_init(&LPS(lp)->lock);
 
 	// No event has been processed so far
 	LPS(lp)->bound = NULL;

@@ -48,6 +48,7 @@
 #include <mm/dymelor.h>
 #include <statistics/statistics.h>
 #include <lib/numerical.h>
+#include <lib/topology.h>
 #include <serial/serial.h>
 #ifdef HAVE_MPI
 #include <communication/mpi.h>
@@ -461,6 +462,7 @@ void SystemInit(int argc, char **argv) {
 	communication_init();
 	gvt_init();
 	numerical_init();
+	topology_preinit();
 
 	// This call tells the simulation engine that the sequential initial simulation is complete
 	initialization_complete();

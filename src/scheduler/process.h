@@ -39,7 +39,9 @@
 #include <datatypes/list.h>
 #include <datatypes/msgchannel.h>
 #include <arch/ult.h>
+#include <lib/abm_layer.h>
 #include <lib/numerical.h>
+#include <lib/topology.h>
 #include <communication/communication.h>
 #include <arch/x86/linux/cross_state_manager/cross_state_manager.h>
 
@@ -72,9 +74,6 @@ typedef struct _LP_state {
 
 	/// Local ID of the LP
 	LID_t 			lid;
-
-	/// Logical Process lock, used to serialize accesses to concurrent data structures
-	spinlock_t		lock; // TODO: is this still used anywhere?
 
 	/// Seed to generate pseudo-random values
 	seed_type		seed;
@@ -129,6 +128,11 @@ typedef struct _LP_state {
 	unsigned long long	wait_on_rendezvous;
 	unsigned int		wait_on_object;
 
+	/// pointer to the topology struct
+	topology_t *topology;
+
+	/// pointer to the region struct
+	region_abm_t *region;
 } LP_State;
 
 

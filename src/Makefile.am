@@ -45,14 +45,21 @@ librootsim_a_SOURCES =	main.c \
 			core/init.c \
 			core/core.c \
 			datatypes/calqueue.c \
+			datatypes/hash_map.c \
 			datatypes/msgchannel.c \
 			datatypes/slab.c \
 			datatypes/treiber.c \
 			gvt/gvt.c \
 			gvt/fossil.c \
 			gvt/ccgs.c \
+			lib/abm_layer.c \
+			lib/jsmn.c \
+			lib/jsmn_helper.c \
 			lib/numerical.c \
-			lib/topology.c \
+			lib/topology/topology.c \
+			lib/topology/topology_obstacles.c \
+			lib/topology/topology_costs.c \
+			lib/topology/topology_probabilities.c \
 			mm/state.c \
 			mm/ecs.c \
 			queues/queues.c \

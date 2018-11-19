@@ -39,7 +39,7 @@
 // must be a power of two
 #define HM_INITIAL_CAPACITY 8
 #define DIB(curr_i, hash, capacity_mo) (((curr_i) - (hash)) & (capacity_mo))
-#define SWAP_VALUES(a, b) do{typeof(a) _tmp = (a); a = b; b = _tmp;}while(0)
+#define SWAP_VALUES(a, b) do{__typeof(a) _tmp = (a); (a) = (b); (b) = _tmp;}while(0)
 
 // Adapted from http://xorshift.di.unimi.it/splitmix64.c PRNG,
 // written by Sebastiano Vigna (vigna@acm.org)
@@ -190,7 +190,6 @@ hash_map_pair_t* hash_map_remove(rootsim_hash_map_t *hmap, unsigned long long ke
 
 	struct _hash_map_node_t *nodes = hmap->nodes;
 	map_size_t capacity_mo = hmap->capacity_mo;
-	hash_t cur_hash = _get_hash(key);
 	map_size_t j = i;
 	// backward shift to restore the table state as if the insertion never happened:
 	// http://codecapsule.com/2013/11/17/robin-hood-hashing-backward-shift-deletion by Emmanuel Goossaert
@@ -233,12 +232,12 @@ hash_map_pair_t* hash_map_iter(rootsim_hash_map_t *hmap, map_size_t *closure){
 			(*closure) = 0;
 			return NULL;
 		}
-		if(hmap->nodes[*closure] == NULL)
+		if(hmap->nodes[*closure].pair == NULL)
 			// skip this empty slot
 			(*closure)++;
 		else
 			// return the pair and increment the closure
-			return hmap->nodes[(*closure)++];
+			return hmap->nodes[(*closure)++].pair;
 	}
 }
 
