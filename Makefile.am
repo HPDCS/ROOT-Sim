@@ -3,4 +3,4 @@ AM_CFLAGS = -I$(top_srcdir)/src/simulator -I$(top_srcdir)/src/simulator/subsyste
 AM_MAKEFLAGS = -s
 AUTOMAKE_OPTIONS = subdir-objects
 
-SUBDIRS = src scripts man
+SUBDIRS = src scripts man 
