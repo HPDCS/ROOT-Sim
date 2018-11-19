@@ -159,8 +159,6 @@ typedef unsigned char phase_colour;
 #define MSG_PADDING offsetof(msg_t, sender)
 #define MSG_META_SIZE (offsetof(msg_t, event_content) - MSG_PADDING)
 
-/** The MPI datatype msg_mpi_t depends on the order of this struct.
-   See src/communication/mpi.c for the implementation of the datatype */
 /// Message Type definition
 typedef struct _msg_t {
 
@@ -172,8 +170,7 @@ typedef struct _msg_t {
 	unsigned int		alloc_tid; // TODO: this should be moved into an external container, to avoid transmitting it!
 
 	/* Place here all members which must be transmitted over the network. It is convenient not to reorder the members
-	 * of the structure. If new members have to be addedd, place them right before the "Model data" part.
-	 * The code in `mpi_datatype_init()` in communication/mpi.c must be aligned to the content that we have here. */
+	 * of the structure. If new members have to be addedd, place them right before the "Model data" part.*/
 
 	// Kernel's information
 	GID_t   		sender;
@@ -246,6 +243,7 @@ extern unsigned int GidToKernel(GID_t gid) __attribute__ ((pure));
 extern void rootsim_error(bool fatal, const char *msg, ...);
 extern void distribute_lps_on_kernels(void);
 extern void simulation_shutdown(int code) __attribute__((noreturn));
+extern inline bool user_requested_exit(void);
 extern inline bool simulation_error(void);
 extern void initialization_complete(void);
 

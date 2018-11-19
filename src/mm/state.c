@@ -207,7 +207,7 @@ void rollback(LID_t lid) {
 	// Discard any possible execution state related to a blocked execution
 	memcpy(&LPS(lid)->context, &LPS(lid)->default_context, sizeof(LP_context_t));
 
-	statistics_post_lp_data(lid, STAT_ROLLBACK, 1.0);
+	statistics_post_data(lid, STAT_ROLLBACK, 1.0);
 
 	last_correct_event = LPS(lid)->bound;
 	// Send antimessages
@@ -229,7 +229,7 @@ void rollback(LID_t lid) {
 
 	last_restored_event = restore_state->last_event;
 	reprocessed_events = silent_execution(lid, LPS(lid)->current_base_pointer, last_restored_event, last_correct_event);
-	statistics_post_lp_data(lid, STAT_SILENT, (double)reprocessed_events);
+	statistics_post_data(lid, STAT_SILENT, (double)reprocessed_events);
 
 	// TODO: silent execution resets the LP state to the previous
 	// value, so it should be the last function to be called within rollback()

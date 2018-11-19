@@ -34,6 +34,7 @@
 
 #include <core/core.h>
 #include <communication/wnd.h>
+#include <statistics/statistics.h>
 
 
 extern bool mpi_support_multithread;
@@ -45,8 +46,6 @@ extern bool mpi_support_multithread;
 // used only in the case MPI do not support multithread
 extern spinlock_t mpi_lock;
 
-extern MPI_Datatype msg_mpi_t;
-
 void mpi_init(int *argc, char ***argv);
 void inter_kernel_comm_init(void);
 void inter_kernel_comm_finalize(void);
@@ -55,10 +54,11 @@ void syncronize_all(void);
 void send_remote_msg(msg_t* msg);
 bool pending_msgs(int tag);
 void receive_remote_msgs(void);
-bool is_request_completed(MPI_Request* req);
+bool is_request_completed(MPI_Request *);
 bool all_kernels_terminated(void);
 void broadcast_termination(void);
 void collect_termination(void);
+void mpi_reduce_statistics(struct stat_t *, struct stat_t *);
 
 #endif /* HAVE_MPI */
 #endif /* _MPI_H_ */
