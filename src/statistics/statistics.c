@@ -460,9 +460,9 @@ void statistics_stop(int exit_code) {
 		print_termination_status(f, exit_code);
 		fflush(f);
 
-		/* Reduce and dump per-thread statistics */
-		/* (only one thread does the reduction, not necessarily the master) */
-		if(thread_barrier(&all_thread_barrier)) {
+		thread_barrier(&all_thread_barrier);
+
+		if(master_thread()) {
 			// Sum up all threads statistics
 			for(i = 0; i < n_cores; i++) {
 				system_wide_stats.vec += thread_stats[i].vec;
@@ -488,6 +488,8 @@ void statistics_stop(int exit_code) {
 				global_stats.exponential_event_time /= n_ker;
 				// GVT computations are the same for all kernels
 				global_stats.gvt_computations /= n_ker;
+				global_stats.simtime_advancement /= n_ker;
+
 				f = unique_files[STAT_FILE_U_GLOBAL];
 				print_config_to_file(f);
 				fprintf(f, "\n");
