@@ -39,13 +39,13 @@ The arguments passed to this callback are:
 with the newly-computed GVT value. The LP is allowed to inspect the content of this buffer to decide upon
 the termination detection.
 
-When running an optimistic simulation, the state to be inspected is one which can be associated with
+When running an optimistic simulation, the state to be inspected here is one which can be associated with
 a timestamp significantly smaller than the current one reached on the speculative boundary.
 It is therefore meaningless (and unsafe) to alter the content of this state.
 Similarly, the model cannot send any new event during the execution of OnGVT.
 
 .PP
-The distributed termination detection can be executed in a \fIstandard\fP or \fIincremental\fP fashion.
+The distributed termination detection can be executed in a \fInormal\fP or \fIincremental\fP fashion.
 Depending on the \fBcktrm_mode\fP runtime parameter, the platform can be intructed to ask all the LPs
 if they want to halt the simulation every time the GVT is computed, or if an LP should be exclueded
 from the check once it has responded positively.
