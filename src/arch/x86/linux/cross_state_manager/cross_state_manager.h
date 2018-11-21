@@ -17,7 +17,7 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file ktblmgr.h
+* @file cross_state_manager.h
 * @brief This is the main header for the Linux Kernel Module which implements
 *	per-kernel-thread different page table for supporting shared state.
 * @author Alessandro Pellegrini

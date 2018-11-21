@@ -17,7 +17,7 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file atomic.c
+* @file x86.c
 * @brief This module implements atomic and non-blocking operations used within ROOT-Sim
 *        to coordinate threads and processes (on shared memory)
 * @author Alessandro Pellegrini
@@ -42,7 +42,7 @@
 * @param oldVal the old value we expect to find before swapping
 * @param newVal the new value to place in ptr if ptr contains oldVal
 *
-* @ret true if the CAS succeeded, false otherwise
+* @return true if the CAS succeeded, false otherwise
 */
 inline bool CAS(volatile uint64_t *ptr, uint64_t oldVal, uint64_t newVal) {
 	unsigned long res = 0;
@@ -70,7 +70,7 @@ inline bool CAS(volatile uint64_t *ptr, uint64_t oldVal, uint64_t newVal) {
 * @param oldVal the old value we expect to find before swapping
 * @param newVal the new value to place in ptr if ptr contains oldVal
 *
-* @ret true if the CAS succeeded, false otherwise
+* @return true if the CAS succeeded, false otherwise
 */
 inline bool iCAS(volatile uint32_t *ptr, uint32_t oldVal, uint32_t newVal) {
 	unsigned long res = 0;
@@ -96,7 +96,7 @@ inline bool iCAS(volatile uint32_t *ptr, uint32_t oldVal, uint32_t newVal) {
 *
 * @param b the counter there to perform the operation
 *
-* @ret true if the int value has been set, false otherwise
+* @return true if the int value has been set, false otherwise
 */
 inline int atomic_test_and_set(int *b) {
 	int result = 0;
@@ -121,7 +121,7 @@ inline int atomic_test_and_set(int *b) {
 *
 * @param b the counter there to perform the operation
 *
-* @ret true if the int value has been reset, false otherwise
+* @return true if the int value has been reset, false otherwise
 */
 inline int atomic_test_and_reset(int *b) {
 	int result = 0;

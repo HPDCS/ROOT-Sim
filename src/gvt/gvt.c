@@ -17,7 +17,7 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file gvt.c
+* @file gvt/gvt.c
 * @brief This module implements the GVT reduction. The current implementation
 * 	 is non blocking for observable simulation plaftorms.
 * @author Alessandro Pellegrini
