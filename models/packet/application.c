@@ -43,12 +43,7 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, event_t *c
 
 
 bool OnGVT(unsigned int me, lp_state_t *snapshot) {
-
-	if(me == 0) {
-		printf("Completed work: %f\%\n", (double)snapshot->packet_count/PACKETS*100);
-	}
-
-	if (snapshot->packet_count < PACKETS)
-		return false;
-	return true;
+	if (snapshot->packet_count >= PACKETS)
+		return true;
+	return false;
 }

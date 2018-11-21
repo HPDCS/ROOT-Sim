@@ -16,7 +16,7 @@
 * this file; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file timestretch.h
+* @file schedule.h
 * @brief This is the header file to configure the timestretch module
 * @author Francesco Quaglia
 * @author Alessandro Pellegrini

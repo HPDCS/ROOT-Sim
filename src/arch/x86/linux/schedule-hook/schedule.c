@@ -15,7 +15,7 @@
 * this file; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file  schedule-hook.c
+* @file  schedule.c
 * @brief This is the main source for the Linux Kernel Module which implements
 *	 a schedule-hook module allowing running a custom function each time a thread is cpu rescheduled
 * @author Francesco Quaglia

@@ -17,7 +17,7 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file instruction.h
+* @file disassemble.h
 * @brief Header to represent a disassembled x86 instruction and keep track of the
 *        disassembly state.
 * @author Alessandro Pellegrini

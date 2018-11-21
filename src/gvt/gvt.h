@@ -17,7 +17,7 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file gvt.h
+* @file gvt/gvt.h
 * @brief This header defines all the Global Virtual Time symbols needed by the platform.
 * 	 The current implementation is GVT for non-observable systems based on bottom halves
 * @author Alessandro Pellegrini
