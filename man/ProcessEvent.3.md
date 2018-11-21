@@ -1,23 +1,10 @@
-.\" The ROme OpTimistic Simulator (ROOT-Sim) Manual
-.\" written by the High Performance and Dependable Computing Systems
-.\" Sapienza, University of Rome
-.\" http://www.dis.uniroma1.it/~hpdcs
-.\"
-.\" Nov 15 2018, Alessandro Pellegrini
-.\" 	Revised manpages
-.\" May 09 2011, Alessandro Pellegrini
-.\" 	First version of the manpages
-
-.TH ProcessEvent 3 2018-11-15 "The ROme OpTimistic Simulator"
-
-.SH NAME
 ProcessEvent - Schedules the execution of a simulation event at a certain logical process.
+==========================================================================================
 
-.SH SYNOPSIS
-.B #include <ROOT-Sim.h>
+## SYNOPSIS
+ #include <ROOT-Sim.h>
 
-
-.B void ProcessEvent(unsigned int \fIme\fP, simtime_t \fInow\fP, int \fIevent_type\fP, void *\fIcontent\fP, unsigned int \fIsize\fP, void *\fIstate\fP);
+ void ProcessEvent(unsigned int _me_, simtime_t \fInow\fP, int \fIevent_type\fP, void *\fIcontent\fP, unsigned int \fIsize\fP, void *\fIstate\fP);
 
 .SH DESCRIPTION
 
