@@ -193,7 +193,7 @@ void dirty_mem(void *base, int size) {
 * @author Alessandro Pellegrini
 * @author Roberto Vitali
 *
-* @param log The pointer to the log, or to the state
+* @param logged_state The pointer to the log, or to the state
 * @return The whole size of the state (metadata included)
 *
 */

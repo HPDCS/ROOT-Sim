@@ -47,7 +47,7 @@ typedef struct _state_t {
 
 	/// Simulation time associated with the state log
 	simtime_t	lvt;
-	/// This is a pointer used to keep track of changes to simulation states via <SetState>()
+	/// This is a pointer used to keep track of changes to simulation states via SetState()
 	void		*base_pointer;
 	/// A pointer to the actual log
 	void		*log;

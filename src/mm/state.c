@@ -138,8 +138,8 @@ void RestoreState(LID_t lid, state_t *restore_state) {
 *
 * @param lid The id of the Light Process
 * @param state_buffer The simulation state to be passed to the LP
-* @param pointer The pointer to the element of the input event queue from which start the re-execution
-* @param final_time The time where align the re-execution
+* @param evt A pointer to the event from which start the re-execution
+* @param final_evt A pointer to the first event which should not be reprocessed in silent execution
 *
 * @return The number of events re-processed during the silent execution
 */
@@ -331,13 +331,12 @@ void set_checkpoint_period(LID_t lid, int period) {
 
 /**
 * This function tells the logging subsystem to take a LP state log
-* upon the next invocation to <LogState>(), independently of the current
+* upon the next invocation to LogState(), independently of the current
 * checkpointing period
 *
 * @author Alessandro Pellegrini
 *
 * @param lid The Logical Process Id
-* @param period The new checkpoint period
 */
 void force_LP_checkpoint(LID_t lid) {
 	LPS(lid)->state_log_forced = true;

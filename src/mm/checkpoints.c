@@ -64,7 +64,7 @@
 * @author Alessandro Pellegrini
 * @author Roberto Vitali
 *
-* @param lid The logical process' local identifier
+* @param the_lid The logical process' local identifier
 * @return A pointer to a malloc()'d memory area which contains the full log of the current simulation state,
 *         along with the relative meta-data which can be used to perform a restore operation.
 *
@@ -181,11 +181,11 @@ void *log_full(LID_t the_lid) {
 * platform. Note that this function only returns a pointer to a malloc'd area which contains the
 * state buffers. This means that this memory area cannot be used as-is, but should be wrapped
 * into a state_t structure, which gives information about the simulation state pointer (defined
-* via <SetState>() by the application-level code and the lvt associated with the log.
-* This is done implicitly by the <LogState>() function, which in turn connects the newly taken
+* via SetState() by the application-level code and the lvt associated with the log.
+* This is done implicitly by the LogState() function, which in turn connects the newly taken
 * snapshot with the currencly-scheduled LP.
 * Therefore, any point of the simulator which wants to take a (real) log, shouldn't call directly this
-* function, rather <LogState>() should be used, after having correctly set current_lp and current_lvt.
+* function, rather LogState() should be used, after having correctly set current_lp and current_lvt.
 *
 * @author Alessandro Pellegrini
 *
@@ -220,8 +220,8 @@ void *log_state(LID_t lid) {
 * @author Roberto Vitali
 * @author Alessandro Pellegrini
 *
-* @param lid The logical process' local identifier
-* @param queue_node a pointer to the simulation state which must be restored in the logical process
+* @param the_lid The logical process' local identifier
+* @param ckpt a pointer to the simulation state which must be restored in the logical process
 */
 void restore_full(LID_t the_lid, void *ckpt) {
 
@@ -364,7 +364,8 @@ void restore_full(LID_t the_lid, void *ckpt) {
 * @author Roberto Vitali
 *
 * @param lid The logical process' local identifier
-* @param queue_node a pointer to the simulation state which must be restored in the logical process
+* @param state_queue_node a pointer to a node in the state queue keeping the state
+*        which must be restored in the logical process live image
 */
 void log_restore(LID_t lid, state_t *state_queue_node) {
 	statistics_post_data(lid, STAT_RECOVERY, 1.0);
@@ -380,7 +381,7 @@ void log_restore(LID_t lid, state_t *state_queue_node) {
 * @author Alessandro Pellegrini
 * @author Roberto Vitali
 *
-* @param queue_node a pointer to the simulation state which must be restored in the logical process
+* @param ckpt a pointer to the simulation state which must be deleted
 *
 */
 void log_delete(void *ckpt){

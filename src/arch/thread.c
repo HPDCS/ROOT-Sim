@@ -98,6 +98,7 @@ static void *__helper_create_thread(void *arg) {
 *
 * @author Alessandro Pellegrini
 *
+* @param n The number of threads which should be created
 * @param start_routine The new threads' entry point
 * @param arg A pointer to an array of arguments to be passed to the new threads' entry point
 *

@@ -81,13 +81,26 @@ void ccgs_reduce_termination(void) {
 /**
 * This function rebuilds a simulation state aligned to the new GVT for every LP.
 * In this way, each LP is asked (via the OnGVT() callback) to check whether the
-* simulation can
+* simulation can terminate.
+* Two different execution modes are available for this function, depending on
+* the CCGS level in rootsim_config: committed and consistent.
+* The committed version passes to the simulation model for validation the first
+* simulation state that is found committed before the GVT commitment horizon.
+* Nevertheless, two states passed to two different LPs can be associated with
+* different timestamps.
+* Running this function in consistent state, realignes the state of all LPs
+* to the same simulation time, namely the GVT. This allows all LPs to agree
+* on a consistent simulation time for termination detection. This induces, of course,
+* an additional overhead, because the runtime environment has to reprocess in
+* silent execution multiple events.
 *
 * @author Francesco Quaglia
 * @author Alessandro Pellegrini
 *
 * @param time_barrier_pointer An array containing the time barrier states of the LPs
 * 		as computed by the GVT subsystem
+* @param gvt The Global Virtual Time value at which simulation states should be realigned
+*               to generate a snapshot inspection which is also consistent
 */
 void ccgs_compute_snapshot(state_t *time_barrier_pointer[], simtime_t gvt) {
 

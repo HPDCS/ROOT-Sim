@@ -17,7 +17,7 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file base.c
+* @file core.c
 * @brief This module implements core functionalities for ROOT-Sim and declares
 *        core global variables for the simulator
 * @author Francesco Quaglia

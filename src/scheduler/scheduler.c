@@ -201,11 +201,7 @@ static void LP_main_loop(void *args) {
 
 /**
  * This function initializes a LP execution context. It allocates page-aligned memory for efficiency
- * reasons, and then calls <context_create>() which does the final trick.
- * <context_create>() uses global variables: LPs must therefore be intialized before creating new kernel threads
- * for supporting concurrent execution of LPs.
- *
- * @author Alessandro Pellegrini
+ * reasons, and then calls context_create() which does the final trick.
  *
  * @date November 8, 2013
  *

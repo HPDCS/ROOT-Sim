@@ -229,8 +229,7 @@ void ParallelScheduleNewEvent(unsigned int gid_receiver, simtime_t timestamp, un
 * @author Francesco Quaglia
 *
 * @param lid The Logical Process Id
-*
-* @todo One shot scan of the list
+* @param after_simtime The simulation time instant after which to send antimessages
 */
 void send_antimessages(LID_t lid, simtime_t after_simtime) {
 	msg_hdr_t *anti_msg, *anti_msg_prev;

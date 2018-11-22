@@ -228,8 +228,6 @@ double Gamma(int ia) {
 /**
 * This function returns the waiting time to the next event in a Poisson process of unit mean.
 *
-* @author Alessandro Pellegrini
-* @param ia Integer Order of the Gamma Distribution
 * @return A random number
 * @date 11 Jan 2012
 */
