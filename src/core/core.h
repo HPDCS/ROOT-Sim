@@ -56,7 +56,7 @@ enum{
 #define N_KER_MAX	128
 
 /// Maximum number of LPs the simulator will handle
-#define MAX_LPs		16384		// This is 2^14
+#define MAX_LPs		65536
 
 // XXX: this should be moved somewhere else...
 enum{

@@ -143,6 +143,9 @@ void gvt_init(void) {
 	}
 
 	timer_start(gvt_timer);
+
+	// Initialize the CCGS subsystem
+	ccgs_init();
 }
 
 
@@ -153,7 +156,11 @@ void gvt_init(void) {
 *
 * @author Alessandro Pellegrini
 */
-void gvt_fini(void){
+void gvt_fini(void)
+{
+	// Finalize the CCGS subsystem
+	ccgs_fini();
+
 #ifdef HAVE_MPI
 	if((kernel_phase == kphase_idle && !master_thread() && gvt_init_pending()) ||
 		kernel_phase == kphase_start){

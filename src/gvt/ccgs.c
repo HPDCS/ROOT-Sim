@@ -42,7 +42,7 @@
 static bool ccgs_completed_simulation = false;
 
 /// In case termination detection is incremental, this array keeps track of LPs that think the simulation can be halted already
-static bool lps_termination[MAX_LPs];
+static bool *lps_termination;
 
 
 
@@ -177,3 +177,14 @@ void ccgs_compute_snapshot(state_t *time_barrier_pointer[], simtime_t gvt) {
 
 }
 
+
+void ccgs_init(void)
+{
+	lps_termination = rsalloc(sizeof(bool) * n_prc);
+}
+
+
+void ccgs_fini(void)
+{
+	rsfree(lps_termination);
+}

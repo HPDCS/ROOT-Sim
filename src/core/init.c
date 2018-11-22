@@ -234,7 +234,7 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state){
 			break;
 
 		case OPT_NPRC:
-			n_prc_tot = parse_ullong_limits(1, MAX_LPs);
+			n_prc_tot = parse_ullong_limits(1, UINT_MAX);
 			break;
 
 		case OPT_OUTPUT_DIR:
