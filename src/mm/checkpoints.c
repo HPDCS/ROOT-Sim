@@ -98,10 +98,6 @@ void *log_full(LID_t the_lid) {
 	ptr = (void *)((char *)ptr + sizeof(malloc_state));
 	((malloc_state*)ckpt)->timestamp = current_lvt;
 
-	// Copy the per-LP Seed State (to make the numerical library rollbackable and PWD)
-	memcpy(ptr, &LPS(the_lid)->seed, sizeof(seed_type));
-	ptr = (void *)((char *)ptr + sizeof(seed_type));
-
 	for(i = 0; i < recoverable_state[lid]->num_areas; i++){
 
 		m_area = &recoverable_state[lid]->areas[i];
@@ -242,10 +238,6 @@ void restore_full(LID_t the_lid, void *ckpt) {
 	// Restore malloc_state
 	memcpy(recoverable_state[lid], ptr, sizeof(malloc_state));
 	ptr = (void*)((char*)ptr + sizeof(malloc_state));
-
-	// Restore the per-LP Seed State (to make the numerical library rollbackable and PWD)
-	memcpy(&LPS(the_lid)->seed, ptr, sizeof(seed_type));
-	ptr = (void *)((char *)ptr + sizeof(seed_type));
 
 	recoverable_state[lid]->areas = new_area;
 

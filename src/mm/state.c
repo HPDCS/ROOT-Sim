@@ -100,14 +100,19 @@ skip_switch:
 		// Allocate the state buffer
 		new_state = rsalloc(sizeof(*new_state));
 
-		// Take a log and set the associated LVT
-		new_state->log = log_state(lid);
+		// Associate the checkpoint with current LVT and last-executed event
 		new_state->lvt = lvt(lid);
 		new_state->last_event = LPS(lid)->bound;
-		new_state->state = LPS(lid)->state;
 
-		// We take as the buffer state the last one associated with a SetState() call, if any
+		// Log simulation model buffers
+		new_state->log = log_state(lid);
+
+		// Log members of LP_State which must be restored
+		new_state->state = LPS(lid)->state;
 		new_state->base_pointer = LPS(lid)->current_base_pointer;
+
+		// Log library-related states
+		memcpy(&new_state->numerical, &LPS(lid)->numerical, sizeof(numerical_state_t));
 
 		// Link the new checkpoint to the state chain
 		list_insert_tail(LPS(lid)->queue_states, new_state);
@@ -119,9 +124,17 @@ skip_switch:
 
 
 void RestoreState(LID_t lid, state_t *restore_state) {
+	// Restore simulation model buffers
 	log_restore(lid, restore_state);
+
+	// Restore members of LP_State which have been checkpointed
 	LPS(lid)->current_base_pointer = restore_state->base_pointer;
 	LPS(lid)->state = restore_state->state;
+
+	// Restore library-related states
+	memcpy(&LPS(lid)->numerical, &restore_state->numerical, sizeof(numerical_state_t));
+
+	
 #ifdef HAVE_CROSS_STATE
 	LPS(lid)->ECS_index = 0;
 	LPS(lid)->wait_on_rendezvous = 0;

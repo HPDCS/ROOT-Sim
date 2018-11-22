@@ -40,8 +40,29 @@
 #include <scheduler/scheduler.h>
 #include <statistics/statistics.h> // To have _mkdir helper function
 
-
+/**
+ * Master seed to initialize local seeds of all LPs. This is
+ * taken from the configuration file in ~/.rootsim if available,
+ * or from /dev/urand the first time a ROOT-Sim model is run.
+ */ 
 static seed_type master_seed;
+
+/**
+ * A call to Normal() generates two deviates each time. We use the
+ * following flag to keep track of the availability of an additional
+ * sample generated in a previous call, when running sequentially.
+ */
+static bool sequential_iset;
+
+/**
+ * A call to Normal() generates two deviates each time. This variable
+ * keeps an additional sample generated in a previous call,
+ * when running sequentially.
+ */
+static double sequential_gset;
+
+
+
 
 
 static double do_random(void) {
@@ -53,8 +74,8 @@ static double do_random(void) {
 		seed1 = (uint32_t *)&master_seed;
 		seed2 = (uint32_t *)((char *)&master_seed + (sizeof(uint32_t)));
 	} else {
-		seed1 = (uint32_t *)&(LPS(current_lp)->seed);
-		seed2 = (uint32_t *)((char *)&(LPS(current_lp)->seed) + (sizeof(uint32_t)));
+		seed1 = (uint32_t *)&(LPS(current_lp)->numerical.seed);
+		seed2 = (uint32_t *)((char *)&(LPS(current_lp)->numerical.seed) + (sizeof(uint32_t)));
 	}
 
 	*seed1 = 36969u * (*seed1 & 0xFFFFu) + (*seed1 >> 16u);
@@ -138,8 +159,6 @@ double Expent(double mean) {
 
 
 
-
-
 /**
 * This function returns a number according to a Normal Distribution with mean 0
 *
@@ -148,12 +167,19 @@ double Expent(double mean) {
 * @date 4/20/2011
 */
 double Normal(void) {
-	// TODO: usare queste variabili statiche non garantisce necessariamente l'esecuzione PWD se c'è interleaving tra gli LP che chiamano Normal()
-	static bool iset = false;
-	static double gset;
 	double fac, rsq, v1, v2;
+	bool *iset;
+	double *gset;
 
-	if(iset == false) {
+	if(unlikely(rootsim_config.serial)) {
+		iset = &sequential_iset;
+		gset = &sequential_gset;
+	} else {
+		iset = &(LPS(current_lp)->numerical.iset);
+		gset = &(LPS(current_lp)->numerical.gset);
+	}
+
+	if(*iset == false) {
 		do {
 			v1 = 2.0 * Random() - 1.0;
 			v2 = 2.0 * Random() - 1.0;
@@ -164,13 +190,13 @@ double Normal(void) {
 
 		// Perform Box-Muller transformation to get two normal deviates. Return one
 		// and save the other for next time.
-		gset = v1 * fac;
-		iset = true;
+		*gset = v1 * fac;
+		*iset = true;
 		return v2 * fac;
 	} else {
 		// A deviate is already available
-		iset = false;
-		return gset;
+		*iset = false;
+		return *gset;
 	}
 }
 
@@ -433,7 +459,7 @@ void numerical_init(void) {
 
 	// Initialize the per-LP seed
 	for(lid.id = 0; lid.id < n_prc; lid.id++) {
-		LPS(lid)->seed = sanitize_seed(ROR((int64_t)master_seed, LidToGid(lid).id % RS_WORD_LENGTH));
+		LPS(lid)->numerical.seed = sanitize_seed(ROR((int64_t)master_seed, LidToGid(lid).id % RS_WORD_LENGTH));
 	}
 
 }

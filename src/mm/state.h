@@ -31,6 +31,7 @@
 
 #include <ROOT-Sim.h>
 #include <core/core.h>
+#include <lib/numerical.h>
 
 enum{
 	STATE_SAVING_INVALID = 0,	/**< By convention 0 is the invalid field */
@@ -47,14 +48,21 @@ typedef struct _state_t {
 
 	/// Simulation time associated with the state log
 	simtime_t	lvt;
-	/// This is a pointer used to keep track of changes to simulation states via SetState()
-	void		*base_pointer;
 	/// A pointer to the actual log
 	void		*log;
 	/// This log has been taken after the execution of this event
 	msg_t		*last_event;
+
+	/* Per-LP fields which should be transparently rolled back */
+
 	/// Execution state
 	short unsigned int state;
+	/// This is a pointer used to keep track of changes to simulation states via SetState()
+	void		*base_pointer;
+
+	/* Library state fields */
+	numerical_state_t numerical;
+	
 } state_t;
 
 

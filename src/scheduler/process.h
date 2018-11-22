@@ -76,9 +76,6 @@ typedef struct _LP_state {
 	/// Logical Process lock, used to serialize accesses to concurrent data structures
 	spinlock_t		lock; // TODO: is this still used anywhere?
 
-	/// Seed to generate pseudo-random values
-	seed_type		seed;
-
 	/// ID of the worker thread towards which the LP is bound
 	unsigned int		worker_thread;
 
@@ -128,6 +125,9 @@ typedef struct _LP_state {
 
 	unsigned long long	wait_on_rendezvous;
 	unsigned int		wait_on_object;
+
+	/* Per-Library variables */
+	numerical_state_t	numerical;
 
 } LP_State;
 
