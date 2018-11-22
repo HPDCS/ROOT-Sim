@@ -47,55 +47,6 @@
 /// This is the message code which is sent by the simulation kernel upon startup
 #define INIT	0
 
-
-/// This macro can be used to convert command line parameters to integers
-#define parseInt(s) ({\
-			int __value;\
-			char *__endptr;\
-			__value = (int)strtol(s, &__endptr, 10);\
-			if(!(*s != '\0' && *__endptr == '\0')) {\
-				fprintf(stderr, "%s:%d: Invalid conversion value: %s\n", __FILE__, __LINE__, s);\
-			}\
-			__value;\
-		     })
-
-
-/// This macro can be used to convert command line parameters to doubles
-#define parseDouble(s) ({\
-			double __value;\
-			char *__endptr;\
-			__value = strtod(s, &__endptr);\
-			if(!(*s != '\0' && *__endptr == '\0')) {\
-				fprintf(stderr, "%s:%d: Invalid conversion value: %s\n", __FILE__, __LINE__, s);\
-			}\
-			__value;\
-		       })
-
-
-/// This macro can be used to convert command line parameters to floats
-#define parseFloat(s) ({\
-			float __value;\
-			char *__endptr;\
-			__value = strtof(s, &__endptr);\
-			if(!(*s != '\0' && *__endptr == '\0')) {\
-				fprintf(stderr, "%s:%d: Invalid conversion value: %s\n", __FILE__, __LINE__, s);\
-			}\
-			__value;\
-		       })
-
-
-/// This macro can be used to convert command line parameters to booleans
-#define parseBoolean(s) ({\
-			bool __value;\
-			if(strcmp((s), "true") == 0) {\
-				__value = true;\
-			} else {\
-				__value = false;\
-			}\
-			__value;\
-		       })
-
-
 /// This defines the type with whom timestamps are represented
 typedef double simtime_t;
 
