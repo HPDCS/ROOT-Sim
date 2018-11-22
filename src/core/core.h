@@ -36,6 +36,7 @@
 #include <float.h>
 #include <math.h>
 #include <stdint.h>
+#include <setjmp.h>
 
 #include <lib/numerical.h>
 #include <arch/thread.h>
@@ -66,7 +67,7 @@ enum{
 	VERBOSE_NO				/**< xxx documentation */
 };
 
-
+extern jmp_buf exit_jmp;
 
 /// Optimize the branch as likely taken
 #define likely(exp) __builtin_expect(exp, 1)

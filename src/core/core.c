@@ -331,7 +331,7 @@ void rootsim_error(bool fatal, const char *msg, ...) {
 
 	if(fatal) {
 		if(rootsim_config.serial) {
-			abort();
+			exit(EXIT_FAILURE);
 		} else {
 
 			if(!init_complete) {
@@ -340,6 +340,7 @@ void rootsim_error(bool fatal, const char *msg, ...) {
 
 			// Notify all KLT to shut down the simulation
 			sim_error = true;
+			longjmp(exit_jmp, 1);
 		}
 	}
 }

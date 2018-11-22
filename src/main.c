@@ -30,6 +30,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <string.h>
+#include <setjmp.h>
 
 #include <core/core.h>
 #include <arch/thread.h>
@@ -52,6 +53,15 @@
 #define _INIT_FROM_MAIN
 #include <core/init.h>
 #undef _INIT_FROM_MAIN
+
+/**
+ * This jump buffer allows rootsim_error, in case of a failure, to jump
+ * out of any point in the code to the final part of the loop in which
+ * all threads synchronize. This avoids side effects like, e.g., accessing
+ * a NULL pointer.
+ */
+
+jmp_buf exit_jmp;
 
 
 /**
@@ -94,6 +104,7 @@ extern atomic_t would_preempt;
 * @author Francesco Quaglia
 * @author Alessandro Pellegrini
 */
+
 static void *main_simulation_loop(void *arg) __attribute__ ((noreturn));
 static void *main_simulation_loop(void *arg) {
 
@@ -120,7 +131,13 @@ static void *main_simulation_loop(void *arg) {
 		       "****************************\n");
 	}
 
-		while (!end_computing()) {
+	if(setjmp(exit_jmp) != 0) {
+		goto leave_for_error;
+	}
+
+	int counter;
+
+	while (!end_computing()) {
 		// Recompute the LPs-thread binding
 		rebind_LPs();
 
@@ -156,6 +173,9 @@ static void *main_simulation_loop(void *arg) {
 		collect_termination();
 		#endif
 	}
+
+    leave_for_error:
+	thread_barrier(&all_thread_barrier);
 
 	// If we're exiting due to an error, we neatly shut down the simulation
 	if(simulation_error()) {
