@@ -69,14 +69,14 @@ typedef struct rootsim_list {
 /**
  * This macro retrieves a pointer to the payload of the head node of a list.
  *
- * @param list a pointer to a list created using the <new_list>() macro.
+ * @param list a pointer to a list created using the new_list() macro.
  */
 #define list_head(list) ((__typeof__ (list))(((rootsim_list *)(list))->head))
 
 /**
  * This macro retrieves a pointer to the payload of the tail node of a list.
  *
- * @param list a pointer to a list created using the <new_list>() macro.
+ * @param list a pointer to a list created using the new_list() macro.
  */
 #define list_tail(list) ((__typeof__ (list))(((rootsim_list *)(list))->tail))
 
@@ -84,7 +84,7 @@ typedef struct rootsim_list {
 /**
  * Given a pointer to a list node's payload, this macro retrieves the next node's payload, if any.
  *
- * @param list a pointer to a list created using the <new_list>() macro.
+ * @param ptr a pointer to a list created using the new_list() macro.
  */
 #define list_next(ptr) ((ptr)->next)
 
@@ -92,7 +92,7 @@ typedef struct rootsim_list {
 /**
  * Given a pointer to a list node's payload, this macro retrieves the prev node's payload, if any.
  *
- * @param list a pointer to a list created using the <new_list>() macro.
+ * @param ptr a pointer to a list created using the new_list() macro.
  */
 #define list_prev(ptr) ((ptr)->prev)
 
@@ -103,6 +103,12 @@ typedef struct rootsim_list {
 			*__key_double_ptr;\
 		      })
 
+/**
+ * Given a pointer to a list, this macro evaluates to a boolean telling whether
+ * the list is empty or not.
+ *
+ * @param list a pointer to a list created using the new_list() macro.
+ */
 #define list_empty(list) (((rootsim_list *)list)->size == 0)
 
 

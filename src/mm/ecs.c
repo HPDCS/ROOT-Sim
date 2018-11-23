@@ -17,7 +17,7 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file lp-alloc.c
+* @file ecs.c
 * @brief LP's memory pre-allocator. This layer stands below DyMeLoR, and is the
 * 		connection point to the Linux Kernel Module for Memory Management, when
 * 		activated.

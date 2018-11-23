@@ -159,7 +159,7 @@ static const struct argp_option argp_options[] = {
 	{"inc",			OPT_INC,	0,			0, "Take only incremental logs (still to be released)", 0},
 	{"A",		  	OPT_A,		0,			0, "Autonomic subsystem: set checkpointing interval and log mode automatically at runtime (still to be released)", 0},
 	{"gvt",			OPT_GVT,	"VALUE",	0, "Time between two GVT reductions (in milliseconds)", 0},
-	{"cktrm-mode", 	OPT_CKTRM_MODE, "TYPE",	0, "Termination Detection mode. Supported values: standard, incremental", 0},
+	{"cktrm-mode", 	OPT_CKTRM_MODE, "TYPE",	0, "Termination Detection mode. Supported values: normal, incremental", 0},
 	{"blocking-gvt", 		OPT_BLOCKING_GVT, 		0,		0, 	"Blocking GVT. All distributed nodes block until a consensus is agreed", 0},
 	{"gvt-snapshot-cycles",	OPT_GVT_SNAPSHOT_CYCLES, "VALUE", 0, "Termination detection is invoked after this number of GVT reductions", 0},
 	{"simulation-time", 	OPT_SIMULATION_TIME, 	"VALUE", 0,	"Halt the simulation when all LPs reach this logical time. 0 means infinite", 0},
@@ -278,7 +278,7 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state){
 			break;
 
 		case OPT_GVT:
-			rootsim_config.gvt_time_period = parse_ullong_limits(1, INT_MAX);
+			rootsim_config.gvt_time_period = parse_ullong_limits(1, 10000);
 			break;
 
 		case OPT_BLOCKING_GVT:

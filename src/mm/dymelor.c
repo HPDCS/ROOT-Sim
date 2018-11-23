@@ -74,7 +74,7 @@ void dymelor_fini(void){
 * @param size The chunks' size of the malloc_area
 * @param num_chunks The number of chunk of the new malloc_area
 */
-static void malloc_area_init(bool recoverable, malloc_area *m_area, size_t size, int num_chunks){
+static void malloc_area_init(bool recoverable, malloc_area *m_area, size_t size, int num_chunks) {
 
 	m_area->is_recoverable = recoverable;
 	m_area->chunk_size = size;

@@ -27,11 +27,21 @@
 */
 
 #pragma once
-#ifndef __NUMERICAL_H
-#define __NUMERICAL_H
+
+#include <stdbool.h>
 
 /// Numerical seed type
 typedef uint64_t seed_type;
+
+/**
+ * This structure keeps track of the per-LP members required to rollback
+ * the internal state of the simulation library.
+ */
+typedef struct _numerical_state {
+	seed_type	seed; /**< Random seed */
+	double		gset; /**< Normal distribution saved sample */
+	bool		iset; /**< Normal distribution saved sample flag */
+} numerical_state_t;
 
 void numerical_init(void);
 
@@ -55,6 +65,4 @@ struct _sum_helper_t 	PartialNeumaierSum(struct _sum_helper_t sh, double addendu
 	double __b_s = b.sum + b.crt;\
 	(__a_s > __b_s) - (__b_s > __a_s);\
 })
-
-#endif /* #ifndef __NUMERICAL_H */
 

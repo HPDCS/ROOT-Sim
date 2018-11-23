@@ -36,6 +36,7 @@
 #include <float.h>
 #include <math.h>
 #include <stdint.h>
+#include <setjmp.h>
 
 #include <lib/numerical.h>
 #include <arch/thread.h>
@@ -54,7 +55,7 @@ enum{
 #define N_KER_MAX	128
 
 /// Maximum number of LPs the simulator will handle
-#define MAX_LPs		16384		// This is 2^14
+#define MAX_LPs		65536
 
 // XXX: this should be moved somewhere else...
 enum{
@@ -64,7 +65,7 @@ enum{
 	VERBOSE_NO		/**< xxx documentation */
 };
 
-
+extern jmp_buf exit_jmp;
 
 /// Optimize the branch as likely taken
 #define likely(exp) __builtin_expect(exp, 1)

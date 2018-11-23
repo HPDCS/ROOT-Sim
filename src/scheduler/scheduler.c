@@ -134,8 +134,8 @@ void scheduler_fini(void) {
 
 /**
 * This is a LP main loop. It s the embodiment of the usrespace thread implementing the logic of the LP.
-* Whenever an event is to be scheduled, the corresponding metadata are set by the <schedule>() function,
-* which in turns calls <activate_LP>() to execute the actual context switch.
+* Whenever an event is to be scheduled, the corresponding metadata are set by the schedule() function,
+* which in turns calls activate_LP() to execute the actual context switch.
 * This ProcessEvent wrapper explicitly returns control to simulation kernel user thread when an event
 * processing is finished. In case the LP tries to access state data which is not belonging to its
 * simulation state, a SIGSEGV signal is raised and the LP might be descheduled if it is not safe
@@ -206,11 +206,7 @@ static void LP_main_loop(void *args) {
 
 /**
  * This function initializes a LP execution context. It allocates page-aligned memory for efficiency
- * reasons, and then calls <context_create>() which does the final trick.
- * <context_create>() uses global variables: LPs must therefore be intialized before creating new kernel threads
- * for supporting concurrent execution of LPs.
- *
- * @author Alessandro Pellegrini
+ * reasons, and then calls context_create() which does the final trick.
  *
  * @date November 8, 2013
  *

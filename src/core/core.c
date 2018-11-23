@@ -17,7 +17,7 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file base.c
+* @file core.c
 * @brief This module implements core functionalities for ROOT-Sim and declares
 *        core global variables for the simulator
 * @author Francesco Quaglia
@@ -331,7 +331,7 @@ void rootsim_error(bool fatal, const char *msg, ...) {
 
 	if(fatal) {
 		if(rootsim_config.serial) {
-			abort();
+			exit(EXIT_FAILURE);
 		} else {
 
 			if(!init_complete) {
@@ -340,6 +340,7 @@ void rootsim_error(bool fatal, const char *msg, ...) {
 
 			// Notify all KLT to shut down the simulation
 			sim_error = true;
+			longjmp(exit_jmp, 1);
 		}
 	}
 }

@@ -1,6 +1,6 @@
 language: c
 compiler: gcc
-sudo: false
+dist: xenial
 
 git:
   depth: 1
@@ -32,30 +32,23 @@ before_install:
   - export MPICH_CC=gcc-8
 
 before_script:
+  - mpiexec --version
   - mpicc --version
   - $CC --version
+  - gcov-8 --version
   - m4 --version
   - automake --version
   - autoconf --version
 
 script:
-  - ./autogen.sh
-  - ./configure --enable-mpi --enable-coverage --prefix=$HOME
-  - make
-  - make install
-  - export PATH=$PATH:$HOME
-  - ./tests.sh
-  - # Build the docs
-  - cd docs
-  - make
-  - cd ..
-  - git clone --depth=1 -b gh-pages --single-branch https://github.com/HPDCS/ROOT-Sim.git
-  - mkdir -p ROOT-Sim/docs/
-  - mv docs/html ROOT-Sim/docs/$TRAVIS_BRANCH
-  - cp README.md ROOT-Sim
+  - ./scripts/travis-build.sh
+  - ./scripts/tests.sh
+  - ./scripts/travis-docs.sh
 
 after_success:
-  - bash <(curl -s https://codecov.io/bash)
+  - curl -s https://codecov.io/bash > .codecov
+  - chmod +x .codecov
+  - ./.codecov -x gcov-8
 
 # Documentation autodeploy script
 deploy:

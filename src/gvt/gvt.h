@@ -17,7 +17,7 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file gvt.h
+* @file gvt/gvt.h
 * @brief This header defines all the Global Virtual Time symbols needed by the platform.
 * 	 The current implementation is GVT for non-observable systems based on bottom halves
 * @author Alessandro Pellegrini
@@ -28,9 +28,6 @@
 
 
 #pragma once
-#ifndef GVT_H
-#define GVT_H
-
 
 #include <ROOT-Sim.h>
 #include <mm/state.h>
@@ -44,4 +41,6 @@ inline extern simtime_t get_last_gvt(void);
 /* API from fossil.c */
 extern void adopt_new_gvt(simtime_t);
 
-#endif
+/* API from ccgs.c */
+extern void ccgs_init(void);
+extern void ccgs_fini(void);

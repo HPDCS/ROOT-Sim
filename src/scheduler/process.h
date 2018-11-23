@@ -75,9 +75,6 @@ typedef struct _LP_state {
 	/// Local ID of the LP
 	LID_t 			lid;
 
-	/// Seed to generate pseudo-random values
-	seed_type		seed;
-
 	/// ID of the worker thread towards which the LP is bound
 	unsigned int		worker_thread;
 
@@ -127,6 +124,9 @@ typedef struct _LP_state {
 
 	unsigned long long	wait_on_rendezvous;
 	unsigned int		wait_on_object;
+
+	/* Per-Library variables */
+	numerical_state_t	numerical;
 
 	/// pointer to the topology struct
 	topology_t *topology;
