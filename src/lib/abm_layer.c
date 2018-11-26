@@ -155,7 +155,7 @@ void abm_layer_init(void) {
 	}
 
 	// we count valid neighbours (this can be relevant in huge graphs with low average fan-out instantiated with the custom API)
-	actual_neighbours = ActualNeighboursCount();
+	actual_neighbours = NeighboursCount();
 
 	// instantiates region struct
 	region = __wrap_malloc(sizeof(region_abm_t) + (sizeof(struct _n_info_t) * neighbours) + (abm_settings.neighbour_data_size * (actual_neighbours + 1)));
@@ -173,7 +173,7 @@ void abm_layer_init(void) {
 	region->published_data = data;
 	// here we assign a memory region only to valid neighbours
 	for(i = 0; i < neighbours; ++i){
-		if((region->neighbours_info[i].src_lp = GetReceiver(CURRENT_LP_ID, i)) == DIRECTION_INVALID){
+		if((region->neighbours_info[i].src_lp = GetReceiver(CURRENT_LP_ID, i, false)) == DIRECTION_INVALID){
 			region->neighbours_info[i].data = NULL;
 		}else{
 			data += abm_settings.neighbour_data_size;
@@ -358,10 +358,6 @@ void ProcessEventABM(void) {
 	}
 
 	update_neighbours();
-}
-
-unsigned CountNeighbourInfos(void) {
-	return CURRENT_REGION->neighbours_count;
 }
 
 int GetNeighbourInfo(direction_t i, unsigned int *region_id, void **data_p){

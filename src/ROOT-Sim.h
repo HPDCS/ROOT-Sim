@@ -77,43 +77,68 @@ extern void (*SetState)(void *new_state);
 /********TOPOLOGY*LIBRARY*********/
 /*********************************/
 
+/**
+ * This are the supported topology geometries
+ */
 enum _topology_geometry_t {
-	TOPOLOGY_GEOMETRY_OFFSET = 1000,
-	TOPOLOGY_HEXAGON = TOPOLOGY_GEOMETRY_OFFSET,
-	TOPOLOGY_SQUARE,
-	TOPOLOGY_GRAPH,
+	TOPOLOGY_GEOMETRY_OFFSET = 1000,            //!< arbitrary offset used to distinguish during debug different enums
+	TOPOLOGY_HEXAGON = TOPOLOGY_GEOMETRY_OFFSET,//!< hexagonal grid topology
+	TOPOLOGY_SQUARE,                            //!< square grid topology
+	TOPOLOGY_RING,                              //!< a ring shaped topology walkable in a single direction
+	TOPOLOGY_BIDRING,                           //!< a ring shaped topology direction
+	TOPOLOGY_TORUS,                             //!< a torus shaped grid topology (a wrapping around square topology)
 	TOPOLOGY_STAR, // this still needs to be properly implemented FIXME
-	TOPOLOGY_RING,
-	TOPOLOGY_BIDRING,
-	TOPOLOGY_TORUS,
+	TOPOLOGY_GRAPH,                             //!< an arbitrary shaped topology
 };
 
+/**
+ * These are the supported basic directions:
+ * TOPOLOGY_HEXAGON recognizes E, W, NE, SW, NW, SE
+ * TOPOLOGY_SQUARE and TOPOLOGY_TORUS recognize E, W, N, S
+ * TOPOLOGY_RING recognizes E
+ * TOPOLOGY_BIDRING recognizes E, W
+ * TOPOLOGY_STAR xxx to implement
+ * TOPOLOGY_GRAPH directions are actually directly mapped to the LPs IDs
+ * The enum layout is intentional:
+ * do not modify it if you don't know what you're doing!
+ */
 typedef enum _direction_t {
-	DIRECTION_E = 	0,
-	DIRECTION_W = 	1,
+	DIRECTION_E = 	0,	//!< DIRECTION_E
+	DIRECTION_W = 	1,	//!< DIRECTION_W
 
-	DIRECTION_N = 	2,
-	DIRECTION_S = 	3,
+	DIRECTION_N = 	2,	//!< DIRECTION_N
+	DIRECTION_S = 	3,	//!< DIRECTION_S
 
-	DIRECTION_NE = 	2,
-	DIRECTION_SW =  3,
-	DIRECTION_NW = 	4,
-	DIRECTION_SE = 	5,
+	DIRECTION_NE = 	2,	//!< DIRECTION_NE
+	DIRECTION_SW =  3,	//!< DIRECTION_SW
+	DIRECTION_NW = 	4,	//!< DIRECTION_NW
+	DIRECTION_SE = 	5,	//!< DIRECTION_SE
 
-	DIRECTION_INVALID = UINT_MAX
+	DIRECTION_INVALID = UINT_MAX	//!< A generic invalid direction
 } direction_t;
 
 enum _topology_type_t{
-	TOPOLOGY_COSTS, 	/// decisions on next hops are taken based on the costs undertaken to cross the boundaries
-	TOPOLOGY_PROBABILITIES,	/// decisions are taken at random but are weighted on the palatability of neighbours
-	TOPOLOGY_OBSTACLES	/// all crossing costs and probabilities are set to 1, but there can be not crossable regions
+	TOPOLOGY_COSTS, 	//!< decisions on next hops are taken based on the costs undertaken to cross the boundaries
+	TOPOLOGY_PROBABILITIES,	//!< decisions are taken at random but are weighted on the palatability of neighbours
+	TOPOLOGY_OBSTACLES	//!< all crossing costs and probabilities are set to 1, but there can be not crossable regions
 };
 
+/**
+ * Defining this struct in the model source code activates the topology subsystem.
+ */
 __attribute((weak)) extern struct _topology_settings_t{
 	const char * const topology_path;
-	const enum _topology_type_t type;
-	const enum _topology_geometry_t default_geometry;
+	const enum _topology_type_t type;			/// The topology type the model wants to use
+	const enum _topology_geometry_t default_geometry;	/// The default geometry to use when nothing else is specified
+	const unsigned out_of_topology;				/// The minimum number of LPs needed out of the topology
 }topology_settings;
+/**
+ *
+ * @param from
+ * @param to
+ * @return
+ */
+double 		GetValueTopology(unsigned from, unsigned to);
 
 /**
  * Change the weight assigned to the link between region from to region to.
@@ -140,14 +165,14 @@ unsigned int 	FindReceiver	(void);
 unsigned int	RegionsCount	(void);
 
 // returns the maximum count of neighbours this region has, this is made to simplify direction handling (need to explain better xxx)
-unsigned int	NeighboursCount	(void);
+unsigned int	DirectionsCount	(void);
 
 // returns the actual count of neighbours this region has (if this is called from a region on the edge of the topology
 // this count can be less than the one returned by NeighboursCount())
-unsigned int ActualNeighboursCount(void);
+unsigned int 	NeighboursCount	(void);
 
 // Returns DIRECTION_INVALID if a movement is not possible according to the given topology
-unsigned int 	GetReceiver	(unsigned int from, direction_t direction);
+unsigned int 	GetReceiver	(unsigned int from, direction_t direction, bool reachable);
 
 // this returns the next hop to reach region to following a minimum cost path: it's far less costly than to recompute a new path with ComputeMinTour()
 unsigned int FindReceiverToward	(unsigned int to);
@@ -168,8 +193,6 @@ __attribute((weak)) extern struct _abm_settings_t{
 	const bool keep_history;
 } abm_settings;
 
-// XXX redundant with NeighboursCount() ELIMINATE THIS
-unsigned		CountNeighbourInfos	(void);
 int			GetNeighbourInfo	(direction_t i, unsigned int *region_id, void **data_p);
 void			TrackNeighbourInfo	(void *neighbour_data);
 

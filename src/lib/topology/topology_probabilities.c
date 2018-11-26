@@ -25,9 +25,16 @@
 #define CURRENT_LP_ID		(gid_to_int(LidToGid(current_lp)))
 
 typedef struct _topology_t {
+	unsigned neighbours_id[6];
 	bool dirty;
 	double data[]; 			/// the costs, probabilities or obstacles matrix (depending on the topology type)
 } topology_t;
+
+unsigned size_checkpoint_probabilities(void){
+	return 	sizeof(topology_t) + 					// the basic struct size
+		sizeof(double) * (topology_global.neighbours + 1) + 	// the row of exit probabilities weights
+		sizeof(double); 					// the cache of the sum of probabilities weights
+}
 
 void load_topology_file_probabilities(c_jsmntok_t *root_token, const char *json_base){
 	unsigned i;
@@ -65,15 +72,13 @@ void topology_probabilities_init(void){
 	unsigned i;
 	// get number of possible exit regions for this region, we add 1 to take in consideration the self loop
 	const unsigned exit_regions = topology_global.neighbours + 1;
+	const unsigned sender = CURRENT_LP_ID;
 
 	// instantiate the topology struct
-	topology_t *topology = __wrap_malloc(
-			sizeof(topology_t) + // the basic struct size
-			sizeof(double) * exit_regions + // the row of exit probabilities weights
-			sizeof(double)); // the cache of the sum of probabilities weights
+	topology_t *topology = __wrap_malloc(topology_global.chkp_size);
 
 	if(topology_global.weights)
-		memcpy(topology->data, topology_global.weights + CURRENT_LP_ID * exit_regions, sizeof(double) * exit_regions);
+		memcpy(topology->data, topology_global.weights + sender * exit_regions, sizeof(double) * exit_regions);
 	else{
 		// most models assume that you don't select the region you are from
 		topology->data[0] = 0.0;
@@ -81,6 +86,13 @@ void topology_probabilities_init(void){
 			topology->data[i] = 1.0;
 		}
 	}
+
+	if(topology_global.geometry != TOPOLOGY_GRAPH){
+		i = topology_global.neighbours;
+		while(i--)
+			topology->neighbours_id[i] = get_raw_receiver(sender, i);
+	}
+
 	topology->dirty = true;
 	CURRENT_TOPOLOGY = topology;
 }
@@ -111,6 +123,18 @@ void set_value_topology_probabilities(unsigned from, unsigned to, double value) 
 	}
 }
 
+bool is_reachable_probabilities(unsigned to){
+	topology_t *topology = CURRENT_TOPOLOGY;
+	unsigned i = topology_global.neighbours;
+	while(i--)
+		if(topology->neighbours_id[i] == to){
+			if(topology->data[i] > 0)
+				return true;
+			break;
+		}
+	return false;
+}
+
 void update_topology_probabilities(void){
 	topology_t *topology = CURRENT_TOPOLOGY;
 	struct update_topology_t *upd_p = (struct update_topology_t *)current_evt->event_content;
@@ -139,10 +163,8 @@ double get_value_topology_probabilities(unsigned from, unsigned to) {
 		do{\
 			direction = exit_regions * Random();\
 		}while(Random() * sum >= topology->data[direction]);\
-		if(!direction) {\
-			receiver = sender;\
-			goto out;\
-		}\
+		if(!direction) \
+			return sender; \
 		direction--;
 
 unsigned int find_receiver_probabilities(void) {
@@ -157,6 +179,8 @@ unsigned int find_receiver_probabilities(void) {
 	const unsigned exit_regions = topology_global.neighbours + 1;
 	// the sum has been computed during refresh_cache if needed.
 	sum = topology->data[exit_regions];
+	if(sum <= 0)
+		return DIRECTION_INVALID;
 
 	switch (topology_global.geometry) {
 
@@ -166,7 +190,7 @@ unsigned int find_receiver_probabilities(void) {
 			do {
 				select_direction();
 
-				receiver = GetReceiver(sender, direction);
+				receiver = topology->neighbours_id[direction];
 				// we simply repeat this until we either select ourselves or a valid neighbour
 			} while (receiver == DIRECTION_INVALID);
 			break;
@@ -176,7 +200,7 @@ unsigned int find_receiver_probabilities(void) {
 		case TOPOLOGY_RING:
 			select_direction();
 
-			receiver = GetReceiver(sender, direction);
+			receiver = topology->neighbours_id[direction];
 			break;
 
 		case TOPOLOGY_GRAPH:
@@ -204,9 +228,7 @@ unsigned int find_receiver_probabilities(void) {
 			rootsim_error(true, "Wrong topology code specified: %d. Aborting...\n", topology);
 	}
 
-	out:
 	return receiver;
-
 }
 
 #undef select_direction

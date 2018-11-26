@@ -14,7 +14,6 @@
 #include <lib/jsmn_helper.h>
 #include <lib/numerical.h>
 #include <datatypes/bitmap.h>
-#include <datatypes/array.h>
 #include <datatypes/heap.h>
 #include <scheduler/process.h>
 
@@ -22,51 +21,80 @@
 
 #define CURRENT_LP_ID		(gid_to_int(LidToGid(current_lp)))
 
+/// the customised struct for TOPOLOGY_OBSTACLES representation
 typedef struct _topology_t {
-	bool dirty;
-	unsigned *prev_next_cache;
-	rootsim_bitmap data[]; 			/// the costs, probabilities or obstacles matrix (depending on the topology type)
+	unsigned neighbours_id[6];	/**< these are the cached neighbours IDs */
+	unsigned free_neighbours;	/**< this is the number of reachable neighbours */
+	unsigned *prev_next_cache;	/**< this is the cache of previous and next hops needed to reach a destination */
+	bool dirty;			/**< this tells is the prev_next_cache is invalidated */
+	rootsim_bitmap data[];		/**< this is the obstacles bitmap */
 } topology_t;
 
+unsigned size_checkpoint_obstacles(void){
+	return 	sizeof(topology_t) + 				// the basic struct size
+		bitmap_required_size(topology_global.lp_cnt) + 	// the bitmap to hold obstacles
+		sizeof(unsigned) * 2 * topology_global.lp_cnt; 	// the cache for next and previous hops
+}
+
+// this is called once per machine after the general
 void load_topology_file_obstacles(c_jsmntok_t *root_token, const char *json_base){
 	unsigned i;
 	double tmp;
 	const unsigned lp_cnt = topology_global.lp_cnt;
-	// retrieve the values array
+	// retrieve the values array checking its size against the lp_cnt in the topology
 	c_jsmntok_t *values_tok = get_value_token_by_key(root_token, json_base, root_token, "values");
 	if(!values_tok|| values_tok->type != JSMN_ARRAY || children_count_token(root_token, values_tok) != lp_cnt)
 		rootsim_error(true, "Invalid or missing json value with key \"values\"");
-
-	topology_global.obstacles = __wrap_malloc(bitmap_required_size(lp_cnt));
+	// we initialize the machine shared initial obstacles status
+	// fixme free this array after all LPs initialized their topology
+	topology_global.obstacles = rsalloc(bitmap_required_size(lp_cnt));
 	bitmap_initialize(topology_global.obstacles, lp_cnt);
-
+	// now we parse the json array to fill in the actual data
 	struct _gnt_closure_t closure = GNT_CLOSURE_INITIALIZER;
 	for (i = 0; i < lp_cnt; ++i) {
 		if(parse_double_token(json_base, get_next_token(root_token, values_tok, &closure), &tmp) < 0)
 			rootsim_error(true, "Invalid value found in the \"value\" array");
-
-		if(tmp >= -1.0 && tmp <= -1.0) {bitmap_set(topology_global.obstacles, i);}
+		// we interpret ones as obstacles, we use the double comparison to avoid warnings
+		if(tmp >= 1.0 && tmp <= 1.0) {bitmap_set(topology_global.obstacles, i);}
 	}
 }
 
 
 void topology_obstacles_init(void){
 	const unsigned lp_cnt = topology_global.lp_cnt;
+	unsigned i = topology_global.neighbours;
+	const unsigned sender = CURRENT_LP_ID;
+	unsigned lp_id;
+	// allocate the topology struct, we use a single allocation for all the stuff we need
+	topology_t* topology = __wrap_malloc(topology_global.chkp_size);
 
-	topology_t* topology = __wrap_malloc(
-			sizeof(topology_t) + // the basic struct size
-			bitmap_required_size(lp_cnt) + // the bitmap to hold obstacles
-			sizeof(unsigned) * 2 * lp_cnt); // the cache for next previous hops
+	topology->prev_next_cache = (unsigned *)(((char *)topology->data) + bitmap_required_size(lp_cnt));
 
-	topology->prev_next_cache = (unsigned*)(((char*)topology->data) + bitmap_required_size(lp_cnt));
-
-	if(topology_global.obstacles)
-		memcpy(topology->data, topology_global.obstacles, bitmap_required_size(lp_cnt));
-	else{
-		bitmap_initialize(topology->data, lp_cnt);
-	}
+	topology->free_neighbours = i;
 	topology->dirty = true;
 	CURRENT_TOPOLOGY = topology;
+
+	if(topology_global.obstacles){
+		memcpy(topology->data, topology_global.obstacles, bitmap_required_size(lp_cnt));
+	}else{
+		bitmap_initialize(topology->data, lp_cnt);
+	}
+
+	if(topology_global.geometry != TOPOLOGY_GRAPH){
+		// we save the neighbours ids for faster accessing
+		while(i--){
+			lp_id = get_raw_receiver(sender, i);
+			topology->neighbours_id[i] = lp_id;
+			// we also count reachable neighbours
+			if(lp_id == DIRECTION_INVALID || bitmap_check(topology->data, lp_id))
+				topology->free_neighbours--;
+		}
+	}else{
+		// in a graph directions are 1 to 1 with regions
+		while(i--)
+			if(sender == i || bitmap_check(topology->data, i))
+				topology->free_neighbours--;
+	}
 }
 
 
@@ -111,7 +139,7 @@ static void dijkstra_obstacles(const topology_t *topology, unsigned int source_c
 		// we cycle through the neighbours of the current cell
 		for(i = 0; i < neighbours; ++i){
 			// we get the receiver cell
-			receiver = GetReceiver(current.cell, i);
+			receiver = get_raw_receiver(current.cell, i);
 			// obviously we want a valid neighbour
 			if(receiver == DIRECTION_INVALID || bitmap_check(obstacles, receiver))
 				continue;
@@ -134,7 +162,7 @@ static void dijkstra_obstacles(const topology_t *topology, unsigned int source_c
 static void refresh_cache_obstacles(topology_t *topology){
 	if(topology->dirty){
 		const unsigned lp_cnt = topology_global.lp_cnt;
-
+		// calculate the minimum costs spanning tree
 		dijkstra_obstacles(topology, CURRENT_LP_ID, topology->prev_next_cache);
 		// this sets to an uninitialized value the buffer which holds the next hop for
 		// each possible destination (we compute those on demand when asked by the user and we cache those here)
@@ -146,87 +174,90 @@ static void refresh_cache_obstacles(topology_t *topology){
 unsigned int find_receiver_obstacles(void) {
 	rootsim_bitmap *obstacles = CURRENT_TOPOLOGY->data;
 	const unsigned sender = CURRENT_LP_ID;
-	if(bitmap_check(obstacles, sender)){
+	if(unlikely(bitmap_check(obstacles, sender))){
 		rootsim_error(false, "FindReceiver(): this is an obstacle region!!!\n");
 		return DIRECTION_INVALID;
 	}
 
-	const unsigned exit_regions = topology_global.lp_cnt + 1;
-	unsigned receiver, direction;
+	if(unlikely(!CURRENT_TOPOLOGY->free_neighbours))
+		return sender;
 
-	switch (topology_global.geometry) {
+	const unsigned neighbours = topology_global.neighbours;
+	const unsigned *neighbours_id;
+	unsigned receiver;
 
+	switch(topology_global.geometry){
 		case TOPOLOGY_HEXAGON:
 		case TOPOLOGY_SQUARE:
 		case TOPOLOGY_TORUS:
 		case TOPOLOGY_BIDRING:
 		case TOPOLOGY_RING:
-		case TOPOLOGY_STAR:
-			do{
-				direction = exit_regions * Random();
-				if(!direction) {
-					receiver = sender;
-					goto out;
-				}
-				receiver = GetReceiver(sender, direction - 1);
-			}while(receiver == DIRECTION_INVALID || bitmap_check(obstacles, receiver));
-			break;
+			neighbours_id = CURRENT_TOPOLOGY->neighbours_id;
+		do{
+			receiver = neighbours_id[(unsigned)(neighbours * Random())];
+		}while(unlikely(receiver == DIRECTION_INVALID || bitmap_check(obstacles, receiver)));
+		break;
 
 		case TOPOLOGY_GRAPH:
-			do {
-				direction = exit_regions * Random();
-				//receiver = GetReceiver(topology, sender, direction);
-				receiver = direction;
-			} while (bitmap_check(obstacles, receiver));
+		do{
+			receiver = neighbours * Random();
+		}while(unlikely(bitmap_check(obstacles, receiver)));
+		break;
 
-			break;
-
-		default:
-			rootsim_error(true, "Wrong topology geometry specified: %d. Aborting...\n", topology_settings.type);
+		case TOPOLOGY_STAR:
+			rootsim_error(true, "not implemented yet");
 	}
-
-	out: switch_to_application_mode();
 	return receiver;
 }
 
-struct update_topology_t{
-	unsigned lp;
-	bool val;
-};
+static inline void toggle_bit_and_state(topology_t *topology, rootsim_bitmap *bitmap, unsigned from){
+
+	unsigned refresh_free = 0;
+	if(topology_global.geometry != TOPOLOGY_GRAPH){
+		unsigned i = topology_global.neighbours;
+		while(i--)
+			if(topology->neighbours_id[i] != DIRECTION_INVALID){
+				refresh_free = 1;
+				break;
+			}
+	}else{
+		refresh_free = (from != CURRENT_LP_ID);
+	}
+
+
+	if(bitmap_check(bitmap, from)){
+		bitmap_reset(bitmap, from);
+		topology->free_neighbours += refresh_free;
+	}else{
+		bitmap_set(bitmap, from);
+		topology->free_neighbours -= refresh_free;
+	}
+	topology->dirty = true;
+}
 
 void set_value_topology_obstacles(unsigned from, unsigned to, double value){
 	(void)to;
 
 	topology_t *topology = CURRENT_TOPOLOGY;
+	const unsigned this_lp = CURRENT_LP_ID;
+	rootsim_bitmap *bitmap = topology->data;
 
-	if(value < 0)
-		rootsim_error(true, "SetValueTopology(): Negative costs are not supported", value);
+	if(!(value > 0 ^ bitmap_check(bitmap, from)))
+		return;
 
-	rootsim_bitmap *bitmap = ((union {double *d_p; rootsim_bitmap *r_p;})(topology->data)).r_p;
-
-	struct update_topology_t upd = {from, (value > 0) ^ bitmap_check(bitmap, from)};
-
-	(value > 0) ? bitmap_set(bitmap, from) : bitmap_reset(bitmap, from);
+	toggle_bit_and_state(topology, bitmap, from);
 
 	unsigned i = topology_global.lp_cnt;
 	while(i--){
-		if(i == CURRENT_LP_ID)
+		if(i == this_lp)
 			continue;
-		UncheckedScheduleNewEvent(i, current_evt->timestamp, TOPOLOGY_UPDATE, &upd, sizeof(upd));
+		UncheckedScheduleNewEvent(i, current_evt->timestamp, TOPOLOGY_UPDATE, &from, sizeof(from));
 	}
-
-	topology->dirty = true;
 }
 
 void update_topology_obstacles(void){
 	topology_t *topology = CURRENT_TOPOLOGY;
-
-	rootsim_bitmap *bitmap = ((union {double *d_p; rootsim_bitmap *r_p;})(topology->data)).r_p;
-	struct update_topology_t *upd_p = (struct update_topology_t *)current_evt->event_content;
-
-	(upd_p->val ^ bitmap_check(bitmap, upd_p->lp)) ? bitmap_set(bitmap, upd_p->lp) : bitmap_reset(bitmap, upd_p->lp);
-
-	topology->dirty = true;
+	toggle_bit_and_state(topology, topology->data, *((unsigned *)current_evt->event_content));
 }
 
 double get_value_topology_obstacles(unsigned from, unsigned to){
@@ -234,6 +265,10 @@ double get_value_topology_obstacles(unsigned from, unsigned to){
 	return bitmap_check(CURRENT_TOPOLOGY->data, from) ? 1.0 : 0.0;
 }
 
+bool is_reachable_obstacles(unsigned to){
+	// XXX do we want deep reachability or dumb reachability?
+	return find_receiver_toward_obstacles(to) != UINT_MAX;
+}
 
 unsigned int find_receiver_toward_obstacles(unsigned int to){
 	topology_t *topology = CURRENT_TOPOLOGY;

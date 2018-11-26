@@ -129,10 +129,10 @@ typedef struct _LP_state {
 	numerical_state_t	numerical;
 
 	/// pointer to the topology struct
-	topology_t *topology;
+	topology_t 		*topology;
 
 	/// pointer to the region struct
-	region_abm_t *region;
+	region_abm_t 		*region;
 } LP_State;
 
 

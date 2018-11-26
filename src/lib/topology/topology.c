@@ -82,16 +82,19 @@ static void load_default_topology(void){
 	topology_global.geometry = topology_settings.default_geometry;
 	topology_global.neighbours = neighbours_count();
 
+	if(topology_settings.out_of_topology >= n_prc_tot)
+		rootsim_error(true, "Not enough LPs to run a default topology with %u control LPs", topology_settings.out_of_topology);
+
 	switch (topology_settings.default_geometry) {
 		case TOPOLOGY_SQUARE:
 		case TOPOLOGY_HEXAGON:
 		case TOPOLOGY_TORUS:
-			edge = sqrt(n_prc_tot);
+			edge = sqrt(n_prc_tot - topology_settings.out_of_topology);
 			topology_global.lp_cnt = edge * edge;
 			break;
 		default:
 			edge = 0;
-			topology_global.lp_cnt = n_prc_tot;
+			topology_global.lp_cnt = n_prc_tot - topology_settings.out_of_topology;
 			break;
 	}
 	topology_global.edge = edge;
@@ -114,16 +117,11 @@ static void load_topology_file(const char *file_name) {
 	if(parse_unsigned_by_key(root_token, json_base, root_token, "regions_count", &lp_cnt) < 0)
 		rootsim_error(true, "Invalid or missing json value with key \"regions_count\" (must be an unsigned integer)");
 	// sanity checks on the number of instantiated LPs
-	if(lp_cnt > n_prc_tot)
+	if(lp_cnt + topology_settings.out_of_topology > n_prc_tot)
 		rootsim_error(true, "This topology needs an higher number of available LPs (%lu versus %lu available LPs)", lp_cnt, n_prc_tot);
 	// we can continue normal processing but we inform the user about this "anomaly" (could be intended though!)
-	if(lp_cnt < n_prc_tot) {
-		rootsim_error(false, "Warning: the requested regions are fewer "
-				"than the available LPs (%lu versus %lu available LPs)", lp_cnt, n_prc_tot);
-		// we have to exit if we are processing a non included LP
-		if(CURRENT_LP_ID >= lp_cnt)
-			rootsim_error(true, "Instantiating a topology from a not included region!!!");
-	}
+	if(lp_cnt + topology_settings.out_of_topology < n_prc_tot)
+		rootsim_error(true, "The requested regions are fewer than the available LPs (%lu versus %lu available LPs)", lp_cnt, n_prc_tot);
 
 	topology_global.lp_cnt = lp_cnt;
 
@@ -206,10 +204,25 @@ void topology_preinit(void) {
 		load_topology_file(topology_settings.topology_path);
 	else
 		load_default_topology();
+
+	switch(topology_settings.type){
+		case TOPOLOGY_COSTS:
+			topology_global.chkp_size = size_checkpoint_costs();
+			break;
+		case TOPOLOGY_OBSTACLES:
+			topology_global.chkp_size = size_checkpoint_obstacles();
+			break;
+		case TOPOLOGY_PROBABILITIES:
+			topology_global.chkp_size = size_checkpoint_probabilities();
+			break;
+	}
 }
 
 void topology_init(void) {
 	if(!&topology_settings) // if the weak symbol isn't defined we aren't needed
+		return;
+
+	if(CURRENT_LP_ID >= topology_global.lp_cnt) // if this is a control LP we don't want a topology here
 		return;
 
 	switch(topology_settings.type){
@@ -229,8 +242,11 @@ void SetValueTopology(unsigned from, unsigned to, double value) {
 	switch_to_platform_mode();
 	const unsigned lp_cnt = topology_global.lp_cnt;
 
-	if(from >= lp_cnt || to >= lp_cnt)
+	if(unlikely(from >= lp_cnt || to >= lp_cnt))
 		rootsim_error(true, "SetValueTopology(): from % u, to %u when lp_cnt is %u", from, to, lp_cnt);
+
+	if(unlikely(value < 0))
+		rootsim_error(true, "SetValueTopology(): negative values are not supported", value);
 
 	switch (topology_settings.type) {
 		case TOPOLOGY_COSTS:
@@ -302,43 +318,52 @@ unsigned int RegionsCount(void) {
 	return topology_global.lp_cnt;
 }
 
-unsigned int NeighboursCount(void) {
-	// TODO
+unsigned int DirectionsCount(void) {
 	return topology_global.neighbours;
 }
 
-unsigned int ActualNeighboursCount(void){
-	unsigned actual_neighbours = 0;
-	unsigned i = topology_global.neighbours;
-	while(i--)
-		if(GetReceiver(CURRENT_LP_ID, i) != DIRECTION_INVALID)
-			++actual_neighbours;
-
-	return actual_neighbours;
+static bool is_reachable(unsigned int to){
+	bool result = false;
+	switch (topology_settings.type) {
+		case TOPOLOGY_PROBABILITIES:
+			result = is_reachable_probabilities(to);
+			break;
+		case TOPOLOGY_OBSTACLES:
+			result = is_reachable_obstacles(to);
+			break;
+		case TOPOLOGY_COSTS:
+			result = is_reachable_costs(to);
+			break;
+	}
+	return result;
 }
 
-unsigned int GetReceiver(unsigned int from, direction_t direction) {
-	switch_to_platform_mode();
+unsigned int NeighboursCount(void){
+	// TODO, use topologies cached values instead of looping through!!
+	const unsigned sender = CURRENT_LP_ID;
+	unsigned i = topology_global.neighbours;
+	unsigned res = 0;
+	unsigned lp_id;
+	while(i--){
+		if((lp_id = get_raw_receiver(sender, i)) != DIRECTION_INVALID && is_reachable(lp_id))
+			res++;
+	}
+	return res;
+}
 
+unsigned int get_raw_receiver(unsigned int from, direction_t direction) {
 	unsigned int x, y;
-	GID_t receiver_gid;
+	unsigned receiver;
 	// const so we don't accidentally modify it
 	const unsigned sender = from;
 	// the pre-computed edge length for geometries which require it
 	const unsigned edge = topology_global.edge;
-	// the count of lp involved in the topology
-	const unsigned lp_cnt = topology_global.lp_cnt;
-	// sanity check
-	if(lp_cnt <= sender)
-		rootsim_error(true, "GetReceiver(): region argument not included in topology!");
-
 	// without modifications we would fail
-	set_gid(receiver_gid, DIRECTION_INVALID);
+	receiver = DIRECTION_INVALID;
 
 	switch (topology_global.geometry) {
 
 		case TOPOLOGY_HEXAGON:
-
 			// Convert linear coords to square coords
 			y = sender / edge;
 			x = sender - y * edge;
@@ -370,13 +395,12 @@ unsigned int GetReceiver(unsigned int from, direction_t direction) {
 					goto out;
 			}
 
-			if(x < edge && y < edge)
-				set_gid(receiver_gid, y * edge + x);
+			if(likely(x < edge && y < edge))
+				receiver = y * edge + x;
 
 			break;
 
 		case TOPOLOGY_SQUARE:
-
 			// Convert linear coords to square coords
 			y = sender / edge;
 			x = sender - y * edge;
@@ -398,13 +422,12 @@ unsigned int GetReceiver(unsigned int from, direction_t direction) {
 					goto out;
 			}
 
-			if(x < edge && y < edge)
-				set_gid(receiver_gid, y * edge + x);
+			if(likely(x < edge && y < edge))
+				receiver = y * edge + x;
 
 			break;
 
 		case TOPOLOGY_TORUS:
-
 			// Convert linear coords to square coords
 			y = sender / edge;
 			x = sender - y * edge;
@@ -427,45 +450,43 @@ unsigned int GetReceiver(unsigned int from, direction_t direction) {
 			}
 
 			// Check for wrapping around
-			if(x >= edge)
+			if(unlikely(x >= edge))
 				x -= edge;
-			if(y >= edge)
+			if(unlikely(y >= edge))
 				y -= edge;
 
 			// Convert back to linear coordinates
-			set_gid(receiver_gid, y * edge + x);
+			receiver = y * edge + x;
 
 			break;
 
 		case TOPOLOGY_GRAPH:
-			if(direction < lp_cnt)
-				set_gid(receiver_gid, direction);
+			if(likely(direction < topology_global.lp_cnt))
+				receiver = direction;
 			break;
 
 		case TOPOLOGY_BIDRING:
-
 			if(direction == DIRECTION_W) {
 				if(sender == 0) {
-					set_gid(receiver_gid, lp_cnt - 1);
+					receiver = topology_global.lp_cnt - 1;
 				} else {
-					set_gid(receiver_gid, sender - 1);
+					receiver =sender - 1;
 				}
-			} else if(direction == DIRECTION_E) {
-				if(sender + 1 == lp_cnt)
-					set_gid(receiver_gid, 0);
+			} else if(likely(direction == DIRECTION_E)) {
+				if(sender + 1 == topology_global.lp_cnt)
+					receiver = 0;
 				else
-					set_gid(receiver_gid, sender + 1);
+					receiver = sender + 1;
 			}
 
 			break;
 
 		case TOPOLOGY_RING:
+			if(likely(direction == DIRECTION_E)) {
+				receiver = sender + 1;
 
-			if(direction == DIRECTION_E) {
-				set_gid(receiver_gid, sender + 1);
-
-				if(gid_to_int(receiver_gid) == lp_cnt) {
-					set_gid(receiver_gid, 0);
+				if(receiver == topology_global.lp_cnt) {
+					receiver = 0;
 				}
 			}
 
@@ -475,11 +496,11 @@ unsigned int GetReceiver(unsigned int from, direction_t direction) {
 			if(sender) {
 				if(direction)
 					goto out;
-				set_gid(receiver_gid, 0);
+				receiver = 0;
 			} else {
-				if(direction + 1 >= lp_cnt)
+				if(direction + 1 >= topology_global.lp_cnt)
 					goto out;
-				set_gid(receiver_gid, direction + 1);
+				receiver = direction + 1;
 			}
 
 			break;
@@ -489,9 +510,29 @@ unsigned int GetReceiver(unsigned int from, direction_t direction) {
 	}
 
 	out:
-	switch_to_application_mode();
-	return gid_to_int(receiver_gid);
+	return receiver;
+}
 
+unsigned int GetReceiver(unsigned int from, direction_t direction, bool reachable) {
+	unsigned receiver;
+	switch_to_platform_mode();
+	// sanity check
+	if(unlikely(topology_global.lp_cnt <= from))
+		rootsim_error(true, "GetReceiver(): region argument not included in topology!");
+
+	receiver = get_raw_receiver(from, direction);
+	if(reachable && !is_reachable(receiver))
+		receiver = UINT_MAX;
+	switch_to_application_mode();
+	return receiver;
+}
+
+bool IsReachable(unsigned int to){
+	bool result;
+	switch_to_platform_mode();
+	result = is_reachable(to);
+	switch_to_application_mode();
+	return result;
 }
 
 unsigned int FindReceiver(void) {
@@ -500,7 +541,7 @@ unsigned int FindReceiver(void) {
 	const unsigned lp_cnt = topology_global.lp_cnt;
 	unsigned receiver = DIRECTION_INVALID;
 
-	if(lp_cnt <= CURRENT_LP_ID)
+	if(unlikely(lp_cnt <= CURRENT_LP_ID))
 		rootsim_error(true, "FindReceiver(): source region %u when topology includes %u regions", CURRENT_LP_ID, lp_cnt);
 
 	switch (topology_settings.type) {
@@ -516,7 +557,6 @@ unsigned int FindReceiver(void) {
 
 	switch_to_application_mode();
 	return receiver;
-
 }
 
 unsigned int FindReceiverToward(unsigned int to) {
@@ -526,7 +566,7 @@ unsigned int FindReceiverToward(unsigned int to) {
 	// fail by default
 	unsigned receiver = DIRECTION_INVALID;
 	// sanity checks
-	if(to >= lp_cnt || CURRENT_LP_ID >= lp_cnt)
+	if(unlikely(to >= lp_cnt || CURRENT_LP_ID >= lp_cnt))
 		rootsim_error(true, "Calling FindReceiverToward() from or toward a region not included in the topology");
 
 	switch (topology_settings.type) {
@@ -581,15 +621,15 @@ double ComputeMinTour(unsigned int source, unsigned int dest, unsigned int resul
 	const unsigned lp_cnt = topology_global.lp_cnt;
 	double ret = -1.0;
 
-	if(source >= lp_cnt) {
+	if(unlikely(source >= lp_cnt)) {
 		rootsim_error(true, "Invalid source passed to ComputeMinTour(): %u.\n", source);
 		return UINT_MAX;
 	}
-	if(dest >= lp_cnt) {
+	if(unlikely(dest >= lp_cnt)) {
 		rootsim_error(true, "Invalid destination passed to ComputeMinTour(): %u.\n", dest);
 		return UINT_MAX;
 	}
-	if(source == dest) {
+	if(unlikely(source == dest)) {
 		rootsim_error(true, "Asking ComputeMinTour() to find a path from a source equal to the destination\n");
 		return UINT_MAX;
 	}

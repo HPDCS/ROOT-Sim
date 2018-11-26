@@ -30,7 +30,6 @@
 
 #include <memory.h>
 
-// (TODO: maybe add a define to choose between wrapped and actual malloc calls)
 // TODO: add some type checking and size checking (is it necessary?)
 // TODO: add all the other useful functions
 
@@ -52,7 +51,7 @@
 #define array_shrink(self) ({ \
 		if (array_count(self) > INIT_SIZE_ARRAY && array_count(self) * 3 <= array_capacity(self)) { \
 			array_capacity(self) /= 2; \
-			array_items(self) = __wrap_realloc(array_items(self), array_capacity(self) * sizeof(*array_items(self))); \
+			array_items(self) = rsrealloc(array_items(self), array_capacity(self) * sizeof(*array_items(self))); \
 			if(!array_items(self))\
 				rootsim_error(true, "Realloc failed during array shrinking!"); \
 		} \
@@ -61,7 +60,7 @@
 #define array_expand(self) ({ \
 		if(array_count(self) >= array_capacity(self)){\
 			array_capacity(self) *= 2; \
-			array_items(self) = __wrap_realloc(array_items(self), array_capacity(self) * sizeof(*array_items(self))); \
+			array_items(self) = rsrealloc(array_items(self), array_capacity(self) * sizeof(*array_items(self))); \
 			if(!array_items(self))\
 				rootsim_error(true, "Realloc failed during array expansion!"); \
 		} \
@@ -70,7 +69,7 @@
 #define array_new(type) ({ \
 		rootsim_array(type) *__newarr; \
 		\
-		__newarr = __wrap_malloc(sizeof(*__newarr)); \
+		__newarr = rsalloc(sizeof(*__newarr)); \
 		if(!__newarr)\
 			rootsim_error(true, "Malloc failed during array_new!"); \
 		\
@@ -79,13 +78,13 @@
 	})
 
 #define array_free(self) ({ \
-		__wrap_free(array_items(self)); \
-		__wrap_free(&(self)); \
+		rsfree(array_items(self)); \
+		rsfree(&(self)); \
 	})
 
 #define array_init(self) ({ \
 		array_capacity(self) = INIT_SIZE_ARRAY; \
-		array_items(self) = __wrap_malloc(array_capacity(self) * sizeof(*array_items(self))); \
+		array_items(self) = rsalloc(array_capacity(self) * sizeof(*array_items(self))); \
 		if(!array_items(self))\
 			rootsim_error(true, "Malloc failed during array_init!"); \
 		\
@@ -93,7 +92,7 @@
 	})
 
 #define array_fini(self) ({ \
-		__wrap_free(array_items(self)); \
+		rsfree(array_items(self)); \
 	})
 
 #define array_push(self, elem) ({ \
@@ -166,7 +165,7 @@
 		(mem_area) = ((unsigned char *)(mem_area)) + sizeof(array_count(self)); \
 		array_capacity(self) = array_count(self); \
 		\
-		array_items(self) = __wrap_malloc(array_capacity(self) * sizeof(*array_items(self))); \
+		array_items(self) = rsalloc(array_capacity(self) * sizeof(*array_items(self))); \
 		if(!array_items(self))\
 			rootsim_error(true, "Malloc failed during array_load!"); \
 		\
