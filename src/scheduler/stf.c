@@ -6,11 +6,6 @@
 #include <gvt/gvt.h>
 #include <mm/dymelor.h>
 
-typedef struct _min_lp {
-	LID_t lid;
-	simtime_t time;
-} min_lp;
-
 
 /**
 * This function implements the smallest timestamp first algorithm.
@@ -20,42 +15,31 @@ typedef struct _min_lp {
 *
 * @return The Id of the Logical Process qith the smallest timestamp
 */
-LID_t smallest_timestamp_first(void) {
-	min_lp stf_candidate = {
-		.lid = idle_process,
-		.time = INFTY,
-	};
+struct lp_struct *smallest_timestamp_first(void) {
+	struct lp_struct *next_lp = NULL;
+	simtime_t evt_time, next_time = INFTY;
 
-	int __helper(LID_t lid, GID_t gid, unsigned int num, void *data) {
-		min_lp *candidate = (min_lp *)data;
-		LP_State *lp = LPS(lid);
-		simtime_t evt_time;
-		(void)gid;
-		(void)num;
-	
+	foreach_bound_lp(lp) {
 		// If waiting for synch, don't take into account the LP
 		if(is_blocked_state(lp->state)) {
-			return 0; // continue to the next element
+			continue;
 		}
 	
 		// If the LP is in READY_FOR_SYNCH it has to handle the same ECS message
 		if(lp->state == LP_STATE_READY_FOR_SYNCH) {
 			// The LP handles the suspended event as the next event
-			evt_time = lvt(lid);
+			evt_time = lvt(lp);
 		} else {
-			// Compute the next event's timestamp. Translate the id from the local binding to the local ID
-			evt_time = next_event_timestamp(lid);
+			// Compute the next event's timestamp.
+			evt_time = next_event_timestamp(lp);
 		}
 	
-		if(evt_time < candidate->time && evt_time < INFTY) {
-			candidate->time = evt_time;
-			candidate->lid = lid;
+		if(evt_time < next_time && evt_time < INFTY) {
+			next_time = evt_time;
+			next_lp = lp;
 		}
-
-		return 0; // continue to the next element
 	}
-	LPS_bound_foreach(__helper, &stf_candidate);
 
-	return stf_candidate.lid;
+	return next_lp;
 }
 

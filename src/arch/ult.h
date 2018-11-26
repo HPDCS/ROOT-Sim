@@ -34,8 +34,6 @@
   #error Unsupported architecture
 #endif
 
-#pragma GCC poison setjmp longjmp
-
 #include <arch/jmp.h>
 
 typedef exec_context_t LP_context_t;

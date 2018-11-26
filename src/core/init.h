@@ -28,6 +28,27 @@
 
 #include <statistics/statistics.h>
 
+/*! \public
+ * These are used to index the first level of the param_to_text array.
+ */
+enum param_codes{
+	 PARAM_SCHEDULER = 0,
+	 PARAM_CKTRM_MODE,
+	 PARAM_LPS_DISTRIBUTION,
+	 PARAM_VERBOSE,
+	 PARAM_STATS,
+	 PARAM_STATE_SAVING,
+	 PARAM_SNAPSHOT,
+};
+
+/*!
+ * This array contains the stringified version of the parameter values ROOT-Sim accepts.
+ * You can index the first level of the array using the enum param_codes while
+ * for the second level you have to refer to the enumerations
+ * listed in relevant modules headers.
+ */
+extern const char * const param_to_text[][5];
+
 /// Configuration of the execution of the simulator
 typedef struct _simulation_configuration {
 	char *output_dir;		/// Destination Directory of output files
@@ -44,7 +65,7 @@ typedef struct _simulation_configuration {
 	bool blocking_gvt;		/// GVT protocol blocking or not
 	bool deterministic_seed;	/// Does not change the seed value config file that will be read during the next runs
 	int verbose;			/// Kernel verbose
-	enum stat_levels stats;		/// Produce performance statistic file (default STATS_ALL)
+	enum stats_levels stats;		/// Produce performance statistic file (default STATS_ALL)
 	bool serial;			/// If the simulation must be run serially
 	seed_type set_seed;		/// The master seed to be used in this run
 	bool core_binding;		/// Bind threads to specific core ( reduce context switches and cache misses )

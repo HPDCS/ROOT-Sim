@@ -17,7 +17,7 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file malloc.c
+* @file platform.c
 * @brief This is the ROOT-Sim implementation of the malloc library (to come...)
 * @author Alessandro Pellegrini
 */

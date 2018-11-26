@@ -17,7 +17,7 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file lp-alloc.c
+* @file ecs.c
 * @brief LP's memory pre-allocator. This layer stands below DyMeLoR, and is the
 * 		connection point to the Linux Kernel Module for Memory Management, when
 * 		activated.
@@ -97,17 +97,17 @@ void ecs_secondary(void) {
 	page_req.base_address = (void *)(target_address & (~((long long)PAGE_SIZE-1)));
 	page_req.count = ((target_address + span) & (~((long long)PAGE_SIZE-1)))/PAGE_SIZE - (long long)page_req.base_address/PAGE_SIZE + 1;
 
-//	printf("ECS Page Fault: LP %d accessing %d pages from %p on LP %lu in %s mode\n", current_lp, page_req.count, (void *)page_req.base_address, fault_info.target_gid, (page_req.write_mode ? "write" : "read"));
+//	printf("ECS Page Fault: LP %d accessing %d pages from %p on LP %lu in %s mode\n", current->gid, page_req.count, (void *)page_req.base_address, fault_info.target_gid, (page_req.write_mode ? "write" : "read"));
 	fflush(stdout);
 
 	// Send the page lease request control message. This is not incorporated into the input queue at the receiver
 	// so we do not place it into the output queue
 	target_gid.id = fault_info.target_gid;
-	pack_msg(&control_msg, LidToGid(current_lp), target_gid, RENDEZVOUS_GET_PAGE, current_lvt, current_lvt, sizeof(page_req), &page_req);
+	pack_msg(&control_msg, current->gid, target_gid, RENDEZVOUS_GET_PAGE, current_lvt, current_lvt, sizeof(page_req), &page_req);
 	control_msg->rendezvous_mark = current_evt->rendezvous_mark;
 	Send(control_msg);
 
-	LPS(current_lp)->state = LP_STATE_WAIT_FOR_DATA;
+	current->state = LP_STATE_WAIT_FOR_DATA;
 
 	// Give back control to the simulation kernel's user-level thread
 	long_jmp(&kernel_context, kernel_context.rax);
@@ -119,27 +119,27 @@ void ecs_initiate(void) {
 
 	GID_t target_gid;
 	// Generate a unique mark for this ECS
-	current_evt->rendezvous_mark = generate_mark(current_lp);
-	LPS(current_lp)->wait_on_rendezvous = current_evt->rendezvous_mark;
+	current_evt->rendezvous_mark = generate_mark(current);
+	current->wait_on_rendezvous = current_evt->rendezvous_mark;
 
 	// Prepare the control message to synchronize the two LPs
 	target_gid.id = fault_info.target_gid;
-	pack_msg(&control_msg, LidToGid(current_lp), target_gid, RENDEZVOUS_START, current_lvt, current_lvt, 0, NULL);
+	pack_msg(&control_msg, current->gid, target_gid, RENDEZVOUS_START, current_lvt, current_lvt, 0, NULL);
 	control_msg->rendezvous_mark = current_evt->rendezvous_mark;
-	control_msg->mark = generate_mark(current_lp);
+	control_msg->mark = generate_mark(current);
 
 	// This message must be stored in the output queue as well, in case this LP rollbacks
 	msg_hdr =  get_msg_hdr_from_slab();
 	msg_to_hdr(msg_hdr, control_msg);
-	list_insert(LPS(current_lp)->queue_out, send_time, msg_hdr);
+	list_insert(current->queue_out, send_time, msg_hdr);
 
 	// Block the execution of this LP
-	LPS(current_lp)->state = LP_STATE_WAIT_FOR_SYNCH;
-	LPS(current_lp)->wait_on_object = fault_info.target_gid;
+	current->state = LP_STATE_WAIT_FOR_SYNCH;
+	current->wait_on_object = fault_info.target_gid;
 
 	// Store which LP we are waiting for synchronization.
-	LPS(current_lp)->ECS_index++;
-	LPS(current_lp)->ECS_synch_table[LPS(current_lp)->ECS_index] = target_gid;
+	current->ECS_index++;
+	current->ECS_synch_table[current->ECS_index] = target_gid;
 	Send(control_msg);
 
 	// Give back control to the simulation kernel's user-level thread
@@ -151,13 +151,13 @@ void ECS(void) __attribute__((__used__));
 void ECS(void) {
 	// ECS cannot happen in silent execution, as we take a log after the completion
 	// of an event which involves one or multiple ecs
-	if(unlikely(LPS(current_lp)->state == LP_STATE_SILENT_EXEC)) {
+	if(unlikely(current->state == LP_STATE_SILENT_EXEC)) {
 		rootsim_error(true,"----ERROR---- ECS in Silent Execution LP[%d] Hit:%llu Timestamp:%f\n",
-		current_lp, fault_info.target_gid, current_lvt);
+		current->lid.to_int, fault_info.target_gid, current_lvt);
 	}
 
 	// Sanity check: we cannot run an ECS with an old mark after a rollback
-	if(LPS(current_lp)->wait_on_rendezvous != 0 && LPS(current_lp)->wait_on_rendezvous != current_evt->rendezvous_mark) {
+	if(current->wait_on_rendezvous != 0 && current->wait_on_rendezvous != current_evt->rendezvous_mark) {
 		printf("muori male\n");
 		fflush(stdout);
 		abort();
@@ -226,8 +226,8 @@ void lp_alloc_schedule(void) {
 	bzero(&sched_info, sizeof(ioctl_info));
 
 	sched_info.ds = pgd_ds;
-	sched_info.count = LPS(current_lp)->ECS_index + 1; // it's a counter
-	sched_info.objects = (unsigned int*) LPS(current_lp)->ECS_synch_table; // pgd descriptor range from 0 to number threads - a subset of object ids
+	sched_info.count = current->ECS_index + 1; // it's a counter
+	sched_info.objects = (unsigned int*) current->ECS_synch_table; // pgd descriptor range from 0 to number threads - a subset of object ids
 
 	/* passing into LP mode - here for the pgd_ds-th LP */
 	ioctl(ioctl_fd,IOCTL_SCHEDULE_ON_PGD, &sched_info);
@@ -248,7 +248,7 @@ void setup_ecs_on_segment(msg_t *msg) {
 //	dump_msg_content(msg);
 
 	// In case of a remote ECS, protect the memory
-	if(GidToKernel(msg->sender) != kid) {
+	if(find_kernel_by_gid(msg->sender) != kid) {
 		//printf("Mi sincronizzo con un LP remoto e proteggo la memoria\n");
 		bzero(&sched_info, sizeof(ioctl_info));
 		sched_info.base_address = get_base_pointer(msg->sender);
@@ -308,18 +308,18 @@ void ecs_install_pages(msg_t *msg) {
 	fflush(stdout);
 }
 
-void unblock_synchronized_objects(LID_t localID) {
+void unblock_synchronized_objects(struct lp_struct *lp) {
 	unsigned int i;
 	msg_t *control_msg;
 	
-	for(i = 1; i <= LPS(localID)->ECS_index; i++) {
-		pack_msg(&control_msg, LidToGid(localID), LPS(localID)->ECS_synch_table[i], RENDEZVOUS_UNBLOCK, lvt(localID), lvt(localID), 0, NULL);
-		control_msg->rendezvous_mark = LPS(localID)->wait_on_rendezvous;
+	for(i = 1; i <= lp->ECS_index; i++) {
+		pack_msg(&control_msg, LidToGid(localID), lp->ECS_synch_table[i], RENDEZVOUS_UNBLOCK, lvt(localID), lvt(localID), 0, NULL);
+		control_msg->rendezvous_mark = lp->wait_on_rendezvous;
 		Send(control_msg);
 	}
 
-	LPS(localID)->wait_on_rendezvous = 0;
-	LPS(localID)->ECS_index = 0;
+	lp->wait_on_rendezvous = 0;
+	lp->ECS_index = 0;
 }
 #endif
 

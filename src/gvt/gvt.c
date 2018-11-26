@@ -17,7 +17,7 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file gvt.c
+* @file gvt/gvt.c
 * @brief This module implements the GVT reduction. The current implementation
 * 	 is non blocking for observable simulation plaftorms.
 * @author Alessandro Pellegrini
@@ -143,6 +143,9 @@ void gvt_init(void) {
 	}
 
 	timer_start(gvt_timer);
+
+	// Initialize the CCGS subsystem
+	ccgs_init();
 }
 
 
@@ -153,7 +156,11 @@ void gvt_init(void) {
 *
 * @author Alessandro Pellegrini
 */
-void gvt_fini(void){
+void gvt_fini(void)
+{
+	// Finalize the CCGS subsystem
+	ccgs_fini();
+
 #ifdef HAVE_MPI
 	if((kernel_phase == kphase_idle && !master_thread() && gvt_init_pending()) ||
 		kernel_phase == kphase_start){
@@ -190,13 +197,14 @@ simtime_t GVT_phases(void){
 		#endif
 		process_bottom_halves();
 
-		for(i = 0; i < n_prc_per_thread; i++) {
-			if(LPS_bound(i)->bound == NULL) {
+		foreach_bound_lp(lp) {
+			if(lp->bound == NULL) {
 				local_min[local_tid] = 0.0;
 				break;
 			}
-			local_min[local_tid] = min(local_min[local_tid], LPS_bound(i)->bound->timestamp);
+			local_min[local_tid] = min(local_min[local_tid], lp->bound->timestamp);
 		}
+
 		thread_phase = tphase_send;     // Entering phase send
 		atomic_dec(&counter_A);	// Notify finalization of phase A
 		return -1.0;
@@ -221,13 +229,13 @@ simtime_t GVT_phases(void){
 		#endif
 		process_bottom_halves();
 
-		for(i = 0; i < n_prc_per_thread; i++) {
-			if(LPS_bound(i)->bound == NULL) {
+		foreach_bound_lp(lp) {
+			if(lp->bound == NULL) {
 				local_min[local_tid] = 0.0;
 				break;
 			}
 
-			local_min[local_tid] = min(local_min[local_tid], LPS_bound(i)->bound->timestamp);
+			local_min[local_tid] = min(local_min[local_tid], lp->bound->timestamp);
 		}
 
 		#ifdef HAVE_MPI
@@ -405,7 +413,7 @@ simtime_t gvt_operations(void) {
 	if( kernel_phase == kphase_gvt_redux && gvt_redux_completed() ){
 		if(iCAS(&commit_gvt_tkn, 1, 0)){
 			int gvt_round_time = timer_value_micro(gvt_round_timer);
-			statistics_post_other_data(STAT_GVT_ROUND_TIME, gvt_round_time);
+			statistics_post_data(current, STAT_GVT_ROUND_TIME, gvt_round_time);
 
 			new_gvt = last_reduced_gvt();
 			kernel_phase = kphase_fossil;
@@ -428,7 +436,7 @@ simtime_t gvt_operations(void) {
 		adopt_new_gvt(new_gvt);
 
 		// Dump statistics
-		statistics_post_other_data(STAT_GVT, new_gvt);
+		statistics_on_gvt(new_gvt);
 
 		last_gvt = new_gvt;
 

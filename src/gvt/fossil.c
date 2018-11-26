@@ -50,31 +50,31 @@ static unsigned long long snapshot_cycles;
 * @param lid The logical process' local identifier
 * @param time_barrier The current barrier
 */
-void fossil_collection(LID_t lid, simtime_t time_barrier) {
+void fossil_collection(struct lp_struct *lp, simtime_t time_barrier) {
 	state_t *state;
 	msg_t *last_kept_event;
 	double committed_events;
 
 	// State list must be handled specifically, as nodes point to malloc'd
 	// nodes. We therefore manually scan the list and free the memory.
-	while( (state = list_head(LPS(lid)->queue_states)) != NULL && state->lvt < time_barrier) {
+	while( (state = list_head(lp->queue_states)) != NULL && state->lvt < time_barrier) {
 		log_delete(state->log);
 		#ifndef NDEBUG
 		state->last_event = (void *)0xDEADBABE;
 		#endif
-		list_pop(LPS(lid)->queue_states);
+		list_pop(lp->queue_states);
 	}
 
 	// Determine queue pruning horizon
-	state = list_head(LPS(lid)->queue_states);
+	state = list_head(lp->queue_states);
 	last_kept_event = state->last_event;
 
 	// Truncate the input queue, accounting for the event which is pointed by the lastly kept state
-	committed_events = (double)list_trunc(LPS(lid)->queue_in, timestamp, last_kept_event->timestamp, msg_release);
-	statistics_post_lp_data(lid, STAT_COMMITTED, committed_events);
+	committed_events = (double)list_trunc(lp->queue_in, timestamp, last_kept_event->timestamp, msg_release);
+	statistics_post_data(lp, STAT_COMMITTED, committed_events);
 
 	// Truncate the output queue
-	list_trunc(LPS(lid)->queue_out, send_time, last_kept_event->timestamp, msg_hdr_release);
+	list_trunc(lp->queue_out, send_time, last_kept_event->timestamp, msg_hdr_release);
 }
 
 
@@ -85,7 +85,7 @@ void fossil_collection(LID_t lid, simtime_t time_barrier) {
 * @author Francesco Quaglia
 */
 void adopt_new_gvt(simtime_t new_gvt) {
-	register unsigned int i;
+	unsigned int i;
 
 	state_t *time_barrier_pointer[n_prc_per_thread];
 	bool compute_snapshot;
@@ -95,24 +95,27 @@ void adopt_new_gvt(simtime_t new_gvt) {
 	compute_snapshot = ((snapshot_cycles % rootsim_config.gvt_snapshot_cycles) == 0);
 
 	// Precompute the time barrier for each process
-	for (i = 0; i < n_prc_per_thread; i++) {
-		time_barrier_pointer[i] = find_time_barrier(LPS_bound(i)->lid, new_gvt);
+	i = 0;
+	foreach_bound_lp(lp) {
+		time_barrier_pointer[i++] = find_time_barrier(lp, new_gvt);
 	}
 
 	// If needed, call the CCGS subsystem
 	if(compute_snapshot)
 		ccgs_compute_snapshot(time_barrier_pointer, new_gvt);
 
-	for(i = 0; i < n_prc_per_thread; i++) {
-
+	i = 0;
+	foreach_bound_lp(lp) {
 		if(time_barrier_pointer[i] == NULL)
 			continue;
 
 		// Execute the fossil collection
-		fossil_collection(LPS_bound(i)->lid, time_barrier_pointer[i]->lvt);
+		fossil_collection(lp, time_barrier_pointer[i]->lvt);
 
 		// Actually release memory buffer allocated by the LPs and then released via free() calls
-		clean_buffers_on_gvt(LPS_bound(i)->lid, time_barrier_pointer[i]->lvt);
+		clean_buffers_on_gvt(lp, time_barrier_pointer[i]->lvt);
+
+		i++;
 	}
 }
 

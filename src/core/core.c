@@ -17,7 +17,7 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file base.c
+* @file core.c
 * @brief This module implements core functionalities for ROOT-Sim and declares
 *        core global variables for the simulator
 * @author Francesco Quaglia
@@ -30,6 +30,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <limits.h>
+#include <signal.h>
 
 #include <arch/thread.h>
 #include <core/core.h>
@@ -61,18 +62,8 @@ unsigned int n_prc_tot;
 /// Number of logical processes hosted by the current kernel instance
 unsigned int n_prc;
 
-/// Used to map a global id to a local id
-unsigned int *to_lid;
-
-/// Used to map a local id to a global id
-unsigned int *to_gid;
-
 /// This global variable holds the configuration for the current simulation
 simulation_configuration rootsim_config;
-
-// Function Pointers to access functions implemented at application level
-bool (**OnGVT)(unsigned int me, void *snapshot);
-void (**ProcessEvent)(unsigned int me, simtime_t now, int event_type, void *event_content, unsigned int size, void *state);
 
 /// Flag to notify all workers that there was an error
 static bool sim_error = false;
@@ -81,7 +72,10 @@ static bool sim_error = false;
 bool exit_silently_from_kernel = false;
 
 /// This flag is set when the initialization of the simulator is complete, with no errors
-bool init_complete = false;
+static bool init_complete = false;
+
+
+bool user_exit_flag = false;
 
 
 
@@ -110,6 +104,18 @@ void exit_from_simulation_model(void) {
 }
 
 
+inline bool user_requested_exit(void){
+	return user_exit_flag;
+}
+
+
+static void handle_signal(int signum){
+	if(signum == SIGINT){
+		user_exit_flag = true;
+	}
+}
+
+
 /**
 * This function initilizes basic functionalities within ROOT-Sim. In particular, it
 * creates a mapping between logical processes and kernel instances.
@@ -120,40 +126,19 @@ void exit_from_simulation_model(void) {
 *
 */
 void base_init(void) {
-	register unsigned int i;
-	GID_t gid;
+	struct sigaction new_act = {0};
 
 	barrier_init(&all_thread_barrier, n_cores);
 
-	n_prc = 0;
-	ProcessEvent = rsalloc(sizeof(void *) * n_prc_tot);
-	OnGVT = rsalloc(sizeof(void *) * n_prc_tot);
-	to_lid = (unsigned int *)rsalloc(sizeof(unsigned int) * n_prc_tot);
-	to_gid = (unsigned int *)rsalloc(sizeof(unsigned int) * n_prc_tot);
-
-	for (i = 0; i < n_prc_tot; i++) {
-
-		if (rootsim_config.snapshot == SNAPSHOT_FULL) {
-			OnGVT[i] = &OnGVT_light;
-			ProcessEvent[i] = &ProcessEvent_light;
-		} // TODO: add here an else for ISS
-
-		set_gid(gid, i);
-		if (GidToKernel(gid) == kid) { // If the i-th logical process is hosted by this kernel
-			to_lid[i] = n_prc;
-			to_gid[n_prc] = i;
-			n_prc++;
-		} else if (kernel[i] < n_ker) { // If not
-			to_lid[i] = UINT_MAX;
-		} else { // Sanity check
-			rootsim_error(true, "Invalid mapping: there is no kernel %d!\n", kernel[i]);
-		}
-	}
-
+	// complete the sigaction struct init
+	new_act.sa_handler = handle_signal;
+	// we set the signal action so that it auto disarms itself after the first invocation
+	new_act.sa_flags = SA_RESETHAND;
+	// register the signal handler
+	sigaction(SIGINT, &new_act, NULL);
+	// register the exit function
 	atexit(exit_from_simulation_model);
 }
-
-
 
 
 /**
@@ -162,67 +147,10 @@ void base_init(void) {
 * @author Roberto Vitali
 *
 */
-// TODO: controllare cosa serve davvero qui
 void base_fini(void){
-	rsfree(kernel);
-	rsfree(to_gid);
-	rsfree(to_lid);
-	rsfree(OnGVT);
-	rsfree(ProcessEvent);
 }
 
 
-
-
-
-/**
-* Creates a mapping between logical processes' local and global identifiers
-*
-* @author Francesco Quaglia
-* @author Alessandro Pellegrini
-*
-* @param lid The logical process' local identifier
-* @return The global identifier of the logical process locally identified by lid
-*/
-__attribute__ ((pure))
-GID_t LidToGid(LID_t lid) {
-	GID_t ret;
-
-	// In sequential simulation we don't actually have the notion of GIDs and LIDs,
-	// as everything happens in a single process on a single node. Anyhow, we must
-	// preserve type safety, and we do it here
-	if(unlikely(rootsim_config.serial))
-		set_gid(ret, lid_to_int(lid));
-	else
-		set_gid(ret, to_gid[lid_to_int(lid)]);
-
-	return ret;
-}
-
-
-/**
-* Creates a mapping between logical processes' global and local identifiers
-*
-* @author Francesco Quaglia
-* @author Alessandro Pellegrini
-*
-* @param gid The logical process' global identifier
-* @return The local identifier of the logical process globally identified by gid
-*/
-__attribute__ ((pure))
-LID_t GidToLid(GID_t gid) {
-	LID_t ret;
-
-	// In sequential simulation we don't actually have the notion of GIDs and LIDs,
-	// as everything happens in a single process on a single node. Anyhow, we must
-	// preserve type safety, and we do it here
-	if(unlikely(rootsim_config.serial))
-		set_lid(ret, gid_to_int(gid));
-	else
-		set_lid(ret, to_lid[gid_to_int(gid)]);
-
-	return ret;
-}
 
 
 /**
@@ -234,9 +162,9 @@ LID_t GidToLid(GID_t gid) {
 * @return The id of the kernel currently hosting the logical process
 */
 __attribute__ ((pure))
-unsigned int GidToKernel(GID_t gid) {
+unsigned int find_kernel_by_gid(GID_t gid) {
 	// restituisce il kernel su cui si trova il processo identificato da gid
-	return kernel[gid_to_int(gid)];
+	return kernel[gid.to_int];
 }
 
 
@@ -309,7 +237,7 @@ void rootsim_error(bool fatal, const char *msg, ...) {
 
 	if(fatal) {
 		if(rootsim_config.serial) {
-			abort();
+			exit(EXIT_FAILURE);
 		} else {
 
 			if(!init_complete) {
@@ -318,6 +246,7 @@ void rootsim_error(bool fatal, const char *msg, ...) {
 
 			// Notify all KLT to shut down the simulation
 			sim_error = true;
+			longjmp(exit_jmp, 1);
 		}
 	}
 }
@@ -361,6 +290,10 @@ void distribute_lps_on_kernels(void) {
 				j = 0;
 				while (j < buf1) {
 					kernel[i] = offset;
+
+					if(kernel[i] == kid)
+						n_prc++;
+
 					i++;
 					j++;
 				}
@@ -374,6 +307,9 @@ void distribute_lps_on_kernels(void) {
 		case LP_DISTRIBUTION_CIRCULAR:
 			for (i = 0; i < n_prc_tot; i++) {
 				kernel[i] = i % n_ker;
+
+				if(kernel[i] == kid)
+						n_prc++;
 			}
 			break;
 	}

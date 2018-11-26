@@ -17,7 +17,7 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file barrier.c
+* @file thread.c
 * @brief This module implements a thread barrier
 * @author Alessandro Pellegrini
 * @date Jan 25, 2012
@@ -98,6 +98,7 @@ static void *__helper_create_thread(void *arg) {
 *
 * @author Alessandro Pellegrini
 *
+* @param n The number of threads which should be created
 * @param start_routine The new threads' entry point
 * @param arg A pointer to an array of arguments to be passed to the new threads' entry point
 *

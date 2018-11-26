@@ -17,7 +17,7 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file jmp.h
+* @file arch/jmp.h
 * @brief The architecture independent header to get ULT context switch
 * @author Alessandro Pellegrini
 */

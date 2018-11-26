@@ -17,7 +17,7 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file asm_define.c
+* @file asm_defines.c
 * @brief This file is not actually compiled into ROOT-Sim. This is used by the
 *        build system to generate the asm_defines.h file in which several sizes
 *        and offsets of structs are dynamically generated. In this way, the assembly
@@ -36,8 +36,8 @@
 
 void foo(void) {
 	// We need the offset of the LP State to make a context switch in ECS
-	SIZEOF(LP_State);
-	OFFSETOF(LP_State, context);
+	SIZEOF(struct lp_struct);
+	OFFSETOF(struct lp_struct, context);
 
 	// Size and offsets of a context are used when creating/saving/restoring contexts in jmp.S
 	SIZEOF(exec_context_t);

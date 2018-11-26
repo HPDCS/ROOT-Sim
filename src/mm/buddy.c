@@ -17,7 +17,7 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file allocator.c
+* @file buddy.c
 * @brief
 * @author Francesco Quaglia
 */
@@ -32,8 +32,10 @@
 #include <core/core.h>
 #include <mm/dymelor.h>
 #include <mm/mm.h>
+#include <scheduler/process.h>
 
 
+// TODO: move into struct lp_struct
 static struct _buddy **buddies;
 static void **mem_areas;
 
@@ -177,7 +179,7 @@ static void buddy_free(struct _buddy *self, int offset) {
     }
 }
 
-void *pool_get_memory(LID_t lid, size_t size) {
+void *pool_get_memory(struct lp_struct *lp, size_t size) {
 	long long offset,
 		displacement;
 	size_t fragments;
@@ -185,22 +187,22 @@ void *pool_get_memory(LID_t lid, size_t size) {
 	// Get a number of fragments to contain 'size' bytes
 	// The operation involves a fast positive integer round up
 	fragments = 1 + ((size - 1) / BUDDY_GRANULARITY);
-	offset = buddy_alloc(buddies[lid_to_int(lid)], fragments);
+	offset = buddy_alloc(buddies[lp->lid.to_int], fragments);
 	displacement = offset * BUDDY_GRANULARITY;
 
 	if(unlikely(offset == -1))
 		return NULL;
 
-	return (void *)((char *)mem_areas[lid_to_int(lid)] + displacement);
+	return (void *)((char *)mem_areas[lp->lid.to_int] + displacement);
 }
 
 
 
-void pool_release_memory(LID_t lid, void *ptr) {
+void pool_release_memory(struct lp_struct *lp, void *ptr) {
 	int displacement;
 
-	displacement = (int)((char *)ptr - (char *)mem_areas[lid_to_int(lid)]);
-	buddy_free(buddies[lid_to_int(lid)], displacement);
+	displacement = (int)((char *)ptr - (char *)mem_areas[lp->lid.to_int]);
+	buddy_free(buddies[lp->lid.to_int], displacement);
 
 }
 
@@ -239,19 +241,15 @@ bool allocator_init(void) {
 
 	// we loop over all gid's to let the underlying kernel module
 	// mmap memory for all distributed LPs
-	// TODO: reimplement with foreach
-	for (i = 0; i < n_prc_tot; i++) {
-		GID_t gid;
-		set_gid(gid, i);
-		if(GidToKernel(gid) == kid) {
+	foreach_lp(lp) {
+		if(find_kernel_by_gid(lp->gid) == kid) {
 			// TODO: we should tread mem_areas as gid's as well, to
 			// reclaim memory at the end of the simulation.
-			//printf("allocating memory for gid %d with lid %d  whose kernel is %d\n",i,GidToLid(i),GidToKernel(i));
-			mem_areas[lid_to_int(GidToLid(gid))] = get_segment(gid);
-			buddies[lid_to_int(GidToLid(gid))] = buddy_new(PER_LP_PREALLOCATED_MEMORY / BUDDY_GRANULARITY);
+			mem_areas[lp->lid.to_int] = get_segment(lp->gid);
+			buddies[lp->lid.to_int] = buddy_new(PER_LP_PREALLOCATED_MEMORY / BUDDY_GRANULARITY);
 			continue;
 		} else {
-			(void)get_segment(gid);
+			(void)get_segment(lp->gid);
 		}
 	}
 

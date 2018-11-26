@@ -22,7 +22,7 @@ AM_CONDITIONAL([DEBUG], [test x$enable_debug = xyes])
 # Setup compilation flags
 CFLAGS_COMMON="-std=c11 -fno-omit-frame-pointer -ffloat-store -fno-common -fstrict-aliasing -fgnu89-inline -rdynamic -lm -U_FORTIFY_SOURCE"
 CFLAGS_WARNINGS="-Wall -Wextra -Wcast-align -Wpointer-arith -Wstrict-overflow=5 -Wstrict-prototypes -Winline -Wundef -Wnested-externs -Wshadow -Wunreachable-code -Wfloat-equal -Wredundant-decls -Wold-style-definition -Wno-switch-enum"
-#FLAGS_WARNINGS="$CFLAGS_WARNINGS -Wconversion"
+#CFLAGS_WARNINGS="$CFLAGS_WARNINGS -Wconversion"
 
 # Flag to enable debugging the platform
 AS_IF([test x$enable_debug = xyes],
@@ -50,6 +50,19 @@ AC_ARG_ENABLE([profile],
 AS_IF([test "x$enable_profile" = "xyes"], [
 	CFLAGS="-pg $CFLAGS"
 ])
+
+
+#----------------------------------------------------------------------------
+# Doxygen Documentation
+#
+# If doxygen is installed on the box, generate a commodity Makefile in the
+# doc subfolder to generate the documentation. This must be called explicitly,
+# as it is separated from the main Makefile.
+#----------------------------------------------------------------------------
+AC_CHECK_PROGS([DOXYGEN], [doxygen])
+AM_CONDITIONAL([HAVE_DOXYGEN], [test -n "$DOXYGEN"])
+AM_COND_IF([HAVE_DOXYGEN], [AC_CONFIG_FILES([docs/doxy.conf])])
+AM_COND_IF([HAVE_DOXYGEN], [AC_CONFIG_FILES([docs/Makefile])])
 
 
 #----------------------------------------------------------------------------
@@ -121,7 +134,10 @@ AC_PROG_MAKE_SET
 AC_PROG_MKDIR_P
 AC_PROG_CC_C_O
 AM_PROG_CC_C_O
-m4_ifdef([AM_PROG_AR], [AM_PROG_AR])
+AM_PROG_AR
+# Silence warning: ar: 'u' modifier ignored since 'D' is the default
+AC_SUBST(AR_FLAGS, [cr])
+AC_SUBST(ARFLAGS, [cr])
 AM_PROG_AS
 AC_PROG_AWK
 LT_INIT
@@ -199,96 +215,6 @@ case $host_os in
         AC_MSG_ERROR([Your platform is not currently supported])
         ;;
 esac
-
-
-
-
-
-#----------------------------------------------------------------------------
-# Check if we can use the tick timer
-#----------------------------------------------------------------------------
-
-
-AC_MSG_CHECKING([if assembler knows rdtsc instruction])
-
-AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[]], [[
-  do {
-    unsigned int lo;
-    unsigned int hi;
-    __asm__ __volatile__ ("rdtsc" : "=a" (lo), "=d" (hi));
-    ((unsigned long long)hi) << 32 | lo;
-  }
-  while (0)
-]])], [
-AC_DEFINE([HAVE_RDTSC])
-AC_MSG_RESULT([yes])
-ac_have_as_rdtsc=yes
-], [
-AC_MSG_RESULT([no])
-])
-
-
-#----------------------------------------------------------------------------
-# Family instructions checks.
-# These are used to support a specific version of the memcmp for the
-# early check termination.
-#----------------------------------------------------------------------------
-
-
-# does the assembler understand SSE3 instructions?
-AC_MSG_CHECKING([if assembler knows SSE3])
-
-AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[]], [[
-  do { long long int x;
-     __asm__ __volatile__("fisttpq (%0)" : :"r"(&x) ); }
-  while (0)
-]])], [
-AC_DEFINE([HAVE_SSE3])
-AC_MSG_RESULT([yes])
-ac_have_as_sse3=yes
-], [
-AC_MSG_RESULT([no])
-])
-
-# does the assembler understand SSSE3 instructions?
-AC_MSG_CHECKING([if assembler knows SSSE3])
-
-save_CFLAGS="$CFLAGS"
-CFLAGS="$CFLAGS -msse"
-AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[]], [[
-  do { long long int x;
-   __asm__ __volatile__(
-      "pabsb (%0),%%xmm7" : : "r"(&x) : "xmm7" ); }
-  while (0)
-]])], [
-AC_DEFINE([HAVE_SSSE3])
-AC_MSG_RESULT([yes])
-ac_have_as_ssse3=yes
-], [
-AC_MSG_RESULT([no])
-])
-CFLAGS="$save_CFLAGS"
-
-# does the assembler understand SSE 4.2 instructions?
-AC_MSG_CHECKING([if assembler knows SSE4.2])
-
-AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[]], [[
-  do { long long int x;
-   __asm__ __volatile__(
-      "crc32q %%r15,%%r15" : : : "r15" );
-   __asm__ __volatile__(
-      "pblendvb (%%rcx), %%xmm11" : : : "memory", "xmm11");
-   __asm__ __volatile__(
-      "aesdec %%xmm2, %%xmm1" : : : "xmm2", "xmm1"); }
-  while (0)
-]])], [
-AC_DEFINE([HAVE_SSE42])
-AC_MSG_RESULT([yes])
-ac_have_as_sse42=yes
-], [
-AC_MSG_RESULT([no])
-])
-
 
 #----------------------------------------------------------------------------
 # COMPILE TIME OPTIONS
@@ -442,7 +368,6 @@ AC_MSG_RESULT([ok])
 
 
 # Generate Makefiles for all these subfolders
-#AC_OUTPUT
 AC_CONFIG_FILES([Makefile
 		 man/Makefile
 		 scripts/Makefile
@@ -457,30 +382,6 @@ AC_OUTPUT
 # At this step, we give as well some information on how to enable/disable
 # autoconfigured stuff.
 #----------------------------------------------------------------------------
-
-# Compose the message regarding the CPU
-current_cpu="${host_cpu} (available supports:"
-if test "x$ac_have_as_rdtsc" = "xyes"
-then
-	current_cpu="${current_cpu} rdtcs"
-fi
-
-if test "x$ac_have_as_sse3" = "xyes"
-then
-	current_cpu="${current_cpu} SSE3"
-fi
-
-if test "x$ac_have_as_ssse3" = "xyes"
-then
-	current_cpu="${current_cpu} SSSE3"
-fi
-
-if test "x$ac_have_as_sse42" = "xyes"
-then
-	current_cpu="${current_cpu} SSE4.2"
-fi
-current_cpu="${current_cpu})"
-
 
 # Compose the debugging message
 if test "x$enable_debug" = "xyes"
@@ -583,7 +484,7 @@ cat<<EOF
 
    * ROOT-Sim Configuration on Current Machine *
 
-CPU Architecture.......... : ${current_cpu}
+CPU Architecture.......... : ${host_cpu}
 Operating System.......... : ${host_os}
 Debugging Support......... : ${enable_debug}
 MPI....................... : ${enable_mpi}

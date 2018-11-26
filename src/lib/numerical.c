@@ -40,7 +40,11 @@
 #include <scheduler/scheduler.h>
 #include <statistics/statistics.h> // To have _mkdir helper function
 
-
+/**
+ * Master seed to initialize local seeds of all LPs. This is
+ * taken from the configuration file in ~/.rootsim if available,
+ * or from /dev/urand the first time a ROOT-Sim model is run.
+ */ 
 static seed_type master_seed;
 
 
@@ -49,13 +53,8 @@ static double do_random(void) {
 	uint32_t *seed1;
 	uint32_t *seed2;
 
-	if(unlikely(rootsim_config.serial)) {
-		seed1 = (uint32_t *)&master_seed;
-		seed2 = (uint32_t *)((char *)&master_seed + (sizeof(uint32_t)));
-	} else {
-		seed1 = (uint32_t *)&(LPS(current_lp)->seed);
-		seed2 = (uint32_t *)((char *)&(LPS(current_lp)->seed) + (sizeof(uint32_t)));
-	}
+	seed1 = (uint32_t *)&(current->numerical.seed);
+	seed2 = (uint32_t *)((char *)&(current->numerical.seed) + (sizeof(uint32_t)));
 
 	*seed1 = 36969u * (*seed1 & 0xFFFFu) + (*seed1 >> 16u);
 	*seed2 = 18000u * (*seed2 & 0xFFFFu) + (*seed2 >> 16u);
@@ -138,8 +137,6 @@ double Expent(double mean) {
 
 
 
-
-
 /**
 * This function returns a number according to a Normal Distribution with mean 0
 *
@@ -148,12 +145,14 @@ double Expent(double mean) {
 * @date 4/20/2011
 */
 double Normal(void) {
-	// TODO: usare queste variabili statiche non garantisce necessariamente l'esecuzione PWD se c'è interleaving tra gli LP che chiamano Normal()
-	static bool iset = false;
-	static double gset;
 	double fac, rsq, v1, v2;
+	bool *iset;
+	double *gset;
 
-	if(iset == false) {
+	iset = &current->numerical.iset;
+	gset = &current->numerical.gset;
+
+	if(*iset == false) {
 		do {
 			v1 = 2.0 * Random() - 1.0;
 			v2 = 2.0 * Random() - 1.0;
@@ -164,13 +163,13 @@ double Normal(void) {
 
 		// Perform Box-Muller transformation to get two normal deviates. Return one
 		// and save the other for next time.
-		gset = v1 * fac;
-		iset = true;
+		*gset = v1 * fac;
+		*iset = true;
 		return v2 * fac;
 	} else {
 		// A deviate is already available
-		iset = false;
-		return gset;
+		*iset = false;
+		return *gset;
 	}
 }
 
@@ -228,8 +227,6 @@ double Gamma(int ia) {
 /**
 * This function returns the waiting time to the next event in a Poisson process of unit mean.
 *
-* @author Alessandro Pellegrini
-* @param ia Integer Order of the Gamma Distribution
 * @return A random number
 * @date 11 Jan 2012
 */
@@ -427,15 +424,12 @@ static void load_seed(void) {
 #define RS_WORD_LENGTH (8 * sizeof(seed_type))
 #define ROR(value, places) (value << (places)) | (value >> (RS_WORD_LENGTH - places)) // Circular shift
 void numerical_init(void) {
-
-	LID_t lid;
-
 	// Initialize the master seed
 	load_seed();
 
 	// Initialize the per-LP seed
-	for(lid.id = 0; lid.id < n_prc; lid.id++) {
-		LPS(lid)->seed = sanitize_seed(ROR((int64_t)master_seed, LidToGid(lid).id % RS_WORD_LENGTH));
+	foreach_lp(lp) {
+		lp->numerical.seed = sanitize_seed(ROR((int64_t)master_seed, lp->gid.to_int % RS_WORD_LENGTH));
 	}
 
 }

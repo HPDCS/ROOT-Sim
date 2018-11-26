@@ -17,7 +17,7 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file gvt.c
+* @file communication/gvt.c
 * @brief Distributed GVT Support module
 * @author Tommaso Tocci
 */
@@ -326,7 +326,7 @@ void register_outgoing_msg(const msg_t* msg) {
 		return;
 #endif
 
-	unsigned int dst_kid = GidToKernel(msg->receiver);						
+	unsigned int dst_kid = find_kernel_by_gid(msg->receiver);
 			
 	if(dst_kid == kid) return;
 
@@ -344,7 +344,7 @@ void register_incoming_msg(const msg_t* msg){
 		return;
 #endif
 
-	unsigned int src_kid = GidToKernel(msg->sender);
+	unsigned int src_kid = find_kernel_by_gid(msg->sender);
 
 	if(src_kid == kid) return;
 

@@ -85,7 +85,7 @@ void unrecoverable_fini(void) {
 
 
 
-void *umalloc(LID_t lid, size_t s) {
+void *umalloc(struct lp_struct *lp, size_t s) {
 	if(rootsim_config.serial)
 		return rsalloc(s);
 
@@ -93,7 +93,7 @@ void *umalloc(LID_t lid, size_t s) {
 	if(rootsim_config.disable_allocator)
 		return rsalloc(s);
 
-	return do_malloc(lid, unrecoverable_state[lid_to_int(lid)], s);
+	return do_malloc(lp, unrecoverable_state[lp->lid.to_int], s);
 	#else
 	(void)lid;
 	return rsalloc(s);
@@ -101,7 +101,7 @@ void *umalloc(LID_t lid, size_t s) {
 }
 
 
-void ufree(LID_t lid, void *ptr) {
+void ufree(struct lp_struct *lp, void *ptr) {
 	
 //	printf("id of process requesting ufree: GID: %d LID: %d\n",LidToGid(lid),lid);
 	
@@ -123,7 +123,7 @@ void ufree(LID_t lid, void *ptr) {
 		return;
 	}else*/
 
-	do_free(lid, unrecoverable_state[lid_to_int(lid)], ptr);
+	do_free(lp, unrecoverable_state[lp->lid.to_int], ptr);
 	#else
 	(void)lid;
 	rsfree(ptr);
@@ -131,7 +131,7 @@ void ufree(LID_t lid, void *ptr) {
 }
 
 
-void *urealloc(LID_t lid, void *ptr, size_t new_s) {
+void *urealloc(struct lp_struct *lp, void *ptr, size_t new_s) {
 
 	void *new_buffer;
 	size_t old_size;
@@ -139,12 +139,12 @@ void *urealloc(LID_t lid, void *ptr, size_t new_s) {
 
 	// If ptr is NULL realloc is equivalent to the malloc
 	if (ptr == NULL) {
-		return umalloc(lid, new_s);
+		return umalloc(lp, new_s);
 	}
 
 	// If ptr is not NULL and the size is 0 realloc is equivalent to the free
 	if (new_s == 0) {
-		ufree(lid, ptr);
+		ufree(lp, ptr);
 		return NULL;
 	}
 
@@ -154,25 +154,25 @@ void *urealloc(LID_t lid, void *ptr, size_t new_s) {
 	// is copied at least the smaller buffer size between the new and the old one
 	old_size = m_area->chunk_size;
 
-	new_buffer = umalloc(lid, new_s);
+	new_buffer = umalloc(lp, new_s);
 
 	if (new_buffer == NULL)
 		return NULL;
 
 	memcpy(new_buffer, ptr, new_s > old_size ? new_s : old_size);
-	ufree(lid, ptr);
+	ufree(lp, ptr);
 
 	return new_buffer;
 }
 
 
-void *ucalloc(LID_t lid, size_t nmemb, size_t size) {
+void *ucalloc(struct lp_struct *lp, size_t nmemb, size_t size) {
 	void *buffer;
 
 	if (nmemb == 0 || size == 0)
 		return NULL;
 
-	buffer = umalloc(lid, nmemb * size);
+	buffer = umalloc(lp, nmemb * size);
 	if (buffer == NULL)
 		return NULL;
 

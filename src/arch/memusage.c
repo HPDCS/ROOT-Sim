@@ -132,13 +132,13 @@ size_t getCurrentRSS(void)
 	FILE* fp = NULL;
 	if ( (fp = fopen( "/proc/self/statm", "r" )) == NULL )
 		return (size_t)0L;		/* Can't open? */
-	if ( fscanf( fp, "%*s%ld", &rss ) != 1 )
+	if ( fscanf( fp, "%*d %ld", &rss ) != 1 )
 	{
 		fclose( fp );
 		return (size_t)0L;		/* Can't read? */
 	}
 	fclose( fp );
-	return (size_t)rss * (size_t)sysconf( _SC_PAGESIZE);
+	return (size_t)rss * 1024L;
 
 #else
 	/* AIX, BSD, Solaris, and Unknown OS ------------------------ */

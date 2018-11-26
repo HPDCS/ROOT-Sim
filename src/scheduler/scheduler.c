@@ -60,17 +60,19 @@
 /// This is used to keep track of how many LPs were bound to the current KLT
 __thread unsigned int n_prc_per_thread;
 
-/// This global variable tells the simulator what is the local id of the LP currently being scheduled on the current worker thread
-__thread LID_t current_lp;
+/// This is a per-thread variable pointing to the block state of the LP currently scheduled
+__thread struct lp_struct *current;
 
-/// This global variable tells the simulator what is the LP currently being scheduled on the current worker thread
-__thread simtime_t current_lvt;
-
-/// This global variable tells the simulator what is the LP currently being scheduled on the current worker thread
+/**
+ * This is a per-thread variable telling what is the event that should be executed
+ * when activating an LP. It is incorrect to rely on current->bound, as there
+ * are cases (such as the silent execution) in which we have a certain bound set,
+ * but we execute a different event.
+ *
+ * @todo We should uniform this behaviour, and drop current_evt, as this might be
+ *       misleading when reading the code.
+ */
 __thread msg_t *current_evt;
-
-/// This global variable tells the simulator what is the LP currently being scheduled on the current worker thread
-__thread void *current_state;
 
 /*
 * This function initializes the scheduler. In particular, it relies on MPI to broadcast to every simulation kernel process
@@ -81,30 +83,12 @@ __thread void *current_state;
 * @param sched The scheduler selected initially, but master can decide to change it, so slaves must rely on what master send to them
 */
 void scheduler_init(void) {
-	initialize_control_blocks();
-
 	#ifdef HAVE_PREEMPTION
 	preempt_init();
 	#endif
 }
 
 
-
-static void destroy_LPs(void) {
-	register unsigned int i;
-
-	for(i = 0; i < n_prc; i++) {
-//		rsfree(LPS(i)->queue_in);
-//		rsfree(LPS(i)->queue_out);
-//		rsfree(LPS(i)->queue_states);
-//		rsfree(LPS(i)->bottom_halves);
-//		rsfree(LPS(i)->rendezvous_queue);
-
-		// Destroy stacks
-//		rsfree(LPS(i)->stack);
-	}
-
-}
 
 
 
@@ -114,28 +98,33 @@ static void destroy_LPs(void) {
 * @author Alessandro Pellegrini
 */
 void scheduler_fini(void) {
-	register unsigned int i;
-
 	#ifdef HAVE_PREEMPTION
 	preempt_fini();
 	#endif
 
-	destroy_LPs();
+	foreach_lp(lp) {
+		rsfree(lp->queue_in);
+		rsfree(lp->queue_out);
+		rsfree(lp->queue_states);
+		rsfree(lp->bottom_halves);
+		rsfree(lp->rendezvous_queue);
 
-	for (i = 0; i < n_prc; i++) {
-//		rsfree(LPS(i));
+		// Destroy stacks
+		rsfree(lp->stack);
+
+		rsfree(lp);
 	}
-//	rsfree(LPS); // These are now names of functions
 
-//	rsfree(LPS_bound); // These are now names of functions
+	rsfree(lps_blocks);
+	rsfree(lps_bound_blocks);
 }
 
 
 
 /**
 * This is a LP main loop. It s the embodiment of the usrespace thread implementing the logic of the LP.
-* Whenever an event is to be scheduled, the corresponding metadata are set by the <schedule>() function,
-* which in turns calls <activate_LP>() to execute the actual context switch.
+* Whenever an event is to be scheduled, the corresponding metadata are set by the schedule() function,
+* which in turns calls activate_LP() to execute the actual context switch.
 * This ProcessEvent wrapper explicitly returns control to simulation kernel user thread when an event
 * processing is finished. In case the LP tries to access state data which is not belonging to its
 * simulation state, a SIGSEGV signal is raised and the LP might be descheduled if it is not safe
@@ -146,7 +135,7 @@ void scheduler_fini(void) {
 *
 * @param args arguments passed to the LP main loop. Currently, this is not used.
 */
-static void LP_main_loop(void *args) {
+void LP_main_loop(void *args) {
 
 	#ifdef EXTRA_CHECKS
 	unsigned long long hash1, hash2;
@@ -156,13 +145,13 @@ static void LP_main_loop(void *args) {
 	(void)args; // this is to make the compiler stop complaining about unused args
 
 	// Save a default context
-	context_save(&LPS(current_lp)->default_context);
+	context_save(&current->default_context);
 
 	while(true) {
 
 		#ifdef EXTRA_CHECKS
-		if(current_evt->size > 0) {
-			hash1 = XXH64(current_evt->event_content, current_evt->size, LidToGid(current_lp));
+		if(current->bound->size > 0) {
+			hash1 = XXH64(current_evt->event_content, current_evt->size, current->gid);
 		}
 		#endif
 
@@ -171,26 +160,26 @@ static void LP_main_loop(void *args) {
 
 		// Process the event
 		switch_to_application_mode();
-		ProcessEvent[lid_to_int(current_lp)](gid_to_int(LidToGid(current_lp)), current_evt->timestamp, current_evt->type, current_evt->event_content, current_evt->size, current_state);
+		current->ProcessEvent(current->gid.to_int, current_evt->timestamp, current_evt->type, current_evt->event_content, current_evt->size, current->current_base_pointer);
 		switch_to_platform_mode();
 
 		int delta_event_timer = timer_value_micro(event_timer);
 
 		#ifdef EXTRA_CHECKS
-		if(current_evt->size > 0) {
-			hash2 = XXH64(current_evt->event_content, current_evt->size, LidToGid(current_lp));
+		if(current->bound->size > 0) {
+			hash2 = XXH64(current_evt->event_content, current_evt->size, current->gid);
 		}
 
 		if(hash1 != hash2) {
-                        rootsim_error(true, "Error, LP %d has modified the payload of event %d during its processing. Aborting...\n", LidToGid(current_lp), current_evt->type);
+                        rootsim_error(true, "Error, LP %d has modified the payload of event %d during its processing. Aborting...\n", current->gid, current->bound->type);
 		}
 		#endif
 
-		statistics_post_lp_data(current_lp, STAT_EVENT, 1.0);
-		statistics_post_lp_data(current_lp, STAT_EVENT_TIME, delta_event_timer);
+		statistics_post_data(current, STAT_EVENT, 1.0);
+		statistics_post_data(current, STAT_EVENT_TIME, delta_event_timer);
 
 		// Give back control to the simulation kernel's user-level thread
-		context_switch(&LPS(current_lp)->context, &kernel_context);
+		context_switch(&current->context, &kernel_context);
 	}
 }
 
@@ -199,68 +188,12 @@ static void LP_main_loop(void *args) {
 
 
 
-/**
- * This function initializes a LP execution context. It allocates page-aligned memory for efficiency
- * reasons, and then calls <context_create>() which does the final trick.
- * <context_create>() uses global variables: LPs must therefore be intialized before creating new kernel threads
- * for supporting concurrent execution of LPs.
- *
- * @author Alessandro Pellegrini
- *
- * @date November 8, 2013
- *
- * @param lp the idex of the LP in the LPs descriptor table to be initialized
- */
-void initialize_LP(LID_t lp) {
-	unsigned int i;
-
-	// Allocate LP stack
-	LPS(lp)->stack = get_ult_stack(LP_STACK_SIZE);
-
-	// Set the initial checkpointing period for this LP.
-	// If the checkpointing period is fixed, this will not change during the
-	// execution. Otherwise, new calls to this function will (locally) update
-	// this.
-	set_checkpoint_period(lp, rootsim_config.ckpt_period);
 
 
-	// Initially, every LP is ready
-	LPS(lp)->state = LP_STATE_READY;
+void initialize_worker_thread(void)
+{
+	msg_t *init_event;
 
-	// There is no current state layout at the beginning
-	LPS(lp)->current_base_pointer = NULL;
-
-	// Initialize the queues
-	LPS(lp)->queue_in = new_list(msg_t);
-	LPS(lp)->queue_out = new_list(msg_hdr_t);
-	LPS(lp)->queue_states = new_list(state_t);
-	LPS(lp)->rendezvous_queue = new_list(msg_t);
-
-	// Initialize the LP lock
-	spinlock_init(&LPS(lp)->lock);
-
-	// No event has been processed so far
-	LPS(lp)->bound = NULL;
-
-	LPS(lp)->outgoing_buffer.min_in_transit = rsalloc(sizeof(simtime_t) * n_cores);
-	for(i = 0; i < n_cores; i++) {
-		LPS(lp)->outgoing_buffer.min_in_transit[i] = INFTY;
-	}
-
-	#ifdef HAVE_CROSS_STATE
-	// No read/write dependencies open so far for the LP. The current lp is always opened
-	LPS(lp)->ECS_index = 0;
-	LPS(lp)->ECS_synch_table[0] = LidToGid(lp); // LidToGid for distributed ECS
-	#endif
-
-	// Create user thread
-	context_create(&LPS(lp)->context, LP_main_loop, NULL, LPS(lp)->stack, LP_STACK_SIZE);
-}
-
-
-
-
-void initialize_worker_thread(void) {
 	communication_init_thread();
 
 	// Divide LPs among worker threads, for the first time here
@@ -270,44 +203,28 @@ void initialize_worker_thread(void) {
 		fflush(stdout);
 	}
 
-	// Initialize the LP control block for each locally hosted LP
-	// and schedule the special INIT event
-	int __helper1(LID_t lid, GID_t gid, unsigned int num, void *data) {
-		msg_t *init_event;
-		(void)num;
-		(void)data;
-
-		// Create user level thread for the current LP and initialize LP control block
-		initialize_LP(lid);
-
-		// Schedule an INIT event to the newly instantiated LP
-		pack_msg(&init_event, gid, gid, INIT, 0.0, 0.0, 0, NULL);
-	        init_event->mark = generate_mark(lid);
-
-		list_insert_head(LPS(lid)->queue_in, init_event);
-		LPS(lid)->state_log_forced = true;
-
-		return 0; // continue to next element
-	}
-	LPS_bound_foreach(__helper1, NULL);
-
 	// Worker Threads synchronization barrier: they all should start working together
 	thread_barrier(&all_thread_barrier);
 
 	if(master_thread() && master_kernel())
 		printf("done\n");
 
-	int __helper2(LID_t lid, GID_t gid, unsigned int num, void *data) {
-		(void)lid;
-		(void)gid;
-		(void)num;
-		(void)data;
-
-		schedule();
-
-		return 0; // continue to next element
+	// Schedule an INIT event to the newly instantiated LP
+	// We need two separate foreach_bound_lp here, because
+	// in this way we are sure that there is at least one
+	// event to be used as the bound and we do not have to make
+	// any check on null throughout the scheduler code.
+	foreach_bound_lp(lp) {
+		pack_msg(&init_event, lp->gid, lp->gid, INIT, 0.0, 0.0, 0, NULL);
+	        init_event->mark = generate_mark(lp);
+		list_insert_head(lp->queue_in, init_event);
+		lp->state_log_forced = true;
 	}
-	LPS_bound_foreach(__helper2, NULL);
+
+	foreach_bound_lp(lp) {
+		(void)lp;
+		schedule();
+	}
 
 	// Worker Threads synchronization barrier: they all should start working together
 	thread_barrier(&all_thread_barrier);
@@ -337,13 +254,11 @@ void initialize_worker_thread(void) {
 * @param evt A pointer to the event to be processed by the LP
 * @param state The simulation state to be passed to the LP
 */
-void activate_LP(LID_t lp, simtime_t lvt, void *evt, void *state) {
+void activate_LP(struct lp_struct *next, msg_t *evt) {
 
 	// Notify the LP main execution loop of the information to be used for actual simulation
-	current_lp = lp;
-	current_lvt = lvt;
+	current = next;
 	current_evt = evt;
-	current_state = state;
 
 //	#ifdef HAVE_PREEMPTION
 //	if(!rootsim_config.disable_preemption)
@@ -355,11 +270,11 @@ void activate_LP(LID_t lp, simtime_t lvt, void *evt, void *state) {
 	lp_alloc_schedule();
 	#endif
 
-	if(unlikely(is_blocked_state(LPS(lp)->state))) {
-		rootsim_error(true, "Critical condition: LP %d has a wrong state -> %d. Aborting...\n", gid_to_int(LidToGid(lp)), LPS(lp)->state);
+	if(unlikely(is_blocked_state(next->state))) {
+		rootsim_error(true, "Critical condition: LP %d has a wrong state -> %d. Aborting...\n", next->gid.to_int, next->state);
 	}
 
-	context_switch(&kernel_context, &LPS(lp)->context);
+	context_switch(&kernel_context, &next->context);
 
 //	#ifdef HAVE_PREEMPTION
 //        if(!rootsim_config.disable_preemption)
@@ -368,33 +283,29 @@ void activate_LP(LID_t lp, simtime_t lvt, void *evt, void *state) {
 
 	#ifdef HAVE_CROSS_STATE
 	// Deactivate memory view for the current LP if no conflict has arisen
-	if(!is_blocked_state(LPS(lp)->state)) {
+	if(!is_blocked_state(next->state)) {
 //		printf("Deschedule %d\n",lp);
 		lp_alloc_deschedule();
 	}
 	#endif
 
-	current_lp = idle_process;
-	current_lvt = -1.0;
-	current_evt = NULL;
-	current_state = NULL;
+	current = NULL;
 }
 
 
 
-bool check_rendevouz_request(LID_t lid){
+bool check_rendevouz_request(struct lp_struct *lp){
 	msg_t *temp_mess;
 
-	if(LPS(lid)->state != LP_STATE_WAIT_FOR_SYNCH)
+	if(lp->state != LP_STATE_WAIT_FOR_SYNCH)
 		return false;
 
-	if(LPS(lid)->bound != NULL && list_next(LPS(lid)->bound) != NULL){
-		temp_mess = list_next(LPS(lid)->bound);
-		return temp_mess->type == RENDEZVOUS_START && LPS(lid)->wait_on_rendezvous > temp_mess->rendezvous_mark;
+	if(lp->bound != NULL && list_next(lp->bound) != NULL){
+		temp_mess = list_next(lp->bound);
+		return temp_mess->type == RENDEZVOUS_START && lp->wait_on_rendezvous > temp_mess->rendezvous_mark;
 	}
 
 	return false;
-
 }
 
 /**
@@ -405,19 +316,18 @@ bool check_rendevouz_request(LID_t lid){
 */
 void schedule(void) {
 
-	LID_t lid;
+	struct lp_struct *next;
 	msg_t *event;
-	void *state;
 
 	#ifdef HAVE_CROSS_STATE
 	bool resume_execution = false;
 	#endif
 
-	// Find next LP to be executed, depending on the chosen scheduler
+	// Find the next LP to be scheduled
 	switch (rootsim_config.scheduler) {
 
 		case SCHEDULER_STF:
-			lid = smallest_timestamp_first();
+			next = smallest_timestamp_first();
 			break;
 
 		default:
@@ -425,27 +335,24 @@ void schedule(void) {
 	}
 
 	// No logical process found with events to be processed
-	if (lid_equals(lid, idle_process)) {
-		statistics_post_lp_data(lid, STAT_IDLE_CYCLES, 1.0);
+	if (next == NULL) {
+		statistics_post_data(NULL, STAT_IDLE_CYCLES, 1.0);
 		return;
 	}
-
-//	if(lid == 1 && LPS[lid]->state != LP_STATE_READY)
-//		printf("state of lid 1 is %d\n",LPS[lid]->state);
 
 	// If we have to rollback
-	if(LPS(lid)->state == LP_STATE_ROLLBACK) {
-		rollback(lid);
-		LPS(lid)->state = LP_STATE_READY;
-		send_outgoing_msgs(lid);
+	if(next->state == LP_STATE_ROLLBACK) {
+		rollback(next);
+		next->state = LP_STATE_READY;
+		send_outgoing_msgs(next);
 		return;
 	}
 
-	if(!is_blocked_state(LPS(lid)->state) && LPS(lid)->state != LP_STATE_READY_FOR_SYNCH){
-		event = advance_to_next_event(lid);
+	if(!is_blocked_state(next->state) && next->state != LP_STATE_READY_FOR_SYNCH) {
+		event = advance_to_next_event(next);
 	}
 	else {
-		event = LPS(lid)->bound;
+		event = next->bound;
 	}
 
 
@@ -454,50 +361,47 @@ void schedule(void) {
 	// NULL, it means that lid has no events to be executed. This is
 	// a critical condition and we abort.
 	if(unlikely(event == NULL)) {
-		rootsim_error(true, "Critical condition: LP %d seems to have events to be processed, but I cannot find them. Aborting...\n", lid);
+		rootsim_error(true, "Critical condition: LP %d seems to have events to be processed, but I cannot find them. Aborting...\n", next->gid);
 	}
 
 	if(unlikely(!process_control_msg(event))) {
 		return;
 	}
 
-	state = LPS(lid)->current_base_pointer;
-
-
-#ifdef HAVE_CROSS_STATE
+	#ifdef HAVE_CROSS_STATE
 	// In case we are resuming an interrupted execution, we keep track of this.
 	// If at the end of the scheduling the LP is not blocked, we can unblock all the remote objects
-	if(is_blocked_state(LPS(lid)->state) || LPS(lid)->state == LP_STATE_READY_FOR_SYNCH) {
+	if(is_blocked_state(next->state) || next->state == LP_STATE_READY_FOR_SYNCH) {
 		resume_execution = true;
 	}
-#endif
+	#endif
 
 
 	// Schedule the LP user-level thread
-	if(LPS(lid)->state == LP_STATE_READY_FOR_SYNCH)
-		LPS(lid)->state = LP_STATE_RUNNING_ECS;
+	if(next->state == LP_STATE_READY_FOR_SYNCH)
+		next->state = LP_STATE_RUNNING_ECS;
 	else
-		LPS(lid)->state = LP_STATE_RUNNING;
+		next->state = LP_STATE_RUNNING;
 	
-	activate_LP(lid, lvt(lid), event, state);
+	activate_LP(next, event);
 
-	if(!is_blocked_state(LPS(lid)->state)) {
-		LPS(lid)->state = LP_STATE_READY;
-		send_outgoing_msgs(lid);
+	if(!is_blocked_state(next->state)) {
+		next->state = LP_STATE_READY;
+		send_outgoing_msgs(next);
 	}
 
-#ifdef HAVE_CROSS_STATE
-	if(resume_execution && !is_blocked_state(LPS(lid)->state)) {
-		//printf("ECS event is finished mark %llu !!!\n", LPS(lid)->wait_on_rendezvous);
+	#ifdef HAVE_CROSS_STATE
+	if(resume_execution && !is_blocked_state(next->state)) {
+		//printf("ECS event is finished mark %llu !!!\n", next->wait_on_rendezvous);
 		fflush(stdout);
-		unblock_synchronized_objects(lid);
+		unblock_synchronized_objects(next);
 
 		// This is to avoid domino effect when relying on rendezvous messages
-		force_LP_checkpoint(lid);
+		force_LP_checkpoint(next);
 	}
-#endif
+	#endif
 
 	// Log the state, if needed
-	LogState(lid);
+	LogState(next);
 }
 

@@ -45,20 +45,6 @@
 
 
 /**
-* This function returns the timestamp of the last executed event
-*
-* @author Francesco Quaglia
-*
-* @param lid The Light Process id
-* @return The timestamp of the last executed event
-*/
-simtime_t last_event_timestamp(LID_t lid) {
-	return lvt(lid);
-}
-
-
-
-/**
 * This function return the timestamp of the next-to-execute event
 *
 * @author Alessandro Pellegrini
@@ -67,14 +53,14 @@ simtime_t last_event_timestamp(LID_t lid) {
 * @param lid The Logicall Process id
 * @return The timestamp of the next-to-execute event
 */
-simtime_t next_event_timestamp(LID_t lid) {
+simtime_t next_event_timestamp(struct lp_struct *lp) {
 	msg_t *evt;
 
 	// The bound can be NULL in the first execution or if it has gone back
-	if (unlikely(LPS(lid)->bound == NULL && !list_empty(LPS(lid)->queue_in))) {
-		return list_head(LPS(lid)->queue_in)->timestamp;
+	if (unlikely(lp->bound == NULL && !list_empty(lp->queue_in))) {
+		return list_head(lp->queue_in)->timestamp;
 	} else {
-		evt = list_next(LPS(lid)->bound);
+		evt = list_next(lp->bound);
 		if(likely(evt != NULL)) {
 			return evt->timestamp;
 		}
@@ -97,23 +83,23 @@ simtime_t next_event_timestamp(LID_t lid) {
 * @param lid The Light Process id
 * @return The pointer to the event is going to be processed
 */
-msg_t *advance_to_next_event(LID_t lid) {
+msg_t *advance_to_next_event(struct lp_struct *lp) {
 
-	if (unlikely(LPS(lid)->bound == NULL)) {
-		if (likely(!list_empty(LPS(lid)->queue_in))) {
-			LPS(lid)->bound = list_head(LPS(lid)->queue_in);
+	if (unlikely(lp->bound == NULL)) {
+		if (likely(!list_empty(lp->queue_in))) {
+			lp->bound = list_head(lp->queue_in);
 		} else {
 			return NULL;
 		}
 	} else {
-		if (likely(list_next(LPS(lid)->bound) != NULL)) {
-			LPS(lid)->bound = list_next(LPS(lid)->bound);
+		if (likely(list_next(lp->bound) != NULL)) {
+			lp->bound = list_next(lp->bound);
 		} else {
 			return NULL;
 		}
 	}
 
-	return LPS(lid)->bound;
+	return lp->bound;
 }
 
 
@@ -129,13 +115,13 @@ msg_t *advance_to_next_event(LID_t lid) {
 * @param msg The message to be added into some LP's bottom half.
 */
 void insert_bottom_half(msg_t *msg) {
-	LID_t lid = GidToLid(msg->receiver);
+	struct lp_struct *lp = find_lp_by_gid(msg->receiver);
 
 	validate_msg(msg);
 
-	insert_msg(LPS(lid)->bottom_halves, msg);
+	insert_msg(lp->bottom_halves, msg);
 	#ifdef HAVE_PREEMPTION
-	update_min_in_transit(LPS(lid)->worker_thread, msg->timestamp);
+	update_min_in_transit(lp->worker_thread, msg->timestamp);
 	#endif
 }
 
@@ -146,18 +132,15 @@ void insert_bottom_half(msg_t *msg) {
 * @author Alessandro Pellegrini
 */
 void process_bottom_halves(void) {
-	unsigned int i;
-	LID_t lid_receiver;
-	LP_State *receiver;
+	struct lp_struct *receiver;
 
 	msg_t *msg_to_process;
 	msg_t *matched_msg;
 
-	for(i = 0; i < n_prc_per_thread; i++) {
+	foreach_bound_lp(lp) {
 
-		while((msg_to_process = get_msg(LPS_bound(i)->bottom_halves)) != NULL) {
-			lid_receiver = GidToLid(msg_to_process->receiver);
-			receiver = LPS(lid_receiver);
+		while((msg_to_process = get_msg(lp->bottom_halves)) != NULL) {
+			receiver = find_lp_by_gid(msg_to_process->receiver);
 
 			// Sanity check
 			if(unlikely(msg_to_process->timestamp < get_last_gvt()))
@@ -174,7 +157,7 @@ void process_bottom_halves(void) {
 				// It's an antimessage
 				case negative:
 
-					statistics_post_lp_data(lid_receiver, STAT_ANTIMESSAGE, 1.0);
+					statistics_post_data(receiver, STAT_ANTIMESSAGE, 1.0);
 
 					// Find the message matching the antimessage
 					matched_msg = list_tail(receiver->queue_in);
@@ -184,13 +167,13 @@ void process_bottom_halves(void) {
 
 					// Sanity check
 					if(unlikely(matched_msg == NULL)) {
-						rootsim_error(false, "LP %d Received an antimessage, but no such mark has been found!\n", lid_to_int(lid_receiver));
+						rootsim_error(false, "LP %d Received an antimessage, but no such mark has been found!\n", receiver->gid.to_int);
 						dump_msg_content(msg_to_process);
 						rootsim_error(true, "Aborting...\n");
 					} 
 
 					// If the matched message is in the past, we have to rollback
-					if(matched_msg->timestamp <= lvt(lid_receiver)) {
+					if(matched_msg->timestamp <= lvt(receiver)) {
 
 						receiver->bound = list_prev(matched_msg);
 						while((receiver->bound != NULL) && D_EQUAL(receiver->bound->timestamp, msg_to_process->timestamp)) {
@@ -221,7 +204,7 @@ void process_bottom_halves(void) {
 					// Here we check for a strictly minor timestamp since
 					// the queue is FIFO for same-timestamp events. Therefore,
 					// A contemporaneous event does not cause a causal violation.
-					if(msg_to_process->timestamp < lvt(lid_receiver)) {
+					if(msg_to_process->timestamp < lvt(receiver)) {
 
 						receiver->bound = list_prev(msg_to_process);
 						while((receiver->bound != NULL) && D_EQUAL(receiver->bound->timestamp, msg_to_process->timestamp)) {
@@ -280,9 +263,9 @@ void process_bottom_halves(void) {
 * @param lid The local Id of the Light Process
 * @return A value to be used as a unique mark for the message within the LP
 */
-unsigned long long generate_mark(LID_t lid) {
-	unsigned long long k1 = (unsigned long long)gid_to_int(LidToGid(lid));
-	unsigned long long k2 = LPS(lid)->mark++;
+unsigned long long generate_mark(struct lp_struct *lp) {
+	unsigned long long k1 = (unsigned long long)lp->gid.to_int;
+	unsigned long long k2 = lp->mark++;
 
 	return (unsigned long long)( ((k1 + k2) * (k1 + k2 + 1) / 2) + k2 );
 }

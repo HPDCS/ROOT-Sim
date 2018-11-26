@@ -57,14 +57,14 @@
 /// This is the list of mnemonics for arguments
 enum _opt_codes{
  OPT_FIRST = 128, /**< this is used as an offset to the enum values, so that argp doesn't assign short options */
-
- OPT_SCHEDULER = OPT_FIRST,
- OPT_CKTRM_MODE,
- OPT_LPS_DISTRIBUTION,
- OPT_VERBOSE,
- OPT_STATS,
- OPT_STATE_SAVING,
- OPT_SNAPSHOT,
+/// make sure these ones are mapped correctly to the external enum param_codes,
+ OPT_SCHEDULER = 		OPT_FIRST + PARAM_SCHEDULER,
+ OPT_CKTRM_MODE = 		OPT_FIRST + PARAM_CKTRM_MODE,
+ OPT_LPS_DISTRIBUTION = OPT_FIRST + PARAM_LPS_DISTRIBUTION,
+ OPT_VERBOSE = 			OPT_FIRST + PARAM_VERBOSE,
+ OPT_STATS = 			OPT_FIRST + PARAM_STATS,
+ OPT_STATE_SAVING = 	OPT_FIRST + PARAM_STATE_SAVING,
+ OPT_SNAPSHOT = 		OPT_FIRST + PARAM_SNAPSHOT,
 
  OPT_NP,
  OPT_NPRC,
@@ -95,7 +95,7 @@ enum _opt_codes{
 };
 
 // XXX we offset the first level with OPT_FIRST so remember about it when you index it!
-static const char* param_to_text[][5] = {
+const char * const param_to_text[][5] = {
 	[OPT_SCHEDULER - OPT_FIRST] = {
 			[SCHEDULER_INVALID] = "invalid scheduler",
 			[SCHEDULER_STF] = "stf",
@@ -158,7 +158,7 @@ static const struct argp_option argp_options[] = {
 	{"inc",			OPT_INC,	0,			0, "Take only incremental logs (still to be released)", 0},
 	{"A",		  	OPT_A,		0,			0, "Autonomic subsystem: set checkpointing interval and log mode automatically at runtime (still to be released)", 0},
 	{"gvt",			OPT_GVT,	"VALUE",	0, "Time between two GVT reductions (in milliseconds)", 0},
-	{"cktrm-mode", 	OPT_CKTRM_MODE, "TYPE",	0, "Termination Detection mode. Supported values: standard, incremental", 0},
+	{"cktrm-mode", 	OPT_CKTRM_MODE, "TYPE",	0, "Termination Detection mode. Supported values: normal, incremental", 0},
 	{"blocking-gvt", 		OPT_BLOCKING_GVT, 		0,		0, 	"Blocking GVT. All distributed nodes block until a consensus is agreed", 0},
 	{"gvt-snapshot-cycles",	OPT_GVT_SNAPSHOT_CYCLES, "VALUE", 0, "Termination detection is invoked after this number of GVT reductions", 0},
 	{"simulation-time", 	OPT_SIMULATION_TIME, 	"VALUE", 0,	"Halt the simulation when all LPs reach this logical time. 0 means infinite", 0},
@@ -277,7 +277,7 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state){
 			break;
 
 		case OPT_GVT:
-			rootsim_config.gvt_time_period = parse_ullong_limits(1, INT_MAX);
+			rootsim_config.gvt_time_period = parse_ullong_limits(1, 10000);
 			break;
 
 		case OPT_BLOCKING_GVT:
@@ -374,6 +374,8 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state){
 			if(!rootsim_config.serial && n_prc_tot < n_cores)
 				rootsim_error(true, "Requested a simulation run with %u LPs and %u worker threads: the mapping is not possible\n", n_prc_tot, n_cores);
 
+			print_config();
+
 			break;
 			/* these functionalities are not needed
 		case ARGP_KEY_ARGS:
@@ -434,71 +436,25 @@ void SystemInit(int argc, char **argv) {
 
 	// If we're going to run a serial simulation, configure the simulation to support it
 	if(rootsim_config.serial) {
-		SetState = SerialSetState;
 		ScheduleNewEvent = SerialScheduleNewEvent;
+		initialize_lps();
 		numerical_init();
-		//dymelor_init();
 		statistics_init();
 		serial_init();
 		return;
 	} else {
-		SetState = ParallelSetState;
 		ScheduleNewEvent = ParallelScheduleNewEvent;
 	}
-
-
-	if (master_kernel()) {
-
-		 printf("****************************\n"
-			"*  ROOT-Sim Configuration  *\n"
-			"****************************\n"
-			"Kernels: %u\n"
-			"Cores: %ld available, %d used\n"
-			"Number of Logical Processes: %u\n"
-			"Output Statistics Directory: %s\n"
-			"Scheduler: %s\n"
-			#ifdef HAVE_MPI
-			"MPI multithread support: %s\n"
-			#endif
-			"GVT Time Period: %.2f seconds\n"
-			"Checkpointing Type: %s\n"
-			"Checkpointing Period: %d\n"
-			"Snapshot Reconstruction Type: %s\n"
-			"Halt Simulation After: %d\n"
-			"LPs Distribution Mode across Kernels: %s\n"
-			"Check Termination Mode: %s\n"
-			"Blocking GVT: %s\n"
-			"Set Seed: %ld\n",
-			n_ker,
-			get_cores(),
-			n_cores,
-			n_prc_tot,
-			rootsim_config.output_dir,
-			param_to_text[OPT_SCHEDULER - OPT_FIRST][rootsim_config.scheduler],
-			#ifdef HAVE_MPI
-			((mpi_support_multithread)? "yes":"no"),
-			#endif
-			rootsim_config.gvt_time_period / 1000.0,
-			param_to_text[OPT_STATE_SAVING - OPT_FIRST][rootsim_config.checkpointing],
-			rootsim_config.ckpt_period,
-			param_to_text[OPT_SNAPSHOT - OPT_FIRST][rootsim_config.snapshot],
-			rootsim_config.simulation_time,
-			param_to_text[OPT_LPS_DISTRIBUTION - OPT_FIRST][rootsim_config.lps_distribution],
-			param_to_text[OPT_CKTRM_MODE - OPT_FIRST][rootsim_config.check_termination_mode],
-			((rootsim_config.blocking_gvt)? "yes":"no"),
-			rootsim_config.set_seed);
-	}
-
-	distribute_lps_on_kernels();
 
 	// Initialize ROOT-Sim subsystems.
 	// All init routines are executed serially (there is no notion of threads in there)
 	// and the order of invocation can matter!
 
 	base_init();
-	scheduler_init();
+	initialize_lps();
 	statistics_init();
-	dymelor_init();
+	scheduler_init();
+	dymelor_init();	// TODO: move initialization of malloc states in initialize_lps();
 	communication_init();
 	gvt_init();
 	numerical_init();

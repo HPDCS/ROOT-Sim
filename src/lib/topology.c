@@ -19,7 +19,7 @@ unsigned int FindReceiver(int topology) {
 	unsigned int x, y, nx, ny;
 	int direction;
 	GID_t receiver;
-	GID_t sender = LidToGid(current_lp);
+	GID_t sender = current->gid;
 
 	switch_to_platform_mode();
 
@@ -46,8 +46,8 @@ unsigned int FindReceiver(int topology) {
 			}
 
 			// Convert linear coords to hexagonal coords
-			x = gid_to_int(sender) % edge;
-			y = gid_to_int(sender) / edge;
+			x = sender.to_int % edge;
+			y = sender.to_int / edge;
 
 
 			// Find a random neighbour
@@ -101,8 +101,8 @@ unsigned int FindReceiver(int topology) {
 			}
 
 			// Convert linear coords to square coords
-			x = gid_to_int(sender) % edge;
-			y = gid_to_int(sender) / edge;
+			x = sender.to_int % edge;
+			y = sender.to_int / edge;
 
 			// Find a random neighbour
 			do {
@@ -149,8 +149,8 @@ unsigned int FindReceiver(int topology) {
 			}
 
 			// Convert linear coords to square coords
-			x = gid_to_int(sender) % edge;
-			y = gid_to_int(sender) / edge;
+			x = sender.to_int % edge;
+			y = sender.to_int / edge;
 
 			direction = 4 * Random();
 			if(unlikely(direction == 4)) {
@@ -203,15 +203,15 @@ unsigned int FindReceiver(int topology) {
 			u = Random();
 
 			if (u < 0.5) {
-				if(gid_to_int(sender) == 0) {
+				if(sender.to_int == 0) {
 					set_gid(receiver, n_prc_tot - 1);
 				} else {
-					set_gid(receiver, gid_to_int(sender) - 1);
+					set_gid(receiver, sender.to_int - 1);
 				}
 			} else {
-				set_gid(receiver, gid_to_int(sender) + 1);
+				set_gid(receiver, sender.to_int + 1);
 
-				if (gid_to_int(sender) == n_prc_tot) {
+				if (sender.to_int == n_prc_tot) {
 					set_gid(receiver, 0);
 				}
 			}
@@ -222,9 +222,9 @@ unsigned int FindReceiver(int topology) {
 
 		case TOPOLOGY_RING:
 
-			set_gid(receiver, gid_to_int(sender) + 1);
+			set_gid(receiver, sender.to_int + 1);
 
-			if (gid_to_int(receiver) == n_prc_tot) {
+			if (receiver.to_int == n_prc_tot) {
 				set_gid(receiver, 0);
 			}
 
@@ -233,10 +233,10 @@ unsigned int FindReceiver(int topology) {
 
 		case TOPOLOGY_STAR:
 
-			if (gid_to_int(sender) == 0) {
+			if (sender.to_int == 0) {
 				do {
 					set_gid(receiver, (unsigned int)(n_prc_tot * Random()));
-				} while(gid_to_int(receiver) == n_prc_tot);
+				} while(receiver.to_int == n_prc_tot);
 			} else {
 				set_gid(receiver, 0);
 			}
@@ -249,7 +249,7 @@ unsigned int FindReceiver(int topology) {
 
     out:
 	switch_to_application_mode();
-	return gid_to_int(receiver);
+	return receiver.to_int;
 
 }
 
@@ -262,7 +262,7 @@ unsigned int GetReceiver(int topology, int direction) {
 
 	switch_to_platform_mode();
 
-	sender = LidToGid(current_lp);
+	sender = current->gid;
 	set_gid(receiver, INVALID_DIRECTION);
 
 	if(unlikely(first_call)) {
@@ -277,8 +277,8 @@ unsigned int GetReceiver(int topology, int direction) {
 	}
 
 	// Convert linear coords to square coords
-	x = gid_to_int(sender) % edge;
-	y = gid_to_int(sender) / edge;
+	x = sender.to_int % edge;
+	y = sender.to_int / edge;
 
 	switch(topology) {
 
@@ -388,16 +388,16 @@ unsigned int GetReceiver(int topology, int direction) {
 		case TOPOLOGY_BIDRING:
 
 			if(direction == DIRECTION_W)
-				set_gid(receiver, gid_to_int(sender) - 1);
+				set_gid(receiver, sender.to_int - 1);
 			else if(direction == DIRECTION_E)
-				set_gid(receiver, gid_to_int(sender) + 1);
+				set_gid(receiver, sender.to_int + 1);
 			else
 				goto out;
 
-   			if (gid_to_int(receiver) == UINT_MAX) {
+			if (receiver.to_int == UINT_MAX) {
 				set_gid(receiver, n_prc_tot - 1);
 			}
-			if (gid_to_int(receiver) == n_prc_tot) {
+			if (receiver.to_int == n_prc_tot) {
 				set_gid(receiver, 0);
 			}
 
@@ -407,11 +407,11 @@ unsigned int GetReceiver(int topology, int direction) {
 		case TOPOLOGY_RING:
 
 			if(direction == DIRECTION_E)
-				set_gid(receiver, gid_to_int(sender) + 1);
+				set_gid(receiver, sender.to_int + 1);
 			else
 				goto out;
 
-			if (gid_to_int(receiver) == n_prc_tot) {
+			if (receiver.to_int == n_prc_tot) {
 				set_gid(receiver, 0);
 			}
 
@@ -420,7 +420,7 @@ unsigned int GetReceiver(int topology, int direction) {
 
     out:
 	switch_to_application_mode();
-	return gid_to_int(receiver);
+	return receiver.to_int;
 
 }
 

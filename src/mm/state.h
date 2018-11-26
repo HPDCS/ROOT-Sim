@@ -31,6 +31,7 @@
 
 #include <ROOT-Sim.h>
 #include <core/core.h>
+#include <lib/numerical.h>
 
 enum{
 	STATE_SAVING_INVALID = 0,	/**< By convention 0 is the invalid field */
@@ -47,26 +48,34 @@ typedef struct _state_t {
 
 	/// Simulation time associated with the state log
 	simtime_t	lvt;
-	/// This is a pointer used to keep track of changes to simulation states via <SetState>()
-	void		*base_pointer;
 	/// A pointer to the actual log
 	void		*log;
 	/// This log has been taken after the execution of this event
 	msg_t		*last_event;
+
+	/* Per-LP fields which should be transparently rolled back */
+
 	/// Execution state
 	short unsigned int state;
+	/// This is a pointer used to keep track of changes to simulation states via SetState()
+	void		*base_pointer;
+
+	/* Library state fields */
+	numerical_state_t numerical;
+	
 } state_t;
 
 
-extern void ParallelSetState(void *new_state);
-extern bool LogState(LID_t);
-extern void RestoreState(LID_t lid, state_t *restore_state);
-extern void rollback(LID_t lid);
-extern state_t *find_time_barrier(LID_t lid,  simtime_t time);
-extern void clean_queue_states(LID_t lid, simtime_t new_gvt);
-extern void rebuild_state(LID_t lid, state_t *state_pointer, simtime_t time);
-extern void set_checkpoint_period(LID_t lid, int period);
-extern void force_LP_checkpoint(LID_t lid);
-extern unsigned int silent_execution(LID_t lid, void *state_buffer, msg_t *evt, msg_t *final_evt);
+struct lp_struct;
+
+extern bool LogState(struct lp_struct *);
+extern void RestoreState(struct lp_struct *, state_t *restore_state);
+extern void rollback(struct lp_struct *);
+extern state_t *find_time_barrier(struct lp_struct *,  simtime_t time);
+extern void clean_queue_states(struct lp_struct *, simtime_t new_gvt);
+extern void rebuild_state(struct lp_struct *, state_t *state_pointer, simtime_t time);
+extern void set_checkpoint_period(struct lp_struct *, int period);
+extern void force_LP_checkpoint(struct lp_struct *);
+extern unsigned int silent_execution(struct lp_struct *, msg_t *evt, msg_t *final_evt);
 #endif /* _STATE_MGNT_H_ */
 

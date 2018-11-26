@@ -24,6 +24,7 @@
 
 #ifdef HAVE_MPI
 
+#include <stdbool.h>
 
 #include <communication/mpi.h>
 #include <communication/wnd.h>
@@ -32,7 +33,7 @@
 #include <queues/queues.h>
 #include <core/core.h>
 #include <arch/atomic.h>
-
+#include <statistics/statistics.h>
 
 // true if the underlying MPI implementation support multithreading
 bool mpi_support_multithread;
@@ -50,6 +51,11 @@ static unsigned int terminated = 0;
 static MPI_Request *termination_reqs;
 static spinlock_t msgs_fini;
 
+
+// MPI Operation to reduce statics struct
+MPI_Op reduce_stats_op;
+
+MPI_Datatype stats_mpi_t;
 
 /*
  * Check if there are pending messages from remote kernels with
@@ -92,7 +98,7 @@ void send_remote_msg(msg_t *msg){
 	outgoing_msg *out_msg = allocate_outgoing_msg();
 	out_msg->msg = msg;
 	out_msg->msg->colour = threads_phase_colour[local_tid];
-	unsigned int dest = GidToKernel(msg->receiver);
+	unsigned int dest = find_kernel_by_gid(msg->receiver);
 
 	register_outgoing_msg(out_msg->msg);
 
@@ -222,6 +228,56 @@ void broadcast_termination(void){
 	unlock_mpi();
 }
 
+/*
+ * This is the reduce operation for statistics,
+ */
+static void reduce_stat_vector(struct stat_t *in, struct stat_t *inout, int *len, MPI_Datatype *dptr) {
+	int i = 0;
+	(void)dptr;
+
+	for(i = 0; i < *len; ++i) {
+		inout[i].vec += in[i].vec;
+		inout[i].gvt_round_time += in[i].gvt_round_time;
+		inout[i].gvt_round_time_min = fmin(inout[i].gvt_round_time_min, in[i].gvt_round_time_min);
+		inout[i].gvt_round_time_max = fmax(inout[i].gvt_round_time_max, in[i].gvt_round_time_max);
+		inout[i].max_resident_set += in[i].max_resident_set;
+	}
+}
+
+// this assumes struct stat_t contains only double floating point variables
+#define MPI_TYPE_STAT_LEN (sizeof(struct stat_t)/sizeof(double))
+
+static void stats_reduction_init(void) {
+	// this is a compilation time fail-safe
+	static_assert(offsetof(struct stat_t, gvt_round_time_max) == (sizeof(double) * 19),
+			"The packing assumptions on struct stat_t are wrong or its definition has been modified");
+
+	unsigned i;
+	// boilerplate to create a new MPI data type
+	MPI_Datatype type[MPI_TYPE_STAT_LEN];
+	MPI_Aint disp[MPI_TYPE_STAT_LEN];
+	int block_lengths[MPI_TYPE_STAT_LEN];
+	// init those arrays (we asssume that struct stat_t is packed tightly)
+	for(i = 0; i < MPI_TYPE_STAT_LEN; ++i){
+		type[i] = MPI_DOUBLE;
+		disp[i] = i * sizeof(double);
+		block_lengths[i] = 1;
+	}
+	// create the custom type and commit the changes
+	MPI_Type_create_struct(MPI_TYPE_STAT_LEN, block_lengths, disp, type, &stats_mpi_t);
+	MPI_Type_commit(&stats_mpi_t);
+	// create the mpi operation needed to reduce stats
+	if(master_thread())
+		MPI_Op_create((MPI_User_function *)reduce_stat_vector, true, &reduce_stats_op);
+}
+#undef MPI_TYPE_STAT_LEN
+
+
+void mpi_reduce_statistics(struct stat_t *global, struct stat_t *local) {
+	MPI_Reduce(local, global, 1, stats_mpi_t, reduce_stats_op, 0, MPI_COMM_WORLD);
+}
+
+
 
 /*
  * Initialize the distributed termination subsystem
@@ -296,6 +352,7 @@ void inter_kernel_comm_init(void) {
 	outgoing_window_init();
 	gvt_comm_init();
 	dist_termination_init();
+	stats_reduction_init();
 }
 
 

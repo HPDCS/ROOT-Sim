@@ -27,13 +27,20 @@
 */
 
 #pragma once
-#ifndef __NUMERICAL_H
-#define __NUMERICAL_H
+
+#include <stdbool.h>
 
 /// Numerical seed type
 typedef uint64_t seed_type;
 
+/**
+ * This structure keeps track of the per-LP members required to rollback
+ * the internal state of the simulation library.
+ */
+typedef struct _numerical_state {
+	seed_type	seed; /**< Random seed */
+	double		gset; /**< Normal distribution saved sample */
+	bool		iset; /**< Normal distribution saved sample flag */
+} numerical_state_t;
+
 void numerical_init(void);
-
-#endif /* #ifndef __NUMERICAL_H */
-

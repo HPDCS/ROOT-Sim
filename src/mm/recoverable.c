@@ -37,6 +37,7 @@
 #include <scheduler/scheduler.h>
 
 
+// TODO: move into struct lp_struct
 /// Recoverable memory state for LPs
 malloc_state **recoverable_state;
 
@@ -66,36 +67,34 @@ void recoverable_init(void) {
 
 
 void recoverable_fini(void) {
-//	unsigned int i, j;
-//	malloc_area *current_area;
+	malloc_area *current_area;
+	unsigned int j;
 
-	// TODO: reimplmenent with foreach
-/*	for(i = 0; i < n_prc; i++) {
-		for (j = 0; j < (unsigned int)recoverable_state[i]->num_areas; j++) {
-			current_area = &(recoverable_state[i]->areas[j]);
+	foreach_lp(lp) {
+		for (j = 0; j < (unsigned int)recoverable_state[lp->lid.to_int]->num_areas; j++) {
+			current_area = &(recoverable_state[lp->lid.to_int]->areas[j]);
 			if (current_area != NULL) {
 				if (current_area->self_pointer != NULL) {
 					#ifdef HAVE_PARALLEL_ALLOCATOR
-					pool_release_memory(i, current_area->self_pointer);
+					pool_release_memory(lp, current_area->self_pointer);
 					#else
 					rsfree(current_area->self_pointer);
 					#endif
 				}
 			}
 		}
-		rsfree(recoverable_state[i]->areas);
-		rsfree(recoverable_state[i]);
+		rsfree(recoverable_state[lp->lid.to_int]->areas);
+		rsfree(recoverable_state[lp->lid.to_int]);
 	}
 	rsfree(recoverable_state);
 
-	// Release as well memory used for remaining logs
-	for(i = 0; i < n_prc; i++) {
-		while(!list_empty(LPS[i]->queue_states)) {
-			rsfree(list_head(LPS[i]->queue_states)->log);
-			list_pop(i, LPS[i]->queue_states);
+	// Release memory used for remaining logs as well
+	foreach_lp(lp) {
+		while(!list_empty(lp->queue_states)) {
+			rsfree(list_head(lp->queue_states)->log);
+			list_pop(lp->queue_states);
 		}
 	}
-*/
 }
 
 
@@ -164,10 +163,10 @@ void dirty_mem(void *base, int size) {
 
 		if (m_area->state_changed == 1){
                         if (m_area->dirty_chunks == 0)
-                                recoverable_state[current_lp]->dirty_bitmap_size += bitmap_size;
+                                recoverable_state[current->lid.to_int]->dirty_bitmap_size += bitmap_size;
                 } else {
-                        recoverable_state[current_lp]->dirty_areas++;
-                        recoverable_state[current_lp]->dirty_bitmap_size += bitmap_size * 2;
+                        recoverable_state[current->lid.to_int]->dirty_areas++;
+                        recoverable_state[current->lid.to_int]->dirty_bitmap_size += bitmap_size * 2;
                         m_area->state_changed = 1;
                 }
 
@@ -176,7 +175,7 @@ void dirty_mem(void *base, int size) {
                         // If it is dirtied a clean chunk, set it dirty and increase dirty object count for the malloc_area
                         if (!bitmap_check(m_area->dirty_bitmap, i)){
                         		bitmap_set(m_area->dirty_bitmap, i);
-                                recoverable_state[current_lp]->total_inc_size += chk_size;
+                                recoverable_state[current->lid.to_int]->total_inc_size += chk_size;
 
                                 m_area->dirty_chunks++;
                         }
@@ -193,7 +192,7 @@ void dirty_mem(void *base, int size) {
 * @author Alessandro Pellegrini
 * @author Roberto Vitali
 *
-* @param log The pointer to the log, or to the state
+* @param logged_state The pointer to the log, or to the state
 * @return The whole size of the state (metadata included)
 *
 */
@@ -202,9 +201,9 @@ size_t get_log_size(malloc_state *logged_state){
 		return 0;
 
 	if (is_incremental(logged_state)) {
-		return sizeof(malloc_state) + sizeof(seed_type) + logged_state->dirty_areas * sizeof(malloc_area) + logged_state->dirty_bitmap_size + logged_state->total_inc_size;
+		return sizeof(malloc_state) + logged_state->dirty_areas * sizeof(malloc_area) + logged_state->dirty_bitmap_size + logged_state->total_inc_size;
 	} else {
-		return sizeof(malloc_state) + sizeof(seed_type) + logged_state->busy_areas * sizeof(malloc_area) + logged_state->bitmap_size + logged_state->total_log_size;
+		return sizeof(malloc_state) + logged_state->busy_areas * sizeof(malloc_area) + logged_state->bitmap_size + logged_state->total_log_size;
 	}
 }
 
@@ -237,7 +236,7 @@ void *__wrap_malloc(size_t size) {
 		goto out;
 	}
 
-	ptr = do_malloc(current_lp, recoverable_state[lid_to_int(current_lp)], size);
+	ptr = do_malloc(current, recoverable_state[current->lid.to_int], size);
 
     out:
 	switch_to_application_mode();
@@ -270,7 +269,7 @@ void __wrap_free(void *ptr) {
 		goto out;
 	}
 
-	do_free(current_lp, recoverable_state[lid_to_int(current_lp)], ptr);
+	do_free(current, recoverable_state[current->lid.to_int], ptr);
 
     out:
 	switch_to_application_mode();
@@ -362,13 +361,13 @@ void *__wrap_calloc(size_t nmemb, size_t size){
 
 
 
-void clean_buffers_on_gvt(LID_t lid, simtime_t time_barrier){
+void clean_buffers_on_gvt(struct lp_struct *lp, simtime_t time_barrier){
 
 	int i;
 	malloc_state *state;
 	malloc_area *m_area;
 
-	state = recoverable_state[lid_to_int(lid)];
+	state = recoverable_state[lp->lid.to_int];
 
 	// The first NUM_AREAS malloc_areas are placed according to their chunks' sizes. The exceeding malloc_areas can be compacted
 	for(i = NUM_AREAS; i < state->num_areas; i++){
@@ -379,7 +378,7 @@ void clean_buffers_on_gvt(LID_t lid, simtime_t time_barrier){
 			if(m_area->self_pointer != NULL) {
 
 				#ifdef HAVE_PARALLEL_ALLOCATOR
-				pool_release_memory(lid, m_area->self_pointer);
+				pool_release_memory(lp, m_area->self_pointer);
 				#else
 				rsfree(m_area->self_pointer);
 				#endif

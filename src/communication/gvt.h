@@ -17,7 +17,7 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file gvt.h
+* @file communication/gvt.h
 * @brief Distributed GVT Support module
 * @author Tommaso Tocci
 */
