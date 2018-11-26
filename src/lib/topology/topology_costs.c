@@ -179,37 +179,36 @@ static void refresh_cache_costs(topology_t *topology){
 	}
 }
 
+union _double_bits_trick{
+	uint64_t val_bits; 	/// needed by the bitwise XOR
+	double val;		/// the new cost value
+};
+
 struct update_topology_t{
 	long unsigned loc_i;		/// where to put the new value
-	union{
-		uint64_t val_bits; 	/// needed by the bitwise XOR
-		double val;		/// the new cost value
-	};
+	union _double_bits_trick upd;
 };
 
 void set_value_topology_costs(unsigned from, unsigned to, double value){
 	topology_t *topology = CURRENT_TOPOLOGY;
-	struct update_topology_t upd = {from * topology_global.neighbours + to, .val = value};
+	struct update_topology_t to_send = {from * topology_global.neighbours + to, .upd = {value}};
 	// this makes sure our bitwise tricks work properly
 	static_assert(sizeof(double) == sizeof(uint64_t), "the bit operation trick on TOPOLOGY_COST updates is wrong");
-	union{
-		uint64_t val_bits;
-		double val;
-	} old = {topology->data[upd.loc_i]};
+	union _double_bits_trick old = {topology->data[to_send.loc_i]};
 	// the XOR is needed in order to have a consistent state after contemporaneous update events
-	upd.val_bits ^= old.val_bits;
+	to_send.upd.val_bits ^= old.val_bits;
 
-	if(unlikely(upd.val_bits == 0))
+	if(unlikely(to_send.upd.val_bits == 0))
 		// the update is unnecessary
 		return;
 	// save the value locally
-	topology->data[upd.loc_i] = value;
+	topology->data[to_send.loc_i] = value;
 	// send the update message to the other LPs
 	unsigned i = topology_global.lp_cnt;
 	while(i--){
 		if(i == CURRENT_LP_ID)
 			continue;
-		UncheckedScheduleNewEvent(i, current_evt->timestamp, TOPOLOGY_UPDATE, &upd, sizeof(upd));
+		UncheckedScheduleNewEvent(i, current_evt->timestamp, TOPOLOGY_UPDATE, &to_send, sizeof(to_send));
 	}
 	// mark the topology as dirty
 	topology->dirty = true;
@@ -218,17 +217,10 @@ void set_value_topology_costs(unsigned from, unsigned to, double value){
 void update_topology_costs(void){
 	topology_t *topology = CURRENT_TOPOLOGY;
 	struct update_topology_t *upd_p = (struct update_topology_t *)current_evt->event_content;
-
-	if(unlikely(upd_p->val_bits == 0))
-		// the update is unnecessary
-		return;
 	// same ol' trick as set_value_topology_costs()
-	union{
-		uint64_t val_bits;
-		double val;
-	} *old_p = (union{uint64_t val_bits; double val;} *)&topology->data[upd_p->loc_i];
+	union _double_bits_trick *old_p = (union _double_bits_trick *)&topology->data[upd_p->loc_i];
 	// update our value through the XOR
-	old_p->val_bits ^= upd_p->val_bits;
+	old_p->val_bits ^= upd_p->upd.val_bits;
 	// mark the topology as dirty
 	topology->dirty = true;
 }

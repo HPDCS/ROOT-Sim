@@ -138,8 +138,10 @@ bool is_reachable_probabilities(unsigned to){
 void update_topology_probabilities(void){
 	topology_t *topology = CURRENT_TOPOLOGY;
 	struct update_topology_t *upd_p = (struct update_topology_t *)current_evt->event_content;
-	topology->data[upd_p->loc_i] = upd_p->val;
-	topology->dirty = true;
+	if(topology->data[upd_p->loc_i] > upd_p->val || topology->data[upd_p->loc_i] < upd_p->val){
+		topology->data[upd_p->loc_i] = upd_p->val;
+		topology->dirty = true;
+	}
 }
 
 double get_value_topology_probabilities(unsigned from, unsigned to) {
