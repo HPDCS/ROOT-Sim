@@ -197,16 +197,12 @@ static void find_next_free(malloc_area *m_area){
 
 
 
-void *do_malloc(LID_t lid, malloc_state *mem_pool, size_t size) {
+void *do_malloc(struct lp_struct *lp, malloc_state *mem_pool, size_t size) {
 	malloc_area *m_area, *prev_area;
 	void *ptr;
 	size_t area_size, bitmap_size;
 	bool is_recoverable;
 	int j;
-
-	#ifndef HAVE_PARALLEL_ALLOCATOR
-	(void)lid;
-	#endif
 
 	size = compute_size(size);
 
@@ -276,7 +272,7 @@ void *do_malloc(LID_t lid, malloc_state *mem_pool, size_t size) {
 
 		#ifdef HAVE_PARALLEL_ALLOCATOR
 		//insert is recoverable in pool_get_memory (was in GLP)
-		m_area->self_pointer = (malloc_area *)pool_get_memory(lid, area_size);
+		m_area->self_pointer = (malloc_area *)pool_get_memory(lp, area_size);
 		#else
 		m_area->self_pointer = rsalloc(area_size);
 		bzero(m_area->self_pointer, area_size);
@@ -321,7 +317,7 @@ void *do_malloc(LID_t lid, malloc_state *mem_pool, size_t size) {
 		}
 
 		m_area->state_changed = 1;
-		m_area->last_access = current_lvt;
+		m_area->last_access = lvt(current);
 
 		if(!CHECK_LOG_MODE_BIT(m_area)) {
 			if((double)m_area->alloc_chunks / (double)m_area->num_chunks > MAX_LOG_THRESHOLD) {
@@ -356,10 +352,8 @@ void *do_malloc(LID_t lid, malloc_state *mem_pool, size_t size) {
 
 // TODO: multiple checks on m_area->is_recoverable. The code should be refactored
 // TODO: lid non necessario qui
-void do_free(LID_t lid, malloc_state *mem_pool, void *ptr) {
-
-	(void)lid;
-	
+void do_free(struct lp_struct *lp, malloc_state *mem_pool, void *ptr) {
+	(void)lp;
 
 	malloc_area * m_area;
 	int idx;
@@ -423,7 +417,7 @@ void do_free(LID_t lid, malloc_state *mem_pool, void *ptr) {
 
 		m_area->state_changed = 1;
 
-		m_area->last_access = current_lvt;
+		m_area->last_access = lvt(current);
 
 		if(CHECK_LOG_MODE_BIT(m_area)){
 			if((double)m_area->alloc_chunks / (double)m_area->num_chunks < MIN_LOG_THRESHOLD){

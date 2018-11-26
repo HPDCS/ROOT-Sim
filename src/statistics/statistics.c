@@ -423,34 +423,30 @@ void statistics_stop(int exit_code) {
 			fprintf(f, "   %15.15s   %15.15s   %15.15s   %15.15s", "\"REPROC EVENTS\"", "\"ROLLBACKS\"", "\"ANTIMSG\"", "\"AVG EVT COST\"");
 			fprintf(f, "   %15.15s   %15.15s   %15.15s\n", "\"AVG CKPT COST\"", "\"AVG REC COST\"", "\"IDLE CYCLES\"");
 
-			int __helper_show_lp_stats(LID_t the_lid, GID_t the_gid, unsigned lid, void *unused){
-				(void)unused, (void)the_lid;
-				fprintf(f, " %15u   ", 		gid_to_int(the_gid));
-				fprintf(f, "%15u   ", 		lid);
-				fprintf(f, "%15.0lf   ", 	lp_stats[lid].tot_events);
-				fprintf(f, "%15.0lf   ", 	lp_stats[lid].committed_events);
-				fprintf(f, "%15.0lf   ", 	lp_stats[lid].reprocessed_events);
-				fprintf(f, "%15.0lf   ", 	lp_stats[lid].tot_rollbacks);
-				fprintf(f, "%15.0lf   ", 	lp_stats[lid].tot_antimessages);
-				fprintf(f, "%15lf   ", 		lp_stats[lid].event_time / lp_stats[lid].tot_events);
-				fprintf(f, "%15.0lf   ", 	lp_stats[lid].ckpt_time / lp_stats[lid].tot_ckpts);
-				fprintf(f, "%15.0lf   ", 	(lp_stats[lid].tot_rollbacks > 0 ? lp_stats[lid].recovery_time / lp_stats[lid].tot_recoveries : 0));
-				fprintf(f, "%15.0lf   ", 	lp_stats[lid].idle_cycles);
+			foreach_bound_lp(lp) {
+				unsigned int lp_id = lp->lid.to_int;
+
+				fprintf(f, " %15u   ", 		lp->gid.to_int);
+				fprintf(f, "%15u   ", 		lp_id);
+				fprintf(f, "%15.0lf   ", 	lp_stats[lp_id].tot_events);
+				fprintf(f, "%15.0lf   ", 	lp_stats[lp_id].committed_events);
+				fprintf(f, "%15.0lf   ", 	lp_stats[lp_id].reprocessed_events);
+				fprintf(f, "%15.0lf   ", 	lp_stats[lp_id].tot_rollbacks);
+				fprintf(f, "%15.0lf   ", 	lp_stats[lp_id].tot_antimessages);
+				fprintf(f, "%15lf   ", 		lp_stats[lp_id].event_time / lp_stats[lp_id].tot_events);
+				fprintf(f, "%15.0lf   ", 	lp_stats[lp_id].ckpt_time / lp_stats[lp_id].tot_ckpts);
+				fprintf(f, "%15.0lf   ", 	(lp_stats[lp_id].tot_rollbacks > 0 ? lp_stats[lp_id].recovery_time / lp_stats[lp_id].tot_recoveries : 0));
+				fprintf(f, "%15.0lf   ", 	lp_stats[lp_id].idle_cycles);
 				fprintf(f, "\n");
-				return 0; // process each lp
 			}
-			LPS_bound_foreach(__helper_show_lp_stats, NULL);
 		}
 
 		/* Reduce and dump per-thread statistics */
 
 		// Sum up all LPs statistics
-		int __helper_sum_lp_stats(LID_t the_lid, GID_t the_gid, unsigned lid, void *unused){
-			(void)unused, (void)the_lid, (void)the_gid;
-			thread_stats[local_tid].vec += lp_stats[lid].vec;
-			return 0;
+		foreach_bound_lp(lp) {
+			thread_stats[local_tid].vec += lp_stats[lp->lid.to_int].vec;
 		}
-		LPS_bound_foreach(__helper_sum_lp_stats, NULL);
 		thread_stats[local_tid].exponential_event_time /= n_prc_per_thread;
 
 		// Compute derived statistics and dump everything
@@ -510,7 +506,7 @@ void statistics_stop(int exit_code) {
 // Sum up all that happened in the last GVT phase, in case it is required,
 // dump a line on the corresponding statistics file
 inline void statistics_on_gvt(double gvt) {
-	unsigned int i, lid;
+	unsigned int lid;
 	unsigned int committed = 0;
 	static __thread unsigned int cumulated = 0;
 	double exec_time, simtime_advancement, keep_exponential_event_time;
@@ -520,8 +516,8 @@ inline void statistics_on_gvt(double gvt) {
 		exec_time = timer_value_seconds(simulation_timer);
 
 		// Reduce the committed events from all LPs
-		for(i = 0; i < n_prc_per_thread; i++) {
-			committed += lp_stats_gvt[lid_to_int(LPS_bound(i)->lid)].committed_events;
+		foreach_bound_lp(lp) {
+			committed += lp_stats_gvt[lp->lid.to_int].committed_events;
 		}
 		cumulated += committed;
 
@@ -549,8 +545,8 @@ inline void statistics_on_gvt(double gvt) {
 	}
 	thread_stats[local_tid].gvt_time = gvt;
 
-	for(i = 0; i < n_prc_per_thread; i++) {
-		lid = lid_to_int(LPS_bound(i)->lid);
+	foreach_bound_lp(lp) {
+		lid = lp->lid.to_int;
 
 		lp_stats[lid].vec += lp_stats_gvt[lid].vec;
 
@@ -710,8 +706,14 @@ void statistics_post_data_serial(enum stat_msg_t type, double data) {
 }
 
 
-void statistics_post_data(LID_t the_lid, enum stat_msg_t type, double data) {
-	unsigned int lid = lid_to_int(the_lid);
+void statistics_post_data(struct lp_struct *lp, enum stat_msg_t type, double data)
+{
+	// TODO: this is only required to avoid a nasty segfault if we
+	// pass NULL to lp, as we do for the case of STAT_IDLE_CYCLES.
+	// We should move stats arrays in struct lp_struct to make the
+	// whole code less ugly.
+	unsigned int lid = lp ? lp->lid.to_int : UINT_MAX;
+
 	switch(type) {
 
 		case STAT_ANTIMESSAGE:
@@ -775,11 +777,11 @@ void statistics_post_data(LID_t the_lid, enum stat_msg_t type, double data) {
 }
 
 
-double statistics_get_lp_data(LID_t lid, unsigned int type) {
+double statistics_get_lp_data(struct lp_struct *lp, unsigned int type) {
 	switch(type) {
 
 		case STAT_GET_EVENT_TIME_LP:
-			return lp_stats[lid_to_int(lid)].exponential_event_time;
+			return lp_stats[lp->lid.to_int].exponential_event_time;
 
 		default:
 			rootsim_error(true, "Wrong statistics get type: %d. Aborting...\n", type);

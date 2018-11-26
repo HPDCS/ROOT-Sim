@@ -436,28 +436,25 @@ void SystemInit(int argc, char **argv) {
 
 	// If we're going to run a serial simulation, configure the simulation to support it
 	if(rootsim_config.serial) {
-		SetState = SerialSetState;
 		ScheduleNewEvent = SerialScheduleNewEvent;
+		initialize_lps();
 		numerical_init();
-		//dymelor_init();
 		statistics_init();
 		serial_init();
 		return;
 	} else {
-		SetState = ParallelSetState;
 		ScheduleNewEvent = ParallelScheduleNewEvent;
 	}
-
-	distribute_lps_on_kernels();
 
 	// Initialize ROOT-Sim subsystems.
 	// All init routines are executed serially (there is no notion of threads in there)
 	// and the order of invocation can matter!
 
 	base_init();
-	scheduler_init();
+	initialize_lps();
 	statistics_init();
-	dymelor_init();
+	scheduler_init();
+	dymelor_init();	// TODO: move initialization of malloc states in initialize_lps();
 	communication_init();
 	gvt_init();
 	numerical_init();

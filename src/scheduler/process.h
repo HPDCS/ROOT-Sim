@@ -60,7 +60,7 @@
 #define is_blocked_state(state)	(bool)(state & BLOCKED_STATE)
 
 
-typedef struct _LP_state {
+struct lp_struct {
 	/// LP execution state.
 	LP_context_t		context;
 
@@ -72,6 +72,9 @@ typedef struct _LP_state {
 
 	/// Local ID of the LP
 	LID_t 			lid;
+
+	/// Global ID of the LP
+	GID_t 			gid;
 
 	/// Logical Process lock, used to serialize accesses to concurrent data structures
 	spinlock_t		lock; // TODO: is this still used anywhere?
@@ -118,6 +121,18 @@ typedef struct _LP_state {
 	/// Buffer used by KLTs for buffering outgoing messages during the execution of an event
 	outgoing_t 		outgoing_buffer;
 
+	/**
+	 * Implementation of OnGVT used for this LP. This can be changed
+	 * at runtime by the autonomic subsystem, when dealing with ISS and SSS
+	 */
+	bool (*OnGVT)(unsigned int me, void *snapshot);
+
+	/**
+	 * Implementation of ProcessEvent used for this LP. This can be changed
+	 * at runtime by the autonomic subsystem, when dealing with ISS and SSS
+	 */
+	void (*ProcessEvent)(unsigned int me, simtime_t now, int event_type, void *event_content, unsigned int size, void *state);
+
 	#ifdef HAVE_CROSS_STATE
 	GID_t			ECS_synch_table[MAX_CROSS_STATE_DEPENDENCIES];
 	unsigned int 	ECS_index;
@@ -129,29 +144,35 @@ typedef struct _LP_state {
 	/* Per-Library variables */
 	numerical_state_t	numerical;
 
-} LP_State;
-
+};
 
 // LPs process control blocks and binding control blocks
-extern LP_State **lps_blocks;
-extern __thread LP_State **lps_bound_blocks;
+extern struct lp_struct **lps_blocks;
+extern __thread struct lp_struct **lps_bound_blocks;
 
 /** This macro retrieves the LVT for the current LP. There is a small interval window
  *  where the value returned is the one of the next event to be processed. In particular,
- *  this happens during the scheduling, when the bound is advanced to the next event to
+ *  this happens in the scheduling function, when the bound is advanced to the next event to
  *  be processed, just before its actual execution.
  */
-#define lvt(lid) (LPS(lid)->bound != NULL ? LPS(lid)->bound->timestamp : 0.0)
-
-#define LPS(lid) ((__builtin_choose_expr(is_lid(lid), lps_blocks[lid.id], (void)0)))
-#define LPS_bound(lid) (__builtin_choose_expr(__builtin_types_compatible_p(__typeof__ (lid), unsigned int), lps_bound_blocks[lid], (void)0))
+#define lvt(lp) (lp->bound != NULL ? lp->bound->timestamp : 0.0)
 
 
-extern inline void LPS_bound_set(unsigned int entry, LP_State *lp_block);
-extern inline int LPS_foreach(int (*f)(LID_t, GID_t, unsigned int, void *), void *data);
-extern inline int LPS_bound_foreach(int (*f)(LID_t, GID_t, unsigned int, void *), void *data);
-extern void initialize_control_blocks(void);
+// TODO: see issue #121 to see how to make this ugly hack disappear
+extern __thread unsigned int __lp_counter;
+extern __thread unsigned int __lp_bound_counter;
+
+#define foreach_lp(lp)		__lp_counter = 0;\
+				for(struct lp_struct *(lp) = lps_blocks[__lp_counter]; __lp_counter < n_prc; (lp) = lps_blocks[++__lp_counter])
+
+#define foreach_bound_lp(lp)	__lp_bound_counter = 0;\
+				for(struct lp_struct *(lp) = lps_bound_blocks[__lp_bound_counter]; __lp_bound_counter < n_prc_per_thread; (lp) = lps_bound_blocks[++__lp_bound_counter]) 
+
+#define LPS_bound_set(entry, lp)	lps_bound_blocks[(entry)] = (lp);
+
 extern void initialize_binding_blocks(void);
+extern void initialize_lps(void);
+extern struct lp_struct *find_lp_by_gid(GID_t);
 
 #endif /* __LP_H_ */
 

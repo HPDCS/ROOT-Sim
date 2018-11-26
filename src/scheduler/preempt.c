@@ -130,6 +130,7 @@ __thread bool rolling_back = false;
  * gained an increased priority over the currently executing one, and
  * in the case changes the control flow so as to activate it.
  */
+__attribute__((used))
 void preempt(void) {
 
 //	return;
@@ -141,7 +142,7 @@ void preempt(void) {
 	// if min_in_transit_lvt < current_lvt
 	// and in platform mode
 
-/*	if(current_lp != IDLE_PROCESS) {
+/*	if(current != NULL) {
 		if( (count++) % 100 == 0)
 			printf("Overtick interrupt from application mode\n");
 	}
@@ -155,9 +156,9 @@ void preempt(void) {
 
 	} else if(min_in_transit_lvt[local_tid] < current_lvt) {
 //		atomic_inc(&would_preempt);
-		LPS[current_lp]->state = LP_STATE_SUSPENDED; // Questo triggera la logica di ripartenza dell'LP di ECS, ma forse va cambiato nome...
+		current->state = LP_STATE_SUSPENDED; // Questo triggera la logica di ripartenza dell'LP di ECS, ma forse va cambiato nome...
 		switch_to_platform_mode();
-		context_switch(&LPS[current_lp]->context, &kernel_context);
+		context_switch(&current->context, &kernel_context);
 	}
 
 
@@ -165,7 +166,7 @@ void preempt(void) {
 
 		atomic_inc(&preempt_count);
 
-		LPS[current_lp]->state = LP_STATE_READY_FOR_SYNCH; // Questo triggera la logica di ripartenza dell'LP di ECS, ma forse va cambiato nome...
+		current->state = LP_STATE_READY_FOR_SYNCH; // Questo triggera la logica di ripartenza dell'LP di ECS, ma forse va cambiato nome...
 
 		// Assembly module has placed a lot of stuff on the stack: put everything back
 		// TODO: this is quite nasty, find a cleaner way to do this...

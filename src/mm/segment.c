@@ -33,9 +33,9 @@
 //TODO: document this magic! This is related to the pml4 index intialized in the ECS kernel module
 static unsigned char *init_address = (unsigned char *)(10LL << 39);
 
-void *get_base_pointer(GID_t gid){
+void *get_base_pointer(GID_t gid) {
 //	printf("get base pointer for lid % d (gid %d) returns: %p\n",GidToLid(gid),gid,init_address + PER_LP_PREALLOCATED_MEMORY * gid);
-	return init_address + PER_LP_PREALLOCATED_MEMORY * gid_to_int(gid);
+	return init_address + PER_LP_PREALLOCATED_MEMORY * gid.to_int;
 }
 
 void *get_segment(GID_t gid) {
@@ -45,7 +45,7 @@ void *get_segment(GID_t gid) {
 	void *mmapped[NUM_MMAP];
 
 	// Addresses are determined in the same way across all kernel instances
-	the_address = init_address + PER_LP_PREALLOCATED_MEMORY * gid_to_int(gid);
+	the_address = init_address + PER_LP_PREALLOCATED_MEMORY * gid.to_int;
 
 	for(i = 0; i < NUM_MMAP; i++) {
 		mmapped[i] = mmap(the_address, MAX_MMAP, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS|MAP_FIXED, 0, 0);

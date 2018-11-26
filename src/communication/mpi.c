@@ -98,7 +98,7 @@ void send_remote_msg(msg_t *msg){
 	outgoing_msg *out_msg = allocate_outgoing_msg();
 	out_msg->msg = msg;
 	out_msg->msg->colour = threads_phase_colour[local_tid];
-	unsigned int dest = GidToKernel(msg->receiver);
+	unsigned int dest = find_kernel_by_gid(msg->receiver);
 
 	register_outgoing_msg(out_msg->msg);
 
@@ -233,7 +233,9 @@ void broadcast_termination(void){
  */
 static void reduce_stat_vector(struct stat_t *in, struct stat_t *inout, int *len, MPI_Datatype *dptr) {
 	int i = 0;
-	for(i = 0; i < *len; ++i){
+	(void)dptr;
+
+	for(i = 0; i < *len; ++i) {
 		inout[i].vec += in[i].vec;
 		inout[i].gvt_round_time += in[i].gvt_round_time;
 		inout[i].gvt_round_time_min = fmin(inout[i].gvt_round_time_min, in[i].gvt_round_time_min);

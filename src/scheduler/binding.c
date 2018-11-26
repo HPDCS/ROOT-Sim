@@ -79,7 +79,7 @@ static inline void LPs_block_binding(void) {
 	unsigned int buf1;
 	unsigned int offset;
 	unsigned int block_leftover;
-	LID_t lid;
+	struct lp_struct *lp;
 
 	buf1 = (n_prc / n_cores);
 	block_leftover = n_prc - buf1 * n_cores;
@@ -96,9 +96,9 @@ static inline void LPs_block_binding(void) {
 		j = 0;
 		while (j < buf1) {
 			if(offset == local_tid) {
-				set_lid(lid, i);
-				LPS_bound_set(n_prc_per_thread++, LPS(lid));
-				LPS(lid)->worker_thread = local_tid;
+				lp = lps_blocks[i];
+				LPS_bound_set(n_prc_per_thread++, lp);
+				lp->worker_thread = local_tid;
 			}
 			i++;
 			j++;
@@ -199,38 +199,31 @@ static inline void LP_knapsack(void) {
 #ifdef HAVE_LP_REBINDING
 
 static void post_local_reduction(void) {
-	unsigned int i;
-	LID_t lid;
-	unsigned int lid_id;
+	unsigned int i = 0;
 	msg_t *first_evt, *last_evt;
 
-	for(i = 0; i < n_prc_per_thread; i++) {
-		lid = LPS_bound(i)->lid;
-		lid_id = lid_to_int(lid);
-		first_evt = list_head(LPS(lid)->queue_in);
-		last_evt = list_tail(LPS(lid)->queue_in);
+	foreach_bound_lp(lp) {
+		first_evt = list_head(lp->queue_in);
+		last_evt = list_tail(lp->queue_in);
 
-		lp_cost[lid_id].id = i;
-		lp_cost[lid_id].workload_factor = list_sizeof(LPS(lid)->queue_in);
-		lp_cost[lid_id].workload_factor *= statistics_get_lp_data(lid, STAT_GET_EVENT_TIME_LP);
-		lp_cost[lid_id].workload_factor /= ( last_evt->timestamp - first_evt->timestamp );
+		lp_cost[lp->lid.to_int].id = i++; // TODO: do we really need this?
+		lp_cost[lp->lid.to_int].workload_factor = list_sizeof(lp->queue_in);
+		lp_cost[lp->lid.to_int].workload_factor *= statistics_get_lp_data(lp, STAT_GET_EVENT_TIME_LP);
+		lp_cost[lp->lid.to_int].workload_factor /= ( last_evt->timestamp - first_evt->timestamp );
 	}
 }
 
 static void install_binding(void) {
-	unsigned int i;
-	LID_t lid;
+	unsigned int i = 0;
 
 	n_prc_per_thread = 0;
 
-	for(i = 0; i < n_prc; i++) {
-		set_lid(lid, i);
+	foreach_lp(lp) {
+		if(new_LPS_binding[i++] == local_tid) {
+			LPS_bound_set(n_prc_per_thread++, lp);
 
-		if(new_LPS_binding[i] == local_tid) {
-			LPS_bound_set(n_prc_per_thread++, LPS(lid));
-
-			if(local_tid != LPS(lid)->worker_thread) {
-				LPS(lid)->worker_thread = local_tid;
+			if(local_tid != lp->worker_thread) {
+				lp->worker_thread = local_tid;
 			}
 		}
 	}

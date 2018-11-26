@@ -27,8 +27,9 @@
 #define _STF_H
 
 #include <core/core.h>
+#include <scheduler/process.h>
 
-extern LID_t smallest_timestamp_first(void);
+extern struct lp_struct * smallest_timestamp_first(void);
 
 #endif /* _SFT_H */
 

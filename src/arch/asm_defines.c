@@ -36,8 +36,8 @@
 
 void foo(void) {
 	// We need the offset of the LP State to make a context switch in ECS
-	SIZEOF(LP_State);
-	OFFSETOF(LP_State, context);
+	SIZEOF(struct lp_struct);
+	OFFSETOF(struct lp_struct, context);
 
 	// Size and offsets of a context are used when creating/saving/restoring contexts in jmp.S
 	SIZEOF(exec_context_t);

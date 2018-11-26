@@ -70,20 +70,19 @@
 *
 * @todo must be declared static. This will entail changing the logic in gvt.c to save a state before rebuilding.
 */
-void *log_full(LID_t the_lid) {
+void *log_full(struct lp_struct *lp) {
 
 	void *ptr = NULL, *ckpt = NULL;
 	int i;
 	size_t size, chunk_size, bitmap_size;
 	malloc_area *m_area;
-	unsigned int lid = lid_to_int(the_lid);
 
 	// Timers for self-tuning of the simulation platform
 	timer checkpoint_timer;
 	timer_start(checkpoint_timer);
 
-	recoverable_state[lid]->is_incremental = false;
-	size = get_log_size(recoverable_state[lid]);
+	recoverable_state[lp->lid.to_int]->is_incremental = false;
+	size = get_log_size(recoverable_state[lp->lid.to_int]);
 
 	ckpt = rsalloc(size);
 
@@ -94,13 +93,13 @@ void *log_full(LID_t the_lid) {
 	ptr = ckpt;
 
 	// Copy malloc_state in the ckpt
-	memcpy(ptr, recoverable_state[lid], sizeof(malloc_state));
+	memcpy(ptr, recoverable_state[lp->lid.to_int], sizeof(malloc_state));
 	ptr = (void *)((char *)ptr + sizeof(malloc_state));
-	((malloc_state*)ckpt)->timestamp = current_lvt;
+	((malloc_state*)ckpt)->timestamp = lvt(lp);
 
-	for(i = 0; i < recoverable_state[lid]->num_areas; i++){
+	for(i = 0; i < recoverable_state[lp->lid.to_int]->num_areas; i++){
 
-		m_area = &recoverable_state[lid]->areas[i];
+		m_area = &recoverable_state[lp->lid.to_int]->areas[i];
 
 		// Copy the bitmap
 
@@ -157,14 +156,14 @@ void *log_full(LID_t the_lid) {
 
 	// Sanity check
 	if (unlikely((char *)ckpt + size != ptr))
-		rootsim_error(true, "Actual (full) ckpt size is wrong by %d bytes!\nlid = %d ckpt = %p size = %#x (%d), ptr = %p, ckpt + size = %p\n", (char *)ckpt + size - (char *)ptr, lid, ckpt, size, size, ptr, (char *)ckpt + size);
+		rootsim_error(true, "Actual (full) ckpt size is wrong by %d bytes!\nlid = %d ckpt = %p size = %#x (%d), ptr = %p, ckpt + size = %p\n", (char *)ckpt + size - (char *)ptr, lp->lid.to_int, ckpt, size, size, ptr, (char *)ckpt + size);
 
-	recoverable_state[lid]->dirty_areas = 0;
-	recoverable_state[lid]->dirty_bitmap_size = 0;
-	recoverable_state[lid]->total_inc_size = 0;
+	recoverable_state[lp->lid.to_int]->dirty_areas = 0;
+	recoverable_state[lp->lid.to_int]->dirty_bitmap_size = 0;
+	recoverable_state[lp->lid.to_int]->total_inc_size = 0;
 
-	statistics_post_data(the_lid, STAT_CKPT_TIME, (double)timer_value_micro(checkpoint_timer));
-	statistics_post_data(the_lid, STAT_CKPT_MEM, (double)size);
+	statistics_post_data(lp, STAT_CKPT_TIME, (double)timer_value_micro(checkpoint_timer));
+	statistics_post_data(lp, STAT_CKPT_MEM, (double)size);
 
 	return ckpt;
 }
@@ -181,7 +180,7 @@ void *log_full(LID_t the_lid) {
 * This is done implicitly by the LogState() function, which in turn connects the newly taken
 * snapshot with the currencly-scheduled LP.
 * Therefore, any point of the simulator which wants to take a (real) log, shouldn't call directly this
-* function, rather LogState() should be used, after having correctly set current_lp and current_lvt.
+* function, rather LogState() should be used, after having correctly set current and current_lvt.
 *
 * @author Alessandro Pellegrini
 *
@@ -189,9 +188,9 @@ void *log_full(LID_t the_lid) {
 * @return A pointer to a malloc()'d memory area which contains the log of the current simulation state,
 *         along with the relative meta-data which can be used to perform a restore operation.
 */
-void *log_state(LID_t lid) {
-	statistics_post_data(lid, STAT_CKPT, 1.0);
-	return log_full(lid);
+void *log_state(struct lp_struct *lp) {
+	statistics_post_data(lp, STAT_CKPT, 1.0);
+	return log_full(lp);
 }
 
 
@@ -219,36 +218,35 @@ void *log_state(LID_t lid) {
 * @param the_lid The logical process' local identifier
 * @param ckpt a pointer to the simulation state which must be restored in the logical process
 */
-void restore_full(LID_t the_lid, void *ckpt) {
+void restore_full(struct lp_struct *lp, void *ckpt) {
 
 	void * ptr;
 	int i, original_num_areas, restored_areas;
 	size_t chunk_size, bitmap_size;
 	malloc_area *m_area, *new_area;
-	unsigned int lid = lid_to_int(the_lid);
 
 	// Timers for simulation platform self-tuning
 	timer recovery_timer;
 	timer_start(recovery_timer);
 	restored_areas = 0;
 	ptr = ckpt;
-	original_num_areas = recoverable_state[lid]->num_areas;
-	new_area = recoverable_state[lid]->areas;
+	original_num_areas = recoverable_state[lp->lid.to_int]->num_areas;
+	new_area = recoverable_state[lp->lid.to_int]->areas;
 
 	// Restore malloc_state
-	memcpy(recoverable_state[lid], ptr, sizeof(malloc_state));
+	memcpy(recoverable_state[lp->lid.to_int], ptr, sizeof(malloc_state));
 	ptr = (void*)((char*)ptr + sizeof(malloc_state));
 
-	recoverable_state[lid]->areas = new_area;
+	recoverable_state[lp->lid.to_int]->areas = new_area;
 
 	// Scan areas and chunk to restore them
-	for(i = 0; i < recoverable_state[lid]->num_areas; i++){
+	for(i = 0; i < recoverable_state[lp->lid.to_int]->num_areas; i++){
 
-		m_area = &recoverable_state[lid]->areas[i];
+		m_area = &recoverable_state[lp->lid.to_int]->areas[i];
 
 		bitmap_size = bitmap_required_size(m_area->num_chunks);
 
-		if(restored_areas == recoverable_state[lid]->busy_areas || m_area->idx != ((malloc_area*)ptr)->idx){
+		if(restored_areas == recoverable_state[lp->lid.to_int]->busy_areas || m_area->idx != ((malloc_area*)ptr)->idx){
 
 			m_area->dirty_chunks = 0;
 			m_area->state_changed = 0;
@@ -261,7 +259,7 @@ void restore_full(LID_t the_lid, void *ckpt) {
 				memset(m_area->use_bitmap, 0, bitmap_size);
 				memset(m_area->dirty_bitmap, 0, bitmap_size);
 			}
-			m_area->last_access = recoverable_state[lid]->timestamp;
+			m_area->last_access = recoverable_state[lp->lid.to_int]->timestamp;
 
 			continue;
 		}
@@ -269,7 +267,6 @@ void restore_full(LID_t the_lid, void *ckpt) {
 		// Restore the malloc_area
 		memcpy(m_area, ptr, sizeof(malloc_area));
 		ptr = (void*)((char*)ptr + sizeof(malloc_area));
-
 
 		restored_areas++;
 
@@ -309,17 +306,17 @@ void restore_full(LID_t the_lid, void *ckpt) {
 
 
 	// Check whether there are more allocated areas which are not present in the log
-	if(original_num_areas > recoverable_state[lid]->num_areas) {
+	if(original_num_areas > recoverable_state[lp->lid.to_int]->num_areas) {
 
-		for(i = recoverable_state[lid]->num_areas; i < original_num_areas; i++) {
+		for(i = recoverable_state[lp->lid.to_int]->num_areas; i < original_num_areas; i++) {
 
-			m_area = &recoverable_state[lid]->areas[i];
+			m_area = &recoverable_state[lp->lid.to_int]->areas[i];
 			m_area->alloc_chunks = 0;
 			m_area->dirty_chunks = 0;
 			m_area->state_changed = 0;
 			m_area->next_chunk = 0;
-			m_area->last_access = recoverable_state[lid]->timestamp;
-			recoverable_state[lid]->areas[m_area->prev].next = m_area->idx;
+			m_area->last_access = recoverable_state[lp->lid.to_int]->timestamp;
+			recoverable_state[lp->lid.to_int]->areas[m_area->prev].next = m_area->idx;
 
 			RESET_LOG_MODE_BIT(m_area);
 			RESET_AREA_LOCK_BIT(m_area);
@@ -331,17 +328,17 @@ void restore_full(LID_t the_lid, void *ckpt) {
 				memset(m_area->dirty_bitmap, 0, bitmap_size);
 			}
 		}
-		recoverable_state[lid]->num_areas = original_num_areas;
+		recoverable_state[lp->lid.to_int]->num_areas = original_num_areas;
 	}
 
-	recoverable_state[lid]->timestamp = -1;
-	recoverable_state[lid]->is_incremental = false;
-	recoverable_state[lid]->dirty_areas = 0;
-	recoverable_state[lid]->dirty_bitmap_size = 0;
-	recoverable_state[lid]->total_inc_size = 0;
+	recoverable_state[lp->lid.to_int]->timestamp = -1;
+	recoverable_state[lp->lid.to_int]->is_incremental = false;
+	recoverable_state[lp->lid.to_int]->dirty_areas = 0;
+	recoverable_state[lp->lid.to_int]->dirty_bitmap_size = 0;
+	recoverable_state[lp->lid.to_int]->total_inc_size = 0;
 
 	int recovery_time = timer_value_micro(recovery_timer);
-	statistics_post_data(the_lid, STAT_RECOVERY_TIME, (double)recovery_time);
+	statistics_post_data(lp, STAT_RECOVERY_TIME, (double)recovery_time);
 }
 
 
@@ -359,9 +356,9 @@ void restore_full(LID_t the_lid, void *ckpt) {
 * @param state_queue_node a pointer to a node in the state queue keeping the state
 *        which must be restored in the logical process live image
 */
-void log_restore(LID_t lid, state_t *state_queue_node) {
-	statistics_post_data(lid, STAT_RECOVERY, 1.0);
-	restore_full(lid, state_queue_node->log);
+void log_restore(struct lp_struct *lp, state_t *state_queue_node) {
+	statistics_post_data(lp, STAT_RECOVERY, 1.0);
+	restore_full(lp, state_queue_node->log);
 }
 
 

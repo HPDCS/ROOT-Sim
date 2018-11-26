@@ -130,26 +130,14 @@ enum{
 #define UNION_CAST(x, destType) (((union {__typeof__(x) a; destType b;})x).b)
 
 // GID and LID types
-typedef struct _gid_t {unsigned int id;} GID_t;
-typedef struct _lid_t {unsigned int id;} LID_t;
-
-// The idle process identifier
-extern LID_t idle_process;
+typedef struct _gid_t {unsigned int to_int;} GID_t;
+typedef struct _lid_t {unsigned int to_int;} LID_t;
 
 #define is_lid(val) __builtin_types_compatible_p(__typeof__ (val), LID_t)
 #define is_gid(val) __builtin_types_compatible_p(__typeof__ (val), GID_t)
 
-#define is_valid_lid(lid) ((lid).id < n_prc)
-#define is_valid_gid(gid) ((gid).id < n_prc_tot)
-
-#define lid_equals(first, second) (is_lid(first) && is_lid(second) && first.id == second.id)
-#define gid_equals(first, second) (is_gid(first) && is_gid(second) && first.id == second.id)
-
-#define lid_to_int(lid) __builtin_choose_expr(is_lid(lid), (lid).id, (void)0)
-#define gid_to_int(gid) __builtin_choose_expr(is_gid(gid), (gid).id, (void)0)
-
-#define set_lid(lid, value) (__builtin_choose_expr(is_lid(lid), lid.id, (void)0) = (value))
-#define set_gid(gid, value) (__builtin_choose_expr(is_gid(gid), gid.id, (void)0) = (value))
+#define set_lid(lid, value) (__builtin_choose_expr(is_lid(lid), lid.to_int, (void)0) = (value))
+#define set_gid(gid, value) (__builtin_choose_expr(is_gid(gid), gid.to_int, (void)0) = (value))
 
 typedef enum {positive, negative, control} message_kind_t;
 
@@ -233,14 +221,10 @@ extern void ProcessEvent_light(unsigned int me, simtime_t now, int event_type, v
 bool OnGVT_light(unsigned int me, void *snapshot);
 extern void ProcessEvent_inc(unsigned int me, simtime_t now, int event_type, void *event_content, unsigned int size, void *state);
 bool OnGVT_inc(unsigned int me, void *snapshot);
-extern bool (**OnGVT)(unsigned int me, void *snapshot);
-extern void (**ProcessEvent)(unsigned int me, simtime_t now, int event_type, void *event_content, unsigned int size, void *state);
 
 extern void base_init(void);
 extern void base_fini(void);
-extern GID_t LidToGid(LID_t lid) __attribute__ ((pure));
-extern LID_t GidToLid(GID_t gid) __attribute__ ((pure));
-extern unsigned int GidToKernel(GID_t gid) __attribute__ ((pure));
+extern unsigned int find_kernel_by_gid(GID_t gid) __attribute__ ((pure));
 extern void rootsim_error(bool fatal, const char *msg, ...);
 extern void distribute_lps_on_kernels(void);
 extern void simulation_shutdown(int code) __attribute__((noreturn));

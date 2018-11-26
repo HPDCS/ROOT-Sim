@@ -66,15 +66,16 @@ typedef struct _state_t {
 } state_t;
 
 
-extern void ParallelSetState(void *new_state);
-extern bool LogState(LID_t);
-extern void RestoreState(LID_t lid, state_t *restore_state);
-extern void rollback(LID_t lid);
-extern state_t *find_time_barrier(LID_t lid,  simtime_t time);
-extern void clean_queue_states(LID_t lid, simtime_t new_gvt);
-extern void rebuild_state(LID_t lid, state_t *state_pointer, simtime_t time);
-extern void set_checkpoint_period(LID_t lid, int period);
-extern void force_LP_checkpoint(LID_t lid);
-extern unsigned int silent_execution(LID_t lid, void *state_buffer, msg_t *evt, msg_t *final_evt);
+struct lp_struct;
+
+extern bool LogState(struct lp_struct *);
+extern void RestoreState(struct lp_struct *, state_t *restore_state);
+extern void rollback(struct lp_struct *);
+extern state_t *find_time_barrier(struct lp_struct *,  simtime_t time);
+extern void clean_queue_states(struct lp_struct *, simtime_t new_gvt);
+extern void rebuild_state(struct lp_struct *, state_t *state_pointer, simtime_t time);
+extern void set_checkpoint_period(struct lp_struct *, int period);
+extern void force_LP_checkpoint(struct lp_struct *);
+extern unsigned int silent_execution(struct lp_struct *, msg_t *evt, msg_t *final_evt);
 #endif /* _STATE_MGNT_H_ */
 
