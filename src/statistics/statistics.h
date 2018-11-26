@@ -120,6 +120,8 @@ struct stat_t {
 		max_resident_set;
 };
 
+
+
 extern void _mkdir(const char *path);
 
 extern void print_config(void);
@@ -133,9 +135,9 @@ extern void statistics_stop(int exit_code);
 extern inline void statistics_on_gvt(double gvt);
 extern inline void statistics_on_gvt_serial(double gvt);
 
-extern inline void statistics_post_data(LID_t lid, enum stat_msg_t type, double data);
+extern inline void statistics_post_data(struct lp_struct *, enum stat_msg_t type, double data);
 extern inline void statistics_post_data_serial(enum stat_msg_t type, double data);
 
-extern double statistics_get_lp_data(LID_t lid, unsigned int type);
+extern double statistics_get_lp_data(struct lp_struct *, unsigned int type);
 
 #endif /* _STATISTICS_H */

@@ -47,36 +47,14 @@
  */ 
 static seed_type master_seed;
 
-/**
- * A call to Normal() generates two deviates each time. We use the
- * following flag to keep track of the availability of an additional
- * sample generated in a previous call, when running sequentially.
- */
-static bool sequential_iset;
-
-/**
- * A call to Normal() generates two deviates each time. This variable
- * keeps an additional sample generated in a previous call,
- * when running sequentially.
- */
-static double sequential_gset;
-
-
-
-
 
 static double do_random(void) {
 
 	uint32_t *seed1;
 	uint32_t *seed2;
 
-	if(unlikely(rootsim_config.serial)) {
-		seed1 = (uint32_t *)&master_seed;
-		seed2 = (uint32_t *)((char *)&master_seed + (sizeof(uint32_t)));
-	} else {
-		seed1 = (uint32_t *)&(LPS(current_lp)->numerical.seed);
-		seed2 = (uint32_t *)((char *)&(LPS(current_lp)->numerical.seed) + (sizeof(uint32_t)));
-	}
+	seed1 = (uint32_t *)&(current->numerical.seed);
+	seed2 = (uint32_t *)((char *)&(current->numerical.seed) + (sizeof(uint32_t)));
 
 	*seed1 = 36969u * (*seed1 & 0xFFFFu) + (*seed1 >> 16u);
 	*seed2 = 18000u * (*seed2 & 0xFFFFu) + (*seed2 >> 16u);
@@ -171,13 +149,8 @@ double Normal(void) {
 	bool *iset;
 	double *gset;
 
-	if(unlikely(rootsim_config.serial)) {
-		iset = &sequential_iset;
-		gset = &sequential_gset;
-	} else {
-		iset = &(LPS(current_lp)->numerical.iset);
-		gset = &(LPS(current_lp)->numerical.gset);
-	}
+	iset = &current->numerical.iset;
+	gset = &current->numerical.gset;
 
 	if(*iset == false) {
 		do {
@@ -451,15 +424,12 @@ static void load_seed(void) {
 #define RS_WORD_LENGTH (8 * sizeof(seed_type))
 #define ROR(value, places) (value << (places)) | (value >> (RS_WORD_LENGTH - places)) // Circular shift
 void numerical_init(void) {
-
-	LID_t lid;
-
 	// Initialize the master seed
 	load_seed();
 
 	// Initialize the per-LP seed
-	for(lid.id = 0; lid.id < n_prc; lid.id++) {
-		LPS(lid)->numerical.seed = sanitize_seed(ROR((int64_t)master_seed, LidToGid(lid).id % RS_WORD_LENGTH));
+	foreach_lp(lp) {
+		lp->numerical.seed = sanitize_seed(ROR((int64_t)master_seed, lp->gid.to_int % RS_WORD_LENGTH));
 	}
 
 }

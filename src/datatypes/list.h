@@ -306,7 +306,10 @@ typedef struct rootsim_list {
 	assert(__l->size == (__size_before - __deleted));\
 	__deleted;\
 	})
-	
+
+
+#define list_size(list) ((rootsim_list *)(list))->size
+
 
 #endif /* __LIST_DATATYPE_H */
 

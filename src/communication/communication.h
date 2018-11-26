@@ -85,6 +85,7 @@ enum _control_msgs {
 
 #define INIT_OUTGOING_MSG	10
 
+struct lp_struct;
 
 /// This structure is used by the communication subsystem to handle outgoing messages
 typedef struct _outgoing_t {
@@ -99,13 +100,13 @@ extern void ParallelScheduleNewEvent(unsigned int, simtime_t, unsigned int, void
 /* Functions invoked by other modules */
 extern void communication_init(void);
 extern void communication_fini(void);
-extern int comm_finalize(void);
+extern void comm_finalize(void);
 extern void Send(msg_t *msg);
 extern simtime_t receive_time_barrier(simtime_t max);
 extern int messages_checking(void);
 extern void insert_outgoing_msg(msg_t *msg);
-extern void send_outgoing_msgs(LID_t);
-extern void send_antimessages(LID_t, simtime_t);
+extern void send_outgoing_msgs(struct lp_struct *);
+extern void send_antimessages(struct lp_struct *, simtime_t);
 extern void communication_fini_thread(void);
 extern void communication_init_thread(void);
 

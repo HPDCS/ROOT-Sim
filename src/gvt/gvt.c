@@ -197,13 +197,14 @@ simtime_t GVT_phases(void){
 		#endif
 		process_bottom_halves();
 
-		for(i = 0; i < n_prc_per_thread; i++) {
-			if(LPS_bound(i)->bound == NULL) {
+		foreach_bound_lp(lp) {
+			if(lp->bound == NULL) {
 				local_min[local_tid] = 0.0;
 				break;
 			}
-			local_min[local_tid] = min(local_min[local_tid], LPS_bound(i)->bound->timestamp);
+			local_min[local_tid] = min(local_min[local_tid], lp->bound->timestamp);
 		}
+
 		thread_phase = tphase_send;     // Entering phase send
 		atomic_dec(&counter_A);	// Notify finalization of phase A
 		return -1.0;
@@ -228,13 +229,13 @@ simtime_t GVT_phases(void){
 		#endif
 		process_bottom_halves();
 
-		for(i = 0; i < n_prc_per_thread; i++) {
-			if(LPS_bound(i)->bound == NULL) {
+		foreach_bound_lp(lp) {
+			if(lp->bound == NULL) {
 				local_min[local_tid] = 0.0;
 				break;
 			}
 
-			local_min[local_tid] = min(local_min[local_tid], LPS_bound(i)->bound->timestamp);
+			local_min[local_tid] = min(local_min[local_tid], lp->bound->timestamp);
 		}
 
 		#ifdef HAVE_MPI
@@ -412,7 +413,7 @@ simtime_t gvt_operations(void) {
 	if( kernel_phase == kphase_gvt_redux && gvt_redux_completed() ){
 		if(iCAS(&commit_gvt_tkn, 1, 0)){
 			int gvt_round_time = timer_value_micro(gvt_round_timer);
-			statistics_post_data(current_lp, STAT_GVT_ROUND_TIME, gvt_round_time);
+			statistics_post_data(current, STAT_GVT_ROUND_TIME, gvt_round_time);
 
 			new_gvt = last_reduced_gvt();
 			kernel_phase = kphase_fossil;

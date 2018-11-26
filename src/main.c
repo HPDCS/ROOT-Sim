@@ -135,8 +135,6 @@ static void *main_simulation_loop(void *arg) {
 		goto leave_for_error;
 	}
 
-	int counter;
-
 	while (!end_computing()) {
 		// Recompute the LPs-thread binding
 		rebind_LPs();
@@ -196,14 +194,26 @@ static void *main_simulation_loop(void *arg) {
 * @return Exit code
 */
 int main(int argc, char **argv) {
+	#ifdef HAVE_MPI
+	volatile int __wait = 0;
+	char hostname[256];
+
+	if((getenv("WGDB")) != NULL && *(getenv("WGDB")) == '1') {
+		gethostname(hostname, sizeof(hostname));
+		printf("PID %d on %s ready for attach\n", getpid(), hostname);
+		fflush(stdout);
+
+		while (__wait == 0)
+			sleep(5);
+	}
+	#endif
 
 	SystemInit(argc, argv);
-
 
 	if(rootsim_config.core_binding)
 		set_affinity(0);
 
-        if(rootsim_config.serial) {
+	if(rootsim_config.serial) {
 		serial_simulation();
 	} else {
 
