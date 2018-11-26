@@ -223,7 +223,11 @@ context_create:
 
 	# Compute and store the stack pointer
 	addq %r8, %rcx
-	subq $8, %rcx
+	# subq $8 would theoretically be enough to have a valid stack
+	# but _set_jump and _long_jump expect a caller to already
+	# have populated it: we need to reserve 8 bytes for the fake
+	# return address and 8 more to keep 16 bytes alignment.
+	subq $24, %rcx
 	movq %rcx, offsetof_exec_context_t_rsp(%rdi)
 
 	# Set the function to be activated and its parameter
