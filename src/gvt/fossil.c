@@ -59,6 +59,7 @@ void fossil_collection(LID_t lid, simtime_t time_barrier) {
 	// nodes. We therefore manually scan the list and free the memory.
 	while( (state = list_head(LPS(lid)->queue_states)) != NULL && state->lvt < time_barrier) {
 		log_delete(state->log);
+		rsfree(state->topology);
 		#ifndef NDEBUG
 		state->last_event = (void *)0xDEADBABE;
 		#endif

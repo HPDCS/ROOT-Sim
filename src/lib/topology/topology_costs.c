@@ -36,7 +36,7 @@ unsigned size_checkpoint_costs(void){
 		sizeof(unsigned) * 2 * topology_global.lp_cnt; 				// the cache of previous and next hops to speed up queries
 }
 
-void load_topology_file_costs(c_jsmntok_t *root_token, const char *json_base){
+void *load_topology_file_costs(c_jsmntok_t *root_token, const char *json_base){
 	unsigned i;
 	c_jsmntok_t *aux_tok;
 	const unsigned lp_cnt = topology_global.lp_cnt;
@@ -48,7 +48,7 @@ void load_topology_file_costs(c_jsmntok_t *root_token, const char *json_base){
 		rootsim_error(false, "Invalid or missing json value with key \"values\"");
 
 	// instantiates the array
-	topology_global.costs = rsalloc(sizeof(double) * neighbours_cnt * lp_cnt);
+	double *ret_data = rsalloc(sizeof(double) * neighbours_cnt * lp_cnt);
 
 	// we iterate and store the costs of going into a neighbour
 	for (i = 0; i < lp_cnt; ++i) {
@@ -56,7 +56,7 @@ void load_topology_file_costs(c_jsmntok_t *root_token, const char *json_base){
 		aux_tok = get_at_token(root_token, values_tok, i);
 
 		// we parse the array
-		if(!aux_tok || parse_double_array(root_token, json_base, aux_tok, neighbours_cnt, &topology_global.weights[i * neighbours_cnt]) < 0)
+		if(!aux_tok || parse_double_array(root_token, json_base, aux_tok, neighbours_cnt, &ret_data[i * neighbours_cnt]) < 0)
 			rootsim_error(false, "Invalid or missing value in the current array of costs");
 	}
 
@@ -65,40 +65,39 @@ void load_topology_file_costs(c_jsmntok_t *root_token, const char *json_base){
 	// they would require non-minimal work to implement
 	// Bellman-Ford would be required
 	for (i = 0; i < neighbours_cnt * lp_cnt; ++i) {
-		if(topology_global.weights[i] < 0) {
+		if(ret_data[i] < 0) {
 			// xxx if negative costs need to be implemented we can't do this
-			if(topology_global.weights[i] > -1.0 || topology_global.weights[i] < -1.0)
+			if(ret_data[i] > -1.0 || ret_data[i] < -1.0)
 				rootsim_error(true, "Negative costs are still not supported");
 
-			topology_global.weights[i] = INFINITY; // this way we can mark an edge as non crossable
+			ret_data[i] = INFINITY; // this way we can mark an edge as non crossable
 		}
 	}
+	return ret_data;
 }
 
 
-void topology_costs_init(void){
+topology_t *topology_costs_init(unsigned this_region_id, void *topology_data){
 	unsigned i;
-	const unsigned neighbours = topology_global.neighbours;
 	const unsigned lp_cnt = topology_global.lp_cnt;
+	const unsigned neighbours = topology_global.neighbours;
 
 	// instantiate the topology struct
-	topology_t *topology = __wrap_malloc(topology_global.chkp_size);
+	topology_t *topology = rsalloc(topology_global.chkp_size);
 
 	// from now on we expect a topology based on cost to reside in a unique memory block and to have this layout in memory:
 	// BASE_STRUCT | COST MATRIX | CACHE MINIMUM COSTS | CACHE PREVIOUS HOP | CACHE NEXT HOP
-	topology->prev_next_cache = ((union {
-		double *d_p;
-		unsigned *u_p;
-	}) &topology->data[(neighbours + 1) * lp_cnt]).u_p;
+	topology->prev_next_cache = UNION_CAST(&topology->data[(neighbours + 1) * lp_cnt], unsigned *);
 
-	if(topology_global.weights)
-		memcpy(topology->data, topology_global.weights, sizeof(double) * neighbours * lp_cnt);
+	if(topology_data)
+		memcpy(topology->data, topology_data, sizeof(double) * neighbours * lp_cnt);
 	else{
 		for(i = 0; i < neighbours * lp_cnt; ++i)
 			topology->data[i] = 1.0;
 	}
 	topology->dirty = true;
-	CURRENT_TOPOLOGY = topology;
+
+	return topology;
 }
 
 

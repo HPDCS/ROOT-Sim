@@ -462,7 +462,7 @@ void SystemInit(int argc, char **argv) {
 	communication_init();
 	gvt_init();
 	numerical_init();
-	topology_preinit();
+	topology_init();
 
 	// This call tells the simulation engine that the sequential initial simulation is complete
 	initialization_complete();

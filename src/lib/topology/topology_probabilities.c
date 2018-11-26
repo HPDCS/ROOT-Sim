@@ -36,10 +36,11 @@ unsigned size_checkpoint_probabilities(void){
 		sizeof(double); 					// the cache of the sum of probabilities weights
 }
 
-void load_topology_file_probabilities(c_jsmntok_t *root_token, const char *json_base){
+void *load_topology_file_probabilities(c_jsmntok_t *root_token, const char *json_base){
 	unsigned i;
 	c_jsmntok_t *aux_tok;
 	const unsigned lp_cnt = topology_global.lp_cnt;
+
 	// number of possible exit regions for this region, we add 1 to take in consideration the self loop
 	const unsigned exit_regions = topology_global.neighbours + 1;
 
@@ -49,52 +50,50 @@ void load_topology_file_probabilities(c_jsmntok_t *root_token, const char *json_
 		rootsim_error(true, "Invalid or missing json value with key \"values\"");
 
 	// instantiates the array
-	topology_global.weights = rsalloc(sizeof(double) * exit_regions * lp_cnt);
+	double *ret_data = rsalloc(sizeof(double) * exit_regions * lp_cnt);
 
 	// we get the array of tokens we are interested in
 	for(i = 0; i < lp_cnt; ++i){
-		aux_tok = get_at_token(root_token, values_tok, CURRENT_LP_ID);
+		aux_tok = get_at_token(root_token, values_tok, i);
 
 		// we parse the array
-		if(!aux_tok || parse_double_array(root_token, json_base, aux_tok, exit_regions, &topology_global.weights[i * exit_regions]) < 0)
+		if(!aux_tok || parse_double_array(root_token, json_base, aux_tok, exit_regions, &ret_data[i * exit_regions]) < 0)
 			rootsim_error(true, "Invalid or missing value in the array of probabilities for this region");
 	}
 
 	// sanity check on the values of the probability weights
 	for (i = 0; i < exit_regions * lp_cnt; ++i) {
-		if(topology_global.weights[i] < 0)
+		if(ret_data[i] < 0)
 			rootsim_error(true, "Found a negative probability weight in the topology file!");
 	}
+	return ret_data;
 }
 
 
-void topology_probabilities_init(void){
-	unsigned i;
+topology_t *topology_probabilities_init(unsigned this_region_id, void *topology_data){
 	// get number of possible exit regions for this region, we add 1 to take in consideration the self loop
 	const unsigned exit_regions = topology_global.neighbours + 1;
-	const unsigned sender = CURRENT_LP_ID;
-
+	unsigned i;
 	// instantiate the topology struct
-	topology_t *topology = __wrap_malloc(topology_global.chkp_size);
+	topology_t *topology = rsalloc(topology_global.chkp_size);
 
-	if(topology_global.weights)
-		memcpy(topology->data, topology_global.weights + sender * exit_regions, sizeof(double) * exit_regions);
+	if(topology_data)
+		memcpy(topology->data, ((char *) topology_data) + this_region_id * exit_regions, sizeof(double) * exit_regions);
 	else{
 		// most models assume that you don't select the region you are from
 		topology->data[0] = 0.0;
-		for(i = 1; i < exit_regions; ++i) {
+		for(i = 1; i < exit_regions; ++i)
 			topology->data[i] = 1.0;
-		}
 	}
 
 	if(topology_global.geometry != TOPOLOGY_GRAPH){
 		i = topology_global.neighbours;
 		while(i--)
-			topology->neighbours_id[i] = get_raw_receiver(sender, i);
+			topology->neighbours_id[i] = get_raw_receiver(this_region_id, i);
 	}
 
 	topology->dirty = true;
-	CURRENT_TOPOLOGY = topology;
+	return topology;
 }
 
 

@@ -37,7 +37,7 @@ unsigned size_checkpoint_obstacles(void){
 }
 
 // this is called once per machine after the general
-void load_topology_file_obstacles(c_jsmntok_t *root_token, const char *json_base){
+void *load_topology_file_obstacles(c_jsmntok_t *root_token, const char *json_base){
 	unsigned i;
 	double tmp;
 	const unsigned lp_cnt = topology_global.lp_cnt;
@@ -46,44 +46,41 @@ void load_topology_file_obstacles(c_jsmntok_t *root_token, const char *json_base
 	if(!values_tok|| values_tok->type != JSMN_ARRAY || children_count_token(root_token, values_tok) != lp_cnt)
 		rootsim_error(true, "Invalid or missing json value with key \"values\"");
 	// we initialize the machine shared initial obstacles status
-	// fixme free this array after all LPs initialized their topology
-	topology_global.obstacles = rsalloc(bitmap_required_size(lp_cnt));
-	bitmap_initialize(topology_global.obstacles, lp_cnt);
+	rootsim_bitmap *ret_data = rsalloc(bitmap_required_size(lp_cnt));
+	bitmap_initialize(ret_data, lp_cnt);
 	// now we parse the json array to fill in the actual data
 	struct _gnt_closure_t closure = GNT_CLOSURE_INITIALIZER;
 	for (i = 0; i < lp_cnt; ++i) {
 		if(parse_double_token(json_base, get_next_token(root_token, values_tok, &closure), &tmp) < 0)
 			rootsim_error(true, "Invalid value found in the \"value\" array");
 		// we interpret ones as obstacles, we use the double comparison to avoid warnings
-		if(tmp >= 1.0 && tmp <= 1.0) {bitmap_set(topology_global.obstacles, i);}
+		if(tmp >= 1.0 && tmp <= 1.0) {bitmap_set(ret_data, i);}
 	}
+	return ret_data;
 }
 
 
-void topology_obstacles_init(void){
+topology_t *topology_obstacles_init(unsigned this_region_id, void *topology_data){
+	unsigned i, lp_id;
 	const unsigned lp_cnt = topology_global.lp_cnt;
-	unsigned i = topology_global.neighbours;
-	const unsigned sender = CURRENT_LP_ID;
-	unsigned lp_id;
+
 	// allocate the topology struct, we use a single allocation for all the stuff we need
-	topology_t* topology = __wrap_malloc(topology_global.chkp_size);
+	topology_t* topology = rsalloc(topology_global.chkp_size);
 
 	topology->prev_next_cache = (unsigned *)(((char *)topology->data) + bitmap_required_size(lp_cnt));
 
-	topology->free_neighbours = i;
-	topology->dirty = true;
-	CURRENT_TOPOLOGY = topology;
-
-	if(topology_global.obstacles){
-		memcpy(topology->data, topology_global.obstacles, bitmap_required_size(lp_cnt));
+	if(topology_data){
+		memcpy(topology->data, topology_data, bitmap_required_size(lp_cnt));
 	}else{
 		bitmap_initialize(topology->data, lp_cnt);
 	}
 
+	i = topology_global.neighbours;
+	topology->free_neighbours = i;
 	if(topology_global.geometry != TOPOLOGY_GRAPH){
 		// we save the neighbours ids for faster accessing
 		while(i--){
-			lp_id = get_raw_receiver(sender, i);
+			lp_id = get_raw_receiver(this_region_id, i);
 			topology->neighbours_id[i] = lp_id;
 			// we also count reachable neighbours
 			if(lp_id == DIRECTION_INVALID || bitmap_check(topology->data, lp_id))
@@ -92,9 +89,13 @@ void topology_obstacles_init(void){
 	}else{
 		// in a graph directions are 1 to 1 with regions
 		while(i--)
-			if(sender == i || bitmap_check(topology->data, i))
+			if(this_region_id == i || bitmap_check(topology->data, i))
 				topology->free_neighbours--;
 	}
+
+	topology->dirty = true;
+
+	return topology;
 }
 
 

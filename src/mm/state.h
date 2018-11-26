@@ -32,6 +32,7 @@
 #include <ROOT-Sim.h>
 #include <core/core.h>
 #include <lib/numerical.h>
+#include <lib/topology.h>
 
 enum{
 	STATE_SAVING_INVALID = 0,	/**< By convention 0 is the invalid field */
@@ -63,6 +64,7 @@ typedef struct _state_t {
 	/* Library state fields */
 	numerical_state_t numerical;
 	
+	topology_t *topology;
 } state_t;
 
 

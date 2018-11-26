@@ -38,6 +38,7 @@ void UncheckedScheduleNewEvent(unsigned int gid_receiver, simtime_t timestamp, u
 		return;
 	}
 
+#ifndef NDEBUG
 	// Check whether the destination LP is out of range
 	if(receiver.id >= n_prc_tot) { // It's unsigned, so no need to check whether it's < 0
 		rootsim_error(true, "Warning: the destination LP %u %lf %u is out of range. The event has been ignored\n", receiver.id, timestamp, event_type);
@@ -48,6 +49,7 @@ void UncheckedScheduleNewEvent(unsigned int gid_receiver, simtime_t timestamp, u
 	if(timestamp < lvt(current_lp)) {
 		rootsim_error(true, "LP %u is trying to generate an event (type %d) to %u in the past! (Current LVT = %f, generated event's timestamp = %f) Aborting...\n", current_lp, event_type, receiver.id, lvt(current_lp), timestamp);
 	}
+#endif
 
 	// Copy all the information into the event structure
 	pack_msg(&event, LidToGid(current_lp), receiver, event_type, timestamp, lvt(current_lp), event_size, event_content);
@@ -56,6 +58,10 @@ void UncheckedScheduleNewEvent(unsigned int gid_receiver, simtime_t timestamp, u
 	insert_outgoing_msg(event);
 }
 
+/**
+ * Utility function which returns the expected number of neighbours
+ * depending on the geometry of the topology.
+ */
 static unsigned neighbours_count(void) {
 	switch (topology_global.geometry) {
 		case TOPOLOGY_GRAPH:
@@ -75,55 +81,37 @@ static unsigned neighbours_count(void) {
 	return UINT_MAX;
 }
 
-
-static void load_default_topology(void){
-	unsigned edge;
-
-	topology_global.geometry = topology_settings.default_geometry;
-	topology_global.neighbours = neighbours_count();
-
-	if(topology_settings.out_of_topology >= n_prc_tot)
-		rootsim_error(true, "Not enough LPs to run a default topology with %u control LPs", topology_settings.out_of_topology);
-
-	switch (topology_settings.default_geometry) {
-		case TOPOLOGY_SQUARE:
-		case TOPOLOGY_HEXAGON:
-		case TOPOLOGY_TORUS:
-			edge = sqrt(n_prc_tot - topology_settings.out_of_topology);
-			topology_global.lp_cnt = edge * edge;
-			break;
-		default:
-			edge = 0;
-			topology_global.lp_cnt = n_prc_tot - topology_settings.out_of_topology;
-			break;
-	}
-	topology_global.edge = edge;
-	topology_global.obstacles = NULL;
-}
-
-static void load_topology_file(const char *file_name) {
+/**
+ * This loads a topology file:
+ * it checks for the correctness of the JSON file,
+ * it sets the correct values for the global struct,
+ * it calls the right specific topology parser,
+ * it makes cleanup (still the returned malloc'ed area needs to be freed)
+ * @param file_name the path of the file containing the topology info
+ * @return an opaque malloc'ed area used by the specific topology initiators
+ */
+static void *load_topology_file(const char *file_name) {
 	char *json_base;
 	jsmntok_t *root_token;
 	c_jsmntok_t *t;
 
-	unsigned lp_cnt, edge;
+	unsigned lp_cnt;
 	enum _topology_type_t t_type;
 	enum _topology_geometry_t geometry;
+
+	void *ret = NULL;
 
 	// load and parse the file with given file_name
 	if(load_and_parse_json_file(file_name, &json_base, &root_token) < 0)
 		rootsim_error(true, "The specified topology file at \"%s\" is either non accessible, non existing, or is not a properly formed JSON file", file_name);
-
+	// parse the regions count and check its validity
 	if(parse_unsigned_by_key(root_token, json_base, root_token, "regions_count", &lp_cnt) < 0)
 		rootsim_error(true, "Invalid or missing json value with key \"regions_count\" (must be an unsigned integer)");
 	// sanity checks on the number of instantiated LPs
 	if(lp_cnt + topology_settings.out_of_topology > n_prc_tot)
 		rootsim_error(true, "This topology needs an higher number of available LPs (%lu versus %lu available LPs)", lp_cnt, n_prc_tot);
-	// we can continue normal processing but we inform the user about this "anomaly" (could be intended though!)
 	if(lp_cnt + topology_settings.out_of_topology < n_prc_tot)
 		rootsim_error(true, "The requested regions are fewer than the available LPs (%lu versus %lu available LPs)", lp_cnt, n_prc_tot);
-
-	topology_global.lp_cnt = lp_cnt;
 
 	// look for the topology type
 	const char *type_choices[] = {
@@ -131,12 +119,12 @@ static void load_topology_file(const char *file_name) {
 			[TOPOLOGY_OBSTACLES] = 	"obstacles",
 			[TOPOLOGY_PROBABILITIES] = "probabilities"
 	};
-
+	// look for the type key and retrieve its value
 	t = get_value_token_by_key(root_token, json_base, root_token, "type");
-
+	// parse the choice from the expected string value
 	if((t_type = parse_string_choice(root_token, json_base, t, sizeof(type_choices)/sizeof(const char *), type_choices)) == UINT_MAX)
 		rootsim_error(true, "Invalid or missing json value with key \"type\" (must be a recognizable string)");
-
+	// sanity check between the topology type requested by the model and what we found
 	if(t_type != topology_settings.type){
 		rootsim_error(true, "The specified topology has a different type from the one requested by the model");
 	}
@@ -151,60 +139,83 @@ static void load_topology_file(const char *file_name) {
 			[TOPOLOGY_BIDRING - TOPOLOGY_GEOMETRY_OFFSET] = "bidring",
 			[TOPOLOGY_TORUS - TOPOLOGY_GEOMETRY_OFFSET] = 	"torus"
 	};
-
+	// look for the geometry key and retrieve its value
 	t = get_value_token_by_key(root_token, json_base, root_token, "geometry");
-
+	// parse the choice from the expected string value
 	if((geometry = parse_string_choice(root_token, json_base, t, sizeof(geometry_choices)/sizeof(const char *), geometry_choices)) == UINT_MAX)
 		rootsim_error(true, "Invalid or missing json value with key \"geometry\" (must be a recognizable string)");
-
+	// we sum the offset of the enum to obtain a valid geometry number
 	geometry += TOPOLOGY_GEOMETRY_OFFSET;
-
+	// we set the known fields of the global struct
 	topology_global.geometry = geometry;
+	topology_global.lp_cnt = lp_cnt;
+	topology_global.neighbours = neighbours_count();
+	// we give control to the right specific parser
+	switch (t_type) {
+		case TOPOLOGY_PROBABILITIES:
+			ret = load_topology_file_probabilities(root_token, json_base);
+			break;
 
-	// in case of a pseudo square geometry we precompute the edge of the map
-	switch (geometry) {
+		case TOPOLOGY_COSTS:
+			ret = load_topology_file_costs(root_token, json_base);
+			break;
+
+		case TOPOLOGY_OBSTACLES:
+			ret = load_topology_file_obstacles(root_token, json_base);
+			break;
+	}
+	// cleanup
+	rsfree(root_token);
+	rsfree(json_base);
+	// return the topology specific data
+	return ret;
+}
+
+/**
+ * This pre-computes the edge of the topology;
+ * the <sqrt>"()" is expensive and so we cache its value
+ */
+static void compute_edge(void){
+	unsigned edge;
+	const unsigned lp_cnt = topology_global.lp_cnt;
+	switch (topology_global.geometry) {
 		case TOPOLOGY_SQUARE:
 		case TOPOLOGY_HEXAGON:
 		case TOPOLOGY_TORUS:
 			edge = sqrt(lp_cnt);
+			// we make sure there are no "lonely" LPs
 			if(edge * edge != lp_cnt)
 				rootsim_error(true, "Invalid number of regions for this topology geometry (must be a square number)");
 			break;
 		default:
+			// the edge value is actually unused
 			edge = 0;
 			break;
 	}
-
+	// set the edge value
 	topology_global.edge = edge;
-	topology_global.neighbours = neighbours_count();
-
-	switch (t_type) {
-		case TOPOLOGY_PROBABILITIES:
-			load_topology_file_probabilities(root_token, json_base);
-			break;
-
-		case TOPOLOGY_COSTS:
-			load_topology_file_costs(root_token, json_base);
-			break;
-
-		case TOPOLOGY_OBSTACLES:
-			load_topology_file_obstacles(root_token, json_base);
-			break;
-	}
-
-	rsfree(root_token);
-	rsfree(json_base);
 }
 
-void topology_preinit(void) {
-	if(!&topology_settings) // if the weak symbol isn't defined we aren't needed
+void topology_init(void) {
+	if(!&topology_settings)
+		// the weak symbol isn't defined: we aren't needed
 		return;
 
+	// this is the data extracted from the topology file
+	void *t_data = NULL;
+	// basic sanity check
+	if(topology_settings.out_of_topology >= n_prc_tot)
+		rootsim_error(true, "Not enough LPs to run even a default topology with %u control LPs", topology_settings.out_of_topology);
+	// set default values
+	topology_global.lp_cnt = n_prc_tot - topology_settings.out_of_topology;
+	topology_global.geometry = topology_settings.default_geometry;
+	topology_global.neighbours = neighbours_count();
+	// load settings from file if specified
 	if(topology_settings.topology_path)
-		load_topology_file(topology_settings.topology_path);
-	else
-		load_default_topology();
-
+		t_data = load_topology_file(topology_settings.topology_path);
+	// compute the edge value for topologies it makes sense for
+	compute_edge();
+	// compute the topology struct size (used also for check-pointing)
 	switch(topology_settings.type){
 		case TOPOLOGY_COSTS:
 			topology_global.chkp_size = size_checkpoint_costs();
@@ -216,26 +227,33 @@ void topology_preinit(void) {
 			topology_global.chkp_size = size_checkpoint_probabilities();
 			break;
 	}
-}
+	// this helper function is used in the foreach
+	int init_topology_helper(LID_t this_lid, GID_t this_gid, unsigned int unused_i, void *unused){
+		// the topology is a global construction, we reason by global IDs
+		unsigned current_lp_id = gid_to_int(this_gid);
 
-void topology_init(void) {
-	if(!&topology_settings) // if the weak symbol isn't defined we aren't needed
-		return;
-
-	if(CURRENT_LP_ID >= topology_global.lp_cnt) // if this is a control LP we don't want a topology here
-		return;
-
-	switch(topology_settings.type){
-		case TOPOLOGY_COSTS:
-			topology_costs_init();
-			break;
-		case TOPOLOGY_OBSTACLES:
-			topology_obstacles_init();
-			break;
-		case TOPOLOGY_PROBABILITIES:
-			topology_probabilities_init();
-			break;
+		if(current_lp_id >= topology_global.lp_cnt){
+			// this LP isn't part of the underlying topology
+			LPS(this_lid)->topology = NULL;
+			return 0; // continue processing the other LPs
+		}
+		// this selects the right initiator for the topology
+		switch(topology_settings.type){
+			case TOPOLOGY_COSTS:
+				LPS(this_lid)->topology = topology_costs_init(current_lp_id, t_data);
+				break;
+			case TOPOLOGY_OBSTACLES:
+				LPS(this_lid)->topology = topology_obstacles_init(current_lp_id, t_data);
+				break;
+			case TOPOLOGY_PROBABILITIES:
+				LPS(this_lid)->topology = topology_probabilities_init(current_lp_id, t_data);
+				break;
+		}
+		return 0; // continue processing the other LPs
 	}
+	LPS_foreach(init_topology_helper, NULL);
+	// free the topology data read from file
+	rsfree(t_data);
 }
 
 void SetValueTopology(unsigned from, unsigned to, double value) {
@@ -303,9 +321,6 @@ void ProcessEventTopology(void){
 					rootsim_error(true, "This shouldn't happen. Contact the maintainer");
 			}
 			break;
-		case INIT:
-			topology_init();
-			/* fall through */
 		default:
 			switch_to_application_mode();
 			ProcessEvent[lid_to_int(current_lp)](CURRENT_LP_ID, current_evt->timestamp,

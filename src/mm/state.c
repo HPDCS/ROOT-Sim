@@ -113,6 +113,8 @@ skip_switch:
 
 		// Log library-related states
 		memcpy(&new_state->numerical, &LPS(lid)->numerical, sizeof(numerical_state_t));
+		new_state->topology = rsalloc(topology_global.chkp_size);
+		memcpy(new_state->topology, LPS(lid)->topology, topology_global.chkp_size);
 
 		// Link the new checkpoint to the state chain
 		list_insert_tail(LPS(lid)->queue_states, new_state);
@@ -133,6 +135,7 @@ void RestoreState(LID_t lid, state_t *restore_state) {
 
 	// Restore library-related states
 	memcpy(&LPS(lid)->numerical, &restore_state->numerical, sizeof(numerical_state_t));
+	memcpy(LPS(lid)->topology, restore_state->topology, topology_global.chkp_size);
 
 	
 #ifdef HAVE_CROSS_STATE
