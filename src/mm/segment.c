@@ -25,12 +25,13 @@
 
 #include <sys/time.h>
 #include <sys/resource.h>
+#include <fcntl.h>
+#include <sys/types.h>
 
 #include <mm/mm.h>
 #include <mm/ecs.h>
 #include <arch/x86/linux/cross_state_manager/cross_state_manager.h>
-#include <fcntl.h>
-#include <sys/types.h>
+#include <scheduler/process.h>
 
 size_t __page_size = 0;
 
@@ -64,6 +65,7 @@ void segment_init(void) {
 	struct rlimit limit;
 	size_t max_address_space = PER_LP_PREALLOCATED_MEMORY * n_prc_tot * 2;
 
+	// Configure the system to allow mmapping 1GB of VM at a time
 	limit.rlim_cur = max_address_space;
 	limit.rlim_max = max_address_space;
   
@@ -93,3 +95,19 @@ void segment_init(void) {
 }
 */
 
+
+void initialize_memory_map(struct lp_struct *lp) {
+	lp->mm = rsalloc(sizeof(struct memory_map));
+	
+	spinlock_init(&lp->mm->mm_lock);
+	lp->mm->segment = get_segment(lp->gid);
+	lp->mm->buddy = buddy_new(PER_LP_PREALLOCATED_MEMORY / BUDDY_GRANULARITY);
+	lp->mm->m_state = malloc_state_init();
+}
+
+void finalize_memory_map(struct lp_struct *lp) {
+	rsfree(lp->mm->m_state); // TODO: change to a proper DyMeLoR function to wipe out everything (this leaks memory)
+	buddy_destroy(lp->mm->buddy);
+	// No free segment function here!
+	rsfree(lp->mm);
+}

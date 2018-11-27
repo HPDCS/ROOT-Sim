@@ -26,8 +26,6 @@
         ) == SLOTS_ALL_ZERO \
     )
 
-#define POWEROF2(x) ((x) != 0 && ((x) & ((x) - 1)) == 0)
-
 #ifndef NDEBUG
 static int slab_is_valid(const struct slab_chain *const sch)
 {
@@ -173,8 +171,7 @@ void *slab_alloc(struct slab_chain *const sch)
     } else {
         /* no empty or partial slabs available, create a new one */
         if (sch->slabsize <= PAGE_SIZE) {
-            sch->partial = mmap(NULL, sch->pages_per_alloc,
-                PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+            sch->partial = mmap(NULL, sch->pages_per_alloc, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 
             if (unlikely(sch->partial == MAP_FAILED))
                 return perror("mmap"), sch->partial = NULL;
@@ -302,7 +299,7 @@ void slab_free(struct slab_chain *const sch, const void *const addr)
                 if (unlikely(munmap(page, sch->pages_per_alloc) == -1))
                     perror("munmap");
             } else {
-                free(page);
+                rsfree(page);
             }
         } else {
             slab->slots = sch->empty_slotmask;
@@ -408,7 +405,7 @@ void slab_destroy(const struct slab_chain *const sch)
             do {
                 void *const target = page;
                 page = page->next;
-                free(target);
+                rsfree(target);
             } while (page != NULL);
         }
     }

@@ -32,7 +32,6 @@
 #include <datatypes/list.h>
 #include <datatypes/msgchannel.h>
 #include <mm/mm.h>
-#include <mm/dymelor.h>
 
 // These are used to simplify reading the code
 #define M_WRITE	0

@@ -8,7 +8,7 @@
 
 #include <core/core.h>
 #include <datatypes/calqueue.h>
-#include <mm/dymelor.h>
+#include <mm/mm.h>
 
 // Declare data structures needed for the schedulers
 static calqueue_node *calq[CALQSPACE];	// Array of linked lists of items

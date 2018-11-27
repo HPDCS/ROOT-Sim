@@ -23,15 +23,14 @@
 */
 
 #pragma once
-#ifndef __ROOTSIM_THREAD_H
-#define __ROOTSIM_THREAD_H
 
 #include <stdbool.h>
 #include <arch/atomic.h>
 
 
 #if defined(OS_LINUX)
- #include <sched.h>
+
+#include <sched.h>
 #include <unistd.h>
 #include <pthread.h>
  // Macros to get information about the hosting machine
@@ -123,8 +122,4 @@ extern void barrier_init(barrier_t *b, int t);
 extern bool thread_barrier(barrier_t *b);
 bool reserve_barrier(barrier_t *b);
 void release_barrier(barrier_t *b);
-
-
-#endif /* __ROOTSIM_THREAD_H */
-
 

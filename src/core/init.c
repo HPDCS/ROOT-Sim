@@ -45,7 +45,8 @@
 #include <gvt/ccgs.h>
 #include <scheduler/scheduler.h>
 #include <mm/state.h>
-#include <mm/dymelor.h>
+#include <mm/ecs.h>
+#include <mm/mm.h>
 #include <statistics/statistics.h>
 #include <lib/numerical.h>
 #include <serial/serial.h>
@@ -449,12 +450,12 @@ void SystemInit(int argc, char **argv) {
 	// Initialize ROOT-Sim subsystems.
 	// All init routines are executed serially (there is no notion of threads in there)
 	// and the order of invocation can matter!
-
 	base_init();
+	segment_init();
 	initialize_lps();
+	remote_memory_init();
 	statistics_init();
 	scheduler_init();
-	dymelor_init();	// TODO: move initialization of malloc states in initialize_lps();
 	communication_init();
 	gvt_init();
 	numerical_init();

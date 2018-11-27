@@ -9,7 +9,7 @@
 #include <core/core.h>
 #include <core/init.h>
 #include <core/timer.h>
-#include <mm/dymelor.h>
+#include <mm/mm.h>
 #include <datatypes/calqueue.h>
 #include <statistics/statistics.h>
 

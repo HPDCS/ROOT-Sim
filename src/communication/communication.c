@@ -38,7 +38,7 @@
 #include <datatypes/list.h>
 #include <datatypes/slab.h>
 #include <datatypes/treiber.h>
-#include <mm/dymelor.h>
+#include <mm/mm.h>
 #include <arch/atomic.h>
 #ifdef HAVE_MPI
 #include <communication/mpi.h>

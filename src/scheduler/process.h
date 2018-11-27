@@ -34,7 +34,7 @@
 #include <stdbool.h>
 
 #include <mm/state.h>
-#include <mm/dymelor.h>
+#include <mm/mm.h>
 #include <mm/ecs.h>
 #include <datatypes/list.h>
 #include <datatypes/msgchannel.h>
@@ -69,6 +69,9 @@ struct lp_struct {
 
 	/// Process' stack
 	void 			*stack;
+
+	/// Memory map of the LP
+	struct memory_map	*mm;
 
 	/// Local ID of the LP
 	LID_t 			lid;

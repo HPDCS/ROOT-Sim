@@ -99,7 +99,6 @@
 
 /// This structure let DyMeLoR handle one malloc area (for serving given-size memory requests)
 struct _malloc_area {
-	bool is_recoverable;
 	size_t chunk_size;
 	int alloc_chunks;
 	int dirty_chunks;
@@ -152,24 +151,7 @@ typedef struct _malloc_state malloc_state;
  * EXPOSED API *
  ***************/
 
-
-// Variables
-// TODO: quali sono realmente da esporre all'esterno?!
-
-extern int incremental_granularity;
-extern int force_full[MAX_LPs];
-extern malloc_state *m_state[MAX_LPs];
-extern double checkpoint_cost_per_byte;
-extern double recovery_cost_per_byte;
-extern unsigned long total_checkpoints;
-extern unsigned long total_recoveries;
-extern double checkpoint_bytes_total;
-
-
-
 // DyMeLoR API
-extern void dymelor_init(void);
-extern void dymelor_fini(void);
 extern void set_force_full(unsigned int, int);
 extern void dirty_mem(void *, int);
 extern size_t get_state_size(int);
@@ -177,15 +159,11 @@ extern size_t get_log_size(malloc_state *);
 extern size_t get_inc_log_size(void *);
 extern int get_granularity(void);
 extern size_t dirty_size(unsigned int, void *, double *);
-extern void recoverable_init(void);
-extern void recoverable_fini(void);
-extern void unrecoverable_init(void);
-extern void unrecoverable_fini(void);
-extern void malloc_state_init(bool recoverable, malloc_state *state);
-extern void *do_malloc(struct lp_struct *, malloc_state * mem_pool, size_t size);
-extern void do_free(struct lp_struct *, malloc_state *mem_pool, void *ptr);
-extern void *pool_get_memory(struct lp_struct *, size_t size);
-extern void pool_release_memory(struct lp_struct *, void *ptr);
+extern malloc_state *malloc_state_init(void);
+extern void *do_malloc(struct lp_struct *, size_t);
+extern void do_free(struct lp_struct *, void *ptr);
+extern void *allocate_lp_memory(struct lp_struct *, size_t);
+extern void free_lp_memory(struct lp_struct *, void *);
 
 // Checkpointing API
 extern void *log_full(struct lp_struct *);
@@ -193,18 +171,12 @@ extern void *log_state(struct lp_struct *);
 extern void log_restore(struct lp_struct *, state_t *);
 extern void log_delete(void *);
 
-// Recoverable Memory API
+// Userspace API
 extern void *__wrap_malloc(size_t);
 extern void __wrap_free(void *);
 extern void *__wrap_realloc(void *, size_t);
 extern void *__wrap_calloc(size_t, size_t);
 extern void clean_buffers_on_gvt(struct lp_struct *, simtime_t);
-
-// Unrecoverable Memory API
-extern void *umalloc(struct lp_struct *, size_t);
-extern void ufree(struct lp_struct *, void *);
-extern void *urealloc(struct lp_struct *, void *, size_t);
-extern void *ucalloc(struct lp_struct *, size_t nmemb, size_t size);
 
 /* Simulation Platform Memory APIs */
 extern inline void *rsalloc(size_t);
@@ -213,8 +185,6 @@ extern inline void *rsrealloc(void *, size_t);
 extern inline void *rscalloc(size_t, size_t);
 
 extern void ecs_init(void);
-
-extern malloc_state **recoverable_state;
 
 // This is used to help ensure that the platform is not using malloc.
 #pragma GCC poison malloc free realloc calloc

@@ -48,7 +48,7 @@
 #include <mm/ecs.h>
 #endif
 
-#include <mm/dymelor.h>
+#include <mm/mm.h>
 #include <statistics/statistics.h>
 #include <arch/thread.h>
 #include <communication/communication.h>
