@@ -12,7 +12,8 @@
 #include <stdio.h>
 #include <stdarg.h>
 
-#define actual_malloc(ptr) malloc(ptr)
+#define actual_malloc(size) malloc(size)
+#define actual_free(ptr) free(ptr)
 
 #define OS_LINUX
 #include <mm/mm.h>
@@ -20,8 +21,7 @@
 
 #define N_TOTAL		500
 #define N_THREADS	1
-#define N_TOTAL_PRINT 50
-#define STACKSIZE	32768
+#define N_TOTAL_PRINT	50
 #define MEMORY		(1ULL << 26)
 
 #define RANDOM(s)	(rng() % (s))
@@ -277,7 +277,7 @@ static void *malloc_test(void *ptr)
 
 	rnd_seed = st->seed;
 
-	p.m = __wrap_malloc(st->bins * sizeof(*p.m));
+	p.m = actual_malloc(st->bins * sizeof(*p.m));
 	p.bins = st->bins;
 	p.size = st->size;
 	for (b = 0; b < p.bins; b++) {
@@ -310,7 +310,7 @@ static void *malloc_test(void *ptr)
 	for (b = 0; b < p.bins; b++)
 		bin_free(&p.m[b]);
 
-	__wrap_free(p.m);
+	actual_free(p.m);
 
 	if (pid > 0) {
 		pthread_mutex_lock(&finish_mutex);

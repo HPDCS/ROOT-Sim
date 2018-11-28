@@ -1,7 +1,5 @@
 /* ref: https://github.com/bbu/userland-slab-allocator */
 
-#include "slab.h"
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -95,11 +93,11 @@ static int slab_is_valid(const struct slab_chain *const sch)
 }
 #endif
 
-void slab_init(struct slab_chain *const sch, const size_t itemsize) {
-    assert(sch != NULL);
+struct slab_chain * slab_init(const size_t itemsize) {
     assert(itemsize >= 1 && itemsize <= SIZE_MAX);
     assert(POWEROF2(PAGE_SIZE));
 
+    struct slab_chain *sch = rsalloc(sizeof(struct slab_chain));
     sch->itemsize = itemsize;
 
     const size_t data_offset = offsetof(struct slab_header, data);
@@ -127,6 +125,8 @@ void slab_init(struct slab_chain *const sch, const size_t itemsize) {
     sch->partial = sch->empty = sch->full = NULL;
 
     assert(slab_is_valid(sch));
+
+    return sch;
 }
 
 void *slab_alloc(struct slab_chain *const sch)

@@ -75,6 +75,8 @@ struct _buddy *buddy_new(unsigned int num_of_fragments)
 		self->longest[i] = node_size;
 	}
 
+	spinlock_init(&self->lock);
+
 	return self;
 }
 
@@ -189,9 +191,12 @@ void *allocate_lp_memory(struct lp_struct *lp, size_t size)
 	size_t fragments;
 
 	// Get a number of fragments to contain 'size' bytes
-	// The operation involves a fast positive integer round up
+	// The operation involves a fast positive integer round up.
+	// The buddy can be accessed by multiple threads, so lock it
 	fragments = 1 + ((size - 1) / BUDDY_GRANULARITY);
+	spin_lock(&lp->mm->buddy->lock);
 	offset = buddy_alloc(lp->mm->buddy, fragments);
+	spin_unlock(&lp->mm->buddy->lock);
 	displacement = offset * BUDDY_GRANULARITY;
 
 	if (unlikely(offset == -1))
@@ -205,5 +210,8 @@ void free_lp_memory(struct lp_struct *lp, void *ptr)
 	int displacement;
 
 	displacement = (int)((char *)ptr - (char *)lp->mm->segment);
+
+	spin_lock(&lp->mm->buddy->lock);
 	buddy_free(lp->mm->buddy, displacement);
+	spin_unlock(&lp->mm->buddy->lock);
 }

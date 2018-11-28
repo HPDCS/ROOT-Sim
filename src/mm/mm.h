@@ -32,12 +32,6 @@
 #include <mm/dymelor.h>
 
 
-struct _buddy {
-	size_t size;
-	size_t longest[1];
-	void *area;
-};
-
 extern size_t __page_size;
 #define PAGE_SIZE ({ \
 			if(unlikely(__page_size == 0))\
@@ -45,12 +39,33 @@ extern size_t __page_size;
 			__page_size;\
 		  })
 
+struct slab_header {
+    struct slab_header *prev, *next;
+    uint64_t slots;
+    uintptr_t refcount;
+    struct slab_header *page;
+    uint8_t data[] __attribute__((aligned(sizeof(void *))));
+};
+
+struct slab_chain {
+    size_t itemsize, itemcount;
+    size_t slabsize, pages_per_alloc;
+    uint64_t initial_slotmask, empty_slotmask;
+    uintptr_t alignment_mask;
+    struct slab_header *partial, *empty, *full;
+};
+
+struct _buddy {
+	spinlock_t	lock;
+	size_t		size;
+	size_t		longest[1];
+};
 
 struct memory_map {
-	malloc_state	*m_state;
-	struct _buddy	*buddy;
-	void 		*segment;
-	spinlock_t	mm_lock;
+	malloc_state		*m_state;
+	struct slab_chain	*slab;
+	struct _buddy		*buddy;
+	void 			*segment;
 };
 
 
@@ -66,6 +81,10 @@ extern void *get_base_pointer(GID_t gid);
 
 extern void initialize_memory_map(struct lp_struct *lp);
 extern void finalize_memory_map(struct lp_struct *lp);
+
+extern struct slab_chain *slab_init(const size_t itemsize);
+extern void *slab_alloc(struct slab_chain *const sch);
+extern void slab_free(struct slab_chain *const sch, const void *const addr);
 
 extern struct _buddy *buddy_new(unsigned int num_of_fragments);
 void buddy_destroy(struct _buddy *);

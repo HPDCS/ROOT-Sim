@@ -156,7 +156,6 @@ typedef struct _msg_t {
 	// Pointers to attach messages to chains
 	struct _msg_t 		*next;
 	struct _msg_t 		*prev;
-	unsigned int		alloc_tid; // TODO: this should be moved into an external container, to avoid transmitting it!
 
 	/* Place here all members which must be transmitted over the network. It is convenient not to reorder the members
 	 * of the structure. If new members have to be addedd, place them right before the "Model data" part.*/
@@ -191,7 +190,6 @@ typedef struct _msg_hdr_t {
 	// TODO: non serve davvero, togliere
 	int   			type;
 	unsigned long long	rendezvous_mark;	/// Unique identifier of the message, used for rendez-vous event
-	unsigned int		alloc_tid;
 	// TODO: fine togliere
 	simtime_t		timestamp;
 	simtime_t		send_time;

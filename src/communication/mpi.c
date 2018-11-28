@@ -53,9 +53,13 @@ static spinlock_t msgs_fini;
 
 
 // MPI Operation to reduce statics struct
-MPI_Op reduce_stats_op;
+static MPI_Op reduce_stats_op;
 
-MPI_Datatype stats_mpi_t;
+static MPI_Datatype stats_mpi_t;
+
+static MPI_Comm msg_comm;
+
+
 
 /*
  * Check if there are pending messages from remote kernels with
@@ -103,7 +107,7 @@ void send_remote_msg(msg_t *msg){
 	register_outgoing_msg(out_msg->msg);
 
 	lock_mpi();
-	MPI_Isend(((char*)out_msg->msg) + MSG_PADDING, MSG_META_SIZE + msg->size, MPI_BYTE, dest, MSG_EVENT, MPI_COMM_WORLD, &out_msg->req);
+	MPI_Isend(((char*)out_msg->msg) + MSG_PADDING, MSG_META_SIZE + msg->size, MPI_BYTE, dest, msg->receiver.to_int, MPI_COMM_WORLD, &out_msg->req);
 	unlock_mpi();
 	// Keep the message in the outgoing queue until it will be delivered
 	store_outgoing_msg(out_msg, dest);
@@ -125,13 +129,15 @@ void receive_remote_msgs(void){
 	MPI_Status status;
 	MPI_Message mpi_msg;
 	int pending;
+	struct lp_struct *lp;
+	GID_t gid;
 
 	if(!spin_trylock(&msgs_lock))
 		return;
 
 	while(true){
 		lock_mpi();
-		MPI_Improbe(MPI_ANY_SOURCE, MSG_EVENT, MPI_COMM_WORLD, &pending, &mpi_msg, &status);
+		MPI_Improbe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &pending, &mpi_msg, &status);
 		unlock_mpi();
 
 		if(!pending)
@@ -139,9 +145,11 @@ void receive_remote_msgs(void){
 
 		MPI_Get_count(&status, MPI_BYTE, &size);
 
-		if(likely(MSG_PADDING + size <= SLAB_MSG_SIZE))
-			msg = get_msg_from_slab();
-		else{
+		if(likely(MSG_PADDING + size <= SLAB_MSG_SIZE)) {
+			set_gid(gid, status.MPI_TAG);
+			lp = find_lp_by_gid(gid);
+			msg = get_msg_from_slab(lp);
+		} else {
 			msg = rsalloc(MSG_PADDING + size);
 			bzero(msg, MSG_PADDING);
 		}
@@ -301,7 +309,7 @@ void dist_termination_finalize(void){
 }
 
 
-/*
+/**
  * Syncronize all the kernels:
  *
  * This function can be used as syncronization barrier between all the threads
@@ -343,6 +351,9 @@ void mpi_init(int *argc, char ***argv){
 
 	MPI_Comm_size(MPI_COMM_WORLD, (int *)&n_ker);
 	MPI_Comm_rank(MPI_COMM_WORLD, (int *)&kid);
+
+	// Create a separate communicator which we use to send event messages
+	MPI_Comm_dup(MPI_COMM_WORLD, &msg_comm);
 }
 
 
@@ -366,6 +377,7 @@ void inter_kernel_comm_finalize(void) {
 void mpi_finalize(void) {
 	if(master_thread()) {
 		MPI_Barrier(MPI_COMM_WORLD);
+		MPI_Comm_free(&msg_comm);
 		MPI_Finalize();
 	} else {
 		rootsim_error(true, "MPI finalize has been invoked by a non master thread: T%u\n", local_tid);
