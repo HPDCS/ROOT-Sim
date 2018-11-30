@@ -1,7 +1,5 @@
 // Based on t-test1.c by Wolfram Gloger
 
-#define _GNU_SOURCE
-
 #include <unistd.h>
 #include <sys/time.h>
 #include <sys/resource.h>
@@ -15,13 +13,12 @@
 #define actual_malloc(siz) malloc(siz)
 #define actual_free(ptr) free(ptr)
 
-#define OS_LINUX
 #include <mm/mm.h>
 #include <core/init.h>
 
 #define N_TOTAL		500
 #define N_THREADS	4
-#define N_TOTAL_PRINT	5
+#define N_TOTAL_PRINT	50
 #define MEMORY		(1ULL << 26)
 
 #define RANDOM(s)	(rng() % (s))
