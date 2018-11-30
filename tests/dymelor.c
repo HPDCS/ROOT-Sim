@@ -12,15 +12,16 @@
 #include <stdio.h>
 #include <stdarg.h>
 
-#define actual_malloc(ptr) malloc(ptr)
+#define actual_malloc(siz) malloc(siz)
+#define actual_free(ptr) free(ptr)
 
 #define OS_LINUX
 #include <mm/mm.h>
 #include <core/init.h>
 
 #define N_TOTAL		500
-#define N_THREADS	1
-#define N_TOTAL_PRINT 50
+#define N_THREADS	4
+#define N_TOTAL_PRINT	5
 #define STACKSIZE	32768
 #define MEMORY		(1ULL << 26)
 
@@ -35,9 +36,16 @@
    size threshold. */
 #define REALLOC_MAX	2000
 
+enum subsystem {
+	NEW,
+	DYMELOR = 10,
+	BUDDY
+};
+
 struct bin {
 	unsigned char *ptr;
 	size_t size;
+	enum subsystem subs;
 };
 
 struct bin_info {
@@ -49,8 +57,8 @@ struct thread_st {
 	int bins, max, flags;
 	size_t size;
 	pthread_t id;
-	char *sp;
 	size_t seed;
+	int counter;
 };
 
 pthread_cond_t finish_cond;
@@ -63,7 +71,8 @@ simulation_configuration rootsim_config = { 0 };
 
 __thread struct lp_struct *current;
 __thread struct lp_struct context;
-unsigned int n_prc_tot = N_THREADS;
+__thread struct thread_st *st;
+unsigned int n_prc_tot;
 
 void rootsim_error(bool fatal, const char *msg, ...)
 {
@@ -91,8 +100,7 @@ void *__real_malloc(size_t size)
 
 void __real_free(void *ptr)
 {
-	(void)ptr;
-	abort();
+	actual_free(ptr);
 }
 
 void *__real_realloc(void *ptr, size_t size)
@@ -134,6 +142,8 @@ static inline unsigned rng(void)
 static void mem_init(unsigned char *ptr, size_t size)
 {
 	size_t i, j;
+
+	bzero(ptr, size);
 
 	if (!size)
 		return;
@@ -182,6 +192,13 @@ static int zero_check(void *p, size_t size)
 	return 0;
 }
 
+static void free_it(struct bin *m) {
+	if(m->subs == DYMELOR)
+		__wrap_free(m->ptr);
+	if(m->subs == BUDDY)
+		free_lp_memory(current, m->ptr);
+}
+
 /*
  * Allocate a bin with malloc(), realloc() or memalign().
  * r must be a random number >= 1024.
@@ -189,22 +206,17 @@ static int zero_check(void *p, size_t size)
 static void bin_alloc(struct bin *m, size_t size, unsigned r)
 {
 	if (mem_check(m->ptr, m->size)) {
-		printf("memory corrupt!\n");
-		exit(1);
+		printf("[%d] memory corrupt at %p!\n", st->counter, m->ptr);
+		abort();
 	}
 	r %= 1024;
 
-/*	if (r < 4)
-	{
-		// memalign
-		if (m->size > 0) free(m->ptr);
-		m->ptr = memalign(sizeof(int) << r, size);
-	}
-	else*/ if (r < 20) {
+	if (r < 120) {
 		// calloc
 		if (m->size > 0)
-			__wrap_free(m->ptr);
+			free_it(m);
 		m->ptr = __wrap_calloc(size, 1);
+		m->subs = DYMELOR;
 
 		if (zero_check(m->ptr, size)) {
 			size_t i;
@@ -212,24 +224,33 @@ static void bin_alloc(struct bin *m, size_t size, unsigned r)
 				if (m->ptr[i])
 					break;
 			}
-			printf
-			    ("calloc'ed memory non-zero (ptr=%p, i=%ld, nmemb=%zu)!\n", m->ptr, i, size);
+			printf("[%d] calloc'ed memory non-zero (ptr=%p, i=%ld, nmemb=%zu)!\n", st->counter, m->ptr, i, size);
 			exit(1);
 		}
 
-	} else if ((r < 100) && (m->size < REALLOC_MAX)) {
+	} else if ((r < 200) && (m->size < REALLOC_MAX)) {
 		// realloc
 		if (!m->size)
 			m->ptr = NULL;
+		if(m->subs == BUDDY) {
+			free_it(m);
+			m->ptr = NULL;
+		}
 		m->ptr = __wrap_realloc(m->ptr, size);
-	} else {
+		m->subs = DYMELOR;
+	} /*else if(r < 1000) {
+		// buddy
+		m->ptr = allocate_lp_memory(current, size);
+		m->subs = BUDDY;
+	} */else {
 		// malloc
 		if (m->size > 0)
-			__wrap_free(m->ptr);
+			free_it(m);
 		m->ptr = __wrap_malloc(size);
+		m->subs = DYMELOR;
 	}
 	if (!m->ptr) {
-		printf("out of memory (r=%d, size=%ld)!\n", r, (unsigned long)size);
+		printf("[%d] out of memory (r=%d, size=%ld)!\n", st->counter, r, (unsigned long)size);
 		exit(1);
 	}
 
@@ -245,11 +266,11 @@ static void bin_free(struct bin *m)
 		return;
 
 	if (mem_check(m->ptr, m->size)) {
-		printf("memory corrupt!\n");
-		exit(1);
+		printf("[%d] memory corrupt at %p!\n", st->counter, m->ptr);
+		abort();
 	}
 
-	__wrap_free(m->ptr);
+	free_it(m);
 	m->size = 0;
 }
 
@@ -259,29 +280,34 @@ static void bin_test(struct bin_info *p)
 
 	for (b = 0; b < p->bins; b++) {
 		if (mem_check(p->m[b].ptr, p->m[b].size)) {
-			printf("memory corrupt!\n");
-			exit(1);
+			printf("[%d] memory corrupt at %p!\n", st->counter, p->m[b].ptr);
+			abort();
 		}
 	}
 }
 
 static void *malloc_test(void *ptr)
 {
-	struct thread_st *st = ptr;
 	int i, pid = 1;
-	unsigned b, j, actions;
+	unsigned b, j, actions, action;
 	struct bin_info p;
 
+	st = ptr;
+
+	context.gid.to_int = st->counter;
+	context.bound = actual_malloc(sizeof(msg_t));
+	context.bound->timestamp = 0.0;
 	initialize_memory_map(&context);
 	current = &context;
 
 	rnd_seed = st->seed;
 
-	p.m = __wrap_malloc(st->bins * sizeof(*p.m));
+	p.m = actual_malloc(st->bins * sizeof(*p.m));
 	p.bins = st->bins;
 	p.size = st->size;
 	for (b = 0; b < p.bins; b++) {
 		p.m[b].size = 0;
+		p.m[b].subs = NEW;
 		p.m[b].ptr = NULL;
 		if (!RANDOM(2))
 			bin_alloc(&p.m[b], RANDOM(p.size) + 1, rng());
@@ -300,7 +326,8 @@ static void *malloc_test(void *ptr)
 
 		for (j = 0; j < actions; j++) {
 			b = RANDOM(p.bins);
-			bin_alloc(&p.m[b], RANDOM(p.size) + 1, rng());
+			action = rng();
+			bin_alloc(&p.m[b], RANDOM(p.size) + 1, action);
 			bin_test(&p);
 		}
 
@@ -310,7 +337,7 @@ static void *malloc_test(void *ptr)
 	for (b = 0; b < p.bins; b++)
 		bin_free(&p.m[b]);
 
-	__wrap_free(p.m);
+	actual_free(p.m);
 
 	if (pid > 0) {
 		pthread_mutex_lock(&finish_mutex);
@@ -353,6 +380,10 @@ int main(int argc, char *argv[])
 	size_t size = MSIZE;
 	struct thread_st *st;
 
+	n_prc_tot = n_thr;
+
+	segment_init();
+
 	if (argc > 1)
 		n_total_max = atoi(argv[1]);
 	if (n_total_max < 1)
@@ -382,7 +413,7 @@ int main(int argc, char *argv[])
 
 	printf("total=%d threads=%d i_max=%d size=%ld bins=%d\n", n_total_max, n_thr, i_max, size, bins);
 
-	st = __real_malloc(n_thr * sizeof(*st));
+	st = actual_malloc(n_thr * sizeof(*st));
 	if (!st)
 		exit(-1);
 
@@ -394,7 +425,8 @@ int main(int argc, char *argv[])
 		st[i].max = i_max;
 		st[i].size = size;
 		st[i].flags = 0;
-		st[i].sp = 0;
+		//st[i].sp = 0;
+		st[i].counter = i;
 		st[i].seed = (i_max * size + i) ^ bins;
 		if (my_start_thread(&st[i])) {
 			printf("Creating thread #%d failed.\n", i);
@@ -418,11 +450,7 @@ int main(int argc, char *argv[])
 	}
 	pthread_mutex_unlock(&finish_mutex);
 
-	for (i = 0; i < n_thr; i++) {
-		if (st[i].sp)
-			__wrap_free(st[i].sp);
-	}
-	__wrap_free(st);
+	actual_free(st);
 	printf("Done.\n");
 	return 0;
 }

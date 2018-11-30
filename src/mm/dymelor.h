@@ -99,6 +99,9 @@
 
 /// This structure let DyMeLoR handle one malloc area (for serving given-size memory requests)
 struct _malloc_area {
+	#ifndef NDEBUG
+	atomic_t presence;
+	#endif
 	size_t chunk_size;
 	int alloc_chunks;
 	int dirty_chunks;
@@ -141,7 +144,7 @@ typedef struct _malloc_state malloc_state;
 
 #define is_incremental(ckpt) (((malloc_state *)ckpt)->is_incremental == true)
 
-#define get_top_pointer(ptr) ((long long *)((char *)ptr - sizeof(long long)))
+#define get_top_pointer(ptr) ((unsigned long long *)((char *)ptr - sizeof(unsigned long long)))
 #define get_area_top_pointer(ptr) ( (malloc_area **)(*get_top_pointer(ptr)) )
 #define get_area(ptr) ( *(get_area_top_pointer(ptr)) )
 
@@ -160,6 +163,7 @@ extern size_t get_inc_log_size(void *);
 extern int get_granularity(void);
 extern size_t dirty_size(unsigned int, void *, double *);
 extern malloc_state *malloc_state_init(void);
+extern void malloc_state_wipe(malloc_state **);
 extern void *do_malloc(struct lp_struct *, size_t);
 extern void do_free(struct lp_struct *, void *ptr);
 extern void *allocate_lp_memory(struct lp_struct *, size_t);

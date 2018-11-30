@@ -55,6 +55,10 @@ static void malloc_area_init(malloc_area *m_area, size_t size, int num_chunks)
 	m_area->self_pointer = NULL;
 	m_area->area = NULL;
 
+	#ifndef NDEBUG
+	atomic_set(&m_area->presence, 0);
+	#endif
+
 	m_area->prev = -1;
 	m_area->next = -1;
 
@@ -104,12 +108,21 @@ malloc_state *malloc_state_init(void) {
 		malloc_area_init(&state->areas[i], chunk_size, num_chunks);
 		state->areas[i].idx = i;
 		chunk_size = chunk_size << 1;
-		if(num_chunks > MIN_NUM_CHUNKS) {
-			num_chunks = num_chunks >> 1;
-		}
 	}
 
 	return state;
+}
+
+void malloc_state_wipe(malloc_state **state_ptr) {
+	int i;
+	malloc_state *state = *state_ptr;
+
+	for(i = 0; i < NUM_AREAS; i++) {
+		rsfree(state->areas[i].self_pointer); // TODO: when reintroducing the buddy, this must be changed
+	}
+
+	rsfree(*state_ptr);
+	*state_ptr = NULL;
 }
 
 
@@ -168,7 +181,7 @@ static void find_next_free(malloc_area *m_area){
 
 
 void *do_malloc(struct lp_struct *lp, size_t size) {
-	malloc_area *m_area, *prev_area;
+	malloc_area *m_area, *prev_area = NULL;
 	void *ptr;
 	size_t area_size, bitmap_size;
 	int j;
@@ -182,22 +195,45 @@ void *do_malloc(struct lp_struct *lp, size_t size) {
 
 	m_area = &lp->mm->m_state->areas[(int)log2(size) - (int)log2(MIN_CHUNK_SIZE)];
 
+	#ifndef NDEBUG
+	atomic_inc(&m_area->presence);
+	assert(atomic_read(&m_area->presence) == 1);
+	#endif
+
 	while(m_area != NULL && m_area->alloc_chunks == m_area->num_chunks){
 		prev_area = m_area;
-		if (m_area->next == -1)
+		if (m_area->next == -1) {
 			m_area = NULL;
-		else
+		} else {
 			m_area = &(lp->mm->m_state->areas[m_area->next]);
+			#ifndef NDEBUG
+			atomic_inc(&m_area->presence);
+			assert(atomic_read(&m_area->presence) == 1);
+			#endif
+		}
 	}
 
+	#ifndef NDEBUG
+	if(prev_area != NULL) {
+		atomic_dec(&prev_area->presence);
+	}
+	#endif
+
 	if(m_area == NULL) {
+
+		printf("Initializing an additional area\n");
+		fflush(stdout);
 
 		if(lp->mm->m_state->num_areas == lp->mm->m_state->max_num_areas) {
 
 			malloc_area *tmp = NULL;
 
-			if ((lp->mm->m_state->max_num_areas << 1) > MAX_LIMIT_NUM_AREAS)
+			if ((lp->mm->m_state->max_num_areas << 1) > MAX_LIMIT_NUM_AREAS) {
+				#ifndef NDEBUG
+				atomic_dec(&m_area->presence);
+				#endif
 				return NULL;
+			}
 
 			lp->mm->m_state->max_num_areas = lp->mm->m_state->max_num_areas << 1;
 
@@ -209,9 +245,11 @@ void *do_malloc(struct lp_struct *lp, size_t size) {
 				* @todo can we find a better way to handle the realloc failure?
 				*/
 				rootsim_error(false,  "DyMeLoR: cannot reallocate the block of malloc_area.\n");
-
 				lp->mm->m_state->max_num_areas = lp->mm->m_state->max_num_areas >> 1;
-
+				
+				#ifndef NDEBUG
+				atomic_dec(&m_area->presence);
+				#endif
 				return NULL;
 			}
 
@@ -223,6 +261,11 @@ void *do_malloc(struct lp_struct *lp, size_t size) {
 
 		// The malloc area to be instantiated has twice the number of chunks wrt the last full malloc area for the same chunks size
 		malloc_area_init(m_area, size, prev_area->num_chunks << 1);
+
+		#ifndef NDEBUG
+		atomic_inc(&m_area->presence);
+		assert(atomic_read(&m_area->presence) == 1);
+		#endif
 
 		m_area->idx = lp->mm->m_state->num_areas;
 		lp->mm->m_state->num_areas++;
@@ -237,12 +280,9 @@ void *do_malloc(struct lp_struct *lp, size_t size) {
 
 		area_size = sizeof(malloc_area *) + bitmap_size * 2 + m_area->num_chunks * size;
 
-		#ifdef HAVE_PARALLEL_ALLOCATOR
-		m_area->self_pointer = (malloc_area *)allocate_lp_memory(lp, area_size);
-		#else
+//		m_area->self_pointer = (malloc_area *)allocate_lp_memory(lp, area_size);
 		m_area->self_pointer = rsalloc(area_size);
 		bzero(m_area->self_pointer, area_size);
-		#endif
 
 		if(unlikely(m_area->self_pointer == NULL)) {
 			rootsim_error(true, "DyMeLoR: error allocating space\n");
@@ -261,6 +301,12 @@ void *do_malloc(struct lp_struct *lp, size_t size) {
 	if(unlikely(m_area->area == NULL)) {
 		rootsim_error(true, "Error while allocating memory at %s:%d\n", __FILE__, __LINE__);
 	}
+
+	#ifndef NDEBUG
+	if(bitmap_check(m_area->use_bitmap, m_area->next_chunk)) {
+		rootsim_error(true, "Error: reallocating an already allocated chunk at %s:%d\n", __FILE__, __LINE__);
+	}
+	#endif
 
 	ptr = (void*)((char*)m_area->area + (m_area->next_chunk * size));
 
@@ -304,6 +350,9 @@ void *do_malloc(struct lp_struct *lp, size_t size) {
 
 	//printf("[%d] Ptr:%p \t size:%lu \t result:%p \n",lid,ptr,sizeof(long long),(void*)((char*)ptr + sizeof(long long)));
 
+	#ifndef NDEBUG
+	atomic_dec(&m_area->presence);
+	#endif
 
 	return (void*)((char*)ptr + sizeof(long long));
 }
@@ -312,7 +361,7 @@ void *do_malloc(struct lp_struct *lp, size_t size) {
 void do_free(struct lp_struct *lp, void *ptr) {
 	(void)lp;
 
-	malloc_area *m_area;
+	malloc_area *m_area = NULL;
 	int idx;
 	size_t chunk_size, bitmap_size;
 
@@ -331,6 +380,11 @@ void do_free(struct lp_struct *lp, void *ptr) {
 		rootsim_error(false, "Invalid pointer during free: malloc_area NULL\n");
 		return;
 	}
+
+	#ifndef NDEBUG
+	atomic_inc(&m_area->presence);
+	assert(atomic_read(&m_area->presence) == 1);
+	#endif
 
 	chunk_size = UNTAGGED_CHUNK_SIZE(m_area);
 
@@ -387,6 +441,9 @@ void do_free(struct lp_struct *lp, void *ptr) {
 	if(idx < m_area->next_chunk)
 		m_area->next_chunk = idx;
 
+	#ifndef NDEBUG
+	atomic_dec(&m_area->presence);
+	#endif
 	// TODO: when do we free unrecoverable areas?
 }
 
@@ -581,10 +638,11 @@ void __wrap_free(void *ptr) {
 * @return A pointer to the newly allocated buffer
 *
 */
-void *__wrap_realloc(void *ptr, size_t size){
+void *__wrap_realloc(void *ptr, size_t size) {
 
 	void *new_buffer;
 	size_t old_size;
+	size_t copy_size;
 	malloc_area *m_area;
 
 	if(unlikely(rootsim_config.serial)) {
@@ -606,14 +664,15 @@ void *__wrap_realloc(void *ptr, size_t size){
 
 	// The size could be greater than the real request, but it does not matter since the realloc specific requires that
 	// is copied at least the smaller buffer size between the new and the old one
-	old_size = m_area->chunk_size;
+	old_size = UNTAGGED_CHUNK_SIZE(m_area);
 
 	new_buffer = __wrap_malloc(size);
 
 	if (unlikely(new_buffer == NULL))
 		return NULL;
 
-	memcpy(new_buffer, ptr, size > old_size ? size : old_size);
+	copy_size = min(size, old_size);
+	memcpy(new_buffer, ptr, copy_size);
 	__wrap_free(ptr);
 
 	return new_buffer;

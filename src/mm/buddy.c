@@ -32,44 +32,66 @@
 #include <mm/mm.h>
 #include <scheduler/process.h>
 
-static inline int left_child(int idx)
+
+static inline int left_child(int index)
 {
-	return ((idx << 1) + 1);
+	/* index * 2 + 1 */
+	return ((index << 1) + 1);
 }
 
-static inline int right_child(int idx)
+static inline int right_child(int index)
 {
-	return ((idx << 1) + 2);
+	/* index * 2 + 2 */
+	return ((index << 1) + 2);
 }
 
-static inline int parent(int idx)
+static inline int parent(int index)
 {
-	return (((idx + 1) >> 1) - 1);
+	/* (index+1)/2 - 1 */
+	return (((index + 1) >> 1) - 1);
 }
 
-/** allocate a new buddy structure
- * @param num_of_fragments number of fragments of the memory to be managed
+static inline bool is_power_of_2(int index)
+{
+	return !(index & (index - 1));
+}
+
+static inline size_t next_power_of_2(size_t size)
+{
+	/* depend on the fact that size < 2^32 */
+	size |= (size >> 1);
+	size |= (size >> 2);
+	size |= (size >> 4);
+	size |= (size >> 8);
+	size |= (size >> 16);
+	return size + 1;
+}
+
+/** allocate a new buddy structure 
+ * @param num_of_fragments number of fragments of the memory to be managed 
  * @return pointer to the allocated buddy structure */
-struct _buddy *buddy_new(unsigned int num_of_fragments)
+struct buddy *buddy_new(struct lp_struct *lp, size_t num_of_fragments)
 {
-	struct _buddy *self = NULL;
+	struct buddy *self = NULL;
 	size_t node_size;
-
 	int i;
 
-	if (unlikely(num_of_fragments < 1 || !IS_POWEROF2(num_of_fragments))) {
+	if (num_of_fragments < 1 || !is_power_of_2(num_of_fragments)) {
 		return NULL;
 	}
-	// Alloacte an array to represent a complete binary tree
-	self = rsalloc(sizeof(struct _buddy) + 2 * num_of_fragments * sizeof(size_t));
-	bzero(self, sizeof(struct _buddy) + 2 * num_of_fragments * sizeof(size_t));
+
+	/* alloacte an array to represent a complete binary tree */
+	//self = (struct buddy *)get_segment_memory(lp, sizeof(struct buddy) + 2 * num_of_fragments * sizeof(size_t));
+	self = (struct buddy *)rsalloc(sizeof(struct buddy) + 2 * num_of_fragments * sizeof(size_t));
+	bzero(self, sizeof(struct buddy) + 2 * num_of_fragments * sizeof(size_t)); // unnecessary, it is later initialized
+
 	self->size = num_of_fragments;
 	node_size = num_of_fragments * 2;
 
-	// initialize *longest* array for buddy structure
+	/* initialize *longest* array for buddy structure */
 	int iter_end = num_of_fragments * 2 - 1;
 	for (i = 0; i < iter_end; i++) {
-		if (IS_POWEROF2(i + 1)) {
+		if (is_power_of_2(i + 1)) {
 			node_size >>= 1;
 		}
 		self->longest[i] = node_size;
@@ -78,107 +100,86 @@ struct _buddy *buddy_new(unsigned int num_of_fragments)
 	return self;
 }
 
-void buddy_destroy(struct _buddy *self)
+void buddy_destroy(struct buddy *self)
 {
 	rsfree(self);
 }
 
-/* choose the child with smaller longest value which is still larger
- * than *size* */
-static unsigned choose_better_child(struct _buddy *self, unsigned idx,
-				    size_t size)
-{
-
-	struct compound {
-		size_t size;
-		unsigned idx;
-	} children[2];
-
-	children[0].idx = left_child(idx);
-	children[0].size = self->longest[children[0].idx];
-	children[1].idx = right_child(idx);
-	children[1].size = self->longest[children[1].idx];
-
-	int min_idx = (children[0].size <= children[1].size) ? 0 : 1;
-
-	if (size > children[min_idx].size) {
-		min_idx = 1 - min_idx;
-	}
-
-	return children[min_idx].idx;
-}
-
-/** allocate *size* from a buddy system *self*
+/** allocate *size* from a buddy system *self* 
  * @return the offset from the beginning of memory to be managed */
-static long long buddy_alloc(struct _buddy *self, size_t size)
+int buddy_alloc(struct buddy *self, size_t size)
 {
-
-	if (unlikely(self == NULL || self->size < size)) {
-		rootsim_error(true, "size is %u < %u\n", self->size, size);
+	if (self == NULL || self->size <= size) {
 		return -1;
 	}
-	size = POWEROF2(size);
+	
+	size = next_power_of_2(size);
 
-	unsigned idx = 0;
-	if (unlikely(self->longest[idx] < size)) {
-		rootsim_error(true, "self->longest %u < %u\n",
-			      self->longest[idx], size);
+	size_t index = 0;
+	if (self->longest[index] < size) {
 		return -1;
 	}
 
 	/* search recursively for the child */
-	unsigned node_size = 0;
+	size_t node_size = 0;
 	for (node_size = self->size; node_size != size; node_size >>= 1) {
-		idx = choose_better_child(self, idx, size);
+		/* choose the child with smaller longest value which is still larger
+		 * than *size* */
+		if (self->longest[left_child(index)] >= size) {
+			index = left_child(index);
+		} else {
+			index = right_child(index);
+		}
 	}
 
 	/* update the *longest* value back */
-	self->longest[idx] = 0;
-	int offset = (idx + 1) * node_size - self->size;
+	self->longest[index] = 0;
+	int offset = (index + 1) * node_size - self->size;
 
-	while (idx) {
-		idx = parent(idx);
-		self->longest[idx] =
-		    max(self->longest[left_child(idx)],
-			self->longest[right_child(idx)]);
+	while (index) {
+		index = parent(index);
+		self->longest[index] =
+		    max(self->longest[left_child(index)],
+			self->longest[right_child(index)]);
 	}
 
 	return offset;
 }
 
-static void buddy_free(struct _buddy *self, int offset)
+void buddy_free(struct buddy *self, size_t offset)
 {
-	if (unlikely(self == NULL || offset < 0 || offset > (int)self->size)) {
+	if (self == NULL || offset >= self->size) {
 		return;
 	}
 
 	size_t node_size;
-	unsigned idx;
+	size_t index;
 
-	/* get the corresponding idx from offset */
+	/* get the corresponding index from offset */
 	node_size = 1;
-	idx = offset + self->size - 1;
+	index = offset + self->size - 1;
 
-	for (; self->longest[idx] != 0; idx = parent(idx)) {
-		node_size <<= 1;	/* node_size *= 2; */
+	for (; self->longest[index] != 0; index = parent(index)) {
+		node_size <<= 1;
 
-		if (idx == 0) {
+		if (index == 0) {
 			break;
 		}
 	}
-	self->longest[idx] = node_size;
 
-	while (idx) {
-		idx = parent(idx);
+	self->longest[index] = node_size;
+
+	while (index) {
+		index = parent(index);
 		node_size <<= 1;
 
-		size_t left_longest = self->longest[left_child(idx)];
-		size_t right_longest = self->longest[right_child(idx)];
+		size_t left_longest = self->longest[left_child(index)];
+		size_t right_longest = self->longest[right_child(index)];
 
 		if (left_longest + right_longest == node_size) {
-			self->longest[idx] = node_size;
+			self->longest[index] = node_size;
 		} else {
-			self->longest[idx] = max(left_longest, right_longest);
+			self->longest[index] = max(left_longest, right_longest);
 		}
 	}
 }
@@ -187,6 +188,9 @@ void *allocate_lp_memory(struct lp_struct *lp, size_t size)
 {
 	long long offset, displacement;
 	size_t fragments;
+
+	if (size == 0)
+		return NULL;
 
 	// Get a number of fragments to contain 'size' bytes
 	// The operation involves a fast positive integer round up
@@ -197,13 +201,13 @@ void *allocate_lp_memory(struct lp_struct *lp, size_t size)
 	if (unlikely(offset == -1))
 		return NULL;
 
-	return (void *)((char *)lp->mm->segment + displacement);
+	return (void *)((char *)lp->mm->segment->base + displacement);
 }
 
 void free_lp_memory(struct lp_struct *lp, void *ptr)
 {
-	int displacement;
-
-	displacement = (int)((char *)ptr - (char *)lp->mm->segment);
+	size_t displacement;
+	
+	displacement = (int)((char *)ptr - (char *)lp->mm->segment->base);
 	buddy_free(lp->mm->buddy, displacement);
 }

@@ -32,10 +32,14 @@
 #include <mm/dymelor.h>
 
 
-struct _buddy {
+struct segment {
+	unsigned char *base;
+	unsigned char *brk;
+};
+
+struct buddy {
 	size_t size;
-	size_t longest[1];
-	void *area;
+	size_t longest[];
 };
 
 extern size_t __page_size;
@@ -48,8 +52,8 @@ extern size_t __page_size;
 
 struct memory_map {
 	malloc_state	*m_state;
-	struct _buddy	*buddy;
-	void 		*segment;
+	struct buddy	*buddy;
+	struct segment	*segment;
 	spinlock_t	mm_lock;
 };
 
@@ -61,11 +65,11 @@ struct memory_map {
 extern bool allocator_init(void);
 extern void allocator_fini(void);
 extern void segment_init(void);
-extern void *get_segment(GID_t i);
+extern struct segment *get_segment(GID_t i);
 extern void *get_base_pointer(GID_t gid);
 
 extern void initialize_memory_map(struct lp_struct *lp);
 extern void finalize_memory_map(struct lp_struct *lp);
 
-extern struct _buddy *buddy_new(unsigned int num_of_fragments);
-void buddy_destroy(struct _buddy *);
+extern struct buddy *buddy_new(struct lp_struct *, unsigned long num_of_fragments);
+void buddy_destroy(struct buddy *);

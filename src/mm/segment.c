@@ -43,22 +43,49 @@ void *get_base_pointer(GID_t gid) {
 	return init_address + PER_LP_PREALLOCATED_MEMORY * gid.to_int;
 }
 
-void *get_segment(GID_t gid) {
+void *get_segment_memory(struct segment *seg, size_t size) {
+	unsigned char *new_brk, *ret = NULL;
+
+	// Align the new brk to a multiple of 64 bytes, to increase L1 cache efficiency
+	new_brk = (unsigned char *)(((unsigned long long)seg->brk + size + (64 - 1)) & -64);
+
+	// Do we have enough space?
+	if(likely(new_brk >= seg->base + PER_LP_PREALLOCATED_MEMORY)) {
+		ret = seg->brk;
+		seg->brk = new_brk;
+	}
+
+	return ret;
+}
+
+void free_segment_memory(void *ptr) {
+	// there ain't much we can do here...
+	(void)ptr;
+}
+
+struct segment *get_segment(GID_t gid) {
 	void *the_address;
-	void *mapped;
+	struct segment *seg;
+
+	seg = rsalloc(sizeof(struct segment));
+	if(seg == NULL)
+		return NULL;
 
 	// Addresses are determined in the same way across all kernel instances
 	the_address = init_address + PER_LP_PREALLOCATED_MEMORY * gid.to_int;
 
-	mapped = mmap(the_address, PER_LP_PREALLOCATED_MEMORY, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS|MAP_FIXED, 0, 0);
-	if(unlikely(mapped == MAP_FAILED)) {
+	seg->base = mmap(the_address, PER_LP_PREALLOCATED_MEMORY, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS|MAP_FIXED, 0, 0);
+	if(unlikely(seg->base == MAP_FAILED)) {
+		perror("mmap");
 		rootsim_error(true, "Unable to mmap LPs memory\n");
 		return NULL;
 	}
+	seg->brk = seg->base;
+	
 	// Access the memory in write mode to force the kernel to create the page table entries
-	*((char *)mapped) = 'x';
+	*seg->base = 'x';
 
-	return mapped;
+	return seg;
 }
 
 void segment_init(void) {
@@ -100,14 +127,14 @@ void initialize_memory_map(struct lp_struct *lp) {
 	lp->mm = rsalloc(sizeof(struct memory_map));
 	
 	spinlock_init(&lp->mm->mm_lock);
-	lp->mm->segment = get_segment(lp->gid);
-	lp->mm->buddy = buddy_new(PER_LP_PREALLOCATED_MEMORY / BUDDY_GRANULARITY);
+	lp->mm->segment = NULL;//get_segment(lp->gid);
+	lp->mm->buddy = NULL;//buddy_new(lp, PER_LP_PREALLOCATED_MEMORY / BUDDY_GRANULARITY);
 	lp->mm->m_state = malloc_state_init();
 }
 
 void finalize_memory_map(struct lp_struct *lp) {
-	rsfree(lp->mm->m_state); // TODO: change to a proper DyMeLoR function to wipe out everything (this leaks memory)
-	buddy_destroy(lp->mm->buddy);
+	malloc_state_wipe(&lp->mm->m_state);
+	//buddy_destroy(lp->mm->buddy);
 	// No free segment function here!
 	rsfree(lp->mm);
 }
