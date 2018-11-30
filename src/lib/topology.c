@@ -5,7 +5,7 @@
 #include <stdarg.h>
 #include <math.h>
 #include <scheduler/scheduler.h>
-#include <mm/dymelor.h>
+#include <mm/mm.h>
 
 static bool first_call = true;
 static unsigned int edge; // Don't recompute every time the square root

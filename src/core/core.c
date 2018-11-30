@@ -39,7 +39,7 @@
 #include <scheduler/scheduler.h>
 #include <statistics/statistics.h>
 #include <gvt/gvt.h>
-#include <mm/dymelor.h>
+#include <mm/mm.h>
 
 /// Barrier for all worker threads
 barrier_t all_thread_barrier;
@@ -190,7 +190,6 @@ void simulation_shutdown(int code) {
 
 		if(master_thread()) {
 			statistics_fini();
-			dymelor_fini();
 			scheduler_fini();
 			gvt_fini();
 			communication_fini();
@@ -222,7 +221,7 @@ inline bool simulation_error(void) {
 *
 * @todo If a fatal error is received, write it on the log file as well!
 */
-void rootsim_error(bool fatal, const char *msg, ...) {
+void _rootsim_error(bool fatal, const char *msg, ...) {
 	char buf[1024];
 	va_list args;
 

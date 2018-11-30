@@ -17,7 +17,7 @@
 #include <statistics/statistics.h>
 #include <queues/queues.h>
 #include <mm/state.h>
-#include <mm/dymelor.h>
+#include <mm/mm.h>
 #include <core/core.h>
 #include <core/init.h>
 #include <core/timer.h>

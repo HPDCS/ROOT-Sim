@@ -29,7 +29,7 @@
 #include <scheduler/process.h>
 #include <core/core.h>
 #include <communication/communication.h>
-#include <mm/dymelor.h>
+#include <mm/mm.h>
 #include <mm/ecs.h>
 #include <datatypes/list.h>
 #include <gvt/gvt.h>

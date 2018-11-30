@@ -33,7 +33,7 @@
 #include <mpi.h>
 
 #include <datatypes/list.h>
-#include <mm/dymelor.h>
+#include <mm/mm.h>
 #include <ROOT-Sim.h>
 #include <arch/atomic.h>
 

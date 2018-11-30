@@ -1,7 +1,5 @@
 /* ref: https://github.com/bbu/userland-slab-allocator */
 
-#include "slab.h"
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -26,8 +24,6 @@
         ) == SLOTS_ALL_ZERO \
     )
 
-#define POWEROF2(x) ((x) != 0 && ((x) & ((x) - 1)) == 0)
-
 #ifndef NDEBUG
 static int slab_is_valid(const struct slab_chain *const sch)
 {
@@ -40,8 +36,7 @@ static int slab_is_valid(const struct slab_chain *const sch)
     assert(sch->pages_per_alloc >= PAGE_SIZE);
     assert(sch->pages_per_alloc >= sch->slabsize);
 
-    assert(offsetof(struct slab_header, data) +
-        sch->itemsize * sch->itemcount <= sch->slabsize);
+    assert(offsetof(struct slab_header, data) + sch->itemsize * sch->itemcount <= sch->slabsize);
 
     assert(sch->empty_slotmask == ~SLOTS_ALL_ZERO >> (64 - sch->itemcount));
     assert(sch->initial_slotmask == (sch->empty_slotmask ^ SLOTS_FIRST));
@@ -97,13 +92,13 @@ static int slab_is_valid(const struct slab_chain *const sch)
 }
 #endif
 
-void slab_init(struct slab_chain *const sch, const size_t itemsize)
-{
-    assert(sch != NULL);
+struct slab_chain *slab_init(const size_t itemsize) {
     assert(itemsize >= 1 && itemsize <= SIZE_MAX);
     assert(POWEROF2(PAGE_SIZE));
 
+    struct slab_chain *sch = rsalloc(sizeof(struct slab_chain));
     sch->itemsize = itemsize;
+    spinlock_init(&sch->lock);
 
     const size_t data_offset = offsetof(struct slab_header, data);
     const size_t least_slabsize = data_offset + 64 * sch->itemsize;
@@ -130,11 +125,17 @@ void slab_init(struct slab_chain *const sch, const size_t itemsize)
     sch->partial = sch->empty = sch->full = NULL;
 
     assert(slab_is_valid(sch));
+
+    return sch;
 }
 
 void *slab_alloc(struct slab_chain *const sch)
 {
+	void *ret = NULL;
     assert(sch != NULL);
+
+    spin_lock(&sch->lock);
+ 
     assert(slab_is_valid(sch));
 
     if (likely(sch->partial != NULL)) {
@@ -154,9 +155,11 @@ void *slab_alloc(struct slab_chain *const sch)
                 sch->full->prev = tmp;
 
             sch->full = tmp;
-            return sch->full->data + slot * sch->itemsize;
+            ret = sch->full->data + slot * sch->itemsize;
+            goto out;
         } else {
-            return sch->partial->data + slot * sch->itemsize;
+            ret = sch->partial->data + slot * sch->itemsize;
+            goto out;
         }
     } else if (likely((sch->partial = sch->empty) != NULL)) {
         /* found an empty slab, change state from empty to partial */
@@ -170,15 +173,18 @@ void *slab_alloc(struct slab_chain *const sch)
             sch->partial->refcount++ : sch->partial->page->refcount++;
 
         sch->partial->slots = sch->initial_slotmask;
-        return sch->partial->data;
+        ret = sch->partial->data;
+        goto out;
     } else {
         /* no empty or partial slabs available, create a new one */
         if (sch->slabsize <= PAGE_SIZE) {
-            sch->partial = mmap(NULL, sch->pages_per_alloc,
-                PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+            sch->partial = mmap(NULL, sch->pages_per_alloc, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 
-            if (unlikely(sch->partial == MAP_FAILED))
-                return perror("mmap"), sch->partial = NULL;
+            if (unlikely(sch->partial == MAP_FAILED)) {
+		    perror("mmap");
+		    ret = sch->partial = NULL;
+		    goto out;
+	    }
         } else {
             const int err = posix_memalign((void **) &sch->partial,
                 sch->slabsize, sch->pages_per_alloc);
@@ -187,7 +193,8 @@ void *slab_alloc(struct slab_chain *const sch)
                 fprintf(stderr, "posix_memalign(align=%zu, size=%zu): %d\n",
                     sch->slabsize, sch->pages_per_alloc, err);
 
-                return sch->partial = NULL;
+                ret = sch->partial = NULL;
+                goto out;
             }
         }
 
@@ -228,17 +235,24 @@ void *slab_alloc(struct slab_chain *const sch)
             prev->next = NULL;
         }
 
-        return sch->partial->data;
+        ret = sch->partial->data;
     }
 
-    /* unreachable */
+    out:
+	spin_unlock(&sch->lock);
+	return ret;
 }
 
 void slab_free(struct slab_chain *const sch, const void *const addr)
 {
     assert(sch != NULL);
+
+    spin_lock(&sch->lock);
+    
     assert(slab_is_valid(sch));
-    assert(addr != NULL);
+
+    if(addr == NULL)
+	goto out;
 
     struct slab_header *const slab = (void *)
         ((uintptr_t) addr & sch->alignment_mask);
@@ -303,7 +317,7 @@ void slab_free(struct slab_chain *const sch, const void *const addr)
                 if (unlikely(munmap(page, sch->pages_per_alloc) == -1))
                     perror("munmap");
             } else {
-                free(page);
+                rsfree(page);
             }
         } else {
             slab->slots = sch->empty_slotmask;
@@ -331,6 +345,9 @@ void slab_free(struct slab_chain *const sch, const void *const addr)
         /* target slab is partial, no need to change state */
         slab->slots |= SLOTS_FIRST << slot;
     }
+
+    out:
+	spin_unlock(&sch->lock);
 }
 
 void slab_traverse(const struct slab_chain *const sch, void (*fn)(const void *))
@@ -409,7 +426,7 @@ void slab_destroy(const struct slab_chain *const sch)
             do {
                 void *const target = page;
                 page = page->next;
-                free(target);
+                rsfree(target);
             } while (page != NULL);
         }
     }

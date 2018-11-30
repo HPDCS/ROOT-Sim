@@ -35,7 +35,7 @@
 
 #include <core/init.h>
 #include <communication/communication.h>
-#include <mm/dymelor.h>
+#include <mm/mm.h>
 #include <scheduler/process.h>
 #include <scheduler/scheduler.h>
 #include <statistics/statistics.h> // To have _mkdir helper function

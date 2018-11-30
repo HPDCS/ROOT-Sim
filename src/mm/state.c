@@ -39,7 +39,7 @@
 #include <scheduler/scheduler.h>
 #include <mm/state.h>
 #include <communication/communication.h>
-#include <mm/dymelor.h>
+#include <mm/mm.h>
 #include <statistics/statistics.h>
 
 

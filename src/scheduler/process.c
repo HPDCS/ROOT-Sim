@@ -84,6 +84,9 @@ void initialize_lps(void)
 			abort();
 		}
 
+		// Initialize memory map
+		initialize_memory_map(lp);
+
 		// Allocate memory for the outgoing buffer
 		lp->outgoing_buffer.max_size = INIT_OUTGOING_MSG;
 		lp->outgoing_buffer.outgoing_msgs = rsalloc(sizeof(msg_t *) * INIT_OUTGOING_MSG);

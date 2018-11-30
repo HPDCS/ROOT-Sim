@@ -36,7 +36,7 @@
 #include <scheduler/scheduler.h> // this is for n_prc_per_thread
 //#include <scheduler/binding.h> // this is for force_rebind_GLP
 #include <statistics/statistics.h>
-#include <mm/dymelor.h>
+#include <mm/mm.h>
 #include <communication/mpi.h>
 #include <communication/gvt.h>
 
@@ -193,7 +193,7 @@ static inline void reduce_local_gvt(void) {
 		// If no message has been processed, local estimate for
 		// GVT is forced to 0.0. This can happen, e.g., if
 		// GVT is computed very early in the run
-		if(unlikey(lp->bound == NULL)) {
+		if(unlikely(lp->bound == NULL)) {
 			local_min[local_tid] = 0.0;
 			break;
 		}
@@ -202,7 +202,7 @@ static inline void reduce_local_gvt(void) {
 		// events, we can safely assume that it should not
 		// participate to the computation of the GVT, because any
 		// event to it will appear *after* the GVT
-		if(current->bound->next == NULL)
+		if(lp->bound->next == NULL)
 			continue;
 
 		local_min[local_tid] = min(local_min[local_tid], lp->bound->timestamp);

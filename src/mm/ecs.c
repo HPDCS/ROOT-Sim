@@ -42,7 +42,6 @@
 
 
 #include <core/core.h>
-#include <mm/dymelor.h>
 #include <mm/mm.h>
 #include <scheduler/scheduler.h>
 #include <scheduler/process.h>
@@ -321,5 +320,12 @@ void unblock_synchronized_objects(struct lp_struct *lp) {
 	lp->wait_on_rendezvous = 0;
 	lp->ECS_index = 0;
 }
-#endif
 
+void remote_memory_init(void) {
+	foreach_lp(lp) {
+		if(find_kernel_by_gid(lp->gid) != kid) {
+			(void)get_segment(lp->gid);
+		}
+	}
+}
+#endif

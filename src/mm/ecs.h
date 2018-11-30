@@ -1,7 +1,5 @@
 #pragma once
 
-#ifndef _ECS_H
-#define _ECS_H
 
 typedef struct _ecs_page_node {
 	
@@ -22,6 +20,8 @@ extern void ecs_send_pages(msg_t *);
 extern void ecs_install_pages(msg_t *);
 void unblock_synchronized_objects(LID_t lid);
 
-
-#endif /* _ECS_H */
-
+#ifdef HAVE_ECS
+extern void remote_memory_init(void);
+#else
+#define remote_memory_init()
+#endif

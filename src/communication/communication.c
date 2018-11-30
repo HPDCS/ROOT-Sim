@@ -36,24 +36,14 @@
 #include <scheduler/scheduler.h>
 #include <scheduler/process.h>
 #include <datatypes/list.h>
-#include <datatypes/slab.h>
-#include <datatypes/treiber.h>
-#include <mm/dymelor.h>
+#include <mm/mm.h>
 #include <arch/atomic.h>
 #ifdef HAVE_MPI
 #include <communication/mpi.h>
 #endif
 
-static treiber **msg_treiber;
-static struct slab_chain *msg_slab;
-
-
 /// This is the function pointer to correctly set ScheduleNewEvent API version, depending if we're running serially or parallelly
 void (* ScheduleNewEvent)(unsigned int gid_receiver, simtime_t timestamp, unsigned int event_type, void *event_content, unsigned int event_size);
-
-/// Buffer used by MPI for outgoing messages
-//static char buff[SLOTS * sizeof(msg_t)];
-
 
 /**
 * This function initializes the communication subsystem
@@ -61,27 +51,15 @@ void (* ScheduleNewEvent)(unsigned int gid_receiver, simtime_t timestamp, unsign
 * @author Roberto Vitali
 */
 void communication_init(void) {
-	unsigned int i;
-
 	#ifdef HAVE_MPI
 	inter_kernel_comm_init();
 	#endif
-
-	msg_treiber = rsalloc(n_cores * sizeof(msg_treiber));
-	msg_slab = rsalloc(n_cores * sizeof(*msg_slab));
-
-	for(i = 0; i < n_cores; i++) {
-		msg_treiber[i] = treiber_init();
-	}
 }
 
-
 void communication_init_thread(void) {
-	slab_init(&msg_slab[local_tid], SLAB_MSG_SIZE); 
 }
 
 void communication_fini_thread(void) {
-	slab_destroy(&msg_slab[local_tid]);
 }
 
 
@@ -93,68 +71,46 @@ void communication_fini(void) {
 	inter_kernel_comm_finalize();
 	mpi_finalize();
 	#endif
-
-	rsfree(msg_slab);
 }
 
-msg_hdr_t *get_msg_hdr_from_slab(void) {
+struct lp_struct *which_slab_to_use(GID_t sender, GID_t receiver) {
+	// Local messages are taken in the destination slab.
+	// Remote buffers are taken from the sender slab (this will be
+	// freed shortly, once we hand that to MPI)
+	if(find_kernel_by_gid(receiver) == kid)
+		return find_lp_by_gid(receiver);
+	return find_lp_by_gid(sender);
+}
+
+// Headers are always taken from the sender slab
+void msg_hdr_release(msg_hdr_t *msg) {
+	struct lp_struct *lp;
+
+	lp = find_lp_by_gid(msg->sender);
+	slab_free(lp->mm->slab, msg);
+}
+
+
+msg_hdr_t *get_msg_hdr_from_slab(struct lp_struct *lp) {
 	// TODO: The magnitude of this hack compares to that of the national debt.
-	// We must have a single allocation point where we just get a buffer, and then
-	// we map that to the various data structures.
-	msg_hdr_t *msg = (msg_hdr_t *)get_msg_from_slab();
+	// We are wasting a lot of memory from the LP buddy just to keep antimessages!
+	msg_hdr_t *msg = (msg_hdr_t *)get_msg_from_slab(lp);
 	bzero(msg, SLAB_MSG_SIZE);
-	msg->alloc_tid = local_tid;
 	return msg;
 }
 
-void msg_hdr_release(msg_hdr_t *msg) {
-	int thr = msg->alloc_tid;
-	treiber_push(msg_treiber[thr], msg);
-}
-
-msg_t *get_msg_from_slab(void) {
-	msg_t *msg = NULL;
-	treiber *to_release;
-	treiber *to_release_nxt;
-
-	// Unlink the whole Treiber stack and release all nodes.
-	// If at least one node is available, reuse it for the
-	// current allocation.
-
-	to_release = treiber_detach(msg_treiber[local_tid]);
-	while(to_release != NULL) {
-		if(unlikely(msg == NULL)) {
-			msg = to_release->data;
-		} else {
-			slab_free(&msg_slab[local_tid], to_release->data);
-		}
-		to_release_nxt = to_release->next;
-		rsfree(to_release);
-		to_release = to_release_nxt;
-	}
-
-	if(likely(msg != NULL)) {
-		goto out;
-	}
-
-	msg = (msg_t *)slab_alloc(&msg_slab[local_tid]);
-
-    out:
+msg_t *get_msg_from_slab(struct lp_struct *lp) {
+	msg_t *msg = (msg_t *)slab_alloc(lp->mm->slab);
 	bzero(msg, SLAB_MSG_SIZE);
-	msg->alloc_tid = local_tid;
 	return msg;
 }
 
 void msg_release(msg_t *msg) {
-	unsigned int thr;
-
+	struct lp_struct *lp;
+	
 	if(likely(sizeof(msg_t) + msg->size <= SLAB_MSG_SIZE)) {
-		thr = msg->alloc_tid;
-		if(local_tid == thr) {
-			slab_free(&msg_slab[thr], msg);
-		} else {
-			treiber_push(msg_treiber[thr], msg);
-		}
+		lp = which_slab_to_use(msg->sender, msg->receiver);
+		slab_free(lp->mm->slab, msg);
 	} else {
 		rsfree(msg);
 	}
@@ -242,7 +198,7 @@ void send_antimessages(struct lp_struct *lp, simtime_t after_simtime) {
 	// Scan the output queue backwards, sending all required antimessages
 	anti_msg = list_tail(lp->queue_out);
 	while(anti_msg != NULL && anti_msg->send_time > after_simtime) {
-		msg = get_msg_from_slab();
+		msg = get_msg_from_slab(which_slab_to_use(anti_msg->sender, anti_msg->receiver));
 		hdr_to_msg(anti_msg, msg);
 		msg->message_kind = negative;
 
@@ -324,13 +280,12 @@ void insert_outgoing_msg(msg_t *msg) {
 
 
 void send_outgoing_msgs(struct lp_struct *lp) {
-
 	register unsigned int i = 0;
 	msg_t *msg;
 	msg_hdr_t *msg_hdr;
 
 	for(i = 0; i < lp->outgoing_buffer.size; i++) {
-		msg_hdr = get_msg_hdr_from_slab();
+		msg_hdr = get_msg_hdr_from_slab(lp);
 		msg = lp->outgoing_buffer.outgoing_msgs[i];
 		msg_to_hdr(msg_hdr, msg);
 
@@ -350,7 +305,7 @@ void pack_msg(msg_t **msg, GID_t sender, GID_t receiver, int type, simtime_t tim
 
 	// Check if we can rely on a slab to initialize the message
 	if(likely(sizeof(msg_t) + size <= SLAB_MSG_SIZE)) {
-		*msg = get_msg_from_slab();
+		*msg = get_msg_from_slab(which_slab_to_use(sender, receiver));
 	} else {
 		*msg = rsalloc(sizeof(msg_t) + size);
 		bzero(*msg, sizeof(msg_t) + size);
@@ -423,7 +378,6 @@ void validate_msg(msg_t *msg) {
 	assert(mark_to_gid(msg->mark) <= n_prc_tot);
 	assert(mark_to_gid(msg->rendezvous_mark) <= n_prc_tot);
 	assert(msg->type < MAX_VALUE_CONTROL);
-	assert(msg->alloc_tid < n_cores);
 }
 #endif
 
