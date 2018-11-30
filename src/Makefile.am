@@ -47,8 +47,6 @@ librootsim_a_SOURCES =	main.c \
 			datatypes/array.c \
 			datatypes/calqueue.c \
 			datatypes/msgchannel.c \
-			datatypes/slab.c \
-			datatypes/treiber.c \
 			gvt/gvt.c \
 			gvt/fossil.c \
 			gvt/ccgs.c \
@@ -73,4 +71,5 @@ libdymelor_a_SOURCES = 	mm/checkpoints.c \
 			mm/platform.c \
 			mm/dymelor.c \
 			mm/buddy.c \
-			mm/segment.c
+			mm/segment.c \
+			mm/slab.c

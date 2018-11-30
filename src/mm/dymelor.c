@@ -184,7 +184,6 @@ void *do_malloc(struct lp_struct *lp, size_t size) {
 	malloc_area *m_area, *prev_area = NULL;
 	void *ptr;
 	size_t area_size, bitmap_size;
-	int j;
 
 	size = compute_size(size);
 
@@ -295,7 +294,7 @@ void *do_malloc(struct lp_struct *lp, size_t size) {
 
 		m_area->dirty_bitmap = ((unsigned char *)m_area->use_bitmap + bitmap_size);
 
-		m_area->area = (void *)((char*)m_area->use_bitmap + bitmap_size * 2);
+		m_area->area = (void *)((char*)m_area->dirty_bitmap + bitmap_size);
 	}
 
 	if(unlikely(m_area->area == NULL)) {

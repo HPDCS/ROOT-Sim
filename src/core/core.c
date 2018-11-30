@@ -221,7 +221,7 @@ inline bool simulation_error(void) {
 *
 * @todo If a fatal error is received, write it on the log file as well!
 */
-void rootsim_error(bool fatal, const char *msg, ...) {
+void _rootsim_error(bool fatal, const char *msg, ...) {
 	char buf[1024];
 	va_list args;
 

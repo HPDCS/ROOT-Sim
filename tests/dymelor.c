@@ -22,7 +22,6 @@
 #define N_TOTAL		500
 #define N_THREADS	4
 #define N_TOTAL_PRINT	5
-#define STACKSIZE	32768
 #define MEMORY		(1ULL << 26)
 
 #define RANDOM(s)	(rng() % (s))
@@ -39,7 +38,8 @@
 enum subsystem {
 	NEW,
 	DYMELOR = 10,
-	BUDDY
+	BUDDY,
+	SLAB
 };
 
 struct bin {
@@ -74,7 +74,7 @@ __thread struct lp_struct context;
 __thread struct thread_st *st;
 unsigned int n_prc_tot;
 
-void rootsim_error(bool fatal, const char *msg, ...)
+void _rootsim_error(bool fatal, const char *msg, ...)
 {
 	char buf[1024];
 	va_list args;
@@ -195,6 +195,8 @@ static int zero_check(void *p, size_t size)
 static void free_it(struct bin *m) {
 	if(m->subs == DYMELOR)
 		__wrap_free(m->ptr);
+	if(m->subs == SLAB)
+		slab_free(current->mm->slab, m->ptr);
 	if(m->subs == BUDDY)
 		free_lp_memory(current, m->ptr);
 }
@@ -209,6 +211,7 @@ static void bin_alloc(struct bin *m, size_t size, unsigned r)
 		printf("[%d] memory corrupt at %p!\n", st->counter, m->ptr);
 		abort();
 	}
+	
 	r %= 1024;
 
 	if (r < 120) {
@@ -232,17 +235,25 @@ static void bin_alloc(struct bin *m, size_t size, unsigned r)
 		// realloc
 		if (!m->size)
 			m->ptr = NULL;
-		if(m->subs == BUDDY) {
+		if(m->subs != DYMELOR) {
 			free_it(m);
 			m->ptr = NULL;
 		}
 		m->ptr = __wrap_realloc(m->ptr, size);
 		m->subs = DYMELOR;
-	} /*else if(r < 1000) {
+	} /*else if(r < 474) {
 		// buddy
+		if (m->size > 0)
+			free_it(m);
 		m->ptr = allocate_lp_memory(current, size);
 		m->subs = BUDDY;
-	} */else {
+	} */else if(r < 749 && size <= SLAB_MSG_SIZE) {
+		// slab
+		if (m->size > 0)
+			free_it(m);
+		m->ptr = slab_alloc(current->mm->slab);
+		m->subs = SLAB;
+	} else {
 		// malloc
 		if (m->size > 0)
 			free_it(m);

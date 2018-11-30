@@ -156,7 +156,6 @@ typedef struct _msg_t {
 	// Pointers to attach messages to chains
 	struct _msg_t 		*next;
 	struct _msg_t 		*prev;
-	unsigned int		alloc_tid; // TODO: this should be moved into an external container, to avoid transmitting it!
 
 	/* Place here all members which must be transmitted over the network. It is convenient not to reorder the members
 	 * of the structure. If new members have to be addedd, place them right before the "Model data" part.*/
@@ -191,7 +190,6 @@ typedef struct _msg_hdr_t {
 	// TODO: non serve davvero, togliere
 	int   			type;
 	unsigned long long	rendezvous_mark;	/// Unique identifier of the message, used for rendez-vous event
-	unsigned int		alloc_tid;
 	// TODO: fine togliere
 	simtime_t		timestamp;
 	simtime_t		send_time;
@@ -225,12 +223,14 @@ bool OnGVT_inc(unsigned int me, void *snapshot);
 extern void base_init(void);
 extern void base_fini(void);
 extern unsigned int find_kernel_by_gid(GID_t gid) __attribute__ ((pure));
-extern void rootsim_error(bool fatal, const char *msg, ...);
+extern void _rootsim_error(bool fatal, const char *msg, ...);
 extern void distribute_lps_on_kernels(void);
 extern void simulation_shutdown(int code) __attribute__((noreturn));
 extern inline bool user_requested_exit(void);
 extern inline bool simulation_error(void);
 extern void initialization_complete(void);
+
+#define rootsim_error(fatal, msg, ...) _rootsim_error(fatal, "%s:%d: %s()" msg, __FILE__, __LINE__, __FUNCTION__ __VA_OPT__(,) __VA_ARGS__)
 
 #endif
 

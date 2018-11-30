@@ -38,8 +38,9 @@ struct segment {
 };
 
 struct buddy {
-	size_t size;
-	size_t longest[];
+	spinlock_t	lock;
+	size_t		size;
+	size_t		longest[] __attribute__((aligned(sizeof(size_t))));
 };
 
 extern size_t __page_size;
@@ -49,12 +50,31 @@ extern size_t __page_size;
 			__page_size;\
 		  })
 
+struct slab_header {
+	#ifndef NDEBUG
+	atomic_t presence;
+	#endif
+	struct slab_header *prev, *next;
+	uint64_t slots;
+	uintptr_t refcount;
+	struct slab_header *page;
+	uint8_t data[] __attribute__((aligned(sizeof(void *))));
+};
+
+struct slab_chain {
+	spinlock_t	lock;
+	size_t itemsize, itemcount;
+	size_t slabsize, pages_per_alloc;
+	uint64_t initial_slotmask, empty_slotmask;
+	uintptr_t alignment_mask;
+	struct slab_header *partial, *empty, *full;
+};
 
 struct memory_map {
-	malloc_state	*m_state;
-	struct buddy	*buddy;
-	struct segment	*segment;
-	spinlock_t	mm_lock;
+	malloc_state		*m_state;
+	struct buddy		*buddy;
+	struct slab_chain	*slab;
+	struct segment		*segment;
 };
 
 
@@ -73,3 +93,7 @@ extern void finalize_memory_map(struct lp_struct *lp);
 
 extern struct buddy *buddy_new(struct lp_struct *, unsigned long num_of_fragments);
 void buddy_destroy(struct buddy *);
+
+extern struct slab_chain *slab_init(const size_t itemsize);
+extern void *slab_alloc(struct slab_chain *const sch);
+extern void slab_free(struct slab_chain *const sch, const void *const addr);

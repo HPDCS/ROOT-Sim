@@ -126,9 +126,9 @@ void segment_init(void) {
 void initialize_memory_map(struct lp_struct *lp) {
 	lp->mm = rsalloc(sizeof(struct memory_map));
 	
-	spinlock_init(&lp->mm->mm_lock);
 	lp->mm->segment = NULL;//get_segment(lp->gid);
 	lp->mm->buddy = NULL;//buddy_new(lp, PER_LP_PREALLOCATED_MEMORY / BUDDY_GRANULARITY);
+	lp->mm->slab = slab_init(SLAB_MSG_SIZE); 
 	lp->mm->m_state = malloc_state_init();
 }
 
