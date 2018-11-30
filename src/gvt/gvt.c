@@ -187,8 +187,31 @@ inline simtime_t get_last_gvt(void) {
 }
 
 
+static inline void reduce_local_gvt(void) {
+
+	foreach_bound_lp(lp) {
+		// If no message has been processed, local estimate for
+		// GVT is forced to 0.0. This can happen, e.g., if
+		// GVT is computed very early in the run
+		if(unlikey(lp->bound == NULL)) {
+			local_min[local_tid] = 0.0;
+			break;
+		}
+
+		// GVT inheritance: if the current LP has no scheduled
+		// events, we can safely assume that it should not
+		// participate to the computation of the GVT, because any
+		// event to it will appear *after* the GVT
+		if(current->bound->next == NULL)
+			continue;
+
+		local_min[local_tid] = min(local_min[local_tid], lp->bound->timestamp);
+	}
+}
+
+
 simtime_t GVT_phases(void){
-	register unsigned int i;
+	unsigned int i;
 
 	if(thread_phase == tphase_A) {
 		#ifdef HAVE_MPI
@@ -197,13 +220,7 @@ simtime_t GVT_phases(void){
 		#endif
 		process_bottom_halves();
 
-		foreach_bound_lp(lp) {
-			if(lp->bound == NULL) {
-				local_min[local_tid] = 0.0;
-				break;
-			}
-			local_min[local_tid] = min(local_min[local_tid], lp->bound->timestamp);
-		}
+		reduce_local_gvt();
 
 		thread_phase = tphase_send;     // Entering phase send
 		atomic_dec(&counter_A);	// Notify finalization of phase A
@@ -229,14 +246,7 @@ simtime_t GVT_phases(void){
 		#endif
 		process_bottom_halves();
 
-		foreach_bound_lp(lp) {
-			if(lp->bound == NULL) {
-				local_min[local_tid] = 0.0;
-				break;
-			}
-
-			local_min[local_tid] = min(local_min[local_tid], lp->bound->timestamp);
-		}
+		reduce_local_gvt();
 
 		#ifdef HAVE_MPI
 		// WARNING: local thread cannot send any remote

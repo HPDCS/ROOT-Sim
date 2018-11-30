@@ -30,7 +30,6 @@ void SerialScheduleNewEvent(unsigned int rcv, simtime_t stamp, unsigned int even
 		rootsim_error(true, "LP %d is trying to send events in the past. Current time: %f, scheduled time: %f\n", current->gid.to_int, lvt(current), stamp);
 	}
 
-	// TODO: use pack function
 	// Populate the message data structure
 	set_gid(receiver, rcv);
 	size_t size = sizeof(msg_t) + event_size;
@@ -42,7 +41,7 @@ void SerialScheduleNewEvent(unsigned int rcv, simtime_t stamp, unsigned int even
 	event->send_time = lvt(current);
 	event->type = event_type;
 	event->size = event_size;
-	memcpy(event->event_content, event_content, event_size); // TODO: not compliant with the new structure
+	memcpy(event->event_content, event_content, event_size);
 
 	// Put the event in the Calenda Queue
 	calqueue_put(stamp, event);
@@ -77,6 +76,7 @@ void serial_simulation(void) {
 	timer serial_gvt_timer;
 	msg_t *event;
 	unsigned int completed = 0;
+	void *content = NULL;
 
 	#ifdef EXTRA_CHECKS
         unsigned long long hash1, hash2;
