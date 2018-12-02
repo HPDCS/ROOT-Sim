@@ -18,7 +18,8 @@
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
 * @file mm.h
-* @brief
+* @brief Memory Manager main header.
+* @author Alessandro Pellegrini
 * @author Francesco Quaglia
 */
 
@@ -31,16 +32,15 @@
 #include <arch/atomic.h>
 #include <mm/dymelor.h>
 
-
 struct segment {
 	unsigned char *base;
 	unsigned char *brk;
 };
 
 struct buddy {
-	spinlock_t	lock;
-	size_t		size;
-	size_t		longest[] __attribute__((aligned(sizeof(size_t))));
+	spinlock_t lock;
+	size_t size;
+	size_t longest[] __attribute__((aligned(sizeof(size_t))));
 };
 
 extern size_t __page_size;
@@ -51,9 +51,9 @@ extern size_t __page_size;
 		  })
 
 struct slab_header {
-	#ifndef NDEBUG
+#ifndef NDEBUG
 	atomic_t presence;
-	#endif
+#endif
 	struct slab_header *prev, *next;
 	uint64_t slots;
 	uintptr_t refcount;
@@ -62,7 +62,7 @@ struct slab_header {
 };
 
 struct slab_chain {
-	spinlock_t	lock;
+	spinlock_t lock;
 	size_t itemsize, itemcount;
 	size_t slabsize, pages_per_alloc;
 	uint64_t initial_slotmask, empty_slotmask;
@@ -71,16 +71,14 @@ struct slab_chain {
 };
 
 struct memory_map {
-	malloc_state		*m_state;
-	struct buddy		*buddy;
-	struct slab_chain	*slab;
-	struct segment		*segment;
+	malloc_state *m_state;
+	struct buddy *buddy;
+	struct slab_chain *slab;
+	struct segment *segment;
 };
 
-
-#define PER_LP_PREALLOCATED_MEMORY (262144L * PAGE_SIZE) // This should be power of 2 multiplied by a page size. This is 1GB per LP.
+#define PER_LP_PREALLOCATED_MEMORY (262144L * PAGE_SIZE)	// This should be power of 2 multiplied by a page size. This is 1GB per LP.
 #define BUDDY_GRANULARITY PAGE_SIZE	// This is the smallest chunk released by the buddy in bytes. PER_LP_PREALLOCATED_MEMORY/BUDDY_GRANULARITY must be integer and a power of 2
-
 
 extern bool allocator_init(void);
 extern void allocator_fini(void);
@@ -91,7 +89,8 @@ extern void *get_base_pointer(GID_t gid);
 extern void initialize_memory_map(struct lp_struct *lp);
 extern void finalize_memory_map(struct lp_struct *lp);
 
-extern struct buddy *buddy_new(struct lp_struct *, unsigned long num_of_fragments);
+extern struct buddy *buddy_new(struct lp_struct *,
+			       unsigned long num_of_fragments);
 void buddy_destroy(struct buddy *);
 
 extern struct slab_chain *slab_init(const size_t itemsize);

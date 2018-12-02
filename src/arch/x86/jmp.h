@@ -54,23 +54,22 @@ typedef struct __exec_context_t {
 	unsigned char fpu[512] __attribute__((aligned(16))); // fxsave wants 16-byte aligned memory
 } exec_context_t;
 
-long long _set_jmp(exec_context_t *env);
+long long _set_jmp(exec_context_t * env);
 
-__attribute__ ((__noreturn__))
-void _long_jmp(exec_context_t *env, long long val);
+__attribute__((__noreturn__))
+void _long_jmp(exec_context_t * env, long long val);
 
-extern void context_create(exec_context_t *creat, void (*fn)(void *), void *args, void *stack, size_t stack_size);
+extern void context_create(exec_context_t * creat, void (*fn)(void *), void *args, void *stack, size_t stack_size);
 
-#define set_jmp(env) 		({\
-					int _set_ret;\
-					__asm__ __volatile__ ("pushq %rdi"); \
-					_set_ret = _set_jmp(env); \
-					__asm__ __volatile__ ("add $8, %rsp"); \
-					_set_ret;\
-				})
+#define set_jmp(env) 	({\
+				int _set_ret;\
+				__asm__ __volatile__ ("pushq %rdi"); \
+				_set_ret = _set_jmp(env); \
+				__asm__ __volatile__ ("add $8, %rsp"); \
+				_set_ret;\
+			})
 
 #define long_jmp(env, val)	_long_jmp(env, val)
 
-#endif /* defined(__x86_64__) */
-#endif /* OS_LINUX */
-
+#endif	/* defined(__x86_64__) */
+#endif	/* OS_LINUX */

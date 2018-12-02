@@ -37,7 +37,6 @@
 #include <arch/ult.h>
 #include <scheduler/process.h>
 
-
 /// This macro defines after how many idle cycles the simulation is stopped
 #define MAX_CONSECUTIVE_IDLE_CYCLES	1000
 
@@ -54,8 +53,6 @@ extern void initialize_worker_thread(void);
 extern void activate_LP(struct lp_struct *, msg_t *);
 extern void LP_main_loop(void *args);
 
-
-
 extern bool receive_control_msg(msg_t *);
 extern bool process_control_msg(msg_t *);
 extern bool reprocess_control_msg(msg_t *);
@@ -71,11 +68,9 @@ void enable_preemption(void);
 void disable_preemption(void);
 #endif
 
-
 extern __thread struct lp_struct *current;
 extern __thread msg_t *current_evt;
 extern __thread unsigned int n_prc_per_thread;
-
 
 #ifdef HAVE_PREEMPTION
 extern __thread volatile bool platform_mode;
@@ -89,6 +84,6 @@ extern __thread volatile bool platform_mode;
 #else
 #define switch_to_platform_mode() {}
 #define switch_to_application_mode() {}
-#endif /* HAVE_PREEMPTION */
+#endif				/* HAVE_PREEMPTION */
 
 #endif

@@ -26,10 +26,7 @@
 * @date November 5, 2013
 */
 
-
 #pragma once
-#ifndef __LP_H_
-#define __LP_H_
 
 #include <stdbool.h>
 
@@ -59,70 +56,69 @@
 #define BLOCKED_STATE			0x01000
 #define is_blocked_state(state)	(bool)(state & BLOCKED_STATE)
 
-
 struct lp_struct {
 	/// LP execution state.
-	LP_context_t		context;
+	LP_context_t context;
 
 	/// LP execution state when blocked during the execution of an event
-	LP_context_t		default_context;
+	LP_context_t default_context;
 
 	/// Process' stack
-	void 			*stack;
+	void *stack;
 
 	/// Memory map of the LP
-	struct memory_map	*mm;
+	struct memory_map *mm;
 
 	/// Local ID of the LP
-	LID_t 			lid;
+	LID_t lid;
 
 	/// Global ID of the LP
-	GID_t 			gid;
+	GID_t gid;
 
 	/// Logical Process lock, used to serialize accesses to concurrent data structures
-	spinlock_t		lock; // TODO: is this still used anywhere?
+	spinlock_t lock;	// TODO: is this still used anywhere?
 
 	/// ID of the worker thread towards which the LP is bound
-	unsigned int		worker_thread;
+	unsigned int worker_thread;
 
 	/// Current execution state of the LP
-	short unsigned int 	state;
+	short unsigned int state;
 
 	/// This variable mainains the current checkpointing interval for the LP
-	unsigned int		ckpt_period;
+	unsigned int ckpt_period;
 
 	/// Counts how many events executed from the last checkpoint (to support PSS)
-	unsigned int		from_last_ckpt;
+	unsigned int from_last_ckpt;
 
 	/// If this variable is set, the next invocation to LogState() takes a new state log, independently of the checkpointing interval
-	bool			state_log_forced;
+	bool state_log_forced;
 
 	/// The current state base pointer (updated by SetState())
-	void	 		*current_base_pointer;
+	void *current_base_pointer;
 
 	/// Input messages queue
-	list(msg_t)		queue_in;
+	 list(msg_t) queue_in;
 
 	/// Pointer to the last correctly processed event
-	msg_t			*bound;
+	msg_t *bound;
 
 	/// Output messages queue
-	list(msg_hdr_t)		queue_out;
+	 list(msg_hdr_t) queue_out;
 
 	/// Saved states queue
-	list(state_t)		queue_states;
+	 list(state_t) queue_states;
 
 	/// Bottom halves
-	msg_channel		*bottom_halves;
+	msg_channel *bottom_halves;
 
 	/// Processed rendezvous queue
-	list(msg_t)		rendezvous_queue;
+	 list(msg_t) rendezvous_queue;
 
 	/// Unique identifier within the LP
-	unsigned long long	mark;
+	unsigned long long mark;
 
 	/// Buffer used by KLTs for buffering outgoing messages during the execution of an event
-	outgoing_t 		outgoing_buffer;
+	outgoing_t outgoing_buffer;
 
 	/**
 	 * Implementation of OnGVT used for this LP. This can be changed
@@ -134,18 +130,20 @@ struct lp_struct {
 	 * Implementation of ProcessEvent used for this LP. This can be changed
 	 * at runtime by the autonomic subsystem, when dealing with ISS and SSS
 	 */
-	void (*ProcessEvent)(unsigned int me, simtime_t now, int event_type, void *event_content, unsigned int size, void *state);
+	void (*ProcessEvent)(unsigned int me, simtime_t now, int event_type,
+			     void *event_content, unsigned int size,
+			     void *state);
 
-	#ifdef HAVE_CROSS_STATE
-	GID_t			ECS_synch_table[MAX_CROSS_STATE_DEPENDENCIES];
-	unsigned int 	ECS_index;
-	#endif
+#ifdef HAVE_CROSS_STATE
+	GID_t ECS_synch_table[MAX_CROSS_STATE_DEPENDENCIES];
+	unsigned int ECS_index;
+#endif
 
-	unsigned long long	wait_on_rendezvous;
-	unsigned int		wait_on_object;
+	unsigned long long wait_on_rendezvous;
+	unsigned int wait_on_object;
 
 	/* Per-Library variables */
-	numerical_state_t	numerical;
+	numerical_state_t numerical;
 
 };
 
@@ -160,7 +158,6 @@ extern __thread struct lp_struct **lps_bound_blocks;
  */
 #define lvt(lp) (lp->bound != NULL ? lp->bound->timestamp : 0.0)
 
-
 // TODO: see issue #121 to see how to make this ugly hack disappear
 extern __thread unsigned int __lp_counter;
 extern __thread unsigned int __lp_bound_counter;
@@ -169,13 +166,10 @@ extern __thread unsigned int __lp_bound_counter;
 				for(struct lp_struct *(lp) = lps_blocks[__lp_counter]; __lp_counter < n_prc; (lp) = lps_blocks[++__lp_counter])
 
 #define foreach_bound_lp(lp)	__lp_bound_counter = 0;\
-				for(struct lp_struct *(lp) = lps_bound_blocks[__lp_bound_counter]; __lp_bound_counter < n_prc_per_thread; (lp) = lps_bound_blocks[++__lp_bound_counter]) 
+				for(struct lp_struct *(lp) = lps_bound_blocks[__lp_bound_counter]; __lp_bound_counter < n_prc_per_thread; (lp) = lps_bound_blocks[++__lp_bound_counter])
 
 #define LPS_bound_set(entry, lp)	lps_bound_blocks[(entry)] = (lp);
 
 extern void initialize_binding_blocks(void);
 extern void initialize_lps(void);
 extern struct lp_struct *find_lp_by_gid(GID_t);
-
-#endif /* __LP_H_ */
-

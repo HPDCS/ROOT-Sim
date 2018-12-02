@@ -26,8 +26,6 @@
 * @date 3/16/2011
 */
 
-
-
 #pragma once
 #ifndef __ROOT_Sim_H
 #define __ROOT_Sim_H
@@ -40,9 +38,8 @@
 #include <limits.h>
 #include <argp.h>
 
-
 #ifdef INIT
- #undef INIT
+#undef INIT
 #endif
 /// This is the message code which is sent by the simulation kernel upon startup
 #define INIT	0
@@ -57,7 +54,8 @@ typedef double simtime_t;
 extern unsigned int n_prc_tot;
 
 /// This can be implemented by the model for smart argument handling
-__attribute((weak)) extern struct argp model_argp;
+__attribute((weak))
+extern struct argp model_argp;
 
 // Topology library
 #define TOPOLOGY_HEXAGON	1000
@@ -87,13 +85,15 @@ typedef struct obstacles_t obstacles_t;
 unsigned int GetReceiver(int topology, int direction);
 
 // Setup and discard an obstacle grid. num is the number of integers passed to the variadic function
-void SetupObstacles(obstacles_t **obstacles);
-void AddObstacles(obstacles_t *obstacles, int num, ...);
-void AddObstacle(obstacles_t *obstacles, int cell);
-void DiscardObstacles(obstacles_t *obstacles);
+void SetupObstacles(obstacles_t ** obstacles);
+void AddObstacles(obstacles_t * obstacles, int num, ...);
+void AddObstacle(obstacles_t * obstacles, int cell);
+void DiscardObstacles(obstacles_t * obstacles);
 
 // Function to return a list of LP IDs to be visited in order to reach a given cell.
-unsigned int ComputeMinTour(unsigned int **list, obstacles_t *obstacles, int topology, unsigned int source, unsigned int dest);
+unsigned int ComputeMinTour(unsigned int **list, obstacles_t * obstacles,
+			    int topology, unsigned int source,
+			    unsigned int dest);
 
 // Expose to the application level the command line parameter parsers
 int GetParameterInt(void *args, char *name);
@@ -114,8 +114,9 @@ double Poisson(void);
 int Zipf(double skew, int limit);
 
 // ROOT-Sim core API
-extern void (*ScheduleNewEvent)(unsigned int receiver, simtime_t timestamp, unsigned int event_type, void *event_content, unsigned int event_size);
+extern void (*ScheduleNewEvent)(unsigned int receiver, simtime_t timestamp,
+				unsigned int event_type, void *event_content,
+				unsigned int event_size);
 extern void SetState(void *new_state);
 
-#endif /* __ROOT_Sim_H */
-
+#endif				/* __ROOT_Sim_H */

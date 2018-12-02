@@ -26,14 +26,7 @@
 */
 
 #pragma once
-#ifndef _MEM_USAGE_H
-#define _MEM_USAGE_H
 
 #include <string.h>
-
 extern size_t getCurrentRSS(void);
 extern size_t getPeakRSS(void);
-
-
-#endif /* _MEM_USAGE_H */
-

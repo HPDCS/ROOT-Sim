@@ -18,10 +18,11 @@
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
 * @file ecs.c
-* @brief LP's memory pre-allocator. This layer stands below DyMeLoR, and is the
-* 		connection point to the Linux Kernel Module for Memory Management, when
-* 		activated.
+* @brief Event Cross State Synchronization. This module implements the userspace handler
+*        of the artificially induced memory faults to implement transparent distributed memory.
 * @author Alessandro Pellegrini
+* @author Matteo Principe
+* @author Francesco Quaglia
 */
 
 #ifdef HAVE_CROSS_STATE
@@ -181,7 +182,7 @@ void ECS(void) {
 			break;
 
 		default:
-			rootsim_error(true, "%s:%d: Impossible condition! Aborting...\n", __FILE__,  __LINE__);
+			rootsim_error(true, "Impossible condition! Aborting...\n");
 			return;
 	}
 }
@@ -310,7 +311,7 @@ void ecs_install_pages(msg_t *msg) {
 void unblock_synchronized_objects(struct lp_struct *lp) {
 	unsigned int i;
 	msg_t *control_msg;
-	
+
 	for(i = 1; i <= lp->ECS_index; i++) {
 		pack_msg(&control_msg, LidToGid(localID), lp->ECS_synch_table[i], RENDEZVOUS_UNBLOCK, lvt(localID), lvt(localID), 0, NULL);
 		control_msg->rendezvous_mark = lp->wait_on_rendezvous;

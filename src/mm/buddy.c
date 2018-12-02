@@ -32,7 +32,6 @@
 #include <mm/mm.h>
 #include <scheduler/process.h>
 
-
 static inline int left_child(int index)
 {
 	/* index * 2 + 1 */
@@ -67,8 +66,8 @@ static inline size_t next_power_of_2(size_t size)
 	return size + 1;
 }
 
-/** allocate a new buddy structure 
- * @param num_of_fragments number of fragments of the memory to be managed 
+/** allocate a new buddy structure
+ * @param num_of_fragments number of fragments of the memory to be managed
  * @return pointer to the allocated buddy structure */
 struct buddy *buddy_new(struct lp_struct *lp, size_t num_of_fragments)
 {
@@ -81,9 +80,10 @@ struct buddy *buddy_new(struct lp_struct *lp, size_t num_of_fragments)
 	}
 
 	/* alloacte an array to represent a complete binary tree */
+	(void)lp;
 	//self = (struct buddy *)get_segment_memory(lp, sizeof(struct buddy) + 2 * num_of_fragments * sizeof(size_t));
 	self = (struct buddy *)rsalloc(sizeof(struct buddy) + 2 * num_of_fragments * sizeof(size_t));
-	bzero(self, sizeof(struct buddy) + 2 * num_of_fragments * sizeof(size_t)); // unnecessary, it is later initialized
+	bzero(self, sizeof(struct buddy) + 2 * num_of_fragments * sizeof(size_t));	// unnecessary, it is later initialized
 
 	self->size = num_of_fragments;
 	node_size = num_of_fragments * 2;
@@ -107,14 +107,14 @@ void buddy_destroy(struct buddy *self)
 	rsfree(self);
 }
 
-/** allocate *size* from a buddy system *self* 
+/** allocate *size* from a buddy system *self*
  * @return the offset from the beginning of memory to be managed */
 int buddy_alloc(struct buddy *self, size_t size)
 {
 	if (self == NULL || self->size <= size) {
 		return -1;
 	}
-	
+
 	size = next_power_of_2(size);
 
 	size_t index = 0;
@@ -140,9 +140,7 @@ int buddy_alloc(struct buddy *self, size_t size)
 
 	while (index) {
 		index = parent(index);
-		self->longest[index] =
-		    max(self->longest[left_child(index)],
-			self->longest[right_child(index)]);
+		self->longest[index] = max(self->longest[left_child(index)], self->longest[right_child(index)]);
 	}
 
 	return offset;
@@ -212,7 +210,7 @@ void *allocate_lp_memory(struct lp_struct *lp, size_t size)
 void free_lp_memory(struct lp_struct *lp, void *ptr)
 {
 	size_t displacement;
-	
+
 	displacement = (int)((char *)ptr - (char *)lp->mm->segment->base);
 	spin_lock(&lp->mm->buddy->lock);
 	buddy_free(lp->mm->buddy, displacement);

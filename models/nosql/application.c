@@ -80,7 +80,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 			if(state->residual_tx_ops > 0) {
 
 				ScheduleNewEvent(me, timestamp, TX_OP, NULL, 0);
-				state->read_set[state->tx_ops_displacement] = RandomRange(10,10000); 
+				state->read_set[state->tx_ops_displacement] = RandomRange(10,10000);
 				for(i=0;i<state->tx_ops_displacement;i++){
 						if (state->read_set[i] != state->read_set[state->tx_ops_displacement]);
 						//found conflicting item
@@ -167,7 +167,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 			if ( memcmp((void*)state->read_set,(void*)state->write_set,sizeof(int)*MAX_RS_SIZE)){
 					state->conflicted_tx++;
 					for(i=0;i<MAX_RS_SIZE;i++){
-							
+
 						if (state->read_set[i] != 0){
 							if (state->read_set[i] != state->write_set[i]);
 						}

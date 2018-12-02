@@ -11,6 +11,8 @@
 *.gcno
 *.gcda
 
+model
+
 Makefile
 Makefile.in
 

@@ -26,7 +26,6 @@
 * @date June 14, 2014
 */
 
-
 #pragma once
 
 #include <ROOT-Sim.h>

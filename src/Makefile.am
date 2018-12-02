@@ -44,7 +44,6 @@ librootsim_a_SOURCES =	main.c \
 			communication/mpi.c \
 			core/init.c \
 			core/core.c \
-			datatypes/array.c \
 			datatypes/calqueue.c \
 			datatypes/msgchannel.c \
 			gvt/gvt.c \

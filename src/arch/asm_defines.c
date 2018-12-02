@@ -26,7 +26,6 @@
 * @author Alessandro Pellegrini
 */
 
-
 #define DEFINE(sym, val) __asm__ __volatile__("\n-> " #sym " %0 \n" : : "i" (val))
 #define OFFSETOF(s, m) DEFINE(offsetof_##s##_##m, offsetof(s, m));
 #define SIZEOF(s) DEFINE(sizeof_##s, sizeof(s));
@@ -34,7 +33,8 @@
 #include <scheduler/process.h>
 #include <arch/x86/jmp.h>
 
-void foo(void) {
+void foo(void)
+{
 	// We need the offset of the LP State to make a context switch in ECS
 	SIZEOF(struct lp_struct);
 	OFFSETOF(struct lp_struct, context);

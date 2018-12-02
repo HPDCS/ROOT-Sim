@@ -81,7 +81,7 @@ unsigned int FindReceiver(int topology) {
 						ny = y;
 						break;
 					default:
-						rootsim_error(true, "Met an impossible condition at %s:%d. Aborting...\n", __FILE__, __LINE__);
+						rootsim_error(true, "Met an impossible condition. Aborting...\n");
 				}
 
 			// We don't check is nx < 0 || ny < 0, as they are unsigned and therefore overflow
@@ -130,7 +130,7 @@ unsigned int FindReceiver(int topology) {
 						ny = y;
 						break;
 					default:
-						rootsim_error(true, "Met an impossible condition at %s:%d. Aborting...\n", __FILE__, __LINE__);
+						rootsim_error(true, "Met an impossible condition. Aborting...\n");
 				}
 
 			// We don't check is nx < 0 || ny < 0, as they are unsigned and therefore overflow
@@ -175,7 +175,7 @@ unsigned int FindReceiver(int topology) {
 					ny = y;
 					break;
 				default:
-					rootsim_error(true, "Met an impossible condition at %s:%d. Aborting...\n", __FILE__, __LINE__);
+					rootsim_error(true, "Met an impossible condition. Aborting...\n");
 			}
 
 			// Check for wrapping around
@@ -447,7 +447,7 @@ void SetupObstacles(obstacles_t **obstacles)  {
 		rootsim_error(true, "Hexagonal map wrongly specified!\n");
 		return;
 	}
-	
+
 	// Allocate a bitmap
 	bitmap_blocks = n_prc_tot / NUM_CHUNKS_PER_BLOCK;
 	if(bitmap_blocks < 1)

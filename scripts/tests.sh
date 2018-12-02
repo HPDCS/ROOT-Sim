@@ -8,6 +8,8 @@ sequential=()
 unit_tests=()
 unit_results=()
 
+retval=0
+
 function do_unit_test() {
 	unit_tests+=($1)
 	cd tests
@@ -20,6 +22,7 @@ function do_unit_test() {
 		echo "passed."
 	else
 		unit_results+=('N')
+		retval=1
 		echo "failed."
 	fi
 	cd ..
@@ -42,6 +45,7 @@ function do_test() {
 		echo "passed."
 	else
 		mpi+=('N')
+		retval=1
 		echo "failed."
 	fi
 
@@ -53,6 +57,7 @@ function do_test() {
 		echo "passed."
 	else
 		normal+=('N')
+		retval=1
 		echo "failed."
 	fi
 	
@@ -64,6 +69,7 @@ function do_test() {
 		echo "passed."
 	else
 		sequential+=('N')
+		retval=1
 		echo "failed."
 	fi
 }
@@ -104,3 +110,5 @@ do
 	printf "│ %-10s │  %1s  │  %1s  │  %1s  │\n" ${tests[$i]} ${sequential[$i]} ${normal[$i]} ${mpi[$i]}
 	echo "╞════════════╪═════╪═════╪═════╡"
 done
+
+exit $retval

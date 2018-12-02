@@ -23,12 +23,7 @@
 * @author Roberto Vitali
 */
 
-
 #pragma once
-#ifndef _BINDING_H
-#define _BINDING_H
 
 extern void rebind_LPs(void);
 extern void force_rebind_GLP(void);
-
-#endif /* _BINDING_H */
