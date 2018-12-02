@@ -45,7 +45,8 @@ __thread struct lp_struct **lps_bound_blocks = NULL;
 
 void initialize_binding_blocks(void)
 {
-	lps_bound_blocks = (struct lp_struct **)rsalloc(n_prc * sizeof(struct lp_struct *));
+	lps_bound_blocks =
+	    (struct lp_struct **)rsalloc(n_prc * sizeof(struct lp_struct *));
 	bzero(lps_bound_blocks, sizeof(struct lp_struct *) * n_prc);
 }
 
@@ -63,14 +64,15 @@ void initialize_lps(void)
 
 	// We now know how many LPs should be locally hosted. Prepare
 	// the place for their control blocks.
-	lps_blocks = (struct lp_struct **)rsalloc(n_prc * sizeof(struct lp_struct *));
+	lps_blocks =
+	    (struct lp_struct **)rsalloc(n_prc * sizeof(struct lp_struct *));
 
 	// We now iterate over all LP Gids. Everytime that we find an LP
 	// which should be locally hosted, we create the local lp_struct
 	// process control block.
 	for (i = 0; i < n_prc_tot; i++) {
 		set_gid(gid, i);
-		if(find_kernel_by_gid(gid) != kid)
+		if (find_kernel_by_gid(gid) != kid)
 			continue;
 
 		// Initialize the control block for the current lp
@@ -78,18 +80,18 @@ void initialize_lps(void)
 		bzero(lp, sizeof(struct lp_struct));
 		lps_blocks[local++] = lp;
 
-		if(local > n_prc) {
+		if (local > n_prc) {
 			printf("reached local %d\n", local);
 			fflush(stdout);
 			abort();
 		}
-
 		// Initialize memory map
 		initialize_memory_map(lp);
 
 		// Allocate memory for the outgoing buffer
 		lp->outgoing_buffer.max_size = INIT_OUTGOING_MSG;
-		lp->outgoing_buffer.outgoing_msgs = rsalloc(sizeof(msg_t *) * INIT_OUTGOING_MSG);
+		lp->outgoing_buffer.outgoing_msgs =
+		    rsalloc(sizeof(msg_t *) * INIT_OUTGOING_MSG);
 
 		// Initialize bottom halves msg channel
 		lp->bottom_halves = init_channel();
@@ -102,7 +104,7 @@ void initialize_lps(void)
 		if (rootsim_config.snapshot == SNAPSHOT_FULL) {
 			lp->OnGVT = &OnGVT_light;
 			lp->ProcessEvent = &ProcessEvent_light;
-		} // TODO: add here an else for ISS
+		}		// TODO: add here an else for ISS
 
 		// Allocate LP stack
 		lp->stack = get_ult_stack(LP_STACK_SIZE);
@@ -133,25 +135,27 @@ void initialize_lps(void)
 
 		// We have no information about messages still to be delivered to this LP
 		lp->outgoing_buffer.min_in_transit = rsalloc(sizeof(simtime_t) * n_cores);
-		for(j = 0; j < n_cores; j++) {
+		for (j = 0; j < n_cores; j++) {
 			lp->outgoing_buffer.min_in_transit[j] = INFTY;
 		}
 
-		#ifdef HAVE_CROSS_STATE
+#ifdef HAVE_CROSS_STATE
 		// No read/write dependencies open so far for the LP. The current lp is always opened
 		lp->ECS_index = 0;
-		lp->ECS_synch_table[0] = LidToGid(lp); // LidToGid for distributed ECS
-		#endif
+		lp->ECS_synch_table[0] = LidToGid(lp);	// LidToGid for distributed ECS
+#endif
 
 		// Create User-Level Thread
-		context_create(&lp->context, LP_main_loop, NULL, lp->stack, LP_STACK_SIZE);
+		context_create(&lp->context, LP_main_loop, NULL, lp->stack,
+			       LP_STACK_SIZE);
 	}
 }
 
-
-struct lp_struct *find_lp_by_gid(GID_t gid) {
+// This works only for locally-hosted LPs!
+struct lp_struct *find_lp_by_gid(GID_t gid)
+{
 	foreach_lp(lp) {
-		if(lp->gid.to_int == gid.to_int)
+		if (lp->gid.to_int == gid.to_int)
 			return lp;
 	}
 	return NULL;

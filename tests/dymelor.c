@@ -208,7 +208,7 @@ static void bin_alloc(struct bin *m, size_t size, unsigned r)
 		printf("[%d] memory corrupt at %p!\n", st->counter, m->ptr);
 		abort();
 	}
-	
+
 	r %= 1024;
 
 	if (r < 120) {

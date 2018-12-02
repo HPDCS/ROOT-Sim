@@ -23,7 +23,6 @@
 * @author Alessandro Pellegrini
 */
 
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -37,9 +36,7 @@
 /// This is the execution context of the simulation kernel
 __thread kernel_context_t kernel_context;
 
-
 #if defined(OS_LINUX)
-
 
 /**
 * When this function is called, a zeroed page-aligned stack for the ULT is created and returned.
@@ -51,7 +48,8 @@ __thread kernel_context_t kernel_context;
 * @param size The size of the requested stack
 * @return A pointer to the allocated and zeroed page-aligned stack
 */
-void *get_ult_stack(size_t size) {
+void *get_ult_stack(size_t size)
+{
 	void *stack;
 	size_t reminder;
 	size_t page_size;
@@ -60,18 +58,17 @@ void *get_ult_stack(size_t size) {
 	if (unlikely(size <= 0)) {
 		size = LP_STACK_SIZE;
 	}
-
 	// Align the size to the page boundary (by increasing the stack size)
 	page_size = getpagesize();
 	reminder = size % page_size;
 	if (unlikely(reminder != 0)) {
 		size += page_size - reminder;
 	}
-
 	// The first call to the LP malloc subsystem gives page-aligned memory
 	stack = rsalloc(size);
-	if(stack == NULL) {
-		rootsim_error(true, "Error allocating LP stack: not enough memory.\n");
+	if (stack == NULL) {
+		rootsim_error(true,
+			      "Error allocating LP stack: not enough memory.\n");
 	}
 
 	bzero(stack, size);
@@ -79,25 +76,23 @@ void *get_ult_stack(size_t size) {
 	return stack;
 }
 
-
 #elif defined(OS_WINDOWS) || defined(OS_CYGWIN)
 
-void context_create(LP_context_t *context, void (*entry_point)(void *), void *args, void *stack, size_t stack_size) {
+void context_create(LP_context_t * context, void (*entry_point)(void *), void *args, void *stack, size_t stack_size)
+{
 
-	(void)stack;
+	 (void)stack;
 
 	// BUG? was this intended to be used when the contexts were setup by a single thread?
 	static bool once = false;
 
-	if(unlikely(once == false)) {
+	if (unlikely(once == false)) {
 		once = true;
 		// Convert the current thread to a fiber. This allows to schedule other fibers.
 		kernel_context.jb = ConvertThreadToFiber(NULL);
 	}
-
 	// Create a new fiber
-	context->jb = CreateFiber(stack_size, (LPFIBER_START_ROUTINE)entry_point, args);
+	context->jb = CreateFiber(stack_size, (LPFIBER_START_ROUTINE) entry_point, args);
 }
 
 #endif /* OS */
-

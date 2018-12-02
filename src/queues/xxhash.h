@@ -33,16 +33,20 @@
 
 #pragma once
 
-
 #ifdef EXTRA_CHECKS
 
-#include <stddef.h>   /* size_t */
+#include <stddef.h>		/* size_t */
 
-typedef enum { XXH_OK=0, XXH_ERROR } XXH_errorcode;
-typedef struct { long long ll[ 6]; } XXH32_state_t;
-typedef struct { long long ll[11]; } XXH64_state_t;
+typedef enum { XXH_OK = 0, XXH_ERROR } XXH_errorcode;
+typedef struct {
+	long long ll[6];
+} XXH32_state_t;
+typedef struct {
+	long long ll[11];
+} XXH64_state_t;
 
-unsigned int       XXH32 (const void *input, size_t length, unsigned seed);
-unsigned long long XXH64 (const void *input, size_t length, unsigned long long seed);
+unsigned int XXH32(const void *input, size_t length, unsigned seed);
+unsigned long long XXH64(const void *input, size_t length,
+			 unsigned long long seed);
 
 #endif

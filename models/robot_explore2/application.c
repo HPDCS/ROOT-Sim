@@ -28,7 +28,7 @@ void *agent_init(void) {
 	agent_state_type *state = NULL;
 	simtime_t start_time;
 	int index;
-	
+
 	char mem_buffer[sizeof(agent_state_type) + BITMAP_SIZE(number_of_regions)];
 
 //      printf("APP :: setup agent %d\n", id);
@@ -76,7 +76,7 @@ void *region_init(unsigned int id) {
 		exit(1);
 	}
 	bzero(state, sizeof(cell_state_type));
-	
+
 	// Initializes A* map
 	state->a_star_map = ALLOCATE_BITMAP(number_of_regions);
 	if (state->a_star_map == NULL) {
@@ -107,7 +107,7 @@ void *region_init(unsigned int id) {
 /**
  * It represents the callback function invoked by the simulation engine
  * whenever a new environmental interaction event has been processed.
- * 
+ *
  * One robot is interacting with the current region, therefore
  * it has to update its visited cell map, check whether it has
  * reached its target or choose a new direction to follow.

@@ -1,3 +1,26 @@
+/**
+*			Copyright (C) 2008-2018 HPDCS Group
+*			http://www.dis.uniroma1.it/~hpdcs
+*
+*
+* This file is part of ROOT-Sim (ROme OpTimistic Simulator).
+*
+* ROOT-Sim is free software; you can redistribute it and/or modify it under the
+* terms of the GNU General Public License as published by the Free Software
+* Foundation; only version 3 of the License applies.
+*
+* ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
+* WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+* A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+*
+* You should have received a copy of the GNU General Public License along with
+* ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
+* 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+*
+* @file calqueue.c
+* @brief A Calendar Queue Implementation
+* @author R. Brown
+*/
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -30,8 +53,8 @@ static calqueue_node *calqueue_deq(void);
    All external variables except resize_enabled are
    initialized
 */
-static void localinit(int qbase, int nbucks, double bwidth, double startprio) {
-
+static void localinit(int qbase, int nbucks, double bwidth, double startprio)
+{
 	int i;
 	long int n;
 
@@ -61,8 +84,8 @@ static void localinit(int qbase, int nbucks, double bwidth, double startprio) {
 // This function returns the width that the buckets should have
 // based on a random sample of the queue so that there will be about 3
 // items in each bucket.
-static double new_width(void) {
-
+static double new_width(void)
+{
 	int nsamples, templastbucket, i, j;
 	double templastprio;
 	double tempbuckettop, average, newaverage;
@@ -96,8 +119,9 @@ static double new_width(void) {
 	for (i = 0; i < nsamples; i++) {
 		// Dequeue nodes to get a test sample and sum up the differences in time
 		temp[i] = calqueue_deq();
-		if (likely(i > 0))
+		if (likely(i > 0)) {
 			average += temp[i]->timestamp - temp[i - 1]->timestamp;
+		}
 	}
 
 	// Get the average
@@ -126,10 +150,10 @@ static double new_width(void) {
 	}
 
 	// Compute new width
-	newaverage = (newaverage / (double)j) * 3.0;	/* this is the new width */
+	newaverage = (newaverage / (double)j) * 3.0; /* this is the new width */
 
 	// Restore the original condition
-	lastbucket = templastbucket;	/* restore the original conditions */
+	lastbucket = templastbucket; /* restore the original conditions */
 	lastprio = templastprio;
 	buckettop = tempbuckettop;
 	resize_enabled = true;
@@ -139,7 +163,8 @@ static double new_width(void) {
 
 // This copies the queue onto a calendar with nnewsize buckets. The new bucket
 // array is on the opposite end of the array a[QSPACE] from the original        EH?!?!?!?!?!
-static void resize(int newsize) {
+static void resize(int newsize)
+{
 	double bwidth;
 	int i;
 	int oldnbuckets;
@@ -174,8 +199,8 @@ static void resize(int newsize) {
 	}
 }
 
-static calqueue_node *calqueue_deq(void) {
-
+static calqueue_node *calqueue_deq(void)
+{
 	register int i;
 	int temp2;
 	calqueue_node *e;
@@ -190,7 +215,7 @@ static calqueue_node *calqueue_deq(void) {
 		// Check bucket i
 		if (calendar[i] != NULL && calendar[i]->timestamp < buckettop) {
 
-	    calendar_process:
+		    calendar_process:
 
 			// Found an item to be processed
 			e = calendar[i];
@@ -227,7 +252,8 @@ static calqueue_node *calqueue_deq(void) {
 	temp2 = -1;
 	lowest = (double)LLONG_MAX;
 	for (i = 0; i < nbuckets; i++) {
-		if ((calendar[i] != NULL) && ((temp2 == -1) || (calendar[i]->timestamp < lowest))) {
+		if ((calendar[i] != NULL)
+		    && ((temp2 == -1) || (calendar[i]->timestamp < lowest))) {
 			temp2 = i;
 			lowest = calendar[i]->timestamp;
 		}
@@ -240,14 +266,14 @@ static calqueue_node *calqueue_deq(void) {
 }
 
 // This function initializes the messaging queue.
-void calqueue_init(void) {
-
+void calqueue_init(void)
+{
 	localinit(0, 2, 1.0, 0.0);
 	resize_enabled = true;
 }
 
-void calqueue_put(double timestamp, void *payload) {
-
+void calqueue_put(double timestamp, void *payload)
+{
 	int i;
 	calqueue_node *new_node, *traverse;
 
@@ -258,8 +284,8 @@ void calqueue_put(double timestamp, void *payload) {
 	new_node->next = NULL;
 
 	// Calculate the number of the bucket in which to place the new entry
-	i = (int)round(timestamp / (double)cwidth); // Virtual bucket
-	i = i % nbuckets; // Actual bucket
+	i = (int)round(timestamp / (double)cwidth);	// Virtual bucket
+	i = i % nbuckets;	// Actual bucket
 
 	// Grab the head of events list in bucket i
 	traverse = calendar[i];
@@ -270,7 +296,8 @@ void calqueue_put(double timestamp, void *payload) {
 		calendar[i] = new_node;
 	} else {
 		// Find the correct place in list
-		while (traverse->next != NULL && traverse->next->timestamp <= timestamp)
+		while (traverse->next != NULL
+		       && traverse->next->timestamp <= timestamp)
 			traverse = traverse->next;
 
 		// Place the new event
@@ -287,7 +314,8 @@ void calqueue_put(double timestamp, void *payload) {
 	}
 }
 
-void *calqueue_get(void) {
+void *calqueue_get(void)
+{
 	calqueue_node *node;
 	void *payload;
 

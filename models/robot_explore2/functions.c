@@ -45,7 +45,7 @@ void map_diff_exchange(cell_state_type *rstate, agent_state_type * agent_a, agen
 	for (index = 0; index < number_of_regions; index++) {
 		// Checks if there is one region such that is visited
 		// by one agent and not by the other
-		
+
 		map_a = &(agent_a->visit_map[index]);
 		map_b = &(agent_b->visit_map[index]);
 
@@ -55,7 +55,7 @@ void map_diff_exchange(cell_state_type *rstate, agent_state_type * agent_a, agen
 			map_b->visited = true;
 			agent_b->visited_cells++;
 			agent_b->target_cell = closest_frontier(agent_b, -1);
-			
+
 		} else if (!map_a->visited && map_b->visited) {
 			memcpy(map_b->neighbours, map_a->neighbours, sizeof(int) * CELL_EDGES);
 			map_a->visited = true;

@@ -36,7 +36,6 @@
 #include <scheduler/process.h>
 #include <statistics/statistics.h>
 
-
 /**
 * This function creates a full log of the current simulation states and returns a pointer to it.
 * The algorithm behind this function is based on packing of the really allocated memory chunks into
@@ -70,7 +69,8 @@
 *
 * @todo must be declared static. This will entail changing the logic in gvt.c to save a state before rebuilding.
 */
-void *log_full(struct lp_struct *lp) {
+void *log_full(struct lp_struct *lp)
+{
 
 	void *ptr = NULL, *ckpt = NULL;
 	int i;
@@ -86,8 +86,8 @@ void *log_full(struct lp_struct *lp) {
 
 	ckpt = rsalloc(size);
 
-	if(unlikely(ckpt == NULL)) {
-		rootsim_error(true, "(%d) Unable to acquire memory for checkpointing the current state (memory exhausted?)");
+	if (unlikely(ckpt == NULL)) {
+		rootsim_error(true, "(%d) Unable to acquire memory for checkpointing the current state (memory exhausted?)", lp->lid.to_int);
 	}
 
 	ptr = ckpt;
@@ -95,9 +95,9 @@ void *log_full(struct lp_struct *lp) {
 	// Copy malloc_state in the ckpt
 	memcpy(ptr, lp->mm->m_state, sizeof(malloc_state));
 	ptr = (void *)((char *)ptr + sizeof(malloc_state));
-	((malloc_state*)ckpt)->timestamp = lvt(lp);
+	((malloc_state *) ckpt)->timestamp = lvt(lp);
 
-	for(i = 0; i < lp->mm->m_state->num_areas; i++){
+	for (i = 0; i < lp->mm->m_state->num_areas; i++) {
 
 		m_area = &lp->mm->m_state->areas[i];
 
@@ -106,7 +106,7 @@ void *log_full(struct lp_struct *lp) {
 		bitmap_size = bitmap_required_size(m_area->num_chunks);
 
 		// Check if there is at least one chunk used in the area
-		if(unlikely(m_area->alloc_chunks == 0)) {
+		if (unlikely(m_area->alloc_chunks == 0)) {
 
 			m_area->dirty_chunks = 0;
 			m_area->state_changed = 0;
@@ -117,23 +117,22 @@ void *log_full(struct lp_struct *lp) {
 
 			continue;
 		}
-
 		// Copy malloc_area into the ckpt
 		memcpy(ptr, m_area, sizeof(malloc_area));
-		ptr = (void*)((char*)ptr + sizeof(malloc_area));
+		ptr = (void *)((char *)ptr + sizeof(malloc_area));
 
 		memcpy(ptr, m_area->use_bitmap, bitmap_size);
-		ptr = (void*)((char*)ptr + bitmap_size);
+		ptr = (void *)((char *)ptr + bitmap_size);
 
 		chunk_size = UNTAGGED_CHUNK_SIZE(m_area);
 
 		// Check whether the area should be completely copied (not on a per-chunk basis)
 		// using a threshold-based heuristic
-		if(CHECK_LOG_MODE_BIT(m_area)) {
+		if (CHECK_LOG_MODE_BIT(m_area)) {
 
 			// If the malloc_area is almost (over a threshold) full, copy it entirely
 			memcpy(ptr, m_area->area, m_area->num_chunks * chunk_size);
-			ptr = (void*)((char*)ptr + m_area->num_chunks * chunk_size);
+			ptr = (void *)((char *)ptr + m_area->num_chunks * chunk_size);
 
 		} else {
 
@@ -152,11 +151,13 @@ void *log_full(struct lp_struct *lp) {
 		m_area->state_changed = 0;
 		bzero((void *)m_area->dirty_bitmap, bitmap_size);
 
-	} // For each malloc area
+	}			// For each malloc area
 
 	// Sanity check
 	if (unlikely((char *)ckpt + size != ptr))
-		rootsim_error(true, "Actual (full) ckpt size is wrong by %d bytes!\nlid = %d ckpt = %p size = %#x (%d), ptr = %p, ckpt + size = %p\n", (char *)ckpt + size - (char *)ptr, lp->lid.to_int, ckpt, size, size, ptr, (char *)ckpt + size);
+		rootsim_error(true, "Actual (full) ckpt size is wrong by %d bytes!\nlid = %d ckpt = %p size = %#x (%d), ptr = %p, ckpt + size = %p\n",
+			      (char *)ckpt + size - (char *)ptr, lp->lid.to_int,
+			      ckpt, size, size, ptr, (char *)ckpt + size);
 
 	lp->mm->m_state->dirty_areas = 0;
 	lp->mm->m_state->dirty_bitmap_size = 0;
@@ -167,8 +168,6 @@ void *log_full(struct lp_struct *lp) {
 
 	return ckpt;
 }
-
-
 
 /**
 * This function is the only log function which should be called from the simulation platform. Actually,
@@ -188,13 +187,11 @@ void *log_full(struct lp_struct *lp) {
 * @return A pointer to a malloc()'d memory area which contains the log of the current simulation state,
 *         along with the relative meta-data which can be used to perform a restore operation.
 */
-void *log_state(struct lp_struct *lp) {
+void *log_state(struct lp_struct *lp)
+{
 	statistics_post_data(lp, STAT_CKPT, 1.0);
 	return log_full(lp);
 }
-
-
-
 
 /**
 * This function restores a full log in the address space where the logical process will be
@@ -220,7 +217,7 @@ void *log_state(struct lp_struct *lp) {
 */
 void restore_full(struct lp_struct *lp, void *ckpt)
 {
-	void * ptr;
+	void *ptr;
 	int i, original_num_areas, restored_areas;
 	size_t chunk_size, bitmap_size;
 	malloc_area *m_area, *new_area;
@@ -235,18 +232,18 @@ void restore_full(struct lp_struct *lp, void *ckpt)
 
 	// Restore malloc_state
 	memcpy(lp->mm->m_state, ptr, sizeof(malloc_state));
-	ptr = (void*)((char*)ptr + sizeof(malloc_state));
+	ptr = (void *)((char *)ptr + sizeof(malloc_state));
 
 	lp->mm->m_state->areas = new_area;
 
 	// Scan areas and chunk to restore them
-	for(i = 0; i < lp->mm->m_state->num_areas; i++) {
+	for (i = 0; i < lp->mm->m_state->num_areas; i++) {
 
 		m_area = &lp->mm->m_state->areas[i];
 
 		bitmap_size = bitmap_required_size(m_area->num_chunks);
 
-		if(restored_areas == lp->mm->m_state->busy_areas || m_area->idx != ((malloc_area*)ptr)->idx){
+		if (restored_areas == lp->mm->m_state->busy_areas || m_area->idx != ((malloc_area *) ptr)->idx) {
 
 			m_area->dirty_chunks = 0;
 			m_area->state_changed = 0;
@@ -254,7 +251,7 @@ void restore_full(struct lp_struct *lp, void *ckpt)
 			m_area->next_chunk = 0;
 			RESET_LOG_MODE_BIT(m_area);
 			RESET_AREA_LOCK_BIT(m_area);
-			
+
 			if (likely(m_area->use_bitmap != NULL)) {
 				memset(m_area->use_bitmap, 0, bitmap_size);
 				memset(m_area->dirty_bitmap, 0, bitmap_size);
@@ -263,30 +260,28 @@ void restore_full(struct lp_struct *lp, void *ckpt)
 
 			continue;
 		}
-
 		// Restore the malloc_area
 		memcpy(m_area, ptr, sizeof(malloc_area));
-		ptr = (void*)((char*)ptr + sizeof(malloc_area));
+		ptr = (void *)((char *)ptr + sizeof(malloc_area));
 
 		restored_areas++;
 
 		// Restore use bitmap
 		memcpy(m_area->use_bitmap, ptr, bitmap_size);
-		ptr = (void*)((char*)ptr + bitmap_size);
+		ptr = (void *)((char *)ptr + bitmap_size);
 
 		// Reset dirty bitmap
 		bzero(m_area->dirty_bitmap, bitmap_size);
 		m_area->dirty_chunks = 0;
 		m_area->state_changed = 0;
 
-
 		chunk_size = UNTAGGED_CHUNK_SIZE(m_area);
 
 		// Check how the area has been logged
-		if(CHECK_LOG_MODE_BIT(m_area)) {
+		if (CHECK_LOG_MODE_BIT(m_area)) {
 			// The area has been entirely logged
 			memcpy(m_area->area, ptr, m_area->num_chunks * chunk_size);
-			ptr = (void*)((char*)ptr + m_area->num_chunks * chunk_size);
+			ptr = (void *)((char *)ptr + m_area->num_chunks * chunk_size);
 
 		} else {
 			// The area was partially logged.
@@ -304,11 +299,10 @@ void restore_full(struct lp_struct *lp, void *ckpt)
 
 	}
 
-
 	// Check whether there are more allocated areas which are not present in the log
-	if(original_num_areas > lp->mm->m_state->num_areas) {
+	if (original_num_areas > lp->mm->m_state->num_areas) {
 
-		for(i = lp->mm->m_state->num_areas; i < original_num_areas; i++) {
+		for (i = lp->mm->m_state->num_areas; i < original_num_areas; i++) {
 
 			m_area = &lp->mm->m_state->areas[i];
 			m_area->alloc_chunks = 0;
@@ -340,8 +334,6 @@ void restore_full(struct lp_struct *lp, void *ckpt)
 	statistics_post_data(lp, STAT_RECOVERY_TIME, (double)timer_value_micro(recovery_timer));
 }
 
-
-
 /**
 * Upon the decision of performing a rollback operation, this function is invoked by the simulation
 * kernel to perform a restore operation.
@@ -355,12 +347,11 @@ void restore_full(struct lp_struct *lp, void *ckpt)
 * @param state_queue_node a pointer to a node in the state queue keeping the state
 *        which must be restored in the logical process live image
 */
-void log_restore(struct lp_struct *lp, state_t *state_queue_node) {
+void log_restore(struct lp_struct *lp, state_t * state_queue_node)
+{
 	statistics_post_data(lp, STAT_RECOVERY, 1.0);
 	restore_full(lp, state_queue_node->log);
 }
-
-
 
 /**
 * This function is called directly from the simulation platform kernel to delete a certain log
@@ -372,9 +363,9 @@ void log_restore(struct lp_struct *lp, state_t *state_queue_node) {
 * @param ckpt a pointer to the simulation state which must be deleted
 *
 */
-void log_delete(void *ckpt){
-	if(likely(ckpt != NULL)) {
+void log_delete(void *ckpt)
+{
+	if (likely(ckpt != NULL)) {
 		rsfree(ckpt);
 	}
 }
-

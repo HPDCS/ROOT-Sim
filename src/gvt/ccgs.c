@@ -21,8 +21,12 @@
 * @brief Consistent and Committed Global State (CCGS) is a subsystem that (poeriodically)
 * 	recomputes a global state on which the LPs can inspect the simulation trajectory
 * 	and determine whether the simulation can stop, by relying on the OnGVT() callback.
+* @date 2007
 * @author Francesco Quaglia
+* @author Paolo Romano
 * @author Alessandro Pellegrini
+* @author Diego Cucuzzo
+* @author Stefano D’Alessio
 */
 
 #include <stdbool.h>
@@ -36,47 +40,43 @@
 #include <scheduler/scheduler.h>
 #include <scheduler/process.h>
 
-
-
 /// This variable is an aggregate result for the distributed termination detection
 static bool ccgs_completed_simulation = false;
 
 /// In case termination detection is incremental, this array keeps track of LPs that think the simulation can be halted already
 static bool *lps_termination;
 
-
-
-inline bool ccgs_can_halt_simulation(void) {
-	#ifdef HAVE_MPI
+inline bool ccgs_can_halt_simulation(void)
+{
+#ifdef HAVE_MPI
 	return (ccgs_completed_simulation && all_kernels_terminated());
-	#else
+#else
 	return ccgs_completed_simulation;
-	#endif
+#endif
 }
 
-
 // Deve essere chiamata da un solo thread al GVT
-void ccgs_reduce_termination(void) {
+void ccgs_reduce_termination(void)
+{
 	register unsigned int i;
 	bool termination = true;
 
 	/* Local termination:  all LPs need to be terminated */
-	for(i = 0; i < n_prc; i++) {
+	for (i = 0; i < n_prc; i++) {
 		termination &= lps_termination[i];
 	}
 
-	#ifdef HAVE_MPI
+#ifdef HAVE_MPI
 	/* If terminated locally check for global termination
 	 * All other kernel need to terminated
 	 */
-	if(unlikely(!ccgs_completed_simulation && termination)) {
+	if (unlikely(!ccgs_completed_simulation && termination)) {
 		broadcast_termination();
 	}
-	#endif
+#endif
 
 	ccgs_completed_simulation = termination;
 }
-
 
 /**
 * This function rebuilds a simulation state aligned to the new GVT for every LP.
@@ -94,21 +94,18 @@ void ccgs_reduce_termination(void) {
 * an additional overhead, because the runtime environment has to reprocess in
 * silent execution multiple events.
 *
-* @author Francesco Quaglia
-* @author Alessandro Pellegrini
-*
 * @param time_barrier_pointer An array containing the time barrier states of the LPs
 * 		as computed by the GVT subsystem
 * @param gvt The Global Virtual Time value at which simulation states should be realigned
 *               to generate a snapshot inspection which is also consistent
 */
-void ccgs_compute_snapshot(state_t *time_barrier_pointer[], simtime_t gvt)
+void ccgs_compute_snapshot(state_t * time_barrier_pointer[], simtime_t gvt)
 {
 	int i;
 	bool check_res = true;
 	state_t temporary_log;
 
-	(void)gvt; // This is used for state reconstruction which is currently commented out
+	(void)gvt;		// This is used for state reconstruction which is currently commented out
 	//msg_t *realignment_evt;
 
 	i = -1;
@@ -116,11 +113,12 @@ void ccgs_compute_snapshot(state_t *time_barrier_pointer[], simtime_t gvt)
 		i++;
 
 		// If termination detection is incremental, we skip the current LP
-		if(rootsim_config.check_termination_mode == CKTRM_INCREMENTAL && lps_termination[lp->lid.to_int]) {
+		if (rootsim_config.check_termination_mode == CKTRM_INCREMENTAL
+		    && lps_termination[lp->lid.to_int]) {
 			continue;
 		}
 
-		if(time_barrier_pointer[i] == NULL)
+		if (time_barrier_pointer[i] == NULL)
 			continue;
 
 		// TODO: realign LogState and RestoreState to be compliant with the execution in the committed portion
@@ -134,7 +132,8 @@ void ccgs_compute_snapshot(state_t *time_barrier_pointer[], simtime_t gvt)
 		// Restore the time barrier state
 		log_restore(lp, time_barrier_pointer[i]);
 		lp->state = time_barrier_pointer[i]->state;
-		lp->current_base_pointer = time_barrier_pointer[i]->base_pointer;
+		lp->current_base_pointer =
+		    time_barrier_pointer[i]->base_pointer;
 
 /*
 		// If the LP is not blocked, we can reconstruct the state exactly to the GVT
@@ -154,7 +153,8 @@ void ccgs_compute_snapshot(state_t *time_barrier_pointer[], simtime_t gvt)
 
 */
 		// Call the application to check termination
-		lps_termination[lp->lid.to_int] = lp->OnGVT(lp->gid.to_int, lp->current_base_pointer);
+		lps_termination[lp->lid.to_int] =
+		    lp->OnGVT(lp->gid.to_int, lp->current_base_pointer);
 		check_res &= lps_termination[lp->lid.to_int];
 
 		// Restore the current state
@@ -164,7 +164,8 @@ void ccgs_compute_snapshot(state_t *time_barrier_pointer[], simtime_t gvt)
 		log_delete(temporary_log.log);
 
 		// Early stop
-		if(rootsim_config.check_termination_mode == CKTRM_INCREMENTAL && !check_res) {
+		if (rootsim_config.check_termination_mode == CKTRM_INCREMENTAL
+		    && !check_res) {
 			break;
 		}
 
@@ -174,12 +175,10 @@ void ccgs_compute_snapshot(state_t *time_barrier_pointer[], simtime_t gvt)
 	current = NULL;
 }
 
-
 void ccgs_init(void)
 {
 	lps_termination = rsalloc(sizeof(bool) * n_prc);
 }
-
 
 void ccgs_fini(void)
 {

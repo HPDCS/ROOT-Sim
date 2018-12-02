@@ -38,8 +38,8 @@
 extern inline simtime_t get_min_in_transit(void);
 extern simtime_t next_event_timestamp(struct lp_struct *);
 extern msg_t *advance_to_next_event(struct lp_struct *);
-extern void insert_bottom_half(msg_t *msg);
+extern void insert_bottom_half(msg_t * msg);
 extern void process_bottom_halves(void);
 extern unsigned long long generate_mark(struct lp_struct *);
 
-#endif /* _QUEUES_H */
+#endif				/* _QUEUES_H */

@@ -26,7 +26,6 @@
 * @author Alessandro Pellegrini
 */
 
-
 #include <stdlib.h>
 #include <math.h>
 #include <string.h>
@@ -42,54 +41,48 @@
 #include <mm/mm.h>
 #include <statistics/statistics.h>
 
-
 /**
 * This function is used to create a state log to be added to the LP's log chain
 *
-* @author Francesco Quaglia
-* @author Alessandro Pellegrini
-*
 * @param lid The Light Process Identifier
 */
-bool LogState(struct lp_struct *lp) {
-
+bool LogState(struct lp_struct *lp)
+{
 	bool take_snapshot = false;
-	state_t *new_state; 
+	state_t *new_state;
 
-	if(unlikely(is_blocked_state(lp->state))) {
+	if (unlikely(is_blocked_state(lp->state))) {
 		return take_snapshot;
 	}
-
 	// Keep track of the invocations to LogState
 	lp->from_last_ckpt++;
 
-	if(lp->state_log_forced) {
+	if (lp->state_log_forced) {
 		lp->state_log_forced = false;
 		lp->from_last_ckpt = 0;
 
 		take_snapshot = true;
 		goto skip_switch;
 	}
-
 	// Switch on the checkpointing mode
-	switch(rootsim_config.checkpointing) {
+	switch (rootsim_config.checkpointing) {
 
-		case STATE_SAVING_COPY:
+	case STATE_SAVING_COPY:
+		take_snapshot = true;
+		break;
+
+	case STATE_SAVING_PERIODIC:
+		if (lp->from_last_ckpt >= lp->ckpt_period) {
 			take_snapshot = true;
-			break;
+			lp->from_last_ckpt = 0;
+		}
+		break;
 
-		case STATE_SAVING_PERIODIC:
-			if(lp->from_last_ckpt >= lp->ckpt_period) {
-				take_snapshot = true;
-				lp->from_last_ckpt = 0;
-			}
-			break;
-
-		default:
-			rootsim_error(true, "State saving mode not supported.");
+	default:
+		rootsim_error(true, "State saving mode not supported.");
 	}
 
-skip_switch:
+ skip_switch:
 
 	// Shall we take a log?
 	if (take_snapshot) {
@@ -109,7 +102,8 @@ skip_switch:
 		new_state->base_pointer = lp->current_base_pointer;
 
 		// Log library-related states
-		memcpy(&new_state->numerical, &lp->numerical, sizeof(numerical_state_t));
+		memcpy(&new_state->numerical, &lp->numerical,
+		       sizeof(numerical_state_t));
 
 		// Link the new checkpoint to the state chain
 		list_insert_tail(lp->queue_states, new_state);
@@ -119,8 +113,8 @@ skip_switch:
 	return take_snapshot;
 }
 
-
-void RestoreState(struct lp_struct *lp, state_t *restore_state) {
+void RestoreState(struct lp_struct *lp, state_t * restore_state)
+{
 	// Restore simulation model buffers
 	log_restore(lp, restore_state);
 
@@ -129,16 +123,15 @@ void RestoreState(struct lp_struct *lp, state_t *restore_state) {
 	lp->state = restore_state->state;
 
 	// Restore library-related states
-	memcpy(&lp->numerical, &restore_state->numerical, sizeof(numerical_state_t));
+	memcpy(&lp->numerical, &restore_state->numerical,
+	       sizeof(numerical_state_t));
 
-	
 #ifdef HAVE_CROSS_STATE
 	lp->ECS_index = 0;
 	lp->wait_on_rendezvous = 0;
 	lp->wait_on_object = 0;
 #endif
 }
-
 
 /**
 * This function bring the state pointed by "state" to "final time" by re-executing all the events without sending any messages
@@ -153,7 +146,8 @@ void RestoreState(struct lp_struct *lp, state_t *restore_state) {
 *
 * @return The number of events re-processed during the silent execution
 */
-unsigned int silent_execution(struct lp_struct *lp, msg_t *evt, msg_t *final_evt) {
+unsigned int silent_execution(struct lp_struct *lp, msg_t * evt, msg_t * final_evt)
+{
 	unsigned int events = 0;
 	unsigned short int old_state;
 
@@ -162,7 +156,7 @@ unsigned int silent_execution(struct lp_struct *lp, msg_t *evt, msg_t *final_evt
 	lp->state = LP_STATE_SILENT_EXEC;
 
 	// This is true if the restored state was taken exactly after the new bound
-	if(evt == final_evt)
+	if (evt == final_evt)
 		goto out;
 
 	evt = list_next(evt);
@@ -170,9 +164,9 @@ unsigned int silent_execution(struct lp_struct *lp, msg_t *evt, msg_t *final_evt
 
 	// Reprocess events. Outgoing messages are explicitly discarded, as this part of
 	// the simulation has been already executed at least once
-	while(evt != NULL && evt != final_evt) {
+	while (evt != NULL && evt != final_evt) {
 
-		if(unlikely(!reprocess_control_msg(evt))) {
+		if (unlikely(!reprocess_control_msg(evt))) {
 			evt = list_next(evt);
 			continue;
 		}
@@ -182,11 +176,10 @@ unsigned int silent_execution(struct lp_struct *lp, msg_t *evt, msg_t *final_evt
 		evt = list_next(evt);
 	}
 
-out:
+ out:
 	lp->state = old_state;
 	return events;
 }
-
 
 /**
 * This function rolls back the execution of a certain LP. The point where the
@@ -200,19 +193,19 @@ out:
 *
 * @param lid The Logical Process Id
 */
-void rollback(struct lp_struct *lp) {
+void rollback(struct lp_struct *lp)
+{
 	state_t *restore_state, *s;
 	msg_t *last_correct_event;
 	msg_t *last_restored_event;
 	unsigned int reprocessed_events;
 
-
 	// Sanity check
-	if(unlikely(lp->state != LP_STATE_ROLLBACK)) {
-		rootsim_error(false, "I'm asked to roll back LP %d's execution, but rollback_bound is not set. Ignoring...\n", lp->gid.to_int);
+	if (unlikely(lp->state != LP_STATE_ROLLBACK)) {
+		rootsim_error(false, "I'm asked to roll back LP %d's execution, but rollback_bound is not set. Ignoring...\n",
+			      lp->gid.to_int);
 		return;
 	}
-
 
 	// Discard any possible execution state related to a blocked execution
 	memcpy(&lp->context, &lp->default_context, sizeof(LP_context_t));
@@ -225,13 +218,13 @@ void rollback(struct lp_struct *lp) {
 
 	// Find the state to be restored, and prune the wrongly computed states
 	restore_state = list_tail(lp->queue_states);
-	while (restore_state != NULL && restore_state->lvt > last_correct_event->timestamp) { // It's > rather than >= because we have already taken into account simultaneous events
+	while (restore_state != NULL && restore_state->lvt > last_correct_event->timestamp) {	// It's > rather than >= because we have already taken into account simultaneous events
 		s = restore_state;
 		restore_state = list_prev(restore_state);
 		log_delete(s->log);
-		#ifndef NDEBUG
+#ifndef NDEBUG
 		s->last_event = (void *)0xBABEBEEF;
-		#endif
+#endif
 		list_delete_by_content(lp->queue_states, s);
 	}
 	// Restore the simulation state and correct the state base pointer
@@ -247,9 +240,6 @@ void rollback(struct lp_struct *lp) {
 	rollback_control_message(lp, last_correct_event->timestamp);
 }
 
-
-
-
 /**
 * This function computes the time barrier, namely the first state snapshot
 * which is associated with a simulation time <= that the passed simtime
@@ -261,11 +251,11 @@ void rollback(struct lp_struct *lp) {
 * @param simtime The simulation time to be associated with a state barrier
 * @return A pointer to the state that represents the time barrier
 */
-state_t *find_time_barrier(struct lp_struct *lp, simtime_t simtime) {
-
+state_t *find_time_barrier(struct lp_struct *lp, simtime_t simtime)
+{
 	state_t *barrier_state;
 
-	if(unlikely(D_EQUAL(simtime, 0.0))) {
+	if (unlikely(D_EQUAL(simtime, 0.0))) {
 		return list_head(lp->queue_states);
 	}
 
@@ -274,8 +264,8 @@ state_t *find_time_barrier(struct lp_struct *lp, simtime_t simtime) {
 	// Must point to the state with lvt immediately before the GVT
 	while (barrier_state != NULL && barrier_state->lvt >= simtime) {
 		barrier_state = list_prev(barrier_state);
-  	}
-  	if(barrier_state == NULL) {
+	}
+	if (barrier_state == NULL) {
 		barrier_state = list_head(lp->queue_states);
 	}
 
@@ -300,15 +290,10 @@ state_t *find_time_barrier(struct lp_struct *lp, simtime_t simtime) {
 *
 * @todo malloc wrapper
 */
-void SetState(void *new_state) {
+void SetState(void *new_state)
+{
 	current->current_base_pointer = new_state;
 }
-
-
-
-
-
-
 
 /**
 * This function sets the checkpoint mode
@@ -318,12 +303,10 @@ void SetState(void *new_state) {
 *
 * @param ckpt_mode The new checkpoint mode
 */
-void set_checkpoint_mode(int ckpt_mode) {
+void set_checkpoint_mode(int ckpt_mode)
+{
 	rootsim_config.checkpointing = ckpt_mode;
 }
-
-
-
 
 /**
 * This function sets the checkpoint period
@@ -334,10 +317,10 @@ void set_checkpoint_mode(int ckpt_mode) {
 * @param lid The Logical Process Id
 * @param period The new checkpoint period
 */
-void set_checkpoint_period(struct lp_struct *lp, int period) {
+void set_checkpoint_period(struct lp_struct *lp, int period)
+{
 	lp->ckpt_period = period;
 }
-
 
 /**
 * This function tells the logging subsystem to take a LP state log
@@ -348,7 +331,7 @@ void set_checkpoint_period(struct lp_struct *lp, int period) {
 *
 * @param lid The Logical Process Id
 */
-void force_LP_checkpoint(struct lp_struct *lp) {
+void force_LP_checkpoint(struct lp_struct *lp)
+{
 	lp->state_log_forced = true;
 }
-

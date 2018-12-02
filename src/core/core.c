@@ -74,10 +74,7 @@ bool exit_silently_from_kernel = false;
 /// This flag is set when the initialization of the simulator is complete, with no errors
 static bool init_complete = false;
 
-
 bool user_exit_flag = false;
-
-
 
 /**
  * This function is used to terminate with not much pain the simulation
@@ -87,12 +84,13 @@ bool user_exit_flag = false;
  *
  * @author Alessandro Pellegrini
  */
-void exit_from_simulation_model(void) {
+void exit_from_simulation_model(void)
+{
 
-	if(likely(!init_complete))
+	if (likely(!init_complete))
 		return;
 
-	if(unlikely(!exit_silently_from_kernel)) {
+	if (unlikely(!exit_silently_from_kernel)) {
 		exit_silently_from_kernel = true;
 
 		printf("Warning: exit() has been called from the model.\n"
@@ -103,18 +101,17 @@ void exit_from_simulation_model(void) {
 	}
 }
 
-
-inline bool user_requested_exit(void){
+inline bool user_requested_exit(void)
+{
 	return user_exit_flag;
 }
 
-
-static void handle_signal(int signum){
-	if(signum == SIGINT){
+static void handle_signal(int signum)
+{
+	if (signum == SIGINT) {
 		user_exit_flag = true;
 	}
 }
-
 
 /**
 * This function initilizes basic functionalities within ROOT-Sim. In particular, it
@@ -125,8 +122,9 @@ static void handle_signal(int signum){
 * @author Alessandro Pellegrini
 *
 */
-void base_init(void) {
-	struct sigaction new_act = {0};
+void base_init(void)
+{
+	struct sigaction new_act = { 0 };
 
 	barrier_init(&all_thread_barrier, n_cores);
 
@@ -140,18 +138,15 @@ void base_init(void) {
 	atexit(exit_from_simulation_model);
 }
 
-
 /**
 * This function finalizes the core structures of ROOT-Sim, just before terminating a simulation
 *
 * @author Roberto Vitali
 *
 */
-void base_fini(void){
+void base_fini(void)
+{
 }
-
-
-
 
 /**
 * Creates a mapping between logical processes and kernel instances
@@ -161,14 +156,12 @@ void base_fini(void){
 * @param gid The logical process' global identifier
 * @return The id of the kernel currently hosting the logical process
 */
-__attribute__ ((pure))
-unsigned int find_kernel_by_gid(GID_t gid) {
+__attribute__((pure))
+unsigned int find_kernel_by_gid(GID_t gid)
+{
 	// restituisce il kernel su cui si trova il processo identificato da gid
 	return kernel[gid.to_int];
 }
-
-
-
 
 /**
 * This function calls all the finalization functions exposed by subsystems and then
@@ -178,17 +171,18 @@ unsigned int find_kernel_by_gid(GID_t gid) {
 *
 * @param code The exit code to be returned by the process
 */
-void simulation_shutdown(int code) {
+void simulation_shutdown(int code)
+{
 
 	exit_silently_from_kernel = true;
 
 	statistics_stop(code);
 
-	if(likely(rootsim_config.serial == false)) {
+	if (likely(rootsim_config.serial == false)) {
 
 		thread_barrier(&all_thread_barrier);
 
-		if(master_thread()) {
+		if (master_thread()) {
 			statistics_fini();
 			scheduler_fini();
 			gvt_fini();
@@ -202,12 +196,10 @@ void simulation_shutdown(int code) {
 	exit(code);
 }
 
-
-
-inline bool simulation_error(void) {
+inline bool simulation_error(void)
+{
 	return sim_error;
 }
-
 
 /**
 * A variadic function which prints out error messages. If the errors are marked as fatal,
@@ -221,7 +213,8 @@ inline bool simulation_error(void) {
 *
 * @todo If a fatal error is received, write it on the log file as well!
 */
-void _rootsim_error(bool fatal, const char *msg, ...) {
+void _rootsim_error(bool fatal, const char *msg, ...)
+{
 	char buf[1024];
 	va_list args;
 
@@ -231,28 +224,26 @@ void _rootsim_error(bool fatal, const char *msg, ...) {
 
 	fprintf(stderr, (fatal ? "[FATAL ERROR] " : "[WARNING] "));
 
-	fprintf(stderr, "%s", buf);\
+	fprintf(stderr, "%s", buf);
 	fflush(stderr);
 
-	if(fatal) {
-		if(rootsim_config.serial) {
+	if (fatal) {
+		if (rootsim_config.serial) {
 			exit(EXIT_FAILURE);
 		} else {
 
-			if(!init_complete) {
+			if (!init_complete) {
 				exit(EXIT_FAILURE);
 			}
 
 			// Notify all KLT to shut down the simulation
 			sim_error = true;
+
+			// Bye bye main loop!
 			longjmp(exit_jmp, 1);
 		}
 	}
 }
-
-
-
-
 
 /**
 * This function maps logical processes onto kernel instances
@@ -260,7 +251,8 @@ void _rootsim_error(bool fatal, const char *msg, ...) {
 * @author Francesco Quaglia
 * @author Alessandro Pellegrini
 */
-void distribute_lps_on_kernels(void) {
+void distribute_lps_on_kernels(void)
+{
 	register unsigned int i = 0;
 	unsigned int j;
 	unsigned int buf1;
@@ -268,56 +260,56 @@ void distribute_lps_on_kernels(void) {
 	int block_leftover;
 
 	// Sanity check on number of LPs
-	if(n_prc_tot < n_ker)
+	if (n_prc_tot < n_ker) {
 		rootsim_error(true, "Unable to allocate %d logical processes on %d kernels: must have at least %d LPs\n", n_prc_tot, n_ker, n_ker);
+	}
 
 	kernel = (unsigned int *)rsalloc(sizeof(unsigned int) * n_prc_tot);
 
-
 	switch (rootsim_config.lps_distribution) {
 
-		case LP_DISTRIBUTION_BLOCK:
-			buf1 = (n_prc_tot / n_ker);
-			block_leftover = n_prc_tot - buf1 * n_ker;
+	case LP_DISTRIBUTION_BLOCK:
+		buf1 = (n_prc_tot / n_ker);
+		block_leftover = n_prc_tot - buf1 * n_ker;
 
-			// It is a hack to bypass the first check that set offset to 0
-			if (block_leftover > 0)
-				buf1++;
+		// It is a hack to bypass the first check that set offset to 0
+		if (block_leftover > 0)
+			buf1++;
 
-			offset = 0;
-			while (i < n_prc_tot) {
-				j = 0;
-				while (j < buf1) {
-					kernel[i] = offset;
+		offset = 0;
+		while (i < n_prc_tot) {
+			j = 0;
+			while (j < buf1) {
+				kernel[i] = offset;
 
-					if(kernel[i] == kid)
-						n_prc++;
+				if (kernel[i] == kid)
+					n_prc++;
 
-					i++;
-					j++;
-				}
-				offset++;
-				block_leftover--;
-				if (block_leftover == 0)
-					buf1--;
+				i++;
+				j++;
 			}
-			break;
+			offset++;
+			block_leftover--;
+			if (block_leftover == 0)
+				buf1--;
+		}
+		break;
 
-		case LP_DISTRIBUTION_CIRCULAR:
-			for (i = 0; i < n_prc_tot; i++) {
-				kernel[i] = i % n_ker;
+	case LP_DISTRIBUTION_CIRCULAR:
+		for (i = 0; i < n_prc_tot; i++) {
+			kernel[i] = i % n_ker;
 
-				if(kernel[i] == kid)
-						n_prc++;
-			}
-			break;
+			if (kernel[i] == kid)
+				n_prc++;
+		}
+		break;
 	}
 }
-
 
 /**
  * This function records that the initialization is complete.
  */
-void initialization_complete(void) {
+void initialization_complete(void)
+{
 	init_complete = true;
 }

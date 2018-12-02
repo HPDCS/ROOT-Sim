@@ -1,3 +1,31 @@
+/**
+*			Copyright (C) 2008-2018 HPDCS Group
+*			http://www.dis.uniroma1.it/~hpdcs
+*
+*
+* This file is part of ROOT-Sim (ROme OpTimistic Simulator).
+*
+* ROOT-Sim is free software; you can redistribute it and/or modify it under the
+* terms of the GNU General Public License as published by the Free Software
+* Foundation; only version 3 of the License applies.
+*
+* ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
+* WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+* A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+*
+* You should have received a copy of the GNU General Public License along with
+* ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
+* 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+*
+* @file statistics.c
+* @brief State Management Subsystem
+* @author Francesco Quaglia
+* @author Andrea Piccione
+* @author Alessandro Pellegrini
+* @author Tommaso Tocci
+* @author Roberto Vitali
+*/
+
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -94,7 +122,8 @@ struct stat_t global_stats = {.gvt_round_time_min = INFTY};
 *
 * @param path The path of the directory to purge
 */
-static void _rmdir(const char *path) {
+static void _rmdir(const char *path)
+{
 	char *buf;
 	struct stat st;
 	struct dirent *dirt;
@@ -137,7 +166,8 @@ static void _rmdir(const char *path) {
 *
 * @param path The path of the new directory to create
 */
-void _mkdir(const char *path) {
+void _mkdir(const char *path)
+{
 	char opath[MAX_PATHLEN];
 	char *p;
 	size_t len;
@@ -173,7 +203,8 @@ void _mkdir(const char *path) {
 	}
 }
 
-static void print_config_to_file(FILE *f){
+static void print_config_to_file(FILE *f)
+{
 	 fprintf(f,
 		"****************************\n"
 		"*  ROOT-Sim Configuration  *\n"
@@ -216,17 +247,17 @@ static void print_config_to_file(FILE *f){
 }
 
 
-void print_config(void)	{if(master_kernel()) print_config_to_file(stdout);}
+void print_config(void)	{
+	if(master_kernel())
+		print_config_to_file(stdout);
+}
 
 
 /**
-* This function manage the simulation time used to in the statistics, and print to the output file the starting simulation header
-*
-* @author Francesco Quaglia
-* @author Roberto Vitali
-*
+* This function registers when the actual simulation is starting.
 */
-void statistics_start(void) {
+void statistics_start(void)
+{
 	timer_start(simulation_timer);
 }
 
@@ -235,8 +266,10 @@ void statistics_start(void) {
  * Nicely print a size
  *
  * @param size The size in byte
+ * @return A pointer to a per-thread buffer keeping the size.
  */
-static char *format_size(double size) {
+static char *format_size(double size)
+{
 	static __thread char size_str[32];
 	char *fmt;
 	int divisor;
@@ -261,7 +294,8 @@ static char *format_size(double size) {
 }
 
 #define HEADER_STR "------------------------------------------------------------"
-static void print_header(FILE *f, const char *title){
+static void print_header(FILE *f, const char *title)
+{
 	char buf[sizeof(HEADER_STR)] = HEADER_STR;
 	unsigned title_len = strlen(title);
 	assert(title_len < sizeof(HEADER_STR));
@@ -270,7 +304,8 @@ static void print_header(FILE *f, const char *title){
 }
 
 
-static void print_timer_stats(FILE *f, timer *start_timer, timer *stop_timer, double total_time){
+static void print_timer_stats(FILE *f, timer *start_timer, timer *stop_timer, double total_time)
+{
 	char timer_string[TIMER_BUFFER_LEN];
 	timer_tostring(*start_timer, timer_string);
 	fprintf(f, "SIMULATION STARTED AT ..... : %s \n", 		timer_string);
@@ -280,31 +315,31 @@ static void print_timer_stats(FILE *f, timer *start_timer, timer *stop_timer, do
 }
 
 
-static void print_common_stats(FILE *f, struct stat_t *stats_p, bool want_thread_stats, bool want_local_stats){
-
+static void print_common_stats(FILE *f, struct stat_t *stats_p, bool want_thread_stats, bool want_local_stats)
+{
 	double rollback_frequency = (stats_p->tot_rollbacks / stats_p->tot_events);
 	double rollback_length = (stats_p->tot_rollbacks > 0 ? (stats_p->tot_events - stats_p->committed_events) / stats_p->tot_rollbacks : 0);
 	double efficiency = (1 - rollback_frequency * rollback_length) * 100;
 
-	fprintf(f, "TOTAL KERNELS ............. : %d \n", 		n_ker);
-	if(want_local_stats){
-		fprintf(f, "KERNEL ID ................. : %d \n", 	kid);
-		fprintf(f, "LPs HOSTED BY KERNEL....... : %d \n", 	n_prc);
-		fprintf(f, "TOTAL_THREADS ............. : %d \n", 	n_cores);
-	}else{
-		fprintf(f, "TOTAL_THREADS ............. : %d \n", 	n_cores * n_ker);
-		fprintf(f, "TOTAL LPs.................. : %d \n", 	n_prc_tot);
+	fprintf(f, "TOTAL KERNELS ............. : %d \n",		n_ker);
+	if(want_local_stats) {
+		fprintf(f, "KERNEL ID ................. : %d \n",	kid);
+		fprintf(f, "LPs HOSTED BY KERNEL....... : %d \n",	n_prc);
+		fprintf(f, "TOTAL_THREADS ............. : %d \n",	n_cores);
+	} else {
+		fprintf(f, "TOTAL_THREADS ............. : %d \n",	n_cores * n_ker);
+		fprintf(f, "TOTAL LPs.................. : %d \n",	n_prc_tot);
 	}
-	if(want_thread_stats){
-		fprintf(f, "THREAD ID ................. : %d \n", 	local_tid);
-		fprintf(f, "LPs HOSTED BY THREAD ...... : %d \n", 	n_prc_per_thread);
+	if(want_thread_stats) {
+		fprintf(f, "THREAD ID ................. : %d \n",	local_tid);
+		fprintf(f, "LPs HOSTED BY THREAD ...... : %d \n",	n_prc_per_thread);
 	}
 	fprintf(f, "\n");
-	fprintf(f, "TOTAL EXECUTED EVENTS ..... : %.0f \n", 		stats_p->tot_events);
-	fprintf(f, "TOTAL COMMITTED EVENTS..... : %.0f \n", 		stats_p->committed_events);
-	fprintf(f, "TOTAL REPROCESSED EVENTS... : %.0f \n", 		stats_p->reprocessed_events);
-	fprintf(f, "TOTAL ROLLBACKS EXECUTED... : %.0f \n", 		stats_p->tot_rollbacks);
-	fprintf(f, "TOTAL ANTIMESSAGES......... : %.0f \n", 		stats_p->tot_antimessages);
+	fprintf(f, "TOTAL EXECUTED EVENTS ..... : %.0f \n",		stats_p->tot_events);
+	fprintf(f, "TOTAL COMMITTED EVENTS..... : %.0f \n",		stats_p->committed_events);
+	fprintf(f, "TOTAL REPROCESSED EVENTS... : %.0f \n",		stats_p->reprocessed_events);
+	fprintf(f, "TOTAL ROLLBACKS EXECUTED... : %.0f \n",		stats_p->tot_rollbacks);
+	fprintf(f, "TOTAL ANTIMESSAGES......... : %.0f \n",		stats_p->tot_antimessages);
 	fprintf(f, "ROLLBACK FREQUENCY......... : %.2f %%\n",		rollback_frequency * 100);
 	fprintf(f, "ROLLBACK LENGTH............ : %.2f events\n",	rollback_length);
 	fprintf(f, "EFFICIENCY................. : %.2f %%\n",		efficiency);
@@ -331,7 +366,8 @@ static void print_common_stats(FILE *f, struct stat_t *stats_p, bool want_thread
 }
 
 
-static void print_termination_status(FILE *f, int exit_code){
+static void print_termination_status(FILE *f, int exit_code)
+{
 	switch(exit_code){
 		case EXIT_SUCCESS:
 			fprintf(f, "\n--------- SIMULATION CORRECTLY COMPLETED ----------\n");
@@ -342,7 +378,8 @@ static void print_termination_status(FILE *f, int exit_code){
 	}
 }
 
-void print_gvt_stats_file(void){
+void print_gvt_stats_file(void)
+{
 	size_t elems, i;
 	FILE *f_blob = thread_blob_files[local_tid];
 	FILE *f_final = thread_files[STAT_FILE_T_GVT][local_tid];
@@ -353,15 +390,15 @@ void print_gvt_stats_file(void){
 	fprintf(f_final, "%15.15s    %15.15s\n", "\"EVENTS\"", "\"CUMUL EVENTS\"");
 	// prepare to read back the blob
 	rewind(f_blob);
-	do{
+	do {
 		// read the blob file back to the buffer piece to piece
 		elems = fread(gvt_buf.rows, sizeof(struct _gvt_buffer_row_t), GVT_BUFF_ROWS, f_blob);
-		for(i = 0; i < elems; ++i){
+		for(i = 0; i < elems; ++i) {
 			// write line per line
 			fprintf(f_final, " %15lf    %15lf    ", gvt_buf.rows[i].exec_time, gvt_buf.rows[i].gvt);
 			fprintf(f_final, "%15u    %15u\n", gvt_buf.rows[i].committed, gvt_buf.rows[i].cumulated);
 		}
-	}while(!feof(f_blob));
+	} while(!feof(f_blob));
 	fflush(f_final);
 }
 
@@ -375,7 +412,8 @@ void print_gvt_stats_file(void){
 * @param exit_code The exit code of the simulator, used to display a happy
 * 		   or sad termination message
 */
-void statistics_stop(int exit_code) {
+void statistics_stop(int exit_code)
+{
 	register unsigned int i;
 	FILE *f;
 	double total_time;
@@ -505,7 +543,8 @@ void statistics_stop(int exit_code) {
 
 // Sum up all that happened in the last GVT phase, in case it is required,
 // dump a line on the corresponding statistics file
-inline void statistics_on_gvt(double gvt) {
+inline void statistics_on_gvt(double gvt)
+{
 	unsigned int lid;
 	unsigned int committed = 0;
 	static __thread unsigned int cumulated = 0;
@@ -559,7 +598,8 @@ inline void statistics_on_gvt(double gvt) {
 }
 
 
-inline void statistics_on_gvt_serial(double gvt){
+inline void statistics_on_gvt_serial(double gvt)
+{
 	system_wide_stats.gvt_computations += 1.0;
 	system_wide_stats.memory_usage += (double)getCurrentRSS();
 
@@ -578,20 +618,20 @@ inline void statistics_on_gvt_serial(double gvt){
 
 
 #define assign_new_file(destination, format, ...) \
-	do{\
+	do {\
 		safe_asprintf(&name_buf, "%s/" format, rootsim_config.output_dir, ##__VA_ARGS__);\
 		if (((destination) = fopen(name_buf, "w+")) == NULL)\
 			rootsim_error(true, "Cannot open %s\n", name_buf);\
 		rsfree(name_buf);\
-	}while(0)
+	} while(0)
 
 /**
 * This function initializes the Statistics subsystem
 *
 * @author Alessandro Pellegrini
 */
-void statistics_init(void) {
-
+void statistics_init(void)
+{
 	unsigned int i;
 	char *name_buf = NULL;
 
@@ -611,17 +651,17 @@ void statistics_init(void) {
 	}
 	// create the unique file
 #ifdef HAVE_MPI
-	if(n_ker > 1){
+	if(n_ker > 1) {
 		assign_new_file(unique_files[STAT_FILE_U_NODE], STAT_FILE_NAME_NODE"_%u", kid);
 		if(master_kernel())
 			assign_new_file(unique_files[STAT_FILE_U_GLOBAL], STAT_FILE_NAME_GLOBAL);
-	}else
+	} else
 #endif
 	{
 		assign_new_file(unique_files[STAT_FILE_U_NODE], STAT_FILE_NAME_NODE);
 	}
 	// Create files depending on the actual level of verbosity
-	switch(rootsim_config.stats){
+	switch(rootsim_config.stats) {
 		case STATS_ALL:
 		case STATS_LP:
 			thread_files[STAT_FILE_T_LP] = rsalloc(sizeof(FILE *) * n_cores);
@@ -666,7 +706,8 @@ void statistics_init(void) {
 *
 * @author Alessandro Pellegrini
 */
-void statistics_fini(void) {
+void statistics_fini(void)
+{
 	register unsigned int i, j;
 
 	for(i = 0; i < NUM_STAT_FILE_U; i++) {
@@ -689,7 +730,8 @@ void statistics_fini(void) {
 }
 
 
-void statistics_post_data_serial(enum stat_msg_t type, double data) {
+void statistics_post_data_serial(enum stat_msg_t type, double data)
+{
 	switch(type) {
 		case STAT_EVENT:
 			system_wide_stats.tot_events += 1.0;
@@ -777,7 +819,8 @@ void statistics_post_data(struct lp_struct *lp, enum stat_msg_t type, double dat
 }
 
 
-double statistics_get_lp_data(struct lp_struct *lp, unsigned int type) {
+double statistics_get_lp_data(struct lp_struct *lp, unsigned int type)
+{
 	switch(type) {
 
 		case STAT_GET_EVENT_TIME_LP:

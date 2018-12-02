@@ -1,8 +1,33 @@
+/**
+*			Copyright (C) 2008-2018 HPDCS Group
+*			http://www.dis.uniroma1.it/~hpdcs
+*
+*
+* This file is part of ROOT-Sim (ROme OpTimistic Simulator).
+*
+* ROOT-Sim is free software; you can redistribute it and/or modify it under the
+* terms of the GNU General Public License as published by the Free Software
+* Foundation; only version 3 of the License applies.
+*
+* ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
+* WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+* A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+*
+* You should have received a copy of the GNU General Public License along with
+* ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
+* 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+*
+* @file ecs.h
+* @brief Event Cross State Synchronization. This module implements the userspace handler
+*        of the artificially induced memory faults to implement transparent distributed memory.
+* @author Alessandro Pellegrini
+* @author Matteo Principe
+* @author Francesco Quaglia
+*/
 #pragma once
 
-
 typedef struct _ecs_page_node {
-	
+
 } ecs_page_node_t;
 
 typedef struct _ecs_page_request {

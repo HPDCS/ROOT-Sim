@@ -32,24 +32,19 @@
 
 #include <core/core.h>
 
-
 /// Ack window size
 #define WND_BUFFER_LENGTH	10000
 /// Ack window size
 #define WINDOW_DIMENSION	50
 
-
 #define SLAB_MSG_SIZE		512
-
-
 
 /// Number of slots used by MPI for buffering messages
 #define SLOTS	100000
 
-
 /// Simulation Platform Control Messages
 enum _control_msgs {
-	MIN_VALUE_CONTROL=65537,
+	MIN_VALUE_CONTROL = 65537,
 	RENDEZVOUS_START,
 	RENDEZVOUS_ACK,
 	RENDEZVOUS_UNBLOCK,
@@ -65,23 +60,20 @@ enum _control_msgs {
 // Message Codes for PVM
 #define MSG_INIT_MPI		200
 #define MSG_EVENT		2
-//#define MSG_ACKNOWLEDGE		3
+//#define MSG_ACKNOWLEDGE               3
 #define MSG_GVT			10
 #define MSG_UNLOCK		11
 #define MSG_GO_TO_FINAL_BARRIER	12
 #define MSG_GVT_ACK		13
 #define MSG_REDUCE_STATS	20
 
-
-
 // Message Codes for GVT operations
-#define MSG_COMPUTE_GVT		50 /// Master asks for tables
-#define MSG_INFO_GVT		51 /// Slaves reply with their information
-#define MSG_NEW_GVT		52 /// Master notifies the new GVT
-#define MSG_TIME_BARRIER	53 /// Slaves communicate their maximum time barrier
-#define MSG_SNAPSHOT		54 /// Retrieve termination result
+#define MSG_COMPUTE_GVT		50	/// Master asks for tables
+#define MSG_INFO_GVT		51	/// Slaves reply with their information
+#define MSG_NEW_GVT		52	/// Master notifies the new GVT
+#define MSG_TIME_BARRIER	53	/// Slaves communicate their maximum time barrier
+#define MSG_SNAPSHOT		54	/// Retrieve termination result
 #define MSG_FINI			55
-
 
 #define INIT_OUTGOING_MSG	10
 
@@ -95,16 +87,17 @@ typedef struct _outgoing_t {
 	simtime_t *min_in_transit;
 } outgoing_t;
 
-extern void ParallelScheduleNewEvent(unsigned int, simtime_t, unsigned int, void *, unsigned int);
+extern void ParallelScheduleNewEvent(unsigned int, simtime_t, unsigned int,
+				     void *, unsigned int);
 
 /* Functions invoked by other modules */
 extern void communication_init(void);
 extern void communication_fini(void);
 extern void comm_finalize(void);
-extern void Send(msg_t *msg);
+extern void Send(msg_t * msg);
 extern simtime_t receive_time_barrier(simtime_t max);
 extern int messages_checking(void);
-extern void insert_outgoing_msg(msg_t *msg);
+extern void insert_outgoing_msg(msg_t * msg);
 extern void send_outgoing_msgs(struct lp_struct *);
 extern void send_antimessages(struct lp_struct *, simtime_t);
 extern void communication_fini_thread(void);
@@ -112,25 +105,23 @@ extern void communication_init_thread(void);
 
 /* In window.c */
 extern void windows_init(void);
-extern void register_msg(msg_t *msg);
+extern void register_msg(msg_t * msg);
 extern void receive_ack(void);
 extern void send_forced_ack(void);
 extern simtime_t local_min_timestamp(void);
 extern void start_ack_timer(void);
 
-
-extern struct lp_struct *which_slab_to_use(GID_t sender, GID_t receiver);
-extern void msg_hdr_release(msg_hdr_t *msg);
+extern void msg_hdr_release(msg_hdr_t * msg);
 extern msg_t *get_msg_from_slab(struct lp_struct *);
 extern msg_hdr_t *get_msg_hdr_from_slab(struct lp_struct *);
-extern void pack_msg(msg_t **msg, GID_t sender, GID_t receiver, int type, simtime_t timestamp, simtime_t send_time, size_t size, void *payload);
-extern void msg_to_hdr(msg_hdr_t *hdr, msg_t *msg);
-extern void hdr_to_msg(msg_hdr_t *hdr, msg_t *msg);
-extern void msg_release(msg_t *msg);
-extern void dump_msg_content(msg_t *msg);
+extern void pack_msg(msg_t ** msg, GID_t sender, GID_t receiver, int type, simtime_t timestamp, simtime_t send_time, size_t size, void *payload);
+extern void msg_to_hdr(msg_hdr_t * hdr, msg_t * msg);
+extern void hdr_to_msg(msg_hdr_t * hdr, msg_t * msg);
+extern void msg_release(msg_t * msg);
+extern void dump_msg_content(msg_t * msg);
 
 #ifndef NDEBUG
-extern void validate_msg(msg_t *msg);
+extern void validate_msg(msg_t * msg);
 #else
 #define validate_msg(msg)
 #endif

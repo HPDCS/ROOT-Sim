@@ -28,11 +28,11 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, event_t *c
 			new_event.sent_at = now;
 			new_event.pointer = state->pointer;
 			new_event.sender = me;
-			
+
 			int recv = FindReceiver(TOPOLOGY_MESH);
-		
+
 			timestamp = now + Expent(DELAY);
-	
+
 			ScheduleNewEvent(recv, timestamp, PACKET, &new_event, sizeof(new_event));
 		}
 	}

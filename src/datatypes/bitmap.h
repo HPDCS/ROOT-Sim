@@ -33,9 +33,9 @@
 #ifndef __BITMAP_DATATYPE_H_
 #define __BITMAP_DATATYPE_H_
 
-#include <limits.h> // for CHAR_BIT
-#include <memory.h> // for memset()
-#include <core/core.h>	// for UNION_CAST()
+#include <limits.h>		// for CHAR_BIT
+#include <memory.h>		// for memset()
+#include <core/core.h>		// for UNION_CAST()
 
 /// This defines a generic bitmap.
 typedef unsigned char rootsim_bitmap;
@@ -201,4 +201,4 @@ typedef unsigned char rootsim_bitmap;
 		}															\
 	})
 
-#endif /* __BITMAP_DATATYPE_H_ */
+#endif				/* __BITMAP_DATATYPE_H_ */

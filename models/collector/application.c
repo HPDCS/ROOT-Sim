@@ -28,11 +28,11 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, event_t *c
 			new_event.sent_at = now;
 			new_event.pointer = state->pointer;
 			new_event.sender = me;
-			
+
 			int recv = FindReceiver(TOPOLOGY_STAR);
-		
+
 			timestamp = now + Expent(DELAY);
-	
+
 			//if(content != NULL && content->pointer!=NULL && me!=content->sender)
 			//	printf("\t \t LP[%d] mem of %d = %d\n",me,content->sender,content->pointer[0]);
 

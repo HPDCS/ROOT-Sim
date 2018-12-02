@@ -29,8 +29,6 @@
 #include <core/core.h>
 #include <scheduler/process.h>
 
-extern struct lp_struct * smallest_timestamp_first(void);
+extern struct lp_struct *smallest_timestamp_first(void);
 
-#endif /* _SFT_H */
-
-
+#endif				/* _SFT_H */
