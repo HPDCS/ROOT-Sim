@@ -190,7 +190,7 @@ void ParallelScheduleNewEvent(unsigned int gid_receiver, simtime_t timestamp, un
 *
 * @author Francesco Quaglia
 *
-* @param lid The Logical Process Id
+* @param lp A pointer to the LP lp_struct for which antimessages should be sent
 * @param after_simtime The simulation time instant after which to send antimessages
 */
 void send_antimessages(struct lp_struct *lp, simtime_t after_simtime)

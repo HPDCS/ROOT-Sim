@@ -44,7 +44,8 @@
 /**
 * This function is used to create a state log to be added to the LP's log chain
 *
-* @param lid The Light Process Identifier
+* @param lp A pointer to the lp_struct of the LP for which a checkpoint
+*           is to be taken.
 */
 bool LogState(struct lp_struct *lp)
 {
@@ -139,14 +140,14 @@ void RestoreState(struct lp_struct *lp, state_t * restore_state)
 * @author Francesco Quaglia
 * @author Alessandro Pellegrini
 *
-* @param lid The id of the Light Process
-* @param state_buffer The simulation state to be passed to the LP
+* @param lp A pointer to the LP's lp_struct for which we want to silently
+*           reprocess already-executed events
 * @param evt A pointer to the event from which start the re-execution
-* @param final_evt A pointer to the first event which should not be reprocessed in silent execution
+* @param final_evt A pointer to the first event which should *not* be reprocessed in silent execution
 *
 * @return The number of events re-processed during the silent execution
 */
-unsigned int silent_execution(struct lp_struct *lp, msg_t * evt, msg_t * final_evt)
+unsigned int silent_execution(struct lp_struct *lp, msg_t *evt, msg_t *final_evt)
 {
 	unsigned int events = 0;
 	unsigned short int old_state;
@@ -191,7 +192,7 @@ unsigned int silent_execution(struct lp_struct *lp, msg_t * evt, msg_t * final_e
 * @author Francesco Quaglia
 * @author Alessandro Pellegrini
 *
-* @param lid The Logical Process Id
+* @param lp A pointer to the lp_struct of the LP to rollback
 */
 void rollback(struct lp_struct *lp)
 {
@@ -241,13 +242,17 @@ void rollback(struct lp_struct *lp)
 }
 
 /**
-* This function computes the time barrier, namely the first state snapshot
-* which is associated with a simulation time <= that the passed simtime
+* This function computes a time barrier, namely the first state snapshot
+* which is associated with a simulation time <= than the simtime value
+* passed as an argument.
+* The time barrier, in the runtime environment, is used to safely install
+* a new computed GVT.
 *
 * @author Francesco Quaglia
 * @author Alessandro Pellegrini
 *
-* @param lid The light Process Id
+* @param lp A pointer to the lp_struct of the LP for which we are looking
+*           for the current time barrier
 * @param simtime The simulation time to be associated with a state barrier
 * @return A pointer to the state that represents the time barrier
 */
@@ -314,7 +319,8 @@ void set_checkpoint_mode(int ckpt_mode)
 * @author Francesco Quaglia
 * @author Alessandro Pellegrini
 *
-* @param lid The Logical Process Id
+* @param lp A pointer to the LP's lp_struct which should have its
+*           checkpoint period changed.
 * @param period The new checkpoint period
 */
 void set_checkpoint_period(struct lp_struct *lp, int period)
@@ -329,7 +335,8 @@ void set_checkpoint_period(struct lp_struct *lp, int period)
 *
 * @author Alessandro Pellegrini
 *
-* @param lid The Logical Process Id
+* @param lp A pointer to the lp_struct of the LP for which the checkpoint
+*           shold be forced after the next call to LogState()
 */
 void force_LP_checkpoint(struct lp_struct *lp)
 {

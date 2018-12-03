@@ -49,7 +49,8 @@
 * @author Alessandro Pellegrini
 * @author Francesco Quaglia
 *
-* @param lid The Logicall Process id
+* @param lp A pointer to the LP's lp_struct for which we want to discover
+*           the timestamp of the next event
 * @return The timestamp of the next-to-execute event
 */
 simtime_t next_event_timestamp(struct lp_struct *lp)
@@ -79,7 +80,8 @@ simtime_t next_event_timestamp(struct lp_struct *lp)
 * @author Alessandro Pellegrini
 * @author Francesco Quaglia
 *
-* @param lid The Light Process id
+* @param lp A pointer to the LP's lp_struct which should have its bound
+*           updated in order to point to the next event to be processed
 * @return The pointer to the event is going to be processed
 */
 msg_t *advance_to_next_event(struct lp_struct *lp)
@@ -277,7 +279,8 @@ void process_bottom_halves(void)
 *
 * @author Alessandro Pellegrini
 *
-* @param lid The local Id of the Light Process
+* @param lp A pointer to the LP's lp_struct for which we want to generate
+*           a system-wide unique mark
 * @return A value to be used as a unique mark for the message within the LP
 */
 unsigned long long generate_mark(struct lp_struct *lp)

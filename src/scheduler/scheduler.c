@@ -242,10 +242,8 @@ void initialize_worker_thread(void)
 *
 * @date November 11, 2013
 *
-* @param lp The id of the LP to be scheduled
-* @param lvt The lvt at which the LP is scheduled
+* @param next A pointer to the lp_struct of the LP which has to be activated
 * @param evt A pointer to the event to be processed by the LP
-* @param state The simulation state to be passed to the LP
 */
 void activate_LP(struct lp_struct *next, msg_t * evt)
 {

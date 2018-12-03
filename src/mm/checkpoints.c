@@ -63,7 +63,8 @@
 * @author Alessandro Pellegrini
 * @author Roberto Vitali
 *
-* @param the_lid The logical process' local identifier
+* @param lp A pointer to the lp_struct of the LP for which we are taking
+*           a full log of the buffers keeping the current simulation state.
 * @return A pointer to a malloc()'d memory area which contains the full log of the current simulation state,
 *         along with the relative meta-data which can be used to perform a restore operation.
 *
@@ -183,7 +184,8 @@ void *log_full(struct lp_struct *lp)
 *
 * @author Alessandro Pellegrini
 *
-* @param lid The logical process' local identifier
+* @param lp A pointer to the lp_struct of the LP for which we want to take
+*           a snapshot of the buffers used by the model to keep state variables.
 * @return A pointer to a malloc()'d memory area which contains the log of the current simulation state,
 *         along with the relative meta-data which can be used to perform a restore operation.
 */
@@ -212,8 +214,10 @@ void *log_state(struct lp_struct *lp)
 * @author Roberto Vitali
 * @author Alessandro Pellegrini
 *
-* @param the_lid The logical process' local identifier
-* @param ckpt a pointer to the simulation state which must be restored in the logical process
+* @param lp A pointer to the lp_struct of the LP for which we are restoring
+*           the content of simulation state buffers, taking it from the checkpoint
+* @param ckpt A pointer to the checkpoint to take the previous content of
+*             the buffers to be restored
 */
 void restore_full(struct lp_struct *lp, void *ckpt)
 {
@@ -343,11 +347,12 @@ void restore_full(struct lp_struct *lp, void *ckpt)
 * @author Alessandro Pellegrini
 * @author Roberto Vitali
 *
-* @param lid The logical process' local identifier
+* @param lp A pointer to the lp_struct of the LP for which we are restoring
+*           model-specific buffers keeping the simulation state
 * @param state_queue_node a pointer to a node in the state queue keeping the state
 *        which must be restored in the logical process live image
 */
-void log_restore(struct lp_struct *lp, state_t * state_queue_node)
+void log_restore(struct lp_struct *lp, state_t *state_queue_node)
 {
 	statistics_post_data(lp, STAT_RECOVERY, 1.0);
 	restore_full(lp, state_queue_node->log);

@@ -65,14 +65,7 @@ static void malloc_area_init(malloc_area * m_area, size_t size, int num_chunks)
 }
 
 /**
-* This function inizializes a malloc_state
-*
-* @author Roberto Toccaceli
-* @author Francesco Quaglia
-* @author Alessandro Pellegrini
-* @author Roberto Vitali
-*
-* @param state The pointer to the malloc_state to initialize
+* This function inizializes a malloc_state.
 */
 malloc_state *malloc_state_init(void)
 {
@@ -669,7 +662,8 @@ void *__wrap_realloc(void *ptr, size_t size)
 *
 * @author Roberto Vitali
 *
-* @param size The size of the allocation
+* @param nmemb The number of elements to be allocated
+* @param size The size of each allocated member
 * @return A pointer to the newly allocated buffer
 *
 */

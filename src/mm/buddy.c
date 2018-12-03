@@ -67,6 +67,8 @@ static inline size_t next_power_of_2(size_t size)
 }
 
 /** allocate a new buddy structure
+ * @param lp A pointer to the lp_struct of the LP from whose buddy we are
+ *           allocating memory
  * @param num_of_fragments number of fragments of the memory to be managed
  * @return pointer to the allocated buddy structure */
 struct buddy *buddy_new(struct lp_struct *lp, size_t num_of_fragments)

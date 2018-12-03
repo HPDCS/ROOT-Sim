@@ -95,13 +95,17 @@ static struct stat_t system_wide_stats = {.gvt_round_time_min = INFTY};
 struct stat_t global_stats = {.gvt_round_time_min = INFTY};
 #endif
 
-/*!
- * @brief This is a pseudo asprintf() implementation needed in order to stop GCC 8 from complaining
- * @param format the format string as in the real asprintf()
- * @param ... the arguments list as in the real asprintf()
- * @returns a mallocated string containing the snprintf()-processed string
+/**
+ * This is a pseudo asprintf() implementation needed in order to stop GCC 8 from complaining
  *
- *	TODO: transform into a function for safety
+ * @param ret_addr A char ** pointer where the function stores the
+ *                 address of a large-enough string to hold the output
+ * @param format The format string as in the real asprintf()
+ * @param ... The arguments list as in the real asprintf()
+ *
+ * @return a malloc'd string containing the snprintf()-processed string
+ *
+ * @todo tranform into a function for safety.
  * GCC 8 cares a lot for our security so we have to be sure snprintf() doesn't truncate.
  */
 #define safe_asprintf(ret_addr, format, ...) ({					\
