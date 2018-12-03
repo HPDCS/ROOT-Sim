@@ -340,35 +340,25 @@ void statistics_stop(int exit_code) {
 		if(rootsim_config.stats == STATS_LP || rootsim_config.stats == STATS_ALL) {
 			f = get_file(STAT_PER_THREAD, LP_STATS);
 
-			fprintf(f, "#\"GID\"\t"
-				   "\"LID\"\t"
-				   "\"TOTAL EVENTS\"\t"
-				   "\"COMMITTED EVENTS\"\t"
-				   "\"REPROCESSED EVENTS\"\t"
-				   "\"ROLLBACKS\"\t"
-				   "\"ANTIMESSAGES\"\t"
-				   "\"AVERAGE EVENT COST\"\t"
-				   "\"AVERAGE CKPT COST\"\t"
-				   "\"AVERAGE RECOVERY COST\"\t"
-				   "\"IDLE CYCLES\"\t"
-				   "\n");
-
-
 			// TODO: switch to foreach
 			for(i = 0; i < n_prc_per_thread; i++) {
 				LID_t the_lid = LPS_bound(i)->lid;
 				unsigned int lid = lid_to_int(the_lid);
-				fprintf(f, "%d\t", gid_to_int(LidToGid(the_lid)));
-				fprintf(f, "%d\t", lid);
-				fprintf(f, "%d\t", (int)lp_stats[lid].tot_events);
-				fprintf(f, "%d\t", (int)lp_stats[lid].committed_events);
-				fprintf(f, "%d\t", (int)lp_stats[lid].reprocessed_events);
-				fprintf(f, "%d\t", (int)lp_stats[lid].tot_rollbacks);
-				fprintf(f, "%d\t", (int)lp_stats[lid].tot_antimessages);
-				fprintf(f, "%f\t", lp_stats[lid].event_time / lp_stats[lid].tot_events);
-				fprintf(f, "%f\t", lp_stats[lid].ckpt_time / lp_stats[lid].tot_ckpts);
-				fprintf(f, "%f\t", ((int)lp_stats[lid].tot_rollbacks > 0 ? lp_stats[lid].recovery_time / lp_stats[lid].tot_recoveries : 0));
-				fprintf(f, "%d\t", (int)lp_stats[lid].idle_cycles);
+				fprintf(f, "GID........... %d\n", gid_to_int(LidToGid(the_lid)));
+				fprintf(f, "LID........... %d\n", lid);
+				fprintf(f, "TOTAL EVENTS........... %d\n", (int)lp_stats[lid].tot_events);
+				fprintf(f, "COMMITTED EVENTS........... %d\n", (int)lp_stats[lid].committed_events);
+				fprintf(f, "REPROCESSED EVENTS........... %d\n", (int)lp_stats[lid].reprocessed_events);
+				fprintf(f, "ROLLBACKS........... %d\n", (int)lp_stats[lid].tot_rollbacks);
+				fprintf(f, "ANTIMESSAGES........... %d\n", (int)lp_stats[lid].tot_antimessages);
+				fprintf(f, "AVERAGE EVENT COST........... %f\n", lp_stats[lid].event_time / lp_stats[lid].tot_events);
+				fprintf(f, "AVERAGE CKPT COST........... %f\n", lp_stats[lid].ckpt_time / lp_stats[lid].tot_ckpts);
+				fprintf(f, "AVERAGE RECOVERY COST........... %f\n", ((int)lp_stats[lid].tot_rollbacks > 0 ? lp_stats[lid].recovery_time / lp_stats[lid].tot_recoveries : 0));
+				fprintf(f, "IDLE CYCLES........... %d\n", (int)lp_stats[lid].idle_cycles);	
+				fprintf(f, "ECS ADDITIONAL PAGE FAULTS........... %f\n",  lp_stats[lid].ecs_additional_page_faults);
+				fprintf(f, "ECS CONTIGUOUS PAGE FAULTS........... %f\n",  lp_stats[lid].ecs_contiguous_faults);
+				fprintf(f, "ECS SCATTERED PAGE FAULTS........... %f\n",  lp_stats[lid].ecs_scattered_faults);
+				fprintf(f, "ECS NO PREFETCH PAGES COUNT........... %f\n", lp_stats[lid].ecs_no_prefetch_counter);
 				fprintf(f, "\n");
 			}
 		}
@@ -747,7 +737,9 @@ void statistics_post_lp_data(LID_t the_lid, unsigned int type, double data) {
 			case STAT_RECOVERY:
 				lp_stats_gvt[lid].tot_recoveries++;
 				break;
-
+			case STAT_ECS:
+				//TODO: remove this
+				break;
 			case STAT_RECOVERY_TIME:
 				lp_stats_gvt[lid].recovery_time += data;
 				break;
@@ -759,8 +751,14 @@ void statistics_post_lp_data(LID_t the_lid, unsigned int type, double data) {
 			case STAT_SILENT:
 				lp_stats_gvt[lid].reprocessed_events += data;
 				break;
-			case STAT_ECS:
-				lp_stats_gvt[lid].tot_ecs += data;
+			case STAT_ECS_FAULT:
+				lp_stats[lid].ecs_additional_page_faults += 0.1 * data + 0.9*lp_stats[lid].ecs_additional_page_faults;
+				break;
+			case STAT_ECS_CONTIGUOUS:
+				lp_stats[lid].ecs_contiguous_faults += 0.1*data + 0.9*lp_stats[lid].ecs_contiguous_faults;
+				break;
+			case STAT_ECS_SCATTERED:
+				lp_stats[lid].ecs_scattered_faults += 0.1*data + 0.9*lp_stats[lid].ecs_scattered_faults;
 				break;
 
 			default:

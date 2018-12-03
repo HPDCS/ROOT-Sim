@@ -457,4 +457,32 @@ void do_free(LID_t lid, malloc_state *mem_pool, void *ptr) {
 	// TODO: when do we free unrecoverable areas?
 }
 
+void dump_malloc_area(malloc_area *area){
+	printf("malloc area is: \n");
+	printf("\t is_recoverable: %d\n", area->is_recoverable);
+	printf("\t chunk_size: %d\n", area->chunk_size);
+	printf("\t alloc_chunks: %d\n", area->alloc_chunks);
+	printf("\t dirty_chunks: %d\n", area->dirty_chunks);
+	printf("\t next_chunk: %d\n", area->next_chunk);
+	printf("\t num_chunks: %d\n", area->num_chunks);
+	printf("\t idx: %d\n", area->idx);
+	printf("\t state_changed: %d\n",area->state_changed);
+	printf("\t last_access: %d\n", area->last_access);
+	printf("\t prev: %d\n", area->prev);
+   	printf("\t next %d\n", area->next);	
+}
 
+void dump_malloc_state(malloc_state *state){
+	printf("malloc state is: \n");
+	printf("\t is_incremental: %d\n", state->is_incremental);
+	printf("\t total_log_size: %d\n", state->total_log_size);
+	printf("\t total_inc_size: %d\n", state->total_inc_size);
+	printf("\t bitmap_size: %d\n", state->bitmap_size);
+	printf("\t dirty_bitmap_size: %d\n", state->dirty_bitmap_size);
+	printf("\t num_areas: %d\n", state->num_areas);
+	printf("\t max_num_areas: %d\n", state->max_num_areas);
+	printf("\t busy_areas: %d\n", state->busy_areas);
+	printf("\t dirty_areas: %d\n", state->dirty_areas);
+	printf("\t timestamp: %d\n", state->timestamp);
+   	printf("\t areas: %p\n", state->areas);	
+}

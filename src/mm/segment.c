@@ -34,7 +34,7 @@
 static unsigned char *init_address = (unsigned char *)(10LL << 39);
 
 void *get_base_pointer(GID_t gid){
-//	printf("get base pointer for lid % d (gid %d) returns: %p\n",GidToLid(gid),gid,init_address + PER_LP_PREALLOCATED_MEMORY * gid);
+	//printf("get base pointer for lid % d (gid %d) returns: %p\n", GidToLid(gid), gid, init_address + PER_LP_PREALLOCATED_MEMORY * gid_to_int(gid));
 	return init_address + PER_LP_PREALLOCATED_MEMORY * gid_to_int(gid);
 }
 

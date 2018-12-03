@@ -165,9 +165,6 @@ struct _malloc_state {
 
 typedef struct _malloc_state malloc_state;
 
-
-
-
 #define is_incremental(ckpt) (((malloc_state *)ckpt)->is_incremental == true)
 
 #define get_top_pointer(ptr) ((long long *)((char *)ptr - sizeof(long long)))
@@ -247,6 +244,6 @@ extern malloc_state **recoverable_state;
 // This is used to help ensure that the platform is not using malloc.
 #pragma GCC poison malloc free realloc calloc
 
-
-
+void dump_malloc_state(malloc_state *);
+void dump_malloc_area(malloc_area *);
 #endif

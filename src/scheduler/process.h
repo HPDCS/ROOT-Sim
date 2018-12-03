@@ -129,6 +129,12 @@ typedef struct _LP_state {
 	GID_t			ECS_synch_table[MAX_CROSS_STATE_DEPENDENCIES];
 	unsigned int 	ECS_index;
 	list(ecs_page_node_t)	ECS_page_list;
+	list(ecs_page_node_t)	ECS_prefetch_list;
+	simtime_t		ECS_last_prefetch_switch;
+	int				ECS_current_prefetch_mode;
+	int				ECS_additional_page_faults;
+	int				ECS_contiguous_faults;
+	int				ECS_scattered_faults;
 	#endif
 
 	unsigned long long	wait_on_rendezvous;

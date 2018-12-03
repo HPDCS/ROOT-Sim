@@ -246,7 +246,9 @@ void initialize_LP(LID_t lp) {
 	LPS(lp)->queue_out = new_list(msg_hdr_t);
 	LPS(lp)->queue_states = new_list(state_t);
 	LPS(lp)->rendezvous_queue = new_list(msg_t);
-
+	LPS(lp)->ECS_page_list = new_list(ecs_page_node_t);
+	LPS(lp)->ECS_no_prefetch_count = 0;
+	LPS(lp)->ECS_additional_faults = 0;
 	// Initialize the LP lock
 	spinlock_init(&LPS(lp)->lock);
 
@@ -262,13 +264,6 @@ void initialize_LP(LID_t lp) {
 	// No read/write dependencies open so far for the LP. The current lp is always opened
 	LPS(lp)->ECS_index = 0;
 	LPS(lp)->ECS_synch_table[0] = LidToGid(lp); // LidToGid for distributed ECS
-	LPS(lp)->ECS_page_list = new_list(ecs_page_node_t);
-	LPS(lp)->ECS_prefetch_list = new_list(ecs_page_node_t);
-	LPS(lp)->ECS_additional_page_faults = 0;
-	LPS(lp)->ECS_current_prefetch_mode = NO_PREFETCH;
-	LPS(lp)->ECS_contiguous_faults = 0;
-	LPS(lp)->ECS_scattered_faults = 0;
-	LPS(lp)->ECS_last_prefetch_switch = 0;
 	#endif
 
 	// Create user thread

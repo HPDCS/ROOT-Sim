@@ -47,13 +47,16 @@
 #include <scheduler/scheduler.h>
 #include <scheduler/process.h>
 #include <communication/communication.h>
+#include <communication/gvt.h>
 #include <arch/ult.h>
 #include <arch/x86.h>
+#include <statistics/statistics.h>
 
 #include <arch/linux/modules/cross_state_manager/cross_state_manager.h>
 
 #define foo(x) printf(x "\n"); fflush(stdout)
-
+#define float_to_int(x) ((x)>=0?(int)((x)+0.5):(int)((x)-0.5))
+#define treshold(x) ((x * alpha) + 100 - 1) / 100
 // TODO: trovare un modo elegante per utilizzare soltanto LID dentro questo modulo
 
 #define __NR_OPEN 2
@@ -71,8 +74,120 @@ static __thread int pgd_ds;
 /// Per Worker-Thread Fault Info Structure
 static __thread fault_info_t fault_info;
 
-// Declared in ecsstub.S
 extern void rootsim_cross_state_dependency_handler(void);
+
+void populate_prefetch_list(long long base_pointer, long long page_count, GID_t gid)
+{
+	ecs_page_node_t *page_node;
+
+	page_node = rsalloc(sizeof(ecs_page_node_t) + bitmap_required_size(page_count));
+	page_node->page_address = base_pointer;
+	page_node->pages = page_count;
+	list_insert_head(LPS(GidToLid(gid))->ECS_prefetch_list, page_node);
+}
+
+ecs_prefetch_t* compute_scattered_pointers(malloc_state *state, GID_t gid, void *fault_address, long long tot_pages, ecs_prefetch_t * pfr)
+{
+	int i;
+	double temp = 0;
+	long long *base_pointer;
+	long long page_count;
+	long long *end_pointer;
+	long long segment_base_pointer;
+	malloc_area *current_area;
+	
+	//if base_pointer is perfectly aligned with segment, do not perform the subtraction.
+	segment_base_pointer = (state->busy_areas) == 1? 0 : (long long) get_base_pointer(gid);
+	for(i = 0; i < state->num_areas && tot_pages > 0; i++){
+		current_area = &(state->areas[i]);
+		if(current_area->area != NULL){
+			
+			base_pointer =  (void *)(((long long) current_area->area - segment_base_pointer) & (~((long long)PAGE_SIZE - 1))); 
+			end_pointer =  (void *)(((long long) current_area->area - segment_base_pointer) + ((current_area->chunk_size * current_area->alloc_chunks) & (~((long long)PAGE_SIZE - 1))) + PAGE_SIZE);
+			page_count = (((long long) end_pointer) & (~((long long)PAGE_SIZE-1)))/PAGE_SIZE - (long long) base_pointer/PAGE_SIZE + 1;
+			
+			temp = (page_count + ((current_area->num_chunks * current_area->chunk_size) / PAGE_SIZE) -1) / (double)((current_area->num_chunks * current_area->chunk_size) / max_pages); 
+			
+			int counter;
+			if(page_count < (int)temp*tot_pages){
+				counter = page_count;
+				tot_pages -= page_count;
+			}else{
+				counter = (int)temp*tot_pages;
+				tot_pages = 0;
+			}
+
+			//populate_prefetch_list(base_pointer, counter, gid);
+			pfr = add_prefetch_page(pfr, base_pointer, counter, 1);
+			return pfr;
+			}
+		}
+	return NULL;
+}
+ecs_prefetch_t* compute_contiguous_pointers(malloc_state *state, GID_t gid, void *fault_address, int tot_pages, ecs_prefetch_t * pfr)
+{
+	int i;
+	malloc_area *current_area;
+	double temp;
+	long long *base_pointer;
+	long long *end_pointer;
+	long long page_count;
+	long long segment_base_pointer;
+
+
+	//if base_pointer is perfectly aligned with segment, do not perform the subtraction.
+	segment_base_pointer = (state->busy_areas) == 1? 0 : (long long) get_base_pointer(gid);
+	for(i = 0; i < state->num_areas; i++){
+		current_area = &(state->areas[i]);
+		if(current_area != NULL){
+			base_pointer  = (((long long) current_area->area - segment_base_pointer) & (~((long long)PAGE_SIZE - 1))); 
+			if(base_pointer == fault_address){
+				//move to the next page address w.r.t the original faulting one
+				base_pointer =(((long long) current_area->area + (long long) PAGE_SIZE) & (~((long long)PAGE_SIZE - 1)));  
+				end_pointer = (((long long) current_area->area - segment_base_pointer) + ((current_area->chunk_size * current_area->alloc_chunks) & (~((long long)PAGE_SIZE - 1))) + PAGE_SIZE);
+				page_count = (((long long) end_pointer) & (~((long long)PAGE_SIZE-1)))/PAGE_SIZE - (long long)base_pointer/PAGE_SIZE + 1;
+				
+				temp = (page_count + ((current_area->num_chunks * current_area->chunk_size) / PAGE_SIZE) -1) / (double)((current_area->num_chunks * current_area->chunk_size) / max_pages); 
+			
+				int counter;
+				if(page_count < (int)temp*tot_pages){
+					counter = page_count;
+					tot_pages -= page_count;
+				}else{
+					counter = tot_pages;
+					tot_pages = 0;
+				}
+
+				//populate_prefetch_list(base_pointer, counter, gid);
+				pfr = add_prefetch_page(pfr, base_pointer, counter, 1);
+				return pfr;
+			}
+		}
+	}
+	return NULL;
+}
+
+ecs_prefetch_t* compute_prefetch_data(malloc_state *state, GID_t gid, int prefetch_mode, void *fault_address, int write_mode, ecs_prefetch_t * pfr)
+{
+	int N = LPS(GidToLid(gid))->ECS_additional_page_faults;
+	ecs_prefetch_t * tmp_pfr = prefetch_init();
+	pfr = prefetch_init();
+
+	//as first one, add original faulting page
+	pfr = add_prefetch_page(pfr, (long long) fault_address, 1, write_mode);
+	
+	if(prefetch_mode == SCATTERED)
+		tmp_pfr = compute_scattered_pointers(state, gid, fault_address, N, pfr);
+	else if(prefetch_mode == CONTIGUOUS)
+		tmp_pfr = compute_contiguous_pointers(state, gid, fault_address, N, pfr);
+	else
+		tmp_pfr = NULL;
+	
+	if(tmp_pfr != NULL)
+		return tmp_pfr;
+	else
+		return pfr;
+}
 
 static ecs_page_node_t *add_page_node(long long address, size_t pages, LID_t lid) {
 	ecs_page_node_t *page_node, *p;
@@ -120,8 +235,6 @@ void ecs_secondary(GID_t target_gid) {
 	unsigned long i=0;
 	msg_t *control_msg;
 	ecs_page_request_t page_req;
-	ecs_page_request_t *the_req;
-	unsigned int j;
 
 	// Disassemble the faulting instruction to get necessary information
 	x86_disassemble_instruction(faulting_insn, &i, &insn_disasm, DATA_64 | ADDR_64);
@@ -137,8 +250,59 @@ void ecs_secondary(GID_t target_gid) {
 	page_req.base_address = (void *)((target_address) & (~((long long)PAGE_SIZE-1)));
 	page_req.count = ((target_address + span) & (~((long long)PAGE_SIZE-1)))/PAGE_SIZE - (long long)page_req.base_address/PAGE_SIZE + 1;
 
-	//that's a try!
-	//page_req.count = page_req.count * 2; //TODO: remove!!!
+	int current_mode = LPS(current_lp)->ECS_current_prefetch_mode;
+
+	//current_mode = SCATTERED;
+	//goto out;
+
+	if(fault_info.fault_type == ECS_CHANGE_PAGE_PRIVILEGE){
+		current_mode = NO_PREFETCH;
+		goto out;
+	}
+
+	if(LPS(current_lp)->ECS_additional_page_faults < 1 || LPS(current_lp)->from_last_ckpt < 5){ // <--- dafuuq??
+		LPS(current_lp)->ECS_additional_page_faults++;
+		current_mode = NO_PREFETCH;
+	}
+	else{
+		if(current_lvt - LPS(current_lp)->ECS_last_prefetch_switch > 100){ //<-- dafuqq??
+				
+				//printf("MODE IS %d, cont %d scatt %d, np faults %d, tresh %d at time %llu, lp %d\n", current_mode, LPS(current_lp)->ECS_contiguous_faults, LPS(current_lp)->ECS_scattered_faults, LPS(current_lp)->ECS_additional_page_faults, treshold(LPS(current_lp)->ECS_additional_page_faults), current_lvt, LidToGid(current_lp).id);
+			//	fflush(stdout);
+			if(current_mode == NO_PREFETCH){
+				current_mode = CONTIGUOUS;
+				LPS(current_lp)->ECS_contiguous_faults++;
+				goto out;	
+			}
+
+			if(current_mode == CONTIGUOUS){
+
+				if(!(LPS(current_lp)->ECS_contiguous_faults <= LPS(current_lp)->ECS_additional_page_faults)){
+					current_mode = SCATTERED;
+					LPS(current_lp)->ECS_scattered_faults++;
+					goto out;
+				}
+
+				LPS(current_lp)->ECS_contiguous_faults++;
+				goto out;
+			}
+
+			if(current_mode == SCATTERED){ 
+				
+				if(!(LPS(current_lp)->ECS_scattered_faults <= LPS(current_lp)->ECS_additional_page_faults)){				
+					current_mode = NO_PREFETCH;
+					LPS(current_lp)->ECS_additional_page_faults++;
+					goto out;
+				}
+
+				LPS(current_lp)->ECS_scattered_faults++;
+			}
+out:
+			page_req.prefetch_mode = current_mode;
+			LPS(current_lp)->ECS_current_prefetch_mode = current_mode;
+			LPS(current_lp)->ECS_last_prefetch_switch = current_lvt;
+		}
+	}
 	
 	printf("ECS Page Fault: LP %d accessing %d pages from %p ( %p )on LP %lu in %s mode\n", LidToGid(current_lp), page_req.count, (void *)page_req.base_address, (void*) target_address, fault_info.target_gid, (page_req.write_mode ? "write" : "read"));
 	fflush(stdout);
@@ -196,6 +360,31 @@ static ecs_writeback_t *writeback_init(void) {
 	return wb;
 }
 
+static ecs_prefetch_t * prefetch_init(void){
+	ecs_prefetch_t *pfr;
+	pfr = rsalloc(sizeof(ecs_prefetch_t) + INITIAL_WRITEBACK_SLOTS * sizeof(prefetch_page_t));
+	pfr->count = 0;
+	pfr->total = INITIAL_WRITEBACK_SLOTS;
+
+	return pfr;
+}
+
+static ecs_prefetch_t *add_prefetch_page(ecs_prefetch_t *pfr, long long address, int span, int write_mode){
+	int j;
+	for(j = 0; j < span; j++){
+		printf("adding page %p\n", (void *)(address + j* PAGE_SIZE));
+		pfr->pages[pfr->count].address = address + j * PAGE_SIZE;
+		pfr->pages[pfr->count].write_mode = write_mode;
+		memcpy(pfr->pages[pfr->count].page, (void *)pfr->pages[pfr->count].address, PAGE_SIZE);                                                                  
+		pfr->count++;                                                                                                                                           
+		if(pfr->count == pfr->total) {                                                                                                                          
+			pfr = rsrealloc(pfr, sizeof(ecs_prefetch_t) + 2 * pfr->total * sizeof(prefetch_page_t));
+			pfr->total *= 2;
+		}                                                                                                                                                       
+	}
+	return pfr; 
+}
+
 static ecs_writeback_t *add_writeback_page(ecs_writeback_t *wb, long long address) {
 	wb->pages[wb->count].address = address;
 	memcpy(wb->pages[wb->count].page, (void *)address, PAGE_SIZE);
@@ -215,7 +404,6 @@ void ECS(void) __attribute__((__used__));
 void ECS(void) {
 	ecs_page_node_t *node;
 	size_t pos;
-	ioctl_info info;
 	GID_t target_gid;
 	// ECS cannot happen in silent execution, as we take a log after the completion
 	// of an event which involves one or multiple ecs
@@ -243,21 +431,15 @@ void ECS(void) {
 			break;
 
 		case ECS_MINOR_FAULT:
-			// Create a new node in the list
 			ecs_secondary(target_gid);
 			break;
 
 		case ECS_CHANGE_PAGE_PRIVILEGE:
-			printf("Devo cambiare modo\n"); fflush(stdout);
-			printf("target address : %p target gid %d lid %d ker %d me %d\n", fault_info.target_address, target_gid, GidToLid(target_gid), GidToKernel(target_gid), kid); fflush(stdout);
+			//printf("target address : %p target gid %d lid %d ker %d me %d\n", fault_info.target_address, target_gid, GidToLid(target_gid), GidToKernel(target_gid), kid); fflush(stdout);
 			node = find_page(fault_info.target_address, current_lp, &pos);
-			foo("1");
 			set_write_mode(node, pos);
-			foo("2");
-			ecs_secondary(target_gid);
-			foo("3");
+			ecs_secondary(target_gid); //TODO: avoid prefetching when sending pages upon change_privilege occurrence!
 			lp_alloc_schedule(); // We moved to the original view in the kernel module: we do not unschedule the LP here
-			foo("4");
 			break;
 
 		default:
@@ -277,13 +459,13 @@ void ecs_init(void) {
 // inserire qui tutte le api di schedulazione/deschedulazione
 void lp_alloc_thread_init(void) {
 	void *ptr;
-	GID_t LP0; //dummy structure just to accomplish get_base_pointer
-
-	LP0.id = 0;
+	//GID_t LP0; //dummy structure just to accomplish get_base_pointer
+	//LP0.id = 0;
 	// TODO: test ioctl return value
 	ioctl(ioctl_fd, IOCTL_SET_ANCESTOR_PGD,NULL);  //ioctl call
 	lp_memory_ioctl_info.ds = -1;
-	ptr = get_base_pointer(LP0); // LP 0 is the first allocated one, and it's memory stock starts from the beginning of the PML4
+	//ptr = get_base_pointer(LP0); // LP 0 is the first allocated one, and it's memory stock starts from the beginning of the PML4
+	ptr = get_base_pointer(LidToGid(current_lp));
 	lp_memory_ioctl_info.addr = ptr;
 	lp_memory_ioctl_info.mapped_processes = n_prc_tot;
 
@@ -340,27 +522,40 @@ void lp_alloc_thread_fini(void) {
 
 void ecs_send_pages(msg_t *msg) {
 	msg_t *control_msg;
+	msg_t *prefetch_control_msg;
 	ecs_page_request_t *the_request;
 	ecs_page_request_t *the_pages;
+	ecs_page_node_t *prefetch_page;
+	ecs_prefetch_t *pfr;
+	ecs_prefetch_t *pfr_final;
+	size_t pfr_size;
+	void *sender_fault_address;
 
 	the_request = (ecs_page_request_t *)&(msg->event_content);
-	the_pages = rsalloc(sizeof(ecs_page_request_t) + the_request->count * PAGE_SIZE);
-	the_pages->write_mode = the_request->write_mode;
-	the_pages->base_address = the_request->base_address;
-	the_pages->count = the_request->count;
-
-	//printf("LP %d sending %d pages from %p to %d\n", msg->receiver, the_request->count, the_request->base_address, msg->sender);
-	fflush(stdout);
-
-	memcpy(the_pages->buffer, the_request->base_address, the_request->count * PAGE_SIZE);
 	
-		// Send back a copy of the pages
-	pack_msg(&control_msg, msg->receiver, msg->sender, RENDEZVOUS_GET_PAGE_ACK, msg->timestamp, msg->timestamp, sizeof(ecs_page_request_t)+the_pages->count * PAGE_SIZE, the_pages);
-	control_msg->mark = generate_mark(GidToLid(msg->receiver));
-	control_msg->rendezvous_mark = msg->rendezvous_mark;
+
+	switch(the_request->prefetch_mode){
+		case NO_PREFETCH:
+			printf("NO PREFETCH\n");
+			break;
+		case CONTIGUOUS:
+			printf("CONTIGUOUS\n");
+			break;
+		case SCATTERED:
+			printf("SCATTERED\n");
+			break;
+	}
+	sender_fault_address = the_request->base_address;
+	pfr = compute_prefetch_data(recoverable_state[lid_to_int(GidToLid(msg->receiver))], msg->receiver, the_request->prefetch_mode , sender_fault_address,the_request->write_mode, pfr);
+	printf("pfr %p\n", pfr);
+	pfr_final = (pfr->count == 0 )? NULL : pfr;
+	pfr_size = (pfr->count == 0 )? 0 : sizeof(ecs_prefetch_t) + pfr->count * sizeof(prefetch_page_t);
 	
-	Send(control_msg);
-	rsfree(the_pages);
+	pack_msg(&prefetch_control_msg, msg->receiver, msg->sender, RENDEZVOUS_GET_PAGE_ACK, msg->timestamp, msg->timestamp, pfr_size, pfr_final);
+	prefetch_control_msg->mark = generate_mark(GidToLid(msg->receiver));
+	prefetch_control_msg->rendezvous_mark = msg->rendezvous_mark;
+	Send(prefetch_control_msg);
+	rsfree(pfr);
 }
 
 void reinstall_writeback_pages(msg_t *msg) {
@@ -368,7 +563,6 @@ void reinstall_writeback_pages(msg_t *msg) {
 	void *dest;
 	void *source;
 	int i;
-
 	if(msg->size == 0)
 		return;
 
@@ -381,28 +575,64 @@ void reinstall_writeback_pages(msg_t *msg) {
 	}
 }
 
+void reinstall_prefetch_pages(msg_t *msg){
+	ecs_prefetch_t *pfr;
+	void *dest;
+	void *source;
+	ioctl_info sched_info;
+	int i;
+	ecs_page_node_t *node;
+	if(msg->size == 0) return;
+	pfr = (ecs_prefetch_t *)(msg->event_content);
+	for(i = 0; i < pfr->count; i++) {
+		dest = (void *)(pfr->pages[i].address);
+		source = pfr->pages[i].page;
+		memcpy(dest, source, PAGE_SIZE);
+	
+		node = find_page(pfr->pages[i].address, GidToLid(msg->receiver), NULL);
+		if(node == NULL) {
+			node = add_page_node(pfr->pages[i].address, 1, GidToLid(msg->receiver));
+		}
+		
+	//	printf("address %p with count %d has mode %d and bit is %d\n", (void *) node->page_address, node->pages, pfr->pages[i].write_mode, bitmap_check(node->write_mode, 0));
+		if(pfr->pages[i].write_mode && !bitmap_check(node->write_mode, 0))
+			set_write_mode(node, 0);
+
+		if(!pfr->pages[i].write_mode) {
+
+			bzero(&sched_info, sizeof(ioctl_info));
+			sched_info.base_address = (void *)(pfr->pages[i].address);
+			sched_info.page_count = 1;
+			sched_info.write_mode = (pfr->pages[i].write_mode);
+
+			ioctl(ioctl_fd, IOCTL_SET_PAGE_PRIVILEGE, &sched_info);
+		}
+		printf("Completed the installation of the page copying %d bytes from address %p\n", PAGE_SIZE, (void *) (pfr->pages[i]).address);
+	}
+}
+
 void ecs_install_pages(msg_t *msg) {
 	ecs_page_node_t *node;
 	int i;
 	ecs_page_request_t *the_pages = (ecs_page_request_t *)&(msg->event_content);
-	msg_t *control_msg;
 	ioctl_info sched_info;
 	printf("LP %d receiving %d pages from %p from %d\n", msg->receiver, the_pages->count, the_pages->base_address, msg->sender);
 	//fflush(stdout);
-
+	
 	memcpy(the_pages->base_address, the_pages->buffer, the_pages->count * PAGE_SIZE );
 	printf("Completed the installation of the page copying %d bytes from address %p\n", the_pages->count * PAGE_SIZE, (void *) the_pages->base_address);
 	fflush(stdout);
+	
+	node = find_page(the_pages->base_address, GidToLid(msg->receiver), NULL);
+	if(node == NULL) {
+		node = add_page_node(the_pages->base_address, the_pages->count, GidToLid(msg->receiver));
+	}
+
+	for(i = 0; i < the_pages->count; i++)  {
+		set_write_mode(node, i);
+	}
 
 	if(!the_pages->write_mode) {
-		node = find_page(the_pages->base_address, GidToLid(msg->receiver), NULL);
-		if(node == NULL) {
-			node = add_page_node(the_pages->base_address, the_pages->count, GidToLid(msg->receiver));
-		}
-
-		for(i = 0; i < the_pages->count; i++)  {
-			set_write_mode(node, i);
-		}
 
 		bzero(&sched_info, sizeof(ioctl_info));
 		sched_info.base_address = the_pages->base_address;
@@ -410,8 +640,6 @@ void ecs_install_pages(msg_t *msg) {
 		sched_info.write_mode = the_pages->write_mode;
 
 		ioctl(ioctl_fd, IOCTL_SET_PAGE_PRIVILEGE, &sched_info);
-	} else {
-		add_page_node(the_pages->base_address, the_pages->count, GidToLid(msg->receiver));
 	}
 	
 	//printf("Completato il setup dei privilegi\n");
@@ -427,6 +655,9 @@ void unblock_synchronized_objects(LID_t lid) {
 	ecs_writeback_t *wb_final;
 	size_t wb_size;
 	ecs_page_node_t *node;
+	int page_faults_tot;
+	int page_faults_contiguous;
+	int page_faults_scattered;
 
 	#define add_page(x) ({ wb = add_writeback_page(wb, node->page_address + (x) * PAGE_SIZE); })
 
@@ -434,23 +665,27 @@ void unblock_synchronized_objects(LID_t lid) {
 		wb = writeback_init();
 
 		node = list_head(LPS(lid)->ECS_page_list);
-		while(node != NULL) {
+		while(node != NULL){
 			bitmap_foreach_set(node->write_mode, bitmap_required_size(node->pages), add_page);
 			node = list_next(node);
 		}
 
 		wb_final = wb->count == 0 ? NULL : wb;
 		wb_size = wb->count == 0 ? 0 : sizeof(ecs_writeback_t) + wb->count * sizeof(writeback_page_t);
-	
+		
 		pack_msg(&control_msg, LidToGid(lid), LPS(lid)->ECS_synch_table[i], RENDEZVOUS_UNBLOCK, lvt(lid), lvt(lid), wb_size, wb_final);
 		control_msg->rendezvous_mark = LPS(lid)->wait_on_rendezvous;
 		Send(control_msg);
 
 		rsfree(wb);
 	}
-
 	#undef add_page
-
+	page_faults_tot = LPS(lid)->ECS_additional_page_faults;
+	page_faults_contiguous = LPS(lid)->ECS_contiguous_faults;
+	page_faults_scattered = LPS(lid)->ECS_scattered_faults;
+	statistics_post_lp_data(lid, STAT_ECS_FAULT, page_faults_tot == 0? page_faults_tot : page_faults_tot - 1);
+	statistics_post_lp_data(lid, STAT_ECS_CONTIGUOUS, page_faults_contiguous == 0? page_faults_contiguous : page_faults_contiguous - 1);
+	statistics_post_lp_data(lid, STAT_ECS_SCATTERED, page_faults_scattered == 0? page_faults_scattered : page_faults_scattered - 1);
 	LPS(lid)->wait_on_rendezvous = 0;
 	LPS(lid)->ECS_index = 0;
 }

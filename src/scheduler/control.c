@@ -33,6 +33,7 @@
 #include <mm/ecs.h>
 #include <datatypes/list.h>
 #include <gvt/gvt.h>
+#include <statistics/statistics.h>
 
 // Questa funzione serve a mandare in rollback qualcuno che mi
 // aveva mandato un RENDEZVOUS_START. Viene invocata da rollback()
@@ -106,6 +107,10 @@ bool anti_control_message(msg_t * msg) {
 		if(LPS(lid_receiver)->wait_on_rendezvous == msg->rendezvous_mark) {
 			LPS(lid_receiver)->ECS_index = 0;
 			LPS(lid_receiver)->wait_on_rendezvous = 0;
+			LPS(lid_receiver)->ECS_additional_page_faults = 0;
+			LPS(lid_receiver)->ECS_contiguous_faults = 0;
+			LPS(lid_receiver)->ECS_scattered_faults = 0;
+
 		}
 
 		return false;
@@ -167,7 +172,8 @@ bool receive_control_msg(msg_t *msg) {
 				break;
 			}
 			if(LPS(lid_receiver)->wait_on_rendezvous == msg->rendezvous_mark) {
-				ecs_install_pages(msg);
+				//ecs_install_pages(msg);
+				reinstall_prefetch_pages(msg);
 				LPS(lid_receiver)->state = LP_STATE_READY_FOR_SYNCH;
 			}
 			break;
@@ -182,6 +188,11 @@ bool receive_control_msg(msg_t *msg) {
 				LPS(lid_receiver)->state = LP_STATE_READY_FOR_SYNCH;
 			}
 
+			break;
+
+		case RENDEZVOUS_PAGE_PREFETCH:
+			//ecs_install_pages(msg);
+			//reinstall_prefetch_pages(msg);
 			break;
 
 		case RENDEZVOUS_UNBLOCK:
