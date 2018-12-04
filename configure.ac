@@ -232,15 +232,6 @@ AS_IF([test "x$enable_rebinding" != "xno"], [
         ac_have_lp_rebinding=yes
 ])
 
-# Custom Parallel Allocator can be disabled, to fallback to standard malloc library
-AC_ARG_ENABLE([allocator],
-AS_HELP_STRING([--disable-allocator], [Disable Parallel Allocator (Enabled by default)]))
-
-AS_IF([test "x$enable_allocator" != "xno"], [
-        AC_DEFINE([HAVE_PARALLEL_ALLOCATOR])
-        ac_have_parallel_allocator=yes
-])
-
 
 
 #------------------------------------------------------------
@@ -404,14 +395,6 @@ else
 	enable_mpi="Disabled (enable with --enable-mpi)"
 fi
 
-# Compose the message regarding the Parallel Allocator
-if test "x$ac_have_parallel_allocator" = "xyes"
-then
-	ac_parallel_allocator="Enabled (By default, use --disable-allocator if not wanted)"
-else
-	ac_parallel_allocator="Disabled (manually excluded)"
-fi
-
 
 # Compose the message regarding LP rebinding
 if test "x$ac_have_lp_rebinding" = "xyes"
@@ -488,7 +471,6 @@ CPU Architecture.......... : ${host_cpu}
 Operating System.......... : ${host_os}
 Debugging Support......... : ${enable_debug}
 MPI....................... : ${enable_mpi}
-Parallel Allocator........ : ${ac_parallel_allocator}
 LP Preemption Support..... : ${ac_preemption}
 LP Rebinding.............. : ${ac_lp_rebinding}
 Linux Kernel Modules...... : ${ac_modules}

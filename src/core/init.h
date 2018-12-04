@@ -74,9 +74,6 @@ typedef struct _simulation_configuration {
 	bool disable_preemption;	///< If compiled for preemptive Time Warp, it can be disabled at runtime
 #endif
 
-#ifdef HAVE_PARALLEL_ALLOCATOR
-	bool disable_allocator;
-#endif
 } simulation_configuration;
 
 extern simulation_configuration rootsim_config;

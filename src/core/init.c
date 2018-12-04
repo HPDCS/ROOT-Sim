@@ -88,11 +88,6 @@ enum _opt_codes{
 #ifdef HAVE_PREEMPTION
 	OPT_PREEMPTION,
 #endif
-
-#ifdef HAVE_PARALLEL_ALLOCATOR
-	OPT_ALLOCATOR,
-#endif
-
 	OPT_LAST
 };
 
@@ -175,9 +170,6 @@ static const struct argp_option argp_options[] = {
 
 #ifdef HAVE_PREEMPTION
 	{"no-preemption",	OPT_PREEMPTION,		0,		0,		"Disable Preemptive Time Warp", 0},
-#endif
-#ifdef HAVE_PARALLEL_ALLOCATOR
-	{"no-allocator",	OPT_ALLOCATOR,		0,		0,		"Disable parallel allocator", 0},
 #endif
 	{0}
 };
@@ -314,12 +306,6 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 			break;
 #endif
 
-#ifdef HAVE_PARALLEL_ALLOCATOR
-		case OPT_ALLOCATOR:
-			rootsim_config.disable_allocator = true;
-			break;
-#endif
-
 		case ARGP_KEY_INIT:
 
 			memset(&rootsim_config, 0, sizeof(rootsim_config));
@@ -346,11 +332,6 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 #ifdef HAVE_PREEMPTION
 			rootsim_config.disable_preemption = false;
 #endif
-
-#ifdef HAVE_PARALLEL_ALLOCATOR
-			rootsim_config.disable_allocator = false;
-#endif
-
 			break;
 
 		case ARGP_KEY_SUCCESS:

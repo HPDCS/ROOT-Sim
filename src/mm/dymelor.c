@@ -703,11 +703,8 @@ void clean_buffers_on_gvt(struct lp_struct *lp, simtime_t time_barrier)
 
 			if (m_area->self_pointer != NULL) {
 
-#ifdef HAVE_PARALLEL_ALLOCATOR
-				free_lp_memory(lp, m_area->self_pointer);
-#else
+				//free_lp_memory(lp, m_area->self_pointer);
 				rsfree(m_area->self_pointer);
-#endif
 
 				m_area->use_bitmap = NULL;
 				m_area->dirty_bitmap = NULL;
