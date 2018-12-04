@@ -244,100 +244,100 @@ ac_kernel_headers=no
 ac_disable_modules=yes
 ac_system_map=no
 
-if test "x$ac_on_linux" = "xyes"
-then
+#if test "x$ac_on_linux" = "xyes"
+#then
 
 	# If our libtimestretch library is installed, then we can use Preemptive Time Warp
-	AC_CHECK_LIB(timestretch, ts_start, [libtimestretch=yes], [libtimestretch=no])
-	if test "x$libtimestretch" = "xyes"
-	then
+#	AC_CHECK_LIB(timestretch, ts_start, [libtimestretch=yes], [libtimestretch=no])
+#	if test "x$libtimestretch" = "xyes"
+#	then
 			#
 			# We have found everything that we need, but the user can disable the subsystem
 			#
 
-		AC_ARG_ENABLE([preemption],
-		AS_HELP_STRING([--disable-preemption], [Disable Preemptive Time Warp)]))
+#		AC_ARG_ENABLE([preemption],
+#		AS_HELP_STRING([--disable-preemption], [Disable Preemptive Time Warp)]))
 
-		AS_IF([test "x$enable_preemption" != "xno"], [
-			AC_DEFINE([HAVE_PREEMPTION])
-			ac_have_preemption=yes
-			CFLAGS="$CFLAGS -ltimestretch"
-		])
-	fi
+#		AS_IF([test "x$enable_preemption" != "xno"], [
+#			AC_DEFINE([HAVE_PREEMPTION])
+#			ac_have_preemption=yes
+#			CFLAGS="$CFLAGS -ltimestretch"
+#		])
+#	fi
 
 	# Test for linux headers, to compile kernel modules
-	ac_kernel_headers=no
-	AC_CHECK_HEADERS([linux/ioctl.h],
-		[ac_kernel_headers=yes])
+#	ac_kernel_headers=no
+#	AC_CHECK_HEADERS([linux/ioctl.h],
+#		[ac_kernel_headers=yes])
 
-	if test "x$ac_kernel_headers" = "xyes"
-	then
+#	if test "x$ac_kernel_headers" = "xyes"
+#	then
 		# Configure kernel module paths
-		AC_SUBST([with_kernel], [`uname -r`])
-		AC_SUBST([with_kernel_mod], [/lib/modules/$with_kernel/extra])
-		AC_SUBST([KERNEL_SRC], [/lib/modules/$with_kernel/build])
-		AC_SUBST([KERNEL_MOD], [$with_kernel_mod])
-	fi
+#		AC_SUBST([with_kernel], [`uname -r`])
+#		AC_SUBST([with_kernel_mod], [/lib/modules/$with_kernel/extra])
+#		AC_SUBST([KERNEL_SRC], [/lib/modules/$with_kernel/build])
+#		AC_SUBST([KERNEL_MOD], [$with_kernel_mod])
+#	fi
 
 	# We might want to disable all kernel modules explicitly. This is useful, for example,
 	# when installing the simulator in a per-user space, in a system where the modules
 	# were already installed. Using the --disable-modules won't compile nor try to
 	# install any module.
-	AC_ARG_ENABLE([modules],
-		AS_HELP_STRING([--enable-modules], [Enable compilation/installation of kernel modules]))
+	#AC_ARG_ENABLE([modules],
+	#	AS_HELP_STRING([--enable-modules], [Enable compilation/installation of kernel modules]))
 
-	AS_IF([test "x$enable_modules" = "xyes"], [
-		ac_disable_modules=no
-		ac_kernel_headers=yes
-	])
+#	AS_IF([test "x$enable_modules" = "xyes"], [
+#		ac_disable_modules=no
+#		ac_kernel_headers=yes
+#	])
 
 
 	# Check if System.map is available. Some kernel modules require access to special symbols
 	# which are not exported, but are available in System.map.
-	AC_CHECK_FILE("/boot/System.map-$(uname -r)", [ac_system_map=yes])
+#	AC_CHECK_FILE("/boot/System.map-$(uname -r)", [ac_system_map=yes])
 
 	# Per-module checks. To be run only if we are on Linux and kernel headers are available
-	if test "x$ac_kernel_headers" = "xyes"
-	then
+#	if test "x$ac_kernel_headers" = "xyes"
+#	then
 
 		# Here go modules which require System.map
-		if test "x$ac_system_map" = "xyes"
-		then
+#		if test "x$ac_system_map" = "xyes"
+#		then
 
 			# Get finish_task_switch in the current kernel
-			AC_MSG_CHECKING([for finish_task_switch in the current kernel])
-			fts_line=$($GREP -n finish_task_switch /boot/System.map-$(uname -r) | $SED 's/:.*//')
-			finish_task_switch=$($SED "${fts_line}q;d" /boot/System.map-$(uname -r) | $SED 's/ .*//')
-			if test -z "$finish_task_switch"; then
-				AC_MSG_ERROR([Address of finish_task_switch not found in kernel map])
-			fi
-			AC_MSG_RESULT([found at 0x$finish_task_switch])
-			AC_SUBST([FTS_ADDR], [0x$finish_task_switch])
+#			AC_MSG_CHECKING([for finish_task_switch in the current kernel])
+#			fts_line=$($GREP -n finish_task_switch /boot/System.map-$(uname -r) | $SED 's/:.*//')
+#			finish_task_switch=$($SED "${fts_line}q;d" /boot/System.map-$(uname -r) | $SED 's/ .*//')
+#			if test -z "$finish_task_switch"; then
+#				AC_MSG_ERROR([Address of finish_task_switch not found in kernel map])
+#			fi
+#			AC_MSG_RESULT([found at 0x$finish_task_switch])
+#			AC_SUBST([FTS_ADDR], [0x$finish_task_switch])
 
 			# Get function after finish_task_switch in the current kernel
-			AC_MSG_CHECKING([the address of function next to finish_task_switch in the current kernel])
-			let fts_line=$fts_line+1
-			finish_task_switch_next=$($SED "${fts_line}q;d" /boot/System.map-$(uname -r) | $SED 's/ .*//')
-			if test -z "$finish_task_switch_next"; then
-				AC_MSG_ERROR([Address of function after finish_task_switch not found in kernel map])
-			fi
-			AC_MSG_RESULT([found at 0x$finish_task_switch_next])
-			AC_SUBST([FTS_ADDR_NEXT], [0x$finish_task_switch_next])
+#			AC_MSG_CHECKING([the address of function next to finish_task_switch in the current kernel])
+#			let fts_line=$fts_line+1
+#			finish_task_switch_next=$($SED "${fts_line}q;d" /boot/System.map-$(uname -r) | $SED 's/ .*//')
+#			if test -z "$finish_task_switch_next"; then
+#				AC_MSG_ERROR([Address of function after finish_task_switch not found in kernel map])
+#			fi
+#			AC_MSG_RESULT([found at 0x$finish_task_switch_next])
+#			AC_SUBST([FTS_ADDR_NEXT], [0x$finish_task_switch_next])
 
-		fi # closes the System.map modules check
+#		fi # closes the System.map modules check
 
-	fi # closes the global Linux kernel headers availability check
+#	fi # closes the global Linux kernel headers availability check
 
 	# Event Cross State dependency manager
-	AC_ARG_ENABLE([ecs],
-	AS_HELP_STRING([--enable-ecs], [Enable Event Cross-State Management]))
+	#AC_ARG_ENABLE([ecs],
+	#AS_HELP_STRING([--enable-ecs], [Enable Event Cross-State Management]))
 
-	AS_IF([test "x$enable_ecs" = "xyes"], [
-		AC_DEFINE([HAVE_CROSS_STATE])
-		ac_have_cross_state=yes
-	])
+#	AS_IF([test "x$enable_ecs" = "xyes"], [
+#		AC_DEFINE([HAVE_CROSS_STATE])
+#		ac_have_cross_state=yes
+#	])
 
-fi # Closes che global check for Linux availability
+#fi # Closes che global check for Linux availability
 
 # This instructs the Makefile to build kernel modules only when possible
 AM_CONDITIONAL([NO_KERNEL_MODULES], [test "x$ac_disable_modules" = "xyes"])
@@ -421,9 +421,10 @@ fi
 
 
 # Compose the message regarding ECS
+ac_have_cross_state="no"
 if test "x$ac_have_cross_state" = "xyes"
 then
-	ac_ecs="Enabled)"
+	ac_ecs="Enabled"
 else
 	ac_ecs="Disabled"
 	if test "x$ac_on_linux" = "xyes"
@@ -461,7 +462,9 @@ then
 	fi
 fi
 
-
+# This is the line to reintroduce the ECS and modules messages
+#Event Cross State......... : ${ac_ecs}
+#Linux Kernel Modules...... : ${ac_modules}
 cat<<EOF
 
 
@@ -473,7 +476,6 @@ Debugging Support......... : ${enable_debug}
 MPI....................... : ${enable_mpi}
 LP Preemption Support..... : ${ac_preemption}
 LP Rebinding.............. : ${ac_lp_rebinding}
-Linux Kernel Modules...... : ${ac_modules}
-Event Cross State......... : ${ac_ecs}
+
 
 EOF
