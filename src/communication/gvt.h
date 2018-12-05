@@ -24,25 +24,22 @@
 
 #pragma once
 
-#ifndef _DISTRIBUTED_GVT_H_
-#define _DISTRIBUTED_GVT_H_
-
 #ifdef HAVE_MPI
 
 #include <core/core.h>
 
-#define white_0 0x0 // 0b00
-#define red_0   0x1 // 0b01
-#define white_1 0x2 // 0b10
-#define red_1   0x3 // 0b11
+#define white_0 0x0		// 0b00
+#define red_0   0x1		// 0b01
+#define white_1 0x2		// 0b10
+#define red_1   0x3		// 0b11
 
 #define is_red_colour(c) ( (bool) (c & 0x1) )
 #define in_red_phase() ( is_red_colour(threads_phase_colour[local_tid]) )
 #define next_colour(c) ( ((c)+1) & 0x3 )
 
-extern phase_colour* threads_phase_colour;
+extern phase_colour *threads_phase_colour;
 
-extern simtime_t* min_outgoing_red_msg;
+extern simtime_t *min_outgoing_red_msg;
 
 void gvt_comm_init(void);
 void gvt_comm_finalize(void);
@@ -62,8 +59,7 @@ bool gvt_redux_completed(void);
 void join_white_msg_end(void);
 bool white_msg_end_completed(void);
 simtime_t last_reduced_gvt(void);
-void register_incoming_msg(const msg_t*);
-void register_outgoing_msg(const msg_t*);
+void register_incoming_msg(const msg_t *);
+void register_outgoing_msg(const msg_t *);
 
 #endif /* HAVE_MPI */
-#endif /* _COMM_GVT_H_ */

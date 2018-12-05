@@ -18,7 +18,8 @@
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
 * @file mm.h
-* @brief
+* @brief Memory Manager main header.
+* @author Alessandro Pellegrini
 * @author Francesco Quaglia
 */
 
@@ -29,43 +30,69 @@
 #include <pthread.h>
 #include <core/core.h>
 #include <arch/atomic.h>
+#include <mm/dymelor.h>
 
-typedef struct _map_move {
-	spinlock_t	spinlock;
-	unsigned 	target_node;
-	int      	need_move;
-	int    		in_progress;
-} map_move;
-
-
-struct _buddy {
-	size_t size;
-	size_t longest[1];
+struct segment {
+	unsigned char *base;
+	unsigned char *brk;
 };
 
-#ifndef PAGE_SIZE
-#define PAGE_SIZE (4<<10)
+struct buddy {
+	spinlock_t lock;
+	size_t size;
+	size_t longest[] __attribute__((aligned(sizeof(size_t))));
+};
+
+extern size_t __page_size;
+#define PAGE_SIZE ({ \
+			if(unlikely(__page_size == 0))\
+				__page_size = getpagesize();\
+			__page_size;\
+		  })
+
+struct slab_header {
+#ifndef NDEBUG
+	atomic_t presence;
 #endif
+	struct slab_header *prev, *next;
+	uint64_t slots;
+	uintptr_t refcount;
+	struct slab_header *page;
+	uint8_t data[] __attribute__((aligned(sizeof(void *))));
+};
 
-#define PER_LP_PREALLOCATED_MEMORY (262144L * PAGE_SIZE) // This should be power of 2 multiplied by a page size. This is 1GB per LP.
+struct slab_chain {
+	spinlock_t lock;
+	size_t itemsize, itemcount;
+	size_t slabsize, pages_per_alloc;
+	uint64_t initial_slotmask, empty_slotmask;
+	uintptr_t alignment_mask;
+	struct slab_header *partial, *empty, *full;
+};
+
+struct memory_map {
+	malloc_state *m_state;
+	struct buddy *buddy;
+	struct slab_chain *slab;
+	struct segment *segment;
+};
+
+#define PER_LP_PREALLOCATED_MEMORY (262144L * PAGE_SIZE)	// This should be power of 2 multiplied by a page size. This is 1GB per LP.
 #define BUDDY_GRANULARITY PAGE_SIZE	// This is the smallest chunk released by the buddy in bytes. PER_LP_PREALLOCATED_MEMORY/BUDDY_GRANULARITY must be integer and a power of 2
-#define MAX_MMAP	(131072L * PAGE_SIZE) // This is the maximum amount of memory that a single mmap() call is able to serve. TODO: this should be checked within configure.ac
-#define NUM_MMAP	PER_LP_PREALLOCATED_MEMORY / MAX_MMAP
-
-// TODO: no need to keep a structure anymore...
-// This is for the segment allocator
-typedef struct _lp_mem_region{
-	char* base_pointer;
-}lp_mem_region;
-
-#define SUCCESS_AECS                  0
-#define FAILURE_AECS                 -1
-#define INVALID_SOBJS_COUNT_AECS     -99
-#define INIT_ERROR_AECS              -98
-#define INVALID_SOBJ_ID_AECS         -97
-#define MDT_RELEASE_FAILURE_AECS     -96
 
 extern bool allocator_init(void);
 extern void allocator_fini(void);
-extern void *get_segment(GID_t i);
-void *get_base_pointer(GID_t gid);
+extern void segment_init(void);
+extern struct segment *get_segment(GID_t i);
+extern void *get_base_pointer(GID_t gid);
+
+extern void initialize_memory_map(struct lp_struct *lp);
+extern void finalize_memory_map(struct lp_struct *lp);
+
+extern struct buddy *buddy_new(struct lp_struct *,
+			       unsigned long num_of_fragments);
+void buddy_destroy(struct buddy *);
+
+extern struct slab_chain *slab_init(const size_t itemsize);
+extern void *slab_alloc(struct slab_chain *const sch);
+extern void slab_free(struct slab_chain *const sch, const void *const addr);

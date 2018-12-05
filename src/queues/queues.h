@@ -31,13 +31,15 @@
 #define _QUEUES_H
 
 #include <core/core.h>
+#include <scheduler/process.h>
+
+#define last_event_timestamp(lp) lvt(lp);
 
 extern inline simtime_t get_min_in_transit(void);
-extern simtime_t last_event_timestamp(LID_t);
-extern simtime_t next_event_timestamp(LID_t);
-extern msg_t *advance_to_next_event(LID_t);
-extern void insert_bottom_half(msg_t *msg);
+extern simtime_t next_event_timestamp(struct lp_struct *);
+extern msg_t *advance_to_next_event(struct lp_struct *);
+extern void insert_bottom_half(msg_t * msg);
 extern void process_bottom_halves(void);
-extern unsigned long long generate_mark(LID_t);
+extern unsigned long long generate_mark(struct lp_struct *);
 
-#endif /* _QUEUES_H */
+#endif				/* _QUEUES_H */

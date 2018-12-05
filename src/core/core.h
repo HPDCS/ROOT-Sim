@@ -46,7 +46,7 @@
 #define master_kernel() (kid == 0)
 
 // XXX: This should be moved to state or queues
-enum{
+enum {
 	SNAPSHOT_INVALID = 0,	/**< By convention 0 is the invalid field */
 	SNAPSHOT_FULL,		/**< xxx documentation */
 };
@@ -58,7 +58,7 @@ enum{
 #define MAX_LPs		65536
 
 // XXX: this should be moved somewhere else...
-enum{
+enum {
 	VERBOSE_INVALID = 0,	/**< By convention 0 is the invalid field */
 	VERBOSE_INFO,		/**< xxx documentation */
 	VERBOSE_DEBUG,		/**< xxx documentation */
@@ -73,12 +73,11 @@ extern jmp_buf exit_jmp;
 #define unlikely(exp) __builtin_expect(exp, 0)
 
 
-enum{
+enum {
 	LP_DISTRIBUTION_INVALID = 0,	/**< By convention 0 is the invalid field */
 	LP_DISTRIBUTION_BLOCK,		/**< Distribute exceeding LPs according to a block policy */
 	LP_DISTRIBUTION_CIRCULAR	/**< Distribute exceeding LPs according to a circular policy */
 };
-
 
 // XXX should be moved to a more librarish header
 /// Equality condition for floats
@@ -90,7 +89,6 @@ enum{
 /// Difference from zero condition for floats
 #define F_DIFFER_ZERO(a) (fabsf(a) >= FLT_EPSILON)
 
-
 /// Equality condition for doubles
 #define D_EQUAL(a,b) (fabs((a) - (b)) < DBL_EPSILON)
 /// Equality to zero condition for doubles
@@ -99,7 +97,6 @@ enum{
 #define D_DIFFER(a,b) (fabs((a) - (b)) >= DBL_EPSILON)
 /// Difference from zero condition for doubles
 #define D_DIFFER_ZERO(a) (fabs(a) >= DBL_EPSILON)
-
 
 /// Macro to find the maximum among two values
 #ifdef max
@@ -119,33 +116,24 @@ enum{
        __typeof__ (b) _b = (b); \
      _a < _b ? _a : _b; })
 
-
 /// Macro to "legitimately" pun a type
 #define UNION_CAST(x, destType) (((union {__typeof__(x) a; destType b;})x).b)
 
 // GID and LID types
-typedef struct _gid_t {unsigned int id;} GID_t;
-typedef struct _lid_t {unsigned int id;} LID_t;
-
-// The idle process identifier
-extern LID_t idle_process;
+typedef struct _gid_t {
+	unsigned int to_int;
+} GID_t;
+typedef struct _lid_t {
+	unsigned int to_int;
+} LID_t;
 
 #define is_lid(val) __builtin_types_compatible_p(__typeof__ (val), LID_t)
 #define is_gid(val) __builtin_types_compatible_p(__typeof__ (val), GID_t)
 
-#define is_valid_lid(lid) ((lid).id < n_prc)
-#define is_valid_gid(gid) ((gid).id < n_prc_tot)
+#define set_lid(lid, value) (__builtin_choose_expr(is_lid(lid), lid.to_int, (void)0) = (value))
+#define set_gid(gid, value) (__builtin_choose_expr(is_gid(gid), gid.to_int, (void)0) = (value))
 
-#define lid_equals(first, second) (is_lid(first) && is_lid(second) && first.id == second.id)
-#define gid_equals(first, second) (is_gid(first) && is_gid(second) && first.id == second.id)
-
-#define lid_to_int(lid) __builtin_choose_expr(is_lid(lid), (lid).id, (void)0)
-#define gid_to_int(gid) __builtin_choose_expr(is_gid(gid), (gid).id, (void)0)
-
-#define set_lid(lid, value) (__builtin_choose_expr(is_lid(lid), lid.id, (void)0) = (value))
-#define set_gid(gid, value) (__builtin_choose_expr(is_gid(gid), gid.id, (void)0) = (value))
-
-typedef enum {positive, negative, control} message_kind_t;
+typedef enum { positive, negative, control } message_kind_t;
 
 #ifdef HAVE_MPI
 typedef unsigned char phase_colour;
@@ -160,48 +148,45 @@ typedef struct _msg_t {
 	/* Place here all memebers of the struct which should not be transmitted over the network */
 
 	// Pointers to attach messages to chains
-	struct _msg_t 		*next;
-	struct _msg_t 		*prev;
-	unsigned int		alloc_tid; // TODO: this should be moved into an external container, to avoid transmitting it!
+	struct _msg_t *next;
+	struct _msg_t *prev;
 
 	/* Place here all members which must be transmitted over the network. It is convenient not to reorder the members
 	 * of the structure. If new members have to be addedd, place them right before the "Model data" part.*/
 
 	// Kernel's information
-	GID_t   		sender;
-	GID_t   		receiver;
-	#ifdef HAVE_MPI
-	phase_colour		colour;
-	#endif
-	int   			type;
-	message_kind_t		message_kind;
-	simtime_t		timestamp;
-	simtime_t		send_time;
-	unsigned long long	mark;	/// Unique identifier of the message, used for antimessages
-	unsigned long long	rendezvous_mark;	/// Unique identifier of the message, used for rendez-vous events
+	GID_t sender;
+	GID_t receiver;
+#ifdef HAVE_MPI
+	phase_colour colour;
+#endif
+	int type;
+	message_kind_t message_kind;
+	simtime_t timestamp;
+	simtime_t send_time;
+	unsigned long long mark;	/// Unique identifier of the message, used for antimessages
+	unsigned long long rendezvous_mark;	/// Unique identifier of the message, used for rendez-vous events
 
 	// Model data
 	unsigned int size;
 	unsigned char event_content[];
 } msg_t;
 
-
 /// Message envelope definition. This is used to handle the output queue and stores information needed to generate antimessages
 typedef struct _msg_hdr_t {
 	// Pointers to attach messages to chains
-	struct _msg_hdr_t 		*next;
-	struct _msg_hdr_t 		*prev;
+	struct _msg_hdr_t *next;
+	struct _msg_hdr_t *prev;
 	// Kernel's information
-	GID_t   		sender;
-	GID_t   		receiver;
+	GID_t sender;
+	GID_t receiver;
 	// TODO: non serve davvero, togliere
-	int   			type;
-	unsigned long long	rendezvous_mark;	/// Unique identifier of the message, used for rendez-vous event
-	unsigned int		alloc_tid;
+	int type;
+	unsigned long long rendezvous_mark;	/// Unique identifier of the message, used for rendez-vous event
 	// TODO: fine togliere
-	simtime_t		timestamp;
-	simtime_t		send_time;
-	unsigned long long	mark;
+	simtime_t timestamp;
+	simtime_t send_time;
+	unsigned long long mark;
 } msg_hdr_t;
 
 
@@ -209,32 +194,27 @@ typedef struct _msg_hdr_t {
 extern barrier_t all_thread_barrier;
 
 // XXX: this should be refactored someway
-extern unsigned int	kid,		/* Kernel ID for the local kernel */
-			n_ker,		/* Total number of kernel instances */
-			n_cores,	/* Total number of cores required for simulation */
-			n_prc,		/* Number of LPs hosted by the current kernel instance */
-			*kernel;
-
-
+extern unsigned int kid,	/* Kernel ID for the local kernel */
+ n_ker,				/* Total number of kernel instances */
+ n_cores,			/* Total number of cores required for simulation */
+ n_prc,				/* Number of LPs hosted by the current kernel instance */
+*kernel;
 
 extern void ProcessEvent_light(unsigned int me, simtime_t now, int event_type, void *event_content, unsigned int size, void *state);
 bool OnGVT_light(unsigned int me, void *snapshot);
 extern void ProcessEvent_inc(unsigned int me, simtime_t now, int event_type, void *event_content, unsigned int size, void *state);
 bool OnGVT_inc(unsigned int me, void *snapshot);
-extern bool (**OnGVT)(unsigned int me, void *snapshot);
-extern void (**ProcessEvent)(unsigned int me, simtime_t now, int event_type, void *event_content, unsigned int size, void *state);
 
 extern void base_init(void);
 extern void base_fini(void);
-extern GID_t LidToGid(LID_t lid) __attribute__ ((pure));
-extern LID_t GidToLid(GID_t gid) __attribute__ ((pure));
-extern unsigned int GidToKernel(GID_t gid) __attribute__ ((pure));
-extern void rootsim_error(bool fatal, const char *msg, ...);
+extern unsigned int find_kernel_by_gid(GID_t gid) __attribute__((pure));
+extern void _rootsim_error(bool fatal, const char *msg, ...);
 extern void distribute_lps_on_kernels(void);
 extern void simulation_shutdown(int code) __attribute__((noreturn));
 extern inline bool user_requested_exit(void);
 extern inline bool simulation_error(void);
 extern void initialization_complete(void);
 
-#endif
+#define rootsim_error(fatal, msg, ...) _rootsim_error(fatal, "%s:%d: %s()" msg, __FILE__, __LINE__, __FUNCTION__ __VA_OPT__(,) __VA_ARGS__)
 
+#endif

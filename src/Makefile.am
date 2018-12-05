@@ -47,8 +47,6 @@ librootsim_a_SOURCES =	main.c \
 			datatypes/calqueue.c \
 			datatypes/hash_map.c \
 			datatypes/msgchannel.c \
-			datatypes/slab.c \
-			datatypes/treiber.c \
 			gvt/gvt.c \
 			gvt/fossil.c \
 			gvt/ccgs.c \
@@ -76,9 +74,8 @@ librootsim_a_SOURCES =	main.c \
 libwrapperl_a_SOURCES = lib-wrapper/wrapper.c
 
 libdymelor_a_SOURCES = 	mm/checkpoints.c \
-			mm/recoverable.c \
-			mm/unrecoverable.c \
 			mm/platform.c \
 			mm/dymelor.c \
 			mm/buddy.c \
-			mm/segment.c
+			mm/segment.c \
+			mm/slab.c

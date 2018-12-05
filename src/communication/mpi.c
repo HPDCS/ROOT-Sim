@@ -51,11 +51,12 @@ static unsigned int terminated = 0;
 static MPI_Request *termination_reqs;
 static spinlock_t msgs_fini;
 
-
 // MPI Operation to reduce statics struct
-MPI_Op reduce_stats_op;
+static MPI_Op reduce_stats_op;
 
-MPI_Datatype stats_mpi_t;
+static MPI_Datatype stats_mpi_t;
+
+static MPI_Comm msg_comm;
 
 /*
  * Check if there are pending messages from remote kernels with
@@ -63,28 +64,28 @@ MPI_Datatype stats_mpi_t;
  *
  * This function is thread-safe.
  */
-bool pending_msgs(int tag){
+bool pending_msgs(int tag)
+{
 	int flag = 0;
 	lock_mpi();
 	MPI_Iprobe(MPI_ANY_SOURCE, tag, MPI_COMM_WORLD, &flag, MPI_STATUS_IGNORE);
 	unlock_mpi();
-	return (bool) flag;
+	return (bool)flag;
 }
-
 
 /*
  * Check if the MPI_Request `req` have been completed.
  *
  * This function is thread-safe.
  */
-bool is_request_completed(MPI_Request* req){
+bool is_request_completed(MPI_Request * req)
+{
 	int flag = 0;
 	lock_mpi();
 	MPI_Test(req, &flag, MPI_STATUS_IGNORE);
 	unlock_mpi();
-	return (bool) flag;
+	return (bool)flag;
 }
-
 
 /*
  * Send a message destined to an LP binded to a remote kernel.
@@ -94,21 +95,22 @@ bool is_request_completed(MPI_Request* req){
  *
  * This function is thread-safe.
  */
-void send_remote_msg(msg_t *msg){
+void send_remote_msg(msg_t * msg)
+{
 	outgoing_msg *out_msg = allocate_outgoing_msg();
 	out_msg->msg = msg;
 	out_msg->msg->colour = threads_phase_colour[local_tid];
-	unsigned int dest = GidToKernel(msg->receiver);
+	unsigned int dest = find_kernel_by_gid(msg->receiver);
 
 	register_outgoing_msg(out_msg->msg);
 
 	lock_mpi();
-	MPI_Isend(((char*)out_msg->msg) + MSG_PADDING, MSG_META_SIZE + msg->size, MPI_BYTE, dest, MSG_EVENT, MPI_COMM_WORLD, &out_msg->req);
+	MPI_Isend(((char *)out_msg->msg) + MSG_PADDING, MSG_META_SIZE + msg->size, MPI_BYTE, dest, msg->receiver.to_int, msg_comm, &out_msg->req);
 	unlock_mpi();
+
 	// Keep the message in the outgoing queue until it will be delivered
 	store_outgoing_msg(out_msg, dest);
 }
-
 
 /*
  * Receive messages sent from remote kernels and
@@ -119,29 +121,34 @@ void send_remote_msg(msg_t *msg){
  *
  * This function is thread-safe.
  */
-void receive_remote_msgs(void){
+void receive_remote_msgs(void)
+{
 	int size;
 	msg_t *msg;
 	MPI_Status status;
 	MPI_Message mpi_msg;
 	int pending;
+	struct lp_struct *lp;
+	GID_t gid;
 
-	if(!spin_trylock(&msgs_lock))
+	if (!spin_trylock(&msgs_lock))
 		return;
 
-	while(true){
+	while (true) {
 		lock_mpi();
-		MPI_Improbe(MPI_ANY_SOURCE, MSG_EVENT, MPI_COMM_WORLD, &pending, &mpi_msg, &status);
+		MPI_Improbe(MPI_ANY_SOURCE, MPI_ANY_TAG, msg_comm, &pending, &mpi_msg, &status);
 		unlock_mpi();
 
-		if(!pending)
+		if (!pending)
 			goto out;
 
 		MPI_Get_count(&status, MPI_BYTE, &size);
 
-		if(likely(MSG_PADDING + size <= SLAB_MSG_SIZE))
-			msg = get_msg_from_slab();
-		else{
+		if (likely(MSG_PADDING + size <= SLAB_MSG_SIZE)) {
+			set_gid(gid, status.MPI_TAG);
+			lp = find_lp_by_gid(gid);
+			msg = get_msg_from_slab(lp);
+		} else {
 			msg = rsalloc(MSG_PADDING + size);
 			bzero(msg, MSG_PADDING);
 		}
@@ -153,7 +160,7 @@ void receive_remote_msgs(void){
 
 		// Receive the message
 		lock_mpi();
-		MPI_Mrecv(((char*)msg) + MSG_PADDING, size, MPI_BYTE, &mpi_msg, MPI_STATUS_IGNORE);
+		MPI_Mrecv(((char *)msg) + MSG_PADDING, size, MPI_BYTE, &mpi_msg, MPI_STATUS_IGNORE);
 		unlock_mpi();
 
 		validate_msg(msg);
@@ -163,16 +170,15 @@ void receive_remote_msgs(void){
 	spin_unlock(&msgs_lock);
 }
 
-
 /* Return true if all the kernel have reached the termination condition
  *
  * This function can be used only after `broadcast_termination()`
  * function has been correctly executed.
  */
-bool all_kernels_terminated(void){
+bool all_kernels_terminated(void)
+{
 	return (terminated == n_ker);
 }
-
 
 /*
  * Accumulate termination acknoledgements from remote kernels and update the `terminated` counter
@@ -182,18 +188,20 @@ bool all_kernels_terminated(void){
  *
  * This function is thread-safe
  */
-void collect_termination(void){
+void collect_termination(void)
+{
 	int res;
 	unsigned int tdata;
-	
-	if(terminated == 0 || !spin_trylock(&msgs_fini))
+
+	if (terminated == 0 || !spin_trylock(&msgs_fini))
 		return;
 
-	while(pending_msgs(MSG_FINI)) {
+	while (pending_msgs(MSG_FINI)) {
 		lock_mpi();
-		res = MPI_Recv(&tdata, 1, MPI_UNSIGNED, MPI_ANY_SOURCE, MSG_FINI, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+		res =
+		    MPI_Recv(&tdata, 1, MPI_UNSIGNED, MPI_ANY_SOURCE, MSG_FINI, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 		unlock_mpi();
-		if(unlikely(res != 0)) {
+		if (unlikely(res != 0)) {
 			rootsim_error(true, "MPI_Recv did not complete correctly");
 			return;
 		}
@@ -201,8 +209,6 @@ void collect_termination(void){
 	}
 	spin_unlock(&msgs_fini);
 }
-
-
 
 /* Notify all the kernels about local termination
  *
@@ -216,11 +222,12 @@ void collect_termination(void){
  * This function can be used concurrently with other
  * MPI communication function.
  */
-void broadcast_termination(void){
+void broadcast_termination(void)
+{
 	unsigned int i;
 	lock_mpi();
-	for(i = 0; i < n_ker; i++) {
-		if(i == kid)
+	for (i = 0; i < n_ker; i++) {
+		if (i == kid)
 			continue;
 		MPI_Isend(&i, 1, MPI_UNSIGNED, i, MSG_FINI, MPI_COMM_WORLD, &termination_reqs[i]);
 	}
@@ -231,9 +238,13 @@ void broadcast_termination(void){
 /*
  * This is the reduce operation for statistics,
  */
-static void reduce_stat_vector(struct stat_t *in, struct stat_t *inout, int *len, MPI_Datatype *dptr) {
+static void reduce_stat_vector(struct stat_t *in, struct stat_t *inout,
+			       int *len, MPI_Datatype * dptr)
+{
 	int i = 0;
-	for(i = 0; i < *len; ++i){
+	(void)dptr;
+
+	for (i = 0; i < *len; ++i) {
 		inout[i].vec += in[i].vec;
 		inout[i].gvt_round_time += in[i].gvt_round_time;
 		inout[i].gvt_round_time_min = fmin(inout[i].gvt_round_time_min, in[i].gvt_round_time_min);
@@ -245,61 +256,66 @@ static void reduce_stat_vector(struct stat_t *in, struct stat_t *inout, int *len
 // this assumes struct stat_t contains only double floating point variables
 #define MPI_TYPE_STAT_LEN (sizeof(struct stat_t)/sizeof(double))
 
-static void stats_reduction_init(void) {
+static void stats_reduction_init(void)
+{
 	// this is a compilation time fail-safe
-	static_assert(offsetof(struct stat_t, gvt_round_time_max) == (sizeof(double) * 19),
-			"The packing assumptions on struct stat_t are wrong or its definition has been modified");
+	static_assert(offsetof(struct stat_t, gvt_round_time_max) == (sizeof(double) * 19), "The packing assumptions on struct stat_t are wrong or its definition has been modified");
 
 	unsigned i;
+
 	// boilerplate to create a new MPI data type
 	MPI_Datatype type[MPI_TYPE_STAT_LEN];
 	MPI_Aint disp[MPI_TYPE_STAT_LEN];
 	int block_lengths[MPI_TYPE_STAT_LEN];
+
 	// init those arrays (we asssume that struct stat_t is packed tightly)
-	for(i = 0; i < MPI_TYPE_STAT_LEN; ++i){
+	for (i = 0; i < MPI_TYPE_STAT_LEN; ++i) {
 		type[i] = MPI_DOUBLE;
 		disp[i] = i * sizeof(double);
 		block_lengths[i] = 1;
 	}
+
 	// create the custom type and commit the changes
 	MPI_Type_create_struct(MPI_TYPE_STAT_LEN, block_lengths, disp, type, &stats_mpi_t);
 	MPI_Type_commit(&stats_mpi_t);
+
 	// create the mpi operation needed to reduce stats
-	if(master_thread())
-		MPI_Op_create((MPI_User_function *)reduce_stat_vector, true, &reduce_stats_op);
+	if (master_thread()) {
+		MPI_Op_create((MPI_User_function *) reduce_stat_vector, true, &reduce_stats_op);
+	}
 }
+
 #undef MPI_TYPE_STAT_LEN
 
-
-void mpi_reduce_statistics(struct stat_t *global, struct stat_t *local) {
-	MPI_Reduce(local, global, 1, stats_mpi_t, reduce_stats_op, 0, MPI_COMM_WORLD);
+void mpi_reduce_statistics(struct stat_t *global, struct stat_t *local)
+{
+	MPI_Reduce(local, global, 1, stats_mpi_t, reduce_stats_op, 0,
+		   MPI_COMM_WORLD);
 }
-
-
 
 /*
  * Initialize the distributed termination subsystem
  */
-void dist_termination_init(void){
+void dist_termination_init(void)
+{
 	/* init for collective termination */
 	termination_reqs = rsalloc(n_ker * sizeof(MPI_Request));
 	unsigned int i;
-	for(i=0; i<n_ker; i++){
+	for (i = 0; i < n_ker; i++) {
 		termination_reqs[i] = MPI_REQUEST_NULL;
 	}
 	spinlock_init(&msgs_fini);
 }
 
-
 /*
  * Cleanup routine of the distributed termination subsystem
  */
-void dist_termination_finalize(void){
+void dist_termination_finalize(void)
+{
 	MPI_Waitall(n_ker, termination_reqs, MPI_STATUSES_IGNORE);
 }
 
-
-/*
+/**
  * Syncronize all the kernels:
  *
  * This function can be used as syncronization barrier between all the threads
@@ -308,8 +324,9 @@ void dist_termination_finalize(void){
  * The function will return only after all the threads on all the kernels
  * have already entered this function.
  */
-void syncronize_all(void){
-	if(master_thread()) {
+void syncronize_all(void)
+{
+	if (master_thread()) {
 		MPI_Comm comm;
 		MPI_Comm_dup(MPI_COMM_WORLD, &comm);
 		MPI_Barrier(comm);
@@ -318,21 +335,20 @@ void syncronize_all(void){
 	thread_barrier(&all_thread_barrier);
 }
 
-
 /*
  * Wrapper of MPI_Init call
  */
-void mpi_init(int *argc, char ***argv){
+void mpi_init(int *argc, char ***argv)
+{
 	int mpi_thread_lvl_provided = 0;
 	MPI_Init_thread(argc, argv, MPI_THREAD_MULTIPLE, &mpi_thread_lvl_provided);
 
 	mpi_support_multithread = true;
-	if(mpi_thread_lvl_provided < MPI_THREAD_MULTIPLE){
+	if (mpi_thread_lvl_provided < MPI_THREAD_MULTIPLE) {
 		//MPI do not support thread safe api call
-		if(mpi_thread_lvl_provided < MPI_THREAD_SERIALIZED){
+		if (mpi_thread_lvl_provided < MPI_THREAD_SERIALIZED) {
 			// MPI do not even support serialized threaded call we cannot continue
-			rootsim_error(true, "The MPI implementation does not support threads "
-			                    "[current thread level support: %d]\n", mpi_thread_lvl_provided);
+			rootsim_error(true, "The MPI implementation does not support threads [current thread level support: %d]\n", mpi_thread_lvl_provided);
 		}
 		mpi_support_multithread = false;
 	}
@@ -341,10 +357,13 @@ void mpi_init(int *argc, char ***argv){
 
 	MPI_Comm_size(MPI_COMM_WORLD, (int *)&n_ker);
 	MPI_Comm_rank(MPI_COMM_WORLD, (int *)&kid);
+
+	// Create a separate communicator which we use to send event messages
+	MPI_Comm_dup(MPI_COMM_WORLD, &msg_comm);
 }
 
-
-void inter_kernel_comm_init(void) {
+void inter_kernel_comm_init(void)
+{
 	spinlock_init(&msgs_lock);
 
 	outgoing_window_init();
@@ -353,22 +372,22 @@ void inter_kernel_comm_init(void) {
 	stats_reduction_init();
 }
 
-
-void inter_kernel_comm_finalize(void) {
+void inter_kernel_comm_finalize(void)
+{
 	dist_termination_finalize();
 	//outgoing_window_finalize();
 	gvt_comm_finalize();
 }
 
-
-void mpi_finalize(void) {
-	if(master_thread()) {
+void mpi_finalize(void)
+{
+	if (master_thread()) {
 		MPI_Barrier(MPI_COMM_WORLD);
+		MPI_Comm_free(&msg_comm);
 		MPI_Finalize();
 	} else {
 		rootsim_error(true, "MPI finalize has been invoked by a non master thread: T%u\n", local_tid);
 	}
 }
-
 
 #endif /* HAVE_MPI */

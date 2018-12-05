@@ -32,20 +32,15 @@
 
 #include <core/core.h>
 
-
 /// Ack window size
 #define WND_BUFFER_LENGTH	10000
 /// Ack window size
 #define WINDOW_DIMENSION	50
 
-
 #define SLAB_MSG_SIZE		512
-
-
 
 /// Number of slots used by MPI for buffering messages
 #define SLOTS	100000
-
 
 /// Simulation Platform Control Messages
 enum _control_msgs {
@@ -77,6 +72,7 @@ enum _mpi_msg_code{
 
 #define INIT_OUTGOING_MSG	10
 
+struct lp_struct;
 
 /// This structure is used by the communication subsystem to handle outgoing messages
 typedef struct _outgoing_t {
@@ -86,31 +82,34 @@ typedef struct _outgoing_t {
 	simtime_t *min_in_transit;
 } outgoing_t;
 
-extern void ParallelScheduleNewEvent(unsigned int, simtime_t, unsigned int, void *, unsigned int);
+extern void ParallelScheduleNewEvent(unsigned int, simtime_t, unsigned int,
+				     void *, unsigned int);
 
 /* Functions invoked by other modules */
 extern void communication_init(void);
 extern void communication_fini(void);
-extern int comm_finalize(void);
-extern void Send(msg_t *msg);
-extern void insert_outgoing_msg(msg_t *msg);
-extern void send_outgoing_msgs(LID_t);
-extern void send_antimessages(LID_t, simtime_t);
+extern void comm_finalize(void);
+extern void Send(msg_t * msg);
+extern simtime_t receive_time_barrier(simtime_t max);
+extern int messages_checking(void);
+extern void insert_outgoing_msg(msg_t * msg);
+extern void send_outgoing_msgs(struct lp_struct *);
+extern void send_antimessages(struct lp_struct *, simtime_t);
 extern void communication_fini_thread(void);
 extern void communication_init_thread(void);
 
 
-extern void msg_hdr_release(msg_hdr_t *msg);
-extern msg_t *get_msg_from_slab(void);
-extern msg_hdr_t *get_msg_hdr_from_slab(void);
-extern void pack_msg(msg_t **msg, GID_t sender, GID_t receiver, int type, simtime_t timestamp, simtime_t send_time, size_t size, void *payload);
-extern void msg_to_hdr(msg_hdr_t *hdr, msg_t *msg);
-extern void hdr_to_msg(msg_hdr_t *hdr, msg_t *msg);
-extern void msg_release(msg_t *msg);
-extern void dump_msg_content(msg_t *msg);
+extern void msg_hdr_release(msg_hdr_t * msg);
+extern msg_t *get_msg_from_slab(struct lp_struct *);
+extern msg_hdr_t *get_msg_hdr_from_slab(struct lp_struct *);
+extern void pack_msg(msg_t ** msg, GID_t sender, GID_t receiver, int type, simtime_t timestamp, simtime_t send_time, size_t size, void *payload);
+extern void msg_to_hdr(msg_hdr_t * hdr, msg_t * msg);
+extern void hdr_to_msg(msg_hdr_t * hdr, msg_t * msg);
+extern void msg_release(msg_t * msg);
+extern void dump_msg_content(msg_t * msg);
 
 #ifndef NDEBUG
-extern void validate_msg(msg_t *msg);
+extern void validate_msg(msg_t * msg);
 #else
 #define validate_msg(msg)
 #endif

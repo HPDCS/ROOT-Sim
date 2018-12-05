@@ -23,50 +23,66 @@
 */
 
 #pragma once
-#ifndef __ROOTSIM_THREAD_H
-#define __ROOTSIM_THREAD_H
 
 #include <stdbool.h>
 #include <arch/atomic.h>
 
-
 #if defined(OS_LINUX)
- #include <sched.h>
+
+#include <sched.h>
 #include <unistd.h>
 #include <pthread.h>
- // Macros to get information about the hosting machine
- #define get_cores() (sysconf( _SC_NPROCESSORS_ONLN ))
- // How do we identify a thread?
+
+/// Macro to get the core count on the hosting machine
+#define get_cores() (sysconf( _SC_NPROCESSORS_ONLN ))
+
+/// How do we identify a thread?
 typedef pthread_t tid_t;
- /// Spawn a new thread
+
+/// Spawn a new thread
 #define new_thread(entry, arg)	pthread_create(&os_tid, NULL, entry, arg)
- static inline void set_affinity(int core) {
+
+/**
+ * This inline function sets the affinity of the thread which calls it.
+ *
+ * @param core The core id on which the thread wants to be stuck on.
+ */
+static inline void set_affinity(int core)
+{
 	cpu_set_t cpuset;
 	CPU_ZERO(&cpuset);
 	CPU_SET(core, &cpuset);
 	// 0 is the current thread
 	sched_setaffinity(0, sizeof(cpuset), &cpuset);
 }
- #elif defined(OS_WINDOWS)
- #include <windows.h>
- #define get_cores() ({\
+
+#elif defined(OS_WINDOWS)
+
+#include <windows.h>
+
+/// Macro to get the core count on the hosting machine
+#define get_cores() ({\
 			SYSTEM_INFO _sysinfo;\
 			GetSystemInfo( &_sysinfo );\
 			_sysinfo.dwNumberOfProcessors;\
 			})
- // How do we identify a thread?
+
+/// How do we identify a thread?
 typedef HANDLE tid_t;
- /// Spawn a new thread
+
+/// Spawn a new thread
 #define new_thread(entry, arg)	CreateThread(NULL, 0, entry, arg, 0, &os_tid)
- #define set_affinity(core) SetThreadAffinityMask(GetCurrentThread(), 1<<core)
- #else /* OS_LINUX || OS_WINDOWS */
+
+/// Macro to set the affinity of the thread which calls it
+#define set_affinity(core) SetThreadAffinityMask(GetCurrentThread(), 1<<core)
+
+#else /* OS_LINUX || OS_WINDOWS */
 #error Unsupported operating system
 #endif
 
 
-
-
-/* The global tid is obtained by concatenating of the `kid` and the `local_tid`
+/**
+ * The global tid is obtained by concatenating of the `kid` and the `local_tid`
  * and is stored into an unsigned int. Since we are using half of the unsigned int
  * for each part we have that the total number of kernels and
  * the number of threads per kernel must be less then (2^HALF_UINT_BITS - 1)
@@ -79,26 +95,22 @@ typedef HANDLE tid_t;
 #define to_global_tid(kid, local_tid) ( (kid << HALF_UINT_BITS) | local_tid )
 #define to_local_tid(global_tid) ( global_tid & ((1 << HALF_UINT_BITS)-1) )
 
-
 /// This macro expands to true if the current KLT is the master thread for the local kernel
 #define master_thread() (local_tid == 0)
-
 
 /// This macro tells on what core the current thread is running
 #define running_core() (local_tid)
 
-
 /// This structure is used to call the thread creation helper function
 struct _helper_thread {
-	void *(*start_routine)(void*);
+	void *(*start_routine)(void *);
 	void *arg;
 };
-
 
 /// Macro to create one single thread
 #define create_thread(entry, arg) (create_threads(1, entry, arg))
 
-void create_threads(unsigned short int n, void *(*start_routine)(void*), void *arg);
+void create_threads(unsigned short int n, void *(*start_routine)(void *), void *arg);
 
 extern __thread unsigned int tid;
 extern __thread unsigned int local_tid;
@@ -118,13 +130,7 @@ typedef struct {
 						(atomic_set((&b->barr), -1)); \
 					} while (0)
 
-
-extern void barrier_init(barrier_t *b, int t);
-extern bool thread_barrier(barrier_t *b);
-bool reserve_barrier(barrier_t *b);
-void release_barrier(barrier_t *b);
-
-
-#endif /* __ROOTSIM_THREAD_H */
-
-
+extern void barrier_init(barrier_t * b, int t);
+extern bool thread_barrier(barrier_t * b);
+bool reserve_barrier(barrier_t * b);
+void release_barrier(barrier_t * b);

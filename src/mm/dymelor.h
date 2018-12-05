@@ -26,7 +26,6 @@
 *
 */
 
-
 #pragma once
 #ifndef _DYMELOR_H
 #define _DYMELOR_H
@@ -34,23 +33,18 @@
 #include <math.h>
 #include <string.h>
 
-
 #include <core/core.h>
 #include <datatypes/bitmap.h>
 #include <mm/state.h>
 #include <core/timer.h>
 
-
-
 /**************************************
  * DyMeLoR definitions and structures *
  **************************************/
 
-
 //ADDED BY MAT 0x00000200000000000
 #define LP_PREALLOCATION_INITIAL_ADDRESS	(void *)0x0000008000000000
 #define MASK 0x00000001		// Mask used to check, set and unset bits
-
 
 #define MIN_CHUNK_SIZE 128	// Size (in bytes) of the smallest chunk provideable by DyMeLoR
 #define MAX_CHUNK_SIZE 4194304	// Size (in bytes) of the biggest one. Notice that if this number
@@ -59,8 +53,8 @@
 				// application level software (i.e, larger than this number)
 				// will fail, as DyMeLoR will not be able to handle them!
 
-#define NUM_AREAS (log2(MAX_CHUNK_SIZE) - log2(MIN_CHUNK_SIZE) + 1)			// Number of initial malloc_areas available (will be increased at runtime if needed)
-#define MAX_NUM_AREAS (NUM_AREAS * 32) 	// Maximum number of allocatable malloc_areas. If MAX_NUM_AREAS
+#define NUM_AREAS (log2(MAX_CHUNK_SIZE) - log2(MIN_CHUNK_SIZE) + 1)	// Number of initial malloc_areas available (will be increased at runtime if needed)
+#define MAX_NUM_AREAS (NUM_AREAS * 32)	// Maximum number of allocatable malloc_areas. If MAX_NUM_AREAS
 				// malloc_areas are filled at runtime, subsequent malloc() requests
 				// by the application level software will fail.
 #define MAX_LIMIT_NUM_AREAS MAX_NUM_AREAS
@@ -70,15 +64,13 @@
 #define MAX_LOG_THRESHOLD 1.7	// Threshold to check if a malloc_area is underused TODO: retest
 #define MIN_LOG_THRESHOLD 1.7	// Threshold to check if a malloc_area is overused TODO: retest
 
-
 #ifndef INCREMENTAL_GRANULARITY
- #define INCREMENTAL_GRANULARITY 50 // Number of incremental logs before a full log is forced
+#define INCREMENTAL_GRANULARITY 50	// Number of incremental logs before a full log is forced
 #endif
 
 // These macros are used to tune the statistical malloc_area diff
 #define LITTLE_SIZE		32
-#define CHECK_SIZE		0.25  // Must be <= 0.25!
-
+#define CHECK_SIZE		0.25	// Must be <= 0.25!
 
 // This macro is used to retrieve a cache line in O(1)
 #define GET_CACHE_LINE_NUMBER(P) ((unsigned long)((P >> 4) & (CACHE_SIZE - 1)))
@@ -99,7 +91,9 @@
 
 /// This structure let DyMeLoR handle one malloc area (for serving given-size memory requests)
 struct _malloc_area {
-	bool is_recoverable;
+#ifndef NDEBUG
+	atomic_t presence;
+#endif
 	size_t chunk_size;
 	int alloc_chunks;
 	int dirty_chunks;
@@ -108,7 +102,7 @@ struct _malloc_area {
 	int idx;
 	int state_changed;
 	simtime_t last_access;
-	struct _malloc_area *self_pointer; // This pointer is used in a free operation. Each chunk points here. If malloc_area is moved, only this is updated.
+	struct _malloc_area *self_pointer;	// This pointer is used in a free operation. Each chunk points here. If malloc_area is moved, only this is updated.
 	rootsim_bitmap *use_bitmap;
 	rootsim_bitmap *dirty_bitmap;
 	void *area;
@@ -118,18 +112,16 @@ struct _malloc_area {
 
 typedef struct _malloc_area malloc_area;
 
-
-
 /// Definition of the memory map
 struct _malloc_state {
-	bool is_incremental;		/// Tells if it is an incremental log or a full one (when used for logging)
+	bool is_incremental;	///< Tells if it is an incremental log or a full one (when used for logging)
 	size_t total_log_size;
 	size_t total_inc_size;
 	size_t bitmap_size;
 	size_t dirty_bitmap_size;
 	int num_areas;
 	int max_num_areas;
-        int busy_areas;
+	int busy_areas;
 	int dirty_areas;
 	simtime_t timestamp;
 	struct _malloc_area *areas;
@@ -137,39 +129,17 @@ struct _malloc_state {
 
 typedef struct _malloc_state malloc_state;
 
-
-
-
 #define is_incremental(ckpt) (((malloc_state *)ckpt)->is_incremental == true)
 
-#define get_top_pointer(ptr) ((long long *)((char *)ptr - sizeof(long long)))
+#define get_top_pointer(ptr) ((unsigned long long *)((char *)ptr - sizeof(unsigned long long)))
 #define get_area_top_pointer(ptr) ( (malloc_area **)(*get_top_pointer(ptr)) )
 #define get_area(ptr) ( *(get_area_top_pointer(ptr)) )
-
-
 
 /***************
  * EXPOSED API *
  ***************/
 
-
-// Variables
-// TODO: quali sono realmente da esporre all'esterno?!
-
-extern int incremental_granularity;
-extern int force_full[MAX_LPs];
-extern malloc_state *m_state[MAX_LPs];
-extern double checkpoint_cost_per_byte;
-extern double recovery_cost_per_byte;
-extern unsigned long total_checkpoints;
-extern unsigned long total_recoveries;
-extern double checkpoint_bytes_total;
-
-
-
 // DyMeLoR API
-extern void dymelor_init(void);
-extern void dymelor_fini(void);
 extern void set_force_full(unsigned int, int);
 extern void dirty_mem(void *, int);
 extern size_t get_state_size(int);
@@ -177,34 +147,25 @@ extern size_t get_log_size(malloc_state *);
 extern size_t get_inc_log_size(void *);
 extern int get_granularity(void);
 extern size_t dirty_size(unsigned int, void *, double *);
-extern void recoverable_init(void);
-extern void recoverable_fini(void);
-extern void unrecoverable_init(void);
-extern void unrecoverable_fini(void);
-extern void malloc_state_init(bool recoverable, malloc_state *state);
-extern void *do_malloc(LID_t, malloc_state * mem_pool, size_t size);
-extern void do_free(LID_t, malloc_state *mem_pool, void *ptr);
-extern void *pool_get_memory(LID_t lid, size_t size);
-extern void pool_release_memory(LID_t lid, void *ptr);
+extern malloc_state *malloc_state_init(void);
+extern void malloc_state_wipe(malloc_state **);
+extern void *do_malloc(struct lp_struct *, size_t);
+extern void do_free(struct lp_struct *, void *ptr);
+extern void *allocate_lp_memory(struct lp_struct *, size_t);
+extern void free_lp_memory(struct lp_struct *, void *);
 
 // Checkpointing API
-extern void *log_full(LID_t);
-extern void *log_state(LID_t);
-extern void log_restore(LID_t, state_t *);
+extern void *log_full(struct lp_struct *);
+extern void *log_state(struct lp_struct *);
+extern void log_restore(struct lp_struct *, state_t *);
 extern void log_delete(void *);
 
-// Recoverable Memory API
+// Userspace API
 extern void *__wrap_malloc(size_t);
 extern void __wrap_free(void *);
 extern void *__wrap_realloc(void *, size_t);
 extern void *__wrap_calloc(size_t, size_t);
-extern void clean_buffers_on_gvt(LID_t, simtime_t);
-
-// Unrecoverable Memory API
-extern void *umalloc(LID_t, size_t);
-extern void ufree(LID_t, void *);
-extern void *urealloc(LID_t, void *, size_t);
-extern void *ucalloc(LID_t, size_t nmemb, size_t size);
+extern void clean_buffers_on_gvt(struct lp_struct *, simtime_t);
 
 /* Simulation Platform Memory APIs */
 extern inline void *rsalloc(size_t);
@@ -214,11 +175,7 @@ extern inline void *rscalloc(size_t, size_t);
 
 extern void ecs_init(void);
 
-extern malloc_state **recoverable_state;
-
 // This is used to help ensure that the platform is not using malloc.
 #pragma GCC poison malloc free realloc calloc
-
-
 
 #endif

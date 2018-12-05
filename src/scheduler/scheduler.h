@@ -37,7 +37,6 @@
 #include <arch/ult.h>
 #include <scheduler/process.h>
 
-
 /// This macro defines after how many idle cycles the simulation is stopped
 #define MAX_CONSECUTIVE_IDLE_CYCLES	1000
 
@@ -50,16 +49,14 @@ enum {
 extern void scheduler_init(void);
 extern void scheduler_fini(void);
 extern void schedule(void);
-extern void initialize_LP(LID_t lp);
 extern void initialize_worker_thread(void);
-extern void activate_LP(LID_t lp, simtime_t lvt, void *evt, void *state);
-
-
+extern void activate_LP(struct lp_struct *, msg_t *);
+extern void LP_main_loop(void *args);
 
 extern bool receive_control_msg(msg_t *);
 extern bool process_control_msg(msg_t *);
 extern bool reprocess_control_msg(msg_t *);
-extern void rollback_control_message(LID_t, simtime_t);
+extern void rollback_control_message(struct lp_struct *current, simtime_t);
 extern bool anti_control_message(msg_t * msg);
 
 #ifdef HAVE_PREEMPTION
@@ -71,18 +68,14 @@ void enable_preemption(void);
 void disable_preemption(void);
 #endif
 
-
-extern __thread LID_t current_lp;
-extern __thread simtime_t current_lvt;
+extern __thread struct lp_struct *current;
 extern __thread msg_t *current_evt;
-extern __thread void *current_state;
 extern __thread unsigned int n_prc_per_thread;
-
 
 #ifdef HAVE_PREEMPTION
 extern __thread volatile bool platform_mode;
 #define switch_to_platform_mode() do {\
-				   if(LPS[current_lp]->state != LP_STATE_SILENT_EXEC) {\
+				   if(current->state != LP_STATE_SILENT_EXEC) {\
 					platform_mode = true;\
 				   }\
 				  } while(0)
@@ -91,6 +84,6 @@ extern __thread volatile bool platform_mode;
 #else
 #define switch_to_platform_mode() {}
 #define switch_to_application_mode() {}
-#endif /* HAVE_PREEMPTION */
+#endif				/* HAVE_PREEMPTION */
 
 #endif

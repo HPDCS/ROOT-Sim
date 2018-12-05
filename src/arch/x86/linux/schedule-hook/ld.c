@@ -115,7 +115,7 @@ prefix:
 	    if(mode == MODE_X64 && first_op != 0xff && mod == 0x00 && rm == 0x05) {
 			_rip_relative = true;
 	    }
-		
+
 	 } else {
 		if(op == 0x70) { /* TODO: need another table here! */
 			/* Three operands instruction (SSE extension) */

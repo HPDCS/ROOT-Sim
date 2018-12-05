@@ -1,327 +1,187 @@
-2014-03-05 Alessandro Pellegrini <pellegrini@dis.uniroma1.it>
-	* Serial Simulator: Merging the serial simulator with the main ROOT-Sim kernel
-
-2014-02-28 Alessandro Pellegrini <pellegrini@dis.uniroma1.it>
-	* Rendez Vous Subsystem: finished the preliminary implementation of the Rendez-Vous Subsystem
-
-2014-02-21 Alessandro Pellegrini <pellegrini@dis.uniroma1.it>
-	* Shared Simulation State: bridging the Kernel Module with the simulation kernel.
-		The system is now being modified to support LP suspension/resume.
-
-2014-02-20 Alessandro Pellegrini <pellegrini@dis.uniroma1.it>
-	* LP memory allocator: implemented a LP memory preallocator working with mmap.
-		This is being coupled with the kernel module facilities via ioctl() calls.
-
-2014-02-16 Alessandro Pellegrini <pellegrini@dis.uniroma1.it>
-	* New Multithreaded Version: Today, after more than one month of debugging
-		the new multithreaded version is almost completely stable.
-		Debugging has made me insert several perfomance drops here and there, so
-		now it starts the process of enhancing the performance of operations on the
-		critical path of the simulator.
-
-
-2014-01-04 Francesco Quaglia <quaglia@dis.uniroma1.it>
-	* Kernel Module: The kernel has been patched to call a module hook
-		upon process/thread rescheduling to correct the memory
-		view the ROOT-Sim processes are getting
-
-
-2014-01-28 Alessandro Pellegrini <pellegrini@dis.uniroma1.it>
-	* Rollback: Outgoing messages are correctly registered. During the
-		rollback operation anti-messages are correctly sent and received.
-		Still missing the logic associated with anti-messages handling in
-		bottom halves management.
-		
-		
-2014-01-28 Francesco Quaglia <quaglia@dis.uniroma1.it>
-	* Kernel Module: The kernel module is correctly working. There is still a small
-		bug which causes the OS kernel to hung after several executions. It's
-		likely related to buddy system's corruption.
-	 	
-
-2013-12-17 Alessandro Pellegrini <pellegrini@dis.uniroma1.it>
-	* Rollback: Reimplemented the rollback operation. Still missing the antimessages
-		sending.
-	
-
-2013-12-17 Alessandro Pellegrini <pellegrini@dis.uniroma1.it>
-	* Numerical Library: numerical initialization is fully contained within
-		the numerical library. Some of the stale code in init.c has been moved.
-	* Scheduler: reimplemented (static) LP <-> KLTs binding. Added a 'lid' field in
-		the LP control block, used to translate KLT binding to local id.
-		Added new LP states: SILENT_EXEC and ROLLBACK. The first is used
-		to notify ScheduleNewEvent that messages must be discarded. The second
-		is used to notify the scheduler that, before executing the next event
-		a rollback operation must be executed.
-	* Communication: output queue is now using a compact envelope type to keep
-		information used to send antimessages. Created a type for the bottom halves.
-	* Lists: added the logic to push an object on the list head. This breaks ordering,
-		but can be used to implement LIFO queues.
-	* Multithread: If a KLT calls system_exit due to an error, LPS is unmapped and other
-		threads might incur in segfault. Adding an error flag, to silently
-		shutdown the simulation in case of an error.
-	* Rollback: identified the point where the rollback operation should be triggered.
-	
-
-2013-12-16 Alessandro Pellegrini <pellegrini@dis.uniroma1.it>
-	* Applications: ported all application examples to the new code base
-	* Code base: fixed all memory leaks. Tested the simulator with all
-		the available examples. There is a problem with Traffic:
-		a call to malloc() returns NULL. This happens after that
-		DyMeLoR calls __real_realloc. Maybe there is a bug there...
-	* Scheduler: starting to reimplement LP binding towards KLTs
-
-
-2013-12-15 Francesco Quaglia <quaglia@dis.uniroma1.it>
-	* Kernel Module: Correctly accessing PDP entries
-	
-
-2013-12-13 Francesco Quaglia <quaglia@dis.uniroma1.it>
-	* Kernel Module: Correctly accessing PML4 entries
-	
-	
-2013-12-13 Alessandro Pellegrini <pellegrini@dis.uniroma1.it>
-	* Code base: fixing memory leaks
-	* Kernel Module: Correctly accessing PML4 entries and PDP entries
-	
-
-2013-12-12 Alessandro Pellegrini <pellegrini@dis.uniroma1.it>
-	* CCGS: Silent execution is now called to realign LPs' states to the freshly computed
-		gvt value. All the applications have been modified to have 'LP id' as the first
-		parameter. Finished rewriting the subsystem.
-	* State Management: reimplemented silent execution, relying on the new LP scheduling paradigm.
-	* Global: checking for memory leaks.
-	* Lists: list_truncate was not updating the size of the list. list_pop() now just
-		deletes the first element.
-	
-
-2013-12-11 Alessandro Pellegrini <pellegrini@dis.uniroma1.it>
-	* Today: it's a very cool date. 11/12/13. We must wait for year 2103 for such
-		a cool date to come back. I'm looking forward to that entry log!!!
-	* Code base: finished polishing warnings throughout the code.
-	* Shell: there is still a warning in yy_scan_bytes: warning: comparison between
-		signed and unsigned integer expressions. There is bug file 140 addressing
-		this issue: http://sourceforge.net/p/flex/bugs/140/
-		It appears that the bug has been fixed, and the patch will appear in versions
-		> 2.5.37. Current release is 2.5.37, so this should be fixed in future
-		releases.
-	* Numerical library: signedness error in manual initialization of master seed
-	* GVT: the reduction is computed correctly. Fossil collection is correctly removing
-		data structures. 
-	* main: fixed a small bug that might entail a wrong kid number printing
-	* CCGS: Starting to reintegrate CCGS for termination detection.
-
-
-
-2013-12-10 Francesco Quaglia <quaglia@dis.uniroma1.it>
-	* Kernel Module: now the first part of the module is working, even when running
-		multiple threads.
-
-
-2013-12-10 Alessandro Pellegrini <pellegrini@dis.uniroma1.it>
-	* Kernel Module: worked with Francesco, see his changelog entry
-	* Overall Code Base: corrected about 100 warnings in the whole code. Added a lot
-		of warning flags in the development CFLAGS macro, to avoid bad debugging
-		surprises
-		
-
-2013-12-09 Alessandro Pellegrini <pellegrini@dis.uniroma1.it>
-	* GVT: Rewriting the overall GVT. I think there is a stack corruption somewhere,
-		cause the debugging trace is very stange. I have activated all the warning
-		levels at compile time. There is a segfault in the fossil collection,
-		but in a place where the function should not be called...
+# Change Log
 
-
-2013-12-05 Francesco Quaglia <quaglia@dis.uniroma1.it>
-	* Kernel Module: added the code to inspect the content of the PML4 page directory. mmapping is
-		working fine, and shut down of the process as well.
-
-2013-12-06 Alessandro Pellegrini <pellegrini@dis.uniroma1.it>
-	* ULT: the subsystem has been ported to Cygwin and Windows, using Windows Fibers. Testing
-		has not been done very thoroughly. A small bug was introduced in the Linux version
-		during the porting, and this has been fixed.
-	* GVT: rewriting the subsystem. Up to now, only one KLT per kernel is allowed to run
-		the distributed protocol. I should check whether it's possible to rely on more cores
-		to perform the reduction in parallel. System is actually not stable.
-	* Kernel Module: added support to print CR registers, to inspect the current execution mode.
-
-
-2013-12-05 Francesco Quaglia <quaglia@dis.uniroma1.it>
+This file reports the changes associated with each release of ROOT-Sim.
 
-	* Kernel Module: added code to inspect the content of a pgd (either original or replaced)
+[Unreleased] refers to the features which are under current development (and are listed in this changelog waiting for a new release to come).
 
+For each release, we report what new features  have been added, what changes affected the code base, what facilities have been deprecated or removed, and what bugs have been fixed.
 
-2013-12-05 Alessandro Pellegrini <pellegrini@dis.uniroma1.it>
-	* Kernel Module: fixed header inclusions. It now compiles on kernel 3.* as well, and
-		the stub is correctly working.header inclusions.
-		Added a compile time check to determine whether we have at least kernel 2.6.25
-		as I'm using pagemap functions.
-	* State Saving: added a function to force state saving, independently of checkpointing
-		interval. This is used upon the invocation of SetState() during INIT event,
-		to create a first snapshot in the simulation. It will be useful during the
-		reimplementation of the incremental checkpointing, and the autonomic checkpointing.
-		Periodic State Saving and Copy State Saving are correctly working, when using
-		1 KLT and 1024 LPs. There was a small (historic!) bug that caused an off-by-one
-		error in the computation of the checkpointing interval.
-	* GVT Subsystem: starting to completely rewrite the GVT subsystem...
-		Module snapshots.c as been removed (there was only one function from the CCGS
-		subsystem there). Moved to main gvt.c module, and marked static. This could
-		be moved to a separate ccgs.c module, if there is enough code to justify this.
-	* Timers: the macro DECLARE_TIMER() has been superseded by the new timer_t type.
-		Other macros have been case-lowered to resemble functions. Additionally, they
-		have been restructured to be is-safe.
+## [Unreleased]
 
+### Added
 
-2013-12-04 Francesco Quaglia <quaglia@dis.uniroma1.it>
+* _Event-Cross State Synchronization_:
+* _Linux Kernel Modules_: 
 
-	* Kernel Module: fixed a bug that caused a general protection error when updating CR3
+### Changed
 
+* _Segment Allocator_: 
 
-2013-12-04 Alessandro Pellegrini <pellegrini@dis.uniroma1.it>
-	* Lists: fixed a small bug that caused priority inversion in the input event queue
-	* Scheduler: rewritten functions to retrieve next event's timestamp and make bound
-		advance during the execution.
-	* Communication: fixed small bugs that prevented correct insertion of newly scheduled
-		events.
-	* Topology: micro optimizations in some checks on boundaries, in the case of Hexagonal
-		or Square topology. Addedd a sanity check that prevents the finder, when
-		only 1 LP is in the system, to loop indefinitely.
-	* Global Execution: after this commit, if we run 1 LP on 1 KLT, the flow of (forward)
-		events is correctly restored! There is still no computation of the GVT,
-		so no output is printed during the execution, the memory exhausts soon,
-		and there is no termination detection yet.
-		The forward execution has been tested using more than 1 LP and it works.
-	* State Management: I have reinserted calls to LogState. Using 1 LP 1 KLT, it
-		segfaults when executing subsequent events.
+### Deprecated
+### Removed
+### Fixed
 
 
-2013-12-03 Alessandro Pellegrini <pellegrini@dis.uniroma1.it>
-	* User Level Threads: Porting ULT to cygwin (more for development reasons).
-		sigaltstack is missing, so a different way must be used to create
-		the thread's stack.
+## [2.0.0] - 2018-12-06
 
+This is the stable 2.0 release of ROOT-Sim.
 
-2013-12-02 Francesco Quaglia <quaglia@dis.uniroma1.it>
+All the code has been properly documented. The library is accompanied by a set of rules to help the distributed development effort, and prevent something to screw up the whole work. A wiki has been added to the online repository, and the website has been significantly restructured in a way to be automatically sync'ed with the code repository (as far as possible).
 
-	* Kernel Module: Carrying on the development of the module. The page tables are
-		now swapped and CR3 register is updated. There is still some bug, as the
-		kernel panics when the application exits.
+### Added
 
+* _ABM Support_: A new set of semantically rich API has been added to ROOT-Sim. This API significantly simplifies the development of Agent-Based Models, and transparently supports all the activities required to support rollback and restore of simulation objects. The model can specify portions of the state of a simulation object which must be transparently synchronized with other LPs in the system, also on remote distributed nodes.
+* _JSON-based configuration of models_: A JSON parser has been introduced in the library. This can be used to configure, e.g., custom topologies. Also, simulation models can lever this parser to implement their own configuration files.
+* _Continuous Integration_: Continuous integration has been significantly refactored, allowing to stress test the project much more and realigning to newer versions of the system software. Code coverage has also been supported.
+* _Tests and Unit Tests_: A test script has been introduced, which relies on some unit tests (currently, only DyMeLoR is subject to a unit test) and some models to cover much of the code base while testing.
+* _Automatic deploy of website and documentation_: Continuous Integration has been rearranged to automatically generate the documentation and update some parts of the website from the content of the repository, any time that a new merge is made in `develop` or in `master`.
 
-2013-11-29 Alessandro Pellegrini <pellegrini@dis.uniroma1.it>
+### Changed
 
-	* Communication: most of the (local) communication subsystem has
-		been rewritten. Still has to debug local message enqueueing,
-		as there are problems when scheduling a new event. Only
-		INIT is correctly scheduled and processed. Still running
-		with only one kernel-level thread and one user-level
-		thread (LP).
-	* User Level Threads: ULT has been moved to the arch dependend
-		part of the simulator. Current code for creating/scheduling
-		ULT has been flagged as Linux-dependent code.
+* _Argument parsing_: We have now switched to `argp` to parse command line arguments. This has the benefit that also simulation models can implement their parsers almost at no cost. Some models have already been refactored to use this facility.
+* _Topology library_: The topology library has been significantly enhanced. New topologies have been added. In particular, it is now possible to specify arbitrary topologies, represented as graphs with edges which carry either a probability or a weight. These values are used by API functions such as `FindReceiver()`to find the destination of a message. Topologies can change at any time during simulation, and they are transparently rolled back if needed.
+* _Checkpoint/Restore_: The code supporting state saving has been refactored. In particular, the code has been modified to completely separate the routines which handle platform-level data (such as rollbackable libraries) and simulation model buffers. This separation of concerns has significantly cleaned up the code.
+* _Faster ULTs_: This release explicitly targets x86_64 systems. Therefore, we decide to break portability, remove the portable signal-based approach for creating ULTs, and implemented an extremely fast context setup routine. This change has cut the time to setup LPs by at least a factor of 1000.
+* _Contributing Guidelines_: Contributing guidelines have been added to the project. The code base has been significantly cleaned up and documented, to comply with the new guidelines.
 
+### Deprecated
 
-2013-11-28 Alessandro Pellegrini <pellegrini@dis.uniroma1.it>
+* _NUMA Optimization_: The NUMA subsystem has been found to be suboptimal under some circumstances. The current research effort in this direction tells that a more comprehensive approach is feasible, and more effective. Since the new subsystem will basically constitute a complete rewrite of the previous, in this cleaner release we have deprecated the old subsystem.
+* _Parameter Parsing API_: The new `argp`-based parser made the older code to parse simulation models parameters obsolete, and it has thus been deprecated.
+* _Treiber Stack_: The Treiber stack was being anyhow the bottleneck of the slab allocator. A different approach is under study, so this data structure has been deprecated from the simulator.
 
-	* Scheduler: it is now the scheduler duty to decide which LP must
-		be scheduled, and to actually schedule it. A whole lot
-		of code has been changed to support this refactoring
+### Removed
 
+* _Event & Cross State Synchronization_: ECS has been temporarily compiled-out of ROOT-Sim. Some of the code base is still in the repository anyhow. A complete cleanup and enhancement of the subsystem is due for the next release.
+* _Buddy System_ and _Segment Allocator_: A bug in the buddy system has been found, but it was not possible to fix it in time for the current release. Considering that this is only 100% necessary for  ECS (which has also been removed), and considering that the performance penalty by removing it is not that dramatic, it has been temporarily disabled (although it is still in the code base). This will be reintroduced in the next release.
 
-2013-11-27 Alessandro Pellegrini <pellegrini@dis.uniroma1.it>
+### Fixed
 
-	* Simulator Codebase: rewritten most of the portion of the code on the critical path.
-		Everything is still unstable, as INIT event is not place in the input queue,
-		and actual user-level thread does nothing. This is just a starting point
-		for a runtime testing of the new codebase.
-	* Backtrace: merged code from an older branch to show a call backtrace upon segfault.
-		This can be enabled using the new --backtrace runtime option.
-	* Queues: now queues are correctly initialized
-	* INIT event: INIT event is now generated and placed into the input queue of every LP
+* If an error at runtime is found, a call to `rootsim_error()` can now jump directly out of the main loop thanks to a `longjmp()`. This prevents stupid crashes, like checking if a pointer is NULL, and then dereferencing it, although a call to `rootsim_error()` was issued.
 
 
-2013-11-26 Alessandro Pellegrini <pellegrini@dis.uniroma1.it>
 
-	* Kernel Module: cleaned up kernel module code. Now we have /sys endpoints correctly created.
-		If errors happen upon module initialization, everything should be cleaned up
-		before failing
+## [2.0.0-alpha2] - 2018-02-01
 
+This is the second alpha release for version 2.0.0.
 
-2013-11-26 Francesco Quaglia <quaglia@dis.uniroma1.it>
+In this release, several performance and correctness minor bugs have been fixed.
 
-	* Kernel Module: implmented a stub of the module's pgd allocation
+The preliminar experimentation has shown, under certain workloads, a 3x speedup with respect to the previous alpha.
 
+### Added
 
-2013-11-21 Alessandro Pellegrini <pellegrini@dis.uniroma1.it>
+* _Treiber Stack_:  a non-blocking Treiber stack has been added, to implement a retirement queue for message buffers, rather than freeing immediately from the slab, in order to reduce the memory-release bottleneck.
 
-	* Linked Lists: fixed minor bugs
-	* State Management: reimplementation concluded. Still unstable, have to test and debug
-	* Message Queue Management: reimplementing message queues according to the new list implementation
-	* LP execution state: an LP can now be ready, blocked or active
+### Changed
 
+* _Message Channel_: switched to a (M, 1) register.
+* _Slab Allocator_: operations have been significantly optimized.
 
-2013-11-20 Alessandro Pellegrini <pellegrini@dis.uniroma1.it>
 
-	* Kernel Module: Sketching the kernel module to manage multiple page tables
 
 
-2013-11-19 Alessandro Pellegrini <pellegrini@dis.uniroma1.it>
+## [2.0.0-alpha1] - 2018-01-30
 
-	* State Management: Rewritten code to rely on new linked list implementation. Still unstable.
+This it the alpha 1 release of ROOT-Sim 2.0.0.
 
+### Added
 
-2013-11-13 Alessandro Pellegrini <pellegrini@dis.uniroma1.it>
+* `rootsim-cc`: A compiler to compile simulation models against ROOT-Sim has been introduced. This is a wrapper of `gcc` which undertakes the necessary steps to correctly link the binary objects against DyMeLoR and ROOT-Sim libraries.
+* _MPI_: an asynchronous and optimized subsystem based on MPI has been added. ROOT-Sim can go distributed again.
 
-	* Page-Table Kernel Module: Created the skeleton for the new kernel module, which will
-		support different per-thread page tables.
-	* Queues: Continuing the migration to the new list implementation
-	* Memory Management: state handling subsystem is being merged into memory management subsystem
-	* Execution Flow: reimplementing the logic behind rollback operation
+### Changed
 
+* _Code Base_: the runtime environment is now organized as a static library which is installed in the system using `make install`. This allows to simplify the deploy and the reuse of the whole simulation environment. Also simulation models benefit from this organization.
+* _GVT_: A non-blocking GVT algorithm has superseded the traditional Fujimoto & Hybinette algorithm.
 
-2013-11-11 Alessandro Pellegrini <pellegrini@dis.uniroma1.it>
+### Deprecated
 
-	* Scheduler: minor bugfixes
-	* Event Processing: The code to invoke ProcessEvent() callback has been refactored. A single
-		entry point is provided, so that when a LP must be activated, independently if it's
-		in forward execution, in coasting forward or in initialization, the internal scheduler's
-		API activate_LP() can be invoked. This, in turn, activates the LP's user-level thread.
-	* Queues: Starting migrating the queues management code base to the new list implementation
-	* Data Types: Modifying datatypes names: suffixes _type are being changed to _t. time_type
-		has been changed to simtime_t, to avoid collision with standard time_t. queue_type
-		has been discarded, as its role was only to support linked lists, which is in turn
-		done by relying on list(msg_t) new supported type.
+* _Interactive shell_: this was an old-school way to interact with the simulator. Actually, the benefits of relying on it were not comparable to the waste of time to setup the scripts. Therefore, due to the lack of usage, the interactive shell and its language has been deprecated.
 
+### Removed
 
+### Fixed
 
-2013-11-08 Alessandro Pellegrini <pellegrini@dis.uniroma1.it>
+## [1.0.1] - 2018-01-30
 
-	* Userspace LP threads: created support for creating userspace threads for LP scheduling
-	* Scheduler reorganization: reorganizing scheduler organization to cope with LP user threads
+Compatibility fix.
+This version fixes small compatibility issues which arised with newer versions of gcc compilers.
 
+### Added
+### Changed
+### Deprecated
+### Removed
+### Fixed
 
+* In the creation of ULTs, an old and deprecated header was used, which prevented newer versions of `gcc` to compile the runtime library.
 
-2013-11-06 Alessandro Pellegrini <pellegrini@dis.uniroma1.it>
 
-	* LP execution state revisited: restructuring LPs' execution state, to simplify accessing
-		data and support events' preemption
 
+## [1.0.0] - 2018-01-30
 
+This is the first stable version of the multithreaded ROOT-Sim kernel.
 
-2013-11-05 Alessandro Pellegrini <pellegrini@dis.uniroma1.it>
+This version offers advanced functionalities for multicore machines. No distributed simulation support is offered.
 
-	* Linked Lists reimplemented: this new version will simplify handling events, and will
-		allow the insertion of "fake" events to support intra-/inter-kernel management
-		operations.
-	* ChangeLog: compliant changelog created. It's impossible to track all the changes made so far...
+In this release, _almost 90% of the code base has been completely rewritten_, and the source tree has been significantly reorganized. This has lead to a more modern runtime environment, with code much more readable.
 
+### Added
 
+* _Serial Simulator_: The code of a serial simulator has been introduced in the library. At startup, the user can decide whether to run parallel simulations or not, only specifying a command line flag.
+* _Event & Cross State Synchronization_: A new subsystem which allows to exchange pointers as message payloads, implementing a sort of transparent distributed shared memory has been released. This is based on a Linux Loadable Kernel module, which allows to generate low-cost artificial memory fault to keep track of the activities of the models. This is a very experimental subsystem.
+* _Segment Allocator_: implemented a LP memory preallocator working with `mmap`. This allows to cluster all buffers used to support the execution of a LP in a constrained region of virtual addresses. This is useful to put in place several optimizations.
+* _Buddy System_: the space allocated via the segment allocator is managed by a new buddy system, which serves memory requests for the DyMeLoR allocator.
+* _Numerical Library_: new probability distributions have been introduced.
+* _Temporary LP Binding_: a non-blocking algorithm to periodically reassign a group of LPs to several worker threads has been put in place. This allows to implement a fast load sharing across the CPU cores.
+* _Generic Lists_: a subsystem implementing lists of generic objects has been added to the simulator. This has significantly reduce the boilerplate code in the runtime to operate on the various lists.
+* _Interactive Shell_: An interactive shell has been added to the project. It allows to compile and launch simulation models in a more simplified way. Also, it support a special flavour of execution scripts, allowing to organize batches of tests with different parameters.
 
-2011-05-15 ROOT-Sim Team  <rootsim@egooglegroups.com>
 
-	* Version 0.9.0-RC1: this is the first official release of ROOT-Sim
-	* Dynamic Memory Logger Subsystem: memory management subsystem incorporated
-	* Incremental Dynamic Memory Manager Subsystem
-	* Smallest Timestamp First O(n) Scheduler
-	* Smallest Timestamp First O(1) Scheduler
-	* Consistent Committed Global State Subsystem
+### Changed
+ * _Applications_: ported all application examples to the new code base.
+ * _Numerical Library_: the code is now self contained in a single library file, simplifying the organization of `init.c`.
+ * _Communication_: the output queue is now using a compact envelope type to keep information used to send antimessages. Created a type for the bottom halves.
+
+* GVT: Rewriting the overall GVT. I think there is a stack corruption somewhere,
+  ​		cause the debugging trace is very stange. I have activated all the warning
+  ​		levels at compile time. There is a segfault in the fossil collection,
+  ​		but in a place where the function should not be called...
+
+​	* ULT: the subsystem has been ported to Cygwin and Windows, using Windows Fibers. Testing
+​		has not been done very thoroughly. A small bug was introduced in the Linux version
+
+​	* Timers: the macro DECLARE_TIMER() has been superseded by the new timer_t type.
+​		Other macros have been case-lowered to resemble functions. Additionally, they
+​		have been restructured to be is-safe.
+
+​	* Topology: micro optimizations in some checks on boundaries, in the case of Hexagonal
+​		or Square topology. Addedd a sanity check that prevents the finder, when
+​		only 1 LP is in the system, to loop indefinitely.
+
+
+* Communication: most of the (local) communication subsystem has
+been rewritten. Still has to debug local message enqueueing,
+as there are problems when scheduling a new event. Only
+INIT is correctly scheduled and processed. Still running
+with only one kernel-level thread and one user-level
+thread (LP).
+
+### Removed
+
+* _Star scheduler_. To rewrite the code base, the start scheduler has been currently removed from the code base. This is scheduled for later reintroduction.
+* _CCGS_: calls to `OnGVT` pass a simulation state which is currently committed, but overall the state observed by LPs is not consistent (different LPs might observe different simulation times). This is not a serious problem for most simulation models, and the code is to be later reintroduced.
+
+## [0.9.0-RC1] - 2011-05-15
+
+This is the first official release of ROOT-Sim. The following subsystems have been introduced in the release:
+
+* _Dynamic Memory Logger Subsystem (DyMeLoR)_: memory management subsystem to keep track of the memory buffers used by simulation models.
+* _Incremental Logging Support_: at runtime, updates to memory buffers by the simulation models are tracked. Only the affected chunks are logged/restored.
+* _Schedulers_: two schedulers can be used: `linear` (an O(n) scheduler) and `star` (an O(1) scheduler)
+* _Consistent Committed Global State (CCGS) subsystem_: this subsystem allows simulation models to terminate the simulation when complex predicates are evaluated on committed portions of the simulation run.
+
+
+
+    Copyright (C) 2008-2018 HPDCS Group
+    Copying and distribution of this file, with or without modification, are permitted provided the copyright notice and this notice are preserved.

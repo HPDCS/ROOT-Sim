@@ -30,16 +30,16 @@
 #include <core/core.h>
 
 struct _msg_buff {
-	msg_t * volatile *buffer;
-	volatile unsigned int	size;
-	volatile unsigned int	written;
-	volatile unsigned int	read;
+	msg_t *volatile *buffer;
+	volatile unsigned int size;
+	volatile unsigned int written;
+	volatile unsigned int read;
 };
 
 typedef struct _msg_channel {
-	struct _msg_buff	*volatile buffers[2];
-	atomic_t		size;
-	spinlock_t		write_lock;
+	struct _msg_buff *volatile buffers[2];
+	atomic_t size;
+	spinlock_t write_lock;
 } msg_channel;
 
 #define INITIAL_CHANNEL_SIZE (512)
@@ -49,4 +49,4 @@ extern void fini_channel(msg_channel *);
 extern void insert_msg(msg_channel *, msg_t *);
 extern void *get_msg(msg_channel *);
 
-#endif /* _BH_H */
+#endif				/* _BH_H */

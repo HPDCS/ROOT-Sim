@@ -57,7 +57,9 @@ typedef double simtime_t;
 extern unsigned int n_prc_tot;
 
 /// This can be implemented by the model for smart argument handling
-__attribute((weak)) extern struct argp model_argp;
+__attribute((weak))
+extern struct argp model_argp;
+
 
 // Expose to the application level the rollbackable numerical library
 double Random(void);
@@ -70,8 +72,10 @@ double Poisson(void);
 int Zipf(double skew, int limit);
 
 // ROOT-Sim core API
-extern void (*ScheduleNewEvent)(unsigned int receiver, simtime_t timestamp, unsigned int event_type, void *event_content, unsigned int event_size);
-extern void (*SetState)(void *new_state);
+extern void (*ScheduleNewEvent)(unsigned int receiver, simtime_t timestamp,
+				unsigned int event_type, void *event_content,
+				unsigned int event_size);
+extern void SetState(void *new_state);
 
 /*********************************/
 /********TOPOLOGY*LIBRARY*********/
@@ -219,5 +223,5 @@ int 			RemoveVisit		(agent_abm_t *agent, unsigned i);
 unsigned 		CountPastVisits		(const agent_abm_t *agent);
 int 			GetPastVisit		(const agent_abm_t *agent, unsigned *region_p, unsigned *event_type_p, simtime_t *time_p, unsigned i);
 
-#endif /* __ROOT_Sim_H */
 
+#endif				/* __ROOT_Sim_H */

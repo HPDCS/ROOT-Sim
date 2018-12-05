@@ -18,47 +18,99 @@
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
 * @file segment.c
-* @brief Segment Allocator
+* @brief Segment Allocator. This is the lowest-level allocator in ROOT-Sim.
 * @author Alessandro Pellegrini
 * @author Francesco Quaglia
 */
 
-#include <mm/mm.h>
-
-#include <mm/ecs.h>
-#include <arch/x86/linux/cross_state_manager/cross_state_manager.h>
+#include <sys/time.h>
+#include <sys/resource.h>
 #include <fcntl.h>
 #include <sys/types.h>
+
+#include <mm/mm.h>
+#include <mm/ecs.h>
+#include <arch/x86/linux/cross_state_manager/cross_state_manager.h>
+#include <scheduler/process.h>
+
+size_t __page_size = 0;
 
 //TODO: document this magic! This is related to the pml4 index intialized in the ECS kernel module
 static unsigned char *init_address = (unsigned char *)(10LL << 39);
 
-void *get_base_pointer(GID_t gid){
-//	printf("get base pointer for lid % d (gid %d) returns: %p\n",GidToLid(gid),gid,init_address + PER_LP_PREALLOCATED_MEMORY * gid);
-	return init_address + PER_LP_PREALLOCATED_MEMORY * gid_to_int(gid);
+void *get_base_pointer(GID_t gid)
+{
+//      printf("get base pointer for lid % d (gid %d) returns: %p\n",GidToLid(gid),gid,init_address + PER_LP_PREALLOCATED_MEMORY * gid);
+	return init_address + PER_LP_PREALLOCATED_MEMORY * gid.to_int;
 }
 
-void *get_segment(GID_t gid) {
-	int i;
-	void *the_address;
+void *get_segment_memory(struct segment *seg, size_t size)
+{
+	unsigned char *new_brk, *ret = NULL;
 
-	void *mmapped[NUM_MMAP];
+	// Align the new brk to a multiple of 64 bytes, to increase L1 cache efficiency
+	new_brk =
+	    (unsigned char *)(((unsigned long long)seg->brk + size + (64 - 1)) &
+			      -64);
 
-	// Addresses are determined in the same way across all kernel instances
-	the_address = init_address + PER_LP_PREALLOCATED_MEMORY * gid_to_int(gid);
-
-	for(i = 0; i < NUM_MMAP; i++) {
-		mmapped[i] = mmap(the_address, MAX_MMAP, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS|MAP_FIXED, 0, 0);
-		if(unlikely(mmapped[i] == MAP_FAILED)) {
-			rootsim_error(true, "Unable to mmap LPs memory\n");
-			return NULL;
-		}
-		// Access the memory in write mode to force the kernel to create the page table entries
-		*((char *)mmapped[i]) = 'x';
-		the_address = (char *)the_address + MAX_MMAP;
+	// Do we have enough space?
+	if (likely(new_brk >= seg->base + PER_LP_PREALLOCATED_MEMORY)) {
+		ret = seg->brk;
+		seg->brk = new_brk;
 	}
 
-	return mmapped[0];
+	return ret;
+}
+
+void free_segment_memory(void *ptr)
+{
+	// there ain't much we can do here...
+	(void)ptr;
+}
+
+struct segment *get_segment(GID_t gid)
+{
+	void *the_address;
+	struct segment *seg;
+
+	seg = rsalloc(sizeof(struct segment));
+	if (seg == NULL)
+		return NULL;
+
+	// Addresses are determined in the same way across all kernel instances
+	the_address = init_address + PER_LP_PREALLOCATED_MEMORY * gid.to_int;
+
+	seg->base =
+	    mmap(the_address, PER_LP_PREALLOCATED_MEMORY,
+		 PROT_READ | PROT_WRITE,
+		 MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, 0, 0);
+	if (unlikely(seg->base == MAP_FAILED)) {
+		perror("mmap");
+		rootsim_error(true, "Unable to mmap LPs memory\n");
+		return NULL;
+	}
+	seg->brk = seg->base;
+
+	// Access the memory in write mode to force the kernel to create the page table entries
+	*seg->base = 'x';
+
+	return seg;
+}
+
+void segment_init(void)
+{
+	struct rlimit limit;
+	size_t max_address_space = PER_LP_PREALLOCATED_MEMORY * n_prc_tot * 2;
+
+	// Configure the system to allow mmapping 1GB of VM at a time
+	limit.rlim_cur = max_address_space;
+	limit.rlim_max = max_address_space;
+
+	if (setrlimit(RLIMIT_AS, &limit) != 0) {
+		perror("Unable to set the maximum address space");
+		rootsim_error(true,
+			      "Unable to pre-allocate per-LP memory. Aborting...\n");
+	}
 }
 
 /*
@@ -81,3 +133,20 @@ void *get_segment(GID_t gid) {
 }
 */
 
+void initialize_memory_map(struct lp_struct *lp)
+{
+	lp->mm = rsalloc(sizeof(struct memory_map));
+
+	lp->mm->segment = NULL;	//get_segment(lp->gid);
+	lp->mm->buddy = NULL;	//buddy_new(lp, PER_LP_PREALLOCATED_MEMORY / BUDDY_GRANULARITY);
+	lp->mm->slab = slab_init(SLAB_MSG_SIZE);
+	lp->mm->m_state = malloc_state_init();
+}
+
+void finalize_memory_map(struct lp_struct *lp)
+{
+	malloc_state_wipe(&lp->mm->m_state);
+	//buddy_destroy(lp->mm->buddy);
+	// No free segment function here!
+	rsfree(lp->mm);
+}

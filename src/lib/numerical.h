@@ -23,7 +23,6 @@
 * 	level code (i.e. random distributions) is found in ROOT-Sim.h
 *        numerical distribution implementations
 * @author Alessandro Pellegrini
-* @date Dec 10, 2013
 */
 
 #pragma once
@@ -38,9 +37,9 @@ typedef uint64_t seed_type;
  * the internal state of the simulation library.
  */
 typedef struct _numerical_state {
-	seed_type	seed; /**< Random seed */
-	double		gset; /**< Normal distribution saved sample */
-	bool		iset; /**< Normal distribution saved sample flag */
+	seed_type seed;	      /**< Random seed */
+	double gset;	      /**< Normal distribution saved sample */
+	bool iset;	      /**< Normal distribution saved sample flag */
 } numerical_state_t;
 
 void numerical_init(void);

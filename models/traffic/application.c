@@ -32,15 +32,15 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, void *event, s
 	int receiver;
 	int i;
 	car_t *car;
-	
+
 	event_content_type *event_content = (event_content_type *)event;
-	
+
 	(void)size;
 
 	if(state != NULL) {
 		state->lvt = now;
 	}
-	
+
 	switch(event_type) {
 
 		// This event initializes the simulation state for each LP and inject first events
@@ -71,11 +71,11 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, void *event, s
 			if(state->lp_type == JUNCTION) {
 				inject_new_cars(state, me);
 			}
-			
+
 			// Schedule a keep alive event
 			timestamp = now + Expent(10);
 			ScheduleNewEvent(me, timestamp, KEEP_ALIVE, NULL, 0);
-			
+
 			break;
 
 
@@ -85,7 +85,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, void *event, s
 			if(!event_content->injection && check_car_leaving(state, event_content->from, me)) {
 				break;
 			}
-		
+
 			if(state->queued_elements < state->total_queue_slots) {
 
 				car = enqueue_car(me, event_content->from, state);
@@ -103,26 +103,26 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, void *event, s
 			if(event_content->injection && state->lp_type == JUNCTION) {
 				inject_new_cars(state, me);
 			}
-			
+
 			break;
 
 
-		case LEAVE: 
-			
+		case LEAVE:
+
 			car = car_dequeue(me, state, (unsigned long long *)event);
 			if(car != NULL) {
 				new_event.from = me;
 				new_event.injection = false;
-				
+
 				if(state->topology->num_neighbours > 1) {
 					do {
 						receiver = RandomRange(0, state->topology->num_neighbours - 1);
 						receiver = state->topology->neighbours[receiver];
-					} while(receiver == car->from);				
+					} while(receiver == car->from);
 				} else {
 					receiver = state->topology->neighbours[0];
 				}
-				
+
 				ScheduleNewEvent(receiver, car->leave, ARRIVAL, &new_event, sizeof(event_content_type));
 				free(car);
 			} else {
@@ -130,9 +130,9 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, void *event, s
 				update_car_leave(state, *(unsigned long long *)event_content, timestamp);
 				ScheduleNewEvent(me, timestamp, LEAVE, (unsigned long long *)event_content, sizeof(unsigned long long));
 			}
-			
+
 			break;
-			
+
 
 		case FINISH_ACCIDENT:
 			state->accident = false;
@@ -156,10 +156,10 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, void *event, s
 
 bool OnGVT(unsigned int me, lp_state_type *snapshot) {
 	(void)me;
-	
+
 	//~if(snapshot->accident)
 		//~printf("Node %s is in accident state\n", snapshot->name);
-	
+
 	if (snapshot->lvt < EXECUTION_TIME)
 		return false;
 	return true;

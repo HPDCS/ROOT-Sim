@@ -9,7 +9,7 @@ unsigned int get_tot_regions(void){
 	if(check_value * check_value != TOT_REG) {
 		   printf("Hexagonal map wrongly specified!\n");
 	}
-		
+
 	return TOT_REG;
 }
 
@@ -51,7 +51,7 @@ unsigned int get_region(unsigned int me, unsigned int obstacle,unsigned int agen
 			case 0: // go rigth
 				return me + 1;
 			case 1:	// go down
-				return me + edge;	
+				return me + edge;
 		}
 	}
 	// CASE corner up-rigth
@@ -152,7 +152,7 @@ unsigned int get_region(unsigned int me, unsigned int obstacle,unsigned int agen
 				return me - 1;
                 }
         }
-	
+
 
 	return me;
 }
@@ -161,7 +161,7 @@ bool check_termination(lp_agent_t *agent){
 	double regions = (double)agent->count;
 	double tot_region = get_tot_regions();
 	double result = regions/tot_region;
-	
+
 	if(result >= VISITED || agent->complete)
 		return true;
 
@@ -179,7 +179,7 @@ double percentage(lp_agent_t *agent){
 #ifndef ECS_TEST
 void copy_map(unsigned char *pointer, int n, unsigned char (vector)[n]){
 	unsigned int i;
-	
+
 	for(i=0; i<get_tot_regions(); i++){
 		if(!BITMAP_CHECK_BIT(pointer,i) && BITMAP_CHECK_BIT(vector,i))
 			BITMAP_SET_BIT(pointer,i);
@@ -188,12 +188,12 @@ void copy_map(unsigned char *pointer, int n, unsigned char (vector)[n]){
 	}
 }
 #else
-void send_updated_info(lp_agent_t *agent){	
+void send_updated_info(lp_agent_t *agent){
 	unsigned char *group_map;
 	BITMAP_SET_BIT(agent->map,agent->region);
 	agent->count = 0;
 	unsigned int i,j;
-	
+
 	for(i=0; i<get_tot_agents(); i++){
 		if(agent->group[i] != NULL){
 			group_map = agent->group[i];
@@ -209,5 +209,5 @@ void send_updated_info(lp_agent_t *agent){
 	for(j=0;j<get_tot_regions();j++)
 		if(BITMAP_CHECK_BIT(agent->map,j))
                         agent->count++;
-} 
+}
 #endif
