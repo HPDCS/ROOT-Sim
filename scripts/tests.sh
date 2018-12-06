@@ -31,10 +31,7 @@ function do_unit_test() {
 function do_test() {
 
 	# Compile and store the name of the test suite
-	cd models/$1/
-	rootsim-cc *.c -o model
-	cd ../..
-	cp models/$1/model .
+	rootsim-cc models/$1/*.c -o model
 	tests+=($1)
 
 	# Run this model using MPI
