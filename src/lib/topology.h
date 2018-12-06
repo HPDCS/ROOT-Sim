@@ -15,11 +15,11 @@ typedef struct _topology_t topology_t;
 
 /// this is used to store the common characteristics of the topology
 extern struct _topology_global_t{
-	enum _topology_geometry_t geometry;	/**< the topology geometry (see ROOT-Sim.h) */
-	unsigned chkp_size;			/**< the size of the topology struct of each region */
-	unsigned neighbours;			/**< the "expected" number of neighbours of each region (see <neighbours_count>() for a complete explanation)*/
-	unsigned edge; 				/**< the pre-computed edge length (if it makes sense for the current geometry) */
+	unsigned chkp_size;			/**< the size of the topology struct of each region (used for efficient check-pointing) */
+	unsigned directions;			/**< the number of valid directions in the topology */
+	unsigned edge; 				/**< the pre-computed edge length (if it makes sense for the current topology geometry) */
 	unsigned lp_cnt; 			/**< the number of LPs involved in the topology */
+	enum _topology_geometry_t geometry;	/**< the topology geometry (see ROOT-Sim.h) */
 } topology_global;
 
 // this initializes the topology environment

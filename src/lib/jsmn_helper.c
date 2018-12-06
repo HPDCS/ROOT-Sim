@@ -101,9 +101,6 @@ c_jsmntok_t* get_next_token(c_jsmntok_t *base_t, c_jsmntok_t *t, struct _gnt_clo
 	return t + closure->b;
 }
 
-/**
- * Retrieves from the object token t the value token with specified key
- */
 c_jsmntok_t* get_value_token_by_key(c_jsmntok_t *base_t, const char *base, c_jsmntok_t *t, const char *key) {
 
 	c_jsmntok_t *t_aux;
@@ -149,10 +146,6 @@ c_jsmntok_t* get_at_token(c_jsmntok_t *base_t, c_jsmntok_t *t, size_t i) {
 	return get_next_token(base_t, t, &closure);
 }
 
-/**
- * Parses into result the double floating point number represented by primitive token t
- * Returns 0 on success, -1 on failure
- */
 int parse_double_token(const char *base, c_jsmntok_t *t, double *result) {
 	char buff[64];
 	size_t size;
@@ -176,10 +169,6 @@ int parse_double_token(const char *base, c_jsmntok_t *t, double *result) {
 	return 0;
 }
 
-/**
- * Parses into result the unsigned int number represented by primitive token t
- * Returns 0 on success, -1 on failure
- */
 int parse_unsigned_token(const char *base, c_jsmntok_t *t, unsigned *result) {
 	double tmp;
 
@@ -194,10 +183,6 @@ int parse_unsigned_token(const char *base, c_jsmntok_t *t, unsigned *result) {
 	return 0;
 }
 
-/**
- * Same semantic of standard strcmp but safer.
- *  For proper operations t is EXPECTED to have type JSMN_STRING
- */
 int strcmp_token(const char *base, c_jsmntok_t *t, const char* str) {
 	int t_len = t->end - t->start;
 	int res = strncmp(&base[t->start], str, t_len);

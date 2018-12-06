@@ -37,6 +37,8 @@
 #include <datatypes/msgchannel.h>
 #include <arch/ult.h>
 #include <lib/numerical.h>
+#include <lib/abm_layer.h>
+#include <lib/topology.h>
 #include <communication/communication.h>
 #include <arch/x86/linux/cross_state_manager/cross_state_manager.h>
 

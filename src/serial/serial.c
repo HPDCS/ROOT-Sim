@@ -101,6 +101,7 @@ void serial_simulation(void)
 
 		current = find_lp_by_gid(event->receiver);
 		current->bound = event;
+		current_evt = event;
 
 #ifdef EXTRA_CHECKS
 		if (event->size > 0) {
@@ -110,9 +111,15 @@ void serial_simulation(void)
 #endif
 
 		timer_start(serial_event_execution);
-		ProcessEvent_light(current->gid.to_int, event->timestamp,
-				   event->type, event->event_content,
-				   event->size, current->current_base_pointer);
+		if(&abm_settings){
+			ProcessEventABM();
+		}else if (&topology_settings){
+			ProcessEventTopology();
+		}else{
+			ProcessEvent_light(current->gid.to_int, event->timestamp,
+					event->type, event->event_content,
+					event->size, current->current_base_pointer);
+		}
 
 		statistics_post_data_serial(STAT_EVENT, 1.0);
 		statistics_post_data_serial(STAT_EVENT_TIME,

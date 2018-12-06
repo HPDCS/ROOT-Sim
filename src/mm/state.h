@@ -25,13 +25,12 @@
 */
 
 #pragma once
-#ifndef _STATE_MGNT_H_
-#define _STATE_MGNT_H_
-
 
 #include <ROOT-Sim.h>
 #include <core/core.h>
 #include <lib/numerical.h>
+#include <lib/abm_layer.h>
+#include <lib/topology.h>
 
 enum {
 	STATE_SAVING_INVALID = 0,	/**< By convention 0 is the invalid field */
@@ -63,6 +62,8 @@ typedef struct _state_t {
 	numerical_state_t numerical;
 	
 	topology_t *topology;
+
+	region_abm_t *region;
 } state_t;
 
 struct lp_struct;

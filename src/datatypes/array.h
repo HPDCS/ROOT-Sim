@@ -31,7 +31,6 @@
 #include <memory.h>
 
 // TODO: add some type checking and size checking (is it necessary?)
-// TODO: add all the other useful functions
 
 #define INIT_SIZE_ARRAY 8
 
@@ -52,8 +51,6 @@
 		if (array_count(self) > INIT_SIZE_ARRAY && array_count(self) * 3 <= array_capacity(self)) { \
 			array_capacity(self) /= 2; \
 			array_items(self) = rsrealloc(array_items(self), array_capacity(self) * sizeof(*array_items(self))); \
-			if(!array_items(self))\
-				rootsim_error(true, "Realloc failed during array shrinking!"); \
 		} \
 	})
 
@@ -61,18 +58,12 @@
 		if(array_count(self) >= array_capacity(self)){\
 			array_capacity(self) *= 2; \
 			array_items(self) = rsrealloc(array_items(self), array_capacity(self) * sizeof(*array_items(self))); \
-			if(!array_items(self))\
-				rootsim_error(true, "Realloc failed during array expansion!"); \
 		} \
 	})
 
 #define array_new(type) ({ \
 		rootsim_array(type) *__newarr; \
-		\
 		__newarr = rsalloc(sizeof(*__newarr)); \
-		if(!__newarr)\
-			rootsim_error(true, "Malloc failed during array_new!"); \
-		\
 		array_init(*__newarr);\
 		__newarr; \
 	})
@@ -85,15 +76,19 @@
 #define array_init(self) ({ \
 		array_capacity(self) = INIT_SIZE_ARRAY; \
 		array_items(self) = rsalloc(array_capacity(self) * sizeof(*array_items(self))); \
-		if(!array_items(self))\
-			rootsim_error(true, "Malloc failed during array_init!"); \
-		\
 		array_count(self) = 0; \
 	})
 
 #define array_fini(self) ({ \
 		rsfree(array_items(self)); \
 	})
+
+#define array_reserve(self, count) ({ \
+		__typeof__(array_count(self)) __rsvidx = array_count(self); \
+		array_count(self) += (count); \
+		array_expand(self); \
+		&(array_items(self)[__rsvidx]); \
+})
 
 #define array_push(self, elem) ({ \
 		array_expand(self); \
@@ -102,34 +97,43 @@
 	})
 
 #define array_pop(self) ({ \
+		if(unlikely(!array_count(self))) \
+			rootsim_error(true, "pop of an empty array"); \
 		__typeof__(*array_items(self)) __popval; \
-		memset(&__popval, 0, sizeof(__popval)); \
-		if(array_count(self)){\
-			array_count(self)--; \
-			__popval = array_items(self)[array_count(self)]; \
-			array_shrink(self); \
-		} \
+		array_count(self)--; \
+		__popval = array_items(self)[array_count(self)]; \
+		array_shrink(self); \
 		__popval; \
 	})
 
 #define array_add_at(self, i, elem) ({ \
-		if(array_count(self) > (i)){ \
-			array_expand(self); \
-			memmove(&(array_items(self)[(i)+1]), &(array_items(self)[(i)]), sizeof(*array_items(self)) * (array_count(self)-(i))); \
-			array_items(self)[(i)] = (elem); \
-			array_count(self)++; \
-		} \
+		if(unlikely(array_count(self) <= (i))) \
+			rootsim_error(true, "out of bound add in a dynamic array"); \
+		array_expand(self); \
+		memmove(&(array_items(self)[(i)+1]), &(array_items(self)[(i)]), sizeof(*array_items(self)) * (array_count(self)-(i))); \
+		array_items(self)[(i)] = (elem); \
+		array_count(self)++; \
+	})
+
+#define array_lazy_remove_at(self, i) ({ \
+		if(unlikely(array_count(self) <= (i))) \
+			rootsim_error(true, "out of bound removal in a dynamic array"); \
+		__typeof__(*array_items(self)) __rmval; \
+		array_count(self)--; \
+		__rmval = array_items(self)[(i)]; \
+		array_items(self)[(i)] = array_items(self)[array_count(self) - 1]; \
+		array_shrink(self); \
+		__rmval; \
 	})
 
 #define array_remove_at(self, i) ({ \
+		if(unlikely(array_count(self) <= (i))) \
+			rootsim_error(true, "out of bound removal in a dynamic array"); \
 		__typeof__(*array_items(self)) __rmval; \
-		memset(&__rmval, 0, sizeof(__rmval)); \
-		if(array_count(self) > (i)){ \
-			array_count(self)--; \
-			__rmval = array_items(self)[(i)]; \
-			memmove(&(array_items(self)[(i)]), &(array_items(self)[(i)+1]), sizeof(*array_items(self)) * (array_count(self)-(i))); \
-			array_shrink(self); \
-		} \
+		array_count(self)--; \
+		__rmval = array_items(self)[(i)]; \
+		memmove(&(array_items(self)[(i)]), &(array_items(self)[(i)+1]), sizeof(*array_items(self)) * (array_count(self)-(i))); \
+		array_shrink(self); \
 		__rmval; \
 	})
 

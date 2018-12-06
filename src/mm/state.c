@@ -105,9 +105,18 @@ bool LogState(struct lp_struct *lp)
 		// Log library-related states
 		memcpy(&new_state->numerical, &lp->numerical,
 		       sizeof(numerical_state_t));
-		new_state->topology = rsalloc(topology_global.chkp_size);
-		memcpy(new_state->topology, lp->topology, 
-			topology_global.chkp_size);
+
+		if(&topology_settings && topology_settings.write_enabled){
+			new_state->topology = rsalloc(topology_global.chkp_size);
+			memcpy(new_state->topology, lp->topology,
+					topology_global.chkp_size);
+		}
+
+		if(&abm_settings){
+			//new_state->region = rsalloc(lp->region->chkp_size);
+			//memcpy(new_state->region, lp->region, lp->region->chkp_size);
+
+		}
 
 		// Link the new checkpoint to the state chain
 		list_insert_tail(lp->queue_states, new_state);
@@ -129,8 +138,11 @@ void RestoreState(struct lp_struct *lp, state_t * restore_state)
 	// Restore library-related states
 	memcpy(&lp->numerical, &restore_state->numerical,
 	       sizeof(numerical_state_t));
-	memcpy(lp->topology, restore_state->topology, 
-		topology_global.chkp_size);
+
+	if(&topology_settings && topology_settings.write_enabled){
+		memcpy(lp->topology, restore_state->topology,
+				topology_global.chkp_size);
+	}
 
 #ifdef HAVE_CROSS_STATE
 	lp->ECS_index = 0;

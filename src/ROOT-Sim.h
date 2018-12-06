@@ -135,6 +135,7 @@ __attribute((weak)) extern struct _topology_settings_t{
 	const enum _topology_type_t type;			/// The topology type the model wants to use
 	const enum _topology_geometry_t default_geometry;	/// The default geometry to use when nothing else is specified
 	const unsigned out_of_topology;				/// The minimum number of LPs needed out of the topology
+	bool write_enabled;					/// This is set if the model needs to use SetTopology()
 }topology_settings;
 /**
  *
@@ -152,7 +153,6 @@ double 		GetValueTopology(unsigned from, unsigned to);
  * For TOPOLOGY_PROBABILITIES it's the weight of the probability to choose that link during movement.
  * In other words given a region n0 having self weight w0 having links to regions n1 n2 n3 n4... with weights w1 w2 w3 w4
  * the probability of choosing region nk as next hop is wk/(w0+w1+w2+w3...)
- * @param topology the topology on which to act. If NULL the global topology is used.
  * @param from the LP id of the source region of the link
  * @param to the LP id of the sink region of the link
  * @param value the new weight to be assigned to the link
@@ -189,7 +189,7 @@ double 		ComputeMinTour	(unsigned int source, unsigned int dest, unsigned int re
 /************ABM*LIBRARY**********/
 /*********************************/
 
-typedef struct _agent_abm_t agent_abm_t;
+typedef unsigned long long agent_t;
 
 __attribute((weak)) extern struct _abm_settings_t{
 	const unsigned neighbour_data_size;
@@ -200,28 +200,25 @@ __attribute((weak)) extern struct _abm_settings_t{
 int			GetNeighbourInfo	(direction_t i, unsigned int *region_id, void **data_p);
 void			TrackNeighbourInfo	(void *neighbour_data);
 
-bool 			IterAgents		(agent_abm_t **agent_p);
+bool 			IterAgents		(agent_t *agent_p);
 unsigned		CountAgents		(void);
 
-agent_abm_t* 		SpawnAgent		(unsigned user_data_size);
-int			KillAgent		(agent_abm_t* agent);
+agent_t 		SpawnAgent		(unsigned user_data_size);
+void			KillAgent		(agent_t agent);
 
-void*			DataAgent		(agent_abm_t *agent, unsigned *data_size_p);
+void*			DataAgent		(agent_t agent, unsigned *data_size_p);
 
-unsigned long long 	IdAgent			(const agent_abm_t *agent);
-agent_abm_t* 		FindAgent		(unsigned long long agent_id);
+void			ScheduleNewLeaveEvent	(simtime_t time, unsigned int event_type, agent_t agent);
 
-void			ScheduleNewLeaveEvent	(simtime_t time, unsigned int event_type, agent_abm_t *agent);
+unsigned 		CountVisits		(const agent_t agent);
+void 			GetVisit		(const agent_t agent, unsigned *region_p, unsigned *event_type_p, unsigned i);
+void 			SetVisit		(const agent_t agent, unsigned region, unsigned event_type, unsigned i);
+void 			EnqueueVisit		(agent_t agent, unsigned region, unsigned event_type);
+void 			AddVisit		(agent_t agent, unsigned region, unsigned event_type, unsigned i);
+void 			RemoveVisit		(agent_t agent, unsigned i);
 
-unsigned 		CountVisits		(const agent_abm_t *agent);
-int 			GetVisit		(const agent_abm_t *agent, unsigned *region_p, unsigned *event_type_p, unsigned i);
-int 			SetVisit		(const agent_abm_t *agent, unsigned region, unsigned event_type, unsigned i);
-int 			EnqueueVisit		(agent_abm_t *agent, unsigned region, unsigned event_type);
-int 			AddVisit		(agent_abm_t *agent, unsigned region, unsigned event_type, unsigned i);
-int 			RemoveVisit		(agent_abm_t *agent, unsigned i);
-
-unsigned 		CountPastVisits		(const agent_abm_t *agent);
-int 			GetPastVisit		(const agent_abm_t *agent, unsigned *region_p, unsigned *event_type_p, simtime_t *time_p, unsigned i);
+unsigned 		CountPastVisits		(const agent_t agent);
+void 			GetPastVisit		(const agent_t agent, unsigned *region_p, unsigned *event_type_p, simtime_t *time_p, unsigned i);
 
 
 #endif				/* __ROOT_Sim_H */

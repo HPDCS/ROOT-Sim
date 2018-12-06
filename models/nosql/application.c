@@ -9,6 +9,7 @@
 //#define LOOP 100000
 #define LOOP 1000
 
+struct _topology_settings_t topology_settings = {.type = TOPOLOGY_OBSTACLES, .default_geometry = TOPOLOGY_GRAPH, .write_enabled = false};
 
 void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_type *event_content, unsigned int size, void *ptr) {
 
@@ -89,10 +90,10 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 
 			} else {
 
-				int recv = FindReceiver(TOPOLOGY_MESH);
+				int recv = FindReceiver();
 				int recv2;
 				do {
-					recv2 = FindReceiver(TOPOLOGY_MESH);
+					recv2 = FindReceiver();
 				} while (recv == recv2);
 
 

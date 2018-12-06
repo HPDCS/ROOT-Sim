@@ -18,8 +18,6 @@
 #include <datatypes/heap.h>
 #include <scheduler/process.h>
 
-#define CURRENT_LP_ID 	(gid_to_int(LidToGid(current_lp)))
-
 struct _topology_global_t topology_global;
 
 //used internally (also in abm_layer module) to schedule our reserved events TODO: move in a more system-like module
@@ -34,26 +32,26 @@ void UncheckedScheduleNewEvent(unsigned int gid_receiver, simtime_t timestamp, u
 	set_gid(receiver, gid_receiver);
 
 	// In Silent execution, we do not send again already sent messages
-	if(LPS(current_lp)->state == LP_STATE_SILENT_EXEC) {
+	if(current->state == LP_STATE_SILENT_EXEC) {
 		return;
 	}
 
 #ifndef NDEBUG
 	// Check whether the destination LP is out of range
-	if(receiver.id >= n_prc_tot) { // It's unsigned, so no need to check whether it's < 0
-		rootsim_error(true, "Warning: the destination LP %u %lf %u is out of range. The event has been ignored\n", receiver.id, timestamp, event_type);
+	if(receiver.to_int >= n_prc_tot) { // It's unsigned, so no need to check whether it's < 0
+		rootsim_error(true, "Warning: the destination LP %u %lf %u is out of range. The event has been ignored\n", receiver.to_int, timestamp, event_type);
 		return;
 	}
 
 	// Check if the associated timestamp is negative
-	if(timestamp < lvt(current_lp)) {
-		rootsim_error(true, "LP %u is trying to generate an event (type %d) to %u in the past! (Current LVT = %f, generated event's timestamp = %f) Aborting...\n", current_lp, event_type, receiver.id, lvt(current_lp), timestamp);
+	if(timestamp < lvt(current)) {
+		rootsim_error(true, "LP %u is trying to generate an event (type %d) to %u in the past! (Current LVT = %f, generated event's timestamp = %f) Aborting...\n", current, event_type, receiver.to_int, lvt(current), timestamp);
 	}
 #endif
 
 	// Copy all the information into the event structure
-	pack_msg(&event, LidToGid(current_lp), receiver, event_type, timestamp, lvt(current_lp), event_size, event_content);
-	event->mark = generate_mark(current_lp);
+	pack_msg(&event, current->gid, receiver, event_type, timestamp, lvt(current), event_size, event_content);
+	event->mark = generate_mark(current);
 
 	insert_outgoing_msg(event);
 }
@@ -62,7 +60,7 @@ void UncheckedScheduleNewEvent(unsigned int gid_receiver, simtime_t timestamp, u
  * Utility function which returns the expected number of neighbours
  * depending on the geometry of the topology.
  */
-static unsigned neighbours_count(void) {
+static unsigned directions_count(void) {
 	switch (topology_global.geometry) {
 		case TOPOLOGY_GRAPH:
 			return topology_global.lp_cnt - 1;
@@ -149,7 +147,7 @@ static void *load_topology_file(const char *file_name) {
 	// we set the known fields of the global struct
 	topology_global.geometry = geometry;
 	topology_global.lp_cnt = lp_cnt;
-	topology_global.neighbours = neighbours_count();
+	topology_global.directions = directions_count();
 	// we give control to the right specific parser
 	switch (t_type) {
 		case TOPOLOGY_PROBABILITIES:
@@ -209,7 +207,7 @@ void topology_init(void) {
 	// set default values
 	topology_global.lp_cnt = n_prc_tot - topology_settings.out_of_topology;
 	topology_global.geometry = topology_settings.default_geometry;
-	topology_global.neighbours = neighbours_count();
+	topology_global.directions = directions_count();
 	// load settings from file if specified
 	if(topology_settings.topology_path)
 		t_data = load_topology_file(topology_settings.topology_path);
@@ -227,31 +225,24 @@ void topology_init(void) {
 			topology_global.chkp_size = size_checkpoint_probabilities();
 			break;
 	}
-	// this helper function is used in the foreach
-	int init_topology_helper(LID_t this_lid, GID_t this_gid, unsigned int unused_i, void *unused){
-		// the topology is a global construction, we reason by global IDs
-		unsigned current_lp_id = gid_to_int(this_gid);
-
-		if(current_lp_id >= topology_global.lp_cnt){
+	// initialize the topology struct
+	foreach_lp(lp){
+		if(lp->gid.to_int >= topology_global.lp_cnt){
 			// this LP isn't part of the underlying topology
-			LPS(this_lid)->topology = NULL;
-			return 0; // continue processing the other LPs
+			lp->topology = NULL;
 		}
-		// this selects the right initiator for the topology
 		switch(topology_settings.type){
 			case TOPOLOGY_COSTS:
-				LPS(this_lid)->topology = topology_costs_init(current_lp_id, t_data);
+				lp->topology = topology_costs_init(lp->gid.to_int, t_data);
 				break;
 			case TOPOLOGY_OBSTACLES:
-				LPS(this_lid)->topology = topology_obstacles_init(current_lp_id, t_data);
+				lp->topology = topology_obstacles_init(lp->gid.to_int, t_data);
 				break;
 			case TOPOLOGY_PROBABILITIES:
-				LPS(this_lid)->topology = topology_probabilities_init(current_lp_id, t_data);
+				lp->topology = topology_probabilities_init(lp->gid.to_int, t_data);
 				break;
 		}
-		return 0; // continue processing the other LPs
 	}
-	LPS_foreach(init_topology_helper, NULL);
 	// free the topology data read from file
 	rsfree(t_data);
 }
@@ -259,6 +250,9 @@ void topology_init(void) {
 void SetValueTopology(unsigned from, unsigned to, double value) {
 	switch_to_platform_mode();
 	const unsigned lp_cnt = topology_global.lp_cnt;
+
+	if(unlikely(!topology_settings.write_enabled))
+		rootsim_error(true, "SetValueTopology(): called with write_enable false");
 
 	if(unlikely(from >= lp_cnt || to >= lp_cnt))
 		rootsim_error(true, "SetValueTopology(): from % u, to %u when lp_cnt is %u", from, to, lp_cnt);
@@ -323,8 +317,7 @@ void ProcessEventTopology(void){
 			break;
 		default:
 			switch_to_application_mode();
-			ProcessEvent[lid_to_int(current_lp)](CURRENT_LP_ID, current_evt->timestamp,
-					current_evt->type, current_evt->event_content, current_evt->size, current_state);
+			current->ProcessEvent(current->gid.to_int, current_evt->timestamp, current_evt->type, current_evt->event_content, 0, current->current_base_pointer);
 			switch_to_platform_mode();
 	}
 }
@@ -334,7 +327,7 @@ unsigned int RegionsCount(void) {
 }
 
 unsigned int DirectionsCount(void) {
-	return topology_global.neighbours;
+	return topology_global.directions;
 }
 
 static bool is_reachable(unsigned int to){
@@ -354,15 +347,17 @@ static bool is_reachable(unsigned int to){
 }
 
 unsigned int NeighboursCount(void){
+	switch_to_platform_mode();
 	// TODO, use topologies cached values instead of looping through!!
-	const unsigned sender = CURRENT_LP_ID;
-	unsigned i = topology_global.neighbours;
+	const unsigned sender = current->gid.to_int;
+	unsigned i = topology_global.directions;
 	unsigned res = 0;
 	unsigned lp_id;
 	while(i--){
-		if((lp_id = get_raw_receiver(sender, i)) != DIRECTION_INVALID && is_reachable(lp_id))
+		if((lp_id = get_raw_receiver(sender, i)) != DIRECTION_INVALID)
 			res++;
 	}
+	switch_to_application_mode();
 	return res;
 }
 
@@ -556,8 +551,8 @@ unsigned int FindReceiver(void) {
 	const unsigned lp_cnt = topology_global.lp_cnt;
 	unsigned receiver = DIRECTION_INVALID;
 
-	if(unlikely(lp_cnt <= CURRENT_LP_ID))
-		rootsim_error(true, "FindReceiver(): source region %u when topology includes %u regions", CURRENT_LP_ID, lp_cnt);
+	if(unlikely(lp_cnt <= current->gid.to_int))
+		rootsim_error(true, "FindReceiver(): source region %u when topology includes %u regions", current->gid.to_int, lp_cnt);
 
 	switch (topology_settings.type) {
 		case TOPOLOGY_PROBABILITIES:
@@ -581,7 +576,7 @@ unsigned int FindReceiverToward(unsigned int to) {
 	// fail by default
 	unsigned receiver = DIRECTION_INVALID;
 	// sanity checks
-	if(unlikely(to >= lp_cnt || CURRENT_LP_ID >= lp_cnt))
+	if(unlikely(to >= lp_cnt || current->gid.to_int >= lp_cnt))
 		rootsim_error(true, "Calling FindReceiverToward() from or toward a region not included in the topology");
 
 	switch (topology_settings.type) {

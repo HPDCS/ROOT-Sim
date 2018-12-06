@@ -78,6 +78,7 @@ static error_t model_parse(int key, char *arg, struct argp_state *state) {
 
 #undef HANDLE_ARGP_CASE
 
+struct _topology_settings_t topology_settings = {.type = TOPOLOGY_OBSTACLES, .default_geometry = TOPOLOGY_GRAPH, .write_enabled = false};
 struct argp model_argp = {model_options, model_parse, NULL, NULL, NULL, NULL, NULL};
 
 // These global variables are used to store execution configuration values
@@ -222,7 +223,7 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 			timestamp = now + (simtime_t)(Expent(TAU));
 			ScheduleNewEvent(me, timestamp, LOOP, NULL, 0);
 			if(Random() < 0.2)
-				ScheduleNewEvent(FindReceiver(TOPOLOGY_MESH), timestamp, LOOP, NULL, 0);
+				ScheduleNewEvent(FindReceiver(), timestamp, LOOP, NULL, 0);
 			break;
 
 

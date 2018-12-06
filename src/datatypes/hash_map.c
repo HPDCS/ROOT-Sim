@@ -58,7 +58,7 @@ void hash_map_init(rootsim_hash_map_t *hmap){
 	// select the relevant hash bits for table indexing
 	hmap->capacity_mo = HM_INITIAL_CAPACITY - 1;
 	hmap->count = 0;
-	hmap->nodes = __wrap_malloc(sizeof(struct _hash_map_node_t) * HM_INITIAL_CAPACITY);
+	hmap->nodes = rsalloc(sizeof(struct _hash_map_node_t) * HM_INITIAL_CAPACITY);
 	memset(hmap->nodes, 0, sizeof(struct _hash_map_node_t) * HM_INITIAL_CAPACITY);
 }
 
@@ -103,7 +103,7 @@ static void _hash_map_realloc_rehash(rootsim_hash_map_t *hmap){
 	// helper pointers to iterate over the old array
 	struct _hash_map_node_t *rmv = hmap->nodes;
 	// instantiates new array
-	hmap->nodes = __wrap_malloc(sizeof(struct _hash_map_node_t) * (hmap->capacity_mo + 1));
+	hmap->nodes = rsalloc(sizeof(struct _hash_map_node_t) * (hmap->capacity_mo + 1));
 	memset(hmap->nodes, 0, sizeof(struct _hash_map_node_t) * (hmap->capacity_mo + 1));
 	// rehash the old array elements
 	map_size_t i = hmap->count, j = 0;
@@ -115,7 +115,7 @@ static void _hash_map_realloc_rehash(rootsim_hash_map_t *hmap){
 		++j;
 	}
 	// free the old array
-	__wrap_free(rmv);
+	rsfree(rmv);
 }
 
 static void _hash_map_expand(rootsim_hash_map_t *hmap){

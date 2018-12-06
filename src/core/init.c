@@ -423,6 +423,7 @@ void SystemInit(int argc, char **argv)
 		numerical_init();
 		statistics_init();
 		serial_init();
+		topology_init();
 		return;
 	} else {
 		ScheduleNewEvent = ParallelScheduleNewEvent;

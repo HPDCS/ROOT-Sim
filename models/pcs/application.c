@@ -78,7 +78,7 @@ static error_t model_parse (int key, char *arg, struct argp_state *state){
 
 struct argp model_argp = {model_options, model_parse, NULL, NULL, NULL, NULL, NULL};
 
-struct _topology_settings_t topology_settings = {.type = TOPOLOGY_OBSTACLES, .default_geometry = TOPOLOGY_HEXAGON};
+struct _topology_settings_t topology_settings = {.type = TOPOLOGY_OBSTACLES, .default_geometry = TOPOLOGY_HEXAGON, .write_enabled = false};
 
 void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_type *event_content, unsigned int size, void *ptr) {
 	unsigned int w;

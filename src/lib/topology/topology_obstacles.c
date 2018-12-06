@@ -17,10 +17,6 @@
 #include <datatypes/heap.h>
 #include <scheduler/process.h>
 
-#define CURRENT_TOPOLOGY  	(LPS(current_lp)->topology)
-
-#define CURRENT_LP_ID		(gid_to_int(LidToGid(current_lp)))
-
 /// the customised struct for TOPOLOGY_OBSTACLES representation
 typedef struct _topology_t {
 	unsigned neighbours_id[6];	/**< these are the cached neighbours IDs */
@@ -75,7 +71,7 @@ topology_t *topology_obstacles_init(unsigned this_region_id, void *topology_data
 		bitmap_initialize(topology->data, lp_cnt);
 	}
 
-	i = topology_global.neighbours;
+	i = topology_global.directions;
 	topology->free_neighbours = i;
 	if(topology_global.geometry != TOPOLOGY_GRAPH){
 		// we save the neighbours ids for faster accessing
@@ -98,24 +94,24 @@ topology_t *topology_obstacles_init(unsigned this_region_id, void *topology_data
 	return topology;
 }
 
-
-// helper structure, we use this as heap elements to keep track of vertexes status during dijkstra execution
-struct _dijkstra_h_t{
-	unsigned hops;
-	unsigned cell;
-};
-
 #define __cmp_dijkstra_h(a, b) (((a).hops > (b).hops) - ((b).hops > (a).hops))
 // this is costly: we try as much as possible to cache the results of this function
 static void dijkstra_obstacles(const topology_t *topology, unsigned int source_cell, unsigned int previous[RegionsCount()]) {
-	const unsigned neighbours = topology_global.neighbours;
+
+	// helper structure, we use this as heap elements to keep track of vertexes status during dijkstra execution
+	struct _dijkstra_h_t{
+		unsigned hops;
+		unsigned cell;
+	};
+
+	const unsigned directions = topology_global.directions;
 	const unsigned lp_cnt = topology_global.lp_cnt;
 	unsigned i, receiver;
 	unsigned min_costs[lp_cnt];
 	rootsim_heap(struct _dijkstra_h_t) heap;
 	const rootsim_bitmap *obstacles = topology->data;
 
-	struct _dijkstra_h_t current = {0, source_cell}, partial = {0};
+	struct _dijkstra_h_t current_scan = {0, source_cell}, partial_scan = {0};
 	// initialize regions as unreachable
 	i = lp_cnt;
 	while(i--){
@@ -125,35 +121,35 @@ static void dijkstra_obstacles(const topology_t *topology, unsigned int source_c
 	// heap init
 	heap_init(heap);
 	// the source cell has distance 0
-	min_costs[source_cell] = 0;
+	min_costs[source_cell] = current_scan.hops;
 	// textbook dijkstra (keep in mind i'm not passing pointers, this stuff gets copied)
-	heap_insert(heap, current, __cmp_dijkstra_h);
+	heap_insert(heap, current_scan, __cmp_dijkstra_h);
 	// while we have vertexes to process
 	while(!heap_empty(heap)) {
 		// extract the lowest one
-		current = heap_extract(heap, __cmp_dijkstra_h);
+		current_scan = heap_extract(heap, __cmp_dijkstra_h);
 		// since we are not supporting decrease key on the heap we have to filter spurious duplicates
-		if(current.hops > min_costs[current.cell])
+		if(current_scan.hops > min_costs[current_scan.cell])
 			continue;
 		// we compute the sum of the current distance plus one hop to the receiver
-		partial.hops = current.hops + 1;
+		partial_scan.hops = current_scan.hops + 1;
 		// we cycle through the neighbours of the current cell
-		for(i = 0; i < neighbours; ++i){
+		for(i = 0; i < directions; ++i){
 			// we get the receiver cell
-			receiver = get_raw_receiver(current.cell, i);
+			receiver = get_raw_receiver(current_scan.cell, i);
 			// obviously we want a valid neighbour
 			if(receiver == DIRECTION_INVALID || bitmap_check(obstacles, receiver))
 				continue;
 			// if lower we have a candidate optimum for the cell
-			if(partial.hops < min_costs[receiver]){
+			if(partial_scan.hops < min_costs[receiver]){
 				// set the previous cell to retrieve the path later on
-				previous[receiver] = current.cell;
+				previous[receiver] = current_scan.cell;
 				// we set the cell field on our struct
-				partial.cell = receiver;
+				partial_scan.cell = receiver;
 				// refresh lowest cost found for the cell
-				min_costs[receiver] = partial.hops;
+				min_costs[receiver] = partial_scan.hops;
 				// we insert this into the heap
-				heap_insert(heap, partial, __cmp_dijkstra_h);
+				heap_insert(heap, partial_scan, __cmp_dijkstra_h);
 			}
 		}
 	}
@@ -164,7 +160,7 @@ static void refresh_cache_obstacles(topology_t *topology){
 	if(topology->dirty){
 		const unsigned lp_cnt = topology_global.lp_cnt;
 		// calculate the minimum costs spanning tree
-		dijkstra_obstacles(topology, CURRENT_LP_ID, topology->prev_next_cache);
+		dijkstra_obstacles(topology, current->gid.to_int, topology->prev_next_cache);
 		// this sets to an uninitialized value the buffer which holds the next hop for
 		// each possible destination (we compute those on demand when asked by the user and we cache those here)
 		memset(&topology->prev_next_cache[lp_cnt], UCHAR_MAX, sizeof(unsigned) * lp_cnt);
@@ -173,18 +169,19 @@ static void refresh_cache_obstacles(topology_t *topology){
 }
 
 unsigned int find_receiver_obstacles(void) {
-	rootsim_bitmap *obstacles = CURRENT_TOPOLOGY->data;
-	const unsigned sender = CURRENT_LP_ID;
+	const topology_t *topology = current->topology;
+	const rootsim_bitmap *obstacles = topology->data;
+	const unsigned sender = current->gid.to_int;
 	if(unlikely(bitmap_check(obstacles, sender))){
 		rootsim_error(false, "FindReceiver(): this is an obstacle region!!!\n");
 		return DIRECTION_INVALID;
 	}
 
-	if(unlikely(!CURRENT_TOPOLOGY->free_neighbours))
+	if(unlikely(!topology->free_neighbours))
 		return sender;
 
-	const unsigned neighbours = topology_global.neighbours;
-	const unsigned *neighbours_id;
+	const unsigned directions = topology_global.directions;
+	const unsigned *neighbours;
 	unsigned receiver;
 
 	switch(topology_global.geometry){
@@ -193,15 +190,15 @@ unsigned int find_receiver_obstacles(void) {
 		case TOPOLOGY_TORUS:
 		case TOPOLOGY_BIDRING:
 		case TOPOLOGY_RING:
-			neighbours_id = CURRENT_TOPOLOGY->neighbours_id;
+		neighbours = topology->neighbours_id;
 		do{
-			receiver = neighbours_id[(unsigned)(neighbours * Random())];
+			receiver = neighbours[(unsigned)(directions * Random())];
 		}while(unlikely(receiver == DIRECTION_INVALID || bitmap_check(obstacles, receiver)));
 		break;
 
 		case TOPOLOGY_GRAPH:
 		do{
-			receiver = neighbours * Random();
+			receiver = (directions + 1) * Random();
 		}while(unlikely(bitmap_check(obstacles, receiver)));
 		break;
 
@@ -215,14 +212,14 @@ static inline void toggle_bit_and_state(topology_t *topology, rootsim_bitmap *bi
 
 	unsigned refresh_free = 0;
 	if(topology_global.geometry != TOPOLOGY_GRAPH){
-		unsigned i = topology_global.neighbours;
+		unsigned i = topology_global.directions;
 		while(i--)
 			if(topology->neighbours_id[i] != DIRECTION_INVALID){
 				refresh_free = 1;
 				break;
 			}
 	}else{
-		refresh_free = (from != CURRENT_LP_ID);
+		refresh_free = (from != current->gid.to_int);
 	}
 
 
@@ -239,11 +236,11 @@ static inline void toggle_bit_and_state(topology_t *topology, rootsim_bitmap *bi
 void set_value_topology_obstacles(unsigned from, unsigned to, double value){
 	(void)to;
 
-	topology_t *topology = CURRENT_TOPOLOGY;
-	const unsigned this_lp = CURRENT_LP_ID;
+	topology_t *topology = current->topology;
+	const unsigned this_lp = current->gid.to_int;
 	rootsim_bitmap *bitmap = topology->data;
 
-	if(!(value > 0 ^ bitmap_check(bitmap, from)))
+	if(!((value > 0) ^ bitmap_check(bitmap, from)))
 		return;
 
 	toggle_bit_and_state(topology, bitmap, from);
@@ -257,13 +254,13 @@ void set_value_topology_obstacles(unsigned from, unsigned to, double value){
 }
 
 void update_topology_obstacles(void){
-	topology_t *topology = CURRENT_TOPOLOGY;
+	topology_t *topology = current->topology;
 	toggle_bit_and_state(topology, topology->data, *((unsigned *)current_evt->event_content));
 }
 
 double get_value_topology_obstacles(unsigned from, unsigned to){
 	(void)to;
-	return bitmap_check(CURRENT_TOPOLOGY->data, from) ? 1.0 : 0.0;
+	return bitmap_check(current->topology->data, from) ? 1.0 : 0.0;
 }
 
 bool is_reachable_obstacles(unsigned to){
@@ -272,9 +269,9 @@ bool is_reachable_obstacles(unsigned to){
 }
 
 unsigned int find_receiver_toward_obstacles(unsigned int to){
-	topology_t *topology = CURRENT_TOPOLOGY;
+	topology_t *topology = current->topology;
 	const unsigned lp_cnt = topology_global.lp_cnt;
-	const unsigned this_lp = CURRENT_LP_ID;
+	const unsigned this_lp = current->gid.to_int;
 
 	refresh_cache_obstacles(topology);
 
@@ -302,11 +299,11 @@ unsigned int find_receiver_toward_obstacles(unsigned int to){
 }
 
 double compute_min_tour_obstacles(unsigned int source, unsigned int dest, unsigned int result[RegionsCount()]) {
-	topology_t *topology = CURRENT_TOPOLOGY;
+	topology_t *topology = current->topology;
 	const unsigned lp_cnt = topology_global.lp_cnt;
 	unsigned int previous[lp_cnt], hops;
 
-	if(source == CURRENT_LP_ID){
+	if(source == current->gid.to_int){
 		refresh_cache_obstacles(topology);
 		if(!(hops = build_path(lp_cnt, result, topology->prev_next_cache, source, dest))){
 			// the requested cell isn't reachable: this is a sentinel value indicating impossibility

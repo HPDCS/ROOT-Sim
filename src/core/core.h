@@ -25,10 +25,7 @@
 *
 */
 
-
 #pragma once
-#ifndef _PLATFORM_H_
-#define _PLATFORM_H_
 
 #include <ROOT-Sim.h>
 #include <stdio.h>
@@ -38,7 +35,6 @@
 #include <stdint.h>
 #include <setjmp.h>
 
-#include <lib/numerical.h>
 #include <arch/thread.h>
 
 
@@ -216,5 +212,3 @@ extern inline bool simulation_error(void);
 extern void initialization_complete(void);
 
 #define rootsim_error(fatal, msg, ...) _rootsim_error(fatal, "%s:%d: %s()" msg, __FILE__, __LINE__, __FUNCTION__ __VA_OPT__(,) __VA_ARGS__)
-
-#endif

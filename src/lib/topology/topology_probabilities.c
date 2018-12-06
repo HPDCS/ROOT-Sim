@@ -20,10 +20,6 @@
 #include <datatypes/bitmap.h>
 #include <scheduler/process.h>
 
-#define CURRENT_TOPOLOGY  	(LPS(current_lp)->topology)
-
-#define CURRENT_LP_ID		(gid_to_int(LidToGid(current_lp)))
-
 typedef struct _topology_t {
 	unsigned neighbours_id[6];
 	bool dirty;
@@ -32,7 +28,7 @@ typedef struct _topology_t {
 
 unsigned size_checkpoint_probabilities(void){
 	return 	sizeof(topology_t) + 					// the basic struct size
-		sizeof(double) * (topology_global.neighbours + 1) + 	// the row of exit probabilities weights
+		sizeof(double) * (topology_global.directions + 1) + 	// the row of exit probabilities weights
 		sizeof(double); 					// the cache of the sum of probabilities weights
 }
 
@@ -42,7 +38,7 @@ void *load_topology_file_probabilities(c_jsmntok_t *root_token, const char *json
 	const unsigned lp_cnt = topology_global.lp_cnt;
 
 	// number of possible exit regions for this region, we add 1 to take in consideration the self loop
-	const unsigned exit_regions = topology_global.neighbours + 1;
+	const unsigned exit_regions = topology_global.directions + 1;
 
 	// retrieve the values array
 	c_jsmntok_t *values_tok = get_value_token_by_key(root_token, json_base, root_token, "values");
@@ -72,7 +68,7 @@ void *load_topology_file_probabilities(c_jsmntok_t *root_token, const char *json
 
 topology_t *topology_probabilities_init(unsigned this_region_id, void *topology_data){
 	// get number of possible exit regions for this region, we add 1 to take in consideration the self loop
-	const unsigned exit_regions = topology_global.neighbours + 1;
+	const unsigned exit_regions = topology_global.directions + 1;
 	unsigned i;
 	// instantiate the topology struct
 	topology_t *topology = rsalloc(topology_global.chkp_size);
@@ -87,7 +83,7 @@ topology_t *topology_probabilities_init(unsigned this_region_id, void *topology_
 	}
 
 	if(topology_global.geometry != TOPOLOGY_GRAPH){
-		i = topology_global.neighbours;
+		i = topology_global.directions;
 		while(i--)
 			topology->neighbours_id[i] = get_raw_receiver(this_region_id, i);
 	}
@@ -100,7 +96,7 @@ topology_t *topology_probabilities_init(unsigned this_region_id, void *topology_
 static void refresh_cache_probabilities(topology_t *topology){
 	if(topology->dirty){
 		// +1: remember we hold also the probability of self loop
-		const unsigned exit_regions = topology_global.neighbours + 1;
+		const unsigned exit_regions = topology_global.directions + 1;
 		topology->data[exit_regions] = NeumaierSum(exit_regions, topology->data);
 		topology->dirty = false;
 	}
@@ -112,8 +108,8 @@ struct update_topology_t{
 };
 
 void set_value_topology_probabilities(unsigned from, unsigned to, double value) {
-	topology_t *topology = CURRENT_TOPOLOGY;
-	if(CURRENT_LP_ID == from){
+	topology_t *topology = current->topology;
+	if(current->gid.to_int == from){
 		topology->data[to] = value;
 		topology->dirty = true;
 	}else {
@@ -123,19 +119,39 @@ void set_value_topology_probabilities(unsigned from, unsigned to, double value) 
 }
 
 bool is_reachable_probabilities(unsigned to){
-	topology_t *topology = CURRENT_TOPOLOGY;
-	unsigned i = topology_global.neighbours;
-	while(i--)
-		if(topology->neighbours_id[i] == to){
-			if(topology->data[i] > 0)
-				return true;
+	topology_t *topology = current->topology;
+	unsigned i = topology_global.directions;
+	switch (topology_global.geometry) {
+		case TOPOLOGY_HEXAGON:
+		case TOPOLOGY_SQUARE:
+		case TOPOLOGY_TORUS:
+		case TOPOLOGY_BIDRING:
+			while(i--){
+				if(topology->neighbours_id[i] == to){
+					if(topology->data[i] > 0)
+						return true;
+					break;
+				}
+			}
 			break;
-		}
+
+		case TOPOLOGY_RING:
+			rootsim_error(true, "Topology ring still not supported!");
+			break;
+
+		case TOPOLOGY_GRAPH:
+			return topology->data[i] > 0;
+
+		default:
+			rootsim_error(true, "This shouldn't happen, report to maintainer");
+
+	}
+
 	return false;
 }
 
 void update_topology_probabilities(void){
-	topology_t *topology = CURRENT_TOPOLOGY;
+	topology_t *topology = current->topology;
 	struct update_topology_t *upd_p = (struct update_topology_t *)current_evt->event_content;
 	if(topology->data[upd_p->loc_i] > upd_p->val || topology->data[upd_p->loc_i] < upd_p->val){
 		topology->data[upd_p->loc_i] = upd_p->val;
@@ -144,8 +160,8 @@ void update_topology_probabilities(void){
 }
 
 double get_value_topology_probabilities(unsigned from, unsigned to) {
-	if(CURRENT_LP_ID == from){
-		return CURRENT_TOPOLOGY->data[to];
+	if(current->gid.to_int == from){
+		return current->topology->data[to];
 	}else {
 		// TODO remote retrieve value!!
 		// this could be real tricky and costly to implement!!
@@ -169,15 +185,15 @@ double get_value_topology_probabilities(unsigned from, unsigned to) {
 		direction--;
 
 unsigned int find_receiver_probabilities(void) {
-	topology_t *topology = CURRENT_TOPOLOGY;
+	topology_t *topology = current->topology;
 	unsigned int direction, receiver = DIRECTION_INVALID;
-	const unsigned sender = CURRENT_LP_ID;
+	const unsigned sender = current->gid.to_int;
 	double sum;
 
 	refresh_cache_probabilities(topology);
 
 	// we sum 1 to take into account the possibility to stay where we are
-	const unsigned exit_regions = topology_global.neighbours + 1;
+	const unsigned exit_regions = topology_global.directions + 1;
 	// the sum has been computed during refresh_cache if needed.
 	sum = topology->data[exit_regions];
 	if(sum <= 0)

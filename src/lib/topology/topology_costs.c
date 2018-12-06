@@ -19,10 +19,6 @@
 #include <datatypes/heap.h>
 #include <scheduler/process.h>
 
-#define CURRENT_TOPOLOGY  	(LPS(current_lp)->topology)
-
-#define CURRENT_LP_ID		(gid_to_int(LidToGid(current_lp)))
-
 typedef struct _topology_t {
 	bool dirty;
 	unsigned *prev_next_cache; 	/// a pointer to the cache used to speedup queries on paths (unused in probabilities topology type)
@@ -31,7 +27,7 @@ typedef struct _topology_t {
 
 unsigned size_checkpoint_costs(void){
 	return	sizeof(topology_t) + 							// the basic struct size
-		sizeof(double) * topology_global.neighbours * topology_global.lp_cnt + 	// the whole cost matrix
+		sizeof(double) * topology_global.directions * topology_global.lp_cnt + 	// the whole cost matrix
 		sizeof(double) * topology_global.lp_cnt + 				// the cache of total path costs to speed up queries
 		sizeof(unsigned) * 2 * topology_global.lp_cnt; 				// the cache of previous and next hops to speed up queries
 }
@@ -40,7 +36,7 @@ void *load_topology_file_costs(c_jsmntok_t *root_token, const char *json_base){
 	unsigned i;
 	c_jsmntok_t *aux_tok;
 	const unsigned lp_cnt = topology_global.lp_cnt;
-	const unsigned neighbours_cnt = topology_global.neighbours;
+	const unsigned neighbours_cnt = topology_global.directions;
 
 	// retrieve the values array
 	c_jsmntok_t *values_tok = get_value_token_by_key(root_token, json_base, root_token, "values");
@@ -78,9 +74,10 @@ void *load_topology_file_costs(c_jsmntok_t *root_token, const char *json_base){
 
 
 topology_t *topology_costs_init(unsigned this_region_id, void *topology_data){
+	(void) this_region_id;
 	unsigned i;
 	const unsigned lp_cnt = topology_global.lp_cnt;
-	const unsigned neighbours = topology_global.neighbours;
+	const unsigned neighbours = topology_global.directions;
 
 	// instantiate the topology struct
 	topology_t *topology = rsalloc(topology_global.chkp_size);
@@ -100,23 +97,24 @@ topology_t *topology_costs_init(unsigned this_region_id, void *topology_data){
 	return topology;
 }
 
-
-// helper structure, we use this as heap elements to keep track of vertexes status during dijkstra execution
-struct _dijkstra_h_t{
-	struct _sum_helper_t cost;
-	unsigned cell;
-};
 // this is used in order to sort the elements of the heap
 #define __cmp_dijkstra_h(a, b) CmpSumHelpers(a.cost, b.cost)
 // this is costly: we try as much as possible to cache the results of this function
 static void dijkstra_costs(const topology_t *topology, unsigned int source_cell, double min_costs[RegionsCount()], unsigned int previous[RegionsCount()]) {
-	const unsigned neighbours = topology_global.neighbours;
+	// helper structure, we use this as heap elements to keep track of vertexes status during dijkstra execution
+	struct _dijkstra_h_t{
+		struct _sum_helper_t cost;
+		unsigned cell;
+	};
+
+	const unsigned neighbours = topology_global.directions;
 	const unsigned lp_cnt = topology_global.lp_cnt;
 	unsigned i, receiver;
 	struct _sum_helper_t min_costs_h[lp_cnt];
 	rootsim_heap(struct _dijkstra_h_t) heap;
 	const double *costs = topology->data;
-	struct _dijkstra_h_t partial = {{0, 0}, source_cell}, current;
+
+	struct _dijkstra_h_t current_scan = {{0, 0}, source_cell}, partial_scan = {0};
 
 	i = lp_cnt;
 	while(i--){
@@ -127,34 +125,34 @@ static void dijkstra_costs(const topology_t *topology, unsigned int source_cell,
 
 	heap_init(heap);
 
-	min_costs_h[source_cell] = partial.cost;
+	min_costs_h[source_cell] = current_scan.cost;
 	// textbook dijkstra (keep in mind i'm not passing pointers, this stuff gets copied)
-	heap_insert(heap, partial, __cmp_dijkstra_h);
+	heap_insert(heap, current_scan, __cmp_dijkstra_h);
 	// while we have vertexes to process
 	while(!heap_empty(heap)) {
 		// extract the lowest one
-		current = heap_extract(heap, __cmp_dijkstra_h);
+		current_scan = heap_extract(heap, __cmp_dijkstra_h);
 		// since we are not supporting decrease key on the heap we have to filter spurious duplicates
-		if(CmpSumHelpers(current.cost, min_costs_h[current.cell]) > 0)
+		if(CmpSumHelpers(current_scan.cost, min_costs_h[current_scan.cell]) > 0)
 			continue;
 		// we cycle through the neighbours of the current cell
 		for(i = 0; i < neighbours; ++i){
 			// we get the receiver cell
-			receiver = get_raw_receiver(current.cell, i);
-			if(receiver == DIRECTION_INVALID || isinf(costs[current.cell * neighbours + i]))
+			receiver = get_raw_receiver(current_scan.cell, i);
+			if(receiver == DIRECTION_INVALID || isinf(costs[current_scan.cell * neighbours + i]))
 				continue;
 			// we compute the sum of the current distance plus one hop to the receiver
-			partial.cost = PartialNeumaierSum(current.cost, costs[current.cell * neighbours + i]);
+			partial_scan.cost = PartialNeumaierSum(current_scan.cost, costs[current_scan.cell * neighbours + i]);
 			// if lower we have a candidate optimum for the cell
-			if(CmpSumHelpers(partial.cost, min_costs_h[receiver]) < 0){
+			if(CmpSumHelpers(partial_scan.cost, min_costs_h[receiver]) < 0){
 				// set the previous cell to retrieve the path later on
-				previous[receiver] = current.cell;
+				previous[receiver] = current_scan.cell;
 				// we set the cell field on our struct
-				partial.cell = receiver;
+				partial_scan.cell = receiver;
 				// refresh lowest cost found for the cell
-				min_costs_h[receiver] = partial.cost;
+				min_costs_h[receiver] = partial_scan.cost;
 				// we insert this into the heap
-				heap_insert(heap, partial, __cmp_dijkstra_h);
+				heap_insert(heap, partial_scan, __cmp_dijkstra_h);
 			}
 		}
 	}
@@ -170,7 +168,7 @@ static void refresh_cache_costs(topology_t *topology){
 	if(topology->dirty){
 		const unsigned lp_cnt = topology_global.lp_cnt;
 		// computes minimum cost spanning tree rooted in the current region
-		dijkstra_costs(topology, CURRENT_LP_ID, &topology->data[topology_global.neighbours*lp_cnt], topology->prev_next_cache);
+		dijkstra_costs(topology, current->gid.to_int, &topology->data[topology_global.directions*lp_cnt], topology->prev_next_cache);
 		// this sets to an uninitialized value the buffer which holds the next hop for
 		// each possible destination (we compute those on demand when asked by the user and we cache those here)
 		memset(&topology->prev_next_cache[lp_cnt], UCHAR_MAX, sizeof(unsigned) * lp_cnt);
@@ -189,8 +187,8 @@ struct update_topology_t{
 };
 
 void set_value_topology_costs(unsigned from, unsigned to, double value){
-	topology_t *topology = CURRENT_TOPOLOGY;
-	struct update_topology_t to_send = {from * topology_global.neighbours + to, .upd = {value}};
+	topology_t *topology = current->topology;
+	struct update_topology_t to_send = {from * topology_global.directions + to, .upd = {value}};
 	// this makes sure our bitwise tricks work properly
 	static_assert(sizeof(double) == sizeof(uint64_t), "the bit operation trick on TOPOLOGY_COST updates is wrong");
 	union _double_bits_trick old = {topology->data[to_send.loc_i]};
@@ -205,7 +203,7 @@ void set_value_topology_costs(unsigned from, unsigned to, double value){
 	// send the update message to the other LPs
 	unsigned i = topology_global.lp_cnt;
 	while(i--){
-		if(i == CURRENT_LP_ID)
+		if(i == current->gid.to_int)
 			continue;
 		UncheckedScheduleNewEvent(i, current_evt->timestamp, TOPOLOGY_UPDATE, &to_send, sizeof(to_send));
 	}
@@ -214,7 +212,7 @@ void set_value_topology_costs(unsigned from, unsigned to, double value){
 }
 
 void update_topology_costs(void){
-	topology_t *topology = CURRENT_TOPOLOGY;
+	topology_t *topology = current->topology;
 	struct update_topology_t *upd_p = (struct update_topology_t *)current_evt->event_content;
 	// same ol' trick as set_value_topology_costs()
 	union _double_bits_trick *old_p = (union _double_bits_trick *)&topology->data[upd_p->loc_i];
@@ -225,7 +223,7 @@ void update_topology_costs(void){
 }
 
 double get_value_topology_costs(unsigned from, unsigned to){
-	return CURRENT_TOPOLOGY->data[from * topology_global.neighbours + to];
+	return current->topology->data[from * topology_global.directions + to];
 }
 
 bool is_reachable_costs(unsigned to){
@@ -234,9 +232,9 @@ bool is_reachable_costs(unsigned to){
 }
 
 unsigned int find_receiver_toward_costs(unsigned int to){
-	topology_t *topology = CURRENT_TOPOLOGY;
+	topology_t *topology = current->topology;
 	const unsigned lp_cnt = topology_global.lp_cnt;
-	const unsigned this_lp = CURRENT_LP_ID;
+	const unsigned this_lp = current->gid.to_int;
 	// refresh the cache
 	refresh_cache_costs(topology);
 	// this is the location where we expect to find the cached next hop
@@ -264,11 +262,11 @@ unsigned int find_receiver_toward_costs(unsigned int to){
 }
 
 double compute_min_tour_costs(unsigned int source, unsigned int dest, unsigned int result[RegionsCount()]) {
-	topology_t *topology = CURRENT_TOPOLOGY;
+	topology_t *topology = current->topology;
 	const unsigned lp_cnt = topology_global.lp_cnt;
 
 	// I suppose (I HOPE!!!) the requests will be more frequent for paths starting from the region where we are staying
-	if(source == CURRENT_LP_ID){
+	if(source == current->gid.to_int){
 		refresh_cache_costs(topology); // so we cache that stuff
 		// the path is built on the fly (but this is almost as costly as copying it directly)
 		if(!build_path(lp_cnt, result, topology->prev_next_cache, source, dest)){
@@ -279,7 +277,7 @@ double compute_min_tour_costs(unsigned int source, unsigned int dest, unsigned i
 		}
 		topology->prev_next_cache[lp_cnt + dest] = result[0]; // we cache the next hop value;
 		// this is the cached value for the minimum cost incurred in the path
-		return topology->data[topology_global.neighbours * lp_cnt + dest];
+		return topology->data[topology_global.directions * lp_cnt + dest];
 	}
 
 	unsigned int previous[lp_cnt];
