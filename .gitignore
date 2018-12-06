@@ -13,6 +13,8 @@
 
 model
 
+html/
+
 Makefile
 Makefile.in
 

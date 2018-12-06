@@ -1,7 +1,13 @@
 /**
-*			Copyright (C) 2008-2018 HPDCS Group
-*			http://www.dis.uniroma1.it/~hpdcs
+* @file core/init.c
 *
+* @brief Initialization routines
+*
+* This module implements the simulator initialization routines
+*
+* @copyright
+* Copyright (C) 2008-2018 HPDCS Group
+* https://hpdcs.github.io
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
 *
@@ -17,11 +23,10 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file init.c
-* @brief This module implements the simulator initialization routines
 * @author Francesco Quaglia
-* @author Roberto Vitali
+* @author Andrea Piccione
 * @author Alessandro Pellegrini
+* @author Roberto Vitali
 */
 
 #include <unistd.h>

@@ -1,7 +1,13 @@
 /**
-*                       Copyright (C) 2008-2018 HPDCS Group
-*                       http://www.dis.uniroma1.it/~hpdcs
+* @file communication/gvt.c
 *
+* @brief Distributed GVT Support module
+*
+* Distributed GVT Support module
+*
+* @copyright
+* Copyright (C) 2008-2018 HPDCS Group
+* https://hpdcs.github.io
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
 *
@@ -17,8 +23,6 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file communication/gvt.c
-* @brief Distributed GVT Support module
 * @author Tommaso Tocci
 */
 
@@ -28,13 +32,13 @@
 #include <communication/mpi.h>
 #include <communication/gvt.h>
 
-// current colour phase of each thread
+/// current colour phase of each thread
 phase_colour *threads_phase_colour;
 
-// minimum time among all the outgoing red messages for each thread
+/// minimum time among all the outgoing red messages for each thread
 simtime_t *min_outgoing_red_msg;
 
-/*
+/**
  * `white_msg_recv` must always point to the
  * actual counter of white message received by the current kernel
  * that have been sent during the last global white phase.
@@ -45,13 +49,14 @@ volatile atomic_t *white_msg_recv;
 atomic_t white_0_msg_recv;
 atomic_t white_1_msg_recv;
 
-/* number of white message sent from this kernel
+/** number of white message sent from this kernel
    to all the others during the last white phase */
 atomic_t *white_msg_sent;
 
-// temporary structure used for the MPI collective
+/// temporary structure used for the MPI collective
 static int *white_msg_sent_buff;
-/* number of expected white message to be received by this kernel
+
+/** number of expected white message to be received by this kernel
    before to partecipate to the next GVT agreement */
 static int expected_white_msg;
 MPI_Request white_count_req;
@@ -131,7 +136,7 @@ void gvt_comm_finalize(void)
 	rsfree(gvt_init_reqs);
 }
 
-/*
+/**
  * Make a thread enter into the red phase.
  *
  * The calling thread phase will be turn to red and
@@ -149,7 +154,7 @@ void enter_red_phase(void)
 	threads_phase_colour[local_tid] = next_colour(threads_phase_colour[local_tid]);
 }
 
-/*
+/**
  * Make a thread exit from the red phase.
  *
  * The calling thread phase will be turn to white.
@@ -164,7 +169,7 @@ void exit_red_phase(void)
 	threads_phase_colour[local_tid] = next_colour(threads_phase_colour[local_tid]);
 }
 
-/*
+/**
  * Join the white message reduction collective operation.
  *
  * All kernels will share eachother the number of white message sent
@@ -189,7 +194,7 @@ void join_white_msg_redux(void)
 	unlock_mpi();
 }
 
-/*
+/**
  * Test completion of white message reduction collective operation.
  */
 bool white_msg_redux_completed(void)
@@ -204,7 +209,7 @@ bool white_msg_redux_completed(void)
 	return compl;
 }
 
-/*
+/**
  * Syncronously wait for the completion of white message reduction collective operation.
  */
 void wait_white_msg_redux(void)
@@ -212,7 +217,7 @@ void wait_white_msg_redux(void)
 	MPI_Wait(&white_count_req, MPI_STATUS_IGNORE);
 }
 
-/*
+/**
  * Check if the number of white message received is equal to
  * the expected ones (retrieved through the white message reduction).
  */

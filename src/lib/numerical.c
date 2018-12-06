@@ -1,7 +1,13 @@
 /**
-*			Copyright (C) 2008-2018 HPDCS Group
-*			http://www.dis.uniroma1.it/~hpdcs
+* @file lib/numerical.c
 *
+* @brief Numerical Library
+*
+* Piece-Wise Deterministic Random Number Generators.
+*
+* @copyright
+* Copyright (C) 2008-2018 HPDCS Group
+* https://hpdcs.github.io
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
 *
@@ -17,11 +23,9 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file numerical.c
-* @brief In this module there are the implementations of Piece-Wise Deterministic
-*        numerical distribution implementations
 * @author Alessandro Pellegrini
-* @date 3/16/2011
+*
+* @date March 16, 2011
 */
 
 #include <stdlib.h>

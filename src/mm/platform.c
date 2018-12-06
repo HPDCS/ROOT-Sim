@@ -1,7 +1,14 @@
 /**
-*                       Copyright (C) 2008-2018 HPDCS Group
-*                       http://www.dis.uniroma1.it/~hpdcs
+* @file mm/platform.c
 *
+* @brief malloc wrappers
+*
+* For security reasons we poison standard malloc calls. These are
+*  wrappers used in ROOT-Sim, which also make some quick checks.
+*
+* @copyright
+* Copyright (C) 2008-2018 HPDCS Group
+* https://hpdcs.github.io
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
 *
@@ -17,9 +24,6 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file platform.c
-* @brief For security reasons we poison standard malloc calls. These are
-*        the wrappers used in ROOT-Sim, which make some quick checks.
 * @author Alessandro Pellegrini
 */
 

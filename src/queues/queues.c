@@ -1,7 +1,13 @@
 /**
-*			Copyright (C) 2008-2018 HPDCS Group
-*			http://www.dis.uniroma1.it/~hpdcs
+* @file queues/queues.c
 *
+* @brief Message queueing subsystem
+*
+* This module implements the event/message queues subsystem.
+*
+* @copyright
+* Copyright (C) 2008-2018 HPDCS Group
+* https://hpdcs.github.io
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
 *
@@ -17,11 +23,11 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file queues.c
-* @brief This module implements the event/message queues subsystem
 * @author Francesco Quaglia
 * @author Roberto Vitali
 * @author Alessandro Pellegrini
+*
+* @date March 16, 2011
 */
 
 #include <stdlib.h>

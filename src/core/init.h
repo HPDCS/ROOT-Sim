@@ -1,7 +1,13 @@
 /**
-*			Copyright (C) 2008-2018 HPDCS Group
-*			http://www.dis.uniroma1.it/~hpdcs
+* @file core/init.h
 *
+* @brief Initialization routines
+*
+* This module implements the simulator initialization routines
+*
+* @copyright
+* Copyright (C) 2008-2018 HPDCS Group
+* https://hpdcs.github.io
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
 *
@@ -17,14 +23,12 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file init.h
-* @brief This module implements the simulator initialization routines
 * @author Francesco Quaglia
-* @author Roberto Vitali
+* @author Andrea Piccione
 * @author Alessandro Pellegrini
+* @author Roberto Vitali
 */
 #pragma once
-#ifndef _INIT_H
 
 #include <statistics/statistics.h>
 
@@ -79,5 +83,3 @@ typedef struct _simulation_configuration {
 extern simulation_configuration rootsim_config;
 
 extern void SystemInit(int argc, char **argv);
-
-#endif /* _INIT_H */

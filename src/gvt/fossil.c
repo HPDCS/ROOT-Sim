@@ -1,7 +1,14 @@
 /**
-*			Copyright (C) 2008-2018 HPDCS Group
-*			http://www.dis.uniroma1.it/~hpdcs
+* @file gvt/fossil.c
 *
+* @brief Housekeeping operations
+*
+* In this module all the housekeeping operations related to GVT computation phase
+* are present.
+*
+* @copyright
+* Copyright (C) 2008-2018 HPDCS Group
+* https://hpdcs.github.io
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
 *
@@ -17,9 +24,6 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file fossil.c
-* @brief In this module all the housekeeping operations related to GVT computation phase
-* 	 are present.
 * @author Alessandro Pellegrini
 * @author Francesco Quaglia
 */

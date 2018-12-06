@@ -1,48 +1,102 @@
 /**
-*                       Copyright (C) 2008-2018 HPDCS Group
-*			 http://www.dis.uniroma1.it/~hpdcs
-*
-*
-* This file is part of ROOT-Sim (ROme OpTimistic Simulator).
-*
-* ROOT-Sim is free software; you can redistribute it and/or modify it under the
-* terms of the GNU General Public License as published by the Free Software
-* Foundation; only version 3 of the License applies.
-*
-* ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
-* WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-* A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-*
-* You should have received a copy of the GNU General Public License along with
-* ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
-* 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-*
-* @file thread.c
-* @brief This module implements a thread barrier
-* @author Alessandro Pellegrini
-* @date Jan 25, 2012
-*/
+ * @file arch/thread.c
+ *
+ * @brief Generic thread management facilities.
+ *
+ * This module provides generic facilities for thread management.
+ * In particular, helper functions to startup worker threads are exposed,
+ * and a function to synchronize multiple threads on a software barrier.
+ *
+ * The software barrier also offers a leader election facility, so that
+ * once all threads are synchronized on the barrier, the function returns
+ * true to only one of them.
+ *
+ * @copyright
+ * Copyright (C) 2008-2018 HPDCS Group
+ * https://hpdcs.github.io
+ *
+ * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
+ *
+ * ROOT-Sim is free software; you can redistribute it and/or modify it under the
+ * terms of the GNU General Public License as published by the Free Software
+ * Foundation; only version 3 of the License applies.
+ *
+ * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+ * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+ *
+ * @author Alessandro Pellegrini
+ * @date Jan 25, 2012
+ */
 
 #include <stdbool.h>
 #include <arch/thread.h>
 #include <core/init.h>
 #include <mm/mm.h>
 
+/**
+ * An OS-level thread id. We never do any join on worker threads, so
+ * there is no need to keep track of system ids. Internally, each thread
+ * is given a unique id in [0, n_thr], which is used to know who is who.
+ * This variable is used only when spawning threads, because the system
+ * wants us to know who is what thread from its point of view, although
+ * we don't care at all.
+ */
 static tid_t os_tid;
 
-__thread unsigned int tid;
-__thread unsigned int local_tid;
-
-static unsigned int thread_counter = 0;
 
 /**
-* This helper function is the actual entry point for every thread created using the provided internal
-* services. The goal of this function is to silently set the new thread's tid so that any place in the
-* simulator will find that already set.
-* Additionally, when the created thread returns, it frees the memory used to maintain the real entry point
-* and the pointer to its arguments.
+ * The id of the thread.
+ *
+ * @todo This is global across all kernel instances in a distributed
+ *       run. We don't actually care at all about this, so this can be
+ *       safely made per-machine. Once this is done, local_tid should
+ *       go away.
+ */
+__thread unsigned int tid;
+
+
+/**
+ * The "local" id of the thread. This is a per-instance value which
+ * uniquely identifies a thread on a compute node.
+ *
+ * @todo This is global across all kernel instances in a distributed
+ *       run. We don't actually care at all about this, so this can be
+ *       safely made per-machine. Once this is done, local_tid should
+ *       go away.
+ */
+__thread unsigned int local_tid;
+
+
+/**
+ * The thread counter is a global variable which is incremented atomically
+ * to assign a unique thread ID. Each spawned thread will compete using a
+ * CAS to update this counter. Once a thread succeeds, it can use the
+ * value it was keeping as its private local id.
+ * This variable is used only as a synchronization point upon initialization,
+ * later no one cares about its value.
+ */
+static unsigned int thread_counter = 0;
+
+
+/**
+* This helper function is the actual entry point for every thread created
+* using the provided internal services. The goal of this function is to
+* start a race on the thread_counter shared variable using a CAS. This
+* race across all the threads is used to determine unique identifiers
+* across all the worker threads. This is done in this helper function to
+* silently set the new thread's tid before any simulation-specific function
+* is ever called, so that any place in the simulator will find that
+* already set.
+* Additionally, when the created thread returns, it frees the memory used
+* to maintain the real entry point and the pointer to its arguments.
 *
-* @param arg A pointer to an internally defined structure keeping the real thread's entry point and its arguments
+* @param arg A pointer to an internally defined structure keeping the
+*            real thread's entry point and its arguments
 *
 * @return This function always returns NULL
 */
@@ -74,30 +128,32 @@ static void *__helper_create_thread(void *arg)
 	// Now get into the real thread's entry point
 	real_arg->start_routine(real_arg->arg);
 
-	// We don't really need any return value
+	// Free arg and return (we don't really need any return value)
+	rsfree(arg);
 	return NULL;
 }
 
 /**
-* This function creates n threads, all having the same entry point and the same arguments.
-* It creates a new thread starting from the __helper_create_thread function which silently
-* sets the new thread's tid.
-* Note that the arguments passed to __helper_create_thread are malloc'd here, and free'd there.
-* This means that if start_routine does not return, there will be a memory leak.
-* Additionally, note that arguments pointer by arg are not actually copied here, so all the
-* created threads will share them in memory. Changing passed arguments from one of the newly
-* created threads will result in all the threads seeing the change.
-*
-* @author Alessandro Pellegrini
+* This function creates n threads, all having the same entry point and
+* the same arguments.
+* It creates a new thread starting from the __helper_create_thread
+* function which silently sets the new thread's tid.
+* Note that the arguments passed to __helper_create_thread are malloc'd
+* here, and free'd there. This means that if start_routine does not
+* return, there is a memory leak.
+* Additionally, note that we don't make a copy of the arguments pointed
+* by arg, so all the created threads will share them in memory. Changing
+* passed arguments from one of the newly created threads will result in
+* all the threads seeing the change.
 *
 * @param n The number of threads which should be created
 * @param start_routine The new threads' entry point
-* @param arg A pointer to an array of arguments to be passed to the new threads' entry point
+* @param arg A pointer to an array of arguments to be passed to the new
+*            threads' entry point
 *
 */
 void create_threads(unsigned short int n, void *(*start_routine)(void *), void *arg)
 {
-
 	int i;
 
 	// We create our thread within our helper function, which accepts just
@@ -118,8 +174,6 @@ void create_threads(unsigned short int n, void *(*start_routine)(void *), void *
 * This function initializes a thread barrier. If more than the hereby specified
 * number of threads try to synchronize on the barrier, the behaviour is undefined.
 *
-* @author Alessandro Pellegrini
-*
 * @param b the thread barrier to initialize
 * @param t the number of threads which will synchronize on the barrier
 */
@@ -139,11 +193,9 @@ void barrier_init(barrier_t * b, int t)
 * the execution of portions of code in isolated mode after the barrier itself. This is
 * like a leader election for free.
 *
-* @author Alessandro Pellegrini
+* @param b A pointer to the thread barrier to synchronize on
 *
-* @param b the thread barrier to synchronize on
-*
-* @return true to only one of the threads which synchronized on the barrier
+* @return false to all threads, except for one which is elected as the leader
 */
 bool thread_barrier(barrier_t * b)
 {

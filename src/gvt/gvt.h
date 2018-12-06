@@ -1,7 +1,14 @@
 /**
-*			Copyright (C) 2008-2018 HPDCS Group
-*			http://www.dis.uniroma1.it/~hpdcs
+* @file gvt/gvt.h
 *
+* @brief Global Virtual Time
+*
+* This module implements the GVT reduction. The current implementation
+* is non blocking for observable simulation plaftorms.
+*
+* @copyright
+* Copyright (C) 2008-2018 HPDCS Group
+* https://hpdcs.github.io
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
 *
@@ -17,9 +24,6 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file gvt/gvt.h
-* @brief This header defines all the Global Virtual Time symbols needed by the platform.
-* 	 The current implementation is GVT for non-observable systems based on bottom halves
 * @author Alessandro Pellegrini
 * @author Francesco Quaglia
 *

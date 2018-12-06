@@ -1,7 +1,13 @@
 /**
-*                       Copyright (C) 2008-2018 HPDCS Group
-*                       http://www.dis.uniroma1.it/~hpdcs
+* @file communication/wnd.c
 *
+* @brief Message delivery support
+*
+* Message delivery support
+*
+* @copyright
+* Copyright (C) 2008-2018 HPDCS Group
+* https://hpdcs.github.io
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
 *
@@ -17,8 +23,6 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file wnd.c
-* @brief Message Delivery Support Module
 * @author Tommaso Tocci
 */
 
@@ -55,7 +59,7 @@ void outgoing_window_finalize(void)
 	}
 
 	// TODO: I think this doesn't hold anymore (Alessandro)
-	// TODO: should free each queue that was allocate with the new_list call
+	// TODO: should free each queue that was allocated with the new_list call
 	rsfree(outgoing_queues);
 }
 

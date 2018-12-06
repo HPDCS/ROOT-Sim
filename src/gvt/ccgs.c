@@ -1,7 +1,15 @@
 /**
-*			Copyright (C) 2008-2018 HPDCS Group
-*			http://www.dis.uniroma1.it/~hpdcs
+* @file gvt/ccgs.c
 *
+* @brief Consistent and Committed Global State
+*
+* Consistent and Committed Global State (CCGS) is a subsystem that (poeriodically)
+* recomputes a global state on which the LPs can inspect the simulation trajectory
+* and determine whether the simulation can stop, by relying on the OnGVT() callback.
+*
+* @copyright
+* Copyright (C) 2008-2018 HPDCS Group
+* https://hpdcs.github.io
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
 *
@@ -17,16 +25,13 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file ccgs.c
-* @brief Consistent and Committed Global State (CCGS) is a subsystem that (poeriodically)
-* 	recomputes a global state on which the LPs can inspect the simulation trajectory
-* 	and determine whether the simulation can stop, by relying on the OnGVT() callback.
-* @date 2007
 * @author Francesco Quaglia
 * @author Paolo Romano
 * @author Alessandro Pellegrini
 * @author Diego Cucuzzo
 * @author Stefano D’Alessio
+*
+* @date 2007
 */
 
 #include <stdbool.h>

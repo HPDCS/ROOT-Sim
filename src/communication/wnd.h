@@ -1,7 +1,13 @@
 /**
-*                       Copyright (C) 2008-2018 HPDCS Group
-*                       http://www.dis.uniroma1.it/~hpdcs
+* @file communication/wnd.h
 *
+* @brief Message delivery support
+*
+* Message delivery support
+*
+* @copyright
+* Copyright (C) 2008-2018 HPDCS Group
+* https://hpdcs.github.io
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
 *
@@ -17,15 +23,10 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file wnd.c
-* @brief Message Delivery Support Module
 * @author Tommaso Tocci
 */
 
 #pragma once
-
-#ifndef _WND_H_
-#define _WND_H_
 
 #ifdef HAVE_MPI
 
@@ -59,4 +60,3 @@ simtime_t min_timestamp_outgoing_msgs(void);
 size_t outgoing_queues_size(void);
 
 #endif				/* HAVE_MPI */
-#endif				/* _WND_H_ */

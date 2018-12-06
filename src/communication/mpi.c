@@ -1,7 +1,13 @@
 /**
-*                       Copyright (C) 2008-2018 HPDCS Group
-*                       http://www.dis.uniroma1.it/~hpdcs
+* @file communication/mpi.c
 *
+* @brief MPI Support Module
+*
+* MPI Support Module
+*
+* @copyright
+* Copyright (C) 2008-2018 HPDCS Group
+* https://hpdcs.github.io
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
 *
@@ -17,8 +23,6 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file mpi.c
-* @brief MPI support module
 * @author Tommaso Tocci
 */
 
@@ -35,30 +39,34 @@
 #include <arch/atomic.h>
 #include <statistics/statistics.h>
 
-// true if the underlying MPI implementation support multithreading
+/// true if the underlying MPI implementation support multithreading
 bool mpi_support_multithread;
 
-// This global lock is used by the lock/unlock_mpi macro to
-// control access to MPI interface
+/**
+ * This global lock is used by the lock/unlock_mpi macro to
+ * control access to MPI interface
+ */
 spinlock_t mpi_lock;
 
-// control access to the message receiving routine
+/// control access to the message receiving routine
 static spinlock_t msgs_lock;
 
-// counter of the kernels that have already reached the
-// termination condition. Must be updated through the collect_termination() function.
+/**
+ * counter of the kernels that have already reached the
+ * termination condition. Must be updated through the collect_termination() function.
+ */
 static unsigned int terminated = 0;
 static MPI_Request *termination_reqs;
 static spinlock_t msgs_fini;
 
-// MPI Operation to reduce statics struct
+/// MPI Operation to reduce statics struct
 static MPI_Op reduce_stats_op;
 
 static MPI_Datatype stats_mpi_t;
 
 static MPI_Comm msg_comm;
 
-/*
+/**
  * Check if there are pending messages from remote kernels with
  * the specific `tag`.
  *
@@ -73,7 +81,7 @@ bool pending_msgs(int tag)
 	return (bool)flag;
 }
 
-/*
+/**
  * Check if the MPI_Request `req` have been completed.
  *
  * This function is thread-safe.
@@ -87,7 +95,7 @@ bool is_request_completed(MPI_Request * req)
 	return (bool)flag;
 }
 
-/*
+/**
  * Send a message destined to an LP binded to a remote kernel.
  *
  * The message will be stored in the outgoing message queue and the
@@ -112,7 +120,7 @@ void send_remote_msg(msg_t * msg)
 	store_outgoing_msg(out_msg, dest);
 }
 
-/*
+/**
  * Receive messages sent from remote kernels and
  * destined to locally hosted LPs.
  *
@@ -170,7 +178,8 @@ void receive_remote_msgs(void)
 	spin_unlock(&msgs_lock);
 }
 
-/* Return true if all the kernel have reached the termination condition
+/**
+ * Return true if all the kernel have reached the termination condition
  *
  * This function can be used only after `broadcast_termination()`
  * function has been correctly executed.
@@ -180,7 +189,7 @@ bool all_kernels_terminated(void)
 	return (terminated == n_ker);
 }
 
-/*
+/**
  * Accumulate termination acknoledgements from remote kernels and update the `terminated` counter
  *
  * This function can be called at any point of the simulation
@@ -210,7 +219,8 @@ void collect_termination(void)
 	spin_unlock(&msgs_fini);
 }
 
-/* Notify all the kernels about local termination
+/**
+ * Notify all the kernels about local termination
  *
  * This function can be called multiple time,
  * but the actual broadcasting operation will be executed only
@@ -235,7 +245,7 @@ void broadcast_termination(void)
 	unlock_mpi();
 }
 
-/*
+/**
  * This is the reduce operation for statistics,
  */
 static void reduce_stat_vector(struct stat_t *in, struct stat_t *inout,
@@ -253,7 +263,7 @@ static void reduce_stat_vector(struct stat_t *in, struct stat_t *inout,
 	}
 }
 
-// this assumes struct stat_t contains only double floating point variables
+/// this assumes struct stat_t contains only double floating point variables
 #define MPI_TYPE_STAT_LEN (sizeof(struct stat_t)/sizeof(double))
 
 static void stats_reduction_init(void)
@@ -293,7 +303,7 @@ void mpi_reduce_statistics(struct stat_t *global, struct stat_t *local)
 		   MPI_COMM_WORLD);
 }
 
-/*
+/**
  * Initialize the distributed termination subsystem
  */
 void dist_termination_init(void)
@@ -307,7 +317,7 @@ void dist_termination_init(void)
 	spinlock_init(&msgs_fini);
 }
 
-/*
+/**
  * Cleanup routine of the distributed termination subsystem
  */
 void dist_termination_finalize(void)
@@ -335,7 +345,7 @@ void syncronize_all(void)
 	thread_barrier(&all_thread_barrier);
 }
 
-/*
+/**
  * Wrapper of MPI_Init call
  */
 void mpi_init(int *argc, char ***argv)
