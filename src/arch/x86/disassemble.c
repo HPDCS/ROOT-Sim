@@ -1,29 +1,43 @@
 /**
-*                       Copyright (C) 2008-2018 HPDCS Group
-*                       http://www.dis.uniroma1.it/~hpdcs
-*
-*
-* This file is part of ROOT-Sim (ROme OpTimistic Simulator).
-*
-* ROOT-Sim is free software; you can redistribute it and/or modify it under the
-* terms of the GNU General Public License as published by the Free Software
-* Foundation; only version 3 of the License applies.
-*
-* ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
-* WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-* A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-*
-* You should have received a copy of the GNU General Public License along with
-* ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
-* 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-*
-* @file disassemble.c
-* @brief Module to disassemble x86 machine instructions
-* @author Alessandro Pellegrini
-* @author Simone Economo
-* @author Fernando Visca
-* @author Alice Porfirio
-*/
+ * @file arch/x86/disassemble.c
+ *
+ * @brief x86 ISA disassembler
+ *
+ * This is an x86 ISA disassembler. The disassembly (which is table-based)
+ * extracts every possible information from an instruction, given a
+ * pointer to it.
+ *
+ * This is a complete disassembler until SSE2 instructions. Newer
+ * instructions support is far from complete. Although it has been
+ * extensively tested (it has correctly disassembled the Linux kernel and
+ * Photoshop), it is extremely possible that some bugs are hidden somewhere.
+ *
+ * @copyright
+ * Copyright (C) 2008-2018 HPDCS Group
+ * https://hpdcs.github.io
+ *
+ * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
+ *
+ * ROOT-Sim is free software; you can redistribute it and/or modify it under the
+ * terms of the GNU General Public License as published by the Free Software
+ * Foundation; only version 3 of the License applies.
+ *
+ * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+ * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+ *
+ * @author Alessandro Pellegrini
+ * @author Davide Cingolani
+ * @author Simone Economo
+ * @author Fernando Visca
+ * @author Alice Porfirio
+ *
+ * @date September 19, 2008
+ */
 
 #if defined(__x86_64__)
 
@@ -1122,7 +1136,8 @@ insn esc_0f_opcode_table[] = {
 /* esc_0f_opcode
  * gestisce tutti gli opcode che iniziano con 0x0f
  */
-void esc_0f_opcode(struct disassembly_state *state) {
+void esc_0f_opcode(struct disassembly_state *state)
+{
 	unsigned char opcode;
 	insn_table table = esc_0f_opcode_table;
 
@@ -1164,7 +1179,8 @@ void esc_0f_opcode(struct disassembly_state *state) {
 /* read_modrm
  * Salva il byte successivo in state->modrm ed incrementa state->pos
  */
-inline void read_modrm(struct disassembly_state *state) {
+inline void read_modrm(struct disassembly_state *state)
+{
 	state->modrm = state->text[state->pos];
 	state->pos++;
 	state->read_modrm = true;
@@ -1174,7 +1190,8 @@ inline void read_modrm(struct disassembly_state *state) {
 /* d8_opcode
  * x87 escape.
  */
-void d8_opcode(struct disassembly_state *state) {
+void d8_opcode(struct disassembly_state *state)
+{
 	// [FV] Dichiaro i seguenti campi
 	char *instructions[4][2] = {{"fadd", "fmul"}, {"fcom", "fcomp"}, {"fsub", "fsubr"}, {"fdiv", "fdivr"}};
 	int row, col;
@@ -1281,7 +1298,8 @@ void d8_opcode(struct disassembly_state *state) {
 /* d9_opcode
  * x87 escape.
  */
-void d9_opcode(struct disassembly_state *state) {
+void d9_opcode(struct disassembly_state *state)
+{
 	enum addr_method floatingPointRegisters[8] = {R_ST0, R_ST1, R_ST2, R_ST3, R_ST4, R_ST5, R_ST6, R_ST7};
 
 	read_modrm(state);
@@ -1481,7 +1499,8 @@ void d9_opcode(struct disassembly_state *state) {
 /* da_opcode
  * x87 escape.
  */
-void da_opcode(struct disassembly_state *state) {
+void da_opcode(struct disassembly_state *state)
+{
 	enum addr_method floatingPointRegisters[8] = {R_ST0, R_ST1, R_ST2, R_ST3, R_ST4, R_ST5, R_ST6, R_ST7};
 
 	read_modrm(state);
@@ -1565,7 +1584,8 @@ void da_opcode(struct disassembly_state *state) {
 /* db_opcode
  * x87 escape.
  */
-void db_opcode(struct disassembly_state *state) {
+void db_opcode(struct disassembly_state *state)
+{
 	enum addr_method floatingPointRegisters[8] = {R_ST0, R_ST1, R_ST2, R_ST3, R_ST4, R_ST5, R_ST6, R_ST7};
 
 	read_modrm(state);
@@ -1651,7 +1671,8 @@ void db_opcode(struct disassembly_state *state) {
 /* dc_opcode
  * x87 escape.
  */
-void dc_opcode(struct disassembly_state *state) {
+void dc_opcode(struct disassembly_state *state)
+{
 	enum addr_method floatingPointRegisters[8] = {R_ST0, R_ST1, R_ST2, R_ST3, R_ST4, R_ST5, R_ST6, R_ST7};
 
 	read_modrm(state);
@@ -1716,7 +1737,8 @@ void dc_opcode(struct disassembly_state *state) {
 /* dd_opcode
  * x87 escape.
  */
-void dd_opcode(struct disassembly_state *state) {
+void dd_opcode(struct disassembly_state *state)
+{
 	enum addr_method floatingPointRegisters[8] = {R_ST0, R_ST1, R_ST2, R_ST3, R_ST4, R_ST5, R_ST6, R_ST7};
 
 	read_modrm(state);
@@ -1807,7 +1829,8 @@ void dd_opcode(struct disassembly_state *state) {
 /* de_opcode
  * x87 escape.
  */
-void de_opcode(struct disassembly_state *state) {
+void de_opcode(struct disassembly_state *state)
+{
 	enum addr_method floatingPointRegisters[8] = {R_ST0, R_ST1, R_ST2, R_ST3, R_ST4, R_ST5, R_ST6, R_ST7};
 
 	read_modrm(state);
@@ -1885,7 +1908,8 @@ void de_opcode(struct disassembly_state *state) {
 /* df_opcode
  * x87 escape.
  */
-void df_opcode(struct disassembly_state *state) {
+void df_opcode(struct disassembly_state *state)
+{
 	enum addr_method floatingPointRegisters[8] = {R_ST0, R_ST1, R_ST2, R_ST3, R_ST4, R_ST5, R_ST6, R_ST7};
 
 	read_modrm(state);
@@ -1966,7 +1990,8 @@ void df_opcode(struct disassembly_state *state) {
  * Converte un prefisso all'opcode SSE/SSE2 in un indice della tabella degli escape
  * opcode.
  */
-int sse_prefix_to_index (unsigned char sse_prefix) {
+int sse_prefix_to_index (unsigned char sse_prefix)
+{
 	int idx = 0;
 
 	switch(sse_prefix) {
@@ -2016,7 +2041,8 @@ void sse_esc(struct disassembly_state *state, insn table[][4], unsigned char bas
 /* esc_0f10_17
  * Opcodes da 0f10 a 0f17.
  */
-void esc_0f10_17 (struct disassembly_state *state) {
+void esc_0f10_17 (struct disassembly_state *state)
+{
   insn table[][4] = {
     /* 0F10 */
     {
@@ -2155,7 +2181,8 @@ void esc_0f10_17 (struct disassembly_state *state) {
 	sse_esc(state, table, 0x10);
 }
 
-void esc_0f28_2f (struct disassembly_state *state) {
+void esc_0f28_2f (struct disassembly_state *state)
+{
   insn table[][4] = {
     /* 0F28 */
     {
@@ -2250,7 +2277,8 @@ void esc_0f28_2f (struct disassembly_state *state) {
   sse_esc(state, table, 0x28);
 }
 
-void esc_0f50_70 (struct disassembly_state *state) {
+void esc_0f50_70 (struct disassembly_state *state)
+{
 
 	// TODO: 66 0f 3a 17: EXTRACTPS scrive in memoria
 	//	 66 0f 3a 14: PEXTRB
@@ -2627,7 +2655,8 @@ void esc_0f50_70 (struct disassembly_state *state) {
   sse_esc(state, table, 0x50);
 }
 
-void esc_0f74_76 (struct disassembly_state *state) {
+void esc_0f74_76 (struct disassembly_state *state)
+{
   insn table[][4] = {
     /* 0F74 */
     {
@@ -2667,7 +2696,8 @@ void esc_0f74_76 (struct disassembly_state *state) {
   sse_esc(state, table, 0x74);
 }
 
-void esc_0f7e_7f (struct disassembly_state *state) {
+void esc_0f7e_7f (struct disassembly_state *state)
+{
   insn table[][4] = {
     /* OF7E */
     {
@@ -2696,7 +2726,8 @@ void esc_0f7e_7f (struct disassembly_state *state) {
   sse_esc(state, table, 0x7e);
 }
 
-void esc_0fc2 (struct disassembly_state *state) {
+void esc_0fc2 (struct disassembly_state *state)
+{
   insn table[][4] = {
     /* 0FC2 */
     {
@@ -2714,7 +2745,8 @@ void esc_0fc2 (struct disassembly_state *state) {
   sse_esc(state, table, 0xc2);
 }
 
-void esc_0fc4_c6 (struct disassembly_state *state) {
+void esc_0fc4_c6 (struct disassembly_state *state)
+{
   insn table[][4] = {
     /* 0FC4 */
     {
@@ -2754,7 +2786,8 @@ void esc_0fc4_c6 (struct disassembly_state *state) {
   sse_esc(state, table, 0xc4);
 }
 
-void esc_0fd1_ef (struct disassembly_state *state) {
+void esc_0fd1_ef (struct disassembly_state *state)
+{
   insn table[][4] = {
     /* 0FD1 */
     {
@@ -3102,7 +3135,8 @@ void esc_0fd1_ef (struct disassembly_state *state) {
   sse_esc(state, table, 0xd1);
 }
 
-void esc_0ff1_fe (struct disassembly_state *state) {
+void esc_0ff1_fe (struct disassembly_state *state)
+{
   insn table[][4] = {
     /* 0FF1 */
     {
@@ -3269,7 +3303,8 @@ void esc_0ff1_fe (struct disassembly_state *state) {
  * L'opcode può andare da 0x80 a 0x83. L'istruzione è scelta in base ai bit 5-3 del byte
  * ModR/M.
  */
-void immed_grp_1(struct disassembly_state *state) { /* opcodes 80-83 */
+void immed_grp_1(struct disassembly_state *state)
+{
 	unsigned char encoding;
 	char *instructions[] = { "add", "or", "adc", "sbb",
 				 "and", "sub", "xor", "cmp" };
@@ -3300,7 +3335,9 @@ void immed_grp_1(struct disassembly_state *state) { /* opcodes 80-83 */
 	}
 }
 
-void shift_grp_2(struct disassembly_state *state) { /* opcodes C0-C1, D0-D3 */
+/* opcodes C0-C1, D0-D3 */
+void shift_grp_2(struct disassembly_state *state)
+{
 	unsigned char encoding;
 
 	// Queste istruzioni possono scrivere tutte in memoria
@@ -3319,8 +3356,9 @@ void shift_grp_2(struct disassembly_state *state) { /* opcodes C0-C1, D0-D3 */
 	}
 }
 
-void unary_grp_3(struct disassembly_state *state) { /* opcodes F6-F7 */
-
+/* opcodes F6-F7 */
+void unary_grp_3(struct disassembly_state *state)
+{
 	// Possono scrivere in memoria: not, neg
 
 	unsigned char encoding, opcode;
@@ -3354,7 +3392,9 @@ void unary_grp_3(struct disassembly_state *state) { /* opcodes F6-F7 */
 	state->instrument->flags = flags[encoding];
 }
 
-void grp_4(struct disassembly_state *state) { /* opcode FE */
+/* opcode FE */
+void grp_4(struct disassembly_state *state)
+{
 	unsigned char encoding;
 
 	read_modrm(state);
@@ -3381,8 +3421,9 @@ void grp_4(struct disassembly_state *state) { /* opcode FE */
 	}
 }
 
-void grp_5(struct disassembly_state *state) { /* opcode FF */
-
+/* opcode FF */
+void grp_5(struct disassembly_state *state)
+{
 	unsigned char encoding;
 	char *instructions[] = { "inc", "dec", "call", "call far",
 				 "jmp", "jmp far", "push", "ill_grp_5" };
@@ -3420,7 +3461,9 @@ void grp_5(struct disassembly_state *state) { /* opcode FF */
 		state->op[0] = OP_V;
 }
 
-void grp_6(struct disassembly_state *state) { /* opcode 0F00 */
+/* opcode 0F00 */
+void grp_6(struct disassembly_state *state)
+{
 	unsigned char encoding;
 
 	char *instructions[6] = { "sldt", "str", "lldt", "ltr", "verr", "verw" };
@@ -3461,7 +3504,9 @@ void grp_6(struct disassembly_state *state) { /* opcode 0F00 */
 	// [FV] state->op[0] = (encoding < 2) ? OP_V : OP_W; - Non penso funzioni... Ricontrollare!
 }
 
-void grp_7(struct disassembly_state *state) { /* opcode 0F01 */
+/* opcode 0F01 */
+void grp_7(struct disassembly_state *state)
+{
 	unsigned char encoding, lower_bits, mod_76;
 	char *instructions[] = { "sgdt", "sidt", "lgdt", "lidt",
 				 "smsw", "ill_grp_7", "lmsw", "invlpg" };
@@ -3569,7 +3614,9 @@ void grp_7(struct disassembly_state *state) { /* opcode 0F01 */
 	//}
 }
 
-void grp_8(struct disassembly_state *state) { /* opcode 0FBA */
+/* opcode 0FBA */
+void grp_8(struct disassembly_state *state)
+{
 	unsigned char encoding;
 	char *instructions[] = { "bt", "bts", "btr", "btc" };
 
@@ -3594,7 +3641,9 @@ void grp_8(struct disassembly_state *state) { /* opcode 0FBA */
 		state->instrument->flags |= I_MEMWR;
 }
 
-void grp_9(struct disassembly_state *state) { /* opcode 0FC7 */ // [FV] Non tutte le istruzioni vengono gestite
+/* opcode 0FC7 */ // [FV] Non tutte le istruzioni vengono gestite
+void grp_9(struct disassembly_state *state)
+{
 	unsigned char encoding, mod;
 
 	read_modrm(state);
@@ -3614,14 +3663,17 @@ void grp_9(struct disassembly_state *state) { /* opcode 0FC7 */ // [FV] Non tutt
 		strcpy(state->instrument->mnemonic, "ill_grp_9");
 }
 
-void grp_10(struct disassembly_state *state) { /* opcode 0FB9 */
+/* opcode 0FB9 */
+void grp_10(struct disassembly_state *state)
+{
 	// UD e grp 10
 	// Qui non c'è nulla da fare
 	strcpy(state->instrument->mnemonic, "ill_grp_10");
 }
 
-void grp_11(struct disassembly_state *state) { /* opcodes C6-C7 */
-
+/* opcodes C6-C7 */
+void grp_11(struct disassembly_state *state)
+{
 	read_modrm(state);
 
 	if((state->modrm >> 3) & 0x07) {
@@ -3646,7 +3698,9 @@ void grp_11(struct disassembly_state *state) { /* opcodes C6-C7 */
 	 */
 }
 
-void grp_12(struct disassembly_state *state) { /* opcode 0F71 */
+/* opcode 0F71 */
+void grp_12(struct disassembly_state *state)
+{
 	unsigned char encoding, mod, sse_prefix;
 	bool illegal = false;
 	char *mnemonic;
@@ -3692,7 +3746,9 @@ void grp_12(struct disassembly_state *state) { /* opcode 0F71 */
 	}
 }
 
-void grp_13(struct disassembly_state *state) { /* opcode 0F72 */
+/* opcode 0F72 */
+void grp_13(struct disassembly_state *state)
+{
 	unsigned char encoding, mod, sse_prefix;
 	bool illegal = false;
 	char *mnemonic;
@@ -3738,7 +3794,9 @@ void grp_13(struct disassembly_state *state) { /* opcode 0F72 */
 	}
 }
 
-void grp_14(struct disassembly_state *state) { /* opcode 0F73 */
+/* opcode 0F73 */
+void grp_14(struct disassembly_state *state)
+{
 	unsigned char encoding, mod, sse_prefix;
 	char *mnemonic;
 
@@ -3781,7 +3839,9 @@ void grp_14(struct disassembly_state *state) { /* opcode 0F73 */
 	state->op[1] = OP_B;	// [FV] Errore, c'era scritto op[0] !
 }
 
-void grp_15(struct disassembly_state *state) { /* opcode 0FAE */	// [FV] Non tutte le istruzioni sono gestite
+/* opcode 0FAE */	// [FV] Non tutte le istruzioni sono gestite
+void grp_15(struct disassembly_state *state)
+{
 	unsigned char encoding, mod;
 	char *mnemonic;
 
@@ -3839,7 +3899,9 @@ void grp_15(struct disassembly_state *state) { /* opcode 0FAE */	// [FV] Non tut
 	}
 }
 
-void grp_16(struct disassembly_state *state) { /* opcode OF18 */
+/* opcode OF18 */
+void grp_16(struct disassembly_state *state)
+{
 	unsigned char encoding, mod;
 	char *mnemonic;
 
@@ -3870,7 +3932,8 @@ void grp_16(struct disassembly_state *state) { /* opcode OF18 */
  * Determina quanti dati verranno scritti in memoria, utilizzando le
  * dimensioni degli operandi
  */
-void select_operand_size(struct disassembly_state *state, enum operand_type op) {
+void select_operand_size(struct disassembly_state *state, enum operand_type op)
+{
 	unsigned long size;
 
 	// Eccezione per la modalità a 64bit:
@@ -3989,8 +4052,7 @@ void select_operand_size(struct disassembly_state *state, enum operand_type op) 
 }
 
 
-void format_addr_m (struct disassembly_state *state, enum addr_method addr,
-		    enum operand_type op);
+void format_addr_m (struct disassembly_state *state, enum addr_method addr, enum operand_type op);
 
 /* Le funzioni di formato usano l'istruzione, il metodo di accesso ed il tipo
  * di operando per estrarre informazioni sul tipo di dati gestiti dalle
@@ -4001,7 +4063,8 @@ void format_addr_m (struct disassembly_state *state, enum addr_method addr,
  * Accesso diretto. Nessun byte ModR/M, nessun registro di base, nessun indice nei
  * registri, nessun fattore di scala. Decisamente semplice!
  */
-void format_addr_a (struct disassembly_state *state, enum addr_method addr, enum operand_type op) {
+void format_addr_a (struct disassembly_state *state, enum addr_method addr, enum operand_type op)
+{
 	(void)addr;
 
 	// Questo formato è proprio della jmp far e della call far.
@@ -4042,7 +4105,8 @@ void format_addr_a (struct disassembly_state *state, enum addr_method addr, enum
 /* format_addr_c
  * I bit 5-3 del byte ModR/M identificano un registro di controllo
  */
-void format_addr_c (struct disassembly_state *state, enum addr_method addr, enum operand_type op) {
+void format_addr_c (struct disassembly_state *state, enum addr_method addr, enum operand_type op)
+{
 	(void)addr;
 	(void)op;
 
@@ -4071,7 +4135,8 @@ void format_addr_c (struct disassembly_state *state, enum addr_method addr, enum
 /* format_addr_d
  * I bit 5-3 del byte ModR/M selezionano un registro di debug
  */
-void format_addr_d (struct disassembly_state *state, enum addr_method addr, enum operand_type op) {
+void format_addr_d (struct disassembly_state *state, enum addr_method addr, enum operand_type op)
+{
 	(void)addr;
 	(void)op;
 
@@ -4112,7 +4177,8 @@ void format_addr_d (struct disassembly_state *state, enum addr_method addr, enum
  * indirizzo di memoria con un registro di base opzionale, registro
  * di indice, fattore di scala e displacement...
  */
-void format_addr_e (struct disassembly_state *state, enum addr_method addr, enum operand_type op) {
+void format_addr_e (struct disassembly_state *state, enum addr_method addr, enum operand_type op)
+{
 
 	/* Se ModR/M specifica un registro, allora OP specifica la sua dimensione,
 	   come la differenza tra ax, eax o rax. Se ModR/M specifica un indirizzo,
@@ -4215,7 +4281,8 @@ void format_addr_e (struct disassembly_state *state, enum addr_method addr, enum
 /* format_addr_g
  * Il campo Reg del byte ModR/M specifica un registro
  */
-void format_addr_g (struct disassembly_state *state, enum addr_method addr, enum operand_type op) {
+void format_addr_g (struct disassembly_state *state, enum addr_method addr, enum operand_type op)
+{
 	enum reg_size reg_size;
 	int reg_field;
 	(void)addr;
@@ -4277,7 +4344,7 @@ void format_addr_g (struct disassembly_state *state, enum addr_method addr, enum
 	// potremmo aggiungere un campo che ne tiene traccia per l'emissione
 	// dell'istruzione assembly inversa
 	//
-	// TODO: (2) Questa cosa scritta qui sopra è quando ha implementato Simone
+	// TODO: (2) Questa cosa scritta qui sopra è quanto ha implementato Simone
 	// qui sotto
 	//
 	// Il campo reg_size può essere usato per discriminare la dimensione del
@@ -4291,7 +4358,8 @@ void format_addr_g (struct disassembly_state *state, enum addr_method addr, enum
 /* format_addr_i
  * Dati immediati
  */
-void format_addr_i (struct disassembly_state *state, enum addr_method addr, enum operand_type op) {
+void format_addr_i (struct disassembly_state *state, enum addr_method addr, enum operand_type op)
+{
 	// I dati immediati sono di 1, 2 o 4 byte
 	int immed_size = 0;
 	uint8_t byte;
@@ -4370,7 +4438,8 @@ void format_addr_i (struct disassembly_state *state, enum addr_method addr, enum
 /* format_addr_j
  * L'istruzione contiene un offset relativo a EIP
  */
-void format_addr_j (struct disassembly_state *state, enum addr_method addr, enum operand_type op) {
+void format_addr_j (struct disassembly_state *state, enum addr_method addr, enum operand_type op)
+{
 	int off_size = 0, jump_size = 0;
 	int8_t byte_jump;
 	int16_t word_jump;
@@ -4445,8 +4514,8 @@ void format_addr_j (struct disassembly_state *state, enum addr_method addr, enum
  * del capitolo 2. Per i 64bit, la spiegazione è un po' meno accurata, ma il funzionamento
  * è più o meno simile all'indirizzamento per i 32 bit.
  */
-void format_addr_m (struct disassembly_state *state, enum addr_method addr,
-		    enum operand_type op) {
+void format_addr_m (struct disassembly_state *state, enum addr_method addr, enum operand_type op)
+{
 	bool no_sib_base = false;
 	unsigned char mod, rm;
 	unsigned long mem_ref;
@@ -4700,7 +4769,8 @@ void format_addr_m (struct disassembly_state *state, enum addr_method addr,
 /* format_addr_o
  * Byte ModR/M non presente. C'è un offset di dimensione ADDR_SIZE subito dopo l'istruzione
  */
-void format_addr_o (struct disassembly_state *state, enum addr_method addr, enum operand_type op) {
+void format_addr_o (struct disassembly_state *state, enum addr_method addr, enum operand_type op)
+{
 	uint8_t boff;
 	uint16_t woff;
 	uint32_t doff;
@@ -4769,7 +4839,8 @@ void format_addr_o (struct disassembly_state *state, enum addr_method addr, enum
 /* format_addr_p
  * Il campo reg del byte ModR/M seleziona un registro MMX.
  */
-void format_addr_p (struct disassembly_state *state, enum addr_method addr, enum operand_type op) {
+void format_addr_p (struct disassembly_state *state, enum addr_method addr, enum operand_type op)
+{
 	(void)state;
 	(void)addr;
 	(void)op;
@@ -4780,7 +4851,8 @@ void format_addr_p (struct disassembly_state *state, enum addr_method addr, enum
 /* format_addr_n [FV]
  * Il campo R/M del byte ModR/M seleziona un registro MMX.
  */
-void format_addr_n (struct disassembly_state *state, enum addr_method addr, enum operand_type op) {
+void format_addr_n (struct disassembly_state *state, enum addr_method addr, enum operand_type op)
+{
 	(void)state;
 	(void)addr;
 	(void)op;
@@ -4791,8 +4863,8 @@ void format_addr_n (struct disassembly_state *state, enum addr_method addr, enum
 /* format_addr_q
  * Il byte ModR/M specifica una posizione in memoria oppure un registro MMX
  */
-void format_addr_q (struct disassembly_state *state, enum addr_method addr,
-		    enum operand_type op) {
+void format_addr_q (struct disassembly_state *state, enum addr_method addr, enum operand_type op)
+{
 	if(state->modrm >> 6 == 0x3) { // Specifica un registro a 64 bit
 		// [FV] Non legge, né scrive
 		state->instrument->flags &= ~I_MEMRD & ~I_MEMWR; //Alice: state => flags
@@ -4809,7 +4881,8 @@ void format_addr_q (struct disassembly_state *state, enum addr_method addr,
 /* format_addr_r
  * Il campo Mod del byte ModR/M può soltanto riferirsi ad un registro general purpose
  */
-void format_addr_r (struct disassembly_state *state, enum addr_method addr, enum operand_type op) {
+void format_addr_r (struct disassembly_state *state, enum addr_method addr, enum operand_type op)
+{
 	(void)addr;
 
 	// Viene usato soltanto da OP_D
@@ -4829,7 +4902,8 @@ void format_addr_r (struct disassembly_state *state, enum addr_method addr, enum
 /* format_addr_s
  * Il campo Reg del byte ModR/M seleziona un segment register
  */
-void format_addr_s (struct disassembly_state *state, enum addr_method addr, enum operand_type op) {
+void format_addr_s (struct disassembly_state *state, enum addr_method addr, enum operand_type op)
+{
 	(void)state;
 	(void)addr;
 	(void)op;
@@ -4850,7 +4924,8 @@ void format_addr_s (struct disassembly_state *state, enum addr_method addr, enum
  * questa funzione (e tutte le chiamate ad essa) possono essere cancellate senza
  * problemi.
  */
-void format_addr_t (struct disassembly_state *state, enum addr_method addr, enum operand_type op) {
+void format_addr_t (struct disassembly_state *state, enum addr_method addr, enum operand_type op)
+{
 	(void)state;
 	(void)addr;
 	(void)op;
@@ -4861,7 +4936,8 @@ void format_addr_t (struct disassembly_state *state, enum addr_method addr, enum
 /* format_addr_v
  * Il campo Reg del byte ModR/M seleziona un registro XMM
  */
-void format_addr_v (struct disassembly_state *state, enum addr_method addr, enum operand_type op) {
+void format_addr_v (struct disassembly_state *state, enum addr_method addr, enum operand_type op)
+{
 	(void)addr;
 	(void)op;
 
@@ -4874,7 +4950,8 @@ void format_addr_v (struct disassembly_state *state, enum addr_method addr, enum
 /* format_addr_u [FV]
  * Il campo R/M del byte ModR/M seleziona un registro XMM
  */
-void format_addr_u (struct disassembly_state *state, enum addr_method addr, enum operand_type op) {
+void format_addr_u (struct disassembly_state *state, enum addr_method addr, enum operand_type op)
+{
 	(void)addr;
 	(void)op;
 
@@ -4886,7 +4963,8 @@ void format_addr_u (struct disassembly_state *state, enum addr_method addr, enum
 /* format_addr_w
  * Il byte ModR/M specifica o un registro XMM o la memoria
  */
-void format_addr_w (struct disassembly_state *state, enum addr_method addr, enum operand_type op) {
+void format_addr_w (struct disassembly_state *state, enum addr_method addr, enum operand_type op)
+{
 	if(state->modrm >> 6 == 0x3) {
 		char reg = (state->modrm >> 3) & 0x07;
 
@@ -4907,7 +4985,8 @@ void format_addr_w (struct disassembly_state *state, enum addr_method addr, enum
 /* format_addr_x
  * X è un operando implicito, il suffisso nell'istruzione è b
  */
-void format_addr_x (struct disassembly_state *state, enum addr_method addr, enum operand_type op) {
+void format_addr_x (struct disassembly_state *state, enum addr_method addr, enum operand_type op)
+{
 	(void)addr;
 	(void)op;
 
@@ -4921,7 +5000,8 @@ void format_addr_x (struct disassembly_state *state, enum addr_method addr, enum
 /* format_addr_y
  * Y è un operando implicito, il suffisso nell'istruzione è l o w o q a seconda
  */
-void format_addr_y (struct disassembly_state *state, enum addr_method addr, enum operand_type op) {
+void format_addr_y (struct disassembly_state *state, enum addr_method addr, enum operand_type op)
+{
 	(void)addr;
 
 	// Determina la dimensione della scrittura/lettura in memoria
@@ -4937,7 +5017,8 @@ void format_addr_y (struct disassembly_state *state, enum addr_method addr, enum
  * Questa funzione decide quale tipo di indirizzamento viene usato dall'istruzione
  * (se a registro o a memoria, qual è la dimensione dei dati, ...)
  */
-void format_addr_op (struct disassembly_state *state, enum addr_method addr, enum operand_type op) {
+void format_addr_op (struct disassembly_state *state, enum addr_method addr, enum operand_type op)
+{
 
 	switch(addr) {
 
@@ -5047,7 +5128,8 @@ void format_addr_op (struct disassembly_state *state, enum addr_method addr, enu
  * Disassembla l'istruzione a text + *pos e restituisce una
  * riga di assembly dopo aver aggiornato *pos
  */
-void x86_disassemble_instruction (unsigned char *text, unsigned long *pos, insn_info_x86 *instrument, char flags) {
+void x86_disassemble_instruction (unsigned char *text, unsigned long *pos, insn_info_x86 *instrument, char flags)
+{
 	int k = 0;
 	bool print_prefixes = false; // Shall this become useful in the future?
 	unsigned char opcode;

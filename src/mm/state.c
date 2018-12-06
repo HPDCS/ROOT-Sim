@@ -1,7 +1,17 @@
 /**
-*                       Copyright (C) 2008-2018 HPDCS Group
-*                       http://www.dis.uniroma1.it/~hpdcs
+* @file mm/state.c
 *
+* @brief LP state management
+*
+* The state module is responsible for managing LPs' simulation states.
+* In particular, it allows to take a snapshot, to restore a previous snapshot,
+* and to silently re-execute a portion of simulation events to bring
+* a LP to a partiuclar LVT value for which no simulation state is available
+* in the log chain.
+*
+* @copyright
+* Copyright (C) 2008-2018 HPDCS Group
+* https://hpdcs.github.io
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
 *
@@ -17,15 +27,9 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file state.c
-* @brief The state module is responsible for managing LPs' simulation states.
-*	In particular, it allows to take a snapshot, to restore a previous snapshot,
-*	and to silently re-execute a portion of simulation events to bring
-*	a LP to a partiuclar LVT value for which no simulation state
 * @author Francesco Quaglia
 * @author Alessandro Pellegrini
 */
-
 
 #include <stdlib.h>
 #include <math.h>
@@ -39,60 +43,52 @@
 #include <scheduler/scheduler.h>
 #include <mm/state.h>
 #include <communication/communication.h>
-#include <mm/dymelor.h>
+#include <mm/mm.h>
 #include <statistics/statistics.h>
-
-/// Function pointer to switch between the parallel and serial version of SetState
-void (*SetState)(void *new_state);
-
 
 /**
 * This function is used to create a state log to be added to the LP's log chain
 *
-* @author Francesco Quaglia
-* @author Alessandro Pellegrini
-*
-* @param lid The Light Process Identifier
+* @param lp A pointer to the lp_struct of the LP for which a checkpoint
+*           is to be taken.
 */
-bool LogState(LID_t lid) {
-
+bool LogState(struct lp_struct *lp)
+{
 	bool take_snapshot = false;
-	state_t *new_state; 
+	state_t *new_state;
 
-	if(unlikely(is_blocked_state(LPS(lid)->state))) {
+	if (unlikely(is_blocked_state(lp->state))) {
 		return take_snapshot;
 	}
-
 	// Keep track of the invocations to LogState
-	LPS(lid)->from_last_ckpt++;
+	lp->from_last_ckpt++;
 
-	if(LPS(lid)->state_log_forced) {
-		LPS(lid)->state_log_forced = false;
-		LPS(lid)->from_last_ckpt = 0;
+	if (lp->state_log_forced) {
+		lp->state_log_forced = false;
+		lp->from_last_ckpt = 0;
 
 		take_snapshot = true;
 		goto skip_switch;
 	}
-
 	// Switch on the checkpointing mode
-	switch(rootsim_config.checkpointing) {
+	switch (rootsim_config.checkpointing) {
 
-		case STATE_SAVING_COPY:
+	case STATE_SAVING_COPY:
+		take_snapshot = true;
+		break;
+
+	case STATE_SAVING_PERIODIC:
+		if (lp->from_last_ckpt >= lp->ckpt_period) {
 			take_snapshot = true;
-			break;
+			lp->from_last_ckpt = 0;
+		}
+		break;
 
-		case STATE_SAVING_PERIODIC:
-			if(LPS(lid)->from_last_ckpt >= LPS(lid)->ckpt_period) {
-				take_snapshot = true;
-				LPS(lid)->from_last_ckpt = 0;
-			}
-			break;
-
-		default:
-			rootsim_error(true, "State saving mode not supported.");
+	default:
+		rootsim_error(true, "State saving mode not supported.");
 	}
 
-skip_switch:
+ skip_switch:
 
 	// Shall we take a log?
 	if (take_snapshot) {
@@ -100,35 +96,48 @@ skip_switch:
 		// Allocate the state buffer
 		new_state = rsalloc(sizeof(*new_state));
 
-		// Take a log and set the associated LVT
-		new_state->log = log_state(lid);
-		new_state->lvt = lvt(lid);
-		new_state->last_event = LPS(lid)->bound;
-		new_state->state = LPS(lid)->state;
+		// Associate the checkpoint with current LVT and last-executed event
+		new_state->lvt = lvt(lp);
+		new_state->last_event = lp->bound;
 
-		// We take as the buffer state the last one associated with a SetState() call, if any
-		new_state->base_pointer = LPS(lid)->current_base_pointer;
+		// Log simulation model buffers
+		new_state->log = log_state(lp);
+
+		// Log members of lp_struct which must be restored
+		new_state->state = lp->state;
+		new_state->base_pointer = lp->current_base_pointer;
+
+		// Log library-related states
+		memcpy(&new_state->numerical, &lp->numerical,
+		       sizeof(numerical_state_t));
 
 		// Link the new checkpoint to the state chain
-		list_insert_tail(LPS(lid)->queue_states, new_state);
+		list_insert_tail(lp->queue_states, new_state);
 
 	}
 
 	return take_snapshot;
 }
 
+void RestoreState(struct lp_struct *lp, state_t * restore_state)
+{
+	// Restore simulation model buffers
+	log_restore(lp, restore_state);
 
-void RestoreState(LID_t lid, state_t *restore_state) {
-	log_restore(lid, restore_state);
-	LPS(lid)->current_base_pointer = restore_state->base_pointer;
-	LPS(lid)->state = restore_state->state;
+	// Restore members of lp_struct which have been checkpointed
+	lp->current_base_pointer = restore_state->base_pointer;
+	lp->state = restore_state->state;
+
+	// Restore library-related states
+	memcpy(&lp->numerical, &restore_state->numerical,
+	       sizeof(numerical_state_t));
+
 #ifdef HAVE_CROSS_STATE
-	LPS(lid)->ECS_index = 0;
-	LPS(lid)->wait_on_rendezvous = 0;
-	LPS(lid)->wait_on_object = 0;
+	lp->ECS_index = 0;
+	lp->wait_on_rendezvous = 0;
+	lp->wait_on_object = 0;
 #endif
 }
-
 
 /**
 * This function bring the state pointed by "state" to "final time" by re-executing all the events without sending any messages
@@ -136,23 +145,24 @@ void RestoreState(LID_t lid, state_t *restore_state) {
 * @author Francesco Quaglia
 * @author Alessandro Pellegrini
 *
-* @param lid The id of the Light Process
-* @param state_buffer The simulation state to be passed to the LP
+* @param lp A pointer to the LP's lp_struct for which we want to silently
+*           reprocess already-executed events
 * @param evt A pointer to the event from which start the re-execution
-* @param final_evt A pointer to the first event which should not be reprocessed in silent execution
+* @param final_evt A pointer to the first event which should *not* be reprocessed in silent execution
 *
 * @return The number of events re-processed during the silent execution
 */
-unsigned int silent_execution(LID_t lid, void *state_buffer, msg_t *evt, msg_t *final_evt) {
+unsigned int silent_execution(struct lp_struct *lp, msg_t *evt, msg_t *final_evt)
+{
 	unsigned int events = 0;
 	unsigned short int old_state;
 
 	// current state can be either idle READY, BLOCKED or ROLLBACK, so we save it and then put it back in place
-	old_state = LPS(lid)->state;
-	LPS(lid)->state = LP_STATE_SILENT_EXEC;
+	old_state = lp->state;
+	lp->state = LP_STATE_SILENT_EXEC;
 
 	// This is true if the restored state was taken exactly after the new bound
-	if(evt == final_evt)
+	if (evt == final_evt)
 		goto out;
 
 	evt = list_next(evt);
@@ -160,23 +170,22 @@ unsigned int silent_execution(LID_t lid, void *state_buffer, msg_t *evt, msg_t *
 
 	// Reprocess events. Outgoing messages are explicitly discarded, as this part of
 	// the simulation has been already executed at least once
-	while(evt != NULL && evt != final_evt) {
+	while (evt != NULL && evt != final_evt) {
 
-		if(unlikely(!reprocess_control_msg(evt))) {
+		if (unlikely(!reprocess_control_msg(evt))) {
 			evt = list_next(evt);
 			continue;
 		}
 
 		events++;
-		activate_LP(lid, evt->timestamp, evt, state_buffer);
+		activate_LP(lp, evt);
 		evt = list_next(evt);
 	}
 
-out:
-	LPS(lid)->state = old_state;
+ out:
+	lp->state = old_state;
 	return events;
 }
-
 
 /**
 * This function rolls back the execution of a certain LP. The point where the
@@ -188,85 +197,86 @@ out:
 * @author Francesco Quaglia
 * @author Alessandro Pellegrini
 *
-* @param lid The Logical Process Id
+* @param lp A pointer to the lp_struct of the LP to rollback
 */
-void rollback(LID_t lid) {
+void rollback(struct lp_struct *lp)
+{
 	state_t *restore_state, *s;
 	msg_t *last_correct_event;
 	msg_t *last_restored_event;
 	unsigned int reprocessed_events;
 
-
 	// Sanity check
-	if(unlikely(LPS(lid)->state != LP_STATE_ROLLBACK)) {
-		rootsim_error(false, "I'm asked to roll back LP %d's execution, but rollback_bound is not set. Ignoring...\n", LidToGid(lid));
+	if (unlikely(lp->state != LP_STATE_ROLLBACK)) {
+		rootsim_error(false, "I'm asked to roll back LP %d's execution, but rollback_bound is not set. Ignoring...\n",
+			      lp->gid.to_int);
 		return;
 	}
 
-
 	// Discard any possible execution state related to a blocked execution
-	memcpy(&LPS(lid)->context, &LPS(lid)->default_context, sizeof(LP_context_t));
+	memcpy(&lp->context, &lp->default_context, sizeof(LP_context_t));
 
-	statistics_post_data(lid, STAT_ROLLBACK, 1.0);
+	statistics_post_data(lp, STAT_ROLLBACK, 1.0);
 
-	last_correct_event = LPS(lid)->bound;
+	last_correct_event = lp->bound;
 	// Send antimessages
-	send_antimessages(lid, last_correct_event->timestamp);
+	send_antimessages(lp, last_correct_event->timestamp);
 
 	// Find the state to be restored, and prune the wrongly computed states
-	restore_state = list_tail(LPS(lid)->queue_states);
-	while (restore_state != NULL && restore_state->lvt > last_correct_event->timestamp) { // It's > rather than >= because we have already taken into account simultaneous events
+	restore_state = list_tail(lp->queue_states);
+	while (restore_state != NULL && restore_state->lvt > last_correct_event->timestamp) {	// It's > rather than >= because we have already taken into account simultaneous events
 		s = restore_state;
 		restore_state = list_prev(restore_state);
 		log_delete(s->log);
-		#ifndef NDEBUG
+#ifndef NDEBUG
 		s->last_event = (void *)0xBABEBEEF;
-		#endif
-		list_delete_by_content(LPS(lid)->queue_states, s);
+#endif
+		list_delete_by_content(lp->queue_states, s);
 	}
 	// Restore the simulation state and correct the state base pointer
-	RestoreState(lid, restore_state);
+	RestoreState(lp, restore_state);
 
 	last_restored_event = restore_state->last_event;
-	reprocessed_events = silent_execution(lid, LPS(lid)->current_base_pointer, last_restored_event, last_correct_event);
-	statistics_post_data(lid, STAT_SILENT, (double)reprocessed_events);
+	reprocessed_events = silent_execution(lp, last_restored_event, last_correct_event);
+	statistics_post_data(lp, STAT_SILENT, (double)reprocessed_events);
 
 	// TODO: silent execution resets the LP state to the previous
 	// value, so it should be the last function to be called within rollback()
 	// Control messages must be rolled back as well
-	rollback_control_message(lid, last_correct_event->timestamp);
+	rollback_control_message(lp, last_correct_event->timestamp);
 }
 
-
-
-
 /**
-* This function computes the time barrier, namely the first state snapshot
-* which is associated with a simulation time <= that the passed simtime
+* This function computes a time barrier, namely the first state snapshot
+* which is associated with a simulation time <= than the simtime value
+* passed as an argument.
+* The time barrier, in the runtime environment, is used to safely install
+* a new computed GVT.
 *
 * @author Francesco Quaglia
 * @author Alessandro Pellegrini
 *
-* @param lid The light Process Id
+* @param lp A pointer to the lp_struct of the LP for which we are looking
+*           for the current time barrier
 * @param simtime The simulation time to be associated with a state barrier
 * @return A pointer to the state that represents the time barrier
 */
-state_t *find_time_barrier(LID_t lid, simtime_t simtime) {
-
+state_t *find_time_barrier(struct lp_struct *lp, simtime_t simtime)
+{
 	state_t *barrier_state;
 
-	if(unlikely(D_EQUAL(simtime, 0.0))) {
-		return list_head(LPS(lid)->queue_states);
+	if (unlikely(D_EQUAL(simtime, 0.0))) {
+		return list_head(lp->queue_states);
 	}
 
-	barrier_state = list_tail(LPS(lid)->queue_states);
+	barrier_state = list_tail(lp->queue_states);
 
 	// Must point to the state with lvt immediately before the GVT
 	while (barrier_state != NULL && barrier_state->lvt >= simtime) {
 		barrier_state = list_prev(barrier_state);
-  	}
-  	if(barrier_state == NULL) {
-		barrier_state = list_head(LPS(lid)->queue_states);
+	}
+	if (barrier_state == NULL) {
+		barrier_state = list_head(lp->queue_states);
 	}
 
 /*
@@ -290,15 +300,10 @@ state_t *find_time_barrier(LID_t lid, simtime_t simtime) {
 *
 * @todo malloc wrapper
 */
-void ParallelSetState(void *new_state) {
-	LPS(current_lp)->current_base_pointer = new_state;
+void SetState(void *new_state)
+{
+	current->current_base_pointer = new_state;
 }
-
-
-
-
-
-
 
 /**
 * This function sets the checkpoint mode
@@ -308,12 +313,10 @@ void ParallelSetState(void *new_state) {
 *
 * @param ckpt_mode The new checkpoint mode
 */
-void set_checkpoint_mode(int ckpt_mode) {
+void set_checkpoint_mode(int ckpt_mode)
+{
 	rootsim_config.checkpointing = ckpt_mode;
 }
-
-
-
 
 /**
 * This function sets the checkpoint period
@@ -321,13 +324,14 @@ void set_checkpoint_mode(int ckpt_mode) {
 * @author Francesco Quaglia
 * @author Alessandro Pellegrini
 *
-* @param lid The Logical Process Id
+* @param lp A pointer to the LP's lp_struct which should have its
+*           checkpoint period changed.
 * @param period The new checkpoint period
 */
-void set_checkpoint_period(LID_t lid, int period) {
-	LPS(lid)->ckpt_period = period;
+void set_checkpoint_period(struct lp_struct *lp, int period)
+{
+	lp->ckpt_period = period;
 }
-
 
 /**
 * This function tells the logging subsystem to take a LP state log
@@ -336,9 +340,10 @@ void set_checkpoint_period(LID_t lid, int period) {
 *
 * @author Alessandro Pellegrini
 *
-* @param lid The Logical Process Id
+* @param lp A pointer to the lp_struct of the LP for which the checkpoint
+*           shold be forced after the next call to LogState()
 */
-void force_LP_checkpoint(LID_t lid) {
-	LPS(lid)->state_log_forced = true;
+void force_LP_checkpoint(struct lp_struct *lp)
+{
+	lp->state_log_forced = true;
 }
-

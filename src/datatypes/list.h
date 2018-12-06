@@ -1,7 +1,13 @@
 /**
-*			Copyright (C) 2008-2018 HPDCS Group
-*			http://www.dis.uniroma1.it/~hpdcs
+* @file datatypes/list.h
 *
+* @brief Generic Lists
+*
+* This header defines macros to access lists of generic objects.
+*
+* @copyright
+* Copyright (C) 2008-2018 HPDCS Group
+* https://hpdcs.github.io
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
 *
@@ -17,16 +23,12 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file list.h
-* @brief This header defines macros for accessing the general-purpose list
-* 	 implementation used in the simulator
 * @author Alessandro Pellegrini
+*
 * @date November 5, 2013
 */
 
 #pragma once
-#ifndef __LIST_DATATYPE_H
-#define __LIST_DATATYPE_H
 
 #include <stddef.h>
 #include <string.h>
@@ -37,9 +39,9 @@
 /// This structure defines a generic list.
 typedef struct rootsim_list {
 	size_t size;
-	void *head; // Generic pointers: nodes of the list must have a next/prev pointer properly typed
+	void *head;		// Generic pointers: nodes of the list must have a next/prev pointer properly typed
 	void *tail;
-//	atomic_t counter;
+//      atomic_t counter;
 } rootsim_list;
 
 /// This macro is a slightly-different implementation of the standard offsetof macro
@@ -47,7 +49,6 @@ typedef struct rootsim_list {
 
 /// Declare a "typed" list. This is a pointer to type, but the variable will instead reference a struct rootsim_list!
 #define list(type) type *
-
 
 /** This macro allocates a struct rootsim_list object and cast it to the type pointer.
  *  It can be used to mimic the C++ syntax of templated lists, like:
@@ -65,7 +66,6 @@ typedef struct rootsim_list {
 // Get the size of the current list.
 #define list_sizeof(list) ((struct rootsim_list *)list)->size
 
-
 /**
  * This macro retrieves a pointer to the payload of the head node of a list.
  *
@@ -80,14 +80,12 @@ typedef struct rootsim_list {
  */
 #define list_tail(list) ((__typeof__ (list))(((rootsim_list *)(list))->tail))
 
-
 /**
  * Given a pointer to a list node's payload, this macro retrieves the next node's payload, if any.
  *
  * @param ptr a pointer to a list created using the new_list() macro.
  */
 #define list_next(ptr) ((ptr)->next)
-
 
 /**
  * Given a pointer to a list node's payload, this macro retrieves the prev node's payload, if any.
@@ -110,7 +108,6 @@ typedef struct rootsim_list {
  * @param list a pointer to a list created using the new_list() macro.
  */
 #define list_empty(list) (((rootsim_list *)list)->size == 0)
-
 
 #define list_insert_tail(li, data) \
 	do {	\
@@ -136,7 +133,6 @@ typedef struct rootsim_list {
 		__l->size++;\
 		assert(__l->size == (__size_before + 1));\
 	} while(0)
-
 
 #define list_insert_head(li, data) \
 	do {	\
@@ -211,8 +207,6 @@ typedef struct rootsim_list {
 		assert(__l->size == (__size_before + 1));\
 	} while(0)
 
-
-
 #define list_delete_by_content(li, node)\
 	do {\
 		__typeof__(node) __n = (node); /* in-block scope variable */\
@@ -246,9 +240,6 @@ typedef struct rootsim_list {
 		assert(__l->size == (__size_before - 1));\
 	} while(0)
 
-
-
-
 #define list_pop(list)\
 	do {\
 		rootsim_list *__l;\
@@ -272,10 +263,6 @@ typedef struct rootsim_list {
 			assert(__l->size == (__size_before - 1));\
 		}\
 	} while(0)
-
-
-
-
 
 /// Truncate a list up to a certain point, starting from the head.
 #define list_trunc(list, key_name, key_value, release_fn) \
@@ -306,7 +293,5 @@ typedef struct rootsim_list {
 	assert(__l->size == (__size_before - __deleted));\
 	__deleted;\
 	})
-	
 
-#endif /* __LIST_DATATYPE_H */
-
+#define list_size(list) ((rootsim_list *)(list))->size

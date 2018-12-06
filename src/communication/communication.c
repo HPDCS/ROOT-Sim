@@ -1,7 +1,14 @@
 /**
-*			Copyright (C) 2008-2018 HPDCS Group
-*			http://www.dis.uniroma1.it/~hpdcs
+* @file communication/communication.c
 *
+* @brief Communication Routines
+*
+* This file contains all the communication routines, for exchanging
+* messages among different logical processes and simulator instances.
+*
+* @copyright
+* Copyright (C) 2008-2018 HPDCS Group
+* https://hpdcs.github.io
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
 *
@@ -17,9 +24,6 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file communication.c
-* @brief This module implements all the communication routines, for exchanging
-*        messages among different logical processes and simulator instances.
 * @author Francesco Quaglia
 * @author Roberto Vitali
 *
@@ -36,129 +40,92 @@
 #include <scheduler/scheduler.h>
 #include <scheduler/process.h>
 #include <datatypes/list.h>
-#include <datatypes/slab.h>
-#include <datatypes/treiber.h>
-#include <mm/dymelor.h>
+#include <mm/mm.h>
 #include <arch/atomic.h>
 #ifdef HAVE_MPI
 #include <communication/mpi.h>
 #endif
 
-static treiber **msg_treiber;
-static struct slab_chain *msg_slab;
-
-
-/// This is the function pointer to correctly set ScheduleNewEvent API version, depending if we're running serially or parallelly
-void (* ScheduleNewEvent)(unsigned int gid_receiver, simtime_t timestamp, unsigned int event_type, void *event_content, unsigned int event_size);
-
-/// Buffer used by MPI for outgoing messages
-//static char buff[SLOTS * sizeof(msg_t)];
-
+/// This is the function pointer to correctly set ScheduleNewEvent API version, depending if we're running serially or in parallel
+void (*ScheduleNewEvent)(unsigned int gid_receiver, simtime_t timestamp, unsigned int event_type, void *event_content, unsigned int event_size);
 
 /**
 * This function initializes the communication subsystem
 *
 * @author Roberto Vitali
 */
-void communication_init(void) {
-	unsigned int i;
-
-	#ifdef HAVE_MPI
+void communication_init(void)
+{
+#ifdef HAVE_MPI
 	inter_kernel_comm_init();
-	#endif
-
-	msg_treiber = rsalloc(n_cores * sizeof(msg_treiber));
-	msg_slab = rsalloc(n_cores * sizeof(*msg_slab));
-
-	for(i = 0; i < n_cores; i++) {
-		msg_treiber[i] = treiber_init();
-	}
+#endif
 }
 
-
-void communication_init_thread(void) {
-	slab_init(&msg_slab[local_tid], SLAB_MSG_SIZE); 
+void communication_init_thread(void)
+{
 }
 
-void communication_fini_thread(void) {
-	slab_destroy(&msg_slab[local_tid]);
+void communication_fini_thread(void)
+{
 }
-
 
 /**
 * Finalizes the communication subsystem
 */
-void communication_fini(void) {
-	#ifdef HAVE_MPI
+void communication_fini(void)
+{
+#ifdef HAVE_MPI
 	inter_kernel_comm_finalize();
 	mpi_finalize();
-	#endif
-
-	rsfree(msg_slab);
+#endif
 }
 
-msg_hdr_t *get_msg_hdr_from_slab(void) {
+static inline struct lp_struct *which_slab_to_use(GID_t sender, GID_t receiver)
+{
+	// Local messages are taken in the destination slab.
+	// Remote buffers are taken from the sender slab (this will be
+	// freed shortly, once we hand that to MPI)
+	if (find_kernel_by_gid(receiver) == kid)
+		return find_lp_by_gid(receiver);
+	return find_lp_by_gid(sender);
+}
+
+// Headers are always taken from the sender slab
+void msg_hdr_release(msg_hdr_t * msg)
+{
+	struct lp_struct *lp;
+
+	lp = find_lp_by_gid(msg->sender);
+	slab_free(lp->mm->slab, msg);
+}
+
+msg_hdr_t *get_msg_hdr_from_slab(struct lp_struct *lp)
+{
 	// TODO: The magnitude of this hack compares to that of the national debt.
-	// We must have a single allocation point where we just get a buffer, and then
-	// we map that to the various data structures.
-	msg_hdr_t *msg = (msg_hdr_t *)get_msg_from_slab();
+	// We are wasting a lot of memory from the LP buddy just to keep antimessages!
+	msg_hdr_t *msg = (msg_hdr_t *) get_msg_from_slab(lp);
 	bzero(msg, SLAB_MSG_SIZE);
-	msg->alloc_tid = local_tid;
 	return msg;
 }
 
-void msg_hdr_release(msg_hdr_t *msg) {
-	int thr = msg->alloc_tid;
-	treiber_push(msg_treiber[thr], msg);
-}
-
-msg_t *get_msg_from_slab(void) {
-	msg_t *msg = NULL;
-	treiber *to_release;
-	treiber *to_release_nxt;
-
-	// Unlink the whole Treiber stack and release all nodes.
-	// If at least one node is available, reuse it for the
-	// current allocation.
-	to_release = treiber_detach(msg_treiber[local_tid]);
-	while(to_release != NULL) {
-		if(unlikely(msg == NULL)) {
-			msg = to_release->data;
-		} else {
-			slab_free(&msg_slab[local_tid], to_release->data);
-		}
-		to_release_nxt = to_release->next;
-		rsfree(to_release);
-		to_release = to_release_nxt;
-	}
-
-	if(likely(msg != NULL)) {
-		goto out;
-	}
-
-	msg = (msg_t *)slab_alloc(&msg_slab[local_tid]);
-
-    out:
+msg_t *get_msg_from_slab(struct lp_struct *lp)
+{
+	msg_t *msg = (msg_t *) slab_alloc(lp->mm->slab);
 	bzero(msg, SLAB_MSG_SIZE);
-	msg->alloc_tid = local_tid;
 	return msg;
 }
 
-void msg_release(msg_t *msg) {
-	unsigned int thr;
+void msg_release(msg_t * msg)
+{
+	struct lp_struct *lp;
 
-	if(likely(sizeof(msg_t) + msg->size <= SLAB_MSG_SIZE)) {
-		thr = msg->alloc_tid;
-		if(local_tid == thr) {
-			slab_free(&msg_slab[thr], msg);
-		} else {
-			treiber_push(msg_treiber[thr], msg);
-		}
+	if (likely(sizeof(msg_t) + msg->size <= SLAB_MSG_SIZE)) {
+		lp = which_slab_to_use(msg->sender, msg->receiver);
+		slab_free(lp->mm->slab, msg);
 	} else {
 		rsfree(msg);
 	}
 }
-
 
 /**
 * This function is invoked by the application level software to inject new events into the simulation
@@ -171,7 +138,8 @@ void msg_release(msg_t *msg) {
 * @param event_content Payload of the event
 * @param event_size Size of event's payload
 */
-void ParallelScheduleNewEvent(unsigned int gid_receiver, simtime_t timestamp, unsigned int event_type, void *event_content, unsigned int event_size) {
+void ParallelScheduleNewEvent(unsigned int gid_receiver, simtime_t timestamp, unsigned int event_type, void *event_content, unsigned int event_size)
+{
 	msg_t *event;
 	GID_t receiver;
 
@@ -183,44 +151,42 @@ void ParallelScheduleNewEvent(unsigned int gid_receiver, simtime_t timestamp, un
 	set_gid(receiver, gid_receiver);
 
 	// In Silent execution, we do not send again already sent messages
-	if(unlikely(LPS(current_lp)->state == LP_STATE_SILENT_EXEC)) {
+	if (unlikely(current->state == LP_STATE_SILENT_EXEC)) {
 		return;
 	}
-
 	// Check whether the destination LP is out of range
-	if(unlikely(receiver.id > n_prc_tot - 1)) { // It's unsigned, so no need to check whether it's < 0
-		rootsim_error(false, "Warning: the destination LP %u is out of range. The event has been ignored\n", receiver.id);
+	if (unlikely(gid_receiver > n_prc_tot - 1)) {	// It's unsigned, so no need to check whether it's < 0
+		rootsim_error(false, "Warning: the destination LP %u is out of range. The event has been ignored\n", gid_receiver);
 		goto out;
 	}
-
 	// Check if the associated timestamp is negative
-	if(unlikely(timestamp < lvt(current_lp))) {
-		rootsim_error(true, "LP %u is trying to generate an event (type %d) to %u in the past! (Current LVT = %f, generated event's timestamp = %f) Aborting...\n", current_lp, event_type, receiver.id, lvt(current_lp), timestamp);
+	if (unlikely(timestamp < lvt(current))) {
+		rootsim_error(true, "LP %u is trying to generate an event (type %d) to %u in the past! (Current LVT = %f, generated event's timestamp = %f) Aborting...\n",
+			      current->gid, event_type, gid_receiver,
+			      lvt(current), timestamp);
 	}
-
 	// Check if the event type is mapped to an internal control message
-	if(unlikely(event_type >= MIN_VALUE_CONTROL)) {
-		rootsim_error(true, "LP %u is generating an event with type %d which is a reserved type. Switch event type to a value less than %d. Aborting...\n", current_lp, event_type, MIN_VALUE_CONTROL);
+	if (unlikely(event_type >= MIN_VALUE_CONTROL)) {
+		rootsim_error(true, "LP %u is generating an event with type %d which is a reserved type. Switch event type to a value less than %d. Aborting...\n",
+			      current->gid, event_type, MIN_VALUE_CONTROL);
 	}
-
 
 	// Copy all the information into the event structure
-	pack_msg(&event, LidToGid(current_lp), receiver, event_type, timestamp, lvt(current_lp), event_size, event_content);
-	event->mark = generate_mark(current_lp);
+	pack_msg(&event, current->gid, receiver, event_type, timestamp,
+		 lvt(current), event_size, event_content);
+	event->mark = generate_mark(current);
 
-	if(unlikely(event->type == RENDEZVOUS_START)) {
+	if (unlikely(event->type == RENDEZVOUS_START)) {
 		event->rendezvous_mark = current_evt->rendezvous_mark;
-		printf("rendezvous_start mark=%llu\n",event->rendezvous_mark);
+		printf("rendezvous_start mark=%llu\n", event->rendezvous_mark);
 		fflush(stdout);
 	}
 
 	insert_outgoing_msg(event);
 
-    out:
+ out:
 	switch_to_application_mode();
 }
-
-
 
 /**
 * This function send all the antimessages for a certain lp.
@@ -228,20 +194,21 @@ void ParallelScheduleNewEvent(unsigned int gid_receiver, simtime_t timestamp, un
 *
 * @author Francesco Quaglia
 *
-* @param lid The Logical Process Id
+* @param lp A pointer to the LP lp_struct for which antimessages should be sent
 * @param after_simtime The simulation time instant after which to send antimessages
 */
-void send_antimessages(LID_t lid, simtime_t after_simtime) {
+void send_antimessages(struct lp_struct *lp, simtime_t after_simtime)
+{
 	msg_hdr_t *anti_msg, *anti_msg_prev;
 	msg_t *msg;
 
-	if (unlikely(list_empty(LPS(lid)->queue_out)))
+	if (unlikely(list_empty(lp->queue_out)))
 		return;
 
 	// Scan the output queue backwards, sending all required antimessages
-	anti_msg = list_tail(LPS(lid)->queue_out);
-	while(anti_msg != NULL && anti_msg->send_time > after_simtime) {
-		msg = get_msg_from_slab();
+	anti_msg = list_tail(lp->queue_out);
+	while (anti_msg != NULL && anti_msg->send_time > after_simtime) {
+		msg = get_msg_from_slab(which_slab_to_use(anti_msg->sender, anti_msg->receiver));
 		hdr_to_msg(anti_msg, msg);
 		msg->message_kind = negative;
 
@@ -249,41 +216,30 @@ void send_antimessages(LID_t lid, simtime_t after_simtime) {
 
 		// Remove the already-sent antimessage from the output queue
 		anti_msg_prev = list_prev(anti_msg);
-                list_delete_by_content(LPS(lid)->queue_out, anti_msg);
+		list_delete_by_content(lp->queue_out, anti_msg);
 		msg_hdr_release(anti_msg);
-                anti_msg = anti_msg_prev;
+		anti_msg = anti_msg_prev;
 	}
 }
-
-
-
-
 
 /**
 *
 *
 * @author Roberto Vitali
 */
-int comm_finalize(void) {
-
-//	register unsigned int i;
-
-	// TODO: reimplement with foreach
+void comm_finalize(void)
+{
 
 	// Release as well memory used for remaining input/output queues
-/*	for(i = 0; i < n_prc; i++) {
-		while(!list_empty(LPS[i]->queue_in)) {
-			list_pop(i, LPS[i]->queue_in);
+	foreach_lp(lp) {
+		while (!list_empty(lp->queue_in)) {
+			list_pop(lp->queue_in);
 		}
-		while(!list_empty(LPS[i]->queue_out)) {
-			list_pop(i, LPS[i]->queue_out);
+		while (!list_empty(lp->queue_out)) {
+			list_pop(lp->queue_out);
 		}
 	}
-*/
-	return 0; // TODO: What's the point of this return?
 }
-
-
 
 /**
 * Send a message. if it's scheduled to a local LP, update its queue, otherwise
@@ -291,17 +247,18 @@ int comm_finalize(void) {
 *
 * @author francesco quaglia
 */
-void Send(msg_t *msg) {
+void Send(msg_t * msg)
+{
 
 	validate_msg(msg);
 
-	#ifdef HAVE_MPI
+#ifdef HAVE_MPI
 	// Check whether the message recepient kernel is remote
-	if(GidToKernel(msg->receiver) != kid){
+	if (find_kernel_by_gid(msg->receiver) != kid) {
 		send_remote_msg(msg);
 		return;
 	}
-	#endif
+#endif
 	insert_bottom_half(msg);
 }
 
@@ -310,52 +267,51 @@ void Send(msg_t *msg) {
 *
 * @author Francesco Quaglia
 */
-void insert_outgoing_msg(msg_t *msg) {
+void insert_outgoing_msg(msg_t * msg)
+{
 
 	// if the model is generating many events at the same time, reallocate the outgoing buffer
-	if(unlikely(LPS(current_lp)->outgoing_buffer.size == LPS(current_lp)->outgoing_buffer.max_size)) {
-		LPS(current_lp)->outgoing_buffer.max_size *= 2;
-		LPS(current_lp)->outgoing_buffer.outgoing_msgs = rsrealloc(LPS(current_lp)->outgoing_buffer.outgoing_msgs, sizeof(msg_t *) * LPS(current_lp)->outgoing_buffer.max_size);
+	if (unlikely(current->outgoing_buffer.size == current->outgoing_buffer.max_size)) {
+		current->outgoing_buffer.max_size *= 2;
+		current->outgoing_buffer.outgoing_msgs = rsrealloc(current->outgoing_buffer.outgoing_msgs, sizeof(msg_t *) * current->outgoing_buffer.max_size);
 	}
 
-	LPS(current_lp)->outgoing_buffer.outgoing_msgs[LPS(current_lp)->outgoing_buffer.size++] = msg;
+	current->outgoing_buffer.outgoing_msgs[current->outgoing_buffer.size++] = msg;
 
 	// store the minimum timestamp of outgoing messages
-	if(msg->timestamp < LPS(current_lp)->outgoing_buffer.min_in_transit[LPS(current_lp)->worker_thread]) {
-		LPS(current_lp)->outgoing_buffer.min_in_transit[LPS(current_lp)->worker_thread] = msg->timestamp;
+	if (msg->timestamp <
+	    current->outgoing_buffer.min_in_transit[current->worker_thread]) {
+		current->outgoing_buffer.min_in_transit[current->worker_thread] = msg->timestamp;
 	}
 }
 
-
-
-void send_outgoing_msgs(LID_t lid) {
-
+void send_outgoing_msgs(struct lp_struct *lp)
+{
 	register unsigned int i = 0;
 	msg_t *msg;
 	msg_hdr_t *msg_hdr;
 
-	for(i = 0; i < LPS(lid)->outgoing_buffer.size; i++) {
-		msg_hdr = get_msg_hdr_from_slab();
-		msg = LPS(lid)->outgoing_buffer.outgoing_msgs[i];
+	for (i = 0; i < lp->outgoing_buffer.size; i++) {
+		msg_hdr = get_msg_hdr_from_slab(lp);
+		msg = lp->outgoing_buffer.outgoing_msgs[i];
 		msg_to_hdr(msg_hdr, msg);
 
 		Send(msg);
 
 		// register the message in the sender's output queue, for antimessage management
-		list_insert(LPS(lid)->queue_out, send_time, msg_hdr);
+		list_insert(lp->queue_out, send_time, msg_hdr);
 	}
 
-	LPS(lid)->outgoing_buffer.size = 0;
+	lp->outgoing_buffer.size = 0;
 }
 
-
-
 // TODO: si può generare qua dentro la marca, perché si usa sempre il sender. Occhio al gid/lid!!!!
-void pack_msg(msg_t **msg, GID_t sender, GID_t receiver, int type, simtime_t timestamp, simtime_t send_time, size_t size, void *payload) {
+void pack_msg(msg_t ** msg, GID_t sender, GID_t receiver, int type, simtime_t timestamp, simtime_t send_time, size_t size, void *payload)
+{
 
 	// Check if we can rely on a slab to initialize the message
-	if(likely(sizeof(msg_t) + size <= SLAB_MSG_SIZE)) {
-		*msg = get_msg_from_slab();
+	if (likely(sizeof(msg_t) + size <= SLAB_MSG_SIZE)) {
+		*msg = get_msg_from_slab(which_slab_to_use(sender, receiver));
 	} else {
 		*msg = rsalloc(sizeof(msg_t) + size);
 		bzero(*msg, sizeof(msg_t) + size);
@@ -369,11 +325,12 @@ void pack_msg(msg_t **msg, GID_t sender, GID_t receiver, int type, simtime_t tim
 	(*msg)->send_time = send_time;
 	(*msg)->size = size;
 
-	if(payload != NULL && size > 0)
+	if (payload != NULL && size > 0)
 		memcpy((*msg)->event_content, payload, size);
 }
 
-void msg_to_hdr(msg_hdr_t *hdr, msg_t *msg) {
+void msg_to_hdr(msg_hdr_t * hdr, msg_t * msg)
+{
 	validate_msg(msg);
 
 	hdr->sender = msg->sender;
@@ -385,7 +342,8 @@ void msg_to_hdr(msg_hdr_t *hdr, msg_t *msg) {
 	hdr->mark = msg->mark;
 }
 
-void hdr_to_msg(msg_hdr_t *hdr, msg_t *msg) {
+void hdr_to_msg(msg_hdr_t * hdr, msg_t * msg)
+{
 	msg->sender = hdr->sender;
 	msg->receiver = hdr->receiver;
 	msg->type = hdr->type;
@@ -395,12 +353,13 @@ void hdr_to_msg(msg_hdr_t *hdr, msg_t *msg) {
 	msg->mark = hdr->mark;
 }
 
-void dump_msg_content(msg_t *msg) {
-	printf("\tsender: %u\n", gid_to_int(msg->sender));
-	printf("\treceiver: %u\n", gid_to_int(msg->sender));
-	#ifdef HAVE_MPI
+void dump_msg_content(msg_t * msg)
+{
+	printf("\tsender: %u\n", msg->sender.to_int);
+	printf("\treceiver: %u\n", msg->sender.to_int);
+#ifdef HAVE_MPI
 	printf("\tcolour: %d\n", msg->colour);
-	#endif
+#endif
 	printf("\ttype: %d\n", msg->type);
 	printf("\tmessage_kind: %d\n", msg->message_kind);
 	printf("\ttimestamp: %f\n", msg->timestamp);
@@ -411,24 +370,25 @@ void dump_msg_content(msg_t *msg) {
 }
 
 #ifndef NDEBUG
-unsigned int mark_to_gid(unsigned long long mark) {
+unsigned int mark_to_gid(unsigned long long mark)
+{
 	double z = (double)mark;
-        double w = floor( (sqrt( 8 * z + 1) - 1) / 2.0);
-        double t = ( w*w + w ) / 2.0;
-        double y = z - t;
-        double x = w - y;
+	double w = floor((sqrt(8 * z + 1) - 1) / 2.0);
+	double t = (w * w + w) / 2.0;
+	double y = z - t;
+	double x = w - y;
 
 	return (int)x;
 }
 
-void validate_msg(msg_t *msg) {
-	assert(gid_to_int(msg->sender) <= n_prc_tot);
-	assert(gid_to_int(msg->receiver) <= n_prc_tot);
-	assert(msg->message_kind == positive || msg->message_kind == negative || msg->message_kind == control);
+void validate_msg(msg_t * msg)
+{
+	assert(msg->sender.to_int <= n_prc_tot);
+	assert(msg->receiver.to_int <= n_prc_tot);
+	assert(msg->message_kind == positive || msg->message_kind == negative
+	       || msg->message_kind == control);
 	assert(mark_to_gid(msg->mark) <= n_prc_tot);
 	assert(mark_to_gid(msg->rendezvous_mark) <= n_prc_tot);
 	assert(msg->type < MAX_VALUE_CONTROL);
-	assert(msg->alloc_tid < n_cores);
 }
 #endif
-

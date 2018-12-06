@@ -14,6 +14,7 @@ mkdir -p ROOT-Sim/docs/
 
 # Copy the documentation related to the current branch (this is triggered only for master
 # and develop by the .travis.yml deploy section)
+rm -rf ROOT-Sim/docs/$TRAVIS_BRANCH
 mv docs/html ROOT-Sim/docs/$TRAVIS_BRANCH
 
 # Copy the current version readme file, which is used in the website About section

@@ -1,7 +1,13 @@
 /**
-*                       Copyright (C) 2008-2018 HPDCS Group
-*                       http://www.dis.uniroma1.it/~hpdcs
+* @file communication/mpi.h
 *
+* @brief MPI Support Module
+*
+* MPI Support Module
+*
+* @copyright
+* Copyright (C) 2008-2018 HPDCS Group
+* https://hpdcs.github.io
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
 *
@@ -17,17 +23,12 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file mpi.h
-* @brief MPI support module
 * @author Tommaso Tocci
 */
 
 #pragma once
-#ifndef _MPI_H_
-#define _MPI_H_
 
 #ifdef HAVE_MPI
-
 
 #include <stdbool.h>
 #include <mpi.h>
@@ -35,7 +36,6 @@
 #include <core/core.h>
 #include <communication/wnd.h>
 #include <statistics/statistics.h>
-
 
 extern bool mpi_support_multithread;
 
@@ -51,7 +51,7 @@ void inter_kernel_comm_init(void);
 void inter_kernel_comm_finalize(void);
 void mpi_finalize(void);
 void syncronize_all(void);
-void send_remote_msg(msg_t* msg);
+void send_remote_msg(msg_t * msg);
 bool pending_msgs(int tag);
 void receive_remote_msgs(void);
 bool is_request_completed(MPI_Request *);
@@ -61,4 +61,3 @@ void collect_termination(void);
 void mpi_reduce_statistics(struct stat_t *, struct stat_t *);
 
 #endif /* HAVE_MPI */
-#endif /* _MPI_H_ */

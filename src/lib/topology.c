@@ -1,3 +1,31 @@
+/**
+* @file lib/topology.c
+*
+* @brief Topology Library
+*
+* Topology Library
+*
+* @copyright
+* Copyright (C) 2008-2018 HPDCS Group
+* https://hpdcs.github.io
+*
+* This file is part of ROOT-Sim (ROme OpTimistic Simulator).
+*
+* ROOT-Sim is free software; you can redistribute it and/or modify it under the
+* terms of the GNU General Public License as published by the Free Software
+* Foundation; only version 3 of the License applies.
+*
+* ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
+* WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+* A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+*
+* You should have received a copy of the GNU General Public License along with
+* ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
+* 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+*
+* @author Alessandro Pellegrini
+*/
+
 #include <ROOT-Sim.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -5,7 +33,7 @@
 #include <stdarg.h>
 #include <math.h>
 #include <scheduler/scheduler.h>
-#include <mm/dymelor.h>
+#include <mm/mm.h>
 
 static bool first_call = true;
 static unsigned int edge; // Don't recompute every time the square root
@@ -19,7 +47,7 @@ unsigned int FindReceiver(int topology) {
 	unsigned int x, y, nx, ny;
 	int direction;
 	GID_t receiver;
-	GID_t sender = LidToGid(current_lp);
+	GID_t sender = current->gid;
 
 	switch_to_platform_mode();
 
@@ -46,8 +74,8 @@ unsigned int FindReceiver(int topology) {
 			}
 
 			// Convert linear coords to hexagonal coords
-			x = gid_to_int(sender) % edge;
-			y = gid_to_int(sender) / edge;
+			x = sender.to_int % edge;
+			y = sender.to_int / edge;
 
 
 			// Find a random neighbour
@@ -81,7 +109,7 @@ unsigned int FindReceiver(int topology) {
 						ny = y;
 						break;
 					default:
-						rootsim_error(true, "Met an impossible condition at %s:%d. Aborting...\n", __FILE__, __LINE__);
+						rootsim_error(true, "Met an impossible condition. Aborting...\n");
 				}
 
 			// We don't check is nx < 0 || ny < 0, as they are unsigned and therefore overflow
@@ -101,8 +129,8 @@ unsigned int FindReceiver(int topology) {
 			}
 
 			// Convert linear coords to square coords
-			x = gid_to_int(sender) % edge;
-			y = gid_to_int(sender) / edge;
+			x = sender.to_int % edge;
+			y = sender.to_int / edge;
 
 			// Find a random neighbour
 			do {
@@ -130,7 +158,7 @@ unsigned int FindReceiver(int topology) {
 						ny = y;
 						break;
 					default:
-						rootsim_error(true, "Met an impossible condition at %s:%d. Aborting...\n", __FILE__, __LINE__);
+						rootsim_error(true, "Met an impossible condition. Aborting...\n");
 				}
 
 			// We don't check is nx < 0 || ny < 0, as they are unsigned and therefore overflow
@@ -149,8 +177,8 @@ unsigned int FindReceiver(int topology) {
 			}
 
 			// Convert linear coords to square coords
-			x = gid_to_int(sender) % edge;
-			y = gid_to_int(sender) / edge;
+			x = sender.to_int % edge;
+			y = sender.to_int / edge;
 
 			direction = 4 * Random();
 			if(unlikely(direction == 4)) {
@@ -175,7 +203,7 @@ unsigned int FindReceiver(int topology) {
 					ny = y;
 					break;
 				default:
-					rootsim_error(true, "Met an impossible condition at %s:%d. Aborting...\n", __FILE__, __LINE__);
+					rootsim_error(true, "Met an impossible condition. Aborting...\n");
 			}
 
 			// Check for wrapping around
@@ -203,15 +231,15 @@ unsigned int FindReceiver(int topology) {
 			u = Random();
 
 			if (u < 0.5) {
-				if(gid_to_int(sender) == 0) {
+				if(sender.to_int == 0) {
 					set_gid(receiver, n_prc_tot - 1);
 				} else {
-					set_gid(receiver, gid_to_int(sender) - 1);
+					set_gid(receiver, sender.to_int - 1);
 				}
 			} else {
-				set_gid(receiver, gid_to_int(sender) + 1);
+				set_gid(receiver, sender.to_int + 1);
 
-				if (gid_to_int(sender) == n_prc_tot) {
+				if (sender.to_int == n_prc_tot) {
 					set_gid(receiver, 0);
 				}
 			}
@@ -222,9 +250,9 @@ unsigned int FindReceiver(int topology) {
 
 		case TOPOLOGY_RING:
 
-			set_gid(receiver, gid_to_int(sender) + 1);
+			set_gid(receiver, sender.to_int + 1);
 
-			if (gid_to_int(receiver) == n_prc_tot) {
+			if (receiver.to_int == n_prc_tot) {
 				set_gid(receiver, 0);
 			}
 
@@ -233,10 +261,10 @@ unsigned int FindReceiver(int topology) {
 
 		case TOPOLOGY_STAR:
 
-			if (gid_to_int(sender) == 0) {
+			if (sender.to_int == 0) {
 				do {
 					set_gid(receiver, (unsigned int)(n_prc_tot * Random()));
-				} while(gid_to_int(receiver) == n_prc_tot);
+				} while(receiver.to_int == n_prc_tot);
 			} else {
 				set_gid(receiver, 0);
 			}
@@ -249,7 +277,7 @@ unsigned int FindReceiver(int topology) {
 
     out:
 	switch_to_application_mode();
-	return gid_to_int(receiver);
+	return receiver.to_int;
 
 }
 
@@ -262,7 +290,7 @@ unsigned int GetReceiver(int topology, int direction) {
 
 	switch_to_platform_mode();
 
-	sender = LidToGid(current_lp);
+	sender = current->gid;
 	set_gid(receiver, INVALID_DIRECTION);
 
 	if(unlikely(first_call)) {
@@ -277,8 +305,8 @@ unsigned int GetReceiver(int topology, int direction) {
 	}
 
 	// Convert linear coords to square coords
-	x = gid_to_int(sender) % edge;
-	y = gid_to_int(sender) / edge;
+	x = sender.to_int % edge;
+	y = sender.to_int / edge;
 
 	switch(topology) {
 
@@ -388,16 +416,16 @@ unsigned int GetReceiver(int topology, int direction) {
 		case TOPOLOGY_BIDRING:
 
 			if(direction == DIRECTION_W)
-				set_gid(receiver, gid_to_int(sender) - 1);
+				set_gid(receiver, sender.to_int - 1);
 			else if(direction == DIRECTION_E)
-				set_gid(receiver, gid_to_int(sender) + 1);
+				set_gid(receiver, sender.to_int + 1);
 			else
 				goto out;
 
-   			if (gid_to_int(receiver) == UINT_MAX) {
+			if (receiver.to_int == UINT_MAX) {
 				set_gid(receiver, n_prc_tot - 1);
 			}
-			if (gid_to_int(receiver) == n_prc_tot) {
+			if (receiver.to_int == n_prc_tot) {
 				set_gid(receiver, 0);
 			}
 
@@ -407,11 +435,11 @@ unsigned int GetReceiver(int topology, int direction) {
 		case TOPOLOGY_RING:
 
 			if(direction == DIRECTION_E)
-				set_gid(receiver, gid_to_int(sender) + 1);
+				set_gid(receiver, sender.to_int + 1);
 			else
 				goto out;
 
-			if (gid_to_int(receiver) == n_prc_tot) {
+			if (receiver.to_int == n_prc_tot) {
 				set_gid(receiver, 0);
 			}
 
@@ -420,7 +448,7 @@ unsigned int GetReceiver(int topology, int direction) {
 
     out:
 	switch_to_application_mode();
-	return gid_to_int(receiver);
+	return receiver.to_int;
 
 }
 
@@ -447,7 +475,7 @@ void SetupObstacles(obstacles_t **obstacles)  {
 		rootsim_error(true, "Hexagonal map wrongly specified!\n");
 		return;
 	}
-	
+
 	// Allocate a bitmap
 	bitmap_blocks = n_prc_tot / NUM_CHUNKS_PER_BLOCK;
 	if(bitmap_blocks < 1)

@@ -42,6 +42,7 @@ before_script:
   - autoconf --version
 
 script:
+  - find /usr/ -name "libgcov*"
   - ./scripts/travis-build.sh
   - ./scripts/tests.sh
   - ./scripts/travis-docs.sh
