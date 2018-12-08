@@ -1,7 +1,18 @@
 /**
-*			Copyright (C) 2008-2018 HPDCS Group
-*			http://www.dis.uniroma1.it/~hpdcs
+* @file datatypes/bitmap.h
 *
+* @brief Bitmap data type
+*
+* This a simple bitmap implemented with some simple macros.
+* Keep in mind that some trust is given to the developer since
+* the implementation, for performances and simplicity
+* reasons, doesn't remember his effective size; consequently
+* it doesn't check boundaries on the array that stores the bits.
+
+*
+* @copyright
+* Copyright (C) 2008-2018 HPDCS Group
+* https://hpdcs.github.io
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
 *
@@ -17,21 +28,12 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file bitmap.h
-* @date 26 Oct 2018
-* @brief This header implements a minimal bitmap data type
 * @author Andrea Piccione
 *
-* This a simple bitmap implemented with some simple macros.
-* Keep in mind that some trust is given to the developer since
-* the implementation, for performances and simplicity
-* reasons, doesn't remember his effective size; consequently
-* it doesn't check boundaries on the array that stores the bits.
+* @date 26 Oct 2018
 */
 
 #pragma once
-#ifndef __BITMAP_DATATYPE_H_
-#define __BITMAP_DATATYPE_H_
 
 #include <limits.h>		// for CHAR_BIT
 #include <memory.h>		// for memset()
@@ -200,5 +202,3 @@ typedef unsigned char rootsim_bitmap;
 			}							\
 		}								\
 	})
-
-#endif				/* __BITMAP_DATATYPE_H_ */

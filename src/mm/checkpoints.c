@@ -1,7 +1,13 @@
 /**
-*			Copyright (C) 2008-2018 HPDCS Group
-*			http://www.dis.uniroma1.it/~hpdcs
+* @file mm/checkpoints.c
 *
+* @brief State saving and restore for model state buffers
+*
+* State saving and restore for model state buffers
+*
+* @copyright
+* Copyright (C) 2008-2018 HPDCS Group
+* https://hpdcs.github.io
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
 *
@@ -17,9 +23,6 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file checkpoints.c
-* @brief This module implements the routines to save and restore checkpoints,
-*        both full and incremental
 * @author Roberto Toccaceli
 * @author Alessandro Pellegrini
 * @author Roberto Vitali

@@ -1,7 +1,14 @@
 /**
-*			Copyright (C) 2008-2018 HPDCS Group
-*			http://www.dis.uniroma1.it/~hpdcs
+* @file core/timer.h
 *
+* @brief Timers
+*
+* This header defines the timers which the simulator uses to monitor its
+* internal behaviour
+*
+* @copyright
+* Copyright (C) 2008-2018 HPDCS Group
+* https://hpdcs.github.io
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
 *
@@ -17,8 +24,6 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file timer.h
-* @brief This header defines the timers which the simulator uses to monitor its internal behaviour
 * @author Andrea Santoro
 * @author Alessandro Pellegrini
 */

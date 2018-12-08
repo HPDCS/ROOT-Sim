@@ -1,30 +1,34 @@
 /**
-*                       Copyright (C) 2008-2018 HPDCS Group
-*                       http://www.dis.uniroma1.it/~hpdcs
-*
-*
-* This file is part of ROOT-Sim (ROme OpTimistic Simulator).
-*
-* ROOT-Sim is free software; you can redistribute it and/or modify it under the
-* terms of the GNU General Public License as published by the Free Software
-* Foundation; only version 3 of the License applies.
-*
-* ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
-* WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-* A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-*
-* You should have received a copy of the GNU General Public License along with
-* ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
-* 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-*
-* @file x86.h
-* @brief Defines and checks for x86 instruction set
-* @author Alessandro Pellegrini
-*/
+ * @file arch/x86.h
+ *
+ * @brief x86 disassembler header
+ *
+ * x86 disassembler header
+ *
+ * @copyright
+ * Copyright (C) 2008-2018 HPDCS Group
+ * https://hpdcs.github.io
+ *
+ * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
+ *
+ * ROOT-Sim is free software; you can redistribute it and/or modify it under the
+ * terms of the GNU General Public License as published by the Free Software
+ * Foundation; only version 3 of the License applies.
+ *
+ * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+ * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+ *
+ * @author Alessandro Pellegrini
+ *
+ * @date Jan 25, 2012
+ */
 
 #pragma once
-#ifndef _IA32_H
-#define _IA32_H
 
 #include <stdbool.h>
 
@@ -358,7 +362,4 @@ struct _insn {
 
 typedef struct _insn insn, *insn_table;
 
-extern void x86_disassemble_instruction(unsigned char *text, unsigned long *pos,
-					insn_info_x86 * instrument, char flags);
-
-#endif				/* IA32_H */
+extern void x86_disassemble_instruction(unsigned char *text, unsigned long *pos, insn_info_x86 * instrument, char flags);

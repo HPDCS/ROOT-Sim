@@ -1,7 +1,13 @@
 /**
-*			Copyright (C) 2008-2018 HPDCS Group
-*			http://www.dis.uniroma1.it/~hpdcs
+* @file core/core.h
 *
+* @brief Core ROOT-Sim functionalities
+*
+* Core ROOT-Sim functionalities
+*
+* @copyright
+* Copyright (C) 2008-2018 HPDCS Group
+* https://hpdcs.github.io
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
 *
@@ -17,12 +23,11 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file core.h
-* @brief This header defines all the shared symbols which are needed by different subsystems
 * @author Francesco Quaglia
-* @author Roberto Vitali
 * @author Alessandro Pellegrini
+* @author Roberto Vitali
 *
+* @date 3/18/2011
 */
 
 #pragma once

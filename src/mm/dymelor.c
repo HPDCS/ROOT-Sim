@@ -1,7 +1,13 @@
 /**
-*			Copyright (C) 2008-2018 HPDCS Group
-*			http://www.dis.uniroma1.it/~hpdcs
+* @file mm/dymelor.c
 *
+* @brief Dynamic Memory Logger and Restorer (DyMeLoR)
+*
+* LP's memory manager.
+*
+* @copyright
+* Copyright (C) 2008-2018 HPDCS Group
+* https://hpdcs.github.io
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
 *
@@ -17,11 +23,12 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file dymelor.c
-* @brief LP's memory pre-allocator. This layer stands below DyMeLoR, and is the
-* 		connection point to the Linux Kernel Module for Memory Management, when
-* 		activated.
+* @author Roberto Toccaceli
 * @author Alessandro Pellegrini
+* @author Roberto Vitali
+* @author Francesco Quaglia
+*
+* @date April 02, 2008
 */
 
 #include <core/init.h>

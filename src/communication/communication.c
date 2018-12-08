@@ -1,7 +1,14 @@
 /**
-*			Copyright (C) 2008-2018 HPDCS Group
-*			http://www.dis.uniroma1.it/~hpdcs
+* @file communication/communication.c
 *
+* @brief Communication Routines
+*
+* This file contains all the communication routines, for exchanging
+* messages among different logical processes and simulator instances.
+*
+* @copyright
+* Copyright (C) 2008-2018 HPDCS Group
+* https://hpdcs.github.io
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
 *
@@ -17,9 +24,6 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file communication.c
-* @brief This module implements all the communication routines, for exchanging
-*        messages among different logical processes and simulator instances.
 * @author Francesco Quaglia
 * @author Roberto Vitali
 *
@@ -42,7 +46,7 @@
 #include <communication/mpi.h>
 #endif
 
-/// This is the function pointer to correctly set ScheduleNewEvent API version, depending if we're running serially or parallelly
+/// This is the function pointer to correctly set ScheduleNewEvent API version, depending if we're running serially or in parallel
 void (*ScheduleNewEvent)(unsigned int gid_receiver, simtime_t timestamp, unsigned int event_type, void *event_content, unsigned int event_size);
 
 /**

@@ -1,6 +1,6 @@
 /**
 *			Copyright (C) 2008-2018 HPDCS Group
-*			http://www.dis.uniroma1.it/~hpdcs
+*			https://hpdcs.github.io
 *
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).

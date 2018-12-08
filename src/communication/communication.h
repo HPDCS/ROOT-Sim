@@ -1,7 +1,14 @@
 /**
-*			Copyright (C) 2008-2018 HPDCS Group
-*			http://www.dis.uniroma1.it/~hpdcs
+* @file communication/communication.h
 *
+* @brief Communication Routines
+*
+* This file contains all the communication routines, for exchanging
+* messages among different logical processes and simulator instances.
+*
+* @copyright
+* Copyright (C) 2008-2018 HPDCS Group
+* https://hpdcs.github.io
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
 *
@@ -17,18 +24,12 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file communication.h
-* @brief This is the main header file, containing all data structures and defines
-*        used by the communication subsystem.
 * @author Francesco Quaglia
 * @author Roberto Vitali
 *
-* @todo There are still some defines undocumented
 */
 
 #pragma once
-#ifndef _COMMUNICATION_H_
-#define _COMMUNICATION_H_
 
 #include <core/core.h>
 
@@ -112,6 +113,4 @@ extern void dump_msg_content(msg_t * msg);
 extern void validate_msg(msg_t * msg);
 #else
 #define validate_msg(msg)
-#endif
-
 #endif

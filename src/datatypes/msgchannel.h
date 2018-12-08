@@ -1,7 +1,13 @@
 /**
-*			Copyright (C) 2008-2018 HPDCS Group
-*			http://www.dis.uniroma1.it/~hpdcs
+* @file datatypes/msgchannel.h
 *
+* @brief A (M, 1) channel for messages.
+*
+* This module implements an (M, 1) channel to transfer message pointers.
+*
+* @copyright
+* Copyright (C) 2008-2018 HPDCS Group
+* https://hpdcs.github.io
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
 *
@@ -17,15 +23,11 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file msgchannel.h
-* @brief This module implements an (M, 1) channel to transfer message pointers.
 * @author Francesco Quaglia
 * @author Alessandro Pellegrini
 */
 
 #pragma once
-#ifndef _BH_H
-#define _BH_H
 
 #include <core/core.h>
 
@@ -48,5 +50,3 @@ extern msg_channel *init_channel(void);
 extern void fini_channel(msg_channel *);
 extern void insert_msg(msg_channel *, msg_t *);
 extern void *get_msg(msg_channel *);
-
-#endif				/* _BH_H */
