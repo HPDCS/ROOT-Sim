@@ -118,9 +118,7 @@ bool LogState(struct lp_struct *lp)
 		}
 
 		if(&abm_settings){
-			//new_state->region = rsalloc(lp->region->chkp_size);
-			//memcpy(new_state->region, lp->region, lp->region->chkp_size);
-
+			new_state->region_data = abm_do_checkpoint(lp->region);
 		}
 
 		// Link the new checkpoint to the state chain
@@ -148,6 +146,9 @@ void RestoreState(struct lp_struct *lp, state_t * restore_state)
 		memcpy(lp->topology, restore_state->topology,
 				topology_global.chkp_size);
 	}
+
+	if(&abm_settings)
+		abm_restore_checkpoint(restore_state->region_data, lp->region);
 
 #ifdef HAVE_CROSS_STATE
 	lp->ECS_index = 0;

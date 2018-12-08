@@ -70,7 +70,7 @@ typedef struct _state_t {
 	
 	topology_t *topology;
 
-	region_abm_t *region;
+	void *region_data;
 } state_t;
 
 struct lp_struct;

@@ -346,15 +346,13 @@ static bool is_reachable(unsigned int to){
 	return result;
 }
 
-unsigned int NeighboursCount(void){
+unsigned int NeighboursCount(unsigned region){
 	switch_to_platform_mode();
-	// TODO, use topologies cached values instead of looping through!!
-	const unsigned sender = current->gid.to_int;
 	unsigned i = topology_global.directions;
 	unsigned res = 0;
 	unsigned lp_id;
 	while(i--){
-		if((lp_id = get_raw_receiver(sender, i)) != DIRECTION_INVALID)
+		if((lp_id = get_raw_receiver(region, i)) != DIRECTION_INVALID)
 			res++;
 	}
 	switch_to_application_mode();

@@ -55,6 +55,7 @@
 #include <statistics/statistics.h>
 #include <lib/numerical.h>
 #include <lib/topology.h>
+#include <lib/abm_layer.h>
 #include <serial/serial.h>
 #ifdef HAVE_MPI
 #include <communication/mpi.h>
@@ -429,6 +430,7 @@ void SystemInit(int argc, char **argv)
 		statistics_init();
 		serial_init();
 		topology_init();
+		abm_layer_init();
 		return;
 	} else {
 		ScheduleNewEvent = ParallelScheduleNewEvent;
@@ -447,6 +449,7 @@ void SystemInit(int argc, char **argv)
 	gvt_init();
 	numerical_init();
 	topology_init();
+	abm_layer_init();
 
 	// This call tells the simulation engine that the sequential initial simulation is complete
 	initialization_complete();

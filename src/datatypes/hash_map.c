@@ -26,8 +26,6 @@
 * It's based on a open addressing design:
 * it handles collisions through linear probing,
 * entries are reordered on insertion through robin hood hashing.
-*
-* TODO : some code cleanup
 */
 
 
@@ -44,53 +42,48 @@
 // Adapted from http://xorshift.di.unimi.it/splitmix64.c PRNG,
 // written by Sebastiano Vigna (vigna@acm.org)
 // TODO benchmark further and select a possibly better hash function
-static hash_t _get_hash(unsigned long long key){
+static hash_t _get_hash(key_type_t key){
 	uint64_t z = key + 0x9e3779b97f4a7c15;
 	z = (z ^ (z >> 30)) * 0xbf58476d1ce4e5b9;
 	z = (z ^ (z >> 27)) * 0x94d049bb133111eb;
 	return (hash_t)((z ^ (z >> 31)) >> 32);
 }
 
-void hash_map_init(rootsim_hash_map_t *hmap){
+void _hash_map_init(struct _inner_hash_map_t *_i_hmap){
 	// this is the effective capacity_minus_one
 	// this trick saves us some subtractions when we
 	// use the capacity as a bitmask to
 	// select the relevant hash bits for table indexing
-	hmap->capacity_mo = HM_INITIAL_CAPACITY - 1;
-	hmap->count = 0;
-	hmap->nodes = rsalloc(sizeof(struct _hash_map_node_t) * HM_INITIAL_CAPACITY);
-	memset(hmap->nodes, 0, sizeof(struct _hash_map_node_t) * HM_INITIAL_CAPACITY);
+	_i_hmap->capacity_mo = HM_INITIAL_CAPACITY - 1;
+	_i_hmap->nodes = rsalloc(sizeof(struct _hash_map_node_t) * HM_INITIAL_CAPACITY);
+	memset(_i_hmap->nodes, UCHAR_MAX, sizeof(struct _hash_map_node_t) * HM_INITIAL_CAPACITY);
 }
 
-void hash_map_fini(rootsim_hash_map_t *hmap){
-	__wrap_free(hmap->nodes);
+void _hash_map_fini(struct _inner_hash_map_t *_i_hmap){
+	rsfree(_i_hmap->nodes);
 }
 
-static void _hash_map_insert_hashed(rootsim_hash_map_t *hmap, hash_map_pair_t *pair, hash_t hash){
-	struct _hash_map_node_t *nodes = hmap->nodes;
-	map_size_t capacity_mo = hmap->capacity_mo;
-
-	hash_map_pair_t *cur_pair = pair;
-	hash_t cur_hash = hash;
+static void _hash_map_insert_hashed(struct _inner_hash_map_t *_i_hmap, struct _hash_map_node_t node){
+	struct _hash_map_node_t *nodes = _i_hmap->nodes;
+	struct _hash_map_node_t cur_node = node;
+	map_size_t capacity_mo = _i_hmap->capacity_mo;
 	// since capacity_mo is 2^n - 1 for some n
 	// this effectively is a modulo 2^n
-	map_size_t i = cur_hash & capacity_mo;
+	map_size_t i = node.hash & capacity_mo;
 	// dib stays for distance from initial bucket
 	map_size_t dib = 0;
 
 	// linear probing with robin hood hashing
 	// https://cs.uwaterloo.ca/research/tr/1986/CS-86-14.pdf by Pedro Celis
 	while(1){
-		if(nodes[i].pair == NULL){
+		if(nodes[i].elem_i == HMAP_INVALID_I){
 			// found an empty cell, put the pair here and we're done
-			nodes[i].pair = cur_pair;
-			nodes[i].hash = cur_hash;
+			nodes[i] = cur_node;
 			return;
 		} else if(dib > DIB(i, nodes[i].hash, capacity_mo)){
 			// found a "richer" cell, swap the pairs and continue looking for a hole
 			dib = DIB(i, nodes[i].hash, capacity_mo);
-			SWAP_VALUES(cur_pair, nodes[i].pair);
-			SWAP_VALUES(cur_hash, nodes[i].hash);
+			SWAP_VALUES(cur_node, nodes[i]);
 		}
 		++i;
 		// modulo capacity
@@ -99,68 +92,69 @@ static void _hash_map_insert_hashed(rootsim_hash_map_t *hmap, hash_map_pair_t *p
 	}
 }
 
-static void _hash_map_realloc_rehash(rootsim_hash_map_t *hmap){
+static void _hash_map_realloc_rehash(struct _inner_hash_map_t *_i_hmap, map_size_t count){
 	// helper pointers to iterate over the old array
-	struct _hash_map_node_t *rmv = hmap->nodes;
+	struct _hash_map_node_t *rmv = _i_hmap->nodes;
 	// instantiates new array
-	hmap->nodes = rsalloc(sizeof(struct _hash_map_node_t) * (hmap->capacity_mo + 1));
-	memset(hmap->nodes, 0, sizeof(struct _hash_map_node_t) * (hmap->capacity_mo + 1));
+	_i_hmap->nodes = rsalloc(sizeof(struct _hash_map_node_t) * (_i_hmap->capacity_mo + 1));
+	memset(_i_hmap->nodes, UCHAR_MAX, sizeof(struct _hash_map_node_t) * (_i_hmap->capacity_mo + 1));
 	// rehash the old array elements
-	map_size_t i = hmap->count, j = 0;
+	map_size_t i = count, j = 0;
 	while(i--){
-		while(rmv[j].pair == NULL)
+		while(rmv[j].elem_i == HMAP_INVALID_I)
 			++j;
 		// TODO: implement more efficient rehashing (in place rehashing)
-		_hash_map_insert_hashed(hmap, rmv[j].pair, rmv[j].hash);
+		_hash_map_insert_hashed(_i_hmap, rmv[j]);
 		++j;
 	}
 	// free the old array
 	rsfree(rmv);
 }
 
-static void _hash_map_expand(rootsim_hash_map_t *hmap){
+static void _hash_map_expand(struct _inner_hash_map_t *_i_hmap, map_size_t count){
 	// check if threshold has been reached
-	if((double)hmap->capacity_mo * MAX_LOAD_FACTOR >= hmap->count)
+	if((double)_i_hmap->capacity_mo * MAX_LOAD_FACTOR >= count)
 		return;
 	// increase map capacity (remember capacity_minus_one)
-	hmap->capacity_mo = 2 * hmap->capacity_mo + 1;
+	_i_hmap->capacity_mo = 2 * _i_hmap->capacity_mo + 1;
 
-	_hash_map_realloc_rehash(hmap);
+	_hash_map_realloc_rehash(_i_hmap, count);
 }
 
-static void _hash_map_shrink(rootsim_hash_map_t *hmap){
+static void _hash_map_shrink(struct _inner_hash_map_t *_i_hmap, map_size_t count){
 	// check if threshold has been reached
-	if((double)hmap->capacity_mo * MIN_LOAD_FACTOR <= hmap->count ||
-			hmap->capacity_mo <= HM_INITIAL_CAPACITY)
+	if((double)_i_hmap->capacity_mo * MIN_LOAD_FACTOR <= count ||
+			_i_hmap->capacity_mo <= HM_INITIAL_CAPACITY)
 		return;
 	// decrease map capacity (remember capacity_minus_one)
-	hmap->capacity_mo /= 2;
+	_i_hmap->capacity_mo /= 2;
 
-	_hash_map_realloc_rehash(hmap);
+	_hash_map_realloc_rehash(_i_hmap, count);
 }
 
-void hash_map_add(rootsim_hash_map_t *hmap, hash_map_pair_t *pair){
+void _hash_map_add(struct _inner_hash_map_t *_i_hmap, key_type_t key, map_size_t count){
 	// expand if needed
-	_hash_map_expand(hmap);
+	_hash_map_expand(_i_hmap, count);
+
+	struct _hash_map_node_t node = {key, _get_hash(key), count};
 	// insert the element
-	_hash_map_insert_hashed(hmap, pair, _get_hash(pair->key));
-	hmap->count++;
+	_hash_map_insert_hashed(_i_hmap, node);
 }
 
-static map_size_t _hash_map_index_lookup(rootsim_hash_map_t *hmap, unsigned long long key){
-	struct _hash_map_node_t *nodes = hmap->nodes;
-	map_size_t capacity_mo = hmap->capacity_mo;
+static map_size_t _hash_map_index_lookup(struct _inner_hash_map_t *_i_hmap, key_type_t key){
+	struct _hash_map_node_t *nodes = _i_hmap->nodes;
+	map_size_t capacity_mo = _i_hmap->capacity_mo;
 
 	hash_t cur_hash = _get_hash(key);
 	map_size_t i = cur_hash & capacity_mo;
 	map_size_t dib = 0;
 
 	do{
-		if(nodes[i].pair == NULL){
+		if(nodes[i].elem_i == HMAP_INVALID_I){
 			// we found a hole where we expected something, the pair hasn't been found
-			return UINT_MAX;
+			return HMAP_INVALID_I;
 		//  the more expensive comparison with the key is done only if necessary
-		} else if(nodes[i].hash == cur_hash && nodes[i].pair->key == key)
+		} else if(nodes[i].hash == cur_hash && nodes[i].key == key)
 			// we found a pair with coinciding keys, return the index
 			return i;
 		++i;
@@ -172,31 +166,36 @@ static map_size_t _hash_map_index_lookup(rootsim_hash_map_t *hmap, unsigned long
 	return UINT_MAX;
 }
 
-hash_map_pair_t* hash_map_lookup(rootsim_hash_map_t *hmap, unsigned long long key){
+unsigned _hash_map_lookup(struct _inner_hash_map_t *_i_hmap, unsigned long long key){
 	// find the index of the wanted key
-	map_size_t i = _hash_map_index_lookup(hmap, key);
+	map_size_t i = _hash_map_index_lookup(_i_hmap, key);
 	// return the pair if successful
-	return i == UINT_MAX ? NULL : hmap->nodes[i].pair;
+	return i == UINT_MAX ? UINT_MAX : _i_hmap->nodes[i].elem_i;
 }
 
-hash_map_pair_t* hash_map_remove(rootsim_hash_map_t *hmap, unsigned long long key){
+void _hash_map_update_i(struct _inner_hash_map_t *_i_hmap, unsigned long long key, map_size_t new_i){
 	// find the index of the wanted key
-	map_size_t i = _hash_map_index_lookup(hmap, key);
+	map_size_t i = _hash_map_index_lookup(_i_hmap, key);
+	// update the pair if successful
+	if(i != UINT_MAX)
+		_i_hmap->nodes[i].elem_i = new_i;
+}
+
+void _hash_map_remove(struct _inner_hash_map_t *_i_hmap, unsigned long long key, map_size_t cur_count){
+	// find the index of the wanted key
+	map_size_t i = _hash_map_index_lookup(_i_hmap, key);
 	// if unsuccessful we're done, nothing to remove here!
-	if(i == UINT_MAX) return NULL;
+	if(i == UINT_MAX) return;
 
-	// save the pointer to return
-	hash_map_pair_t *ret = hmap->nodes[i].pair;
-
-	struct _hash_map_node_t *nodes = hmap->nodes;
-	map_size_t capacity_mo = hmap->capacity_mo;
+	struct _hash_map_node_t *nodes = _i_hmap->nodes;
+	map_size_t capacity_mo = _i_hmap->capacity_mo;
 	map_size_t j = i;
 	// backward shift to restore the table state as if the insertion never happened:
 	// http://codecapsule.com/2013/11/17/robin-hood-hashing-backward-shift-deletion by Emmanuel Goossaert
 	do{ // the first iteration is necessary since the removed element is always overwritten somehow
 		++j;
 		j &= capacity_mo;
-	}while(nodes[j].pair != NULL && DIB(j, nodes[j].hash, capacity_mo) != 0);
+	}while(nodes[j].elem_i != UINT_MAX && DIB(j, nodes[j].hash, capacity_mo) != 0);
 	// we finally found out the end of the displaced sequence of nodes,
 	// since we either found an empty slot or we found a node residing in his correct position
 
@@ -216,31 +215,30 @@ hash_map_pair_t* hash_map_remove(rootsim_hash_map_t *hmap, unsigned long long ke
 	}
 
 	// we clear the last moved slot (if we didn't move anything this clears the removed entry)
-	nodes[j].pair = NULL;
+	nodes[j].elem_i = UINT_MAX;
 
 	// shrink the table if necessary
-	hmap->count--;
-	_hash_map_shrink(hmap);
-	return ret;
+	_hash_map_shrink(_i_hmap, cur_count);
 }
 
-hash_map_pair_t* hash_map_iter(rootsim_hash_map_t *hmap, map_size_t *closure){
-	// simply walk the nodes array skipping empty slots
-	while(1){
-		if(*closure > hmap->capacity_mo){
-			// finished our iteration; reset the closure and return NULL
-			(*closure) = 0;
-			return NULL;
-		}
-		if(hmap->nodes[*closure].pair == NULL)
-			// skip this empty slot
-			(*closure)++;
-		else
-			// return the pair and increment the closure
-			return hmap->nodes[(*closure)++].pair;
-	}
+size_t _hash_map_dump_size(struct _inner_hash_map_t *_i_hmap){
+	return sizeof(_i_hmap->capacity_mo) + _i_hmap->capacity_mo * sizeof(*(_i_hmap->nodes));
 }
 
-inline map_size_t hash_map_count(rootsim_hash_map_t *hmap){
-	return hmap->count;
+inline unsigned char * _hash_map_dump(struct _inner_hash_map_t *_i_hmap, unsigned char *_destination){
+	*((map_size_t *)_destination) = _i_hmap->capacity_mo;
+	_destination += sizeof(map_size_t);
+	size_t table_cpy_size = _i_hmap->capacity_mo * sizeof(*(_i_hmap->nodes));
+	memcpy(_destination, _i_hmap->nodes, table_cpy_size);
+	_destination += table_cpy_size;
+	return _destination;
+}
+
+inline unsigned char * _hash_map_load(struct _inner_hash_map_t *_i_hmap, unsigned char *_source){
+	_i_hmap->capacity_mo = *((map_size_t *)_source);
+	_source += sizeof(map_size_t);
+	size_t table_cpy_size = _i_hmap->capacity_mo * sizeof(*(_i_hmap->nodes));
+	memcpy(_i_hmap->nodes,_source, table_cpy_size);
+	_source += table_cpy_size;
+	return _source;
 }

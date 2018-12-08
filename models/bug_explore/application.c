@@ -144,10 +144,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, agent_t agent,
 					// since we just found a suitable neighbour we can be sure this cycle will eventually complete
 					do{
 						j = RandomRange(0, directions - 1);
-						if(GetNeighbourInfo(j, &dest, (void**)&bugs_count) < 0){
-							continue;
-						}
-					}while(*bugs_count >= BUG_PER_CELL);
+					}while(GetNeighbourInfo(j, &dest, (void**)&bugs_count) < 0 || *bugs_count >= BUG_PER_CELL);
 					// this is our planned visit
 					EnqueueVisit(agent, dest, BUG_VISIT);
 					break;

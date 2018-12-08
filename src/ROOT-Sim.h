@@ -175,8 +175,7 @@ unsigned int	RegionsCount	(void);
 unsigned int	DirectionsCount	(void);
 
 // returns the actual count of neighbours this region has (if this is called from a region on the edge of the topology
-// this count can be less than the one returned by NeighboursCount())
-unsigned int 	NeighboursCount	(void);
+unsigned int 	NeighboursCount	(unsigned int region);
 
 // Returns DIRECTION_INVALID if a movement is not possible according to the given topology
 unsigned int 	GetReceiver	(unsigned int from, direction_t direction, bool reachable);

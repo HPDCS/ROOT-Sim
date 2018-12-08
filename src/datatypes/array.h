@@ -82,7 +82,7 @@
 #define array_fini(self) ({ \
 		rsfree(array_items(self)); \
 	})
-
+//fixme array_expand doesn't work when reserving with count high since it only doubles once
 #define array_reserve(self, count) ({ \
 		__typeof__(array_count(self)) __rsvidx = array_count(self); \
 		array_count(self) += (count); \
@@ -121,7 +121,7 @@
 		__typeof__(*array_items(self)) __rmval; \
 		array_count(self)--; \
 		__rmval = array_items(self)[(i)]; \
-		array_items(self)[(i)] = array_items(self)[array_count(self) - 1]; \
+		array_items(self)[(i)] = array_items(self)[array_count(self)]; \
 		array_shrink(self); \
 		__rmval; \
 	})
@@ -153,7 +153,7 @@
 
 #define array_empty(self) (array_count(self) == 0)
 
-#define array_required_bytes_dump(self) ({ \
+#define array_dump_size(self) ({ \
 		sizeof(array_count(self)) + array_count(self)*sizeof(*array_items(self)); \
 	})
 

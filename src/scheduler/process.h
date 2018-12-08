@@ -172,10 +172,10 @@ extern __thread unsigned int __lp_counter;
 extern __thread unsigned int __lp_bound_counter;
 
 #define foreach_lp(lp)		__lp_counter = 0;\
-				for(struct lp_struct *(lp) = lps_blocks[__lp_counter]; __lp_counter < n_prc; (lp) = lps_blocks[++__lp_counter])
+				for(struct lp_struct *(lp) = lps_blocks[__lp_counter]; __lp_counter < n_prc && ((lp) = lps_blocks[__lp_counter]); ++__lp_counter)
 
 #define foreach_bound_lp(lp)	__lp_bound_counter = 0;\
-				for(struct lp_struct *(lp) = lps_bound_blocks[__lp_bound_counter]; __lp_bound_counter < n_prc_per_thread; (lp) = lps_bound_blocks[++__lp_bound_counter])
+				for(struct lp_struct *(lp) = lps_bound_blocks[__lp_bound_counter]; __lp_bound_counter < n_prc_per_thread && ((lp) = lps_bound_blocks[__lp_bound_counter]); ++__lp_bound_counter)
 
 #define LPS_bound_set(entry, lp)	lps_bound_blocks[(entry)] = (lp);
 
