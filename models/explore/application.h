@@ -19,7 +19,7 @@
 #define TOT_REG			64
 #define DIM_ARRAY		TOT_REG 
  
-#define DELAY 			120		//Expeted value for the delay function
+#define DELAY 			220	//Expeted value for the delay function
 #define DELAY_PING 		250		//Expeted value for the delay function
 
 #define VISITED 		0.95 		// Termination condition
@@ -44,10 +44,12 @@ typedef struct lp_agent_t{
 	unsigned int id;
         unsigned int region;                    //Current region
         unsigned char *map;                     //Map pointer
-
+		void **pages;							//This is an array of [TOT_REG] pointers (one per area) filled whenever i) the agent enters the region
+	   											//ii) other LPs in the group shares data whit it. Pointers point to 4096 (page size) sized areas.						
         #ifdef ECS_TEST 
-        unsigned char **group;                  //Vector that stores pointers of agent that this agent has been met
-        #else
+        unsigned char **group;		//Vector that stores pointers of agent that this agent has been met
+		void **group_pages;
+		#else
 	unsigned int robots[100];
 	#endif
 
@@ -64,10 +66,10 @@ typedef struct _exchange_t {
 #endif
 
 typedef struct lp_region_t{
-
         #ifdef ECS_TEST 
         lp_agent_t **guests;                 //Vector that stores pointers of agent guest map
-        #else
+        void **group_infos;					//The same of the field pages of lp_agent_t struct. Kept to store group data
+		#else
         unsigned char *map;
 	unsigned int robots[100];
         #endif
@@ -99,6 +101,7 @@ typedef struct destination_content_t {
 
 typedef struct complete_content_t {
 	unsigned int agent;			//Id of agent that completes the mission
+	int informed;			//flag to state i notified other robots my completition
 } complete_t;
 
 
@@ -107,7 +110,7 @@ extern unsigned int get_tot_agents(void);							//Return the number of agents
 extern unsigned char get_obstacles(void);							//Generate obstacles
 extern unsigned int get_region(unsigned int me, unsigned int obstacle,unsigned int agent);	//Return the next region
 extern bool check_termination(lp_agent_t *);							//Check the termiantion condiction
-extern bool is_agent(unsigned int);								//Verify if the current LP is an agent
+extern int is_agent(unsigned int);								//Verify if the current LP is an agent
 extern double percentage(lp_agent_t *agent);							//Compute the execution percentage
 extern unsigned int random_region(void);							//Retunr a random region
 extern void send_updated_info(lp_agent_t*);							//Notify the group of new discoveries

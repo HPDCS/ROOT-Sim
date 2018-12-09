@@ -264,9 +264,9 @@ void initialize_LP(LID_t lp) {
 	LPS(lp)->ECS_synch_table[0] = LidToGid(lp); // LidToGid for distributed ECS
 	LPS(lp)->ECS_page_list = new_list(ecs_page_node_t);
 	LPS(lp)->ECS_prefetch_list = new_list(ecs_page_node_t);
-	LPS(lp)->ECS_additional_page_faults = 0;
+	LPS(lp)->ECS_page_faults = 0;
 	LPS(lp)->ECS_current_prefetch_mode = NO_PREFETCH;
-	LPS(lp)->ECS_contiguous_faults = 0;
+	LPS(lp)->ECS_clustered_faults = 0;
 	LPS(lp)->ECS_scattered_faults = 0;
 	LPS(lp)->ECS_last_prefetch_switch = 0;
 	#endif

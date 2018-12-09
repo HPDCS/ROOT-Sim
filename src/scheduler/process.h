@@ -132,8 +132,8 @@ typedef struct _LP_state {
 	list(ecs_page_node_t)	ECS_prefetch_list;
 	simtime_t		ECS_last_prefetch_switch;
 	int				ECS_current_prefetch_mode;
-	int				ECS_additional_page_faults;
-	int				ECS_contiguous_faults;
+	int				ECS_page_faults;
+	int				ECS_clustered_faults;
 	int				ECS_scattered_faults;
 	#endif
 

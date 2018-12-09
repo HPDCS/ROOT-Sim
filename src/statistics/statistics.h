@@ -72,7 +72,7 @@
 #define STAT_SILENT		12
 #define STAT_ECS		13
 #define STAT_ECS_FAULT		14
-#define STAT_ECS_CONTIGUOUS		15
+#define STAT_ECS_CLUSTERED		15
 #define STAT_ECS_SCATTERED		16
 
 /* Definition of Global Statistics Post Messages */
@@ -115,10 +115,9 @@ struct stat_t {
 		gvt_round_time_max,
 		gvt_round_time,
 		tot_ecs,
-		ecs_additional_page_faults,
-		ecs_contiguous_faults,
+		ecs_page_faults,
+		ecs_clustered_faults,
 		ecs_scattered_faults,
-		ecs_no_prefetch_counter,
 		simtime_advancement;
 };
 

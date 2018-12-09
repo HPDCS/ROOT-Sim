@@ -355,10 +355,9 @@ void statistics_stop(int exit_code) {
 				fprintf(f, "AVERAGE CKPT COST........... %f\n", lp_stats[lid].ckpt_time / lp_stats[lid].tot_ckpts);
 				fprintf(f, "AVERAGE RECOVERY COST........... %f\n", ((int)lp_stats[lid].tot_rollbacks > 0 ? lp_stats[lid].recovery_time / lp_stats[lid].tot_recoveries : 0));
 				fprintf(f, "IDLE CYCLES........... %d\n", (int)lp_stats[lid].idle_cycles);	
-				fprintf(f, "ECS ADDITIONAL PAGE FAULTS........... %f\n",  lp_stats[lid].ecs_additional_page_faults);
-				fprintf(f, "ECS CONTIGUOUS PAGE FAULTS........... %f\n",  lp_stats[lid].ecs_contiguous_faults);
+				fprintf(f, "ECS PAGE FAULTS........... %f\n",  lp_stats[lid].ecs_page_faults);
+				fprintf(f, "ECS CLUSTERED PAGE FAULTS........... %f\n",  lp_stats[lid].ecs_clustered_faults);
 				fprintf(f, "ECS SCATTERED PAGE FAULTS........... %f\n",  lp_stats[lid].ecs_scattered_faults);
-				fprintf(f, "ECS NO PREFETCH PAGES COUNT........... %f\n", lp_stats[lid].ecs_no_prefetch_counter);
 				fprintf(f, "\n");
 			}
 		}
@@ -383,7 +382,9 @@ void statistics_stop(int exit_code) {
 			thread_stats[local_tid].event_time += lp_stats[lid].event_time;
 			thread_stats[local_tid].exponential_event_time += lp_stats[lid].exponential_event_time;
 			thread_stats[local_tid].idle_cycles += lp_stats[lid].idle_cycles;
-			thread_stats[local_tid].tot_ecs += lp_stats[lid].tot_ecs;
+			thread_stats[local_tid].ecs_page_faults += lp_stats[lid].ecs_page_faults;
+			thread_stats[local_tid].ecs_clustered_faults += lp_stats[lid].ecs_clustered_faults;
+			thread_stats[local_tid].ecs_scattered_faults += lp_stats[lid].ecs_scattered_faults;
 		}
 		thread_stats[local_tid].exponential_event_time /= n_prc_per_thread;
 
@@ -408,7 +409,6 @@ void statistics_stop(int exit_code) {
 		fprintf(f, "TOTAL COMMITTED EVENTS..... : %.0f \n", 		thread_stats[local_tid].committed_events);
 		fprintf(f, "TOTAL REPROCESSED EVENTS... : %.0f \n", 		thread_stats[local_tid].reprocessed_events);
 		fprintf(f, "TOTAL ROLLBACKS EXECUTED... : %.0f \n", 		thread_stats[local_tid].tot_rollbacks);
-		fprintf(f, "TOTAL ECS EXECUTED......... : %.0f \n",			thread_stats[local_tid].tot_ecs);
 		fprintf(f, "TOTAL ANTIMESSAGES......... : %.0f \n", 		thread_stats[local_tid].tot_antimessages);
 		fprintf(f, "ROLLBACK FREQUENCY......... : %.2f %%\n",		rollback_frequency * 100);
 		fprintf(f, "ROLLBACK LENGTH............ : %.2f events\n",	rollback_length);
@@ -421,6 +421,9 @@ void statistics_stop(int exit_code) {
 		fprintf(f, "IDLE CYCLES................ : %.0f\n",		thread_stats[local_tid].idle_cycles);
 		fprintf(f, "NUMBER OF GVT REDUCTIONS... : %.0f\n",		thread_stats[local_tid].gvt_computations);
 		fprintf(f, "SIMULATION TIME SPEED...... : %.2f units per GVT\n",thread_stats[local_tid].simtime_advancement);
+		fprintf(f, "ECS NO PREFETCH PAGE FAULTS ...... : %f \n", thread_stats[local_tid].ecs_page_faults);
+		fprintf(f, "ECS CLUSTERED PAGE FAULTS ...... : %f \n", thread_stats[local_tid].ecs_clustered_faults);
+		fprintf(f, "ECS SCATTERED PAGE FAULTS ...... : %f \n", thread_stats[local_tid].ecs_scattered_faults);
 		fprintf(f, "AVERAGE MEMORY USAGE....... : %s\n",		format_size(thread_stats[local_tid].memory_usage / thread_stats[local_tid].gvt_computations));
 
 		if(exit_code == EXIT_FAILURE) {
@@ -458,7 +461,10 @@ void statistics_stop(int exit_code) {
 				system_wide_stats.idle_cycles += thread_stats[i].idle_cycles;
 				system_wide_stats.memory_usage += thread_stats[i].memory_usage;
 				system_wide_stats.simtime_advancement += thread_stats[i].simtime_advancement;
-				system_wide_stats.tot_ecs += thread_stats[i].tot_ecs;
+				system_wide_stats.ecs_page_faults += thread_stats[i].ecs_page_faults;
+				system_wide_stats.ecs_clustered_faults += thread_stats[i].ecs_clustered_faults;
+				system_wide_stats.ecs_scattered_faults += thread_stats[i].ecs_scattered_faults;
+
 			}
 			system_wide_stats.exponential_event_time /= n_cores;
 
@@ -496,7 +502,6 @@ void statistics_stop(int exit_code) {
 			fprintf(f, "TOTAL COMMITTED EVENTS..... : %.0f \n", 		system_wide_stats.committed_events);
 			fprintf(f, "TOTAL REPROCESSED EVENTS... : %.0f \n", 		system_wide_stats.reprocessed_events);
 			fprintf(f, "TOTAL ROLLBACKS EXECUTED... : %.0f \n", 		system_wide_stats.tot_rollbacks);
-			fprintf(f, "TOTAL ECS EXECUTED......... : %.0f \n",			system_wide_stats.tot_ecs);
 			fprintf(f, "TOTAL ANTIMESSAGES......... : %.0f \n", 		system_wide_stats.tot_antimessages);
 			fprintf(f, "ROLLBACK FREQUENCY......... : %.2f %%\n",		rollback_frequency * 100);
 			fprintf(f, "ROLLBACK LENGTH............ : %.2f events\n",	rollback_length);
@@ -517,6 +522,9 @@ void statistics_stop(int exit_code) {
 			fprintf(f, "SIMULATION TIME SPEED...... : %.2f units per GVT\n",system_wide_stats.simtime_advancement);
 			fprintf(f, "AVERAGE MEMORY USAGE....... : %s\n",		format_size(system_wide_stats.memory_usage / system_wide_stats.gvt_computations));
 			fprintf(f, "PEAK MEMORY USAGE.......... : %s\n",		format_size(getPeakRSS()));
+			fprintf(f, "ECS NO PREFETCH FAULTS......... : %f\n",    system_wide_stats.ecs_page_faults);
+			fprintf(f, "ECS CLUSTERED FAULTS......... : %f\n",    system_wide_stats.ecs_clustered_faults);
+			fprintf(f, "ECS SCATTERED FAULTS......... : %f\n",    system_wide_stats.ecs_scattered_faults);
 
 			if(exit_code == EXIT_FAILURE) {
 				fprintf(f, "\n--------- SIMULATION ABNORMALLY TERMINATED ----------\n");
@@ -752,10 +760,10 @@ void statistics_post_lp_data(LID_t the_lid, unsigned int type, double data) {
 				lp_stats_gvt[lid].reprocessed_events += data;
 				break;
 			case STAT_ECS_FAULT:
-				lp_stats[lid].ecs_additional_page_faults += 0.1 * data + 0.9*lp_stats[lid].ecs_additional_page_faults;
+				lp_stats[lid].ecs_page_faults += 0.1 * data + 0.9*lp_stats[lid].ecs_page_faults;
 				break;
-			case STAT_ECS_CONTIGUOUS:
-				lp_stats[lid].ecs_contiguous_faults += 0.1*data + 0.9*lp_stats[lid].ecs_contiguous_faults;
+			case STAT_ECS_CLUSTERED:
+				lp_stats[lid].ecs_clustered_faults += 0.1*data + 0.9*lp_stats[lid].ecs_clustered_faults;
 				break;
 			case STAT_ECS_SCATTERED:
 				lp_stats[lid].ecs_scattered_faults += 0.1*data + 0.9*lp_stats[lid].ecs_scattered_faults;
@@ -846,7 +854,6 @@ void statistics_post_other_data(unsigned int type, double data) {
 				lp_stats[lid].tot_recoveries += lp_stats_gvt[lid].tot_recoveries;
 				lp_stats[lid].recovery_time += lp_stats_gvt[lid].recovery_time;
 				lp_stats[lid].reprocessed_events += lp_stats_gvt[lid].reprocessed_events;
-				lp_stats[lid].tot_ecs += lp_stats_gvt[lid].tot_ecs;
 
 				keep_exponential_event_time = lp_stats_gvt[lid].exponential_event_time;
 				bzero(&lp_stats_gvt[lid_to_int(LPS_bound(i)->lid)], sizeof(struct stat_t));
@@ -862,12 +869,6 @@ void statistics_post_other_data(unsigned int type, double data) {
 				system_wide_stats.gvt_round_time_max = data;
 			system_wide_stats.gvt_round_time += data;
 			break;
-
-		case STAT_ECS:
-				system_wide_stats.tot_ecs += data;
-				break;
-
-
 
 		default:
 			rootsim_error(true, "Wrong statistics post type: %d. Aborting...\n", type);
@@ -888,30 +889,5 @@ double statistics_get_lp_data(unsigned int type, LID_t lid) {
 			rootsim_error(true, "Wrong statistics get type: %d. Aborting...\n", type);
 	}
 
-	return ret;
-}
-
-double statistics_get_system_ecs_data(void){
-	return system_wide_stats.tot_ecs;
-}
-
-double statistics_get_system_wide_data(unsigned int type){
-	double ret;
-	int i;
-	LID_t temp;
-
-	switch(type){
-		
-		case STAT_GET_TOT_ECS:
-			for(i = 0; i < n_prc_per_thread; i++){
-				temp.id = i;
-				ret += lp_stats[lid_to_int(temp)].tot_ecs;
-			}
-			break;
-		default:
-			rootsim_error(true, "Wrong statistics get type: %d. Aborting...\n", type);
-	
-	}
-	ret = system_wide_stats.tot_ecs;
 	return ret;
 }

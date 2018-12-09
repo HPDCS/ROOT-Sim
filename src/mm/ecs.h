@@ -7,7 +7,7 @@
 #include <mm/mm.h>
 
 #define NO_PREFETCH 0
-#define CONTIGUOUS 1
+#define CLUSTERED 1
 #define SCATTERED 2
 
 #define max_pages 1048576
@@ -32,7 +32,7 @@ typedef struct _ecs_page_request {
 #define INITIAL_WRITEBACK_SLOTS	2
 
 typedef struct prefetch_page{
-	long long *address;
+	long long address;
 	int write_mode;
 	unsigned char page[PAGE_SIZE];
 } prefetch_page_t;
@@ -63,7 +63,8 @@ extern void reinstall_writeback_pages(msg_t *msg);
 extern void ecs_install_pages(msg_t *);
 void unblock_synchronized_objects(LID_t lid);
 
-static ecs_prefetch_t *add_prefetch_page(ecs_prefetch_t *pfr, long long address, int span, int write_mode);
-static ecs_prefetch_t * prefetch_init(void);
+ecs_prefetch_t *add_prefetch_page(ecs_prefetch_t *pfr, long long *address, int span, int write_mode);
+ecs_prefetch_t * prefetch_init(void);
+ecs_page_node_t *add_page_node(long long address, size_t pages, LID_t lid);
 #endif /* _ECS_H */
 
