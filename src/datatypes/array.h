@@ -32,7 +32,7 @@
 
 // TODO: add some type checking and size checking (is it necessary?)
 
-#define INIT_SIZE_ARRAY 8
+#define INIT_SIZE_ARRAY 8U
 
 #define rootsim_array(type) \
 		struct { \
@@ -167,14 +167,10 @@
 #define array_load(self, mem_area) ({ \
 		memcpy(&array_count(self), (mem_area), sizeof(array_count(self))); \
 		(mem_area) = ((unsigned char *)(mem_area)) + sizeof(array_count(self)); \
-		array_capacity(self) = array_count(self); \
-		\
+		array_capacity(self) = max(array_count(self), INIT_SIZE_ARRAY); \
 		array_items(self) = rsalloc(array_capacity(self) * sizeof(*array_items(self))); \
-		if(!array_items(self))\
-			rootsim_error(true, "Malloc failed during array_load!"); \
-		\
-		memcpy(array_items(self), (mem_area), array_capacity(self) * sizeof(*array_items(self))); \
-		(mem_area) = ((unsigned char *)(mem_area)) + (array_capacity(self) * sizeof(*array_items(self))); \
+		memcpy(array_items(self), (mem_area), array_count(self) * sizeof(*array_items(self))); \
+		(mem_area) = ((unsigned char *)(mem_area)) + (array_count(self) * sizeof(*array_items(self))); \
 	})
 
 #endif /* ARRAY_H_ */

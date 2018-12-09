@@ -62,57 +62,60 @@ struct _inner_hash_map_t{
 		}
 
 #define hash_map_init(hashmap) ({ \
-		_hash_map_init(&hashmap._i_hmap); \
-		array_init(hashmap.elems); \
+		_hash_map_init(&((hashmap)._i_hmap)); \
+		array_init((hashmap).elems); \
 	})
 
 #define hash_map_count(hashmap) ({ \
-		array_count(hashmap.elems);\
+		array_count((hashmap).elems);\
 	})
 
 #define hash_map_fini(hashmap) ({ \
-		_hash_map_fini(&hashmap._i_hmap); \
-		array_fini(hashmap.elems); \
+		_hash_map_fini(&((hashmap)._i_hmap)); \
+		array_fini((hashmap).elems); \
 	})
 
 #define hash_map_reserve_elem(hashmap, key) ({ \
-		_hash_map_add(&hashmap._i_hmap, key, array_count(hashmap.elems)); \
-		array_reserve(hashmap.elems, 1); \
+		_hash_map_add(&((hashmap)._i_hmap), key, array_count((hashmap).elems)); \
+		__typeof__(array_items((hashmap).elems)) __ret = array_reserve((hashmap).elems, 1); \
+		assert(__ret); \
+		__ret; \
 	})
 
 #define hash_map_lookup(hashmap, key) ({ \
-		map_size_t __lkp_i =  _hash_map_lookup(&hashmap._i_hmap, key); \
-		__lkp_i != UINT_MAX ? &array_get_at(hashmap.elems, __lkp_i) : NULL; \
+		map_size_t __lkp_i =  _hash_map_lookup(&((hashmap)._i_hmap), key); \
+		__lkp_i != UINT_MAX ? &(array_get_at((hashmap).elems, __lkp_i)) : NULL; \
 	})
 
 #define hash_map_delete_elem(hashmap, elem) ({ \
-		assert(array_count(hashmap.elems)); \
-		key_type_t __l_key = array_peek(hashmap.elems).key; \
-		unsigned __rem_i = elem - array_items(hashmap.elems); \
-		_hash_map_remove(&hashmap._i_hmap, elem->key, array_count(hashmap.elems)); \
-		_hash_map_update_i(&hashmap._i_hmap, __l_key, __rem_i); \
-		array_lazy_remove_at(hashmap.elems, __rem_i); \
+		assert(array_count((hashmap).elems)); \
+		key_type_t __l_key = array_peek((hashmap).elems).key; \
+		unsigned __rem_i = elem - array_items((hashmap).elems); \
+		_hash_map_remove(&((hashmap)._i_hmap), elem->key, array_count((hashmap).elems)); \
+		_hash_map_update_i(&((hashmap)._i_hmap), __l_key, __rem_i); \
+		array_lazy_remove_at((hashmap).elems, __rem_i); \
 	})
 
 #define hash_map_items(hashmap) ({ \
-		assert(array_count(hashmap.elems)); \
-		array_items(hashmap.elems); \
+		assert(array_count((hashmap).elems)); \
+		__typeof__(array_items((hashmap).elems)) __ret = array_items((hashmap).elems); \
+		__ret; \
 	})
 
 #define hash_map_dump_size(hashmap) ({ \
-		size_t __ret = array_dump_size(hashmap.elems); \
-		__ret += _hash_map_dump_size(&hashmap._i_hmap); \
+		size_t __ret = array_dump_size((hashmap).elems); \
+		__ret += _hash_map_dump_size(&((hashmap)._i_hmap)); \
 		__ret; \
 	})
 
 #define hash_map_dump(hashmap, destination) ({ \
-		array_dump(hashmap.elems, destination); \
-		destination = _hash_map_dump(&hashmap._i_hmap, destination); \
+		array_dump((hashmap).elems, destination); \
+		destination = _hash_map_dump(&((hashmap)._i_hmap), destination); \
 	})
 
 #define hash_map_load(hashmap, source) ({ \
-		array_load(hashmap.elems, source); \
-		source = _hash_map_load(&hashmap._i_hmap, source); \
+		array_load((hashmap).elems, source); \
+		source = _hash_map_load(&((hashmap)._i_hmap), source); \
 	})
 
 

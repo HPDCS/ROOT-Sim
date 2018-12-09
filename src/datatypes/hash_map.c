@@ -222,13 +222,13 @@ void _hash_map_remove(struct _inner_hash_map_t *_i_hmap, unsigned long long key,
 }
 
 size_t _hash_map_dump_size(struct _inner_hash_map_t *_i_hmap){
-	return sizeof(_i_hmap->capacity_mo) + _i_hmap->capacity_mo * sizeof(*(_i_hmap->nodes));
+	return sizeof(_i_hmap->capacity_mo) + (_i_hmap->capacity_mo + 1) * sizeof(*(_i_hmap->nodes));
 }
 
 inline unsigned char * _hash_map_dump(struct _inner_hash_map_t *_i_hmap, unsigned char *_destination){
 	*((map_size_t *)_destination) = _i_hmap->capacity_mo;
 	_destination += sizeof(map_size_t);
-	size_t table_cpy_size = _i_hmap->capacity_mo * sizeof(*(_i_hmap->nodes));
+	size_t table_cpy_size = (_i_hmap->capacity_mo + 1) * sizeof(*(_i_hmap->nodes));
 	memcpy(_destination, _i_hmap->nodes, table_cpy_size);
 	_destination += table_cpy_size;
 	return _destination;
@@ -237,7 +237,8 @@ inline unsigned char * _hash_map_dump(struct _inner_hash_map_t *_i_hmap, unsigne
 inline unsigned char * _hash_map_load(struct _inner_hash_map_t *_i_hmap, unsigned char *_source){
 	_i_hmap->capacity_mo = *((map_size_t *)_source);
 	_source += sizeof(map_size_t);
-	size_t table_cpy_size = _i_hmap->capacity_mo * sizeof(*(_i_hmap->nodes));
+	size_t table_cpy_size = (_i_hmap->capacity_mo + 1) * sizeof(*(_i_hmap->nodes));
+	_i_hmap->nodes = rsalloc(table_cpy_size);
 	memcpy(_i_hmap->nodes,_source, table_cpy_size);
 	_source += table_cpy_size;
 	return _source;

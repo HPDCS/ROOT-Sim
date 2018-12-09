@@ -183,6 +183,7 @@ void ccgs_compute_snapshot(state_t * time_barrier_pointer[], simtime_t gvt)
 void ccgs_init(void)
 {
 	lps_termination = rsalloc(sizeof(bool) * n_prc);
+	memset(lps_termination, 0, sizeof(bool) * n_prc);
 }
 
 void ccgs_fini(void)

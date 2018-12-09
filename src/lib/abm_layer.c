@@ -81,7 +81,7 @@ static struct _agent_abm_t* agent_from_buffer(const unsigned char* event_content
 	// keep track of original pointer
 	const unsigned char *buffer = event_content;
 	// allocate the memory for the visiting agent
-	struct _agent_abm_t *agent = hash_map_reserve_elem(current->region->agents_table, *((unsigned long long *)event_content));
+	struct _agent_abm_t *agent = hash_map_reserve_elem(current->region->agents_table, *((const unsigned long long *)event_content));
 	// copy uuid and user data size
 	memcpy(agent, buffer, sizeof(agent->user_data_size) + sizeof(agent->key));
 	buffer += sizeof(agent->user_data_size) + sizeof(agent->key);
@@ -159,7 +159,7 @@ void abm_restore_checkpoint(unsigned char *data, region_abm_t *region){
 	// free the region allocations
 	unsigned i = hash_map_count(region->agents_table);
 	while(i--){
-		agent = &hash_map_items(region->agents_table)[i];
+		agent = &(hash_map_items(region->agents_table)[i]);
 		array_fini(agent->future);
 		if(abm_settings.keep_history)
 			array_fini(agent->past);
@@ -173,7 +173,7 @@ void abm_restore_checkpoint(unsigned char *data, region_abm_t *region){
 	hash_map_load(region->agents_table, data);
 	i = hash_map_count(region->agents_table);
 	while(i--){
-		agent = &hash_map_items(region->agents_table)[i];
+		agent = &(hash_map_items(region->agents_table)[i]);
 		array_load(agent->future, data);
 		if(abm_settings.keep_history)
 			array_load(agent->past, data);
