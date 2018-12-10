@@ -17,7 +17,7 @@ matrix:
         sources:
         - ubuntu-toolchain-r-test
         packages:
-        - g++-8
+        - g++-7
         - mpich
         - libmpich-dev
         - doxygen
@@ -29,27 +29,25 @@ env:
 
 before_install:
   - export CC=mpicc
-  - export MPICH_CC=gcc-8
+  - export MPICH_CC=gcc-7
 
 before_script:
   - mpiexec --version
   - mpicc --version
   - $CC --version
-  - gcov-8 --version
+  - gcov-7 --version
+  - gcov --version
   - m4 --version
   - automake --version
   - autoconf --version
 
 script:
-  - find /usr/ -name "libgcov*"
   - ./scripts/travis-build.sh
   - ./scripts/tests.sh
   - ./scripts/travis-docs.sh
 
 after_success:
-  - curl -s https://codecov.io/bash > .codecov
-  - chmod +x .codecov
-  - ./.codecov -x gcov-8
+  - bash <(curl -s https://codecov.io/bash) -x gcov-7
 
 # Documentation autodeploy script
 deploy:

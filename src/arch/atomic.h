@@ -59,12 +59,8 @@ typedef struct {
 } spinlock_t;
 
 
-inline bool CAS(volatile uint64_t * ptr, uint64_t oldVal, uint64_t newVal);
 inline bool iCAS(volatile uint32_t * ptr, uint32_t oldVal, uint32_t newVal);
 inline int atomic_test_and_set(int *);
-inline int atomic_test_and_reset(int *);
-inline void atomic_add(atomic_t *, int);
-inline void atomic_sub(atomic_t *, int);
 inline void atomic_inc(atomic_t *);
 inline void atomic_dec(atomic_t *);
 inline int atomic_inc_and_test(atomic_t * v);
