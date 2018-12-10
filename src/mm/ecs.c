@@ -121,12 +121,12 @@ ecs_prefetch_t* compute_scattered_data(malloc_state *state, GID_t gid, void * fa
 	for(i = 0; i < j && tot_pages > 0; i++){
 		if(counts[i] < utilizations[i] * tot_pages){
 			pfr = add_prefetch_page(pfr, pages_to_add[i], counts[i], write_mode);
-			printf("inserting %d pages since it is less than %d\n", counts[i], utilizations[i] * tot_pages);
+			//printf("inserting %d pages since it is less than %d\n", counts[i], utilizations[i] * tot_pages);
 			tot_pages -= counts[i];
 		}
 		else{
 			int weight = (utilizations[i] - min)/(max - min);
-			printf("inserting %d pages from %p with weight %d\n", tot_pages * weight, pages_to_add[i], weight);
+			//printf("inserting %d pages from %p with weight %d\n", tot_pages * weight, pages_to_add[i], weight);
 			pfr = add_prefetch_page(pfr, pages_to_add[i], tot_pages * weight, write_mode);
 			tot_pages = 0;
 		}
@@ -151,16 +151,14 @@ ecs_prefetch_t* compute_clustered_data(malloc_state *state, GID_t gid, void *fau
 	for(i = 0; i < state->num_areas; i++){
 		current_area = &(state->areas[i]);
 		if(current_area != NULL){
-			base_pointer  = (((long long) current_area->area /*- segment_base_pointer*/) & (~((long long)PAGE_SIZE - 1))); 
-			if(base_pointer == fault_address){
-				//move to the next page address w.r.t the original faulting one
-				base_pointer =(((long long) current_area->area + (long long) PAGE_SIZE) & (~((long long)PAGE_SIZE - 1)));  
-				end_pointer = (((long long) current_area->area /*- (long long)segment_base_pointer*/) + ((current_area->chunk_size * current_area->alloc_chunks) & (~((long long)PAGE_SIZE - 1))) + PAGE_SIZE);
-				page_count = (((long long) end_pointer) & (~((long long)PAGE_SIZE-1)))/PAGE_SIZE - (long long)base_pointer/PAGE_SIZE + 1;
-				
-				//temp = (page_count + ((current_area->num_chunks * current_area->chunk_size) / PAGE_SIZE) -1) / (double)((current_area->num_chunks * current_area->chunk_size) / max_pages); 
+			base_pointer  = (((long long) current_area->area /*- segment_base_pointer*/) & (~((long long)PAGE_SIZE - 1)));
+			end_pointer = (((long long) current_area->area /*- (long long)segment_base_pointer*/) + ((current_area->chunk_size * current_area->alloc_chunks) & (~((long long)PAGE_SIZE - 1))) + PAGE_SIZE);
 			
-				//printf("base pointer is %p end pointer is %p page count is %d while tot is %d\n", base_pointer, end_pointer, page_count, tot_pages*temp);	
+			if(fault_address >= base_pointer && fault_address <= end_pointer){		
+				base_pointer = (long long)fault_address + (long long) PAGE_SIZE & (~((long long)PAGE_SIZE - 1));
+				page_count = (((long long) end_pointer) & (~((long long)PAGE_SIZE-1)))/PAGE_SIZE - (long long)fault_address/PAGE_SIZE + 1;
+				//printf("fault addr is %p (new base is %p ) end pointer is %p page count is %d while tot is %d\n", fault_address, base_pointer, end_pointer, page_count, tot_pages*temp);	
+				
 				int counter;
 				if(page_count < tot_pages){
 					counter = page_count;
@@ -269,12 +267,12 @@ void ecs_secondary(GID_t target_gid) {
 	int current_mode = LPS(current_lp)->ECS_current_prefetch_mode;
 	//current_mode = SCATTERED;
 	//goto out;
-	/*if(fault_info.fault_type == ECS_CHANGE_PAGE_PRIVILEGE){
+	if(fault_info.fault_type == ECS_CHANGE_PAGE_PRIVILEGE){
 		current_mode = NO_PREFETCH;
 		goto out;
-	}*/
+	}
 
-	if(current_lvt - LPS(current_lp)->ECS_last_prefetch_switch > 1000){ // <--- dafuuq??
+	if( current_lvt - LPS(current_lp)->ECS_last_prefetch_switch > 10000){ // <--- dafuuq??
 		LPS(current_lp)->ECS_page_faults++;
 		current_mode = NO_PREFETCH;
 		goto out;
@@ -292,7 +290,7 @@ void ecs_secondary(GID_t target_gid) {
 				
 					break;
 				case CLUSTERED:
-					if(current_lvt - LPS(current_lp)->ECS_last_prefetch_switch > 100 && !(LPS(current_lp)->ECS_clustered_faults <= LPS(current_lp)->ECS_page_faults)){
+					if(current_lvt - LPS(current_lp)->ECS_last_prefetch_switch > 1000 && !(LPS(current_lp)->ECS_clustered_faults <= LPS(current_lp)->ECS_page_faults)){
 						current_mode = SCATTERED;
 						LPS(current_lp)->ECS_scattered_faults++;
 						goto out;
@@ -303,7 +301,7 @@ void ecs_secondary(GID_t target_gid) {
 
 					break;
 				case SCATTERED:
-					if(current_lvt - LPS(current_lp)->ECS_last_prefetch_switch > 100 && !(LPS(current_lp)->ECS_scattered_faults <= LPS(current_lp)->ECS_page_faults)){				
+					if(current_lvt - LPS(current_lp)->ECS_last_prefetch_switch > 1000 && !(LPS(current_lp)->ECS_scattered_faults <= LPS(current_lp)->ECS_page_faults)){				
 						current_mode = NO_PREFETCH;
 						LPS(current_lp)->ECS_page_faults++;
 						goto out;
@@ -325,7 +323,7 @@ out:
 	LPS(current_lp)->ECS_current_prefetch_mode = current_mode;
 	LPS(current_lp)->ECS_last_prefetch_switch = current_lvt;
 	
-	printf("ECS Page Fault: LP %d accessing %d pages from %p ( %p )on LP %lu in %s mode\n", LidToGid(current_lp).id, page_req.count, (void *)page_req.base_address, (void*) target_address, fault_info.target_gid, (page_req.write_mode ? "write" : "read"));
+	//printf("ECS Page Fault: LP %d accessing %d pages from %p ( %p )on LP %lu in %s mode\n", LidToGid(current_lp).id, page_req.count, (void *)page_req.base_address, (void*) target_address, fault_info.target_gid, (page_req.write_mode ? "write" : "read"));
 	fflush(stdout);
 
 	// Send the page lease request control message. This is not incorporated into the input queue at the receiver
@@ -460,7 +458,12 @@ void ECS(void) {
 		case ECS_CHANGE_PAGE_PRIVILEGE:
 			//printf("target address : %p target gid %d lid %d ker %d me %d\n", fault_info.target_address, target_gid, GidToLid(target_gid), GidToKernel(target_gid), kid); fflush(stdout);
 			node = find_page(fault_info.target_address, current_lp, &pos);
-			if(node == NULL) return;
+			if(node == NULL){
+				//printf("NUUUUULLL\n");
+				//node = add_page_node(fault_info.target_address, 1, current_lp);
+			}
+			else
+				//printf("found page with addr %p\n", node->page_address);
 			set_write_mode(node, pos);
 			ecs_secondary(target_gid); //TODO: avoid prefetching when sending pages upon change_privilege occurrence!
 			lp_alloc_schedule(); // We moved to the original view in the kernel module: we do not unschedule the LP here
@@ -614,26 +617,27 @@ void reinstall_prefetch_pages(msg_t *msg){
 		dest = (void *)(pfr->pages[i].address);
 		source = pfr->pages[i].page;
 		memcpy(dest, source, PAGE_SIZE);
-	
+		//printf("Completed the installation of the page copying %d bytes from address %p\n", PAGE_SIZE, (void *) (pfr->pages[i]).address);
 		node = find_page(pfr->pages[i].address, GidToLid(msg->receiver), NULL);
 		if(node == NULL) {
 			node = add_page_node(pfr->pages[i].address, 1, GidToLid(msg->receiver));
 		}
-		
+
 		//printf("address %p with count %d has mode %d and bit is %d\n", (void *) node->page_address, node->pages, pfr->pages[i].write_mode, bitmap_check(node->write_mode, 0));
-		if(pfr->pages[i].write_mode && !bitmap_check(node->write_mode, 0))
+		if(pfr->pages[i].write_mode){
 			set_write_mode(node, 0);
+		}
 		else if(!pfr->pages[i].write_mode){
-			
+
 			bzero(&sched_info, sizeof(ioctl_info));
 			sched_info.base_address = (void *)(pfr->pages[i].address);
 			sched_info.page_count = 1;
 			sched_info.write_mode = (pfr->pages[i].write_mode);
-
 			ioctl(ioctl_fd, IOCTL_SET_PAGE_PRIVILEGE, &sched_info);
 		}
-		printf("Completed the installation of the page copying %d bytes from address %p\n", PAGE_SIZE, (void *) (pfr->pages[i]).address);
 	}
+
+
 }
 /*
 void ecs_install_pages(msg_t *msg) {
@@ -674,7 +678,7 @@ void ecs_install_pages(msg_t *msg) {
 }
 */
 void unblock_synchronized_objects(LID_t lid) {
-	printf(" LP %d sending unblock\n", LidToGid(lid));
+	//printf(" LP %d sending unblock\n", LidToGid(lid));
 	fflush(stdout);
 	unsigned int i;
 	msg_t *control_msg;
