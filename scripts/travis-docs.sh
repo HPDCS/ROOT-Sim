@@ -3,15 +3,6 @@
 # This script automates the generation of the doxygen documentation.
 # It is used by .travis.yml to autodeploy the configuration on the website.
 
-# To avoid wasting time on non-master/non-develop branches, we don't build
-# the docs if not on those branches.
-branchname=$(git branch | grep \* | cut -d ' ' -f2)
-
-if [ "$branchname" != "master" ] && [ "$branchname" != "develop" ] ; then
-    echo "Skipping the build, not on master nor develop"
-    exit 0
-fi
-
 # Build the doxygen documentation
 cd docs
 make
