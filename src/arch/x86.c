@@ -38,32 +38,6 @@
 #include <mm/dymelor.h>
 
 /**
-* This function implements a compare-and-swap atomic operation on x86 for long long values
-*
-* @author Alessandro Pellegrini
-*
-* @param ptr the address where to perform the CAS operation on
-* @param oldVal the old value we expect to find before swapping
-* @param newVal the new value to place in ptr if ptr contains oldVal
-*
-* @return true if the CAS succeeded, false otherwise
-*/
-inline bool CAS(volatile uint64_t * ptr, uint64_t oldVal, uint64_t newVal)
-{
-	unsigned long res = 0;
-
-	__asm__ __volatile__(LOCK "cmpxchgq %1, %2;"	//ZF = 1 if succeeded
-			     "lahf;"	// to get the correct result even if oldVal == 0
-			     "bt $14, %%ax;"	// is ZF set? (ZF is the 6'th bit in %ah, so it's the 14'th in ax)
-			     "adc %0, %0"	// get the result
-			     :"=r"(res)
-			     :"r"(newVal), "m"(*ptr), "a"(oldVal), "0"(res)
-			     :"memory");
-
-	return (bool)res;
-}
-
-/**
 * This function implements a compare-and-swap atomic operation on x86-64 for integers
 *
 * @author Alessandro Pellegrini
@@ -107,58 +81,6 @@ inline int atomic_test_and_set(int *b)
 			     :"memory");
 
 	return !result;
-}
-
-/**
-* This function implements the atomic_test_and_reset on an integer value, for x86-64 archs
-*
-* @author Alessandro Pellegrini
-*
-* @param b the counter there to perform the operation
-*
-* @return true if the int value has been reset, false otherwise
-*/
-inline int atomic_test_and_reset(int *b)
-{
-	int result = 0;
-
-	__asm__ __volatile__(LOCK "btr $0, %1;\n\t" "adc %0, %0":"=r"(result)
-			     :"m"(*b), "0"(result)
-			     :"memory");
-
-	return result;
-}
-
-/**
-* This function implements (on x86-64 architectures) the atomic add operation.
-* It adds 'i' units to the atomic counter 'v'
-*
-* @author Alessandro Pellegrini
-*
-* @param v the atomic counter which is the destination of the operation
-* @param i how much must be added
-*/
-inline void atomic_add(atomic_t * v, int i)
-{
-	__asm__ __volatile__(LOCK "addl %1,%0":"=m"(v->count)
-			     :"ir"(i), "m"(v->count)
-	    );
-}
-
-/**
-* This function implements (on x86-64 architectures) the atomic sub operation.
-* It subtracts 'i' units from the atomic counter 'v'
-*
-* @author Alessandro Pellegrini
-*
-* @param v the atomic counter which is the destination of the operation
-* @param i how much must be subtracted
-*/
-inline void atomic_sub(atomic_t * v, int i)
-{
-	__asm__ __volatile__(LOCK "subl %1,%0":"=m"(v->count)
-			     :"ir"(i), "m"(v->count)
-	    );
 }
 
 /**
