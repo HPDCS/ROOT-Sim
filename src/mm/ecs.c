@@ -268,11 +268,11 @@ void ecs_secondary(GID_t target_gid) {
 	//current_mode = SCATTERED;
 	//goto out;
 	if(fault_info.fault_type == ECS_CHANGE_PAGE_PRIVILEGE){
-		current_mode = NO_PREFETCH;
+		//current_mode = NO_PREFETCH;
 		goto out;
 	}
 
-	if( current_lvt - LPS(current_lp)->ECS_last_prefetch_switch > 10000){ // <--- dafuuq??
+	if(current_lvt - LPS(current_lp)->ECS_last_prefetch_switch > 10000){ // <--- dafuuq??
 		LPS(current_lp)->ECS_page_faults++;
 		current_mode = NO_PREFETCH;
 		goto out;
@@ -391,7 +391,7 @@ ecs_prefetch_t * prefetch_init(void){
 ecs_prefetch_t *add_prefetch_page(ecs_prefetch_t *pfr, long long *address, int span, int write_mode){
 	int j;
 	for(j = 0; j < span; j++){
-		printf("adding page %p\n", ((long long) address + j * PAGE_SIZE & (~((long long)PAGE_SIZE - 1))));
+		//printf("adding page %p\n", ((long long) address + j * PAGE_SIZE & (~((long long)PAGE_SIZE - 1))));
 		pfr->pages[pfr->count].address = ((long long) address + j * PAGE_SIZE & (~((long long)PAGE_SIZE - 1)));
 		pfr->pages[pfr->count].write_mode = write_mode;
 		memcpy(pfr->pages[pfr->count].page, (void *)pfr->pages[pfr->count].address, PAGE_SIZE);
@@ -459,13 +459,10 @@ void ECS(void) {
 			//printf("target address : %p target gid %d lid %d ker %d me %d\n", fault_info.target_address, target_gid, GidToLid(target_gid), GidToKernel(target_gid), kid); fflush(stdout);
 			node = find_page(fault_info.target_address, current_lp, &pos);
 			if(node == NULL){
-				//printf("NUUUUULLL\n");
-				//node = add_page_node(fault_info.target_address, 1, current_lp);
+				node = add_page_node(fault_info.target_address, 1, current_lp);
 			}
-			else
-				//printf("found page with addr %p\n", node->page_address);
 			set_write_mode(node, pos);
-			ecs_secondary(target_gid); //TODO: avoid prefetching when sending pages upon change_privilege occurrence!
+			ecs_secondary(target_gid); 
 			lp_alloc_schedule(); // We moved to the original view in the kernel module: we do not unschedule the LP here
 			break;
 
@@ -559,13 +556,13 @@ void ecs_send_pages(msg_t *msg) {
 
 	switch(the_request->prefetch_mode){
 		case NO_PREFETCH:
-			printf("NO PREFETCH\n");
+			//printf("NO PREFETCH\n");
 			break;
 		case CLUSTERED:
-			printf("CLUSTERED\n");
+			//printf("CLUSTERED\n");
 			break;
 		case SCATTERED:
-			printf("SCATTERED\n");
+			//printf("SCATTERED\n");
 			break;
 		default:
 			rootsim_error(true," Unsupported prefetch mode: %d\n", the_request->prefetch_mode);
