@@ -367,39 +367,6 @@ void slab_free(struct slab_chain *const sch, const void *const addr)
 	spin_unlock(&sch->lock);
 }
 
-void slab_traverse(const struct slab_chain *const sch, void (*fn)(const void *))
-{
-	assert(sch != NULL);
-	assert(fn != NULL);
-	assert(slab_is_valid(sch));
-
-	const struct slab_header *slab;
-	const char *item, *end;
-	const size_t data_offset = offsetof(struct slab_header, data);
-
-	for (slab = sch->partial; slab; slab = slab->next) {
-		item = (const char *)slab + data_offset;
-		end = item + sch->itemcount * sch->itemsize;
-		uint64_t mask = SLOTS_FIRST;
-
-		do {
-			if (!(slab->slots & mask))
-				fn(item);
-
-			mask <<= 1;
-		} while ((item += sch->itemsize) != end);
-	}
-
-	for (slab = sch->full; slab; slab = slab->next) {
-		item = (const char *)slab + data_offset;
-		end = item + sch->itemcount * sch->itemsize;
-
-		do {
-			fn(item);
-		} while ((item += sch->itemsize) != end);
-	}
-}
-
 void slab_destroy(const struct slab_chain *const sch)
 {
 	assert(sch != NULL);
