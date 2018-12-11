@@ -198,8 +198,6 @@ void initialize_worker_thread(void)
 {
 	msg_t *init_event;
 
-	communication_init_thread();
-
 	// Divide LPs among worker threads, for the first time here
 	rebind_LPs();
 	if (master_thread() && master_kernel()) {

@@ -26,7 +26,7 @@
 *
 * @author Francesco Quaglia
 * @author Roberto Vitali
-*
+* @author Alessandro Pellegrini
 */
 
 #pragma once
@@ -94,15 +94,12 @@ extern void ParallelScheduleNewEvent(unsigned int, simtime_t, unsigned int,
 /* Functions invoked by other modules */
 extern void communication_init(void);
 extern void communication_fini(void);
-extern void comm_finalize(void);
 extern void Send(msg_t * msg);
 extern simtime_t receive_time_barrier(simtime_t max);
 extern int messages_checking(void);
 extern void insert_outgoing_msg(msg_t * msg);
 extern void send_outgoing_msgs(struct lp_struct *);
 extern void send_antimessages(struct lp_struct *, simtime_t);
-extern void communication_fini_thread(void);
-extern void communication_init_thread(void);
 
 /* In window.c */
 extern void windows_init(void);
