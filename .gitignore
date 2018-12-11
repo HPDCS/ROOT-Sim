@@ -58,3 +58,6 @@ modules.order
 *.ko.cmd
 *.mod.c
 .tmp_versions
+
+tests/dymelor
+tests/numerical

@@ -75,6 +75,7 @@ function do_test() {
 
 # Run available unit tests
 do_unit_test dymelor
+do_unit_test numerical
 
 
 # Run models to make comprehensive tests

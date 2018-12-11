@@ -105,9 +105,7 @@ int RandomRangeNonUniform(int x, int min, int max)
 	double ret;
 	switch_to_platform_mode();
 
-	ret =
-	    (((RandomRange(0, x) | RandomRange(min, max))) % (max - min + 1)) +
-	    min;
+	ret = (((RandomRange(0, x) | RandomRange(min, max))) % (max - min + 1)) + min;
 
 	switch_to_application_mode();
 	return ret;
@@ -155,7 +153,7 @@ double Normal(void)
 			v1 = 2.0 * Random() - 1.0;
 			v2 = 2.0 * Random() - 1.0;
 			rsq = v1 * v1 + v2 * v2;
-		} while (rsq >= 1.0 || D_DIFFER_ZERO(rsq));
+		} while (rsq >= 1.0 || D_EQUAL_ZERO(rsq));
 
 		fac = sqrt(-2.0 * log(rsq) / rsq);
 
