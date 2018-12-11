@@ -21,7 +21,7 @@ BUILT_SOURCES = src/arch/asm_defines.h
 CLEANFILES = src/arch/asm_defines.h
 src/arch/asm_defines.h: arch/asm_defines.c
 	echo "Generating defines for assembly modules..."
-	$(COMPILE) -S $< -o - | $(AWK) '($$1 == "->") { print "#define " $$2 " " substr($$3, 2) }' > $(top_srcdir)/$@ 
+	$(COMPILE) -DASM_DEFINES -S $< -o - | $(AWK) '($$1 == "->") { print "#define " $$2 " " substr($$3, 2) }' > $(top_srcdir)/$@ 
 
 
 # From here on, there are main ROOT-Sim build rules
