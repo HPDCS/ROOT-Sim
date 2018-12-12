@@ -361,7 +361,6 @@ AC_MSG_RESULT([ok])
 AC_CONFIG_FILES([Makefile
 		 man/Makefile
 		 scripts/Makefile
-		 src/Makefile
 		 src/arch/x86/linux/Makefile])
 AC_OUTPUT
 
