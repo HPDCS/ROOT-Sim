@@ -2,6 +2,18 @@
 #include <math.h>
 
 #include "application.h"
+
+#define DEBUG if(0)
+
+
+extern void generate_random_data(unsigned char *ptr, size_t size) {
+	unsigned int i;
+	for(i = 0; i < size; i++) {
+		ptr[i] = (unsigned char)(255 * Random());
+	}
+}
+
+
 unsigned int get_tot_regions(void){
 	unsigned int check_value = sqrt(TOT_REG);
 
@@ -29,13 +41,7 @@ unsigned int random_region(void){
 	return get_tot_regions()*Random();
 }
 
-unsigned char get_obstacles(void){
-	return 0;
-}
-
-unsigned int get_region(unsigned int me, unsigned int obstacle,unsigned int agent){
-	(void)obstacle;
-	(void)agent;
+unsigned int get_region(unsigned int me) {
 	unsigned int edge,temp,tot_region;
 	double random;
 	tot_region = get_tot_regions();
@@ -161,11 +167,11 @@ bool check_termination(lp_agent_t *agent){
 	double tot_region = get_tot_regions();
 	double result = regions/tot_region;
 	if(result >= VISITED || agent->complete){
-		printf("agent %d has visited all regions!!!!\n", agent->id);	
+		DEBUG printf("agent %d has visited all regions!!!!\n", agent->id);	
 		return true;
 	}
 	
-	printf("agent %d has visited %d ( VISITED %f) regions and is %d\n", agent->id, agent->count, VISITED, agent->complete);	
+	DEBUG printf("agent %d has visited %d ( VISITED %f) regions and is %d\n", agent->id, agent->count, VISITED, agent->complete);	
 	return false;
 }
 

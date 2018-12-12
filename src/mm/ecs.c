@@ -55,7 +55,6 @@
 #include <arch/linux/modules/cross_state_manager/cross_state_manager.h>
 
 #define foo(x) printf(x "\n"); fflush(stdout)
-#define float_to_int(x) ((x)>=0?(int)((x)+0.5):(int)((x)-0.5))
 #define treshold(x) ((x * alpha) + 100 - 1) / 100
 // TODO: trovare un modo elegante per utilizzare soltanto LID dentro questo modulo
 
@@ -168,7 +167,7 @@ ecs_prefetch_t* compute_clustered_data(malloc_state *state, GID_t gid, void *fau
 					tot_pages = 0;
 				}
 
-				pfr = add_prefetch_page(pfr, base_pointer, counter, 1);
+				pfr = add_prefetch_page(pfr, base_pointer, counter, write_mode);
 				return pfr;
 			}
 		}
@@ -190,10 +189,6 @@ ecs_prefetch_t* compute_prefetch_data(malloc_state *state, GID_t gid, int prefet
 		tmp_pfr = compute_clustered_data(state, gid, fault_address, N, write_mode, pfr);
 	else
 		tmp_pfr = NULL;
-	/*if(prefetch_mode != NO_PREFETCH)
-		tmp_pfr = compute_prefetch_pages(state, gid, N, prefetch_mode, fault_address, pfr);
-	else
-		tmp_pfr = NULL;*/
 	
 	if(tmp_pfr != NULL)
 		return tmp_pfr;
@@ -624,8 +619,7 @@ void reinstall_prefetch_pages(msg_t *msg){
 		if(pfr->pages[i].write_mode){
 			set_write_mode(node, 0);
 		}
-		else if(!pfr->pages[i].write_mode){
-
+		else{ 
 			bzero(&sched_info, sizeof(ioctl_info));
 			sched_info.base_address = (void *)(pfr->pages[i].address);
 			sched_info.page_count = 1;

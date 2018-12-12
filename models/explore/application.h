@@ -3,9 +3,9 @@
 
 #include <stdbool.h>
 
-#define ECS_TEST
+#define MAX_AGENTS		1024
 
-#define DESTINATION 	1		//Message used by Region to communicate to the Agent the next destination
+#define DESTINATION 		1		//Message used by Region to communicate to the Agent the next destination
 #define ENTER 			2		//Message used by Agent for communicating its arrival	
 #define EXIT			3		//Message useb by Agent for communicating its exit
 #define PING			4		//Keep alive of Region
@@ -40,78 +40,58 @@
 #define ALLOCATE_BITMAP(size) (malloc(BITMAP_SIZE(size)))
 #define BITMAP_BZERO(map, size) (bzero(((unsigned char*)(map)), BITMAP_SIZE(size)))
 
-typedef struct lp_agent_t{
-	unsigned int id;
-        unsigned int region;                    //Current region
-        unsigned char *map;                     //Map pointer
-		void **pages;							//This is an array of [TOT_REG] pointers (one per area) filled whenever i) the agent enters the region
-	   											//ii) other LPs in the group shares data whit it. Pointers point to 4096 (page size) sized areas.						
-        #ifdef ECS_TEST 
-        unsigned char **group;		//Vector that stores pointers of agent that this agent has been met
-		void **group_pages;
-		#else
-	unsigned int robots[100];
-	#endif
+#define DATA_SIZE	64
 
-        unsigned int count;                     //Amount of already visited regions
-        bool complete;                          //True if it has received the COMPLETE message
+typedef struct _measure {
+	unsigned char data[64];
+} measure_t;
+
+
+typedef struct lp_agent_t{
+	unsigned int id;			// ID of the agent in [ 0, get_tot_agents() )
+        unsigned int region;                    // Current region
+        unsigned char *map;                     // Map pointer
+        measure_t *exploration;			// Data collected while exploring
+        unsigned int count;                     // Amount of already visited regions
+        bool complete;                          // True if it has received the COMPLETE message
         simtime_t lvt;
 }lp_agent_t;
 
-#ifdef ECS_TEST
-typedef struct _exchange_t {
-	unsigned char map[DIM_ARRAY];
-	unsigned int robots[100];
-} exchange_t;
-#endif
 
-typedef struct lp_region_t{
-        #ifdef ECS_TEST 
-        lp_agent_t **guests;                 //Vector that stores pointers of agent guest map
-        void **group_infos;					//The same of the field pages of lp_agent_t struct. Kept to store group data
-		#else
-        unsigned char *map;
-	unsigned int robots[100];
-        #endif
-
-        unsigned int count;                     //Amount of agents inside the region
-        unsigned char obstacles;                //Map of obstacles
+typedef struct lp_region_t {
+	unsigned int id;			// ID of the region in [ 0, get_tot_regions() )
+	measure_t data;				// Data to be measured in this region
+        unsigned int count;                     // Amount of agents inside the region
+        unsigned char *agents;                  // What agents are in the region
 } lp_region_t;
 
-typedef struct enter_content_t {
-	#ifdef ECS_TEST
-	lp_agent_t *agent; 			//Pointer to the state map
-	#else
-	unsigned int agent;			//Sender's Lid
-	unsigned char map[DIM_ARRAY];
-	#endif
-} enter_t;
 
 typedef struct exit_content_t {
-	unsigned int agent;			//Sender's Lid
+	unsigned int agent;			// Sender's Lid
 } exit_t;
 
+typedef struct enter_content_t {
+	lp_agent_t *agent;			// Sender's Lid
+} enter_t;
+
+
 typedef struct destination_content_t {
-	unsigned int region;			//Id of next region
-	#ifndef ECS_TEST
-	unsigned char map[DIM_ARRAY];
-	unsigned int robots[100];
-	#endif
+	unsigned int region;			// Id of next region
 } destination_t;
 
 typedef struct complete_content_t {
-	unsigned int agent;			//Id of agent that completes the mission
-	int informed;			//flag to state i notified other robots my completition
+	unsigned int agent;			// Id of agent that completes the mission
+	int informed;				// flag to state i notified other robots my completition
 } complete_t;
 
 
-extern unsigned int get_tot_regions(void);							//Return the number of regions
-extern unsigned int get_tot_agents(void);							//Return the number of agents
-extern unsigned char get_obstacles(void);							//Generate obstacles
-extern unsigned int get_region(unsigned int me, unsigned int obstacle,unsigned int agent);	//Return the next region
-extern bool check_termination(lp_agent_t *);							//Check the termiantion condiction
-extern int is_agent(unsigned int);								//Verify if the current LP is an agent
-extern double percentage(lp_agent_t *agent);							//Compute the execution percentage
-extern unsigned int random_region(void);							//Retunr a random region
-extern void send_updated_info(lp_agent_t*);							//Notify the group of new discoveries
+extern unsigned int get_tot_regions(void);				// Return the number of regions
+extern unsigned int get_tot_agents(void);				// Return the number of agents
+extern unsigned int get_region(unsigned int me);			// Return the next region
+extern bool check_termination(lp_agent_t *);				// Check the termiantion condiction
+extern int is_agent(unsigned int);					// Verify if the current LP is an agent
+extern double percentage(lp_agent_t *agent);				// Compute the execution percentage
+extern unsigned int random_region(void);				// Retunr a random region
+extern void send_updated_info(lp_agent_t*);				// Notify the group of new discoveries
 extern void copy_map(unsigned char*, int, unsigned char*);
+extern void generate_random_data(unsigned char *, size_t size);

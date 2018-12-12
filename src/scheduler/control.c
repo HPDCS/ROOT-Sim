@@ -174,7 +174,7 @@ bool receive_control_msg(msg_t *msg) {
 			break;
 
 		case RENDEZVOUS_UNBLOCK:
-			printf("LP %d getting unblock\n", msg->receiver);
+			//printf("LP %d getting unblock\n", msg->receiver);
 			fflush(stdout);
 			if(LPS(lid_receiver)->state == LP_STATE_ROLLBACK ||
 				LPS(lid_receiver)->state == LP_STATE_SILENT_EXEC)  {
