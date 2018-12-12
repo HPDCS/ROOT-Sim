@@ -59,5 +59,5 @@ modules.order
 *.mod.c
 .tmp_versions
 
-tests/dymelor
-tests/numerical
+/dymelor
+/numerical
