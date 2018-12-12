@@ -13,6 +13,7 @@ enum _dis {
 	EXPENT,
 	NORMAL,
 	GAMMA,
+	GAMMA2,
 	POISSON,
 	ZIPF
 };
@@ -32,6 +33,9 @@ static double get_sample(enum _dis distr) {
 
 		case GAMMA:
 			return Gamma(2);
+
+		case GAMMA2:
+			return Gamma(7);
 
 		case POISSON:
 			return Poisson();
@@ -150,6 +154,7 @@ int main(void)
 	do_test("Kolmogorov-Smirnov test on Expent()... ", aux_ks_test, EXPENT);
 	do_test("Kolmogorov-Smirnov test on Normal()... ", aux_ks_test, NORMAL);
 	do_test("Kolmogorov-Smirnov test on Gamma()... ", aux_ks_test, GAMMA);
+	do_test("Kolmogorov-Smirnov test on Gamma()... ", aux_ks_test, GAMMA2);
 	do_test("Kolmogorov-Smirnov test on Poisson()... ", aux_ks_test, POISSON);
 	do_test("Kolmogorov-Smirnov test on Zipf()... ", aux_ks_test, ZIPF);
 	

@@ -6,10 +6,10 @@
 * This module implements communication primitives to implement the
 * asynchronous distributed GVT reduction algorithm described in:
 *
-* T. Tocci, A. Pellegrini, F. Quaglia, J. Casanovas-García, and T. Suzumura,</br>
-* <em>“ORCHESTRA: An Asynchronous Wait-Free Distributed GVT Algorithm,”</em></br>
+* T. Tocci, A. Pellegrini, F. Quaglia, J. Casanovas-García, and T. Suzumura,<br/>
+* <em>“ORCHESTRA: An Asynchronous Wait-Free Distributed GVT Algorithm,”</em><br/>
 * in Proceedings of the 21st IEEE/ACM International Symposium on Distributed
-* Simulation and Real Time Applications</br>
+* Simulation and Real Time Applications<br/>
 * 2017
 *
 * For a full understanding of the code, we encourage reading that paper.
