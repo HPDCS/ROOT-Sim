@@ -265,6 +265,7 @@ void enter_red_phase(void)
 	threads_phase_colour[local_tid] = next_colour(threads_phase_colour[local_tid]);
 }
 
+
 /**
  * @brief Make a thread exit from red phase.
  *
@@ -282,6 +283,7 @@ void exit_red_phase(void)
 	}
 	threads_phase_colour[local_tid] = next_colour(threads_phase_colour[local_tid]);
 }
+
 
 /**
  * @brief Join the white message reduction collective operation.
@@ -308,8 +310,20 @@ void join_white_msg_redux(void)
 	unlock_mpi();
 }
 
+
 /**
- * Test completion of white message reduction collective operation.
+ * @brief Test completion of white message reduction collective operation.
+ *
+ * This function checks whether the asynchronous collective operation
+ * which counts whether the expected number of white messages has been
+ * received is completed.
+ *
+ * This can be safely invoked concurrently by multiple worker threads,
+ * as a lock guard is used to ensure that only one thread at a time
+ * performs the check.
+ *
+ * @return @c true if the reduction operation is completed,
+ *         @c false otherwise.
  */
 bool white_msg_redux_completed(void)
 {
@@ -323,26 +337,52 @@ bool white_msg_redux_completed(void)
 	return compl;
 }
 
+
 /**
- * @brief Syncronously wait for the completion of white message reduction
- *        collective operation.
+ * @brief Wait for the completion of wait message reduction.
+ *
+ * This function returns only when the white message reduction operation
+ * currently being carried out is completed.
+ *
+ * @warning This is a blocking operation.
  */
 void wait_white_msg_redux(void)
 {
 	MPI_Wait(&white_count_req, MPI_STATUS_IGNORE);
 }
 
+
 /**
  * @brief Check if white messages are all received
- * 
+ *
  * Check if the number of white message received is equal to
  * the expected ones (retrieved through the white message reduction).
+ *
+ * @return @c true if the expected amount of white messages has bee
+ *         already received, @c false otherwise.
  */
 bool all_white_msg_received(void)
 {
 	return (atomic_read(white_msg_recv) == expected_white_msg);
 }
 
+
+/**
+ * @brief Reset received white messages.
+ *
+ * This function is used to prepare for the next white phase of the
+ * execution. In particular, after that the correct number of white
+ * messages has been received, a call to this function will change the
+ * white phase counter pointed by @ref white_msg_recv to either
+ * @ref white_0_msg_recv or @ref white_1_msg_recv, depending on the
+ * current phase which we are leaving.
+ *
+ * Furthermore, the white message counter is reset to zero---it will be
+ * used in the next GVT round.
+ *
+ * @warning Calling this function if the correct number of white messages
+ *          has been received will stop the simulation due to an inconsistency.
+ */
 void flush_white_msg_recv(void)
 {
 	// santy check: Exactly the expected number of white
@@ -361,6 +401,19 @@ void flush_white_msg_recv(void)
 	}
 }
 
+
+/**
+ * @brief Reset sent white messages.
+ *
+ * This function is used to prepare for the next white phase of the
+ * execution. In particular, after that all the threads have entered
+ * the red phase (this ensures that white message counter can be
+ * safely reset for all threads) the counters keeping the number of
+ * white messages sent to other simulation kernel instances are reset.
+ *
+ * @warning Calling this function if at least one thread is still in the
+ *          white phase will stop the simulation due to an inconsistency.
+ */
 void flush_white_msg_sent(void)
 {
 	unsigned int i;
@@ -378,6 +431,19 @@ void flush_white_msg_sent(void)
 	}
 }
 
+
+/**
+ * @brief Initiate a distributed GVT.
+ *
+ * A call to this function sends to all kernel instances an asynchronous
+ * request to initiate the distributed protocol for GVT reduction.
+ *
+ * If must be called by one single thread, and a consistent round value
+ * should be passed as an argument.
+ *
+ * @param round A counter telling what is the GVT round that we want to
+ *              initiate. @p round must be strictly monotonic.
+ */
 void broadcast_gvt_init(unsigned int round)
 {
 	unsigned int i;
@@ -396,11 +462,32 @@ void broadcast_gvt_init(unsigned int round)
 	}
 }
 
+
+/**
+ * @brief Check if there are pending GVT-init messages around.
+ *
+ * This function tells whether some kernel is still waiting for some GVT
+ * message to be sent around, related to GVT initiation.
+ * This is used when shutting down the communication
+ * subsystem to avoid deadlock in some main loop of some simulation kernel.
+ *
+ * @return @c true if there is some GVT-related message still pending,
+ *         @c false otherwise.
+ */
 bool gvt_init_pending(void)
 {
 	return pending_msgs(MSG_NEW_GVT);
 }
 
+
+/**
+ * @brief Forcely extract GVT-init message from MPI.
+ *
+ * This function synchronously extracts messages related to GVT initiation
+ * from the MPI library. This should be called as a fallback strategy
+ * if gvt_init_pending() determined that a clean shutdown of the
+ * communication subsystem is not possible at present time.
+ */
 void gvt_init_clear(void)
 {
 	unsigned int new_gvt_round;
@@ -409,6 +496,22 @@ void gvt_init_clear(void)
 	unlock_mpi();
 }
 
+
+/**
+ * @brief Reduce the GVT value.
+ *
+ * A call to this function can be issued only after that all threads on
+ * all simulation kernels have agreed upon a local candidate for the
+ * GVT value, and this value has been posted by some thread in @ref
+ * local_vt_buff.
+ *
+ * The goal of this function is to use an All Reduce non-blocking primitive
+ * to compute the minimum among the values which have been posted by
+ * all kernel instances in @ref local_vt_buff.
+ *
+ * Eventually, the minimum will be stored in @ref reduced_gvt of all
+ * kernel instances.
+ */
 void join_gvt_redux(simtime_t local_vt)
 {
 	local_vt_buff = local_vt;
@@ -417,6 +520,22 @@ void join_gvt_redux(simtime_t local_vt)
 	unlock_mpi();
 }
 
+
+/**
+ * @brief Check if final GVT reduction is complete.
+ *
+ * A call to this function, issued after a call to join_gvt_redux() will
+ * tell whether the final phase of the GVT reduction is complete, and
+ * the simulation kernel instance can safely access @ref reduced_gvt to
+ * pick the newly-reduced value of the GVT.
+ *
+ * This function is thread safe, so it can be called by multiple threads
+ * at one. A spinlock guard ensures that only one thread at a time performs
+ * this operation.
+ *
+ * @return @c true if the GVT reduction operation associated with the
+ *         last round is completed, @c false otherwise.
+ */
 bool gvt_redux_completed(void)
 {
 	if (!spin_trylock(&gvt_reduction_lock))
@@ -429,12 +548,45 @@ bool gvt_redux_completed(void)
 	return compl;
 }
 
+
+/**
+ * @brief Return the last GVT value.
+ *
+ * This function returns the last GVT value which all the threads from
+ * all simulation kernel instances have agreed upon.
+ *
+ * It is safe to call this function also while a GVT reduction operation
+ * is taking place.
+ *
+ * @return The current value of the GVT
+ */
 simtime_t last_reduced_gvt(void)
 {
 	return reduced_gvt;
 }
 
-void register_outgoing_msg(const msg_t * msg)
+
+
+/**
+ * @brief Register an outgoing message, if necessary.
+ *
+ * Any time that a simulation kernel is sending a message towards a
+ * remote simulation kernel instance, the message should be passed to
+ * this function beforehand.
+ *
+ * In this way, if the thread which sends the message is in a red phase,
+ * the minimum timestamp of red messages sent aroung is updated.
+ *
+ * On the other hand, if the thread which sends the message is in a
+ * white phase, the counter of white messages sent towards the destination
+ * kernel is increased.
+ *
+ * All this is fundamental information to ensure that the GVT reduction
+ * is consistent.
+ *
+ * @param msg The message to register as an outgoing message.
+ */
+void register_outgoing_msg(const msg_t *msg)
 {
 #ifdef HAVE_CROSS_STATE
 	if (is_control_msg(msg->type))
@@ -453,6 +605,21 @@ void register_outgoing_msg(const msg_t * msg)
 	}
 }
 
+
+/**
+ * @brief Register an incoming message, if necessary.
+ *
+ * Any message being received by a simulation kernel instance should
+ * be passed to this function, right before being registered into any
+ * queue.
+ *
+ * In this way, if the destination kernel is in a white phase, the
+ * total number of white messages received can be incremented.
+ * Consistency is ensured by the fact that atomic counters are used,
+ * making this function inherently thread-safe.
+ *
+ * @param msg The message to register as an incoming message.
+ */
 void register_incoming_msg(const msg_t * msg)
 {
 #ifdef HAVE_CROSS_STATE

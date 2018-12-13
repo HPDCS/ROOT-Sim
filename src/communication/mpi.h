@@ -37,13 +37,13 @@
 #include <communication/wnd.h>
 #include <statistics/statistics.h>
 
-extern bool mpi_support_multithread;
-
+/// This macro takes a global lock if multithread support is not available from MPI
 #define lock_mpi() {if(!mpi_support_multithread) spin_lock(&mpi_lock);}
+
+/// This macro releases a global lock if multithreaded support is not available from MPI
 #define unlock_mpi() {if(!mpi_support_multithread) spin_unlock(&mpi_lock);}
 
-// control access to MPI interface
-// used only in the case MPI do not support multithread
+extern bool mpi_support_multithread;
 extern spinlock_t mpi_lock;
 
 void mpi_init(int *argc, char ***argv);

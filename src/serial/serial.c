@@ -60,8 +60,7 @@ void SerialScheduleNewEvent(unsigned int rcv, simtime_t stamp,
 
 	// Sanity checks
 	if (unlikely(stamp < lvt(current))) {
-		rootsim_error(true,
-			      "LP %d is trying to send events in the past. Current time: %f, scheduled time: %f\n",
+		rootsim_error(true, "LP %d is trying to send events in the past. Current time: %f, scheduled time: %f\n",
 			      current->gid.to_int, lvt(current), stamp);
 	}
 	// Populate the message data structure
@@ -85,8 +84,7 @@ void serial_init(void)
 {
 	// Sanity check on the number of LPs
 	if (unlikely(n_prc_tot == 0)) {
-		rootsim_error(true,
-			      "You must specify the total number of Logical Processes\n");
+		rootsim_error(true, "You must specify the total number of Logical Processes\n");
 	}
 	// Initialize the calendar queue
 	calqueue_init();
@@ -135,8 +133,7 @@ void serial_simulation(void)
 
 #ifdef EXTRA_CHECKS
 		if (event->size > 0) {
-			hash1 =
-			    XXH64(event->event_content, event->size, current);
+			hash1 = XXH64(event->event_content, event->size, current);
 		}
 #endif
 
@@ -146,20 +143,16 @@ void serial_simulation(void)
 				   event->size, current->current_base_pointer);
 
 		statistics_post_data_serial(STAT_EVENT, 1.0);
-		statistics_post_data_serial(STAT_EVENT_TIME,
-					    timer_value_seconds
-					    (serial_event_execution));
+		statistics_post_data_serial(STAT_EVENT_TIME, timer_value_seconds(serial_event_execution));
 
 #ifdef EXTRA_CHECKS
 		if (event->size > 0) {
-			hash2 =
-			    XXH64(event->event_content, event->size, current);
+			hash2 = XXH64(event->event_content, event->size, current);
 		}
 
 		if (hash1 != hash2) {
 			printf("hash1 = %llu, hash2= %llu\n", hash1, hash2);
-			rootsim_error(true,
-				      "Error, LP %d has modified the payload of event %d during its processing. Aborting...\n",
+			rootsim_error(true, "Error, LP %d has modified the payload of event %d during its processing. Aborting...\n",
 				      current->gid, event->type);
 		}
 #endif
@@ -167,25 +160,22 @@ void serial_simulation(void)
 		// Termination detection can happen only after the state is initialized
 		if (likely(current->current_base_pointer != NULL)) {
 			// Should we terminate the simulation?
-			if (!serial_completed_simulation[event->receiver.to_int]
-			    && current->OnGVT(event->receiver.to_int,
-					      current->current_base_pointer)) {
+			if (!serial_completed_simulation[event->receiver.to_int] && current->OnGVT(event->receiver.to_int, current->current_base_pointer)) {
 				completed++;
-				serial_completed_simulation[event->receiver.
-							    to_int] = true;
+				serial_completed_simulation[event->receiver.to_int] = true;
 				if (unlikely(completed == n_prc_tot)) {
 					serial_simulation_complete = true;
 				}
 			}
 		}
+
 		// Termination detection on reached LVT value
-		if (rootsim_config.simulation_time > 0
-		    && event->timestamp >= rootsim_config.simulation_time) {
+		if (rootsim_config.simulation_time > 0 && event->timestamp >= rootsim_config.simulation_time) {
 			serial_simulation_complete = true;
 		}
+
 		// Print the time advancement periodically
-		if (timer_value_milli(serial_gvt_timer) >
-		    (int)rootsim_config.gvt_time_period) {
+		if (timer_value_milli(serial_gvt_timer) > (int)rootsim_config.gvt_time_period) {
 			timer_restart(serial_gvt_timer);
 			printf("TIME BARRIER: %f\n", lvt(current));
 			statistics_on_gvt_serial(lvt(current));
