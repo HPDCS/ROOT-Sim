@@ -2,6 +2,7 @@
 #include <ROOT-Sim.h>
 
 #include <stdbool.h>
+#include "list.h"
 
 #define MAX_AGENTS		1024
 
@@ -57,12 +58,18 @@ typedef struct lp_agent_t{
         simtime_t lvt;
 }lp_agent_t;
 
+typedef struct _agent_node_t{
+	struct _agent_node_t *next;
+	struct _agent_node_t *prev;
+	lp_agent_t *agent;
+} agent_node_t;
 
 typedef struct lp_region_t {
 	unsigned int id;			// ID of the region in [ 0, get_tot_regions() )
 	measure_t data;				// Data to be measured in this region
-        unsigned int count;                     // Amount of agents inside the region
-        unsigned char *agents;                  // What agents are in the region
+	unsigned int count;                     // Amount of agents inside the region
+	unsigned char *agents;                  // What agents are in the region
+	list(agent_node_t) the_agents; 
 } lp_region_t;
 
 
