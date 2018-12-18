@@ -164,7 +164,6 @@ printout:
 			case EXIT: 
 				exit_p = (exit_t *) content;
 				region = (lp_region_t *) state;
-				
 				agent_node_t *temp = list_head(region->the_agents);
 				agent_node_t *tmptmp;
 				while(temp != NULL){
@@ -173,7 +172,7 @@ printout:
 						printf("REMOVING FROM %d AGENT %d at time %f\n", me, temp->agent->id, now);
 						if(tmptmp != NULL) printf("\t THERE IS STILL %d INSIDE!", tmptmp->agent->id);
 						list_delete_by_content(region->the_agents, temp);
-						free(temp);
+						//free(temp);
 						temp = tmptmp;
 						continue;
 					}
@@ -226,6 +225,7 @@ bool OnGVT(unsigned int me, void *snapshot) {
 			printf("ADD:%p \t", agent);
 			printf("C:%s \t", agent->complete ? "true" : "false");
 			printf("VC:%d \n{",agent->count);
+			unsigned int i;
 			for(i=0;i<get_tot_regions();i++){
 				if(BITMAP_CHECK_BIT(agent->map,i))
 					printf("1 ");

@@ -11,7 +11,7 @@
 #define SCATTERED 2
 
 #define max_pages 1048576
-#define alpha 15
+#define alpha 1
 
 typedef struct _ecs_page_node_t {
 	struct	_ecs_page_node_t *next;

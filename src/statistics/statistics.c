@@ -358,6 +358,10 @@ void statistics_stop(int exit_code) {
 				fprintf(f, "ECS PAGE FAULTS........... %f\n",  lp_stats[lid].ecs_page_faults);
 				fprintf(f, "ECS CLUSTERED PAGE FAULTS........... %f\n",  lp_stats[lid].ecs_clustered_faults);
 				fprintf(f, "ECS SCATTERED PAGE FAULTS........... %f\n",  lp_stats[lid].ecs_scattered_faults);
+				fprintf(f, "ECS NO PREFETCH TIME........... %f\n",  lp_stats[lid].ecs_no_prefetch_time);
+				fprintf(f, "ECS CLUSTERED TIME........... %f\n",  lp_stats[lid].ecs_clustered_time);
+				fprintf(f, "ECS SCATTERED TIME........... %f\n",  lp_stats[lid].ecs_scattered_time);
+
 				fprintf(f, "\n");
 			}
 		}
@@ -385,6 +389,9 @@ void statistics_stop(int exit_code) {
 			thread_stats[local_tid].ecs_page_faults += lp_stats[lid].ecs_page_faults;
 			thread_stats[local_tid].ecs_clustered_faults += lp_stats[lid].ecs_clustered_faults;
 			thread_stats[local_tid].ecs_scattered_faults += lp_stats[lid].ecs_scattered_faults;
+			thread_stats[local_tid].ecs_no_prefetch_time += lp_stats[lid].ecs_no_prefetch_time;
+			thread_stats[local_tid].ecs_clustered_time += lp_stats[lid].ecs_clustered_time;
+			thread_stats[local_tid].ecs_scattered_time += lp_stats[lid].ecs_scattered_time;
 		}
 		thread_stats[local_tid].exponential_event_time /= n_prc_per_thread;
 
@@ -424,6 +431,9 @@ void statistics_stop(int exit_code) {
 		fprintf(f, "ECS NO PREFETCH PAGE FAULTS ...... : %f \n", thread_stats[local_tid].ecs_page_faults);
 		fprintf(f, "ECS CLUSTERED PAGE FAULTS ...... : %f \n", thread_stats[local_tid].ecs_clustered_faults);
 		fprintf(f, "ECS SCATTERED PAGE FAULTS ...... : %f \n", thread_stats[local_tid].ecs_scattered_faults);
+		fprintf(f, "ECS NO PREFETCH TIME ...... : %f \n", thread_stats[local_tid].ecs_no_prefetch_time);
+		fprintf(f, "ECS CLUSTERED TIME ...... : %f \n", thread_stats[local_tid].ecs_clustered_time);
+		fprintf(f, "ECS SCATTERED TIME ...... : %f \n", thread_stats[local_tid].ecs_scattered_time);
 		fprintf(f, "AVERAGE MEMORY USAGE....... : %s\n",		format_size(thread_stats[local_tid].memory_usage / thread_stats[local_tid].gvt_computations));
 
 		if(exit_code == EXIT_FAILURE) {
@@ -464,6 +474,9 @@ void statistics_stop(int exit_code) {
 				system_wide_stats.ecs_page_faults += thread_stats[i].ecs_page_faults;
 				system_wide_stats.ecs_clustered_faults += thread_stats[i].ecs_clustered_faults;
 				system_wide_stats.ecs_scattered_faults += thread_stats[i].ecs_scattered_faults;
+				system_wide_stats.ecs_no_prefetch_time += thread_stats[i].ecs_no_prefetch_time;
+				system_wide_stats.ecs_clustered_time += thread_stats[i].ecs_clustered_time;
+				system_wide_stats.ecs_scattered_time += thread_stats[i].ecs_scattered_time;
 
 			}
 			system_wide_stats.exponential_event_time /= n_cores;
@@ -525,6 +538,9 @@ void statistics_stop(int exit_code) {
 			fprintf(f, "ECS NO PREFETCH FAULTS......... : %f\n",    system_wide_stats.ecs_page_faults);
 			fprintf(f, "ECS CLUSTERED FAULTS......... : %f\n",    system_wide_stats.ecs_clustered_faults);
 			fprintf(f, "ECS SCATTERED FAULTS......... : %f\n",    system_wide_stats.ecs_scattered_faults);
+			fprintf(f, "ECS NO PREFETCH TIME......... : %f\n",    system_wide_stats.ecs_no_prefetch_time);
+			fprintf(f, "ECS CLUSTERED TIME......... : %f\n",    system_wide_stats.ecs_clustered_time);
+			fprintf(f, "ECS SCATTERED TIME......... : %f\n",    system_wide_stats.ecs_scattered_time);
 
 			if(exit_code == EXIT_FAILURE) {
 				fprintf(f, "\n--------- SIMULATION ABNORMALLY TERMINATED ----------\n");
@@ -768,7 +784,16 @@ void statistics_post_lp_data(LID_t the_lid, unsigned int type, double data) {
 			case STAT_ECS_SCATTERED:
 				lp_stats[lid].ecs_scattered_faults += 0.1*data + 0.9*lp_stats[lid].ecs_scattered_faults;
 				break;
-
+			case STAT_ECS_NO_PREFETCH_TIME:
+				lp_stats[lid].ecs_no_prefetch_time += data;
+				break;
+			case STAT_ECS_CLUSTERED_TIME:
+				lp_stats[lid].ecs_clustered_time += data;
+				break;		
+			case STAT_ECS_SCATTERED_TIME:
+				lp_stats[lid].ecs_scattered_time += data;
+				break;	
+			
 			default:
 				rootsim_error(true, "Wrong LP statistics post type: %d. Aborting...\n", type);
 		}
@@ -883,6 +908,9 @@ double statistics_get_lp_data(unsigned int type, LID_t lid) {
 
 		case STAT_GET_EVENT_TIME_LP:
 			ret = lp_stats[lid_to_int(lid)].exponential_event_time;
+			break;
+		case STAT_GET_CLUSTERED_FAULTS:
+			ret = lp_stats[lid_to_int(lid)].ecs_clustered_faults;
 			break;
 
 		default:

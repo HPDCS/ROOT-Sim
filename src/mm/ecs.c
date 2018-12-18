@@ -48,14 +48,17 @@
 #include <scheduler/process.h>
 #include <communication/communication.h>
 #include <communication/gvt.h>
+#include <gvt/gvt.h>
 #include <arch/ult.h>
 #include <arch/x86.h>
 #include <statistics/statistics.h>
+#include <stdlib.h>
+#include <math.h>
 
 #include <arch/linux/modules/cross_state_manager/cross_state_manager.h>
 
 #define foo(x) printf(x "\n"); fflush(stdout)
-#define treshold(x) ((x * alpha) + 100 - 1) / 100
+#define treshold(x) (x * alpha)
 // TODO: trovare un modo elegante per utilizzare soltanto LID dentro questo modulo
 
 #define __NR_OPEN 2
@@ -126,7 +129,17 @@ ecs_prefetch_t* compute_scattered_data(malloc_state *state, GID_t gid, void * fa
 		else{
 			int weight = (utilizations[i] - min)/(max - min);
 			//printf("inserting %d pages from %p with weight %d\n", tot_pages * weight, pages_to_add[i], weight);
-			pfr = add_prefetch_page(pfr, pages_to_add[i], tot_pages * weight, write_mode);
+			int k = 0;
+			int rnd;
+			while(k < tot_pages * weight){	
+				rnd = rand() % (counts[i] +1);
+				//printf("rand is: %d while array size is %d\n", rnd, j);
+				//printf("picking page: %p\n", (long long) pages_to_add[i] + rnd * PAGE_SIZE & (~((long long)PAGE_SIZE - 1)));
+				pfr = add_prefetch_page(pfr, (long long) pages_to_add[i] + rnd * PAGE_SIZE & (~((long long)PAGE_SIZE - 1)), 1, write_mode);
+				//pages_to_add[rnd] = NULL;
+				k++;
+			}
+
 			tot_pages = 0;
 		}
 	}
@@ -242,7 +255,9 @@ void ecs_secondary(GID_t target_gid) {
 	unsigned long i=0;
 	msg_t *control_msg;
 	ecs_page_request_t page_req;
-
+	int nopref_avg_faults;
+	int clust_avg_faults;
+	int scatt_avg_faults;
 	// Disassemble the faulting instruction to get necessary information
 	x86_disassemble_instruction(faulting_insn, &i, &insn_disasm, DATA_64 | ADDR_64);
 
@@ -267,27 +282,34 @@ void ecs_secondary(GID_t target_gid) {
 		goto out;
 	}
 
-	if(current_lvt - LPS(current_lp)->ECS_last_prefetch_switch > 10000){ // <--- dafuuq??
+	goto out; //TODO: occhio	
+	
+	if(current_lvt - LPS(current_lp)->ECS_last_prefetch_switch > 200000){ // <--- dafuuq??
 		LPS(current_lp)->ECS_page_faults++;
 		current_mode = NO_PREFETCH;
+
 		goto out;
 	}
 	else{
-		//if(current_lvt - LPS(current_lp)->ECS_last_prefetch_switch > 50){ //<-- dafuqq??
-				
+		nopref_avg_faults = ceil(LPS(current_lp)->ECS_page_faults / LPS(current_lp)->ECS_no_prefetch_events);
 		//	printf("MODE IS %d, cont %d scatt %d, np faults %d, tresh %d at time %llu, lp %d\n", current_mode, LPS(current_lp)->ECS_clustered_faults, LPS(current_lp)->ECS_scattered_faults, LPS(current_lp)->ECS_page_faults, treshold(LPS(current_lp)->ECS_page_faults), current_lvt, LidToGid(current_lp).id);
 			//fflush(stdout);
 			switch (current_mode){
 				case NO_PREFETCH:
 					current_mode = CLUSTERED;
 					LPS(current_lp)->ECS_clustered_faults++;
+					LPS(current_lp)->ECS_no_prefetch_time += current_lvt - LPS(current_lp)->ECS_last_prefetch_switch;
+					LPS(current_lp)->ECS_last_prefetch_switch = current_lvt;
 					goto out;	
 				
 					break;
 				case CLUSTERED:
-					if(current_lvt - LPS(current_lp)->ECS_last_prefetch_switch > 1000 && !(LPS(current_lp)->ECS_clustered_faults <= LPS(current_lp)->ECS_page_faults)){
+					clust_avg_faults = ceil(LPS(current_lp)->ECS_clustered_faults / LPS(current_lp)->ECS_clustered_events);
+					if(current_lvt - LPS(current_lp)->ECS_last_prefetch_switch > 1000 && !(clust_avg_faults <= ceil(treshold(nopref_avg_faults)))){
 						current_mode = SCATTERED;
 						LPS(current_lp)->ECS_scattered_faults++;
+						LPS(current_lp)->ECS_clustered_time += current_lvt - LPS(current_lp)->ECS_last_prefetch_switch; 
+						LPS(current_lp)->ECS_last_prefetch_switch = current_lvt;
 						goto out;
 					}
 
@@ -296,9 +318,12 @@ void ecs_secondary(GID_t target_gid) {
 
 					break;
 				case SCATTERED:
-					if(current_lvt - LPS(current_lp)->ECS_last_prefetch_switch > 1000 && !(LPS(current_lp)->ECS_scattered_faults <= LPS(current_lp)->ECS_page_faults)){				
+					scatt_avg_faults =  ceil(LPS(current_lp)->ECS_scattered_faults / LPS(current_lp)->ECS_scattered_events);
+					if(current_lvt - LPS(current_lp)->ECS_last_prefetch_switch > 1000 && !(scatt_avg_faults <= ceil(treshold(nopref_avg_faults)))){
 						current_mode = NO_PREFETCH;
 						LPS(current_lp)->ECS_page_faults++;
+						LPS(current_lp)->ECS_scattered_time += current_lvt - LPS(current_lp)->ECS_last_prefetch_switch; 
+						LPS(current_lp)->ECS_last_prefetch_switch = current_lvt;
 						goto out;
 					}
 
@@ -316,7 +341,6 @@ out:
 	//printf("ECS CHANGING TIME %llu\n",  lvt(current_lp));
 	page_req.prefetch_mode = current_mode;
 	LPS(current_lp)->ECS_current_prefetch_mode = current_mode;
-	LPS(current_lp)->ECS_last_prefetch_switch = current_lvt;
 	
 	//printf("ECS Page Fault: LP %d accessing %d pages from %p ( %p )on LP %lu in %s mode\n", LidToGid(current_lp).id, page_req.count, (void *)page_req.base_address, (void*) target_address, fault_info.target_gid, (page_req.write_mode ? "write" : "read"));
 	fflush(stdout);
@@ -355,6 +379,21 @@ void ecs_initiate(void) {
 	// Block the execution of this LP
 	LPS(current_lp)->state = LP_STATE_WAIT_FOR_SYNCH;
 	LPS(current_lp)->wait_on_object = fault_info.target_gid;
+
+	if(GidToKernel(target_gid) != kid){
+		switch(LPS(current_lp)->ECS_current_prefetch_mode){
+			case NO_PREFETCH:
+				LPS(current_lp)->ECS_no_prefetch_events++;
+				break;
+			case CLUSTERED:
+				LPS(current_lp)->ECS_clustered_events++;
+				break;
+			case SCATTERED:
+				LPS(current_lp)->ECS_scattered_events++;
+				break;
+		
+		}
+	}
 
 	// Store which LP we are waiting for synchronization.
 	LPS(current_lp)->ECS_index++;
@@ -438,7 +477,7 @@ void ECS(void) {
 	// Kernel module gives us an unsigned long
 	set_gid(target_gid, fault_info.target_gid);
 
-//	printf("Entro nell'ECS handler per un fault di tipo %d\n", fault_info.fault_type);
+	//printf("Entro nell'ECS handler per un fault di tipo %d\n", fault_info.fault_type);
 
 	switch(fault_info.fault_type) {
 
@@ -709,6 +748,9 @@ void unblock_synchronized_objects(LID_t lid) {
 	statistics_post_lp_data(lid, STAT_ECS_CLUSTERED, page_faults_clustered == 0? page_faults_clustered: page_faults_clustered- 1);
 	statistics_post_lp_data(lid, STAT_ECS_SCATTERED, page_faults_scattered == 0? page_faults_scattered : page_faults_scattered - 1);
 	
+	statistics_post_lp_data(lid, STAT_ECS_NO_PREFETCH_TIME, LPS(lid)->ECS_no_prefetch_time);
+	statistics_post_lp_data(lid, STAT_ECS_CLUSTERED_TIME, LPS(lid)->ECS_clustered_time);
+	statistics_post_lp_data(lid, STAT_ECS_SCATTERED_TIME, LPS(lid)->ECS_scattered_time);
 	LPS(lid)->wait_on_rendezvous = 0;
 	LPS(lid)->ECS_index = 0;
 }

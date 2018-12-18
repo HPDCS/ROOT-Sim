@@ -6,8 +6,8 @@
 #include "application.h"
 
 
-//#define LOOP 100000
-#define LOOP 1000
+#define LOOP 100000
+//#define LOOP 1000
 
 
 void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_type *event_content, unsigned int size, void *ptr) {

@@ -74,6 +74,9 @@
 #define STAT_ECS_FAULT		14
 #define STAT_ECS_CLUSTERED		15
 #define STAT_ECS_SCATTERED		16
+#define STAT_ECS_NO_PREFETCH_TIME 17
+#define STAT_ECS_CLUSTERED_TIME 18
+#define STAT_ECS_SCATTERED_TIME 19
 
 /* Definition of Global Statistics Post Messages */
 #define STAT_SIM_START		1001
@@ -85,6 +88,7 @@
 #define STAT_GET_SIMTIME_ADVANCEMENT	15001
 #define STAT_GET_EVENT_TIME_LP		15002
 #define STAT_GET_TOT_ECS			15003
+#define STAT_GET_CLUSTERED_FAULTS	15004
 
 
 
@@ -118,6 +122,9 @@ struct stat_t {
 		ecs_page_faults,
 		ecs_clustered_faults,
 		ecs_scattered_faults,
+		ecs_no_prefetch_time,
+		ecs_clustered_time,
+		ecs_scattered_time,
 		simtime_advancement;
 };
 

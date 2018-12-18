@@ -135,6 +135,13 @@ typedef struct _LP_state {
 	int				ECS_page_faults;
 	int				ECS_clustered_faults;
 	int				ECS_scattered_faults;
+	int				ECS_no_prefetch_time;
+	int				ECS_clustered_time;
+	int				ECS_scattered_time;
+	int				ECS_no_prefetch_events;
+	int				ECS_clustered_events;
+	int				ECS_scattered_events;
+
 	#endif
 
 	unsigned long long	wait_on_rendezvous;
