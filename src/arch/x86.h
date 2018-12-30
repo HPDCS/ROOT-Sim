@@ -346,7 +346,7 @@ struct disassembly_state {
 	unsigned long orig_pos;	// Posizione iniziale nel testo
 	bool read_dest;		// Indica se è stata analizzata la destinazione
 
-	// [FV] Flag indicante se l'istruzione usi un indirizzamento RIP_Relative o meno
+	// [FV] Flag indicante se l'istruzione usa un indirizzamento RIP_Relative o meno
 	bool uses_rip;
 
 	insn_info_x86 *instrument;	// Struttura dati per gestire l'instrumentazione

@@ -53,7 +53,6 @@ static seed_type master_seed;
 
 static double do_random(void)
 {
-
 	uint32_t *seed1;
 	uint32_t *seed2;
 
@@ -105,9 +104,7 @@ int RandomRangeNonUniform(int x, int min, int max)
 	double ret;
 	switch_to_platform_mode();
 
-	ret =
-	    (((RandomRange(0, x) | RandomRange(min, max))) % (max - min + 1)) +
-	    min;
+	ret = (((RandomRange(0, x) | RandomRange(min, max))) % (max - min + 1)) + min;
 
 	switch_to_application_mode();
 	return ret;
@@ -155,7 +152,7 @@ double Normal(void)
 			v1 = 2.0 * Random() - 1.0;
 			v2 = 2.0 * Random() - 1.0;
 			rsq = v1 * v1 + v2 * v2;
-		} while (rsq >= 1.0 || D_DIFFER_ZERO(rsq));
+		} while (rsq >= 1.0 || D_EQUAL_ZERO(rsq));
 
 		fac = sqrt(-2.0 * log(rsq) / rsq);
 
@@ -266,9 +263,8 @@ int Zipf(double skew, int limit)
 static seed_type sanitize_seed(seed_type cur_seed)
 {
 
-	uint32_t *seed1 = (uint32_t *) & (cur_seed);
-	uint32_t *seed2 =
-	    (uint32_t *) ((char *)&(cur_seed) + (sizeof(uint32_t)));
+	uint32_t *seed1 = (uint32_t *) &(cur_seed);
+	uint32_t *seed2 = (uint32_t *) ((char *)&(cur_seed) + (sizeof(uint32_t)));
 
 	// Sanitize seed1
 	// Any integer multiple of 0x9068FFFF, including 0, is a bad state
@@ -330,7 +326,7 @@ static seed_type sanitize_seed(seed_type cur_seed)
 static void load_seed(void)
 {
 
-	static bool single_print = false;	// To print only once a message about manual initialization
+	static bool single_print = false; // To print only once a message about manual initialization
 	seed_type new_seed;
 	char conf_file[512];
 	FILE *fp;
@@ -346,21 +342,16 @@ static void load_seed(void)
 		_mkdir(conf_file);
 
 		// Create and initialize the file
-		sprintf(conf_file, "%s/.rootsim/numerical.conf",
-			getenv("HOME"));
+		sprintf(conf_file, "%s/.rootsim/numerical.conf", getenv("HOME"));
 		if ((fp = fopen(conf_file, "w")) == NULL) {
-			rootsim_error(true,
-				      "Unable to create the numerical library configuration file %s. Aborting...",
-				      conf_file);
+			rootsim_error(true, "Unable to create the numerical library configuration file %s. Aborting...", conf_file);
 		}
 
 		// We now initialize the first long random number. Thanks Unix!
 		// TODO: THIS IS NOT PORTABLE!
 		int fd;
 		if ((fd = open("/dev/random", O_RDONLY)) == -1) {
-			rootsim_error(true,
-				      "Unable to initialize the numerical library configuration file %s. Aborting...",
-				      conf_file);
+			rootsim_error(true, "Unable to initialize the numerical library configuration file %s. Aborting...", conf_file);
 
 		}
 		read(fd, &new_seed, sizeof(seed_type));
@@ -375,17 +366,14 @@ static void load_seed(void)
 
 		if (!single_print) {
 			single_print = true;
-			printf("Manually setting master seed to %llu\n",
-			       (unsigned long long)rootsim_config.set_seed);
+			printf("Manually setting master seed to %llu\n", (unsigned long long)rootsim_config.set_seed);
 		}
 		master_seed = rootsim_config.set_seed;
 	}
 
 	// Load the configuration for the numerical library
 	if ((fp = fopen(conf_file, "r+")) == NULL) {
-		rootsim_error(true,
-			      "Unable to load numerical distribution configuration: %s. Aborting...",
-			      conf_file);
+		rootsim_error(true, "Unable to load numerical distribution configuration: %s. Aborting...", conf_file);
 	}
 
 	// Load the initial seed
@@ -402,6 +390,7 @@ static void load_seed(void)
 	fclose(fp);
 }
 
+
 // TODO: con un (non tanto) alto numero di processi logici (> numero di bit di un intero!!), lo shift
 // circolare restituisce a due LP differenti lo stesso seme iniziale. Questo fa sì che, se la logica di
 // programma è la stessa e basata soltanto su numeri casuali, due o più nodi eseguano sempre la stessa
@@ -416,10 +405,7 @@ void numerical_init(void)
 
 	// Initialize the per-LP seed
 	foreach_lp(lp) {
-		lp->numerical.seed =
-		    sanitize_seed(ROR
-				  ((int64_t) master_seed,
-				   lp->gid.to_int % RS_WORD_LENGTH));
+		lp->numerical.seed = sanitize_seed(ROR((int64_t) master_seed, lp->gid.to_int % RS_WORD_LENGTH));
 	}
 
 }

@@ -84,7 +84,6 @@ enum _opt_codes{
 	OPT_INC,
 	OPT_A,
 	OPT_GVT,
-	OPT_BLOCKING_GVT,
 	OPT_GVT_SNAPSHOT_CYCLES,
 	OPT_SIMULATION_TIME,
 	OPT_DETERMINISTIC_SEED,
@@ -163,7 +162,6 @@ static const struct argp_option argp_options[] = {
 	{"A",			OPT_A,			0,		0,		"Autonomic subsystem: set checkpointing interval and log mode automatically at runtime (still to be released)", 0},
 	{"gvt",			OPT_GVT,		"VALUE",	0,		"Time between two GVT reductions (in milliseconds)", 0},
 	{"cktrm-mode",		OPT_CKTRM_MODE,		"TYPE",		0,		"Termination Detection mode. Supported values: normal, incremental", 0},
-	{"blocking-gvt",	OPT_BLOCKING_GVT,	0,		0,		"Blocking GVT. All distributed nodes block until a consensus is agreed", 0},
 	{"gvt-snapshot-cycles",	OPT_GVT_SNAPSHOT_CYCLES, "VALUE",	0,		"Termination detection is invoked after this number of GVT reductions", 0},
 	{"simulation-time",	OPT_SIMULATION_TIME, 	"VALUE",	0,		"Halt the simulation when all LPs reach this logical time. 0 means infinite", 0},
 	{"lps-distribution",	OPT_LPS_DISTRIBUTION, 	"TYPE",		0,		"LPs distributions over simulation kernels policies. Supported values: block, circular", 0},
@@ -240,11 +238,11 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 			rootsim_config.output_dir = arg;
 			break;
 
-		handle_string_option(OPT_SCHEDULER, 	rootsim_config.scheduler);
-		handle_string_option(OPT_FULL, 			rootsim_config.snapshot);
-		handle_string_option(OPT_CKTRM_MODE, 	rootsim_config.check_termination_mode);
-		handle_string_option(OPT_VERBOSE, 		rootsim_config.verbose);
-		handle_string_option(OPT_STATS, 		rootsim_config.stats);
+		handle_string_option(OPT_SCHEDULER, rootsim_config.scheduler);
+		handle_string_option(OPT_FULL, rootsim_config.snapshot);
+		handle_string_option(OPT_CKTRM_MODE, rootsim_config.check_termination_mode);
+		handle_string_option(OPT_VERBOSE, rootsim_config.verbose);
+		handle_string_option(OPT_STATS, rootsim_config.stats);
 		handle_string_option(OPT_LPS_DISTRIBUTION, rootsim_config.lps_distribution);
 
 		case OPT_NPWD:
@@ -277,10 +275,6 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 
 		case OPT_GVT:
 			rootsim_config.gvt_time_period = parse_ullong_limits(1, 10000);
-			break;
-
-		case OPT_BLOCKING_GVT:
-			rootsim_config.blocking_gvt = true;
 			break;
 
 		case OPT_GVT_SNAPSHOT_CYCLES:
@@ -330,7 +324,6 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 			rootsim_config.gvt_snapshot_cycles = 2;
 			rootsim_config.ckpt_period = 10;
 			rootsim_config.simulation_time = 0;
-			rootsim_config.blocking_gvt = false;
 			rootsim_config.deterministic_seed = false;
 			rootsim_config.set_seed = 0;
 			rootsim_config.serial = false;

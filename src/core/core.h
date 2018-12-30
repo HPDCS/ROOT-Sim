@@ -121,11 +121,28 @@ enum {
 #define UNION_CAST(x, destType) (((union {__typeof__(x) a; destType b;})x).b)
 
 // GID and LID types
+
+/**
+ * @brief Definition of a GID.
+ *
+ * This structure defines a GID. The purpose of this structure is to make
+ * functions dealing with GIDs and LIDs type safe, to avoid runtime problems
+ * if the two are mixed when calling a function.
+ */
 typedef struct _gid_t {
-	unsigned int to_int;
+	unsigned int to_int;	///< The GID numerical value
 } GID_t;
+
+
+/**
+ * @brief Definition of a LID.
+ *
+ * This structure defines a LID. The purpose of this structure is to make
+ * functions dealing with GIDs and LIDs type safe, to avoid runtime problems
+ * if the two are mixed when calling a function.
+ */
 typedef struct _lid_t {
-	unsigned int to_int;
+	unsigned int to_int;	///< The LID numerical value
 } LID_t;
 
 #define is_lid(val) __builtin_types_compatible_p(__typeof__ (val), LID_t)
@@ -216,4 +233,4 @@ extern inline bool user_requested_exit(void);
 extern inline bool simulation_error(void);
 extern void initialization_complete(void);
 
-#define rootsim_error(fatal, msg, ...) _rootsim_error(fatal, "%s:%d: %s()" msg, __FILE__, __LINE__, __FUNCTION__ __VA_OPT__(,) __VA_ARGS__)
+#define rootsim_error(fatal, msg, ...) _rootsim_error(fatal, "%s:%d: %s(): " msg, __FILE__, __LINE__, __FUNCTION__, ##__VA_ARGS__)

@@ -32,8 +32,7 @@ AS_IF([test x$enable_debug = xyes],
 
 # Flag to enable code coverage
 AS_IF([test x$enable_coverage = xyes],
-      [CFLAGS="$CFLAGS -coverage"])
-
+      [CFLAGS="-coverage $CFLAGS"])
 
 # Extra check flags
 AC_ARG_ENABLE(extra-checks,
@@ -362,7 +361,6 @@ AC_MSG_RESULT([ok])
 AC_CONFIG_FILES([Makefile
 		 man/Makefile
 		 scripts/Makefile
-		 src/Makefile
 		 src/arch/x86/linux/Makefile])
 AC_OUTPUT
 

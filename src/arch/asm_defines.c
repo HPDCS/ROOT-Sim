@@ -34,6 +34,10 @@
  * @author Alessandro Pellegrini
  */
 
+
+#ifdef ASM_DEFINES
+
+
 #include <scheduler/process.h>
 #include <arch/x86/jmp.h>
 
@@ -99,3 +103,5 @@ void foo(void)
 	OFFSETOF(exec_context_t, flags);
 	OFFSETOF(exec_context_t, fpu);
 }
+
+#endif /* ASM_DEFINES */

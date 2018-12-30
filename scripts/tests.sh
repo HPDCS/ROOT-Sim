@@ -1,5 +1,14 @@
 #!/bin/bash
 
+# USAGE NOTE:
+# This script is intended to be used both for testing and for increasing
+# the code coverage of the tests.
+# Therefore, it is organized so as to generate code coverage paths which
+# make sense for gcov to merge all the different runs in proper reports.
+# If you cd in the scripts folder and run it, it won't work.
+# You should call it from the main ROOT-Sim source folder as:
+# ./scripts/tests.sh
+
 tests=()
 mpi=()
 normal=()
@@ -12,8 +21,7 @@ retval=0
 
 function do_unit_test() {
 	unit_tests+=($1)
-	cd tests
-	make $1 > /dev/null
+	make -f tests/Makefile $1 > /dev/null
 	echo -n "Running unit test $1... "
 	./$1 > /dev/null
 	
@@ -25,16 +33,12 @@ function do_unit_test() {
 		retval=1
 		echo "failed."
 	fi
-	cd ..
 }
 
 function do_test() {
 
 	# Compile and store the name of the test suite
-	cd models/$1/
-	rootsim-cc *.c -o model
-	cd ../..
-	cp models/$1/model .
+	rootsim-cc models/$1/*.c -o model
 	tests+=($1)
 
 	# Run this model using MPI
@@ -78,6 +82,7 @@ function do_test() {
 
 # Run available unit tests
 do_unit_test dymelor
+do_unit_test numerical
 
 
 # Run models to make comprehensive tests

@@ -188,9 +188,9 @@ void simulation_shutdown(int code)
 
 		if (master_thread()) {
 			statistics_fini();
-			scheduler_fini();
 			gvt_fini();
 			communication_fini();
+			scheduler_fini();
 			base_fini();
 		}
 

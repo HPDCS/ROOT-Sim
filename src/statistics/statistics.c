@@ -253,7 +253,6 @@ static void print_config_to_file(FILE *f)
 		"Halt Simulation After: %d\n"
 		"LPs Distribution Mode across Kernels: %s\n"
 		"Check Termination Mode: %s\n"
-		"Blocking GVT: %s\n"
 		"Set Seed: %ld\n",
 		n_ker,
 		get_cores(),
@@ -271,7 +270,6 @@ static void print_config_to_file(FILE *f)
 		rootsim_config.simulation_time,
 		param_to_text[PARAM_LPS_DISTRIBUTION][rootsim_config.lps_distribution],
 		param_to_text[PARAM_CKTRM_MODE][rootsim_config.check_termination_mode],
-		((rootsim_config.blocking_gvt)? "yes":"no"),
 		rootsim_config.set_seed);
 }
 

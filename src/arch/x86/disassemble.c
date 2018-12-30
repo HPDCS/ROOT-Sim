@@ -39,7 +39,7 @@
  * @date September 19, 2008
  */
 
-#if defined(__x86_64__)
+#if defined(__x86_64__) && defined(HAVE_ECS)
 
 #include <stdio.h>
 #include <string.h>
@@ -5377,5 +5377,5 @@ void x86_disassemble_instruction (unsigned char *text, unsigned long *pos, insn_
 
 }
 
-#endif /* defined(__x86_64__) */
+#endif /* defined(__x86_64__) && defined(HAVE_ECS) */
 

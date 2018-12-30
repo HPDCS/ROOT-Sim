@@ -49,10 +49,23 @@
 
 #include <arch/jmp.h>
 
+/// Definition of an execution context for an LP. This is just syntactic sugar.
 typedef exec_context_t LP_context_t;
+
+/// Definition of an execution context for a worker thread. This is just syntactic sugar.
 typedef exec_context_t kernel_context_t;
 
-/// Save machine context for userspace context switch. This is used only in initialization.
+/**
+ * @brief Save machine context for userspace context switch
+ *
+ * This macro performs a context save in the specified context (a pointer).
+ *
+ * This is used only in initialization to setup the execution contexts.
+ * After that, the platform only relies on context_switch()
+ *
+ * @param context A pointer to the @ref exec_context_t to save the current
+ *                CPU context into.
+ */
 #define context_save(context) set_jmp(context)
 
 /// Restore machine context for userspace context switch. This is used only in inizialitaion.

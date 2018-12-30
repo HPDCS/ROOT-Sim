@@ -66,7 +66,6 @@ typedef struct _simulation_configuration {
 	int ckpt_period;		///< Number of events to execute before taking a snapshot in PSS (ignored otherwise)
 	int snapshot;			///< Type of snapshot (e.g., full, incremental, autonomic, ...)
 	int check_termination_mode;	///< Check termination strategy: standard or incremental
-	bool blocking_gvt;		///< GVT protocol blocking or not
 	bool deterministic_seed;	///< Does not change the seed value config file that will be read during the next runs
 	int verbose;			///< Kernel verbose
 	enum stats_levels stats;	///< Produce performance statistic file (default STATS_ALL)

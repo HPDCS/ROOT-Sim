@@ -34,12 +34,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#if (!defined(NDEBUG)) && defined(HAVE_HELGRIND_H)
-#include <valgrind/helgrind.h>
-#endif
-
-//#define SPINLOCK_GIVES_COUNT
-
 /**
  * Atomic counter definition. This is a structure keeping a volatile int
  * inside. The structure and the volatile part is required to avoid
@@ -59,25 +53,14 @@ typedef struct {
 } spinlock_t;
 
 
-inline bool CAS(volatile uint64_t * ptr, uint64_t oldVal, uint64_t newVal);
 inline bool iCAS(volatile uint32_t * ptr, uint32_t oldVal, uint32_t newVal);
 inline int atomic_test_and_set(int *);
-inline int atomic_test_and_reset(int *);
-inline void atomic_add(atomic_t *, int);
-inline void atomic_sub(atomic_t *, int);
 inline void atomic_inc(atomic_t *);
 inline void atomic_dec(atomic_t *);
 inline int atomic_inc_and_test(atomic_t * v);
 inline bool spin_trylock(spinlock_t * s);
 inline void spin_unlock(spinlock_t * s);
-
-#ifdef SPINLOCK_GIVES_COUNT
-inline unsigned int spin_lock(spinlock_t * s);
-#else
 inline void spin_lock(spinlock_t * s);
-#endif
-
-#define LOCK "lock; "
 
 /// Read operation on an atomic counter
 #define atomic_read(v)		((v)->count)
