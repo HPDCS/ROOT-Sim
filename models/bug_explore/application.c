@@ -45,7 +45,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, agent_t agent,
 				ProcessEvent(me, now, SPAWN_BUG, 0, 0, region);
 			}
 
-			ScheduleNewEvent(me, now + TIME_STEP / 1000, PRODUCE_FOOD, NULL, 0);
+			ScheduleNewEvent(me, now + TIME_STEP, PRODUCE_FOOD, NULL, 0);
 
 			break;
 
@@ -171,5 +171,5 @@ int OnGVT(unsigned int me, region_t *snapshot) {
 
 	printf(" and size of last passed bug is %lf.\n", snapshot->last_bug_size);
 
-	return !snapshot->bugs;/// XXX fix with whatever stuff you prefer
+	return snapshot->is_explored;/// XXX fix with whatever stuff you prefer
 }

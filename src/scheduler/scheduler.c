@@ -229,9 +229,10 @@ void initialize_worker_thread(void)
 		lp->state_log_forced = true;
 	}
 
+	thread_barrier(&all_thread_barrier);
+
 	foreach_bound_lp(lp) {
-		(void)lp;
-		schedule();
+		schedule_on_init(lp);
 	}
 
 	// Worker Threads synchronization barrier: they all should start working together
@@ -385,6 +386,59 @@ void schedule(void)
 		next->state = LP_STATE_RUNNING_ECS;
 	else
 		next->state = LP_STATE_RUNNING;
+
+	activate_LP(next, event);
+
+	if (!is_blocked_state(next->state)) {
+		next->state = LP_STATE_READY;
+		send_outgoing_msgs(next);
+	}
+#ifdef HAVE_CROSS_STATE
+	if (resume_execution && !is_blocked_state(next->state)) {
+		//printf("ECS event is finished mark %llu !!!\n", next->wait_on_rendezvous);
+		fflush(stdout);
+		unblock_synchronized_objects(next);
+
+		// This is to avoid domino effect when relying on rendezvous messages
+		force_LP_checkpoint(next);
+	}
+#endif
+
+	// Log the state, if needed
+	LogState(next);
+}
+
+void schedule_on_init(struct lp_struct *next)
+{
+	msg_t *event;
+
+#ifdef HAVE_CROSS_STATE
+	bool resume_execution = false;
+#endif
+
+	event = list_head(next->queue_in);
+	next->bound = event;
+
+
+	// Sanity check: if we get here, it means that lid is a LP which has
+	// at least one event to be executed. If advance_to_next_event() returns
+	// NULL, it means that lid has no events to be executed. This is
+	// a critical condition and we abort.
+	if (unlikely(event == NULL) || event->type != INIT) {
+		rootsim_error(true,
+			      "Critical condition: LP %d should have an INIT event but I cannot find it. Aborting...\n",
+			      next->gid);
+	}
+
+#ifdef HAVE_CROSS_STATE
+	// In case we are resuming an interrupted execution, we keep track of this.
+	// If at the end of the scheduling the LP is not blocked, we can unblock all the remote objects
+	if (is_blocked_state(next->state) || next->state == LP_STATE_READY_FOR_SYNCH) {
+		resume_execution = true;
+	}
+#endif
+
+	next->state = LP_STATE_RUNNING;
 
 	activate_LP(next, event);
 

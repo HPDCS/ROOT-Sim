@@ -17,6 +17,8 @@
 #include <datatypes/array.h>
 #include <datatypes/heap.h>
 #include <scheduler/process.h>
+#include <core/init.h>
+#include <serial/serial.h>
 
 struct _topology_global_t topology_global;
 
@@ -25,6 +27,11 @@ void UncheckedScheduleNewEvent(unsigned int gid_receiver, simtime_t timestamp, u
 
 	msg_t *event;
 	GID_t receiver;
+
+	if(unlikely(rootsim_config.serial)){
+		SerialScheduleNewEvent(gid_receiver, timestamp, event_type, event_content, event_size);
+		return;
+	}
 
 	// Internally to the platform, the receiver is a GID, while models
 	// have no difference across GIDs and LIDs. We convert here the passed
@@ -317,7 +324,7 @@ void ProcessEventTopology(void){
 			break;
 		default:
 			switch_to_application_mode();
-			current->ProcessEvent(current->gid.to_int, current_evt->timestamp, current_evt->type, current_evt->event_content, 0, current->current_base_pointer);
+			current->ProcessEvent(current->gid.to_int, current_evt->timestamp, current_evt->type, current_evt->event_content, current_evt->size, current->current_base_pointer);
 			switch_to_platform_mode();
 	}
 }

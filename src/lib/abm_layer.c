@@ -64,7 +64,6 @@ struct _region_abm_t {
 	unsigned published_data_offset;
 	unsigned char *tracked_data;
 	unsigned chkp_size;
-	unsigned neighbours_count;
 	struct _n_info_t{
 		unsigned data_offset;
 		unsigned int src_lp;
@@ -209,16 +208,12 @@ void abm_layer_init(void) {
 		region_alloc_size = (unsigned)(sizeof(region_abm_t) + (sizeof(struct _n_info_t) * directions) + (abm_settings.neighbour_data_size * (actual_neighbours + 1)));
 		// instantiates region struct
 		region = rsalloc(region_alloc_size);
+		memset(region, 0, region_alloc_size);
 		// memory layout is as follows:
 		// BASE REGION STRUCT | ARRAY OF NEIGHBOUR INFOS | PUBLISHED DATA BY SELF | ARRAY OF PUBLISHED DATA BY OTHER REGIONS
 		region->chkp_size = region_alloc_size;
-		// save neighbours count
-		region->neighbours_count = actual_neighbours;
 		// helper offset variable for easier assignment of memory regions
-		data_offset = (unsigned char *)&region->neighbours_info[actual_neighbours] - (unsigned char *)region;
-		// set neighbours data regions to 0
-		memset((unsigned char *)region + data_offset, 0, abm_settings.neighbour_data_size * (actual_neighbours + 1));
-
+		data_offset = (unsigned)(sizeof(region_abm_t) + (sizeof(struct _n_info_t) * directions));
 		// the nearest block is used to keep track of published data
 		region->published_data_offset = data_offset;
 		// here we assign a memory region only to valid neighbours
@@ -353,19 +348,22 @@ static void receive_update(void){
 		rootsim_error(true, "Misuse of ABM api, regions do not agree on neighbours info size! EXITING!");
 
 	region_abm_t *region = current->region;
-	unsigned i = region->neighbours_count;
+	unsigned i = DirectionsCount();
 	while(i--){// FIXME linear search, maybe sort them at init for log search or sort by direction for constant indexing
 		if(region->neighbours_info[i].src_lp == current_evt->sender.to_int){
 			memcpy(((unsigned char *)region) + region->neighbours_info[i].data_offset, current_evt->event_content, abm_settings.neighbour_data_size);
 			return;
 		}
 	}
+	rootsim_error(true, "Misuse of ABM api, unable to find neighbours info's memory area! EXITING!");
 }
 
 static void dispatch_leavers(void){
 	struct _agent_abm_t *agent;
+	unsigned long long key;
 	while(array_count(current->region->agents_leaving)){
-		agent = hash_map_lookup(current->region->agents_table, array_pop(current->region->agents_leaving));
+		key = array_pop(current->region->agents_leaving);
+		agent = hash_map_lookup(current->region->agents_table, key);
 		if(agent && agent->leave_event){
 			UncheckedScheduleNewEvent(current->gid.to_int, agent->leave_time, ABM_LEAVING, &agent->key, sizeof(agent->key));
 		}
@@ -383,10 +381,11 @@ static void update_neighbours(void){
 	memcpy(published_data, region->tracked_data, abm_settings.neighbour_data_size);
 
 	// let's propagate the changes to other regions too
-	unsigned i = region->neighbours_count;
+	unsigned i = DirectionsCount();
 	while(i--){
-		if(region->neighbours_info[i].src_lp != DIRECTION_INVALID)
+		if(region->neighbours_info[i].src_lp != DIRECTION_INVALID){
 			UncheckedScheduleNewEvent(region->neighbours_info[i].src_lp, current_evt->timestamp, ABM_UPDATE, published_data, abm_settings.neighbour_data_size);
+		}
 	}
 }
 

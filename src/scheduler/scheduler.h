@@ -58,6 +58,7 @@ enum {
 extern void scheduler_init(void);
 extern void scheduler_fini(void);
 extern void schedule(void);
+extern void schedule_on_init(struct lp_struct *next);
 extern void initialize_worker_thread(void);
 extern void activate_LP(struct lp_struct *, msg_t *);
 extern void LP_main_loop(void *args);

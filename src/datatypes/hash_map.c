@@ -239,7 +239,7 @@ inline unsigned char * _hash_map_load(struct _inner_hash_map_t *_i_hmap, unsigne
 	_source += sizeof(map_size_t);
 	size_t table_cpy_size = (_i_hmap->capacity_mo + 1) * sizeof(*(_i_hmap->nodes));
 	_i_hmap->nodes = rsalloc(table_cpy_size);
-	memcpy(_i_hmap->nodes,_source, table_cpy_size);
+	memcpy(_i_hmap->nodes, _source, table_cpy_size);
 	_source += table_cpy_size;
 	return _source;
 }
