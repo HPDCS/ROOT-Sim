@@ -15,7 +15,7 @@
 * For a full understanding of the code, we encourage reading that paper.
 *
 * @copyright
-* Copyright (C) 2008-2018 HPDCS Group
+* Copyright (C) 2008-2019 HPDCS Group
 * https://hpdcs.github.io
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
