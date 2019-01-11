@@ -61,6 +61,7 @@ struct _agent_abm_t {
 struct _region_abm_t {
 	rootsim_hash_map(struct _agent_abm_t) agents_table;
 	rootsim_array(unsigned long long) agents_leaving;
+	unsigned long long next_mark;
 	unsigned published_data_offset;
 	unsigned char *tracked_data;
 	unsigned chkp_size;
@@ -70,6 +71,11 @@ struct _region_abm_t {
 	} neighbours_info[];
 };
 
+static inline unsigned long long get_agent_mark(region_abm_t *region){
+	unsigned long long ret = region->next_mark;
+	region->next_mark += RegionsCount();
+	return ret;
+}
 
 static unsigned agent_dump_size(const struct _agent_abm_t *agent) {
 	return (unsigned)(sizeof(agent->key) + sizeof(agent->user_data_size) + agent->user_data_size
@@ -99,11 +105,7 @@ static struct _agent_abm_t* agent_from_buffer(const unsigned char* event_content
 	return agent;
 }
 
-static unsigned char* agent_to_buffer(struct _agent_abm_t *agent, unsigned *ret_size){
-	//we are going into another region: let's calculate the buffer size
-	unsigned buffer_size = agent_dump_size(agent);
-	// XXX this copy isn't actually needed, we just need to pack the messages ourselves!!!
-	unsigned char *buffer = rsalloc(buffer_size);
+static void agent_to_buffer(struct _agent_abm_t *agent, unsigned char* buffer){
 	// we use buffer as a mobile pointer so we need to save the original value
 	unsigned char *to_send = buffer;
 	// copy relevant fields
@@ -116,10 +118,7 @@ static unsigned char* agent_to_buffer(struct _agent_abm_t *agent, unsigned *ret_
 	if(abm_settings.keep_history)
 		array_dump(agent->past, buffer);
 	// sanity check
-	assert(buffer == to_send + buffer_size);
-	// return the stuff
-	*ret_size = buffer_size;
-	return to_send;
+	assert(buffer == to_send +  agent_dump_size(agent));
 }
 
 unsigned char * abm_do_checkpoint(region_abm_t *region){
@@ -231,15 +230,21 @@ void abm_layer_init(void) {
 		// initialize the hash_map for agents
 		hash_map_init(region->agents_table);
 		array_init(region->agents_leaving);
+		// initialize mark
+		region->next_mark = lp->gid.to_int;
 		// Save pointer in LP state
 		lp->region = region;
 	}
 }
 
+static void receive_update(void);
+static void update_neighbours(void);
+
 static void on_abm_visit(void){
 	struct _visit_abm_t vis;
+	receive_update();
 	// parse the entering agent
-	struct _agent_abm_t *agent = agent_from_buffer(current_evt->event_content, current_evt->size);
+	struct _agent_abm_t *agent = agent_from_buffer(current_evt->event_content + abm_settings.neighbour_data_size, current_evt->size - abm_settings.neighbour_data_size);
 
 	if(array_empty(agent->future) || array_get_at(agent->future, 0).region != current->gid.to_int){
 		// this is an intermediate objective to reach the next destination
@@ -278,6 +283,7 @@ static void on_abm_leave(void){
 	agent = hash_map_lookup(current->region->agents_table, *((unsigned long long*)current_evt->event_content));
 	if(!agent || agent->leave_time > current_evt->timestamp){
 		// the capricious user has decided against the agent departure
+		update_neighbours();
 		return;
 	}
 	// well, the agent is actually leaving after all...
@@ -309,6 +315,7 @@ static void on_abm_leave(void){
 		// TODO communicate the user about the failed leave, maybe call user's ProcessEvent()
 		// with a proper event type, this can happen legitimately (for example the agents is
 		// surrounded by obstacles regions)
+		update_neighbours();
 		return;
 	}
 
@@ -332,20 +339,45 @@ static void on_abm_leave(void){
 		switch_to_application_mode();
 		current->ProcessEvent(current->gid.to_int, current_evt->timestamp, agent->leave_event, (void *)agent->key, 0, current->current_base_pointer);
 		switch_to_platform_mode();
+		update_neighbours();
 	} else {
-		to_send = agent_to_buffer(agent, &buffer_size);
+		buffer_size = agent_dump_size(agent) + abm_settings.neighbour_data_size;
+
+		region_abm_t *region = current->region;
+
+		to_send = rsalloc(buffer_size);
+
+		memcpy(to_send, region->tracked_data, abm_settings.neighbour_data_size);
+
+		agent_to_buffer(agent, to_send + abm_settings.neighbour_data_size);
 		// finally we schedule the agent
 		UncheckedScheduleNewEvent(next_hop, current_evt->timestamp, ABM_VISITING, to_send, buffer_size);
 		// now we can get rid of it
 		KillAgent(agent->key);
 		// remember to free that stuff if we mallocated it!
 		rsfree(to_send);
+
+		unsigned char* published_data = ((unsigned char *)region) + region->published_data_offset;
+		// we check whether we need to update our neighbours about some changes in the tracked data
+		if(!region->tracked_data || !memcmp(published_data, region->tracked_data, abm_settings.neighbour_data_size))
+			return;
+
+		// copy the new data into the tracked one
+		memcpy(published_data, region->tracked_data, abm_settings.neighbour_data_size);
+
+		// let's propagate the changes to other regions too
+		unsigned i = DirectionsCount();
+		while(i--){
+			if(region->neighbours_info[i].src_lp != DIRECTION_INVALID && region->neighbours_info[i].src_lp != next_hop){
+				UncheckedScheduleNewEvent(region->neighbours_info[i].src_lp, current_evt->timestamp, ABM_UPDATE, published_data, abm_settings.neighbour_data_size);
+			}
+		}
 	}
 }
 
 static void receive_update(void){
-	if(abm_settings.neighbour_data_size != current_evt->size)
-		rootsim_error(true, "Misuse of ABM api, regions do not agree on neighbours info size! EXITING!");
+	//if(abm_settings.neighbour_data_size != current_evt->size)
+		//rootsim_error(true, "Misuse of ABM api, regions do not agree on neighbours info size! EXITING!");
 
 	region_abm_t *region = current->region;
 	unsigned i = DirectionsCount();
@@ -398,7 +430,8 @@ void ProcessEventABM(void) {
 
 		case ABM_LEAVING:
 			on_abm_leave();
-			break;
+			dispatch_leavers();
+			return;
 
 		case ABM_UPDATE:
 			receive_update();
@@ -411,8 +444,8 @@ void ProcessEventABM(void) {
 			break;
 
 	}
-	dispatch_leavers();
 	update_neighbours();
+	dispatch_leavers();
 }
 
 int GetNeighbourInfo(direction_t i, unsigned int *region_id, void **data_p){
@@ -452,7 +485,7 @@ unsigned CountAgents(void) {
 agent_t SpawnAgent(unsigned user_data_size) {
 	switch_to_platform_mode();
 
-	unsigned long long new_key = generate_mark(current);
+	unsigned long long new_key = get_agent_mark(current->region);
 	// new agent
 	struct _agent_abm_t *ret = hash_map_reserve_elem(current->region->agents_table, new_key);
 
@@ -580,3 +613,45 @@ void RemoveVisit(agent_t agent_id, unsigned i) {
 
 	array_remove_at(agent->future, i);
 }
+/*
+XXXXXNNNNNNWWX0kxxxkkkkkkkOkOOOOOOOOOOOkOOOOOO0000OO0000000000Okxxdooooooodddddd
+KXXXNNNNNWNKOdodxxxxxkkkkxddoooodxdxxkkkkkkkOOOO00000000000KKK╔═╗  ┌─┐┌─┐┌┬┐┌─┐d
+XNNNNNNNNKkdddxxxxxkkxoc:::;::;;;:::loxxxxdolokOOOO0000000O000╠═╝  │  │ │ ││├┤ d
+NNNNNNNKkdoddxxxkkdlc;;,'''',''..'''',;;;;:;,,;okOOOOOO0000000╩    └─┘└─┘─┴┘└─┘x
+NNNNNXkdodddxkkdl:'.........',,,''''......  ....,:dO0OOOOOO000 ┬─┐┬ ┬┬  ┌─┐┌─┐ 0
+NNWNOddddxxkkxc'.......,'.......'',;;;,''..       .,dOOOOOO000 ├┬┘│ ││  ├┤ ┌─┘ O
+NNXkddxxxkOxc,......,;,...,:cldk000000000Okxl;.    .;xOOOOO000 ┴└─└─┘┴─┘└─┘└─┘ O
+N0xddxkkOOo'......'::'..,lkKXNNNNNNNNNNNNNNNNN0d;  .,oOOOOOOOOO00000000OOOkkkxkk
+0ddxkkOOOc.  ..''',. .;xXNWWWWNNNNNNNNNNNNNNWWWWNx'.,lkOOOOOOOOO0000000000OOkkkx
+xdxkOO00o. .........;kNWWWNWNNNNNNNNNNNWWWNWWWWNNN0;.;okOO00O0000K00OO0000OOOOOx
+xkOO000l. .... .,ldOXWWWNNNWNNNNNNWWNNWWWWWWWWWWNKXO;.'oOOO0000KKK0000OOOOkkOkxx
+O0000Kx. .....,d0XNNNNWWNNWNXK000KXNWNNNNNNNXXNNNNXXd. ;k00000KKKKKK000Okkkxxkxd
+0000KO;  '::,;lOXNNWNX0xolc:;,,',;lOXXXXXX0xl;,,:lx0O, .d00000KKK00KK0OOkxxxxxxd
+0K0KKc  ':;..;oKNKkdc,;;,,,,,':ddccoxkOOOko,..','..,c,..:k00KKK0KKKKKK0Okxxxddxx
+000K0: .''...,xKx;;c',kxoc:,..,lc;:olccodc.':coc,',,,..;,.oK0K00KKKXK00K0OOkxkOO
+0000Ko.......';,.;cl,,l,.:l' .:llodoccONWK;.;c' .,':l. .;,dK0KKKKKKXXKK00OOOkkkk
+0000Kd. .  .  .lxkk0kclkxkOxodxxxkko:lOXNWO,,ol:lo,:x; .:o000KKK0KKKXXKK0OOOOOxd
+00OOKx.       cXNNNNNOldOOkOOOOOOxdooxO0KNNx,;ldddkOKl.,;dK00KKKKKKKKKKK000O00OO
+O0OO0o.       lNNNNNNNKkxxddkkkkxddxOOkO0KNNOoloooxkko'..xK000KKK0KKK00000000Okk
+OOOOO:   .','.lNNXNNNNXXNNXXXXXKKOxO00kxk0XXK00KXKK0O0c .dK000KKKKKKKK00KK000Okx
+kkkOl. .;k00O;;0XXNNNNNNNNNNXXXK0dlddoldxk0kdxO0KKXKXWx..dK0000KKKKKKKKKK0OOOkxx
+kkkk: 'lkXOkXx,dXKXNNXXXXXXXKKKKKklc:'':loo;;dOOkO000NO.'k000000000KK00000Okkkxx
+xxxx:..oXKOKWK::OKXXXXK000000OO0kl::,..,::,..cxkdoxOkKk,'d000000000000OOOOkkkkkk
+xxxdoc',0NXNNNo'l0K000KK0O0Odllllllloc:::ccloxkxxlokkOkxox000000OO000000OOOOOkkx
+ddddodl',dKNWWO,ckOOOO0KXXKkddo::clooddxxxxxdocclokOkxxkkkOOOOO0OOOOOOOOOOOOOxdd
+llcllllc. .;oOx,cOO0OkkkOKK0000kdooxkkO00KKKK0OkOKXOxxxdxxxxxxkkxkOkkkkOkxxddol:
+:;.;ll:,'.   ,klckOOOkkkk00OOXXKKKKK0kdlccclxOXXXNKxdxdollllllcodddxOkkxxxdollcc
+;;':xxl';,    ;xloO0OkkO0OOOk0XXXKKXXKkdddoxOXNNNN0dxkd;'.....,oxolk00Okkkxxdolc
+';,';,,':d;   .:clO0OOkxO00OddOKKKKKXXXXNNNWWWWNNKkoodl,'.....;xO000000O0OOOkdxx
+;::;,,;;cOx. ...lccdkOOOOOkxl:cdkxxk0KXNNNNNNNN0Oxddlcc,,'..,'.;kKXKKXK000OOOOkx
+;::::::;o0O;    lk;':odxkxdol;,;cllldkOO000kkOOdocc:coc,,,.','.;OXXXXXXXK00Okkkx
+:::::c:cx0Kd.   :XKo;'.,;;;;:;,',;;:clllooolll:,'.;okkc;,,'','':OXXKXXXXK0OOOkkk
+l::looclk00O,   ,KWNXkc.  ..........'''','.... .;ok00ko;,,'',,':OXKKKKXKKK0OOxxx
+o;:xkkolk00O:   ,KWNNNXOl,........   ..       'dKK000Oxc;,,,,''cOKKKKKKKKKK0Okkx
+doxO0kl'.cxl,...:KNNNNNNXKkxool:;'''''',,,,;lx0XOxO000Od:,',,,'cOK00000000000Okx
+0kclOkl;..od;co:dXNNNNWNNXXXKOOkkOOOO00000kk0KXXkldOxllOx,.....:k0OOOOkkkkOOOOkx
+oOo.;xl:;.lkcld:oXNNWWWWNXKKXKKKXXXXXXKKK0OO0XXKdloxOl.,k0xolodxOOkOKK0Okkkkkkkk
+.:Od.;kl.'oklokl,xNNNWWWNNK00OOOOOKXX0OOOOOOKXNK;;oo0k, :KXKKXXXKOO000Kkoxxdxxdd
+;.;ko.ck:.cxclko..dXNNNNNNXK0OOOkxkkOO0OOO0KXXXO''olxKx..dXXXKK0OOOOOKOk0K0Oxdoo
+x;.:O:.dk',dccxx, .oXNNNNXXKK0000OxxO000O0KXXKKo..llo00: :KX0K0kkxdkK0x0K0k0XOol
+*/

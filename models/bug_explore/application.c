@@ -12,6 +12,7 @@ typedef struct _region_t {
 	 	 	 	// but since we need to track it we have to replicate it here: if basic values of regions are frequently requested
 	 	 	 	// for event modeling we can render them available by default without the need of these tricks
 	unsigned is_explored;
+	unsigned violation;
 } region_t;
 
 typedef struct _bug_t {
@@ -37,16 +38,16 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, agent_t agent,
 			region->last_bug_size = 0;
 			region->food_available = RandomRange(0, MAX_FOOD_PRODUCTION_RATE);
 			region->bugs = 0;
+			region->violation = 0;
 			// here we do what I explained earlier
 			TrackNeighbourInfo(&region->bugs);
 			// for simplicity we spawn a single bug at region 0
-			if(!me){
+			if(me < NUM_OCCUPIED_CELLS){
 				// here we call ourselves (XXX does this work as expected under ROOT-Sim environment?)
 				ProcessEvent(me, now, SPAWN_BUG, 0, 0, region);
 			}
 
 			ScheduleNewEvent(me, now + TIME_STEP, PRODUCE_FOOD, NULL, 0);
-
 			break;
 
 		case BUG_VISIT:
@@ -56,9 +57,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, agent_t agent,
 			this_bug = DataAgent(agent, NULL);
 
 			if(CountAgents() > BUG_PER_CELL) {
-				printf("%s:%d: More than BUG_PER_CELL (%d) are inside cell %u !\n", __FILE__, __LINE__, BUG_PER_CELL,
-						me);
-				exit(EXIT_FAILURE);
+				state->violation++;
 			}
 
 			consumption = state->food_available > MAX_CONSUMPTION_RATE ? MAX_CONSUMPTION_RATE : state->food_available;
@@ -106,7 +105,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, agent_t agent,
 
 			state->food_available += RandomRange(0, MAX_FOOD_PRODUCTION_RATE);
 
-			ScheduleNewEvent(me, now + TIME_STEP / 1000, PRODUCE_FOOD, NULL, 0);
+			ScheduleNewEvent(me, now + TIME_STEP, PRODUCE_FOOD, NULL, 0);
 
 			break;
 
@@ -167,9 +166,11 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, agent_t agent,
 
 int OnGVT(unsigned int me, region_t *snapshot) {
 
-	printf("cell %u %s", me, snapshot->is_explored ? "explored" : "not explored yet");
+	if(snapshot->violation){
+		printf("VIOLATION %u!!!! ", me);
+	}
 
-	printf(" and size of last passed bug is %lf.\n", snapshot->last_bug_size);
+	if(snapshot->bugs) printf(" alive " );
 
-	return snapshot->is_explored;/// XXX fix with whatever stuff you prefer
+	return !snapshot->bugs;/// XXX fix with whatever stuff you prefer
 }

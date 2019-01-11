@@ -10,20 +10,13 @@ enum _bug_events_t{
 	BUG_TRAVERSE
 };
 
-#define REPRODUCE 5
-#define TIME_STEP 5.0
+#define TIME_STEP 1.0
 #define MAX_FOOD_PRODUCTION_RATE 2
 #define MAX_CONSUMPTION_RATE 5
 #define REPRODUCTION_SIZE 20
 #define CHILD_COUNT 5
 #define SURVIVAL_PROBABILITY 95 
-#define EXECUTION_TIME 10000000 //dummy: it can be modified with a specific parameter 
-#ifndef NUM_OCCUPIED_CELLS
-    #define NUM_OCCUPIED_CELLS 1  //default number of occupied cells (i.e.: number of bugs)
-#endif
-#ifndef BUG_PER_CELL
-    #define BUG_PER_CELL 1 //at most one bug per cell at a time
-#endif
-
+#define NUM_OCCUPIED_CELLS 1  //default number of occupied cells (i.e.: number of bugs)
+#define BUG_PER_CELL 1 //at most one bug per cell at a time
 
 
