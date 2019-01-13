@@ -19,12 +19,13 @@ typedef struct _bug_t {
 	double size;
 } bug_t;
 
-void ProcessEvent(unsigned int me, simtime_t now, int event_type, agent_t agent, unsigned int event_size, region_t *state) {
+void ProcessEvent(unsigned int me, simtime_t now, int event_type, agent_t *agent_p, unsigned int event_size, region_t *state) {
 
 	unsigned i, j, dest, tries, directions;
 	bug_t *this_bug;
 	double consumption;
 	size_t *bugs_count;
+	agent_t this_agent;
 
 	switch (event_type) {
 		case INIT:
@@ -44,20 +45,26 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, agent_t agent,
 			// for simplicity we spawn a single bug at region 0
 			if(me < NUM_OCCUPIED_CELLS){
 				// here we call ourselves (XXX does this work as expected under ROOT-Sim environment?)
-				ProcessEvent(me, now, SPAWN_BUG, 0, 0, region);
+				ProcessEvent(me, now, SPAWN_BUG, NULL, 0, region);
 			}
 
 			ScheduleNewEvent(me, now + TIME_STEP, PRODUCE_FOOD, NULL, 0);
+			break;
+
+		case BUG_DELAYED_VISIT:
+			ScheduleNewEvent(me, now + 0.0001, BUG_VISIT, agent_p, sizeof(*agent_p));
 			break;
 
 		case BUG_VISIT:
 			state->is_explored = 1;
 			state->bugs++;
 
-			this_bug = DataAgent(agent, NULL);
+			this_bug = DataAgent(*agent_p, NULL);
 
 			if(CountAgents() > BUG_PER_CELL) {
 				state->violation++;
+				KillAgent(*agent_p);
+				break;
 			}
 
 			consumption = state->food_available > MAX_CONSUMPTION_RATE ? MAX_CONSUMPTION_RATE : state->food_available;
@@ -93,11 +100,11 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, agent_t agent,
 					}
 				}
 				// the father bug dies...
-				KillAgent(agent);
+				KillAgent(*agent_p);
 				state->bugs--;
 
 			} else {
-				ScheduleNewLeaveEvent(now + (simtime_t) (TIME_STEP * Random()), BUG_LEAVING, agent);
+				ScheduleNewLeaveEvent(now + (simtime_t) (TIME_STEP * Random()), BUG_LEAVING, *agent_p);
 			}
 			break;
 
@@ -112,12 +119,12 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, agent_t agent,
 		case SPAWN_BUG:
 			if(CountAgents() < BUG_PER_CELL) {
 				// instantiate a new agent (I reuse the parameter variable just for simplicity)
-				agent = SpawnAgent(sizeof(bug_t));
+				this_agent = SpawnAgent(sizeof(bug_t));
 				// we initialize our custom fields
-				this_bug = DataAgent(agent, NULL);
+				this_bug = DataAgent(this_agent, NULL);
 				this_bug->size = 1;
 				// we call ourselves to make the bug eat and eventually leave this region xxx again, does this work correctly?
-				ProcessEvent(me, now, BUG_VISIT, agent, 0, state);
+				ProcessEvent(me, now, BUG_VISIT, &this_agent, sizeof(this_agent), state);
 			}
 
 			break;
@@ -128,7 +135,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, agent_t agent,
 			state->bugs--; //one way or another we get rid of this bug (lulz a word pun!)
 
 			if(RandomRange(0, 100) >= SURVIVAL_PROBABILITY) {
-				KillAgent(agent); // :(
+				KillAgent(*agent_p); // :(
 				break;
 			}
 
@@ -145,13 +152,13 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, agent_t agent,
 						j = RandomRange(0, directions - 1);
 					}while(GetNeighbourInfo(j, &dest, (void**)&bugs_count) < 0 || *bugs_count >= BUG_PER_CELL);
 					// this is our planned visit
-					EnqueueVisit(agent, dest, BUG_VISIT);
+					EnqueueVisit(*agent_p, dest, BUG_DELAYED_VISIT);
 					break;
 				}
 			}
 
 			if(i >= directions){ // this bug tried and tried to exit without succeeding
-				KillAgent(agent);
+				KillAgent(*agent_p);
 			}
 			break;
 
@@ -166,11 +173,10 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, agent_t agent,
 
 int OnGVT(unsigned int me, region_t *snapshot) {
 
-	if(snapshot->violation){
-		printf("VIOLATION %u!!!! ", me);
-	}
+	printf("LP[%u] I'm %sexplored", me, snapshot->is_explored ? "" : "not ");
+	if(snapshot->bugs) printf(", there's still at least a bug here");
+	if(snapshot->violation) printf(", the constraint has been violated %u time%s", snapshot->violation, snapshot->violation > 1 ? "s" : "");
+	printf(".\n");
 
-	if(snapshot->bugs) printf(" alive " );
-
-	return !snapshot->bugs;/// XXX fix with whatever stuff you prefer
+	return snapshot->is_explored;/// XXX fix with whatever stuff you prefer
 }

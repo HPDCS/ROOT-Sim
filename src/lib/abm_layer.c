@@ -49,7 +49,7 @@ struct _visit_abm_t{
 };
 
 struct _agent_abm_t {
-	unsigned long long key;		//! UUID that uniquely identifies the agent
+	unsigned long long key;		//! UUID that uniquely identifies the agent (this must be the first field of the struct for various reasons)
 	unsigned user_data_size;
 	unsigned leave_event;
 	char *user_data;
@@ -242,9 +242,8 @@ static void update_neighbours(void);
 
 static void on_abm_visit(void){
 	struct _visit_abm_t vis;
-	receive_update();
 	// parse the entering agent
-	struct _agent_abm_t *agent = agent_from_buffer(current_evt->event_content + abm_settings.neighbour_data_size, current_evt->size - abm_settings.neighbour_data_size);
+	struct _agent_abm_t *agent = agent_from_buffer(current_evt->event_content, current_evt->size);
 
 	if(array_empty(agent->future) || array_get_at(agent->future, 0).region != current->gid.to_int){
 		// this is an intermediate objective to reach the next destination
@@ -259,9 +258,10 @@ static void on_abm_visit(void){
 		array_push(agent->past, vis);
 	}
 
-	// seems all ok: user, do whatever you want now
+	// seems all ok: user, do whatever you want now (passing current_evt->content works as long as the first
+	// field of the agent struct is the agent key
 	switch_to_application_mode();
-	current->ProcessEvent(current->gid.to_int, current_evt->timestamp, vis.action, (void *)agent->key, 0, current->current_base_pointer);
+	current->ProcessEvent(current->gid.to_int, current_evt->timestamp, vis.action, current_evt->event_content, sizeof(agent->key), current->current_base_pointer);
 	switch_to_platform_mode();
 }
 
@@ -270,6 +270,7 @@ static void on_abm_leave(void){
 	unsigned char* to_send;
 	unsigned buffer_size;
 	// we search for the agent who's leaving
+	assert(current_evt->size = sizeof(unsigned long long));
 	struct _agent_abm_t *agent = hash_map_lookup(current->region->agents_table, *((unsigned long long*)current_evt->event_content));
 	if(!agent || agent->leave_time > current_evt->timestamp) {
 		// the exiting agent has been killed or already left or the agent is trying to leave too early (can happen if user decides so)
@@ -277,13 +278,12 @@ static void on_abm_leave(void){
 	}
 	// seems all ok: user, do whatever you want now
 	switch_to_application_mode();
-	current->ProcessEvent(current->gid.to_int, current_evt->timestamp, agent->leave_event, (void *)agent->key, 0, current->current_base_pointer);
+	current->ProcessEvent(current->gid.to_int, current_evt->timestamp, agent->leave_event, current_evt->event_content, sizeof(agent->key), current->current_base_pointer);
 	switch_to_platform_mode();
 	// we search again for the agent who's leaving (the user could have possibly killed him)
 	agent = hash_map_lookup(current->region->agents_table, *((unsigned long long*)current_evt->event_content));
 	if(!agent || agent->leave_time > current_evt->timestamp){
 		// the capricious user has decided against the agent departure
-		update_neighbours();
 		return;
 	}
 	// well, the agent is actually leaving after all...
@@ -315,7 +315,6 @@ static void on_abm_leave(void){
 		// TODO communicate the user about the failed leave, maybe call user's ProcessEvent()
 		// with a proper event type, this can happen legitimately (for example the agents is
 		// surrounded by obstacles regions)
-		update_neighbours();
 		return;
 	}
 
@@ -337,41 +336,20 @@ static void on_abm_leave(void){
 		}
 		// seems all ok: user, do whatever you want now
 		switch_to_application_mode();
-		current->ProcessEvent(current->gid.to_int, current_evt->timestamp, agent->leave_event, (void *)agent->key, 0, current->current_base_pointer);
+		current->ProcessEvent(current->gid.to_int, current_evt->timestamp, vis.action, current_evt->event_content, sizeof(agent->key), current->current_base_pointer);
 		switch_to_platform_mode();
-		update_neighbours();
 	} else {
-		buffer_size = agent_dump_size(agent) + abm_settings.neighbour_data_size;
-
-		region_abm_t *region = current->region;
+		buffer_size = agent_dump_size(agent);
 
 		to_send = rsalloc(buffer_size);
 
-		memcpy(to_send, region->tracked_data, abm_settings.neighbour_data_size);
-
-		agent_to_buffer(agent, to_send + abm_settings.neighbour_data_size);
+		agent_to_buffer(agent, to_send);
 		// finally we schedule the agent
 		UncheckedScheduleNewEvent(next_hop, current_evt->timestamp, ABM_VISITING, to_send, buffer_size);
 		// now we can get rid of it
 		KillAgent(agent->key);
 		// remember to free that stuff if we mallocated it!
 		rsfree(to_send);
-
-		unsigned char* published_data = ((unsigned char *)region) + region->published_data_offset;
-		// we check whether we need to update our neighbours about some changes in the tracked data
-		if(!region->tracked_data || !memcmp(published_data, region->tracked_data, abm_settings.neighbour_data_size))
-			return;
-
-		// copy the new data into the tracked one
-		memcpy(published_data, region->tracked_data, abm_settings.neighbour_data_size);
-
-		// let's propagate the changes to other regions too
-		unsigned i = DirectionsCount();
-		while(i--){
-			if(region->neighbours_info[i].src_lp != DIRECTION_INVALID && region->neighbours_info[i].src_lp != next_hop){
-				UncheckedScheduleNewEvent(region->neighbours_info[i].src_lp, current_evt->timestamp, ABM_UPDATE, published_data, abm_settings.neighbour_data_size);
-			}
-		}
 	}
 }
 
@@ -430,8 +408,7 @@ void ProcessEventABM(void) {
 
 		case ABM_LEAVING:
 			on_abm_leave();
-			dispatch_leavers();
-			return;
+			break;
 
 		case ABM_UPDATE:
 			receive_update();

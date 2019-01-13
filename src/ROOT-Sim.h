@@ -140,8 +140,9 @@ __attribute((weak)) extern struct _topology_settings_t{
 	const unsigned out_of_topology;				/// The minimum number of LPs needed out of the topology
 	bool write_enabled;					/// This is set if the model needs to use SetTopology()
 }topology_settings;
+
 /**
- *
+ * TODO Documentation!
  * @param from
  * @param to
  * @return

@@ -6,6 +6,7 @@ enum _bug_events_t{
 	PRODUCE_FOOD = INIT + 1,
 	SPAWN_BUG,
 	BUG_LEAVING,
+	BUG_DELAYED_VISIT,
 	BUG_VISIT,
 	BUG_TRAVERSE
 };
