@@ -6,7 +6,7 @@
 * This module implements the simulator initialization routines
 *
 * @copyright
-* Copyright (C) 2008-2018 HPDCS Group
+* Copyright (C) 2008-2019 HPDCS Group
 * https://hpdcs.github.io
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
@@ -137,7 +137,7 @@ const char * const param_to_text[][5] = {
 	}
 };
 
-const char *argp_program_version 	= PACKAGE_STRING "\nCopyright (C) 2008-2018 HPDCS Group";
+const char *argp_program_version 	= PACKAGE_STRING "\nCopyright (C) 2008-2019 HPDCS Group";
 const char *argp_program_bug_address 	= PACKAGE_BUGREPORT;
 
 // Directly from argp documentation:

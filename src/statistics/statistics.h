@@ -28,7 +28,7 @@
  * at a machine level, and among distributed processes (using MPI).
  *
  * @copyright
- * Copyright (C) 2008-2018 HPDCS Group
+ * Copyright (C) 2008-2019 HPDCS Group
  * https://hpdcs.github.io
  *
  * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
