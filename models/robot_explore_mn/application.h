@@ -6,7 +6,7 @@
 #define ECS_TEST
 
 #define DESTINATION 	1		//Message used by Region to communicate to the Agent the next destination
-#define ENTER 			2		//Message used by Agent for communicating its arrival	
+#define ENTER 			2		//Message used by Agent for communicating its arrival
 #define EXIT			3		//Message useb by Agent for communicating its exit
 #define PING			4		//Keep alive of Region
 #define COMPLETE		5		//Message sent by the first Agent that covers the required percentage of regions
@@ -17,8 +17,8 @@
 #define EXCHANGE		88
 
 #define TOT_REG			64
-#define DIM_ARRAY		TOT_REG 
- 
+#define DIM_ARRAY		TOT_REG
+
 #define DELAY 			120		//Expeted value for the delay function
 #define DELAY_PING 		250		//Expeted value for the delay function
 
@@ -45,7 +45,7 @@ typedef struct lp_agent_t{
         unsigned int region;                    //Current region
         unsigned char *map;                     //Map pointer
 
-        #ifdef ECS_TEST 
+        #ifdef ECS_TEST
         unsigned char **group;                  //Vector that stores pointers of agent that this agent has been met
         #else
 	unsigned int robots[100];
@@ -65,7 +65,7 @@ typedef struct _exchange_t {
 
 typedef struct lp_region_t{
 
-        #ifdef ECS_TEST 
+        #ifdef ECS_TEST
         lp_agent_t **guests;                 //Vector that stores pointers of agent guest map
         #else
         unsigned char *map;

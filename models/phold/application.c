@@ -148,47 +148,47 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 				state_ptr->num_elementi = 0;
 				state_ptr->total_size = 0;
 				state_ptr->next_lp = 0;
-	
+
 				// Allocate memory for counters and pointers
 				state_ptr->taglie = malloc(num_buffers * sizeof(int));
 				state_ptr->elementi = malloc(num_buffers * sizeof(int));
 				state_ptr->head_buffs = malloc(num_buffers * sizeof(buffers *));
 				state_ptr->tail_buffs = malloc(num_buffers * sizeof(buffers *));
-	
+
 				if(num_buffers > 1)
 					step = (max_size - min_size) / (num_buffers - 1);
 				else
 					step = 0; // the only element will have min_size size
-	
+
 				current_size = min_size;
 				remaining_size = object_total_size;
-	
+
 				// Allocate memory for buffers
 				for (i = 0; i < num_buffers; i++){
-	
+
 					state_ptr->head_buffs[i] = NULL;
 					state_ptr->tail_buffs[i] = NULL;
 					state_ptr->taglie[i] = (int)current_size;
-	
-	
+
+
 					curr_num_buff = (int)ceil(remaining_size / num_buffers / current_size);
-	
+
 					if(curr_num_buff == 0)
 						curr_num_buff = 1;
-	
+
 					state_ptr->elementi[i] = curr_num_buff;
-	
+
 					state_ptr->num_elementi += curr_num_buff;
 					state_ptr->total_size += (current_size * curr_num_buff);
-	
+
 					printf("[%d, %d] ", curr_num_buff, (int)current_size);
-	
+
 					state_ptr->head_buffs[i] = malloc(sizeof(buffers));
 					state_ptr->head_buffs[i]->prev = NULL;
 					state_ptr->head_buffs[i]->next = NULL;
 					state_ptr->head_buffs[i]->buffer = malloc((int)current_size);
 					state_ptr->tail_buffs[i] = state_ptr->head_buffs[i];
-	
+
 					for(j = 0; j < curr_num_buff - 1; j++) {
 						buffers *tmp = malloc(sizeof(buffers));
 						tmp->prev = state_ptr->tail_buffs[i];
@@ -197,20 +197,20 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 						state_ptr->tail_buffs[i]->next = tmp;
 						state_ptr->tail_buffs[i] = tmp;
 					}
-	
+
 					remaining_size -= current_size * curr_num_buff;
 					current_size += step;
-	
+
 				}
-	
+
 				state_ptr->actual_size += current_size;
-	
-	
+
+
 				if(me == 0) {
 					ScheduleNewEvent(me, timestamp, DEALLOC, NULL, 0);
 				}
 			}
-	
+
 			break;
 
 

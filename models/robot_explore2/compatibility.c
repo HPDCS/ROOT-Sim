@@ -37,15 +37,15 @@ void ProcessEvent(int me, simtime_t now, int event_type, void *event_content, in
 		case INIT:
 			state = region_init(me);
 			SetState(state);
-			
+
 			if(me < number_of_agents) {
 				// Place an agent in this region
 				((cell_state_type *)state)->agents = agent_init();
-				
+
 			}
-				
+
 			break;
-			
+
 		default:
 			fprintf(stderr, "Error: event type %d is unknown.\n");
 			exit(EXIT_FAILURE);

@@ -21,7 +21,7 @@ unsigned int get_target_id(unsigned int region_id, unsigned int direction);
 /**
  * Tells whether the passed region <em>neighbour</em> can be reached
  * from the region <em>region</em>.
- * 
+ *
  * @param region Region's id of the "pivot" point
  * @param neighbour Region's id of the neighbour we want to compute reachability
  * @return True if the <em>neighbour</em> can be reached from <em>region</em>, false otherwise

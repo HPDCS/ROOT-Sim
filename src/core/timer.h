@@ -1,7 +1,14 @@
 /**
-*			Copyright (C) 2008-2018 HPDCS Group
-*			http://www.dis.uniroma1.it/~hpdcs
+* @file core/timer.h
 *
+* @brief Timers
+*
+* This header defines the timers which the simulator uses to monitor its
+* internal behaviour
+*
+* @copyright
+* Copyright (C) 2008-2019 HPDCS Group
+* https://hpdcs.github.io
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
 *
@@ -17,8 +24,6 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file timer.h
-* @brief This header defines the timers which the simulator uses to monitor its internal behaviour
 * @author Andrea Santoro
 * @author Alessandro Pellegrini
 */
@@ -54,11 +59,12 @@ typedef struct timeval timer;
 					__rs_timedif;\
 				})
 
-/// string must be a char array of at least 64 bytes to keep the whole string
+#define TIMER_BUFFER_LEN 64
+/// string must be a char array of at least TIMER_BUFFER_LEN bytes to keep the whole string
 #define timer_tostring(timer_name, string) do {\
 					time_t __nowtime;\
 					struct tm *__nowtm;\
-					__nowtime = timer_name.tv_sec;\
+					__nowtime = (timer_name).tv_sec;\
 					__nowtm = localtime(&__nowtime);\
-					strftime(string, sizeof string, "%Y-%m-%d %H:%M:%S", __nowtm);\
+					strftime((string), sizeof (string), "%Y-%m-%d %H:%M:%S", __nowtm);\
 				} while(0)

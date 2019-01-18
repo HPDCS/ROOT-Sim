@@ -11,7 +11,7 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, event_t *c
 		case INIT: // must be ALWAYS implemented
 			state = (lp_state_t *)malloc(sizeof(lp_state_t));
 	 		state->packet_count = 0;
-			state->pointer = (int*) malloc(sizeof(int));
+			state->pointer = (int *)malloc(sizeof(int));
 			state->pointer[0] = 0;
 			SetState(state);
 			timestamp = (simtime_t)(20 * Random());
@@ -20,21 +20,18 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, event_t *c
 
 		case PACKET: {
 			state->packet_count++;
-			if(content != NULL && content->sender != me){
-				if(content->pointer!=NULL){
-					content->pointer[0]++;
-				}
+			if(content != NULL && content->sender != me) {
+			//	if(content->pointer!=NULL){
+			//		content->pointer[0]++;
+			//	}
 			}
 			new_event.sent_at = now;
 			new_event.pointer = state->pointer;
 			new_event.sender = me;
-			
+
 			int recv = FindReceiver(TOPOLOGY_MESH);
-		
+
 			timestamp = now + Expent(DELAY);
-	
-			//if(content != NULL && content->pointer!=NULL && me!=content->sender)
-			//	printf("\t \t LP[%d] mem of %d = %d\n",me,content->sender,content->pointer[0]);
 
 			ScheduleNewEvent(recv, timestamp, PACKET, &new_event, sizeof(new_event));
 		}
@@ -43,12 +40,7 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, event_t *c
 
 
 bool OnGVT(unsigned int me, lp_state_t *snapshot) {
-
-	if(me == 0) {
-		printf("Completed work: %f\%\n", (double)snapshot->packet_count/PACKETS*100);
-	}
-
-	if (snapshot->packet_count < PACKETS)
-		return false;
-	return true;
+	if (snapshot->packet_count >= PACKETS)
+		return true;
+	return false;
 }

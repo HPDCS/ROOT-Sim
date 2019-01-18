@@ -1,7 +1,13 @@
 /**
-*			Copyright (C) 2008-2018 HPDCS Group
-*			http://www.dis.uniroma1.it/~hpdcs
+* @file queues/queues.c
 *
+* @brief Message queueing subsystem
+*
+* This module implements the event/message queues subsystem.
+*
+* @copyright
+* Copyright (C) 2008-2019 HPDCS Group
+* https://hpdcs.github.io
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
 *
@@ -17,11 +23,11 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file queues.c
-* @brief This module implements the event/message queues subsystem
 * @author Francesco Quaglia
 * @author Roberto Vitali
 * @author Alessandro Pellegrini
+*
+* @date March 16, 2011
 */
 
 #include <stdlib.h>
@@ -36,27 +42,12 @@
 #include <datatypes/msgchannel.h>
 #include <queues/queues.h>
 #include <mm/state.h>
-#include <mm/dymelor.h>
+#include <mm/mm.h>
 #include <scheduler/scheduler.h>
 #include <communication/communication.h>
 #include <communication/gvt.h>
 #include <statistics/statistics.h>
 #include <gvt/gvt.h>
-
-
-/**
-* This function returns the timestamp of the last executed event
-*
-* @author Francesco Quaglia
-*
-* @param lid The Light Process id
-* @return The timestamp of the last executed event
-*/
-simtime_t last_event_timestamp(LID_t lid) {
-	return lvt(lid);
-}
-
-
 
 /**
 * This function return the timestamp of the next-to-execute event
@@ -64,18 +55,20 @@ simtime_t last_event_timestamp(LID_t lid) {
 * @author Alessandro Pellegrini
 * @author Francesco Quaglia
 *
-* @param lid The Logicall Process id
+* @param lp A pointer to the LP's lp_struct for which we want to discover
+*           the timestamp of the next event
 * @return The timestamp of the next-to-execute event
 */
-simtime_t next_event_timestamp(LID_t lid) {
+simtime_t next_event_timestamp(struct lp_struct *lp)
+{
 	msg_t *evt;
 
 	// The bound can be NULL in the first execution or if it has gone back
-	if (unlikely(LPS(lid)->bound == NULL && !list_empty(LPS(lid)->queue_in))) {
-		return list_head(LPS(lid)->queue_in)->timestamp;
+	if (unlikely(lp->bound == NULL && !list_empty(lp->queue_in))) {
+		return list_head(lp->queue_in)->timestamp;
 	} else {
-		evt = list_next(LPS(lid)->bound);
-		if(likely(evt != NULL)) {
+		evt = list_next(lp->bound);
+		if (likely(evt != NULL)) {
 			return evt->timestamp;
 		}
 	}
@@ -83,7 +76,6 @@ simtime_t next_event_timestamp(LID_t lid) {
 	return INFTY;
 
 }
-
 
 /**
 * This function advances the pointer to the last correctly executed event (bound).
@@ -94,28 +86,29 @@ simtime_t next_event_timestamp(LID_t lid) {
 * @author Alessandro Pellegrini
 * @author Francesco Quaglia
 *
-* @param lid The Light Process id
+* @param lp A pointer to the LP's lp_struct which should have its bound
+*           updated in order to point to the next event to be processed
 * @return The pointer to the event is going to be processed
 */
-msg_t *advance_to_next_event(LID_t lid) {
+msg_t *advance_to_next_event(struct lp_struct *lp)
+{
 
-	if (unlikely(LPS(lid)->bound == NULL)) {
-		if (likely(!list_empty(LPS(lid)->queue_in))) {
-			LPS(lid)->bound = list_head(LPS(lid)->queue_in);
+	if (unlikely(lp->bound == NULL)) {
+		if (likely(!list_empty(lp->queue_in))) {
+			lp->bound = list_head(lp->queue_in);
 		} else {
 			return NULL;
 		}
 	} else {
-		if (likely(list_next(LPS(lid)->bound) != NULL)) {
-			LPS(lid)->bound = list_next(LPS(lid)->bound);
+		if (likely(list_next(lp->bound) != NULL)) {
+			lp->bound = list_next(lp->bound);
 		} else {
 			return NULL;
 		}
 	}
 
-	return LPS(lid)->bound;
+	return lp->bound;
 }
-
 
 /**
 * Insert a message in the bottom halft of a locally-hosted LP. Of course,
@@ -128,43 +121,43 @@ msg_t *advance_to_next_event(LID_t lid) {
 *
 * @param msg The message to be added into some LP's bottom half.
 */
-void insert_bottom_half(msg_t *msg) {
-	LID_t lid = GidToLid(msg->receiver);
+void insert_bottom_half(msg_t * msg)
+{
+	struct lp_struct *lp = find_lp_by_gid(msg->receiver);
 
 	validate_msg(msg);
 
-	insert_msg(LPS(lid)->bottom_halves, msg);
-	#ifdef HAVE_PREEMPTION
-	update_min_in_transit(LPS(lid)->worker_thread, msg->timestamp);
-	#endif
+	insert_msg(lp->bottom_halves, msg);
+#ifdef HAVE_PREEMPTION
+	update_min_in_transit(lp->worker_thread, msg->timestamp);
+#endif
 }
-
 
 /**
 * Process bottom halves received by all the LPs hosted by the current KLT
 *
 * @author Alessandro Pellegrini
 */
-void process_bottom_halves(void) {
-	unsigned int i;
-	LID_t lid_receiver;
-	LP_State *receiver;
+void process_bottom_halves(void)
+{
+	struct lp_struct *receiver;
 
 	msg_t *msg_to_process;
 	msg_t *matched_msg;
 
-	for(i = 0; i < n_prc_per_thread; i++) {
+	foreach_bound_lp(lp) {
 
-		while((msg_to_process = get_msg(LPS_bound(i)->bottom_halves)) != NULL) {
-			lid_receiver = GidToLid(msg_to_process->receiver);
-			receiver = LPS(lid_receiver);
+		while ((msg_to_process = get_msg(lp->bottom_halves)) != NULL) {
+			receiver = find_lp_by_gid(msg_to_process->receiver);
 
 			// Sanity check
-			if(unlikely(msg_to_process->timestamp < get_last_gvt()))
-				rootsim_error(true, "The impossible happened: I'm receiving a message before the GVT\n");
+			if (unlikely
+			    (msg_to_process->timestamp < get_last_gvt()))
+				rootsim_error(true,
+					      "The impossible happened: I'm receiving a message before the GVT\n");
 
 			// Handle control messages
-			if(unlikely(!receive_control_msg(msg_to_process))) {
+			if (unlikely(!receive_control_msg(msg_to_process))) {
 				msg_release(msg_to_process);
 				continue;
 			}
@@ -172,82 +165,100 @@ void process_bottom_halves(void) {
 			switch (msg_to_process->message_kind) {
 
 				// It's an antimessage
-				case negative:
+			case negative:
 
-					statistics_post_lp_data(lid_receiver, STAT_ANTIMESSAGE, 1.0);
+				statistics_post_data(receiver, STAT_ANTIMESSAGE,
+						     1.0);
 
-					// Find the message matching the antimessage
-					matched_msg = list_tail(receiver->queue_in);
-					while(matched_msg != NULL && matched_msg->mark != msg_to_process->mark) {
-						matched_msg = list_prev(matched_msg);
+				// Find the message matching the antimessage
+				matched_msg = list_tail(receiver->queue_in);
+				while (matched_msg != NULL
+				       && matched_msg->mark !=
+				       msg_to_process->mark) {
+					matched_msg = list_prev(matched_msg);
+				}
+
+				// Sanity check
+				if (unlikely(matched_msg == NULL)) {
+					rootsim_error(false,
+						      "LP %d Received an antimessage, but no such mark has been found!\n",
+						      receiver->gid.to_int);
+					dump_msg_content(msg_to_process);
+					rootsim_error(true, "Aborting...\n");
+				}
+				// If the matched message is in the past, we have to rollback
+				if (matched_msg->timestamp <= lvt(receiver)) {
+
+					receiver->bound =
+					    list_prev(matched_msg);
+					while ((receiver->bound != NULL)
+					       && D_EQUAL(receiver->bound->
+							  timestamp,
+							  msg_to_process->
+							  timestamp)) {
+						receiver->bound =
+						    list_prev(receiver->bound);
 					}
 
-					// Sanity check
-					if(unlikely(matched_msg == NULL)) {
-						rootsim_error(false, "LP %d Received an antimessage, but no such mark has been found!\n", lid_to_int(lid_receiver));
-						dump_msg_content(msg_to_process);
-						rootsim_error(true, "Aborting...\n");
-					} 
+					receiver->state = LP_STATE_ROLLBACK;
 
-					// If the matched message is in the past, we have to rollback
-					if(matched_msg->timestamp <= lvt(lid_receiver)) {
+				}
+#ifdef HAVE_MPI
+				register_incoming_msg(msg_to_process);
+#endif
 
-						receiver->bound = list_prev(matched_msg);
-						while((receiver->bound != NULL) && D_EQUAL(receiver->bound->timestamp, msg_to_process->timestamp)) {
-							receiver->bound = list_prev(receiver->bound);
-						}
+				// Delete the matched message
+				list_delete_by_content(receiver->queue_in,
+						       matched_msg);
+				msg_release(matched_msg);
 
-						receiver->state = LP_STATE_ROLLBACK;
-
-					}
-
-					#ifdef HAVE_MPI
-					register_incoming_msg(msg_to_process);
-					#endif
-
-					// Delete the matched message
-					list_delete_by_content(receiver->queue_in, matched_msg);
-					msg_release(matched_msg);
-
-					break;
+				break;
 
 				// It's a positive message
-				case positive:
+			case positive:
 
-					// A positive message is directly placed in the queue
-					list_insert(receiver->queue_in, timestamp, msg_to_process);
+				// A positive message is directly placed in the queue
+				list_insert(receiver->queue_in, timestamp,
+					    msg_to_process);
 
-					// Check if we've just inserted an out-of-order event.
-					// Here we check for a strictly minor timestamp since
-					// the queue is FIFO for same-timestamp events. Therefore,
-					// A contemporaneous event does not cause a causal violation.
-					if(msg_to_process->timestamp < lvt(lid_receiver)) {
+				// Check if we've just inserted an out-of-order event.
+				// Here we check for a strictly minor timestamp since
+				// the queue is FIFO for same-timestamp events. Therefore,
+				// A contemporaneous event does not cause a causal violation.
+				if (msg_to_process->timestamp < lvt(receiver)) {
 
-						receiver->bound = list_prev(msg_to_process);
-						while((receiver->bound != NULL) && D_EQUAL(receiver->bound->timestamp, msg_to_process->timestamp)) {
-							receiver->bound = list_prev(receiver->bound);
-						}
-
-						receiver->state = LP_STATE_ROLLBACK;
+					receiver->bound =
+					    list_prev(msg_to_process);
+					while ((receiver->bound != NULL)
+					       && D_EQUAL(receiver->bound->
+							  timestamp,
+							  msg_to_process->
+							  timestamp)) {
+						receiver->bound =
+						    list_prev(receiver->bound);
 					}
+
+					receiver->state = LP_STATE_ROLLBACK;
+				}
 #ifdef HAVE_MPI
-					register_incoming_msg(msg_to_process);
+				register_incoming_msg(msg_to_process);
 #endif
-					break;
+				break;
 
 				// It's a control message
-				case control:
+			case control:
 
-					// Check if it is an anti control message
-					if(!anti_control_message(msg_to_process)) {
-						msg_release(msg_to_process);
-						continue;
-					}
+				// Check if it is an anti control message
+				if (!anti_control_message(msg_to_process)) {
+					msg_release(msg_to_process);
+					continue;
+				}
 
-					break;
+				break;
 
-				default:
-					rootsim_error(true, "Received a message which is neither positive nor negative. Aborting...\n");
+			default:
+				rootsim_error(true,
+					      "Received a message which is neither positive nor negative. Aborting...\n");
 			}
 		}
 	}
@@ -258,13 +269,10 @@ void process_bottom_halves(void) {
 	// This is not a correctness error. The only issue could be that the
 	// preemptive scheme will not detect this, and some events could
 	// be in fact executed out of order.
-	#ifdef HAVE_PREEMPTION
+#ifdef HAVE_PREEMPTION
 	reset_min_in_transit(local_tid);
-	#endif
+#endif
 }
-
-
-
 
 /**
 * This function generates a mark value that is unique w.r.t. the previous values for each Logical Process.
@@ -277,13 +285,14 @@ void process_bottom_halves(void) {
 *
 * @author Alessandro Pellegrini
 *
-* @param lid The local Id of the Light Process
+* @param lp A pointer to the LP's lp_struct for which we want to generate
+*           a system-wide unique mark
 * @return A value to be used as a unique mark for the message within the LP
 */
-unsigned long long generate_mark(LID_t lid) {
-	unsigned long long k1 = (unsigned long long)gid_to_int(LidToGid(lid));
-	unsigned long long k2 = LPS(lid)->mark++;
+unsigned long long generate_mark(struct lp_struct *lp)
+{
+	unsigned long long k1 = (unsigned long long)lp->gid.to_int;
+	unsigned long long k2 = lp->mark++;
 
-	return (unsigned long long)( ((k1 + k2) * (k1 + k2 + 1) / 2) + k2 );
+	return (unsigned long long)(((k1 + k2) * (k1 + k2 + 1) / 2) + k2);
 }
-

@@ -1,7 +1,13 @@
 /**
-*			Copyright (C) 2008-2018 HPDCS Group
-*			http://www.dis.uniroma1.it/~hpdcs
+* @file lib/numerical.c
 *
+* @brief Numerical Library
+*
+* Piece-Wise Deterministic Random Number Generators.
+*
+* @copyright
+* Copyright (C) 2008-2019 HPDCS Group
+* https://hpdcs.github.io
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
 *
@@ -17,11 +23,9 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file numerical.c
-* @brief In this module there are the implementations of Piece-Wise Deterministic
-*        numerical distribution implementations
 * @author Alessandro Pellegrini
-* @date 3/16/2011
+*
+* @date March 16, 2011
 */
 
 #include <stdlib.h>
@@ -35,47 +39,46 @@
 
 #include <core/init.h>
 #include <communication/communication.h>
-#include <mm/dymelor.h>
+#include <mm/mm.h>
 #include <scheduler/process.h>
 #include <scheduler/scheduler.h>
 #include <statistics/statistics.h> // To have _mkdir helper function
 
-
+/**
+ * Master seed to initialize local seeds of all LPs. This is
+ * taken from the configuration file in ~/.rootsim if available,
+ * or from /dev/urand the first time a ROOT-Sim model is run.
+ */
 static seed_type master_seed;
 
-
-static double do_random(void) {
-
+static double do_random(void)
+{
 	uint32_t *seed1;
 	uint32_t *seed2;
 
-	if(unlikely(rootsim_config.serial)) {
-		seed1 = (uint32_t *)&master_seed;
-		seed2 = (uint32_t *)((char *)&master_seed + (sizeof(uint32_t)));
-	} else {
-		seed1 = (uint32_t *)&(LPS(current_lp)->seed);
-		seed2 = (uint32_t *)((char *)&(LPS(current_lp)->seed) + (sizeof(uint32_t)));
-	}
+	seed1 = (uint32_t *) & (current->numerical.seed);
+	seed2 =
+	    (uint32_t *) ((char *)&(current->numerical.seed) +
+			  (sizeof(uint32_t)));
 
 	*seed1 = 36969u * (*seed1 & 0xFFFFu) + (*seed1 >> 16u);
 	*seed2 = 18000u * (*seed2 & 0xFFFFu) + (*seed2 >> 16u);
 
 	// The magic number below is 1/(2^32 + 2).
 	// The result is strictly between 0 and 1.
-	return (((*seed1 << 16u) + (*seed1 >> 16u) + *seed2) + 1.0) * 2.328306435454494e-10;
+	return (((*seed1 << 16u) + (*seed1 >> 16u) + *seed2) +
+		1.0) * 2.328306435454494e-10;
 
 }
-
 
 /**
 * This function returns a number in between (0,1), according to a Uniform Distribution.
 * It is based on Multiply with Carry by George Marsaglia
 *
-* @author Alessandro Pellegrini
 * @return A random number, in between (0,1)
-* @date 05 sep 2013
 */
-double Random(void) {
+double Random(void)
+{
 	double ret;
 	switch_to_platform_mode();
 
@@ -85,11 +88,8 @@ double Random(void) {
 	return ret;
 }
 
-
-
-
-
-int RandomRange(int min, int max) {
+int RandomRange(int min, int max)
+{
 	double ret;
 	switch_to_platform_mode();
 
@@ -99,9 +99,8 @@ int RandomRange(int min, int max) {
 	return ret;
 }
 
-
-
-int RandomRangeNonUniform(int x, int min, int max) {
+int RandomRangeNonUniform(int x, int min, int max)
+{
 	double ret;
 	switch_to_platform_mode();
 
@@ -111,23 +110,21 @@ int RandomRangeNonUniform(int x, int min, int max) {
 	return ret;
 }
 
-
-
 /**
 * This function returns a random number according to an Exponential distribution.
 * The mean value of the distribution must be passed as the mean value.
 *
-* @author Alessandro Pellegrini
 * @param mean Mean value of the distribution
 * @return A random number
-* @date 3/16/2011
 */
-double Expent(double mean) {
+double Expent(double mean)
+{
 	double ret;
 	switch_to_platform_mode();
 
-	if(unlikely(mean < 0)) {
-		rootsim_error(true, "Expent() has been passed a negative mean value\n");
+	if (unlikely(mean < 0)) {
+		rootsim_error(true,
+			      "Expent() has been passed a negative mean value\n");
 	}
 
 	ret = (-mean * log(1 - do_random()));
@@ -136,46 +133,40 @@ double Expent(double mean) {
 	return ret;
 }
 
-
-
-
-
 /**
 * This function returns a number according to a Normal Distribution with mean 0
 *
-* @author
 * @return A random number
-* @date 4/20/2011
 */
-double Normal(void) {
-	// TODO: usare queste variabili statiche non garantisce necessariamente l'esecuzione PWD se c'è interleaving tra gli LP che chiamano Normal()
-	static bool iset = false;
-	static double gset;
+double Normal(void)
+{
 	double fac, rsq, v1, v2;
+	bool *iset;
+	double *gset;
 
-	if(iset == false) {
+	iset = &current->numerical.iset;
+	gset = &current->numerical.gset;
+
+	if (*iset == false) {
 		do {
 			v1 = 2.0 * Random() - 1.0;
 			v2 = 2.0 * Random() - 1.0;
 			rsq = v1 * v1 + v2 * v2;
-		} while(rsq >= 1.0 || D_DIFFER_ZERO(rsq));
+		} while (rsq >= 1.0 || D_EQUAL_ZERO(rsq));
 
 		fac = sqrt(-2.0 * log(rsq) / rsq);
 
 		// Perform Box-Muller transformation to get two normal deviates. Return one
 		// and save the other for next time.
-		gset = v1 * fac;
-		iset = true;
+		*gset = v1 * fac;
+		*iset = true;
 		return v2 * fac;
 	} else {
 		// A deviate is already available
-		iset = false;
-		return gset;
+		*iset = false;
+		return *gset;
 	}
 }
-
-
-
 
 /**
 * This function returns a number in according to a Gamma Distribution of Integer Order ia,
@@ -184,21 +175,22 @@ double Normal(void) {
 * @author D. E. Knuth
 * @param ia Integer Order of the Gamma Distribution
 * @return A random number
-* @date 4/20/2011
 */
-double Gamma(int ia) {
+double Gamma(int ia)
+{
 	int j;
 	double am, e, s, v1, v2, x, y;
 
-	if(unlikely(ia < 1)) {
-		rootsim_error(false, "Gamma distribution must have a ia value >= 1. Defaulting to 1...");
+	if (unlikely(ia < 1)) {
+		rootsim_error(false,
+			      "Gamma distribution must have a ia value >= 1. Defaulting to 1...");
 		ia = 1;
 	}
 
-	if(ia < 6) {
+	if (ia < 6) {
 		// Use direct method, adding waiting times
 		x = 1.0;
-		for(j = 1; j <= ia; j++)
+		for (j = 1; j <= ia; j++)
 			x *= Random();
 		x = -log(x);
 	} else {
@@ -208,62 +200,53 @@ double Gamma(int ia) {
 				do {
 					v1 = Random();
 					v2 = 2.0 * Random() - 1.0;
-				} while(v1 * v1 + v2 * v2 > 1.0);
+				} while (v1 * v1 + v2 * v2 > 1.0);
 
 				y = v2 / v1;
 				am = (double)(ia - 1);
 				s = sqrt(2.0 * am + 1.0);
 				x = s * y + am;
-			} while(x < 0.0);
+			} while (x < 0.0);
 
 			e = (1.0 + y * y) * exp(am * log(x / am) - s * y);
-		} while(Random() > e);
+		} while (Random() > e);
 	}
 
 	return x;
 }
 
-
-
 /**
 * This function returns the waiting time to the next event in a Poisson process of unit mean.
 *
-* @author Alessandro Pellegrini
-* @param ia Integer Order of the Gamma Distribution
 * @return A random number
-* @date 11 Jan 2012
 */
-double Poisson(void) {
+double Poisson(void)
+{
 	return Gamma(1);
 }
-
-
 
 /**
 * This function returns a random sample from a Zipf distribution.
 * Based on the rejection method by Luc Devroye for sampling:
 * "Non-Uniform Random Variate Generation, page 550, Springer-Verlag, 1986
 *
-* @author Alessandro Pellegrini
 * @param skew The skew of the distribution
 * @param limit The largest sample to retrieve
 * @return A random number
-* @date 8 Nov 2012
 */
-int Zipf(double skew, int limit) {
+int Zipf(double skew, int limit)
+{
 	double a = skew;
 	double b = pow(2., a - 1.);
 	double x, t, u, v;
 	do {
 		u = Random();
 		v = Random();
-		x = floor(pow(u, -1./a - 1.));
-		t = pow(1. + 1./x, a - 1.);
-	} while (v * x * (t - 1.) / (b - 1.) > (t/b) || x > limit);
+		x = floor(pow(u, -1. / a - 1.));
+		t = pow(1. + 1. / x, a - 1.);
+	} while (v * x * (t - 1.) / (b - 1.) > (t / b) || x > limit);
 	return (int)x;
 }
-
-
 
 /**
 * MwC random number generators suffer from bad seeds. Since initial LPs' seeds are derived randomly
@@ -274,67 +257,59 @@ int Zipf(double skew, int limit) {
 * This generation is deterministic, therefore it is good for PWD executions of different simulations
 * using the same initial master seed.
 *
-* @author Alessandro Pellegrini
 * @param cur_seed The current seed which has been generated and must be checked
 * @return A sanitized seed
-* @date 6 Sep 2013
 */
-static seed_type sanitize_seed(seed_type cur_seed) {
+static seed_type sanitize_seed(seed_type cur_seed)
+{
 
-        uint32_t *seed1 = (uint32_t *)&(cur_seed);
-        uint32_t *seed2 = (uint32_t *)((char *)&(cur_seed) + (sizeof(uint32_t)));
+	uint32_t *seed1 = (uint32_t *) &(cur_seed);
+	uint32_t *seed2 = (uint32_t *) ((char *)&(cur_seed) + (sizeof(uint32_t)));
 
-        // Sanitize seed1
-        // Any integer multiple of 0x9068FFFF, including 0, is a bad state
-        uint32_t state_orig;
-        uint32_t temp;
+	// Sanitize seed1
+	// Any integer multiple of 0x9068FFFF, including 0, is a bad state
+	uint32_t state_orig;
+	uint32_t temp;
 
-        state_orig = *seed1;
-        temp = state_orig;
+	state_orig = *seed1;
+	temp = state_orig;
 
-        // The following is equivalent to % 0x9068FFFF, without using modulo
-        // operation which may be expensive on embedded targets. For
-        // uint32_t and this divisor, we only need 'if' rather than 'while'.
-        if (temp >= UINT32_C(0x9068FFFF))
-                temp -= UINT32_C(0x9068FFFF);
-        if (temp == 0) {
-                // Any integer multiple of 0x9068FFFF, including 0, is a bad state.
-                // Use an alternate state value by inverting the original value.
-                temp = state_orig ^ UINT32_C(0xFFFFFFFF);
-                if (temp >= UINT32_C(0x9068FFFF))
-                        temp -= UINT32_C(0x9068FFFF);
-        }
-        *seed1 = temp;
+	// The following is equivalent to % 0x9068FFFF, without using modulo
+	// operation which may be expensive on embedded targets. For
+	// uint32_t and this divisor, we only need 'if' rather than 'while'.
+	if (temp >= UINT32_C(0x9068FFFF))
+		temp -= UINT32_C(0x9068FFFF);
+	if (temp == 0) {
+		// Any integer multiple of 0x9068FFFF, including 0, is a bad state.
+		// Use an alternate state value by inverting the original value.
+		temp = state_orig ^ UINT32_C(0xFFFFFFFF);
+		if (temp >= UINT32_C(0x9068FFFF))
+			temp -= UINT32_C(0x9068FFFF);
+	}
+	*seed1 = temp;
 
+	// Sanitize seed2
+	// Any integer multiple of 0x464FFFFF, including 0, is a bad state.
+	state_orig = *seed2;
+	temp = state_orig;
 
-        // Sanitize seed2
-        // Any integer multiple of 0x464FFFFF, including 0, is a bad state.
-        state_orig = *seed2;
-        temp = state_orig;
+	// The following is equivalent to % 0x464FFFFF, without using modulo
+	// operation which may be expensive on some targets. For
+	// uint32_t and this divisor, it may loop up to 3 times.
+	while (temp >= UINT32_C(0x464FFFFF))
+		temp -= UINT32_C(0x464FFFFF);
+	if (temp == 0) {
+		// Any integer multiple of 0x464FFFFF, including 0, is a bad state.
+		// Use an alternate state value by inverting the original value.
+		temp = state_orig ^ UINT32_C(0xFFFFFFFF);
+		while (temp >= UINT32_C(0x464FFFFF))
+			temp -= UINT32_C(0x464FFFFF);
+	}
 
-        // The following is equivalent to % 0x464FFFFF, without using modulo
-        // operation which may be expensive on some targets. For
-        // uint32_t and this divisor, it may loop up to 3 times.
-        while (temp >= UINT32_C(0x464FFFFF))
-                temp -= UINT32_C(0x464FFFFF);
-        if (temp == 0) {
-                // Any integer multiple of 0x464FFFFF, including 0, is a bad state.
-                // Use an alternate state value by inverting the original value.
-                temp = state_orig ^ UINT32_C(0xFFFFFFFF);
-                while (temp >= UINT32_C(0x464FFFFF))
-                        temp -= UINT32_C(0x464FFFFF);
-        }
+	*seed2 = temp;
 
-        *seed2 = temp;
-
-        return cur_seed;
+	return cur_seed;
 }
-
-
-
-
-
-
 
 /**
 * This function is used by ROOT-Sim to load the initial value of the seed.
@@ -346,11 +321,10 @@ static seed_type sanitize_seed(seed_type cur_seed) {
 * The first line is the replaced with the subsequent seed generated by the Random
 * function.
 *
-* @author Francesco Quaglia
-* @author Alessandro Pellegrini
 * @return The master seed
 */
-static void load_seed(void) {
+static void load_seed(void)
+{
 
 	static bool single_print = false; // To print only once a message about manual initialization
 	seed_type new_seed;
@@ -382,15 +356,15 @@ static void load_seed(void) {
 		}
 		read(fd, &new_seed, sizeof(seed_type));
 		close(fd);
-		fprintf(fp, "%llu\n", (unsigned long long)new_seed); // We cast, so that we get an integer representing just a bit sequence
+		fprintf(fp, "%llu\n", (unsigned long long)new_seed);	// We cast, so that we get an integer representing just a bit sequence
 		fclose(fp);
 
 	}
 
 	// Is seed manually specified?
-	if(rootsim_config.set_seed > 0) {
+	if (rootsim_config.set_seed > 0) {
 
-		if(!single_print) {
+		if (!single_print) {
 			single_print = true;
 			printf("Manually setting master seed to %llu\n", (unsigned long long)rootsim_config.set_seed);
 		}
@@ -402,10 +376,8 @@ static void load_seed(void) {
 		rootsim_error(true, "Unable to load numerical distribution configuration: %s. Aborting...", conf_file);
 	}
 
-
 	// Load the initial seed
 	fscanf(fp, "%llu", (unsigned long long *)&master_seed);
-
 
 	// Replace the initial seed
 	if (rootsim_config.deterministic_seed == false) {
@@ -425,26 +397,22 @@ static void load_seed(void) {
 // sequenza di eventi agli stessi timestamp!!!
 
 #define RS_WORD_LENGTH (8 * sizeof(seed_type))
-#define ROR(value, places) (value << (places)) | (value >> (RS_WORD_LENGTH - places)) // Circular shift
-void numerical_init(void) {
-
-	LID_t lid;
-
+#define ROR(value, places) (value << (places)) | (value >> (RS_WORD_LENGTH - places))	// Circular shift
+void numerical_init(void)
+{
 	// Initialize the master seed
 	load_seed();
 
 	// Initialize the per-LP seed
-	for(lid.id = 0; lid.id < n_prc; lid.id++) {
-		LPS(lid)->seed = sanitize_seed(ROR((int64_t)master_seed, LidToGid(lid).id % RS_WORD_LENGTH));
+	foreach_lp(lp) {
+		lp->numerical.seed = sanitize_seed(ROR((int64_t) master_seed, lp->gid.to_int % RS_WORD_LENGTH));
 	}
 
 }
+
 #undef RS_WORD_LENGTH
 #undef ROR
 
-
-
-
-void numerical_fini(void) {
+void numerical_fini(void)
+{
 }
-

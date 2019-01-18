@@ -10,6 +10,11 @@
 *.out
 *.gcno
 *.gcda
+*.gcov
+
+model
+
+html/
 
 Makefile
 Makefile.in
@@ -53,3 +58,6 @@ modules.order
 *.ko.cmd
 *.mod.c
 .tmp_versions
+
+/dymelor
+/numerical

@@ -1,7 +1,13 @@
 /**
-*			Copyright (C) 2008-2018 HPDCS Group
-*			http://www.dis.uniroma1.it/~hpdcs
+* @file lib/numerical.h
 *
+* @brief Numerical Library
+*
+* Piece-Wise Deterministic Random Number Generators.
+*
+* @copyright
+* Copyright (C) 2008-2019 HPDCS Group
+* https://hpdcs.github.io
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
 *
@@ -17,23 +23,26 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file numerical.h
-* @brief This header is used to define symbols which must be accessible by the simulator
-* 	but not by the application-level code. Any symbol needed by the application-
-* 	level code (i.e. random distributions) is found in ROOT-Sim.h
-*        numerical distribution implementations
 * @author Alessandro Pellegrini
-* @date Dec 10, 2013
+*
+* @date March 16, 2011
 */
 
 #pragma once
-#ifndef __NUMERICAL_H
-#define __NUMERICAL_H
+
+#include <stdbool.h>
 
 /// Numerical seed type
 typedef uint64_t seed_type;
 
+/**
+ * This structure keeps track of the per-LP members required to rollback
+ * the internal state of the simulation library.
+ */
+typedef struct _numerical_state {
+	seed_type seed;	      /**< Random seed */
+	double gset;	      /**< Normal distribution saved sample */
+	bool iset;	      /**< Normal distribution saved sample flag */
+} numerical_state_t;
+
 void numerical_init(void);
-
-#endif /* #ifndef __NUMERICAL_H */
-

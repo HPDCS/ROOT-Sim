@@ -1,7 +1,13 @@
 /**
-*			Copyright (C) 2008-2018 HPDCS Group
-*			http://www.dis.uniroma1.it/~hpdcs
+* @file core/init.c
 *
+* @brief Initialization routines
+*
+* This module implements the simulator initialization routines
+*
+* @copyright
+* Copyright (C) 2008-2019 HPDCS Group
+* https://hpdcs.github.io
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
 *
@@ -17,11 +23,10 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file init.c
-* @brief This module implements the simulator initialization routines
 * @author Francesco Quaglia
-* @author Roberto Vitali
+* @author Andrea Piccione
 * @author Alessandro Pellegrini
+* @author Roberto Vitali
 */
 
 #include <unistd.h>
@@ -45,7 +50,8 @@
 #include <gvt/ccgs.h>
 #include <scheduler/scheduler.h>
 #include <mm/state.h>
-#include <mm/dymelor.h>
+#include <mm/ecs.h>
+#include <mm/mm.h>
 #include <statistics/statistics.h>
 #include <lib/numerical.h>
 #include <serial/serial.h>
@@ -56,46 +62,41 @@
 
 /// This is the list of mnemonics for arguments
 enum _opt_codes{
- OPT_FIRST = 128, /**< this is used as an offset to the enum values, so that argp doesn't assign short options */
+	OPT_FIRST = 128, /**< this is used as an offset to the enum values, so that argp doesn't assign short options */
 
- OPT_SCHEDULER = OPT_FIRST,
- OPT_CKTRM_MODE,
- OPT_LPS_DISTRIBUTION,
- OPT_VERBOSE,
- OPT_STATS,
- OPT_STATE_SAVING,
- OPT_SNAPSHOT,
+	// make sure these ones are mapped correctly to the external enum param_codes,
+	OPT_SCHEDULER = 	OPT_FIRST + PARAM_SCHEDULER,
+	OPT_CKTRM_MODE = 	OPT_FIRST + PARAM_CKTRM_MODE,
+	OPT_LPS_DISTRIBUTION =	OPT_FIRST + PARAM_LPS_DISTRIBUTION,
+	OPT_VERBOSE = 		OPT_FIRST + PARAM_VERBOSE,
+	OPT_STATS = 		OPT_FIRST + PARAM_STATS,
+	OPT_STATE_SAVING = 	OPT_FIRST + PARAM_STATE_SAVING,
+	OPT_SNAPSHOT = 		OPT_FIRST + PARAM_SNAPSHOT,
 
- OPT_NP,
- OPT_NPRC,
- OPT_OUTPUT_DIR,
- OPT_NPWD,
- OPT_P,
- OPT_FULL,
- OPT_INC,
- OPT_A,
- OPT_GVT,
- OPT_BLOCKING_GVT,
- OPT_GVT_SNAPSHOT_CYCLES,
- OPT_SIMULATION_TIME,
- OPT_DETERMINISTIC_SEED,
- OPT_SEED,
- OPT_SERIAL,
- OPT_NO_CORE_BINDING,
+	OPT_NP,
+	OPT_NPRC,
+	OPT_OUTPUT_DIR,
+	OPT_NPWD,
+	OPT_P,
+	OPT_FULL,
+	OPT_INC,
+	OPT_A,
+	OPT_GVT,
+	OPT_GVT_SNAPSHOT_CYCLES,
+	OPT_SIMULATION_TIME,
+	OPT_DETERMINISTIC_SEED,
+	OPT_SEED,
+	OPT_SERIAL,
+	OPT_NO_CORE_BINDING,
 
 #ifdef HAVE_PREEMPTION
- OPT_PREEMPTION,
+	OPT_PREEMPTION,
 #endif
-
-#ifdef HAVE_PARALLEL_ALLOCATOR
- OPT_ALLOCATOR,
-#endif
-
- OPT_LAST
+	OPT_LAST
 };
 
 // XXX we offset the first level with OPT_FIRST so remember about it when you index it!
-static const char* param_to_text[][5] = {
+const char * const param_to_text[][5] = {
 	[OPT_SCHEDULER - OPT_FIRST] = {
 			[SCHEDULER_INVALID] = "invalid scheduler",
 			[SCHEDULER_STF] = "stf",
@@ -134,7 +135,7 @@ static const char* param_to_text[][5] = {
 	}
 };
 
-const char *argp_program_version 		= PACKAGE_STRING "\nCopyright (C) 2008-2018 HPDCS Group";
+const char *argp_program_version 	= PACKAGE_STRING "\nCopyright (C) 2008-2019 HPDCS Group";
 const char *argp_program_bug_address 	= PACKAGE_BUGREPORT;
 
 // Directly from argp documentation:
@@ -148,76 +149,70 @@ static char doc[] = "ROOT-Sim - a fast distributed multithreaded Parallel Discre
 static char args_doc[] = "";
 // the options recognized by argp
 static const struct argp_option argp_options[] = {
-	{"np", 			OPT_NP,		"VALUE", 	0, "Number of total cores being used by the simulation", 0},
-	{"nprc", 		OPT_NPRC, 	"VALUE", 	0, "Total number of Logical Processes being lunched at simulation startup", 0},
-	{"output-dir",	OPT_OUTPUT_DIR, "PATH", 0, "Path to a folder where execution statistics are stored. If not present, it is created", 0},
-	{"scheduler",	OPT_SCHEDULER, "TYPE", 	0, "LP Scheduling algorithm. Supported values are: stf", 0},
-	{"npwd",	  	OPT_NPWD,	0,			0, "Non Piece-Wise-Deterministic simulation model. See manpage for accurate description", 0},
-	{"p",			OPT_P,		"VALUE",	0, "Checkpointing interval", 0},
-	{"full",		OPT_FULL,	0,			0, "Take only full logs", 0},
-	{"inc",			OPT_INC,	0,			0, "Take only incremental logs (still to be released)", 0},
-	{"A",		  	OPT_A,		0,			0, "Autonomic subsystem: set checkpointing interval and log mode automatically at runtime (still to be released)", 0},
-	{"gvt",			OPT_GVT,	"VALUE",	0, "Time between two GVT reductions (in milliseconds)", 0},
-	{"cktrm-mode", 	OPT_CKTRM_MODE, "TYPE",	0, "Termination Detection mode. Supported values: standard, incremental", 0},
-	{"blocking-gvt", 		OPT_BLOCKING_GVT, 		0,		0, 	"Blocking GVT. All distributed nodes block until a consensus is agreed", 0},
-	{"gvt-snapshot-cycles",	OPT_GVT_SNAPSHOT_CYCLES, "VALUE", 0, "Termination detection is invoked after this number of GVT reductions", 0},
-	{"simulation-time", 	OPT_SIMULATION_TIME, 	"VALUE", 0,	"Halt the simulation when all LPs reach this logical time. 0 means infinite", 0},
-	{"lps-distribution", 	OPT_LPS_DISTRIBUTION, 	"TYPE", 0, 	"LPs distributions over simulation kernels policies. Supported values: block, circular", 0},
-	{"deterministic-seed",	OPT_DETERMINISTIC_SEED, 0, 0, 		"Do not change the initial random seed for LPs. Enforces different deterministic simulation runs", 0},
-	{"verbose",		OPT_VERBOSE, "TYPE",	0, "Verbose execution", 0},
-	{"stats",		OPT_STATS, 	"TYPE",		0, "Level of detail in the output statistics", 0},
-	{"seed",		OPT_SEED,	"VALUE",	0, "Manually specify the initial random seed", 0},
-	{"serial",		OPT_SERIAL,	0,			0, "Run a serial simulation (using Calendar Queues)", 0},
-	{"sequential",	OPT_SERIAL,	0,			OPTION_ALIAS, NULL, 0},
-	{"no-core-binding", 	OPT_NO_CORE_BINDING, 	0,		0, 	"Disable the binding of threads to specific physical processing cores", 0},
+	{"np",			OPT_NP,			"VALUE",	0,		"Number of total cores being used by the simulation", 0},
+	{"nprc",		OPT_NPRC,		"VALUE",	0,		"Total number of Logical Processes being lunched at simulation startup", 0},
+	{"output-dir",		OPT_OUTPUT_DIR,		"PATH",		0,		"Path to a folder where execution statistics are stored. If not present, it is created", 0},
+	{"scheduler",		OPT_SCHEDULER,		"TYPE",		0,		"LP Scheduling algorithm. Supported values are: stf", 0},
+	{"npwd",		OPT_NPWD,		0,		0,		"Non Piece-Wise-Deterministic simulation model. See manpage for accurate description", 0},
+	{"p",			OPT_P,			"VALUE",	0,		"Checkpointing interval", 0},
+	{"full",		OPT_FULL,		0,		0,		"Take only full logs", 0},
+	{"inc",			OPT_INC,		0,		0,		"Take only incremental logs (still to be released)", 0},
+	{"A",			OPT_A,			0,		0,		"Autonomic subsystem: set checkpointing interval and log mode automatically at runtime (still to be released)", 0},
+	{"gvt",			OPT_GVT,		"VALUE",	0,		"Time between two GVT reductions (in milliseconds)", 0},
+	{"cktrm-mode",		OPT_CKTRM_MODE,		"TYPE",		0,		"Termination Detection mode. Supported values: normal, incremental", 0},
+	{"gvt-snapshot-cycles",	OPT_GVT_SNAPSHOT_CYCLES, "VALUE",	0,		"Termination detection is invoked after this number of GVT reductions", 0},
+	{"simulation-time",	OPT_SIMULATION_TIME, 	"VALUE",	0,		"Halt the simulation when all LPs reach this logical time. 0 means infinite", 0},
+	{"lps-distribution",	OPT_LPS_DISTRIBUTION, 	"TYPE",		0,		"LPs distributions over simulation kernels policies. Supported values: block, circular", 0},
+	{"deterministic-seed",	OPT_DETERMINISTIC_SEED,	0,		0, 		"Do not change the initial random seed for LPs. Enforces different deterministic simulation runs", 0},
+	{"verbose",		OPT_VERBOSE,		"TYPE",		0,		"Verbose execution", 0},
+	{"stats",		OPT_STATS,		"TYPE",		0,		"Level of detail in the output statistics", 0},
+	{"seed",		OPT_SEED,		"VALUE",	0,		"Manually specify the initial random seed", 0},
+	{"serial",		OPT_SERIAL,		0,		0,		"Run a serial simulation (using Calendar Queues)", 0},
+	{"sequential",		OPT_SERIAL,		0,		OPTION_ALIAS,	NULL, 0},
+	{"no-core-binding",	OPT_NO_CORE_BINDING,	0,		0,		"Disable the binding of threads to specific physical processing cores", 0},
 
-	#ifdef HAVE_PREEMPTION
-	{"no-preemption", OPT_PREEMPTION, 0,	0, "Disable Preemptive Time Warp", 0},
+#ifdef HAVE_PREEMPTION
+	{"no-preemption",	OPT_PREEMPTION,		0,		0,		"Disable Preemptive Time Warp", 0},
 #endif
-
-#ifdef HAVE_PARALLEL_ALLOCATOR
-	{"no-allocator", OPT_ALLOCATOR, 0,		0, "Disable parallel allocator", 0},
-#endif
-
 	{0}
 };
 
-#define malformed_option_failure() 		argp_error(state, "invalid value \"%s\" in %s option.\nAborting!", arg, state->argv[state->next -1 -(arg != NULL)])
+#define malformed_option_failure()	argp_error(state, "invalid value \"%s\" in %s option.\nAborting!", arg, state->argv[state->next -1 -(arg != NULL)])
 
-#define conflicting_option_failure(msg) argp_error(state, "the requested option %s with value \"%s\" is conflicting: " msg "\nAborting!", state->argv[state->next -1 -(arg != NULL)], arg)
+#define conflicting_option_failure(msg)	argp_error(state, "the requested option %s with value \"%s\" is conflicting: " msg "\nAborting!", state->argv[state->next -1 -(arg != NULL)], arg)
 
 // this parses an string option leveraging the 2d array of strings specified earlier
 // the weird iteration style skips the element 0, which we know is associated with an invalid value description
-#define handle_string_option(label, var)	\
-	case label: \
-	({\
-		unsigned __i = 1; \
-		while(1) { \
-			if(strcmp(arg, param_to_text[key - OPT_FIRST][__i]) == 0) {\
-				var = __i; \
-				break; \
-			}\
-			if(!param_to_text[key - OPT_FIRST][++__i]) \
-				malformed_option_failure(); \
-		} \
-	}); \
+#define handle_string_option(label, var)						\
+	case label:									\
+	({										\
+		unsigned __i = 1;							\
+		while(1) {								\
+			if(strcmp(arg, param_to_text[key - OPT_FIRST][__i]) == 0) {	\
+				var = __i;						\
+				break;							\
+			}								\
+			if(!param_to_text[key - OPT_FIRST][++__i])			\
+				malformed_option_failure();				\
+		}									\
+	});										\
 	break
 
 
 // the compound expression equivalent to __value >= low is needed in order to suppress a warning when low == 0
 #define parse_ullong_limits(low, high) 	\
-	({\
-		unsigned long long int __value;\
-		char *__endptr;\
-		__value = strtoull(arg, &__endptr, 10);\
-		if(!(*arg != '\0' && *__endptr == '\0' && (__value > low || __value == low) && __value <= high)) {\
-			malformed_option_failure();\
-		}\
-		__value;\
+	({														\
+		unsigned long long int __value;										\
+		char *__endptr;												\
+		__value = strtoull(arg, &__endptr, 10);									\
+		if(!(*arg != '\0' && *__endptr == '\0' && (__value > low || __value == low) && __value <= high)) {	\
+			malformed_option_failure();									\
+		}													\
+		__value;												\
 	})
 
-static error_t parse_opt (int key, char *arg, struct argp_state *state){
-
+static error_t parse_opt (int key, char *arg, struct argp_state *state)
+{
 	// this is used in order to ensure that the user doesn't use duplicate options
 	static rootsim_bitmap scanned[bitmap_required_size(OPT_LAST - OPT_FIRST)];
 
@@ -241,11 +236,11 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state){
 			rootsim_config.output_dir = arg;
 			break;
 
-		handle_string_option(OPT_SCHEDULER, 	rootsim_config.scheduler);
-		handle_string_option(OPT_FULL, 			rootsim_config.snapshot);
-		handle_string_option(OPT_CKTRM_MODE, 	rootsim_config.check_termination_mode);
-		handle_string_option(OPT_VERBOSE, 		rootsim_config.verbose);
-		handle_string_option(OPT_STATS, 		rootsim_config.stats);
+		handle_string_option(OPT_SCHEDULER, rootsim_config.scheduler);
+		handle_string_option(OPT_FULL, rootsim_config.snapshot);
+		handle_string_option(OPT_CKTRM_MODE, rootsim_config.check_termination_mode);
+		handle_string_option(OPT_VERBOSE, rootsim_config.verbose);
+		handle_string_option(OPT_STATS, rootsim_config.stats);
 		handle_string_option(OPT_LPS_DISTRIBUTION, rootsim_config.lps_distribution);
 
 		case OPT_NPWD:
@@ -277,11 +272,7 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state){
 			break;
 
 		case OPT_GVT:
-			rootsim_config.gvt_time_period = parse_ullong_limits(1, INT_MAX);
-			break;
-
-		case OPT_BLOCKING_GVT:
-			rootsim_config.blocking_gvt = true;
+			rootsim_config.gvt_time_period = parse_ullong_limits(1, 10000);
 			break;
 
 		case OPT_GVT_SNAPSHOT_CYCLES:
@@ -308,17 +299,11 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state){
 			rootsim_config.core_binding = false;
 			break;
 
-		#ifdef HAVE_PREEMPTION
+#ifdef HAVE_PREEMPTION
 		case OPT_PREEMPTION:
 			rootsim_config.disable_preemption = true;
 			break;
-		#endif
-
-		#ifdef HAVE_PARALLEL_ALLOCATOR
-		case OPT_ALLOCATOR:
-			rootsim_config.disable_allocator = true;
-			break;
-		#endif
+#endif
 
 		case ARGP_KEY_INIT:
 
@@ -337,20 +322,14 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state){
 			rootsim_config.gvt_snapshot_cycles = 2;
 			rootsim_config.ckpt_period = 10;
 			rootsim_config.simulation_time = 0;
-			rootsim_config.blocking_gvt = false;
 			rootsim_config.deterministic_seed = false;
 			rootsim_config.set_seed = 0;
 			rootsim_config.serial = false;
 			rootsim_config.core_binding = true;
 
-			#ifdef HAVE_PREEMPTION
+#ifdef HAVE_PREEMPTION
 			rootsim_config.disable_preemption = false;
-			#endif
-
-			#ifdef HAVE_PARALLEL_ALLOCATOR
-			rootsim_config.disable_allocator = false;
-			#endif
-
+#endif
 			break;
 
 		case ARGP_KEY_SUCCESS:
@@ -373,6 +352,8 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state){
 
 			if(!rootsim_config.serial && n_prc_tot < n_cores)
 				rootsim_error(true, "Requested a simulation run with %u LPs and %u worker threads: the mapping is not possible\n", n_prc_tot, n_cores);
+
+			print_config();
 
 			break;
 			/* these functionalities are not needed
@@ -410,22 +391,22 @@ static struct argp argp = { argp_options, parse_opt, args_doc, doc, argp_child, 
 * @param argc number of parameters passed at command line
 * @param argv array of parameters passed at command line
 */
-void SystemInit(int argc, char **argv) {
-
-	#ifdef HAVE_MPI
+void SystemInit(int argc, char **argv)
+{
+#ifdef HAVE_MPI
 	mpi_init(&argc, &argv);
 
 	if(n_ker > MAX_KERNELS){
 		rootsim_error(true, "Too many kernels, maximum supported number is %u\n", MAX_KERNELS);
 	}
-	#else
+#else
 	n_ker = 1;
-	#endif
+#endif
 
 	// Early initialization of ECS subsystem if needed
-	#ifdef HAVE_CROSS_STATE
+#ifdef HAVE_CROSS_STATE
 	ecs_init();
-	#endif
+#endif
 
 	// this retrieves the model's argp parser if declared by the developer
 	argp_child[0].argp = &model_argp;
@@ -434,71 +415,25 @@ void SystemInit(int argc, char **argv) {
 
 	// If we're going to run a serial simulation, configure the simulation to support it
 	if(rootsim_config.serial) {
-		SetState = SerialSetState;
 		ScheduleNewEvent = SerialScheduleNewEvent;
+		initialize_lps();
 		numerical_init();
-		//dymelor_init();
 		statistics_init();
 		serial_init();
 		return;
 	} else {
-		SetState = ParallelSetState;
 		ScheduleNewEvent = ParallelScheduleNewEvent;
 	}
-
-
-	if (master_kernel()) {
-
-		 printf("****************************\n"
-			"*  ROOT-Sim Configuration  *\n"
-			"****************************\n"
-			"Kernels: %u\n"
-			"Cores: %ld available, %d used\n"
-			"Number of Logical Processes: %u\n"
-			"Output Statistics Directory: %s\n"
-			"Scheduler: %s\n"
-			#ifdef HAVE_MPI
-			"MPI multithread support: %s\n"
-			#endif
-			"GVT Time Period: %.2f seconds\n"
-			"Checkpointing Type: %s\n"
-			"Checkpointing Period: %d\n"
-			"Snapshot Reconstruction Type: %s\n"
-			"Halt Simulation After: %d\n"
-			"LPs Distribution Mode across Kernels: %s\n"
-			"Check Termination Mode: %s\n"
-			"Blocking GVT: %s\n"
-			"Set Seed: %ld\n",
-			n_ker,
-			get_cores(),
-			n_cores,
-			n_prc_tot,
-			rootsim_config.output_dir,
-			param_to_text[OPT_SCHEDULER - OPT_FIRST][rootsim_config.scheduler],
-			#ifdef HAVE_MPI
-			((mpi_support_multithread)? "yes":"no"),
-			#endif
-			rootsim_config.gvt_time_period / 1000.0,
-			param_to_text[OPT_STATE_SAVING - OPT_FIRST][rootsim_config.checkpointing],
-			rootsim_config.ckpt_period,
-			param_to_text[OPT_SNAPSHOT - OPT_FIRST][rootsim_config.snapshot],
-			rootsim_config.simulation_time,
-			param_to_text[OPT_LPS_DISTRIBUTION - OPT_FIRST][rootsim_config.lps_distribution],
-			param_to_text[OPT_CKTRM_MODE - OPT_FIRST][rootsim_config.check_termination_mode],
-			((rootsim_config.blocking_gvt)? "yes":"no"),
-			rootsim_config.set_seed);
-	}
-
-	distribute_lps_on_kernels();
 
 	// Initialize ROOT-Sim subsystems.
 	// All init routines are executed serially (there is no notion of threads in there)
 	// and the order of invocation can matter!
-
 	base_init();
-	scheduler_init();
+	segment_init();
+	initialize_lps();
+	remote_memory_init();
 	statistics_init();
-	dymelor_init();
+	scheduler_init();
 	communication_init();
 	gvt_init();
 	numerical_init();
