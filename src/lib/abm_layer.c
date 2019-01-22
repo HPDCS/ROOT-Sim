@@ -39,6 +39,7 @@
 	struct _agent_abm_t *__ret = hash_map_lookup(current->region->agents_table, agent_id); \
 	if(unlikely(!__ret)) \
 		rootsim_error(true, "Looking for non existing agent id!"); \
+	assert(agent_id == __ret->key); \
 	__ret; \
 })
 
@@ -51,7 +52,6 @@ struct _visit_abm_t{
 struct _agent_abm_t {
 	unsigned long long key;		//! UUID that uniquely identifies the agent (this must be the first field of the struct for various reasons)
 	unsigned user_data_size;	//! This must be the seonc filed of this struct for serialization reasons
-	unsigned leave_event;
 	char *user_data;
 	simtime_t leave_time;
 	rootsim_array(struct _visit_abm_t) future;
@@ -102,8 +102,7 @@ static struct _agent_abm_t* agent_from_buffer(const unsigned char* event_content
 	array_load(agent->future, buffer);
 	if(abm_settings.keep_history)
 		array_load(agent->past, buffer);
-	else
-		memset(&agent->past, 0, sizeof(rootsim_array(struct _visit_abm_t)));
+
 	//sanity check
 	assert(buffer == event_content + event_size);
 	return agent;
@@ -287,7 +286,7 @@ static void on_abm_leave(void){
 	current->ProcessEvent(current->gid.to_int, current_evt->timestamp, ((struct _leave_evt *)current_evt->event_content)->leave_code, current_evt->event_content, sizeof(agent->key), current->current_base_pointer);
 	switch_to_platform_mode();
 	// we search again for the agent who's leaving (the user could have possibly killed him)
-	agent = hash_map_lookup(current->region->agents_table, *((unsigned long long*)current_evt->event_content));
+	agent = hash_map_lookup(current->region->agents_table, ((struct _leave_evt *)current_evt->event_content)->key);
 	if(!agent || agent->leave_time > current_evt->timestamp){
 		// the capricious user has decided against the agent departure
 		return;
@@ -471,8 +470,6 @@ agent_t SpawnAgent(unsigned user_data_size) {
 		array_init(ret->past);
 		struct _visit_abm_t start_visit = { current->gid.to_int, ACTION_START, current_evt->timestamp };
 		array_push(ret->past, start_visit);
-	}else{
-		memset(&ret->past, 0, sizeof(rootsim_array(struct _visit_abm_t)));
 	}
 	switch_to_application_mode();
 	return ret->key;
@@ -483,7 +480,8 @@ void KillAgent(agent_t agent_id) {
 	struct _agent_abm_t *agent = retrieve_agent(agent_id);
 
 	array_fini(agent->future);
-	array_fini(agent->past);
+	if(abm_settings.keep_history)
+		array_fini(agent->past);
 	rsfree(agent->user_data);
 
 	hash_map_delete_elem(current->region->agents_table, agent);
@@ -504,7 +502,6 @@ void ScheduleNewLeaveEvent(simtime_t time, unsigned int event_type, agent_t agen
 	// we mark the agent with the intended leave time so we can later compare it
 	// to check for spurious events
 	agent->leave_time = time;
-	agent->leave_event = event_type;
 
 	struct _leave_evt leave_evt = {agent_id, event_type};
 
