@@ -40,11 +40,8 @@
 #include <stdint.h>
 #include <setjmp.h>
 
-#include <lib/numerical.h>
 #include <arch/thread.h>
 
-/// If set, ROOT-Sim will produce statistics on the execution
-#define PLATFORM_STATS
 
 /// This macro expands to true if the local kernel is the master kernel
 #define master_kernel() (kid == 0)
@@ -52,7 +49,7 @@
 // XXX: This should be moved to state or queues
 enum {
 	SNAPSHOT_INVALID = 0,	/**< By convention 0 is the invalid field */
-	SNAPSHOT_FULL,			/**< xxx documentation */
+	SNAPSHOT_FULL,		/**< xxx documentation */
 };
 
 /// Maximum number of kernels the distributed simulator can handle
@@ -64,9 +61,9 @@ enum {
 // XXX: this should be moved somewhere else...
 enum {
 	VERBOSE_INVALID = 0,	/**< By convention 0 is the invalid field */
-	VERBOSE_INFO,			/**< xxx documentation */
-	VERBOSE_DEBUG,			/**< xxx documentation */
-	VERBOSE_NO				/**< xxx documentation */
+	VERBOSE_INFO,		/**< xxx documentation */
+	VERBOSE_DEBUG,		/**< xxx documentation */
+	VERBOSE_NO		/**< xxx documentation */
 };
 
 extern jmp_buf exit_jmp;
@@ -76,14 +73,11 @@ extern jmp_buf exit_jmp;
 /// Optimize the branch as likely not taken
 #define unlikely(exp) __builtin_expect(exp, 0)
 
-// XXX Do we still use transient time?
-/// Transient duration (in msec)
-#define STARTUP_TIME	0
 
 enum {
 	LP_DISTRIBUTION_INVALID = 0,	/**< By convention 0 is the invalid field */
-	LP_DISTRIBUTION_BLOCK,			/**< Distribute exceeding LPs according to a block policy */
-	LP_DISTRIBUTION_CIRCULAR		/**< Distribute exceeding LPs according to a circular policy */
+	LP_DISTRIBUTION_BLOCK,		/**< Distribute exceeding LPs according to a block policy */
+	LP_DISTRIBUTION_CIRCULAR	/**< Distribute exceeding LPs according to a circular policy */
 };
 
 // XXX should be moved to a more librarish header
@@ -192,7 +186,7 @@ typedef struct _msg_t {
 	unsigned long long rendezvous_mark;	/// Unique identifier of the message, used for rendez-vous events
 
 	// Model data
-	int size;
+	unsigned int size;
 	unsigned char event_content[];
 } msg_t;
 
@@ -213,11 +207,6 @@ typedef struct _msg_hdr_t {
 	unsigned long long mark;
 } msg_hdr_t;
 
-// This is a structure used to setup an obstacle map in a grid of cells
-typedef struct obstacles_t {
-	size_t size;
-	unsigned int grid[];
-} obstacles_t;
 
 /// Barrier for all worker threads
 extern barrier_t all_thread_barrier;

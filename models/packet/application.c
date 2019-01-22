@@ -1,6 +1,7 @@
 #include <ROOT-Sim.h>
 #include "application.h"
 
+struct _topology_settings_t topology_settings = {.type = TOPOLOGY_OBSTACLES, .default_geometry = TOPOLOGY_GRAPH, .write_enabled = false};
 
 void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, event_t *content, unsigned int size, lp_state_t *state) {
 	event_t new_event;
@@ -29,7 +30,7 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, event_t *c
 			new_event.pointer = state->pointer;
 			new_event.sender = me;
 
-			int recv = FindReceiver(TOPOLOGY_MESH);
+			int recv = FindReceiver();
 
 			timestamp = now + Expent(DELAY);
 

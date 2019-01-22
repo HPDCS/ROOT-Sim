@@ -46,12 +46,19 @@ librootsim_a_SOURCES =	src/main.c \
 			src/core/init.c \
 			src/core/core.c \
 			src/datatypes/calqueue.c \
+			src/datatypes/hash_map.c \
 			src/datatypes/msgchannel.c \
 			src/gvt/gvt.c \
 			src/gvt/fossil.c \
 			src/gvt/ccgs.c \
+			src/lib/topology/topology.c \
+			src/lib/topology/topology_costs.c \
+			src/lib/topology/topology_obstacles.c \
+			src/lib/topology/topology_probabilities.c \
 			src/lib/numerical.c \
-			src/lib/topology.c \
+			src/lib/abm_layer.c \
+			src/lib/jsmn_helper.c \
+			src/lib/jsmn.c \
 			src/mm/state.c \
 			src/mm/ecs.c \
 			src/queues/queues.c \

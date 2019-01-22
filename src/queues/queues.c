@@ -92,19 +92,10 @@ simtime_t next_event_timestamp(struct lp_struct *lp)
 */
 msg_t *advance_to_next_event(struct lp_struct *lp)
 {
-
-	if (unlikely(lp->bound == NULL)) {
-		if (likely(!list_empty(lp->queue_in))) {
-			lp->bound = list_head(lp->queue_in);
-		} else {
-			return NULL;
-		}
+	if (likely(list_next(lp->bound) != NULL)) {
+		lp->bound = list_next(lp->bound);
 	} else {
-		if (likely(list_next(lp->bound) != NULL)) {
-			lp->bound = list_next(lp->bound);
-		} else {
-			return NULL;
-		}
+		return NULL;
 	}
 
 	return lp->bound;

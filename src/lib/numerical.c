@@ -413,6 +413,61 @@ void numerical_init(void)
 #undef RS_WORD_LENGTH
 #undef ROR
 
-void numerical_fini(void)
-{
+
+/**
+* Calculates a sum within double variables with bounded approximation error
+*
+* This implements a variant of the Kahan summation algorithm:
+* https://en.wikipedia.org/wiki/Kahan_summation_algorithm
+* This is used in the topology module to calculate minimum costs and weighted probabilities
+* since the classic iterated floating point sum may result in unbounded errors
+* originated from the limited precision of the underlying floating point representation.
+*
+* @author Andrea Piccione
+* @param cnt the number of addendums to sum
+* @param addendums a pointer to a sequence of cnt doubles
+* @return the sum between the addendums with bounded error
+*/
+__attribute__((const))
+double NeumaierSum(unsigned cnt, double addendums[cnt]) {
+	if(!cnt)
+		return 0.0;
+	double sum = addendums[0];
+	double crt = 0.0;
+	double tmp;
+	while (--cnt) {
+		tmp = sum + addendums[cnt];
+		if(fabs(sum) >= fabs(addendums[cnt])) {
+			crt += (sum - tmp) + addendums[cnt];
+		} else {
+			crt += (addendums[cnt] - tmp) + sum;
+		}
+		sum = tmp;
+	}
+	return sum + crt;
 }
+
+
+/**
+* Calculates a partial sum within double variables with bounded approximation error
+*
+* This has similar utilization to <NeumaierSum>() with the difference that this can be used
+* to calculate partial sums, adding doubles one by one.
+*
+* @author Andrea Piccione
+* @param sh a struct _sum_helper_t holding the partial result typically from a previous sum
+* @param addendum the double floating point value to add
+* @return a struct _sum_helper_t holding the sum between sh and addendum
+*/
+__attribute__((const))
+struct _sum_helper_t PartialNeumaierSum(struct _sum_helper_t sh, double addendum){
+	double tmp = sh.sum + addendum;
+	if(fabs(sh.sum) >= fabs(addendum)) {
+		sh.crt += (sh.sum - tmp) + addendum;
+	} else {
+		sh.crt += (addendum - tmp) + sh.sum;
+	}
+	sh.sum = tmp;
+	return sh;
+}
+
