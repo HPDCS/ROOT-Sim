@@ -50,7 +50,7 @@ struct _visit_abm_t{
 
 struct _agent_abm_t {
 	unsigned long long key;		//! UUID that uniquely identifies the agent (this must be the first field of the struct for various reasons)
-	unsigned user_data_size;
+	unsigned user_data_size;	//! This must be the seonc filed of this struct for serialization reasons
 	unsigned leave_event;
 	char *user_data;
 	simtime_t leave_time;
@@ -60,7 +60,6 @@ struct _agent_abm_t {
 
 struct _region_abm_t {
 	rootsim_hash_map(struct _agent_abm_t) agents_table;
-	rootsim_array(unsigned long long) agents_leaving;
 	unsigned long long next_mark;
 	unsigned published_data_offset;
 	unsigned char *tracked_data;
@@ -69,6 +68,11 @@ struct _region_abm_t {
 		unsigned data_offset;
 		unsigned int src_lp;
 	} neighbours_info[];
+};
+
+struct _leave_evt{
+	unsigned long long key;
+	unsigned leave_code;
 };
 
 static inline unsigned long long get_agent_mark(region_abm_t *region){
@@ -154,8 +158,6 @@ unsigned char * abm_do_checkpoint(region_abm_t *region){
 
 void abm_restore_checkpoint(unsigned char *data, region_abm_t *region){
 	struct _agent_abm_t *agent;
-	unsigned old_leaving_cap = array_capacity(region->agents_leaving);
-	unsigned long long *old_leaving_arr = array_items(region->agents_leaving);
 	// free the region allocations
 	unsigned i = hash_map_count(region->agents_table);
 	while(i--){
@@ -181,8 +183,6 @@ void abm_restore_checkpoint(unsigned char *data, region_abm_t *region){
 		memcpy(agent->user_data, data, agent->user_data_size);
 		data += agent->user_data_size;
 	}
-	array_capacity(region->agents_leaving) = old_leaving_cap;
-	array_items(region->agents_leaving) = old_leaving_arr;
 }
 
 void abm_layer_init(void) {
@@ -233,7 +233,6 @@ void abm_layer_init(void) {
 
 		// initialize the hash_map for agents
 		hash_map_init(region->agents_table);
-		array_init(region->agents_leaving);
 		// initialize mark
 		region->next_mark = lp->gid.to_int;
 		// Save pointer in LP state
@@ -274,15 +273,17 @@ static void on_abm_leave(void){
 	unsigned char* to_send;
 	unsigned buffer_size;
 	// we search for the agent who's leaving
-	assert(current_evt->size = sizeof(unsigned long long));
-	struct _agent_abm_t *agent = hash_map_lookup(current->region->agents_table, *((unsigned long long*)current_evt->event_content));
+	assert(current_evt->size = sizeof(struct _leave_evt));
+	struct _agent_abm_t *agent = hash_map_lookup(current->region->agents_table, ((struct _leave_evt *)current_evt->event_content)->key);
 	if(!agent || agent->leave_time > current_evt->timestamp) {
 		// the exiting agent has been killed or already left or the agent is trying to leave too early (can happen if user decides so)
 		return; // since this is spurious we can directly return
 	}
+
+	assert(agent->leave_event == ((struct _leave_evt *)current_evt->event_content)->leave_code);
 	// seems all ok: user, do whatever you want now
 	switch_to_application_mode();
-	current->ProcessEvent(current->gid.to_int, current_evt->timestamp, agent->leave_event, current_evt->event_content, sizeof(agent->key), current->current_base_pointer);
+	current->ProcessEvent(current->gid.to_int, current_evt->timestamp, ((struct _leave_evt *)current_evt->event_content)->leave_code, current_evt->event_content, sizeof(agent->key), current->current_base_pointer);
 	switch_to_platform_mode();
 	// we search again for the agent who's leaving (the user could have possibly killed him)
 	agent = hash_map_lookup(current->region->agents_table, *((unsigned long long*)current_evt->event_content));
@@ -372,18 +373,6 @@ static void receive_update(void){
 	rootsim_error(true, "Misuse of ABM api, unable to find neighbours info's memory area! EXITING!");
 }
 
-static void dispatch_leavers(void){
-	struct _agent_abm_t *agent;
-	unsigned long long key;
-	while(array_count(current->region->agents_leaving)){
-		key = array_pop(current->region->agents_leaving);
-		agent = hash_map_lookup(current->region->agents_table, key);
-		if(agent && agent->leave_event){
-			UncheckedScheduleNewEvent(current->gid.to_int, agent->leave_time, ABM_LEAVING, &agent->key, sizeof(agent->key));
-		}
-	}
-}
-
 static void update_neighbours(void){
 	region_abm_t *region = current->region;
 	unsigned char* published_data = ((unsigned char *)region) + region->published_data_offset;
@@ -426,7 +415,7 @@ void ProcessEventABM(void) {
 
 	}
 	update_neighbours();
-	dispatch_leavers();
+	//dispatch_leavers();
 }
 
 int GetNeighbourInfo(direction_t i, unsigned int *region_id, void **data_p){
@@ -516,7 +505,10 @@ void ScheduleNewLeaveEvent(simtime_t time, unsigned int event_type, agent_t agen
 	agent->leave_time = time;
 	agent->leave_event = event_type;
 
-	array_push(current->region->agents_leaving, agent->key);
+	struct _leave_evt leave_evt = {agent_id, event_type};
+
+	UncheckedScheduleNewEvent(current->gid.to_int, agent->leave_time, ABM_LEAVING, &leave_evt, sizeof(leave_evt));
+	//array_push(current->region->agents_leaving, agent->key);
 
 	switch_to_application_mode();
 }

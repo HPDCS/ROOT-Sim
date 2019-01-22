@@ -39,7 +39,7 @@ typedef struct _region_t{
 	struct{
 		unsigned sugar;
 		unsigned eaters;
-	};
+	}n;
 } region_t;
 
 

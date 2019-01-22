@@ -16,7 +16,7 @@ enum _bug_events_t{
 #define MAX_CONSUMPTION_RATE 5
 #define REPRODUCTION_SIZE 20
 #define CHILD_COUNT 5
-#define SURVIVAL_PROBABILITY 95 
+#define SURVIVAL_PROBABILITY 98
 #define NUM_OCCUPIED_CELLS 1  //default number of occupied cells (i.e.: number of bugs)
 #define BUG_PER_CELL 1 //at most one bug per cell at a time
 

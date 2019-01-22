@@ -51,8 +51,8 @@ static void sugar_eater_new(unsigned me){
 static void sugar_eater_on_visit(agent_t agent, region_t *region, simtime_t now){
 	sugar_eater_t *sugar_eater = DataAgent(agent, NULL);
 	// get sugar
-	sugar_eater->wealth += region->sugar;
-	region->sugar = 0;
+	sugar_eater->wealth += region->n.sugar;
+	region->n.sugar = 0;
 	// get older
 	sugar_eater->remaining_steps--;
 	// die :(
@@ -61,7 +61,7 @@ static void sugar_eater_on_visit(agent_t agent, region_t *region, simtime_t now)
 		return;
 	}
 	// increment eaters count the region
-	region->eaters++;
+	region->n.eaters++;
 	// eat
 	sugar_eater->wealth -= sugar_eater->eat_rate;
 	// prepare to leave
@@ -69,9 +69,9 @@ static void sugar_eater_on_visit(agent_t agent, region_t *region, simtime_t now)
 }
 
 static void sugar_eater_on_leave(agent_t agent, unsigned me, region_t *region){
-	unsigned *info_p= NULL; // this points to 2 consecutive unsigned ints, the sugar and the eaters in the region respectively
+	unsigned *info_p = NULL; // this points to 2 consecutive unsigned ints, the sugar and the eaters in the region respectively
 	unsigned receiver = me;
-	unsigned max_sugar = region->sugar;
+	unsigned max_sugar = region->n.sugar;
 
 	// get the max sugar available in the neighbourhood
 	unsigned i = DirectionsCount();
@@ -82,9 +82,9 @@ static void sugar_eater_on_leave(agent_t agent, unsigned me, region_t *region){
 			max_sugar = info_p[0];
 	}
 	// decrement eaters
-	region->eaters--;
+	region->n.eaters--;
 	// remain here if this is the richest region
-	if(region->sugar == max_sugar){
+	if(region->n.sugar == max_sugar){
 		EnqueueVisit(agent, me, SUGAR_VISIT);
 		return;
 	}
@@ -114,10 +114,10 @@ void ProcessEvent(unsigned me, simtime_t now, int event_type, agent_t *agent_p, 
 			SetState(region);
 
 			region->capacity = init_capacity(me);
-			region->sugar = region->capacity;
-			region->eaters = 0;
+			region->n.sugar = region->capacity;
+			region->n.eaters = 0;
 
-			TrackNeighbourInfo(&region->sugar);
+			TrackNeighbourInfo(&(region->n));
 			if(!me){
 				unsigned i = INIT_EATERS;
 				while(i--)
@@ -141,8 +141,8 @@ void ProcessEvent(unsigned me, simtime_t now, int event_type, agent_t *agent_p, 
 			break;
 
 		case SUGAR_REFILL:
-			if(region->sugar < region->capacity)
-				region->sugar++;
+			if(region->n.sugar < region->capacity)
+				region->n.sugar++;
 
 			ScheduleNewEvent(me, now + TIME_STEP - 0.25 + Random()/5, SUGAR_REFILL, NULL, 0);
 			break;
@@ -161,7 +161,7 @@ void ProcessEvent(unsigned me, simtime_t now, int event_type, agent_t *agent_p, 
 // funzione dell'applicazione invocata dalla piattaforma
 // per stabilire se la simulazione e' terminata
 int OnGVT(unsigned int me, region_t *snapshot) {
-	printf("cap %u eaters %u sugar %u\n", snapshot->capacity, snapshot->eaters, snapshot->sugar);
+	printf("cap %u eaters %u sugar %u\n", snapshot->capacity, snapshot->n.eaters, snapshot->n.sugar);
 
-	return !snapshot->eaters;
+	return !snapshot->n.eaters;
 }

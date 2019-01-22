@@ -173,9 +173,9 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, agent_t *agent
 
 int OnGVT(unsigned int me, region_t *snapshot) {
 
-	printf("LP[%u] I'm %sexplored", me, snapshot->is_explored ? "" : "not ");
+	//printf("LP[%u] I'm %sexplored", me, snapshot->is_explored ? "" : "not ");
 	if(snapshot->bugs) printf(", there's still at least a bug here");
-	if(snapshot->violation) printf(", the constraint has been violated %u time%s", snapshot->violation, snapshot->violation > 1 ? "s" : "");
+	//if(snapshot->violation) printf(", the constraint has been violated %u time%s", snapshot->violation, snapshot->violation > 1 ? "s" : "");
 	printf(".\n");
 
 	return snapshot->is_explored;/// XXX fix with whatever stuff you prefer
