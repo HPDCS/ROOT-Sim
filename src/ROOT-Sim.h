@@ -136,7 +136,7 @@ __attribute((weak)) extern struct _topology_settings_t{
 	const enum _topology_type_t type;			/// The topology type the model wants to use
 	const enum _topology_geometry_t default_geometry;	/// The default geometry to use when nothing else is specified
 	const unsigned out_of_topology;				/// The minimum number of LPs needed out of the topology
-	bool write_enabled;					/// This is set if the model needs to use SetTopology()
+	const bool write_enabled;					/// This is set if the model needs to use SetTopology()
 }topology_settings;
 
 /**

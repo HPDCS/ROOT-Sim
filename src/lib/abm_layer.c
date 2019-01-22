@@ -154,6 +154,8 @@ unsigned char * abm_do_checkpoint(region_abm_t *region){
 
 void abm_restore_checkpoint(unsigned char *data, region_abm_t *region){
 	struct _agent_abm_t *agent;
+	unsigned old_leaving_cap = array_capacity(region->agents_leaving);
+	unsigned long long *old_leaving_arr = array_items(region->agents_leaving);
 	// free the region allocations
 	unsigned i = hash_map_count(region->agents_table);
 	while(i--){
@@ -179,6 +181,8 @@ void abm_restore_checkpoint(unsigned char *data, region_abm_t *region){
 		memcpy(agent->user_data, data, agent->user_data_size);
 		data += agent->user_data_size;
 	}
+	array_capacity(region->agents_leaving) = old_leaving_cap;
+	array_items(region->agents_leaving) = old_leaving_arr;
 }
 
 void abm_layer_init(void) {
