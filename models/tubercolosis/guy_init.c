@@ -9,6 +9,8 @@
 #include "guy.h"
 #include "parameters.h"
 
+const unsigned int scale_factor = 4;
+
 struct _init_t{
 	unsigned healthy;
 	unsigned infected;
@@ -18,7 +20,7 @@ struct _init_t{
 };
 
 void guy_init(void){
-	init_t total = {num_healthy, num_infected, num_sick, num_treatment, num_treated};
+	init_t total = {num_healthy/scale_factor, num_infected/scale_factor, num_sick/scale_factor, num_treatment/scale_factor, num_treated/scale_factor};
 	init_t to_send = {0};
 
 	const unsigned regions = RegionsCount();

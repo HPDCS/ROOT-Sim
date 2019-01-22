@@ -91,6 +91,7 @@ static struct _agent_abm_t* agent_from_buffer(const unsigned char* event_content
 	const unsigned char *buffer = event_content;
 	// allocate the memory for the visiting agent
 	struct _agent_abm_t *agent = hash_map_reserve_elem(current->region->agents_table, *((const unsigned long long *)event_content));
+	agent->leave_time = -1.0;
 	// copy uuid and user data size
 	memcpy(agent, buffer, sizeof(agent->user_data_size) + sizeof(agent->key));
 	buffer += sizeof(agent->user_data_size) + sizeof(agent->key);
@@ -102,6 +103,8 @@ static struct _agent_abm_t* agent_from_buffer(const unsigned char* event_content
 	array_load(agent->future, buffer);
 	if(abm_settings.keep_history)
 		array_load(agent->past, buffer);
+	else
+		memset(&agent->past, 0, sizeof(agent->past));
 
 	//sanity check
 	assert(buffer == event_content + event_size);
@@ -470,6 +473,8 @@ agent_t SpawnAgent(unsigned user_data_size) {
 		array_init(ret->past);
 		struct _visit_abm_t start_visit = { current->gid.to_int, ACTION_START, current_evt->timestamp };
 		array_push(ret->past, start_visit);
+	}else{
+		memset(&ret->past, 0, sizeof(ret->past));
 	}
 	switch_to_application_mode();
 	return ret->key;

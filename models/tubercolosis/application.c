@@ -83,6 +83,8 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type,
 			region->healthy = 0;
 
 			if(!me){
+				if(n_prc_tot != 62500)
+					printf("This model is thought to be run with 62550 LPs\n");
 				// this function let LP0 coordinate the init phase
 				guy_init();
 			}
