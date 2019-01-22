@@ -158,6 +158,8 @@ unsigned char * abm_do_checkpoint(region_abm_t *region){
 
 void abm_restore_checkpoint(unsigned char *data, region_abm_t *region){
 	struct _agent_abm_t *agent;
+
+	assert(((region_abm_t *)data)->chkp_size == region->chkp_size);
 	// free the region allocations
 	unsigned i = hash_map_count(region->agents_table);
 	while(i--){
@@ -280,7 +282,6 @@ static void on_abm_leave(void){
 		return; // since this is spurious we can directly return
 	}
 
-	assert(agent->leave_event == ((struct _leave_evt *)current_evt->event_content)->leave_code);
 	// seems all ok: user, do whatever you want now
 	switch_to_application_mode();
 	current->ProcessEvent(current->gid.to_int, current_evt->timestamp, ((struct _leave_evt *)current_evt->event_content)->leave_code, current_evt->event_content, sizeof(agent->key), current->current_base_pointer);
