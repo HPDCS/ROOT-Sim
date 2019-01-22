@@ -86,11 +86,12 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type,
 				// this function let LP0 coordinate the init phase
 				guy_init();
 			}
+			ScheduleNewEvent(me, now + 1.25 + Random()/2, MIDNIGHT, NULL, 0);
 			break;
 
 		case MIDNIGHT:
 			move_healthy_people(me, state, now);
-			ScheduleNewEvent(me, now + 0.5, MIDNIGHT, NULL, 0);
+			ScheduleNewEvent(me, now + 0.25 + Random()/2, MIDNIGHT, NULL, 0);
 			break;
 
 		case RECEIVE_HEALTHY:
