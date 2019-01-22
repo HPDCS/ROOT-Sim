@@ -106,7 +106,8 @@ const char * const param_to_text[][5] = {
 	[OPT_CKTRM_MODE - OPT_FIRST] = {
 			[CKTRM_INVALID] = "invalid termination checking",
 			[CKTRM_NORMAL] = "normal",
-			[CKTRM_INCREMENTAL] = "incremental"
+			[CKTRM_INCREMENTAL] = "incremental",
+			[CKTRM_ACCURATE] = "accurate"
 	},
 	[OPT_LPS_DISTRIBUTION - OPT_FIRST] = {
 			[LP_DISTRIBUTION_INVALID] = "invalid LPs distribution",
@@ -161,7 +162,7 @@ static const struct argp_option argp_options[] = {
 	{"inc",			OPT_INC,		0,		0,		"Take only incremental logs (still to be released)", 0},
 	{"A",			OPT_A,			0,		0,		"Autonomic subsystem: set checkpointing interval and log mode automatically at runtime (still to be released)", 0},
 	{"gvt",			OPT_GVT,		"VALUE",	0,		"Time between two GVT reductions (in milliseconds)", 0},
-	{"cktrm-mode",		OPT_CKTRM_MODE,		"TYPE",		0,		"Termination Detection mode. Supported values: normal, incremental", 0},
+	{"cktrm-mode",		OPT_CKTRM_MODE,		"TYPE",		0,		"Termination Detection mode. Supported values: normal, incremental, accurate", 0},
 	{"gvt-snapshot-cycles",	OPT_GVT_SNAPSHOT_CYCLES, "VALUE",	0,		"Termination detection is invoked after this number of GVT reductions", 0},
 	{"simulation-time",	OPT_SIMULATION_TIME, 	"VALUE",	0,		"Halt the simulation when all LPs reach this logical time. 0 means infinite", 0},
 	{"lps-distribution",	OPT_LPS_DISTRIBUTION, 	"TYPE",		0,		"LPs distributions over simulation kernels policies. Supported values: block, circular", 0},
