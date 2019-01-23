@@ -280,8 +280,8 @@ typedef struct rootsim_list {
 		while(__n != NULL && get_key(__n) < (key_value)) {\
 			__deleted++;\
                 	__n_adjacent = __n->next;\
-	                __n->next = (void *)0xBAADF00D;\
-        	        __n->prev = (void *)0xBAADF00D;\
+	                __n->next = NULL;/*(void *)0xBAADF00D;*/\
+        	        __n->prev = NULL;/*(void *)0xBAADF00D;*/\
 			release_fn(__n);\
 			__n = __n_adjacent;\
 		}\

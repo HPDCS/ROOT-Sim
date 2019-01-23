@@ -28,6 +28,7 @@ void ProcessEvent(unsigned me, simtime_t now, int event_type, void *unused, unsi
 				printf("Out of memory!\n");
 				exit(EXIT_FAILURE);
 			}
+			pointer->trails = 0;
 			SetState(pointer);
 
 			if(OCCUPIED_CELLS > n_prc_tot){
