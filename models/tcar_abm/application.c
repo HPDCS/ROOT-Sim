@@ -45,7 +45,7 @@ void ProcessEvent(unsigned me, simtime_t now, int event_type, void *unused, unsi
 			}
 
 			TrackNeighbourInfo(&pointer->trails);
-
+			ScheduleNewEvent(me, now + 10, PING, NULL, 0);
 			break;
 
 
@@ -70,8 +70,10 @@ void ProcessEvent(unsigned me, simtime_t now, int event_type, void *unused, unsi
 				}
 			}
 
-			if(min_trails == UINT_MAX)
-				break;
+			while(1){
+				if(GetNeighbourInfo(Random()*DirectionsCount(), &receiver, (void **)&trails_p) != -1 && min_trails == *trails_p)
+					break;
+			}
 
 			switch (DISTRIBUTION) {
 
@@ -92,6 +94,9 @@ void ProcessEvent(unsigned me, simtime_t now, int event_type, void *unused, unsi
 			ScheduleNewEvent(receiver, timestamp, REGION_IN, NULL, 0);
 			break;
 
+		case PING:
+			ScheduleNewEvent(me, now + 10, PING, NULL, 0);
+			break;
 		case _TRAVERSE:
       		default:
       			printf("Unsupported event!\n");

@@ -25,6 +25,7 @@ enum _distribution_type{
 enum _event_type{
 	REGION_IN = INIT + 1,
 	REGION_OUT,
+	PING,
 	_TRAVERSE
 };
 
