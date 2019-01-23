@@ -218,7 +218,7 @@ void _hash_map_remove(struct _inner_hash_map_t *_i_hmap, unsigned long long key,
 	nodes[j].elem_i = UINT_MAX;
 
 	// shrink the table if necessary
-	_hash_map_shrink(_i_hmap, cur_count);
+	_hash_map_shrink(_i_hmap, cur_count - 1);
 }
 
 size_t _hash_map_dump_size(struct _inner_hash_map_t *_i_hmap){
