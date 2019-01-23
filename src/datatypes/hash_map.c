@@ -36,7 +36,7 @@
 
 // must be a power of two
 #define HM_INITIAL_CAPACITY 8
-#define DIB(curr_i, hash, capacity_mo) (((curr_i) - (hash)) & (capacity_mo))
+#define DIB(curr_i, hash, capacity_mo) ((curr_i) >= ((hash) & (capacity_mo)) ? (curr_i) - ((hash) & (capacity_mo)) : (capacity_mo) + 1 + (curr_i) - ((hash) & (capacity_mo)))
 #define SWAP_VALUES(a, b) do{__typeof(a) _tmp = (a); (a) = (b); (b) = _tmp;}while(0)
 
 // Adapted from http://xorshift.di.unimi.it/splitmix64.c PRNG,
