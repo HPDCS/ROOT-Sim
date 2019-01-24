@@ -77,6 +77,7 @@ static void sugar_eater_on_leave(agent_t agent, unsigned me, region_t *region){
 	unsigned i = DirectionsCount();
 	while(i--){
 		if(	GetNeighbourInfo(i, &receiver, (void**)&info_p) != 1 &&
+			info_p &&
 			!info_p[1] &&
 			info_p[0] > max_sugar)
 			max_sugar = info_p[0];
