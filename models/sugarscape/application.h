@@ -25,7 +25,7 @@ enum _event_type{
 #define MAX_EAT_RATE 4
 #define MIN_EAT_RATE 1
 
-#define MAX_MAX_AGE 100
+#define MAX_MAX_AGE 90
 #define MIN_MAX_AGE 60
 
 typedef struct _sugar_eater_t{

@@ -6,6 +6,7 @@ struct _topology_settings_t topology_settings = {.type = TOPOLOGY_OBSTACLES, .de
 struct _abm_settings_t abm_settings = {.neighbour_data_size = sizeof(size_t), .traverse_handler = BUG_TRAVERSE, .keep_history = false};
 
 typedef struct _region_t {
+	simtime_t lvt;
 	double food_available; 	// cell's amount of food
 	double last_bug_size;	// last bug size
 	size_t bugs;		// XXX here we count bugs in the cell. Notice that CountAgentsABM() already provides us this information
@@ -27,6 +28,9 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, agent_t *agent
 	size_t *bugs_count;
 	agent_t this_agent;
 
+	if(state != NULL)
+		state->lvt = now;
+
 	switch (event_type) {
 		case INIT:
 			(void)event_size;
@@ -40,6 +44,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, agent_t *agent
 			region->food_available = RandomRange(0, MAX_FOOD_PRODUCTION_RATE);
 			region->bugs = 0;
 			region->violation = 0;
+			region->lvt = 0;
 			// here we do what I explained earlier
 			TrackNeighbourInfo(&region->bugs);
 			// for simplicity we spawn a single bug at region 0
@@ -174,7 +179,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, agent_t *agent
 int OnGVT(unsigned int me, region_t *snapshot) {
 
 	//printf("LP[%u] I'm %sexplored", me, snapshot->is_explored ? "" : "not ");
-	if(snapshot->bugs) printf("There's still at least a bug here\n");
+	if(snapshot->bugs && (int)(snapshot->lvt) % 10 == 0) printf("There's still at least a bug here\n");
 	//if(snapshot->violation) printf(", the constraint has been violated %u time%s", snapshot->violation, snapshot->violation > 1 ? "s" : "");
 
 	return snapshot->is_explored;/// XXX fix with whatever stuff you prefer

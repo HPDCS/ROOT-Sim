@@ -173,7 +173,8 @@ void ProcessEvent(int me, simtime_t now, int event_type, agent_t *agent_p, int e
 int OnGVT(unsigned int me, cell_state_t *state) {
 
 	if(state->present_agents) {
-		printf("Last Robot : %lf percent\n", state->max_ratio*100);
+		if(state->max_ratio < 1.0)
+			printf("Last Robot : %lf percent\n", state->max_ratio*100);
 		return state->max_ratio >= 1.0;
 
 	} else {

@@ -37,7 +37,7 @@ enum _event_type{
 #endif
 
 #ifndef MINIMUM_VISITS
-	#define MINIMUM_VISITS	1000
+	#define MINIMUM_VISITS	10
 #endif
 
 typedef struct _lp_state_type{

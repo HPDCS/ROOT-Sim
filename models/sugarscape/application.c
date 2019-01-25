@@ -56,7 +56,7 @@ static void sugar_eater_on_visit(agent_t agent, region_t *region, simtime_t now)
 	// get older
 	sugar_eater->remaining_steps--;
 	// die :(
-	if(sugar_eater->wealth < sugar_eater->eat_rate || !sugar_eater->remaining_steps){
+	if(sugar_eater->wealth == 0 || sugar_eater->wealth < sugar_eater->eat_rate || !sugar_eater->remaining_steps){
 		KillAgent(agent);
 		return;
 	}
@@ -65,7 +65,7 @@ static void sugar_eater_on_visit(agent_t agent, region_t *region, simtime_t now)
 	// eat
 	sugar_eater->wealth -= sugar_eater->eat_rate;
 	// prepare to leave
-	ScheduleNewLeaveEvent(now + TIME_STEP -0.1 + Random()/5, SUGAR_LEAVE, agent);
+	ScheduleNewLeaveEvent(now + TIME_STEP + Random()/5, SUGAR_LEAVE, agent);
 }
 
 static void sugar_eater_on_leave(agent_t agent, unsigned me, region_t *region){
@@ -162,7 +162,8 @@ void ProcessEvent(unsigned me, simtime_t now, int event_type, agent_t *agent_p, 
 // funzione dell'applicazione invocata dalla piattaforma
 // per stabilire se la simulazione e' terminata
 int OnGVT(unsigned int me, region_t *snapshot) {
-	printf("cap %u eaters %u sugar %u\n", snapshot->capacity, snapshot->n.eaters, snapshot->n.sugar);
+	if(snapshot->n.eaters != 0)
+		printf("%u: cap %u eaters %u sugar %u\n", me, snapshot->capacity, snapshot->n.eaters, snapshot->n.sugar);
 
-	return !snapshot->n.eaters;
+	return (snapshot->n.eaters == 0);
 }

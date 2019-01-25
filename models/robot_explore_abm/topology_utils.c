@@ -148,7 +148,7 @@ unsigned int compute_my_direction(agent_state_type *state) {
 
 	a_star(state, state->current_cell, &good_direction);
 
-	printf("\n");
+	//printf("\n");
 	unsigned int x1, y1;
 	unsigned int x2, y2;
 	double min_distance = DBL_MAX;

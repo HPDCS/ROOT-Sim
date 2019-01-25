@@ -234,8 +234,8 @@ typedef struct rootsim_list {
 		if(__n->prev != NULL) {\
 			__n->prev->next = __n->next;\
 		}\
-		__n->next = NULL; /*(void *)0xBEEFC0DE;*/\
-		__n->prev = NULL; /*(void *)0xDEADC0DE;*/\
+		__n->next = (void *)0xBEEFC0DE;\
+		__n->prev = (void *)0xDEADC0DE;\
 		__l->size--;\
 		assert(__l->size == (__size_before - 1));\
 	} while(0)
@@ -256,8 +256,8 @@ typedef struct rootsim_list {
 				__n->next->prev = NULL;\
 			}\
 			__n_next = __n->next;\
-			__n->next = NULL; /*(void *)0xDEFEC8ED;*/\
-			__n->prev = NULL; /*(void *)0xDEFEC8ED;*/\
+			__n->next = (void *)0xDEFEC8ED;\
+			__n->prev = (void *)0xDEFEC8ED;\
 			__n = __n_next;\
 			__l->size--;\
 			assert(__l->size == (__size_before - 1));\
@@ -280,8 +280,8 @@ typedef struct rootsim_list {
 		while(__n != NULL && get_key(__n) < (key_value)) {\
 			__deleted++;\
                 	__n_adjacent = __n->next;\
-	                __n->next = NULL; /*(void *)0xBAADF00D;*/\
-        	        __n->prev = NULL; /*(void *)0xBAADF00D;*/\
+	                __n->next = (void *)0xBAADF00D;\
+        	        __n->prev = (void *)0xBAADF00D;\
 			release_fn(__n);\
 			__n = __n_adjacent;\
 		}\

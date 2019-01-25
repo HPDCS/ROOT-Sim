@@ -85,6 +85,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type,
 			if(!me){
 				// this function let LP0 coordinate the init phase
 				guy_init();
+				printf("INIT 0 complete\n");
 			}
 			ScheduleNewEvent(me, now + 1.25 + Random()/2, MIDNIGHT, NULL, 0);
 			break;
