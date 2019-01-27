@@ -153,7 +153,7 @@ static char args_doc[] = "";
 // the options recognized by argp
 static const struct argp_option argp_options[] = {
 	{"wt",			OPT_NP,			"VALUE",	0,		"Number of total cores being used by the simulation", 0},
-	{"lps",			OPT_NPRC,		"VALUE",	0,		"Total number of Logical Processes being lunched at simulation startup", 0},
+	{"lps",			OPT_NPRC,		"VALUE",	0,		"Total number of Logical Processes being launched at simulation startup", 0},
 	{"output-dir",		OPT_OUTPUT_DIR,		"PATH",		0,		"Path to a folder where execution statistics are stored. If not present, it is created", 0},
 	{"scheduler",		OPT_SCHEDULER,		"TYPE",		0,		"LP Scheduling algorithm. Supported values are: stf", 0},
 	{"npwd",		OPT_NPWD,		0,		0,		"Non Piece-Wise-Deterministic simulation model. See manpage for accurate description", 0},
@@ -228,7 +228,11 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 
 	switch (key) {
 		case OPT_NP:
-			n_cores = parse_ullong_limits(1, UINT_MAX);
+			if(strcmp(arg, "auto") == 0){
+				n_cores = get_cores();
+			}else{
+				n_cores = parse_ullong_limits(1, UINT_MAX);
+			}
 			break;
 
 		case OPT_NPRC:
