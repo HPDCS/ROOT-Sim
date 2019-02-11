@@ -37,21 +37,19 @@ int scheduler_init(void)
 	krp.kp.symbol_name = switch_func;
 	ret = register_kretprobe(&krp);
 	if (ret < 0) {
-		pr_info("hook init failed, returned %d\n", ret);
+		pr_info(KBUILD_MODNAME ": failed to hook on the scheduler, returned %d\n", ret);
 		return ret;
 	}
-	pr_info("hook module correctly loaded\n");
 	
 	return 0;
 }// hook_init
 
-void scheduler_exit(void)
+void scheduler_fini(void)
 {
 	unregister_kretprobe(&krp);
 
 	/* nmissed > 0 suggests that maxactive was set too low. */
 	if (krp.nmissed)
-		pr_info("Missed %u invocations\n", krp.nmissed);
+		pr_info(KBUILD_MODNAME ": Missed %u invocations\n", krp.nmissed);
 
-	pr_info("hook module unloaded\n");
 }// hook_exit

@@ -1,12 +1,21 @@
+#include <asm-generic/irq_regs.h>
+#include <asm/ptrace.h>
+
+#include "rootsim.h"
+
+
+/* The following function should be re-engineered by relying on hrtimers */
+
+
 void my_smp_apic_timer_interrupt(struct pt_regs* regs) {
 
- 	int i, target;
+/* 	int i, target;
 	unsigned long auxiliary_stack_pointer;
 	unsigned long flags;
 	unsigned int stretch_cycles;
 
         struct pt_regs *old_regs = set_irq_regs(regs);
-
+*/
 	/*
 	 * NOTE! We'd better ACK the irq immediately,
 	 * because timer handling can be slow.
@@ -19,17 +28,17 @@ void my_smp_apic_timer_interrupt(struct pt_regs* regs) {
 	// entering_ack_irq();
 	//this is replaced by the below via function pointers
 	//apic->eoi_write(APIC_EOI, APIC_EOI_ACK);//eoi_write unavailable, we fall back to write
-	apic->write(APIC_EOI, APIC_EOI_ACK);
-	my_irq_enter();
-	my_exit_idle();
+//	apic->write(APIC_EOI, APIC_EOI_ACK);
+//	my_irq_enter();
+//	my_exit_idle();
 
 /*	apic_interrupt_watch_dog++;//no problem if we do not perform this atomically, its just a periodic audit
 	if (apic_interrupt_watch_dog >= 0x000000000000ffff){
 		printk(KERN_DEBUG "%s: watch dog trigger for smp apic timer interrrupt %d CPU-id is %d\n", KBUILD_MODNAME, current->pid, smp_processor_id());
 		apic_interrupt_watch_dog = 0;
 	}
-*/
-	if(current->mm == NULL) goto normal_APIC_interrupt;  /* this is a kernel thread */
+
+	f(current->mm == NULL) goto normal_APIC_interrupt;  // this is a kernel thread
 
 	//for normal (non-overtick) scenarios we only pay the extra cost of the below cycle
 	for(i = 0; i < TS_THREADS; i++){
@@ -47,12 +56,9 @@ void my_smp_apic_timer_interrupt(struct pt_regs* regs) {
 normal_APIC_interrupt:
 
 	//still based on function pointers
-	if(stretch_flag[smp_processor_id()] == 0 || CPU_overticks[smp_processor_id()]<=0){
-		local_apic_timer_interrupt();
-	}
-//these were here before moving to the end of this execution path
-//	my_irq_exit();
-//	set_irq_regs(old_regs);
+//	if(stretch_flag[smp_processor_id()] == 0 || CPU_overticks[smp_processor_id()]<=0){
+//		local_apic_timer_interrupt();
+//	}
 	
 
 	//again - no additional cost (except for the predicate evaluation) in non-overtick scenarios
@@ -81,22 +87,16 @@ overtick_APIC_interrupt:
 		CPU_overticks[smp_processor_id()] -= 1;
 	}
 
-//these wehre her before shifting to the end of the execuion path
- //       my_irq_exit();
-  //      set_irq_regs(old_regs);
 
 	if( old_regs != NULL ){//interrupted while in kernel mode running
 		goto overtick_APIC_interrupt_kernel_mode;
 	}
 
-	//if((regs->ip & 0xf000000000000000 || regs->ip >= 0x7f0000000000) ){//interrupted while in kernel mode running
-	//if((regs->ip & 0xf000000000000000 || regs->ip >= 0x7f00000) ){//interrupted while in kernel mode running
 	if((regs->ip >= data_section_address) ){//interrupted while in kernel mode running
-
 		goto overtick_APIC_interrupt_kernel_mode;
 	}
 
-	if(callback[target] != NULL /*&& !(regs->ip & 0xf000000000000000)*/ ){//check 1) callback existence and 2) no kernel mode running upon APIC timer interrupt
+	if(callback[target] != NULL){//check 1) callback existence and 2) no kernel mode running upon APIC timer interrupt
 
 	local_irq_save(flags);
 		if(regs->ip != callback[target]) {
@@ -134,7 +134,7 @@ ENABLE 	my__setup_APIC_LVTT(stretch_cycles, 0, 1);
 
 
 
-/*
+
 //	overtick_count[target] -= COMPENSATE;
 	local_irq_save(flags);
 	stretch_flag[smp_processor_id()] = 1;

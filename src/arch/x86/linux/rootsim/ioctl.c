@@ -3,14 +3,16 @@
 #include "rootsim.h"
 #include "ioctl.h"
 
+
 long rootsim_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	long ret = 0;
 
+/*
 	switch (cmd) {
 
 
-	/* ECS-related commands */
+// ECS-related commands
 
 		case IOCTL_SET_ANCESTOR_PGD:
 			ancestor_pml4 = (void **)current->mm->pgd;
@@ -41,7 +43,7 @@ long rootsim_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 			if(descriptor != -1) {
 				flush_cache_all();
 
-				/* already logged by ancestor set */
+				// already logged by ancestor set
 				pml4 = restore_pml4; 
 				involved_pml4 = restore_pml4_entries;
 	
@@ -49,7 +51,7 @@ long rootsim_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	
 				for (i = 0; i < involved_pml4; i++) {
 				
-					address = (void *)__get_free_pages(GFP_KERNEL, 0); /* allocate and reset new PDP */
+					address = (void *)__get_free_pages(GFP_KERNEL, 0); // allocate and reset new PDP
 					memset(address,0,4096);
 				
 					temp = pgd_entry[pml4];
@@ -92,11 +94,11 @@ case IOCTL_SCHEDULE_ON_PGD:
 					ancestor_pdp =(void *) ancestor_pml4[pml4];
 					ancestor_pdp = __va((ulong)ancestor_pdp & 0xfffffffffffff000);
 
-					/* actual opening of the PDP entry */
+					// actual opening of the PDP entry
 					my_pdp[OBJECT_TO_PDP(scheduled_object)] = ancestor_pdp[OBJECT_TO_PDP(scheduled_object)];
 				}// end for 
 
-				/* actual change of the view on memory */
+				// actual change of the view on memory
 				root_sim_processes[descriptor] = current->pid;
 				rootsim_load_cr3(pgd_addr[descriptor]);
 				ret = 0;
@@ -124,7 +126,7 @@ case IOCTL_SCHEDULE_ON_PGD:
 					my_pdp =(void *)my_pgd[pml4];
 					my_pdp = __va((ulong)my_pdp & 0xfffffffffffff000);
 	
-					/* actual closure of the PDP entry */
+					// actual closure of the PDP entry
 	
 					my_pdp[OBJECT_TO_PDP(object_to_close)] = NULL;
 				}
@@ -138,7 +140,7 @@ case IOCTL_SCHEDULE_ON_PGD:
 
 		case IOCTL_SET_VM_RANGE:
 
-			flush_cache_all(); /* to make new range visible across multiple runs */
+			flush_cache_all(); // to make new range visible across multiple runs
 			
 			mapped_processes = (((ioctl_info*)arg)->mapped_processes);
 			involved_pml4 = (((ioctl_info*)arg)->mapped_processes) >> 9; 
@@ -151,7 +153,7 @@ case IOCTL_SCHEDULE_ON_PGD:
 			restore_pml4 = pml4;
 			restore_pml4_entries = involved_pml4;
 
-			flush_cache_all(); /* to make new range visible across multiple runs */
+			flush_cache_all(); // to make new range visible across multiple runs
 
 			ret = 0;
 			break;
@@ -167,7 +169,7 @@ case IOCTL_SCHEDULE_ON_PGD:
 			break;
 
 
-/* TIMESTRETCH RELATED COMMANDS */
+// TIMESTRETCH RELATED COMMANDS
 		case IOCTL_SETUP_CALLBACK:
 
 		ret = -1;
@@ -273,5 +275,7 @@ ENABLE 		my__setup_APIC_LVTT(time_cycles,0,1);
 			ret = -EINVAL;
 
 	}
+*/
 	return ret;
+
 }

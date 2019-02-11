@@ -1,6 +1,7 @@
 #include <linux/module.h>
 #include <linux/mutex.h>
 #include <linux/fs.h>
+#include <linux/device.h>
 #include <linux/version.h>
 
 #include "rootsim.h"
@@ -13,7 +14,7 @@ MODULE_AUTHOR("Matteo Principe <matteo.principe92@gmail.com>");
 MODULE_DESCRIPTION("This module will execute a specified function just after the task switch completion");
 
 MODULE_LICENSE("GPL");
-MODULE_VERSION("1.0");
+MODULE_VERSION("2.0.0");
 
 #if LINUX_VERSION_CODE <= KERNEL_VERSION(2,6,25)
 #error Unsupported Kernel Version
@@ -58,7 +59,7 @@ int rootsim_open(struct inode *inode, struct file *filp) {
 
 int rootsim_release(struct inode *inode, struct file *filp)
 {
-	release_pagetable();
+//	release_pagetable();
 
 	mutex_unlock(&rootsim_mutex);
 
@@ -75,7 +76,7 @@ static int __init rootsim_init(void)
 	// Dynamically allocate a major for the device
 	if (major < 0) {
 		printk(KERN_ERR "%s: Failed registering char device\n", KBUILD_MODNAME);
-		ret = major;
+		err = major;
 		goto failed_chrdevreg;
 	}
 		
@@ -83,7 +84,7 @@ static int __init rootsim_init(void)
 	dev_cl = class_create(THIS_MODULE, "rootsim");
 	if (IS_ERR(dev_cl)) {
 		printk(KERN_ERR "%s: failed to register device class\n", KBUILD_MODNAME);
-		ret = PTR_ERR(dev_cl);
+		err = PTR_ERR(dev_cl);
 		goto failed_classreg;
 	}
 		
@@ -91,7 +92,7 @@ static int __init rootsim_init(void)
 	device = device_create(dev_cl, NULL, MKDEV(major, 0), NULL, KBUILD_MODNAME);
 	if (IS_ERR(device)) {
 		printk(KERN_ERR "%s: failed to create device\n", KBUILD_MODNAME);
-		ret = PTR_ERR(device);
+		err = PTR_ERR(device);
 		goto failed_devreg;
 	}
 
@@ -108,12 +109,12 @@ static int __init rootsim_init(void)
   failed_classreg:
 	unregister_chrdev(major, KBUILD_MODNAME);
   failed_chrdevreg:
-	return ret;
+	return err;
 }
 
 static void __exit rootsim_exit(void)
 {
-	scheduler_exit();
+	scheduler_fini();
 	restore_idt();
 
 	device_destroy(dev_cl, MKDEV(major, 0));

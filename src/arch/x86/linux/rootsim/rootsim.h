@@ -1,5 +1,7 @@
 #pragma once
 
+#include <linux/types.h>
+#include <linux/fs.h>
 #include <asm/special_insns.h>
 
 // main.c
@@ -14,10 +16,13 @@ extern void restore_idt(void);
 
 // scheduler.c
 extern int scheduler_init(void);
-extern int scheduler_exit(void);
+extern int scheduler_fini(void);
 
 // ioctl.c
 extern long rootsim_ioctl(struct file *filp, unsigned int cmd, unsigned long arg);
+
+// pagetable.c
+extern void release_pagetable(void);
 
 
 

@@ -2,7 +2,21 @@
 
 #include "rootsim.h"
 
-static void set_single_pte_sticky_flag(void *target_address) {
+// Macros to access subportions of an address
+#define PML4(addr) (((long long)(addr) >> 39) & 0x1ff)
+#define PDP(addr)  (((long long)(addr) >> 30) & 0x1ff)
+#define PDE(addr)  (((long long)(addr) >> 21) & 0x1ff)
+#define PTE(addr)  (((long long)(addr) >> 12) & 0x1ff)
+
+#define SET_BIT(p,n) ((*(ulong *)(p)) |= (1LL << (n)))
+#define CLR_BIT(p,n) ((*(ulong *)(p)) &= ~((1LL) << (n)))
+#define GET_BIT(p,n) ((*(ulong *)(p)) & (1LL << (n)))
+
+// TODO: This whole submodule should be re-engineered!
+
+/*
+
+void set_single_pte_sticky_flag(void *target_address) {
         void **pgd;
         void **pdp;
         void **pde;
@@ -16,7 +30,7 @@ static void set_single_pte_sticky_flag(void *target_address) {
         SET_BIT(&pte[PTE(target_address)], 9);
 }
 
-static void set_pte_sticky_flags(ioctl_info *info) {
+void set_pte_sticky_flags(ioctl_info *info) {
 	void **pgd;
 	void **pdp;
 	void **pde;
@@ -47,7 +61,7 @@ static void set_pte_sticky_flags(ioctl_info *info) {
 }
 
 // is pdp!
-static int get_pde_sticky_bit(void *target_address) {
+int get_pde_sticky_bit(void *target_address) {
 	void **pgd;
 	void **pdp;
 
@@ -57,7 +71,7 @@ static int get_pde_sticky_bit(void *target_address) {
 	return GET_BIT(&pdp[PDP(target_address)], 11);
 }
 
-static int get_pte_sticky_bit(void *target_address) {
+int get_pte_sticky_bit(void *target_address) {
 	void **pgd;
 	void **pdp;
 	void **pde;
@@ -73,7 +87,7 @@ static int get_pte_sticky_bit(void *target_address) {
 	return GET_BIT(&pde[PDE(target_address)], 9);
 }
 
-static int get_presence_bit(void *target_address) {
+int get_presence_bit(void *target_address) {
 	void **pgd;
 	void **pdp;
 	void **pde;
@@ -93,7 +107,7 @@ static int get_presence_bit(void *target_address) {
 	return GET_BIT(&pte[PTE(target_address)], 0);
 }
 
-static void set_presence_bit(void *target_address) {
+void set_presence_bit(void *target_address) {
 	void **pgd;
 	void **pdp;
 	void **pde;
@@ -111,7 +125,7 @@ static void set_presence_bit(void *target_address) {
 	}
 }
 
-static void set_page_privilege(ioctl_info *info) {
+void set_page_privilege(ioctl_info *info) {
         void **pgd;
         void **pdp;
         void **pde;
@@ -145,7 +159,7 @@ static void set_page_privilege(ioctl_info *info) {
 	}
 }
 
-static void set_single_page_privilege(ioctl_info *info) {
+void set_single_page_privilege(ioctl_info *info) {
         void **pgd;
         void **pdp;
         void **pde;
@@ -165,7 +179,7 @@ static void set_single_page_privilege(ioctl_info *info) {
 
 
 void release_pagetable(void) {
-/* already logged by ancestor set */
+// already logged by ancestor set
 	pml4 = restore_pml4; 
 	involved_pml4 = restore_pml4_entries;
 
@@ -177,7 +191,7 @@ void release_pagetable(void) {
 
 		// SOme super bug down here!
 
-		if(original_view[j]!=NULL){ /* need to recover memory used for PDPs that have not been deallocated */
+		if(original_view[j]!=NULL){ // need to recover memory used for PDPs that have not been deallocated
 
 			pgd_entry = (void **)pgd_addr[i];
 			for (i=0; i<involved_pml4; i++){
@@ -199,3 +213,4 @@ void release_pagetable(void) {
 		}// enf if != NULL
 	}// end for j
 }
+*/

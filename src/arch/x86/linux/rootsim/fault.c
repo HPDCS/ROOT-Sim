@@ -1,20 +1,40 @@
+#include <linux/module.h>
 #include <asm/traps.h>
+#include <asm-generic/errno.h>
 #include <asm/desc.h>
+#include <linux/ftrace.h>
 
 #include "rootsim.h"
+#include "ioctl.h"
 
 typedef void (*do_page_fault_t)(struct pt_regs *, unsigned long);
 
-do_page_fault_t orig_page_fault;
+static gate_desc fault_desc;
+static do_page_fault_t orig_pagefault = NULL;
 
-gate_desc fault_desc;
+// TODO: remove, this is used only to check if this is working as expected
+unsigned long audit_counter = 0;
+module_param(audit_counter, ulong, S_IRUSR | S_IRGRP | S_IROTH);
 
 __attribute__ ((used))
-void rootsim_page_fault(struct pt_regs *regs, unsigned long err) {
-	orig_page_fault(regs, err);
+void rootsim_page_fault(struct pt_regs *regs, unsigned long err)
+{
+	// We immediately make a copy of CR2, to avoid calling any kind
+	// of machinery before observing CR2.
+	// If we fail to do so, there could be some situations in which
+	// the original handler might see a clobbered value.
+	unsigned long address = read_cr2();
+
+	audit_counter++;
+
+	// Put back the original CR2 and call the original handler.
+	write_cr2(address);
+	orig_pagefault(regs, err);
 }
 
-void ____rootsim_page_fault(struct pt_regs* regs, long error_code, do_page_fault_t kernel_handler) {
+/*
+void ____rootsim_page_fault(struct pt_regs *regs, long error_code, do_page_fault_t kernel_handler)
+{
  	void *target_address;
 	void **my_pgd;
 	void **my_pdp;
@@ -23,19 +43,19 @@ void ____rootsim_page_fault(struct pt_regs* regs, long error_code, do_page_fault
 	ioctl_info info;
 
 	if(current->mm == NULL) {
-		/* this is a kernel thread - not a rootsim thread */
+		// this is a kernel thread - not a rootsim thread
 		kernel_handler(regs, error_code);
 		return;
 	}
 
-	/* discriminate whether this is a classical fault or a root-sim proper fault */
+	// discriminate whether this is a classical fault or a root-sim proper fault
 	for(i = 0; i < SIBLING_PGD; i++) {
 		if (root_sim_processes[i] == current->pid) {
 
 			target_address = (void *)read_cr2();
 
 			if(PML4(target_address) < restore_pml4 || PML4(target_address) >= restore_pml4 + restore_pml4_entries) {
-				/* a fault outside the root-sim object zone - it needs to be handeld by the traditional fault manager */
+				// a fault outside the root-sim object zone - it needs to be handeld by the traditional fault manager
 				kernel_handler(regs, error_code);
 				return;
 			}
@@ -109,30 +129,35 @@ void ____rootsim_page_fault(struct pt_regs* regs, long error_code, do_page_fault
 
 	kernel_handler(regs, error_code);
 }
+*/
 
 int setup_idt(void)
 {
-	
 	struct desc_ptr idtr;
 	gate_desc new_fault_desc;
-	unsigned long cr0;
 
-	/* read the idtr register */
+	// Get the address of do_page_fault()
+	orig_pagefault = (do_page_fault_t)kallsyms_lookup_name("do_page_fault");
+	if(!orig_pagefault) {
+		pr_info(KBUILD_MODNAME ": Kernel compiled without CONFIG_KALLSYMS, unable to mount\n");
+		return -ENOPKG;
+	}
+
+	// read the idtr register
 	store_idt(&idtr);
 
-	/* copy the old entry before overwritting it */
+	// copy the old entry before overwritting it
 	memcpy(&fault_desc, (void*)(idtr.address + X86_TRAP_PF * sizeof(gate_desc)), sizeof(gate_desc));
 	
 	pack_gate(&new_fault_desc, GATE_INTERRUPT, (unsigned long)fault_handler, 0, 0, 0);
 	
-	/* the IDT id read only */
-	cr0 = read_cr0();
-	write_cr0(cr0 & ~X86_CR0_WP);
+	// the IDT id read only
+	unprotect_memory();
 
 	write_idt_entry((gate_desc*)idtr.address, X86_TRAP_PF, &new_fault_desc);
 	
-	/* restore the Write Protection BIT */
-	write_cr0(cr0);	
+	// restore the Write Protection bit
+	protect_memory();
 
 	return 0;
 }
@@ -143,16 +168,16 @@ void restore_idt(void)
 	struct desc_ptr idtr;
 	unsigned long cr0;
 
-	/* read the idtr register */
+	// read the idtr register
 	store_idt(&idtr);
 
-	/* the IDT id read only */
+	// the IDT id read only
 	cr0 = read_cr0();
 	write_cr0(cr0 & ~X86_CR0_WP);
 
 	write_idt_entry((gate_desc*)idtr.address, X86_TRAP_PF, &fault_desc);
 	
-	/* restore the Write Protection BIT */
+	// restore the Write Protection bit
 	write_cr0(cr0);	
 	// on_each_cpu(install_idt_numa, NULL, 1);
 }
