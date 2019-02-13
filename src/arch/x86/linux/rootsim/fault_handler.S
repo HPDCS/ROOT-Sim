@@ -6,8 +6,8 @@
  * the following return frame for iretq:
  *
  * |--------------------|
- * | %ss                |
- * | %sp                |
+ * | [ %ss ]            |
+ * | [ %sp ]            |
  * | %rflags            |
  * | %cs                |
  * | %rip               |
@@ -43,13 +43,27 @@ fault_handler:
 	pushq %r10
 	pushq %r11
 
+	pushq %rbx
+	pushq %rbp
+	pushq %r12
+	pushq %r13
+	pushq %r14
+	pushq %r15
+
 	movq %rsp, %rdi		// pt_regs pointer TODO: add an offset to account for full struct pt_regs
-	movq 72(%rsp), %rsi	// get error code (orig_ax in pt_regs)
-	movq $-1, 72(%rsp)	// no syscall to restart
+	movq 120(%rsp), %rsi	// get error code (orig_ax in pt_regs)
+	movq $-1, 120(%rsp)	// no syscall to restart
 	
 	call rootsim_page_fault
 
 	cli			// Restore regs and return to kernel (if needed) atomically
+
+	popq %r15
+	popq %r14
+	popq %r13
+	popq %r12
+	popq %rbp
+	popq %rbx
 	
 	popq %r11
 	popq %r10

@@ -131,10 +131,55 @@ void ____rootsim_page_fault(struct pt_regs *regs, long error_code, do_page_fault
 }
 */
 
+static atomic_t synch_leave;
+static atomic_t synch_enter;
+static unsigned long flags;
+
+static void synchronize_all_slaves(void *info)
+{
+	(void)info;
+
+	printk(KERN_DEBUG "%s: cpu %d entering synchronize_all_slaves\n", KBUILD_MODNAME, smp_processor_id());
+
+	atomic_dec(&synch_enter);
+	preempt_disable();
+
+	while(atomic_read(&synch_leave) > 0);
+
+	preempt_enable();
+	printk(KERN_DEBUG "%s: cpu %d leaving synchronize_all_slaves\n", KBUILD_MODNAME, smp_processor_id());
+}
+
+void synchronize_all(void)
+{
+
+	printk("cpu %d asking from unpreemptive synchronization\n", smp_processor_id());
+	atomic_set(&synch_enter, num_online_cpus() - 1);
+	atomic_set(&synch_leave, 1);
+
+	local_irq_save(flags);
+	preempt_disable();
+	smp_call_function_many(cpu_online_mask, synchronize_all_slaves, NULL, false);
+
+	while(atomic_read(&synch_enter) > 0);
+
+	printk("cpu %d all kernel threads synchronized\n", smp_processor_id());
+}
+
+void unsynchronize_all(void)
+{
+	printk("cpu %d freeing other kernel threads\n", smp_processor_id());
+
+	atomic_set(&synch_leave, 0);
+	preempt_enable();
+	local_irq_restore(flags);
+}
+
 int setup_idt(void)
 {
 	struct desc_ptr idtr;
 	gate_desc new_fault_desc;
+	int i;
 
 	// Get the address of do_page_fault()
 	orig_pagefault = (do_page_fault_t)kallsyms_lookup_name("do_page_fault");
@@ -142,6 +187,8 @@ int setup_idt(void)
 		pr_info(KBUILD_MODNAME ": Kernel compiled without CONFIG_KALLSYMS, unable to mount\n");
 		return -ENOPKG;
 	}
+	printk("do_page_fault found at %lx\n", orig_pagefault);
+
 
 	// read the idtr register
 	store_idt(&idtr);
@@ -151,13 +198,17 @@ int setup_idt(void)
 	
 	pack_gate(&new_fault_desc, GATE_INTERRUPT, (unsigned long)fault_handler, 0, 0, 0);
 	
-	// the IDT id read only
+	// the IDT is read only
+	synchronize_all();
+	for(i = 0; i < 1000000; i++);
+
 	unprotect_memory();
 
 	write_idt_entry((gate_desc*)idtr.address, X86_TRAP_PF, &new_fault_desc);
 	
 	// restore the Write Protection bit
 	protect_memory();
+	unsynchronize_all();
 
 	return 0;
 }
@@ -166,20 +217,19 @@ int setup_idt(void)
 void restore_idt(void)
 {
 	struct desc_ptr idtr;
-	unsigned long cr0;
 
 	// read the idtr register
 	store_idt(&idtr);
 
-	// the IDT id read only
-	cr0 = read_cr0();
-	write_cr0(cr0 & ~X86_CR0_WP);
+	// the IDT is read only
+	synchronize_all();
+	unprotect_memory();
 
 	write_idt_entry((gate_desc*)idtr.address, X86_TRAP_PF, &fault_desc);
 	
 	// restore the Write Protection bit
-	write_cr0(cr0);	
-	// on_each_cpu(install_idt_numa, NULL, 1);
+	protect_memory();
+	unsynchronize_all();
 }
 
 
