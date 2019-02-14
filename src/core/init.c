@@ -153,7 +153,7 @@ static char args_doc[] = "";
 // the options recognized by argp
 static const struct argp_option argp_options[] = {
 	{"wt",			OPT_NP,			"VALUE",	0,		"Number of total cores being used by the simulation", 0},
-	{"lps",			OPT_NPRC,		"VALUE",	0,		"Total number of Logical Processes being launched at simulation startup", 0},
+	{"lp",			OPT_NPRC,		"VALUE",	0,		"Total number of Logical Processes being launched at simulation startup", 0},
 	{"output-dir",		OPT_OUTPUT_DIR,		"PATH",		0,		"Path to a folder where execution statistics are stored. If not present, it is created", 0},
 	{"scheduler",		OPT_SCHEDULER,		"TYPE",		0,		"LP Scheduling algorithm. Supported values are: stf", 0},
 	{"npwd",		OPT_NPWD,		0,		0,		"Non Piece-Wise-Deterministic simulation model. See manpage for accurate description", 0},
@@ -346,7 +346,7 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 				rootsim_error(true, "Number of cores was not provided \"--wt\"\n");
 
 			if(!bitmap_check(scanned, OPT_NPRC - OPT_FIRST))
-				rootsim_error(true, "Number of LPs was not provided \"--lps\"\n");
+				rootsim_error(true, "Number of LPs was not provided \"--lp\"\n");
 
 			if(n_cores > get_cores())
 				rootsim_error(true, "Demanding %u cores, which are more than available (%d)\n", n_cores, get_cores());

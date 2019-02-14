@@ -43,7 +43,7 @@ function do_test() {
 
 	# Run this model using MPI
 	echo -n "Running test $1 using MPI... "
-	mpiexec --np 2 ./model --np 2 --nprc $2 --no-core-binding > /dev/null
+	mpiexec --np 2 ./model --wt 2 --lp $2 --no-core-binding > /dev/null
 	if test $? -eq 0; then
 		mpi+=('Y')
 		echo "passed."
@@ -55,7 +55,7 @@ function do_test() {
 
 	# Run this model using only worker threads
 	echo -n "Running test $1 using parallel simulator... "
-	./model --np 2 --nprc $2 > /dev/null
+	./model --wt 2 --lp $2 > /dev/null
 	if test $? -eq 0; then
 		normal+=('Y')
 		echo "passed."
@@ -67,7 +67,7 @@ function do_test() {
 	
 	# Run this model sequentially
 	echo -n "Running test $1 sequentially... "
-	./model --sequential --nprc 1 > /dev/null
+	./model --sequential --lp 1 > /dev/null
 	if test $? -eq 0; then
 		sequential+=('Y')
 		echo "passed."
