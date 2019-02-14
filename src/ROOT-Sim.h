@@ -75,9 +75,7 @@ double Poisson(void);
 int Zipf(double skew, int limit);
 
 // ROOT-Sim core API
-extern void (*ScheduleNewEvent)(unsigned int receiver, simtime_t timestamp,
-				unsigned int event_type, void *event_content,
-				unsigned int event_size);
+extern void (*ScheduleNewEvent)(unsigned int receiver, simtime_t timestamp, unsigned int event_type, void *event_content, unsigned int event_size);
 extern void SetState(void *new_state);
 
 /*********************************/
@@ -138,7 +136,7 @@ __attribute((weak)) extern struct _topology_settings_t{
 	const enum _topology_type_t type;			/// The topology type the model wants to use
 	const enum _topology_geometry_t default_geometry;	/// The default geometry to use when nothing else is specified
 	const unsigned out_of_topology;				/// The minimum number of LPs needed out of the topology
-	bool write_enabled;					/// This is set if the model needs to use SetTopology()
+	const bool write_enabled;					/// This is set if the model needs to use SetTopology()
 }topology_settings;
 
 /**

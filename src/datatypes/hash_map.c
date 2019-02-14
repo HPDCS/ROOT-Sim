@@ -36,7 +36,7 @@
 
 // must be a power of two
 #define HM_INITIAL_CAPACITY 8
-#define DIB(curr_i, hash, capacity_mo) (((curr_i) - (hash)) & (capacity_mo))
+#define DIB(curr_i, hash, capacity_mo) ((curr_i) >= ((hash) & (capacity_mo)) ? (curr_i) - ((hash) & (capacity_mo)) : (capacity_mo) + 1 + (curr_i) - ((hash) & (capacity_mo)))
 #define SWAP_VALUES(a, b) do{__typeof(a) _tmp = (a); (a) = (b); (b) = _tmp;}while(0)
 
 // Adapted from http://xorshift.di.unimi.it/splitmix64.c PRNG,
@@ -218,7 +218,7 @@ void _hash_map_remove(struct _inner_hash_map_t *_i_hmap, unsigned long long key,
 	nodes[j].elem_i = UINT_MAX;
 
 	// shrink the table if necessary
-	_hash_map_shrink(_i_hmap, cur_count);
+	_hash_map_shrink(_i_hmap, cur_count - 1);
 }
 
 size_t _hash_map_dump_size(struct _inner_hash_map_t *_i_hmap){

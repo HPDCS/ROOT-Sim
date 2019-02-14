@@ -106,7 +106,8 @@ const char * const param_to_text[][5] = {
 	[OPT_CKTRM_MODE - OPT_FIRST] = {
 			[CKTRM_INVALID] = "invalid termination checking",
 			[CKTRM_NORMAL] = "normal",
-			[CKTRM_INCREMENTAL] = "incremental"
+			[CKTRM_INCREMENTAL] = "incremental",
+			[CKTRM_ACCURATE] = "accurate"
 	},
 	[OPT_LPS_DISTRIBUTION - OPT_FIRST] = {
 			[LP_DISTRIBUTION_INVALID] = "invalid LPs distribution",
@@ -151,8 +152,8 @@ static char doc[] = "ROOT-Sim - a fast distributed multithreaded Parallel Discre
 static char args_doc[] = "";
 // the options recognized by argp
 static const struct argp_option argp_options[] = {
-	{"np",			OPT_NP,			"VALUE",	0,		"Number of total cores being used by the simulation", 0},
-	{"nprc",		OPT_NPRC,		"VALUE",	0,		"Total number of Logical Processes being lunched at simulation startup", 0},
+	{"wt",			OPT_NP,			"VALUE",	0,		"Number of total cores being used by the simulation", 0},
+	{"lps",			OPT_NPRC,		"VALUE",	0,		"Total number of Logical Processes being launched at simulation startup", 0},
 	{"output-dir",		OPT_OUTPUT_DIR,		"PATH",		0,		"Path to a folder where execution statistics are stored. If not present, it is created", 0},
 	{"scheduler",		OPT_SCHEDULER,		"TYPE",		0,		"LP Scheduling algorithm. Supported values are: stf", 0},
 	{"npwd",		OPT_NPWD,		0,		0,		"Non Piece-Wise-Deterministic simulation model. See manpage for accurate description", 0},
@@ -161,7 +162,7 @@ static const struct argp_option argp_options[] = {
 	{"inc",			OPT_INC,		0,		0,		"Take only incremental logs (still to be released)", 0},
 	{"A",			OPT_A,			0,		0,		"Autonomic subsystem: set checkpointing interval and log mode automatically at runtime (still to be released)", 0},
 	{"gvt",			OPT_GVT,		"VALUE",	0,		"Time between two GVT reductions (in milliseconds)", 0},
-	{"cktrm-mode",		OPT_CKTRM_MODE,		"TYPE",		0,		"Termination Detection mode. Supported values: normal, incremental", 0},
+	{"cktrm-mode",		OPT_CKTRM_MODE,		"TYPE",		0,		"Termination Detection mode. Supported values: normal, incremental, accurate", 0},
 	{"gvt-snapshot-cycles",	OPT_GVT_SNAPSHOT_CYCLES, "VALUE",	0,		"Termination detection is invoked after this number of GVT reductions", 0},
 	{"simulation-time",	OPT_SIMULATION_TIME, 	"VALUE",	0,		"Halt the simulation when all LPs reach this logical time. 0 means infinite", 0},
 	{"lps-distribution",	OPT_LPS_DISTRIBUTION, 	"TYPE",		0,		"LPs distributions over simulation kernels policies. Supported values: block, circular", 0},
@@ -227,7 +228,11 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 
 	switch (key) {
 		case OPT_NP:
-			n_cores = parse_ullong_limits(1, UINT_MAX);
+			if(strcmp(arg, "auto") == 0){
+				n_cores = get_cores();
+			}else{
+				n_cores = parse_ullong_limits(1, UINT_MAX);
+			}
 			break;
 
 		case OPT_NPRC:
@@ -338,10 +343,10 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 
 			// sanity checks
 			if(!rootsim_config.serial && !bitmap_check(scanned, OPT_NP - OPT_FIRST))
-				rootsim_error(true, "Number of cores was not provided \"--np\"\n");
+				rootsim_error(true, "Number of cores was not provided \"--wt\"\n");
 
 			if(!bitmap_check(scanned, OPT_NPRC - OPT_FIRST))
-				rootsim_error(true, "Number of LPs was not provided \"--nprc\"\n");
+				rootsim_error(true, "Number of LPs was not provided \"--lps\"\n");
 
 			if(n_cores > get_cores())
 				rootsim_error(true, "Demanding %u cores, which are more than available (%d)\n", n_cores, get_cores());

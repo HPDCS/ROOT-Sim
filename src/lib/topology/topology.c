@@ -450,25 +450,31 @@ unsigned int get_raw_receiver(unsigned int from, direction_t direction) {
 			switch (direction) {
 				case DIRECTION_N:
 					y -= 1;
+					if(unlikely(y >= edge)){
+						y = edge - 1;
+					}
 					break;
 				case DIRECTION_S:
 					y += 1;
+					if(unlikely(y >= edge)){
+						y = 0;
+					}
 					break;
 				case DIRECTION_E:
 					x += 1;
+					if(unlikely(x >= edge)){
+						x = 0;
+					}
 					break;
 				case DIRECTION_W:
 					x -= 1;
+					if(unlikely(x >= edge)){
+						x = edge - 1;
+					}
 					break;
 				default:
 					goto out;
 			}
-
-			// Check for wrapping around
-			if(unlikely(x >= edge))
-				x -= edge;
-			if(unlikely(y >= edge))
-				y -= edge;
 
 			// Convert back to linear coordinates
 			receiver = y * edge + x;
