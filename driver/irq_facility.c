@@ -5,6 +5,7 @@
 
 #include "msr_config.h"
 #include "irq_facility.h"
+#include "intel_pmc_events.h"
 
 
 #define valid_vector(vec)	(vec > 0 && vec < NR_VECTORS)
@@ -116,6 +117,7 @@ busy:
 static void disable_on_apic(void)
 {
 	preempt_disable();
+	wrmsrl(MSR_IA32_PERFEVTSEL0, 0ULL);
 	apic_write(APIC_LVTPC, __this_cpu_read(lvtpc_bkp));
 	
 	pr_info("[CPU %u] Restored PMU state\n", smp_processor_id());
@@ -226,6 +228,29 @@ asm("    .globl pebs_entry\n"
     "2:\n"
     "    iretq");
 
+int enabledPMU(void *dummy)
+{
+	preempt_disable();
+	debugPMU(MSR_IA32_PERF_GLOBAL_CTRL);
+	wrmsrl(MSR_IA32_PMC0, 0ULL);
+	wrmsrl(MSR_IA32_PERF_GLOBAL_CTRL, BIT(0));
+	wrmsrl(MSR_IA32_PERFEVTSEL0, BIT(22) | BIT(16) | EVT_INSTRUCTIONS_RETIRED);
+	debugPMU(MSR_IA32_PERFEVTSEL0);
+	pr_info("[CPU %u] enabledPMU\n", smp_processor_id());
+	preempt_enable();
+	return 0;
+}
+
+int disablePMU(void *dummy)
+{
+	preempt_disable();
+	debugPMU(MSR_IA32_PMC0);
+	wrmsrl(MSR_IA32_PERF_GLOBAL_CTRL, 0ULL);
+	wrmsrl(MSR_IA32_PERFEVTSEL0, 0ULL);
+	pr_info("[CPU %u] disablePMU\n", smp_processor_id());
+	preempt_enable();
+	return 0;
+}
 
 
 int enable_pebs_on_system(void)
@@ -236,14 +261,12 @@ int enable_pebs_on_system(void)
 
 	if (setup_idt_entry()) goto err_entry;
 
-	wrmsrl(MSR_IA32_PERFEVTSEL0, BIT(22) | 0xC0);
+	// preempt_disable();
+	// pr_info("[CPU %u] PEBS enabled\n", smp_processor_id());
+	// preempt_enable();
 
-	preempt_disable();
-	pr_info("[CPU %u] PEBS enabled\n", smp_processor_id());
-	preempt_enable();
+	smp_call_on_cpu(0, enabledPMU, NULL, 0);
 	
-
-
 	return 0;
 
 err_apic:
@@ -258,8 +281,7 @@ err:
 
 void disable_pebs_on_system(void)
 {
-	debugPMU(MSR_IA32_PMC0);	
-	wrmsrl(MSR_IA32_PERFEVTSEL0, 0ULL);
+	smp_call_on_cpu(0, disablePMU, NULL, 0);;
 	
 	restore_idt_entry();
 	
@@ -267,7 +289,7 @@ void disable_pebs_on_system(void)
 
 	release_vector();
 
-	preempt_disable();
-	pr_info("[CPU %u] PEBS disabled\n", smp_processor_id());
-	preempt_enable();
+	// preempt_disable();
+	// pr_info("[CPU %u] PEBS disabled\n", smp_processor_id());
+	// preempt_enable();
 }// disable_pebs_on_system
