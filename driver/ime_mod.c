@@ -19,16 +19,18 @@ static __init int hop_init(void)
 
 	check_for_pebs_support();
 
-	if(enable_pebs_on_system()) err = -1;
+	//if(enable_pebs_on_system()) err = -1;
+
+	err = setup_resources();
 
 	return err;
 }// hop_init
 
 void __exit hop_exit(void)
 {
+	//disable_pebs_on_system();
 
-	disable_pebs_on_system();
-
+	cleanup_resources();
 	pr_info("Module Exit\n");
 }// hop_exit
 
