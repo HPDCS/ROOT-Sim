@@ -1,1 +1,0 @@
-cmd_/home/serena/Scrivania/IME/driver/ime.o := ld -m elf_x86_64  -z max-page-size=0x200000   -r -o /home/serena/Scrivania/IME/driver/ime.o /home/serena/Scrivania/IME/driver/ime_mod.o /home/serena/Scrivania/IME/driver/control.o /home/serena/Scrivania/IME/driver/irq_facility.o 
