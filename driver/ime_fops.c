@@ -88,6 +88,7 @@ long ime_ctl_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		}
 		else{
 			if(test_bit(args->pmc_id, pmc_bitmap)) goto out_pmc;
+			pr_info("set bit -- %d\n", args->pmc_id);
 			set_bit(args->pmc_id, pmc_bitmap);
 			enabledPMC(args->pmc_id, user_events[args->event_id]);
 		}
@@ -105,10 +106,11 @@ long ime_ctl_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		if(!err) goto out_stat;
 		err = copy_from_user(args, (void *)arg, sizeof(struct pmc_stats));
 		if(err) goto out_stat;
-
+		pr_info("before test bitmap -- %d\n", args->pmc_id);
 		if(!test_bit(args->pmc_id, pmc_bitmap)) goto out_stat;
-		
+		pr_info("after test bitmap\n");
 		args->value = debugPMU(MSR_IA32_PMC(args->pmc_id));
+		pr_info("after debug function\n");
 		err = access_ok(VERIFY_WRITE, (void *)arg, sizeof(struct pmc_stats));
 		if(!err) goto out_stat;
 		err = copy_to_user((void *)arg, args, sizeof(struct pmc_stats));

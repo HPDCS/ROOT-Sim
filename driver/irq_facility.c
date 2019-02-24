@@ -22,6 +22,7 @@
 #define IME_DEV_MINOR 0
 #define IME_MODULE_NAME "ime"
 #define IME_DEVICE_NAME	"pmc"
+#define MAX_ID_PMC 7
 
 int ime_major = 0;
 static spinlock_t list_lock;
@@ -431,3 +432,14 @@ void cleanup_resources(void)
 	cleanup_ime_resources();
 	cleanup_chdevs_resources();
 }// cleanup_resources
+
+void cleanup_pmc(void){
+	int pmc_id;
+	preempt_disable();
+	for(pmc_id = 0; pmc_id < MAX_ID_PMC; pmc_id++){
+		wrmsrl(MSR_IA32_PERF_GLOBAL_CTRL, 0ULL);
+		wrmsrl(MSR_IA32_PERFEVTSEL(pmc_id), 0ULL);
+		wrmsrl(MSR_IA32_PMC(pmc_id), 0ULL);
+	}
+	preempt_enable();
+}
