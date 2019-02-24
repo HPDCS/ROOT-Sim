@@ -17,7 +17,7 @@
 #define EXIT	0
 #define IOCTL 	1
 #define MAX_ID_PMC 7
-#define MAX_ID_EVENT 5
+#define MAX_ID_EVENT 6
 
 int int_from_stdin()
 {
@@ -59,22 +59,22 @@ int ioctl_cmd(int fd)
 	printf("Insert PMC id >> ");
 	int pmc_id = int_from_stdin();
 	if(cmd == _IOC_NR(IME_PROFILER_ON) || cmd == _IOC_NR(IME_PROFILER_OFF)){
-		printf("Insert EVENT id >> ");
-		int event_id = int_from_stdin();
 		struct sampling_spec* output = (struct sampling_spec*) malloc (sizeof(struct sampling_spec));
 		output->pmc_id = pmc_id;
-		output->event_id = event_id;
 
 		if(output->pmc_id < 0 || output->pmc_id > MAX_ID_PMC){
 			printf("IOCTL: IME_PROFILER failed -- invalid PMC id\n");
 			return -1;
 		}
-		if(output->event_id < 0 || output->event_id > MAX_ID_EVENT){
-			printf("IOCTL: IME_PROFILER failed -- invalid EVENT id\n");
-			return -1;
-		}
 
 		if(cmd == _IOC_NR(IME_PROFILER_ON)){
+			printf("Insert EVENT id >> ");
+			int event_id = int_from_stdin();
+			output->event_id = event_id;
+			if(output->event_id < 0 || output->event_id > MAX_ID_EVENT){
+				printf("IOCTL: IME_PROFILER failed -- invalid EVENT id\n");
+				return -1;
+			}
 			if ((err = ioctl(fd, IME_PROFILER_ON, output)) < 0){
 				printf("IOCTL: IME_PROFILER_ON failed\n");
 				return err;

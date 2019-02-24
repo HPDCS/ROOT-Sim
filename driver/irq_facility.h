@@ -13,3 +13,5 @@ void disable_pebs_on_system(void);
 int setup_resources(void);
 
 void cleanup_resources(void);
+
+void cleanup_pmc(void);
