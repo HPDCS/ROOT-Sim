@@ -1,5 +1,6 @@
 
-#define MSR_IA32_PERF_GLOBAL_CTRL	0x38F
+#define MSR_IA32_PERF_GLOBAL_CTRL	    0x38F
+#define MSR_IA32_PERF_GLOBAL_OVF_CTRL   0x390
 
 /* Performance Event Select Register 0 */
 #define MSR_IA32_PERFEVTSEL_ADDRESS		0x00000186

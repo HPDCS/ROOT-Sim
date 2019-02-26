@@ -1,5 +1,5 @@
 obj-m := ime.o
-ime-objs := ime_mod.o control.o irq_facility.o ime_fops.o
+ime-objs := ime_mod.o control.o irq_facility.o ime_fops.o ime_handler.o ime_device.o
 
 KDIR ?= /lib/modules/$(shell uname -r)/build
 # EXTRA_CFLAGS=-I$(PWD)/../include

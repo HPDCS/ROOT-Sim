@@ -1,0 +1,1 @@
+int handle_ime_nmi(unsigned int cmd, struct pt_regs *regs);
