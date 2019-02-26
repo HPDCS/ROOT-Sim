@@ -1,15 +1,19 @@
 #ifndef _IME_IOCTL_H_
 #define _IME_IOCTL_H_
 
+#define MAX_ID_PMC 3
+#define MAX_ID_EVENT 6
+#define numCPU sysconf(_SC_NPROCESSORS_ONLN)
+#define MAX_CPU 256
+
 struct pmc_stats {
 	int pmc_id;
-    unsigned long value;
+    unsigned long percpu_value[MAX_CPU];
 };
 
 struct sampling_spec {
 	int pmc_id;
     int event_id;
-    unsigned long value;
 };
 
 /* Use 'j' as magic number */

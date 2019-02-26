@@ -16,8 +16,6 @@
 
 #define EXIT	0
 #define IOCTL 	1
-#define MAX_ID_PMC 7
-#define MAX_ID_EVENT 6
 
 int int_from_stdin()
 {
@@ -87,19 +85,24 @@ int ioctl_cmd(int fd)
 				printf("IOCTL: IME_PROFILER_OFF failed\n");
 				return err;
 			}
-			printf("IOCTL: IME_PROFILER_OFF success\nThe resulting value of PMC%d is: %lx", output->pmc_id, output->value);
+			printf("IOCTL: IME_PROFILER_OFF success\n");
 		}
 		return 0;
 	}
 
   if(cmd == _IOC_NR(IME_PMC_STATS)){
+		int i;
 		struct pmc_stats* args = (struct pmc_stats*) malloc (sizeof(struct pmc_stats));
 		args->pmc_id = pmc_id;
+		//args->percpu_value = (unsigned long*) malloc (sizeof(unsigned long)*numCPU);
 		if ((err = ioctl(fd, IME_PMC_STATS, args)) < 0){
 			printf("IOCTL: IME_PMC_STATS failed\n");
 			return err;
 		}
-    printf("IOCTL: IME_PMC_STATS success\nThe resulting value of PMC%d is: %lx", args->pmc_id, args->value);
+    printf("IOCTL: IME_PMC_STATS success -- PMC%d\n", args->pmc_id);
+		for(i = 0; i < numCPU; i++){
+			printf("The resulting value of PMC%d on CPU%d is: %lx\n",args->pmc_id, i, args->percpu_value[i]);
+		}
 	}
 	return err;
 }// ioctl_cmd

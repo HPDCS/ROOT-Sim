@@ -21,6 +21,8 @@ int check_for_pebs_support(void)
 
 	pr_info("[CPUID_0AH] version: %u, counters: %u\n", a & 0xFF, (a >> 8) & 0XFF);
 
+	pr_info("[CPUID_0AH] PMC bit width: %u\n", (a >> 16) & 0XFF);
+
 	/* Debug Store (DS) support */
 	cpuid(0x1, &a, &b, &c, &d);
 

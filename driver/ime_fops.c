@@ -11,7 +11,8 @@
 #include <linux/uaccess.h>
 #include <linux/slab.h>
 #include <linux/fs.h>
-#include <linux/hashtable.h>
+#include <linux/threads.h>
+#include <asm/smp.h>
 
 #include "ime_fops.h"
 #include "../main/ime-ioctl.h"
@@ -30,37 +31,49 @@ u64 user_events[MAX_NUM_EVENT] = {
     EVT_MEM_LOAD_RETIRED_L3_HIT			
 };
 
-static u64 debugPMU(u64 pmu)
+
+void debugPMU(void* arg)
 {
-	u64 msr;
+	u64 pmu, msr;
+	struct pmc_stats* args = (struct pmc_stats*) arg;
+	pmu = MSR_IA32_PMC(args->pmc_id);
+	preempt_disable();
+	int cpu = smp_processor_id();
 	rdmsrl(pmu, msr);
-	pr_info("PMU %llx: %llx\n", pmu - 0xC1, msr);
-	return msr;
+	pr_info("PMU%llx on CPU%d: %llx\n", pmu - 0xC1, cpu, msr);
+	args->percpu_value[cpu] = msr;
+	wrmsrl(pmu, ~(0xffULL));
+	preempt_enable();
 }
 
-u64 disablePMC(int pmc_id)
+void disablePMC(void* arg)
 {
-	u64 ret;
+	struct sampling_spec* args = (struct sampling_spec*) arg;
+	int pmc_id = args->pmc_id; 
 	preempt_disable();
-	ret = debugPMU(MSR_IA32_PMC(pmc_id));
+	//ret = debugPMU(MSR_IA32_PMC(pmc_id));
 	wrmsrl(MSR_IA32_PERF_GLOBAL_CTRL, 0ULL);
 	wrmsrl(MSR_IA32_PERFEVTSEL(pmc_id), 0ULL);
 	wrmsrl(MSR_IA32_PMC(pmc_id), 0ULL);
 	pr_info("[CPU %u] disablePMC%d\n", smp_processor_id(), pmc_id);
 	preempt_enable();
-	return ret;
 }
 
-int enabledPMC(int pmc_id, u64 event)
+void enabledPMC(void* arg)
 {
+	int cpu = smp_processor_id();
+	u64 msr;
+	struct sampling_spec* args = (struct sampling_spec*) arg;
+	int pmc_id = args->pmc_id; 
+	u64 event = user_events[args->event_id];
 	preempt_disable();
-	//debugPMU(MSR_IA32_PERF_GLOBAL_CTRL);
 	wrmsrl(MSR_IA32_PMC(pmc_id), 0ULL);
 	wrmsrl(MSR_IA32_PERF_GLOBAL_CTRL, BIT(pmc_id));
-	wrmsrl(MSR_IA32_PERFEVTSEL(pmc_id), BIT(22) | BIT(16) | event);
+	wrmsrl(MSR_IA32_PERFEVTSEL(pmc_id), BIT(22) | BIT(20) | BIT(16) | event);
+	wrmsrl(MSR_IA32_PERF_GLOBAL_OVF_CTRL, 1ULL << 62);
+	wrmsrl(MSR_IA32_PMC(pmc_id), ~(0xffULL));
 	pr_info("[CPU %u] enabledPMC%d\n", smp_processor_id(), pmc_id);
 	preempt_enable();
-	return 0;
 }
 
 long ime_ctl_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
@@ -79,18 +92,15 @@ long ime_ctl_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		if(err) goto out_pmc;
         if(on == 0){ 
 			if(!test_bit(args->pmc_id, pmc_bitmap)) goto out_pmc;
-			args->value = disablePMC(args->pmc_id);
+			on_each_cpu(disablePMC, (void *) args, 1);
 			clear_bit(args->pmc_id, pmc_bitmap);
-			err = access_ok(VERIFY_WRITE, (void *)arg, sizeof(struct sampling_spec));
-			if(!err) goto out_pmc;
-			err = copy_to_user((void *)arg, args, sizeof(struct sampling_spec));
-			if(err) goto out_pmc;
 		}
 		else{
 			if(test_bit(args->pmc_id, pmc_bitmap)) goto out_pmc;
-			pr_info("set bit -- %d\n", args->pmc_id);
+			u64 msr;
 			set_bit(args->pmc_id, pmc_bitmap);
-			enabledPMC(args->pmc_id, user_events[args->event_id]);
+			on_each_cpu(enabledPMC, (void *) args, 1);
+			on_each_cpu(debugPMU, (void *) args, 1);
 		}
 		kfree(args);
 		return 0;
@@ -100,17 +110,18 @@ long ime_ctl_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
     }
 
     if (cmd == IME_PMC_STATS){
+		int i;
         struct pmc_stats* args = (struct pmc_stats*) kzalloc (sizeof(struct pmc_stats), GFP_KERNEL);
         if (!args) return -ENOMEM;
 		err = access_ok(VERIFY_READ, (void *)arg, sizeof(struct pmc_stats));
 		if(!err) goto out_stat;
 		err = copy_from_user(args, (void *)arg, sizeof(struct pmc_stats));
 		if(err) goto out_stat;
-		pr_info("before test bitmap -- %d\n", args->pmc_id);
+
 		if(!test_bit(args->pmc_id, pmc_bitmap)) goto out_stat;
-		pr_info("after test bitmap\n");
-		args->value = debugPMU(MSR_IA32_PMC(args->pmc_id));
-		pr_info("after debug function\n");
+
+		on_each_cpu(debugPMU, (void *) args, 1);
+		
 		err = access_ok(VERIFY_WRITE, (void *)arg, sizeof(struct pmc_stats));
 		if(!err) goto out_stat;
 		err = copy_to_user((void *)arg, args, sizeof(struct pmc_stats));
