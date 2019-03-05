@@ -1,6 +1,12 @@
 
+#define MSR_IA32_PERF_GLOBAL_STATUS_RESET   0x390
+#define MSR_IA32_PERF_GLOBAL_STATUS     0x38E
 #define MSR_IA32_PERF_GLOBAL_CTRL	    0x38F
-#define MSR_IA32_PERF_GLOBAL_OVF_CTRL   0x390
+#define MSR_IA32_PEBS_ENABLE		    0x3F1
+#define MSR_IA32_DS_AREA     		    0x600
+#define MSR_IA32_PERF_CABABILITIES  	0x345
+#define MSR_IA32_MISC_ENABLE            0x1A0
+#define MSR_IA32_PERF_CAPABILITIES      0x345
 
 /* Performance Event Select Register 0 */
 #define MSR_IA32_PERFEVTSEL_ADDRESS		0x00000186
@@ -27,8 +33,8 @@
 #define MSR_IA32_PMC6			MSR_IA32_PMC(6)
 #define MSR_IA32_PMC7			MSR_IA32_PMC(7)
 
-#define 	MASK_PERFEVT_EVTSEL		0xFULL		/* Event Select */
-#define 	MASK_PERFEVT_UMASK		(0xFULL << 8)	/* Unit Mask */
+#define 	MASK_PERFEVT_EVTSEL		0xFFULL		/* Event Select */
+#define 	MASK_PERFEVT_UMASK		(0xFFULL << 8)	/* Unit Mask */
 #define 	MASK_PERFEVT_USER		(1ULL << 16)	
 #define 	MASK_PERFEVT_OS			(1ULL << 17)	
 #define 	MASK_PERFEVT_E			(1ULL << 18)	/* 0: Duration / 1: Occurrence */
