@@ -1,5 +1,4 @@
 #include <asm/cpufeature.h>
-#include <linux/kallsyms.h>
 
 int check_for_pebs_support(void)
 {

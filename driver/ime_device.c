@@ -1,20 +1,8 @@
-#include <asm/apicdef.h> 	// Intel apic constants
-#include <asm/desc.h>
-#include <linux/kallsyms.h>
-#include <linux/smp.h>
 #include <linux/device.h>
-#include <linux/moduleparam.h>
-#include <linux/sched.h>		/* current macro */
-#include <linux/percpu.h>		/* this_cpu_ptr */
-#include <linux/fs.h>
-#include <linux/slab.h>
 #include <linux/vmalloc.h>
-#include <linux/wait.h>
 #include <linux/cdev.h>
 
-#include "msr_config.h"
 #include "ime_device.h"
-#include "intel_pmc_events.h"
 #include "ime_fops.h"
 
 
