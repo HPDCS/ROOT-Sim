@@ -88,6 +88,8 @@ do_unit_test numerical
 # Run models to make comprehensive tests
 do_test pcs 16
 do_test packet 4
+do_test collector 4
+do_test stupid_model 16
 
 
 
@@ -96,24 +98,24 @@ echo ""
 echo "    SUMMARY OF TEST RESULTS"
 echo ""
 echo "          _Unit Tests_"
-echo "╒═══════════════════╤══════════╕"
-echo "│ Unit Test         │  Passed  │"
-echo "╞═══════════════════╪══════════╡"
+echo "╒══════════════════════════╤══════════╕"
+echo "│ Unit Test                │  Passed  │"
+echo "╞══════════════════════════╪══════════╡"
 for((i=0;i<${#unit_tests[@]};i++));
 do
-	printf "│ %-17s │    %1s     │\n" ${unit_tests[$i]} ${unit_results[$i]}
-	echo "╞═══════════════════╪══════════╡"
+	printf "│ %-24s │    %1s     │\n" ${unit_tests[$i]} ${unit_results[$i]}
+	echo "╞══════════════════════════╪══════════╡"
 done
 
 echo ""
 echo "          _Model Runs_"
-echo "╒════════════╤═════╤═════╤═════╕"
-echo "│ Testcase   │ Seq │ Par │ MPI │"
-echo "╞════════════╪═════╪═════╪═════╡"
+echo "╒═══════════════════╤═════╤═════╤═════╕"
+echo "│ Testcase          │ Seq │ Par │ MPI │"
+echo "╞═══════════════════╪═════╪═════╪═════╡"
 for((i=0;i<${#tests[@]};i++));
 do
-	printf "│ %-10s │  %1s  │  %1s  │  %1s  │\n" ${tests[$i]} ${sequential[$i]} ${normal[$i]} ${mpi[$i]}
-	echo "╞════════════╪═════╪═════╪═════╡"
+	printf "│ %-17s │  %1s  │  %1s  │  %1s  │\n" ${tests[$i]} ${sequential[$i]} ${normal[$i]} ${mpi[$i]}
+	echo "╞═══════════════════╪═════╪═════╪═════╡"
 done
 
 exit $retval
