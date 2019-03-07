@@ -81,11 +81,25 @@ static inline unsigned long long get_agent_mark(region_abm_t *region){
 	return ret;
 }
 
+
+/**
+* Compute the size in bytes of an eventual agent serialization.
+*
+* @param agent A pointer to the agent
+*/
 static unsigned agent_dump_size(const struct _agent_abm_t *agent) {
 	return (unsigned)(sizeof(agent->key) + sizeof(agent->user_data_size) + agent->user_data_size
 			+ array_dump_size(agent->future) + abm_settings.keep_history * array_dump_size(agent->past));
 }
 
+
+/**
+* Deserialize an agent from a buffer.
+*
+* @param event_content A pointer to the buffer containing the serialzied agent
+* @param event_size The size in bytes of the buffer
+* @return a newly instantiated agent struct, the deserialized agent
+*/
 static struct _agent_abm_t* agent_from_buffer(const unsigned char* event_content, unsigned event_size){
 	// keep track of original pointer
 	const unsigned char *buffer = event_content;
@@ -111,6 +125,14 @@ static struct _agent_abm_t* agent_from_buffer(const unsigned char* event_content
 	return agent;
 }
 
+
+/**
+* Serialize an agent into a buffer, the buffer is caller supplied and its
+* required size can be calculated with the function agent_dump_size.
+*
+* @param agent A pointer to the agent struct to be serialized
+* @param buffer A pointer to the buffer to fill with the serialized agent
+*/
 static void agent_to_buffer(struct _agent_abm_t *agent, unsigned char* buffer){
 	// we use buffer as a mobile pointer so we need to save the original value
 	unsigned char *to_send = buffer;
@@ -127,6 +149,13 @@ static void agent_to_buffer(struct _agent_abm_t *agent, unsigned char* buffer){
 	assert(buffer == to_send +  agent_dump_size(agent));
 }
 
+
+/**
+* Checkpoint the region state, saving it into a buffer.
+*
+* @param region A pointer to the region struct to be checkpointed
+* @return A malloc'ed buffer holding all the region data
+*/
 unsigned char * abm_do_checkpoint(region_abm_t *region){
 	// calculate dump size
 	size_t chkp_size_tot = region->chkp_size;
@@ -158,6 +187,12 @@ unsigned char * abm_do_checkpoint(region_abm_t *region){
 	return chk;
 }
 
+/**
+* Restore a region struct from a previously checkpointed state
+*
+* @param data A pointer to the region struct to be checkpointed
+* @return A malloc'ed buffer holding all the region data
+*/
 void abm_restore_checkpoint(unsigned char *data, region_abm_t *region){
 	struct _agent_abm_t *agent;
 
@@ -189,6 +224,12 @@ void abm_restore_checkpoint(unsigned char *data, region_abm_t *region){
 	}
 }
 
+
+/**
+* Initializes the abm layer internals for all the lps hosted on the machine.
+* This needs to be called before starting processing events, after basic
+* initialization of the lps.
+*/
 void abm_layer_init(void) {
 
 	unsigned actual_neighbours, i, region_alloc_size;
@@ -247,6 +288,10 @@ void abm_layer_init(void) {
 static void receive_update(void);
 static void update_neighbours(void);
 
+/**
+* Handle a visit to a region. This is called by the abm layer when a visit message is received.
+* We expect the event to have the serialized visiting agent as payload.
+*/
 static void on_abm_visit(void){
 	struct _visit_abm_t vis;
 	// parse the entering agent
@@ -272,12 +317,16 @@ static void on_abm_visit(void){
 	switch_to_platform_mode();
 }
 
+/**
+* Handle an agent departure. This is called by the abm layer when a leave message is received.
+* We expect the event to have the the agent key as payload.
+*/
 static void on_abm_leave(void){
 	struct _visit_abm_t vis;
 	unsigned char* to_send;
 	unsigned buffer_size;
 	// we search for the agent who's leaving
-	assert(current_evt->size = sizeof(struct _leave_evt));
+	assert(current_evt->size == sizeof(struct _leave_evt));
 	struct _agent_abm_t *agent = hash_map_lookup(current->region->agents_table, ((struct _leave_evt *)current_evt->event_content)->key);
 	if(!agent || agent->leave_time > current_evt->timestamp) {
 		// the exiting agent has been killed or already left or the agent is trying to leave too early (can happen if user decides so)
@@ -361,6 +410,10 @@ static void on_abm_leave(void){
 	}
 }
 
+/**
+* Handle an update receive. This updates the corresponding entry in the region struct, which will be used to
+* serve fresh neighbour data to the user.
+*/
 static void receive_update(void){
 	//if(abm_settings.neighbour_data_size != current_evt->size)
 		//rootsim_error(true, "Misuse of ABM api, regions do not agree on neighbours info size! EXITING!");
@@ -376,6 +429,10 @@ static void receive_update(void){
 	rootsim_error(true, "Misuse of ABM api, unable to find neighbours info's memory area! EXITING!");
 }
 
+/**
+* Keep updated the neighbours of changes in the tracked data. This is called after each event and boradcasts eventual
+* changes to neighbours
+*/
 static void update_neighbours(void){
 	region_abm_t *region = current->region;
 	unsigned char* published_data = ((unsigned char *)region) + region->published_data_offset;
@@ -395,6 +452,10 @@ static void update_neighbours(void){
 	}
 }
 
+/**
+* The event handler which gets called instead of the user supplied ProcessEvent() function when the abm_layer is in use.
+* The unrecognized events get passed to ProcessEventTopology() since the abm layer is based on the topology APIs.
+*/
 void ProcessEventABM(void) {
 	switch (current_evt->type) {
 
@@ -418,7 +479,6 @@ void ProcessEventABM(void) {
 
 	}
 	update_neighbours();
-	//dispatch_leavers();
 }
 
 int GetNeighbourInfo(direction_t i, unsigned int *region_id, void **data_p){
@@ -589,45 +649,3 @@ void RemoveVisit(agent_t agent_id, unsigned i) {
 
 	array_remove_at(agent->future, i);
 }
-/*
-XXXXXNNNNNNWWX0kxxxkkkkkkkOkOOOOOOOOOOOkOOOOOO0000OO0000000000Okxxdooooooodddddd
-KXXXNNNNNWNKOdodxxxxxkkkkxddoooodxdxxkkkkkkkOOOO00000000000KKK╔═╗  ┌─┐┌─┐┌┬┐┌─┐d
-XNNNNNNNNKkdddxxxxxkkxoc:::;::;;;:::loxxxxdolokOOOO0000000O000╠═╝  │  │ │ ││├┤ d
-NNNNNNNKkdoddxxxkkdlc;;,'''',''..'''',;;;;:;,,;okOOOOOO0000000╩    └─┘└─┘─┴┘└─┘x
-NNNNNXkdodddxkkdl:'.........',,,''''......  ....,:dO0OOOOOO000 ┬─┐┬ ┬┬  ┌─┐┌─┐ 0
-NNWNOddddxxkkxc'.......,'.......'',;;;,''..       .,dOOOOOO000 ├┬┘│ ││  ├┤ ┌─┘ O
-NNXkddxxxkOxc,......,;,...,:cldk000000000Okxl;.    .;xOOOOO000 ┴└─└─┘┴─┘└─┘└─┘ O
-N0xddxkkOOo'......'::'..,lkKXNNNNNNNNNNNNNNNNN0d;  .,oOOOOOOOOO00000000OOOkkkxkk
-0ddxkkOOOc.  ..''',. .;xXNWWWWNNNNNNNNNNNNNNWWWWNx'.,lkOOOOOOOOO0000000000OOkkkx
-xdxkOO00o. .........;kNWWWNWNNNNNNNNNNNWWWNWWWWNNN0;.;okOO00O0000K00OO0000OOOOOx
-xkOO000l. .... .,ldOXWWWNNNWNNNNNNWWNNWWWWWWWWWWNKXO;.'oOOO0000KKK0000OOOOkkOkxx
-O0000Kx. .....,d0XNNNNWWNNWNXK000KXNWNNNNNNNXXNNNNXXd. ;k00000KKKKKK000Okkkxxkxd
-0000KO;  '::,;lOXNNWNX0xolc:;,,',;lOXXXXXX0xl;,,:lx0O, .d00000KKK00KK0OOkxxxxxxd
-0K0KKc  ':;..;oKNKkdc,;;,,,,,':ddccoxkOOOko,..','..,c,..:k00KKK0KKKKKK0Okxxxddxx
-000K0: .''...,xKx;;c',kxoc:,..,lc;:olccodc.':coc,',,,..;,.oK0K00KKKXK00K0OOkxkOO
-0000Ko.......';,.;cl,,l,.:l' .:llodoccONWK;.;c' .,':l. .;,dK0KKKKKKXXKK00OOOkkkk
-0000Kd. .  .  .lxkk0kclkxkOxodxxxkko:lOXNWO,,ol:lo,:x; .:o000KKK0KKKXXKK0OOOOOxd
-00OOKx.       cXNNNNNOldOOkOOOOOOxdooxO0KNNx,;ldddkOKl.,;dK00KKKKKKKKKKK000O00OO
-O0OO0o.       lNNNNNNNKkxxddkkkkxddxOOkO0KNNOoloooxkko'..xK000KKK0KKK00000000Okk
-OOOOO:   .','.lNNXNNNNXXNNXXXXXKKOxO00kxk0XXK00KXKK0O0c .dK000KKKKKKKK00KK000Okx
-kkkOl. .;k00O;;0XXNNNNNNNNNNXXXK0dlddoldxk0kdxO0KKXKXWx..dK0000KKKKKKKKKK0OOOkxx
-kkkk: 'lkXOkXx,dXKXNNXXXXXXXKKKKKklc:'':loo;;dOOkO000NO.'k000000000KK00000Okkkxx
-xxxx:..oXKOKWK::OKXXXXK000000OO0kl::,..,::,..cxkdoxOkKk,'d000000000000OOOOkkkkkk
-xxxdoc',0NXNNNo'l0K000KK0O0Odllllllloc:::ccloxkxxlokkOkxox000000OO000000OOOOOkkx
-ddddodl',dKNWWO,ckOOOO0KXXKkddo::clooddxxxxxdocclokOkxxkkkOOOOO0OOOOOOOOOOOOOxdd
-llcllllc. .;oOx,cOO0OkkkOKK0000kdooxkkO00KKKK0OkOKXOxxxdxxxxxxkkxkOkkkkOkxxddol:
-:;.;ll:,'.   ,klckOOOkkkk00OOXXKKKKK0kdlccclxOXXXNKxdxdollllllcodddxOkkxxxdollcc
-;;':xxl';,    ;xloO0OkkO0OOOk0XXXKKXXKkdddoxOXNNNN0dxkd;'.....,oxolk00Okkkxxdolc
-';,';,,':d;   .:clO0OOkxO00OddOKKKKKXXXXNNNWWWWNNKkoodl,'.....;xO000000O0OOOkdxx
-;::;,,;;cOx. ...lccdkOOOOOkxl:cdkxxk0KXNNNNNNNN0Oxddlcc,,'..,'.;kKXKKXK000OOOOkx
-;::::::;o0O;    lk;':odxkxdol;,;cllldkOO000kkOOdocc:coc,,,.','.;OXXXXXXXK00Okkkx
-:::::c:cx0Kd.   :XKo;'.,;;;;:;,',;;:clllooolll:,'.;okkc;,,'','':OXXKXXXXK0OOOkkk
-l::looclk00O,   ,KWNXkc.  ..........'''','.... .;ok00ko;,,'',,':OXKKKKXKKK0OOxxx
-o;:xkkolk00O:   ,KWNNNXOl,........   ..       'dKK000Oxc;,,,,''cOKKKKKKKKKK0Okkx
-doxO0kl'.cxl,...:KNNNNNNXKkxool:;'''''',,,,;lx0XOxO000Od:,',,,'cOK00000000000Okx
-0kclOkl;..od;co:dXNNNNWNNXXXKOOkkOOOO00000kk0KXXkldOxllOx,.....:k0OOOOkkkkOOOOkx
-oOo.;xl:;.lkcld:oXNNWWWWNXKKXKKKXXXXXXKKK0OO0XXKdloxOl.,k0xolodxOOkOKK0Okkkkkkkk
-.:Od.;kl.'oklokl,xNNNWWWNNK00OOOOOKXX0OOOOOOKXNK;;oo0k, :KXKKXXXKOO000Kkoxxdxxdd
-;.;ko.ck:.cxclko..dXNNNNNNXK0OOOkxkkOO0OOO0KXXXO''olxKx..dXXXKK0OOOOOKOk0K0Oxdoo
-x;.:O:.dk',dccxx, .oXNNNNXXKK0000OxxO000O0KXXKKo..llo00: :KX0K0kkxdkK0x0K0k0XOol
-*/

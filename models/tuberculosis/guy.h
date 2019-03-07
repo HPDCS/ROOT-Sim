@@ -14,7 +14,7 @@
 
 // the flags used in the guy struct
 enum _flags_t{
-	f_sick,			/// the guy is either in the "sick" state or the "under treatment" state IFF this flag is set
+	f_sick,		/// the guy is either in the "sick" state or the "under treatment" state IFF this flag is set
 	f_treatment,	/// the guy is either in the "treated" state or the "under treatment" state IFF this flag is set
 	f_foreigner,
 	f_female,

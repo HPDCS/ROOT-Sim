@@ -178,6 +178,6 @@ int OnGVT(unsigned int me, cell_state_t *state) {
 		return state->max_ratio >= 1.0;
 
 	} else {
-		return state->started || state->max_ratio >= 1.0;
+		return state->started;
 	}
 }

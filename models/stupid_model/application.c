@@ -1,4 +1,4 @@
-#include "../bug_explore/application.h"
+#include "../stupid_model/application.h"
 
 #include <stdio.h>
 
@@ -49,7 +49,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, agent_t *agent
 			TrackNeighbourInfo(&region->bugs);
 			// for simplicity we spawn a single bug at region 0
 			if(me < NUM_OCCUPIED_CELLS){
-				// here we call ourselves (XXX does this work as expected under ROOT-Sim environment?)
+				// here we call ourselves
 				ProcessEvent(me, now, SPAWN_BUG, NULL, 0, region);
 			}
 
@@ -128,7 +128,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, agent_t *agent
 				// we initialize our custom fields
 				this_bug = DataAgent(this_agent, NULL);
 				this_bug->size = 1;
-				// we call ourselves to make the bug eat and eventually leave this region xxx again, does this work correctly?
+				// we call ourselves to make the bug eat and eventually leave this region
 				ProcessEvent(me, now, BUG_VISIT, &this_agent, sizeof(this_agent), state);
 			}
 
@@ -177,10 +177,6 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, agent_t *agent
 }
 
 int OnGVT(unsigned int me, region_t *snapshot) {
-
-	//printf("LP[%u] I'm %sexplored", me, snapshot->is_explored ? "" : "not ");
 	if(snapshot->bugs && (int)(snapshot->lvt) % 10 == 0) printf("There's still at least a bug here\n");
-	//if(snapshot->violation) printf(", the constraint has been violated %u time%s", snapshot->violation, snapshot->violation > 1 ? "s" : "");
-
-	return snapshot->is_explored;/// XXX fix with whatever stuff you prefer
+	return snapshot->is_explored;
 }

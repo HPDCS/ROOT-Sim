@@ -156,11 +156,6 @@ void ProcessEvent(unsigned me, simtime_t now, int event_type, agent_t *agent_p, 
 	}
 }
 
-
-
-
-// funzione dell'applicazione invocata dalla piattaforma
-// per stabilire se la simulazione e' terminata
 int OnGVT(unsigned int me, region_t *snapshot) {
 	if(snapshot->n.eaters != 0)
 		printf("%u: cap %u eaters %u sugar %u\n", me, snapshot->capacity, snapshot->n.eaters, snapshot->n.sugar);

@@ -36,10 +36,9 @@ void ProcessEvent(unsigned me, simtime_t now, int event_type, void *unused, unsi
 				exit(EXIT_FAILURE);
 			}
 
-			//Occupo le "prime" e "ultime" celle
+			// Occupy the "first" and "last" cells
 			if(me < ((OCCUPIED_CELLS + 1)/2) || me >= ((n_prc_tot)-(OCCUPIED_CELLS/2))) {
 				for(i = 0; i < ROBOTS_PER_CELL; i++) {
-					// genero un evento di REGION_IN
 					ScheduleNewEvent(me, now + (simtime_t)(20 * Random()), REGION_IN, NULL, 0);
 				}
 			}
@@ -53,7 +52,6 @@ void ProcessEvent(unsigned me, simtime_t now, int event_type, void *unused, unsi
 
 			pointer->trails++;
 
-			// genero un evento di REGION_OUT
 			ScheduleNewEvent(me, now + TIME_STEP/100000, REGION_OUT, NULL, 0);
 
 			break;
@@ -106,8 +104,6 @@ void ProcessEvent(unsigned me, simtime_t now, int event_type, void *unused, unsi
 }
 
 
-// funzione dell'applicazione invocata dalla piattaforma
-// per stabilire se la simulazione e' terminata
 int OnGVT(unsigned int me, lp_state_type *snapshot) {
 	(void) me;
 
