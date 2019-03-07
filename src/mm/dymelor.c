@@ -212,7 +212,6 @@ void *do_malloc(struct lp_struct *lp, size_t size)
 
 	if (m_area == NULL) {
 
-		printf("Initializing an additional area\n");
 		fflush(stdout);
 
 		if (lp->mm->m_state->num_areas == lp->mm->m_state->max_num_areas) {
