@@ -119,5 +119,6 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, agent_t *agent
 }
 
 int OnGVT(unsigned int me, region_t *snapshot) {
+	(void)me;
 	return snapshot->started && (snapshot->happy || snapshot->n.agents == 0);
 }

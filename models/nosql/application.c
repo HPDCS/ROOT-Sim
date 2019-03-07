@@ -12,9 +12,8 @@
 struct _topology_settings_t topology_settings = {.type = TOPOLOGY_OBSTACLES, .default_geometry = TOPOLOGY_GRAPH, .write_enabled = false};
 
 void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_type *event_content, unsigned int size, void *ptr) {
-
+	(void)size;
 	int i;
-	int j;
 	int target;
 
 	event_content_type new_event_content;
@@ -83,8 +82,9 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 				ScheduleNewEvent(me, timestamp, TX_OP, NULL, 0);
 				state->read_set[state->tx_ops_displacement] = RandomRange(10,10000);
 				for(i=0;i<state->tx_ops_displacement;i++){
-						if (state->read_set[i] != state->read_set[state->tx_ops_displacement]);
+					if (state->read_set[i] != state->read_set[state->tx_ops_displacement]) {
 						//found conflicting item
+					}
 				}
 				state->tx_ops_displacement += 1;
 
@@ -117,8 +117,9 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 			if ( memcmp((void*)state->read_set,(void*)state->write_set,sizeof(int)*MAX_RS_SIZE)){
 					state->conflicted_tx++;
 					for(i=0;i<MAX_RS_SIZE;i++){
-						if (state->read_set[i] != state->write_set[i]);
-						//found conflicting item
+						if (state->read_set[i] != state->write_set[i]) {
+							//found conflicting item
+						}
 					}
 				}
 
@@ -170,9 +171,10 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 					for(i=0;i<MAX_RS_SIZE;i++){
 
 						if (state->read_set[i] != 0){
-							if (state->read_set[i] != state->write_set[i]);
+							if (state->read_set[i] != state->write_set[i]) {
+								//found conflicting item
+							}
 						}
-						//found conflicting item
 					}
 				}
 
@@ -199,7 +201,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 
 
 bool OnGVT(unsigned int me, lp_state_type *state) {
-
+	(void)me;
 	//printf("%d: %f\% (%d/%d)\n", me, 100 * state->committed_tx / (double)TOTAL_COMMITTED_TX, state->committed_tx, TOTAL_COMMITTED_TX);
 
 	if(state->committed_tx < TOTAL_COMMITTED_TX)

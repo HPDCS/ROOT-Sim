@@ -1,8 +1,10 @@
 #include <ROOT-Sim.h>
 #include "application.h"
 
+struct _topology_settings_t topology_settings = {.type = TOPOLOGY_OBSTACLES, .default_geometry = TOPOLOGY_GRAPH};
 
 void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, event_t *content, unsigned int size, lp_state_t *state) {
+	(void)size;
 	event_t new_event;
 	simtime_t timestamp;
 
@@ -29,12 +31,9 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, event_t *c
 			new_event.pointer = state->pointer;
 			new_event.sender = me;
 
-			int recv = FindReceiver(TOPOLOGY_STAR);
+			int recv = FindReceiver();
 
 			timestamp = now + Expent(DELAY);
-
-			//if(content != NULL && content->pointer!=NULL && me!=content->sender)
-			//	printf("\t \t LP[%d] mem of %d = %d\n",me,content->sender,content->pointer[0]);
 
 			ScheduleNewEvent(recv, timestamp, PACKET, &new_event, sizeof(new_event));
 		}

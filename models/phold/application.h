@@ -70,9 +70,10 @@ extern int	object_total_size,
 		max_size,
 		min_size,
 		num_buffers,
-		complete_alloc,
 		read_correction,
 		write_correction;
+extern unsigned int 
+		complete_alloc;
 extern double	write_distribution,
 		read_distribution,
 		tau;

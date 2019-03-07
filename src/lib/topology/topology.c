@@ -229,11 +229,11 @@ void topology_init(void) {
 		case TOPOLOGY_COSTS:
 			topology_global.chkp_size = size_checkpoint_costs();
 			break;
-		case TOPOLOGY_OBSTACLES:
-			topology_global.chkp_size = size_checkpoint_obstacles();
-			break;
 		case TOPOLOGY_PROBABILITIES:
 			topology_global.chkp_size = size_checkpoint_probabilities();
+			break;
+		case TOPOLOGY_OBSTACLES:
+			topology_global.chkp_size = size_checkpoint_obstacles();
 			break;
 	}
 	// initialize the topology struct

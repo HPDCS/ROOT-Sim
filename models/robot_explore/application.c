@@ -24,6 +24,7 @@ void new_agent(unsigned me){
 
 
 void ProcessEvent(int me, simtime_t now, int event_type, agent_t *agent_p, int event_size, cell_state_t *state) {
+	(void)event_size;
 
 	agent_t robot;
 	agent_state_type *agent_state, *robot_state;
@@ -171,6 +172,7 @@ void ProcessEvent(int me, simtime_t now, int event_type, agent_t *agent_p, int e
 }
 
 int OnGVT(unsigned int me, cell_state_t *state) {
+	(void)me;
 
 	if(state->present_agents) {
 		if(state->max_ratio < 1.0)
