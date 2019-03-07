@@ -152,6 +152,8 @@ static void agent_to_buffer(struct _agent_abm_t *agent, unsigned char* buffer){
 
 /**
 * Checkpoint the region state, saving it into a buffer.
+* This is periodically called by the checkpointing module to save the region state.
+* The returned buffer needs to be freed.
 *
 * @param region A pointer to the region struct to be checkpointed
 * @return A malloc'ed buffer holding all the region data
@@ -188,7 +190,7 @@ unsigned char * abm_do_checkpoint(region_abm_t *region){
 }
 
 /**
-* Restore a region struct from a previously checkpointed state
+* Restore a region struct from a previously checkpointed state.
 *
 * @param data A pointer to the region struct to be checkpointed
 * @return A malloc'ed buffer holding all the region data
@@ -500,7 +502,7 @@ void TrackNeighbourInfo(void *neighbour_data) {
 
 bool IterAgents(agent_t *agent_p) {
 	switch_to_platform_mode();
-	// XXX is this correct with preemption?
+	// fixme preemption breaks this
 	static __thread map_size_t closure = 0;
 	if(!agent_p || closure >= hash_map_count(current->region->agents_table)) {
 		closure = 0;
