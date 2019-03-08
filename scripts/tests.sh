@@ -78,6 +78,48 @@ function do_test() {
 	fi
 }
 
+function do_test_custom() {
+
+        # Compile and store the name of the test suite
+        rootsim-cc models/$1/*.c -o model
+        tests+=("$1-cust")
+
+        # Run this model using MPI
+        echo -n "Running test $1-cust using MPI... "
+        mpiexec --np 2 ./model --wt 2 ${@:2} --no-core-binding > /dev/null
+        if test $? -eq 0; then
+                mpi+=('Y')
+                echo "passed."
+        else
+                mpi+=('N')
+                retval=1
+                echo "failed."
+        fi
+
+        # Run this model using only worker threads
+        echo -n "Running test $1-cust using parallel simulator... "
+        ./model --wt 2 ${@:2} > /dev/null
+        if test $? -eq 0; then
+                normal+=('Y')
+                echo "passed."
+        else
+                normal+=('N')
+                retval=1
+                echo "failed."
+        fi
+
+        # Run this model sequentially
+        echo -n "Running test $1-cust sequentially... "
+        ./model --sequential ${@:2} > /dev/null
+        if test $? -eq 0; then
+                sequential+=('Y')
+                echo "passed."
+        else
+                sequential+=('N')
+                retval=1
+                echo "failed."
+        fi
+}
 
 
 # Run available unit tests
@@ -90,6 +132,9 @@ do_test pcs 16
 do_test packet 4
 do_test collector 4
 do_test stupid_model 16
+
+# Additional tests to increase code coverage
+do_test_custom pcs --lp 16 --output-dir dummy --npwd --gvt 500 --gvt-snapshot-cycles 3 --verbose info --seed 12345 --scheduler stf --cktrm-mode normal --simulation-time 1000
 
 
 
