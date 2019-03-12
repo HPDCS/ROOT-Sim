@@ -13,13 +13,11 @@ static __init int hop_init(void)
 	enable_nmi();
 	setup_resources();
 	init_pebs_struct();
-	on_each_cpu(pebs_init, NULL, 1);
 	return 0;
 }// hop_init
 
 void __exit hop_exit(void)
 {
-	on_each_cpu(pebs_exit, NULL, 1);
 	exit_pebs_struct();
 	cleanup_resources();
 	disable_nmi();
