@@ -1,6 +1,6 @@
 CC = rootsim-cc
 CFLAGS = -Wall -Wextra
-TARGET = stupid_model
+TARGET = tuberculosis
 
 SRCS = application.c guy.c guy_init.c parameters.c
 OBJS = $(SRCS:.c=.o)
