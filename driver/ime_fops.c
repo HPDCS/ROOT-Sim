@@ -27,6 +27,14 @@ u64 user_events[MAX_NUM_EVENT] = {
     EVT_MEM_LOAD_RETIRED_L3_HIT			
 };
 
+void set_mitigation(void* arg){
+	wrmsrl(MSR_IA32_IA32_DEBUGCTL, BIT(12));
+}
+
+void clear_mitigation(void* arg){
+	wrmsrl(MSR_IA32_IA32_DEBUGCTL, 0ULL);
+}
+
 void debugPMU(void* arg)
 {
 	u64 pmu, msr;
