@@ -2,6 +2,7 @@
 #include <linux/uaccess.h>
 #include <linux/slab.h>
 #include <asm/smp.h>
+#include <linux/vmalloc.h>
 
 #include "ime_fops.h"
 #include "../main/ime-ioctl.h"
@@ -11,7 +12,11 @@
 #include "irq_facility.h"
 
 extern struct pebs_user* buffer_sample;
-extern int user_index_written;
+extern int write_index;
+extern int read_index;
+extern unsigned long write_cycle;
+extern unsigned long read_cycle;
+extern int nRecords_module;
 u64 pmc_mask = 0;
 u64 start_value;
 
@@ -27,16 +32,51 @@ u64 user_events[MAX_NUM_EVENT] = {
     EVT_MEM_LOAD_RETIRED_L3_HIT			
 };
 
+/*void contextSwitchPMC(void){
+	unsigned int cpu = get_cpu();
+
+	if (!(iso_struct.state && iso_struct.cpus_state & BIT_ULL(cpu) && is_current_enabled))
+		goto off;
+
+	if(!(iso_struct.cpus_pmc & BIT_ULL(cpu))){
+		wrmsrl(MSR_IA32_PERF_GLOBAL_CTRL, 0xfULL);
+		iso_struct.cpus_pmc |= BIT_ULL(cpu);
+	}
+	goto end;
+off:
+	if(iso_struct.cpus_pmc & BIT_ULL(cpu)){
+		wrmsrl(MSR_IA32_PERF_GLOBAL_CTRL, 0ULL);
+		iso_struct.cpus_pmc &= ~(BIT_ULL(cpu));
+	}
+end:
+	put_cpu();
+	return 0;
+}*/
+
 void set_mitigation(void* arg){
-	wrmsrl(MSR_IA32_IA32_DEBUGCTL, BIT(12));
+	wrmsrl(MSR_IA32_DEBUGCTL, BIT(12));
+	wrmsrl(MSR_IA32_PERF_GLOBAL_CTRL, 0ULL);
 }
 
 void clear_mitigation(void* arg){
-	wrmsrl(MSR_IA32_IA32_DEBUGCTL, 0ULL);
+	preempt_disable();
+	wrmsrl(MSR_IA32_DEBUGCTL, 0ULL);
+	preempt_enable();
 }
 
-void debugPMU(void* arg)
-{
+void enablePMC(void* arg){
+	preempt_disable();
+	wrmsrl(MSR_IA32_PERF_GLOBAL_CTRL, 0xfULL);
+	preempt_enable();
+}
+
+void disablePMC(void* arg){
+	preempt_disable();
+	wrmsrl(MSR_IA32_PERF_GLOBAL_CTRL, 0ULL);
+	preempt_enable();
+}
+
+void debugPMC(void* arg){
 	u64 pmu, msr;
 	int cpu = smp_processor_id();
 	struct pmc_stats* args = (struct pmc_stats*) arg;
@@ -48,11 +88,11 @@ void debugPMU(void* arg)
 	//print_reg();
 }
 
-void disablePMC(void* arg)
-{
+void resetPMC(void* arg){
+	int pmc_id;
 	struct sampling_spec* args = (struct sampling_spec*) arg;
 	if(args->cpu_id[smp_processor_id()] == 0) return;
-	int pmc_id = args->pmc_id; 
+	pmc_id = args->pmc_id; 
 	preempt_disable();
 	wrmsrl(MSR_IA32_PERF_GLOBAL_CTRL, 0ULL);
 	wrmsrl(MSR_IA32_PERFEVTSEL(pmc_id), 0ULL);
@@ -60,32 +100,31 @@ void disablePMC(void* arg)
 	preempt_enable();
 }
 
-void enabledPMC(void* arg)
-{
-	u64 msr, msr1;
+void setupPMC(void* arg){
+	int pmc_id;
 	struct sampling_spec* args = (struct sampling_spec*) arg;
 	if(args->cpu_id[smp_processor_id()] == 0) return;
+	wrmsrl(MSR_IA32_PERFEVTSEL(pmc_id), 0ULL);
 	if(!args->enable_PEBS[smp_processor_id()]) pmc_mask |= BIT(20);
 	if(args->user[smp_processor_id()]) pmc_mask |= BIT(16);
 	if(args->kernel[smp_processor_id()]) pmc_mask |= BIT(17);
-	int pmc_id = args->pmc_id; 
+	pmc_id = args->pmc_id; 
 	u64 event = user_events[args->event_id];
 	preempt_disable();
-	rdmsrl(MSR_IA32_PERF_GLOBAL_CTRL, msr);
 	wrmsrl(MSR_IA32_PMC(pmc_id), ~(args->start_value));
-	wrmsrl(MSR_IA32_PERF_GLOBAL_CTRL, msr | BIT(pmc_id));
 	wrmsrl(MSR_IA32_PERFEVTSEL(pmc_id), BIT(22) | pmc_mask | event);
 	preempt_enable();
+	
 }
 
-
-long ime_ctl_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
-{
+long ime_ctl_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
     int err = 0;
-    if(cmd == IME_PROFILER_ON || cmd == IME_PROFILER_OFF){
+	if(cmd == IME_PROFILER_ON) on_each_cpu(enablePMC, NULL, 1);
+	if(cmd == IME_PROFILER_OFF) on_each_cpu(disablePMC, NULL, 1);
+    if(cmd == IME_SETUP_PMC || cmd == IME_RESET_PMC){
         int on = 0;
         struct sampling_spec* args;
-        if(cmd == IME_PROFILER_ON) on = 1;
+        if(cmd == IME_SETUP_PMC) on = 1;
 
         args = (struct sampling_spec*) kzalloc (sizeof(struct sampling_spec), GFP_KERNEL);
         if (!args) return -ENOMEM;
@@ -95,18 +134,16 @@ long ime_ctl_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		if(err) goto out_pmc;
         if(on == 0){ 
 			if(!test_bit(args->pmc_id, pmc_bitmap)) goto out_pmc;
-			on_each_cpu(disablePMC, (void *) args, 1);
+			on_each_cpu(resetPMC, (void *) args, 1);
 			clear_bit(args->pmc_id, pmc_bitmap);
 			on_each_cpu(pebs_exit, (void *) args, 1);
 		}
 		else{
-			int k;
-			int cpu_mask;
 			if(test_bit(args->pmc_id, pmc_bitmap)) goto out_pmc;
 			set_bit(args->pmc_id, pmc_bitmap);
 			start_value = ~(args->start_value);
 			on_each_cpu(pebs_init, (void *)args, 1);
-			on_each_cpu(enabledPMC, (void *) args, 1);
+			on_each_cpu(setupPMC, (void *) args, 1);
 		}
 		kfree(args);
 		return 0;
@@ -125,7 +162,7 @@ long ime_ctl_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 
 		if(!test_bit(args->pmc_id, pmc_bitmap)) goto out_stat;
 
-		on_each_cpu(debugPMU, (void *) args, 1);
+		on_each_cpu(debugPMC, (void *) args, 1);
 		
 		err = access_ok(VERIFY_WRITE, (void *)arg, sizeof(struct pmc_stats));
 		if(!err) goto out_stat;
@@ -140,36 +177,54 @@ long ime_ctl_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
     }
 
 	if(cmd == IME_READ_BUFFER){
-		int k;
-		struct buffer_struct* args = (struct buffer_struct*) kzalloc (sizeof(struct buffer_struct), GFP_KERNEL);
+		int k = 0, current_read, current_write;
+		unsigned long current_wcycle, current_rcycle;
+		struct buffer_struct* args = (struct buffer_struct*) vmalloc (sizeof(struct buffer_struct));
         if (!args) return -ENOMEM;
 		err = access_ok(VERIFY_READ, (void *)arg, sizeof(struct buffer_struct));
 		if(!err) goto out_read;
 		err = copy_from_user(args, (void *)arg, sizeof(struct buffer_struct));
 		if(err) goto out_read;
-		
-		for(k = 0; k < MAX_BUFFER_SIZE && k < user_index_written; k++){
-			memcpy(&(args->buffer_sample[k]), &(buffer_sample[k]), sizeof(struct pebs_user));
-		}
 
-		args->last_index = user_index_written;
-		if(user_index_written > MAX_BUFFER_SIZE)args->last_index = MAX_BUFFER_SIZE;
+		current_read = read_index;
+		current_write = write_index;
+		current_rcycle = read_cycle;
+		current_wcycle = write_cycle;
+		for(; !(current_read == current_write && current_wcycle == current_rcycle) && k < args->last_index;){
+			int new_index;
+			memcpy(&(args->buffer_sample[k]), &(buffer_sample[current_read]), sizeof(struct pebs_user));
+			new_index = (current_read+1)%nRecords_module;
+			if(new_index < current_read) current_rcycle++;
+			current_read = new_index;
+			k++;
+		}
+		args->last_index = k;
 
 		err = access_ok(VERIFY_WRITE, (void *)arg, sizeof(struct buffer_struct));
 		if(!err) goto out_read;
 		err = copy_to_user((void *)arg, args, sizeof(struct buffer_struct));
 		if(err) goto out_read;
 
-		kfree(args);
+		preempt_disable();
+		write_index = 0;
+		read_index = 0;
+		write_cycle = 0;
+		read_cycle = 0;
+		preempt_enable();
+
+		vfree(args);
 		return 0;
 	out_read:
-		kfree(args);
+		vfree(args);
 		return -1;
 	}
 
 	if(cmd == IME_RESET_BUFFER){
 		preempt_disable();
-		user_index_written = 0;
+		write_index = 0;
+		read_index = 0;
+		write_cycle = 0;
+		read_cycle = 0;
 		preempt_enable();
 	}
 	return err;

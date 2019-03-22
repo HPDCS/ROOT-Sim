@@ -1,0 +1,29 @@
+Version 0.0.1 (alpha)
+
+Functionalities:
+	+ Be compliant with linux 4.18+ 
+	+ Enable function system-wide, also targetting specific cores (mask)
+	+ Register a thread (PID) and manage it independently of the others
+		- Define a private O(1)-accessible memory location
+
+
+
+
+% Define a private O(1)-accessible memory location
+We have access to kernel-level stack defined by the system.
+We know that the size of such a space is 16K (4 pages), and is also
+defined in the THREAD_SIZE symbol. We write the last 8 bytes of this
+space so that it is possible to access in a costant time the last entry.
+
+We place in that entry an address to point to thread-dedicated struct which
+contains usefull information for our purposes.
+Canonical form addresses uses the last 48bits to specify the address and 
+assign to the most significant 16 bits the same value of the 47th. We can use
+those bits to store extra information, also defining metadata to avoid
+useless accesses to thread struct.
+
++--+--+--------+-----------------------------+
+|EN|BS|           |       struct address        |
++--+--+-------+-----------------------------+
+|63|62|         |           48 bits           |
++--+--+------+-----------------------------+

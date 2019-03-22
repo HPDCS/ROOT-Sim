@@ -4,6 +4,7 @@
 
 #include "ime_device.h"
 #include "ime_fops.h"
+#include "ime_pebs.h"
 
 
 #define IME_DEV_MINOR 0
@@ -30,7 +31,8 @@ LIST_HEAD(free_minors);
 
 static const struct file_operations ime_ctl_fops = {
 	.owner 			= THIS_MODULE,
-	.unlocked_ioctl = ime_ctl_ioctl //if-list function: one for each command
+	.unlocked_ioctl = ime_ctl_ioctl,
+	.read = ime_read
 };
 
 static int ime_uevent(struct device *dev, struct kobj_uevent_env *env)
