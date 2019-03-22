@@ -62,12 +62,14 @@ struct buffer_struct {
 /* Use 'j' as magic number */
 #define IME_IOC_MAGIC			'q'
 
-#define _IO_NB	2
+#define _IO_NB	3
 
-#define IME_PROFILER_ON						_IO(IME_IOC_MAGIC, _IO_NB)
-#define IME_PROFILER_OFF					_IO(IME_IOC_MAGIC, _IO_NB+1)
-#define IME_PMC_STATS						_IO(IME_IOC_MAGIC, _IO_NB+2)
-#define IME_READ_BUFFER						_IO(IME_IOC_MAGIC, _IO_NB+3)
-#define IME_RESET_BUFFER					_IO(IME_IOC_MAGIC, _IO_NB+4)
+#define IME_SETUP_PMC						_IO(IME_IOC_MAGIC, _IO_NB)
+#define IME_PROFILER_ON						_IO(IME_IOC_MAGIC, _IO_NB+1)
+#define IME_PROFILER_OFF					_IO(IME_IOC_MAGIC, _IO_NB+2)
+#define IME_RESET_PMC						_IO(IME_IOC_MAGIC, _IO_NB+3)
+#define IME_PMC_STATS						_IO(IME_IOC_MAGIC, _IO_NB+4)
+#define IME_READ_BUFFER						_IO(IME_IOC_MAGIC, _IO_NB+5)
+#define IME_RESET_BUFFER					_IO(IME_IOC_MAGIC, _IO_NB+6)
 
 #endif /* _IME_IOCTL_H_ */

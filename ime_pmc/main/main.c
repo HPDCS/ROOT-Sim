@@ -12,11 +12,10 @@
 #include "intel_pmc_events.h"
 
 const char * device = "/dev/ime/pmc";
+int exit_ = 0;
 //pmc mask, cpu mask, event mask, start values, pebs mask, user mask, kernel mask, on/off
 #define ARGS "p:c:e:s:b:u:k:d:m:n"
-#define MAX_LEN 265
-#define EXIT	0
-#define IOCTL 	1
+#define MAX_LEN 256
 typedef struct{
 	int pmc_id[MAX_ID_PMC];
 	int event_id[MAX_ID_PMC];
@@ -68,10 +67,13 @@ configuration_t current_config;
 
 int ioctl_cmd(int fd)
 {
-	printf("%d: LIST_EVENT\n", 0);
-	printf("%d: READ_CONFIGURATION\n", 1);
+	printf("\n%d: EXIT\n", 0);
+	printf("%d: LIST_EVENT\n", 1);
+	printf("%d: READ_CONFIGURATION\n", 2);
+	printf("%d: IME_SETUP_PMC\n", _IOC_NR(IME_SETUP_PMC));
 	printf("%d: IME_PROFILER_ON\n", _IOC_NR(IME_PROFILER_ON));
 	printf("%d: IME_PROFILER_OFF\n", _IOC_NR(IME_PROFILER_OFF));
+	printf("%d: IME_RESET_PMC\n", _IOC_NR(IME_RESET_PMC));
 	printf("%d: IME_PMC_STATS\n", _IOC_NR(IME_PMC_STATS));
 	printf("%d: IME_READ_BUFFER\n", _IOC_NR(IME_READ_BUFFER));
 	printf("%d: IME_RESET_BUFFER\n", _IOC_NR(IME_RESET_BUFFER));
@@ -85,6 +87,11 @@ int ioctl_cmd(int fd)
 	unsigned long uvar = -1;
 
 	if(cmd == 0){
+		exit_ = 1;
+		return err;
+	}
+
+	if(cmd == 1){
 		printf("%d: EVT_INSTRUCTIONS_RETIRED\n", EVT_INSTRUCTIONS_RETIRED);
 		printf("%d: EVT_UNHALTED_CORE_CYCLES\n", EVT_UNHALTED_CORE_CYCLES);
 		printf("%d: EVT_UNHALTED_REFERENCE_CYCLES\n", EVT_UNHALTED_REFERENCE_CYCLES);
@@ -95,7 +102,7 @@ int ioctl_cmd(int fd)
 		return err;
 	}
 
-	if(cmd == 1){
+	if(cmd == 2){
 		int i;
 		for (i = 0; i < MAX_ID_PMC; i++){
 			if(current_config.pmc_id[i] == 1){
@@ -117,17 +124,26 @@ int ioctl_cmd(int fd)
 				for(k = 0; k < MAX_ID_CPU; k++){
 					printf("%d", current_config.kernel[i][k]);
 				}
-				printf(" | START VALUE: %lx\n", current_config.start_value[i]);
-                printf(" | PEBS DIM: %d\n", current_config.buffer_pebs_length);
+				printf(" | START VALUE: %lx", current_config.start_value[i]);
+                printf(" | PEBS DIM: %d", current_config.buffer_pebs_length);
                 printf(" | MODULE DIM: %d\n", current_config.buffer_module_length);
 			}
 		}
 		return 0;
 	}
 
-	if(cmd == _IOC_NR(IME_PROFILER_ON) || cmd == _IOC_NR(IME_PROFILER_OFF)){
+	if(cmd == _IOC_NR(IME_PROFILER_ON)) {
+		ioctl(fd, IME_PROFILER_ON);
+		printf("IOCTL: IME_PROFILER_ON success\n");
+	}
+
+	if(cmd == _IOC_NR(IME_PROFILER_OFF))  {
+		ioctl(fd, IME_PROFILER_OFF);
+		printf("IOCTL: IME_PROFILER_OFF success\n");
+	}
+	if(cmd == _IOC_NR(IME_SETUP_PMC) || cmd == _IOC_NR(IME_RESET_PMC)){
 		int on = 0;
-		if(cmd == _IOC_NR(IME_PROFILER_ON)) on = 1;
+		if(cmd == _IOC_NR(IME_SETUP_PMC)) on = 1;
 		struct sampling_spec* output = (struct sampling_spec*) malloc (sizeof(struct sampling_spec));
 		int i, k;
 		for (i = 0; i < MAX_ID_PMC; i++){
@@ -150,18 +166,19 @@ int ioctl_cmd(int fd)
 				output->kernel[k] = current_config.kernel[i][k];
 			}
 			if(on == 1){	
-				if ((err = ioctl(fd, IME_PROFILER_ON, output)) < 0){
-					printf("IOCTL: IME_PROFILER_ON failed\n");
+				if ((err = ioctl(fd, IME_SETUP_PMC, output)) < 0){
+					printf("IOCTL: IME_SETUP_PMC failed\n");
 					return err;
 				}
-				printf("IOCTL: IME_PROFILER_ON success\n");
+				printf("IOCTL: IME_SETUP_PMC success\n");
 			}
 			else{
-				if ((err = ioctl(fd, IME_PROFILER_OFF, output)) < 0){
-					printf("IOCTL: IME_PROFILER_OFF failed\n");
+				if ((err = ioctl(fd, IME_RESET_PMC, output)) < 0){
+					printf("IOCTL: IME_RESET_PMC failed\n");
 					return err;
 				}
-				printf("IOCTL: IME_PROFILER_OFF success\n");
+				printf("IOCTL: IME_RESET_PMC success\n");
+				current_config.pmc_id[i] = 0;
 			}
 		}
 		free(output);
@@ -189,6 +206,7 @@ int ioctl_cmd(int fd)
 	if(cmd == _IOC_NR(IME_READ_BUFFER)){
 		int i;
 		struct buffer_struct* args = (struct buffer_struct*) malloc (sizeof(struct buffer_struct));
+		args->last_index = MAX_BUFFER_SIZE;
 		if ((err = ioctl(fd, IME_READ_BUFFER, args)) < 0){
 			printf("IOCTL: IME_READ_BUFFER failed\n");
 			return err;
@@ -208,6 +226,7 @@ int ioctl_cmd(int fd)
 		}
 		printf("IOCTL: IME_RESET_BUFFER success\n");
 	}
+	printf("Error\n");
 	return err;
 }// ioctl_cmd
 
@@ -221,7 +240,7 @@ int main(int argc, char **argv)
 	char path[128];
     int len, i, k;
     uint64_t sval;
-    //optarg is char*
+	
 	fd = open(device, 0666);
 
 	if (fd < 0) {
@@ -241,6 +260,7 @@ int main(int argc, char **argv)
                 if(optarg[i] == '1') current_config.pmc_id[i] = 1;
                 else current_config.pmc_id[i] = 0;
             }
+			ioctl(fd, IME_RESET_BUFFER);
             break;
         case 'c':
             len = strnlen(optarg, MAX_LEN);
@@ -329,7 +349,6 @@ int main(int argc, char **argv)
             break;
         case 'd':
             val = atoi(optarg);
-            printf("dimension: %d\n", val);
             current_config.buffer_pebs_length = val;
             break;
         case 'm':
@@ -351,30 +370,11 @@ open_device:
 		return -1;
 	}
 end:
-    printf("What do you wanna do?\n");
-	printf("0) EXIT\n");
-	printf("1) IOCTL\n");
-
-	int cmd = int_from_stdin();
-
-	while (cmd)	{
-		switch (cmd) {
-		case IOCTL :
-			if (ioctl_cmd(fd))
-				printf("IOCTL ERROR\n");
-			break;
-		default : 
-			fprintf(stderr, "bad cmd\n");
-		}
-
-		printf("\n\n NEW REQ \n\n\n");
-		printf("0) EXIT\n");
-		printf("1) IOCTL\n");
-		cmd = int_from_stdin();
+	while (1)	{
+		if (ioctl_cmd(fd)) printf("IOCTL ERROR\n");
+		if(exit_ == 1) break;
 	}
 
   	close(fd);
 	return 0;
-failure:
-	exit(EXIT_FAILURE);
 }// main
