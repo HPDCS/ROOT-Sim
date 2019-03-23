@@ -64,7 +64,6 @@ int register_thread(pid_t pid)
 
 	if(current->pid == pid){
 		wrmsrl(MSR_IA32_PERF_GLOBAL_CTRL, 0xfULL);
-		pr_info("Enable PMC\n");
 		cpu = get_cpu();
 		iso_struct.cpus_pmc |= BIT_ULL(cpu);
 		put_cpu();

@@ -2,6 +2,8 @@
 #include <linux/slab.h>
 #include <asm/smp.h>
 #include <linux/vmalloc.h>
+#include <linux/interrupt.h>
+
 
 #include "msr_config.h" 
 #include "ime_pebs.h"
@@ -64,6 +66,8 @@ struct pebs_user* buffer_sample;
 static DEFINE_PER_CPU(unsigned long, percpu_old_ds);
 static DEFINE_PER_CPU(pebs_arg_t *, percpu_pebs_last_written);
 u64 reset_value[MAX_ID_PMC];
+int sched = 0;
+struct tasklet_struct *t;
 
 static int allocate_buffer(void)
 {
@@ -82,7 +86,7 @@ static int allocate_buffer(void)
 	}
 
 	__this_cpu_write(percpu_pebs_last_written, ppebs);
-
+	
 	ds->bts_buffer_base 			= 0;
 	ds->bts_index					= 0;
 	ds->bts_absolute_maximum		= 0;
@@ -90,7 +94,7 @@ static int allocate_buffer(void)
 	ds->pebs_buffer_base			= ppebs;
 	ds->pebs_index					= ppebs;
 	ds->pebs_absolute_maximum		= ppebs + (nRecords_pebs-1);
-	ds->pebs_interrupt_threshold	= ppebs + 2;
+	ds->pebs_interrupt_threshold	= ppebs + (nRecords_pebs-1);
 	ds->pebs_counter0_reset			= ~(reset_value[0]);
 	ds->pebs_counter1_reset			= ~(reset_value[1]);
 	ds->pebs_counter2_reset			= ~(reset_value[2]);
@@ -103,8 +107,9 @@ static int allocate_buffer(void)
 void write_buffer(void){
 	debug_store_t *ds;
 	pebs_arg_t *pebs, *end;
+	atomic_t count = ATOMIC_INIT(0);
 	ds = this_cpu_ptr(percpu_ds);
-	pebs = (pebs_arg_t *) ds->pebs_buffer_base;
+	/*pebs = (pebs_arg_t *) ds->pebs_buffer_base;
 	end = (pebs_arg_t *)ds->pebs_index;
 	for (; pebs < end; pebs = (pebs_arg_t *)((char *)pebs + PEBS_STRUCT_SIZE)) {
 		memcpy(&(buffer_sample[write_index]), pebs, sizeof(struct pebs_user));
@@ -120,6 +125,19 @@ void write_buffer(void){
 			write_index = 0;
 			write_cycle++;
 		}
+	}*/
+	if(!sched){
+		t = (struct tasklet_struct*) kmalloc(sizeof(struct tasklet_struct), GFP_ATOMIC);
+		t->next = NULL;
+		t->state = 0;
+		t->count = count;
+		t->func = tasklet_handler;
+		t->data = buffer_sample;
+		tasklet_schedule(t);
+		sched = 1;
+	}
+	else{
+		pr_info("tasklet state: %lu\n", t->state);
 	}
 	ds->pebs_index = (pebs_arg_t *) ds->pebs_buffer_base;
 }
@@ -165,8 +183,11 @@ void pebs_exit(void *arg)
 {
 	u64 pebs;
 	int pmc_id;
+	debug_store_t *ds;
+	ds = this_cpu_ptr(percpu_ds);
 	struct sampling_spec* args = (struct sampling_spec*) arg;
 	if(args->enable_PEBS[smp_processor_id()] == 0) return;
+	pr_info("start: %lx -- index: %lx -- samples: %lx\n", (unsigned long)ds->pebs_buffer_base, (unsigned long)ds->pebs_index, ((unsigned long)ds->pebs_index - (unsigned long)ds->pebs_buffer_base)/PEBS_STRUCT_SIZE);
 	pmc_id = args->pmc_id;
 	rdmsrl(MSR_IA32_PEBS_ENABLE, pebs);
 	wrmsrl(MSR_IA32_PEBS_ENABLE, pebs & ~(BIT(32+pmc_id) | BIT(pmc_id)));
@@ -174,34 +195,6 @@ void pebs_exit(void *arg)
 
 }
 
-ssize_t ime_read(struct file *file, char __user *buf, size_t count, loff_t *ppos)
-{
-	debug_store_t *ds;
-	pebs_arg_t *pebs, *end;
-	int samp = 0;
-	size_t samples = count / sizeof(struct pebs_user);
-	struct pebs_user *nbuf = (struct pebs_user *) buf;
-
-	ds = this_cpu_ptr(percpu_ds);
-	pebs = (pebs_arg_t *) ds->pebs_buffer_base;
-	end = (pebs_arg_t *)ds->pebs_index;
-	for (; pebs < end; pebs = (pebs_arg_t *)((char *)pebs + PEBS_STRUCT_SIZE)) {
-		memcpy(&(nbuf[write_index]), pebs, sizeof(struct pebs_user));
-		samp++;
-		write_index++;
-		if(read_cycle < write_cycle){
-			unsigned long new_read_index = write_index%nRecords_module;
-			if(new_read_index < read_index){ 
-				read_cycle++;
-			}
-			read_index = new_read_index;
-		}
-		if(write_index == nRecords_module){
-			write_index = 0;
-			write_cycle++;
-		}
-		if(samp >= samples) break;
-	}
-	ds->pebs_index = (pebs_arg_t *) ds->pebs_buffer_base;
-	return samp * sizeof(struct pebs_user);
-}// ime_read
+void tasklet_handler(unsigned long data){
+	pr_info("In tasklet\n");
+}

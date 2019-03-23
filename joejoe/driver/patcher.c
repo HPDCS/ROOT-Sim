@@ -13,6 +13,8 @@
 
 static u64 hook_func = 0;
 static int system_hooked = 0;
+extern unsigned long hook_func_enable;
+extern unsigned long hook_func_disable;
 
 static int switch_post_handler(struct kretprobe_instance *ri, struct pt_regs *regs);
 
@@ -41,7 +43,8 @@ static int switch_post_handler(struct kretprobe_instance *ri, struct pt_regs *re
 		goto off;
 
 	if(!(iso_struct.cpus_pmc & BIT_ULL(cpu))){
-		wrmsrl(MSR_IA32_PERF_GLOBAL_CTRL, 0xfULL);
+		hook = (h_func*) hook_func_enable;
+		hook();
 		iso_struct.cpus_pmc |= BIT_ULL(cpu);
 	}
 	//  else {
@@ -56,7 +59,8 @@ static int switch_post_handler(struct kretprobe_instance *ri, struct pt_regs *re
 	goto end;
 off:
 	if(iso_struct.cpus_pmc & BIT_ULL(cpu)){
-		wrmsrl(MSR_IA32_PERF_GLOBAL_CTRL, 0ULL);
+		hook = (h_func*) hook_func_disable;
+		hook();
 		iso_struct.cpus_pmc &= ~(BIT_ULL(cpu));
 	}
 end:

@@ -178,7 +178,6 @@ int ioctl_cmd(int fd)
 					return err;
 				}
 				printf("IOCTL: IME_RESET_PMC success\n");
-				current_config.pmc_id[i] = 0;
 			}
 		}
 		free(output);
@@ -226,7 +225,6 @@ int ioctl_cmd(int fd)
 		}
 		printf("IOCTL: IME_RESET_BUFFER success\n");
 	}
-	printf("Error\n");
 	return err;
 }// ioctl_cmd
 
@@ -316,6 +314,10 @@ int main(int argc, char **argv)
         case 's':
             sscanf(optarg, "%lx", &sval);
             for(i = 0; i < MAX_ID_PMC; i++){
+				if(i == 0){
+					current_config.start_value[i] = 0ULL;
+					continue;
+				}
                 current_config.start_value[i] = sval;
             }
             break;

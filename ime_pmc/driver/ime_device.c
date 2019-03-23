@@ -31,8 +31,7 @@ LIST_HEAD(free_minors);
 
 static const struct file_operations ime_ctl_fops = {
 	.owner 			= THIS_MODULE,
-	.unlocked_ioctl = ime_ctl_ioctl,
-	.read = ime_read
+	.unlocked_ioctl = ime_ctl_ioctl
 };
 
 static int ime_uevent(struct device *dev, struct kobj_uevent_env *env)

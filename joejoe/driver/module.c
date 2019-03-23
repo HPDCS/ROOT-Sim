@@ -13,6 +13,14 @@
 
 unsigned long long audit = 0;
 
+char* enable = "";
+module_param(enable, charp, 0660);
+
+char* disable = "";
+module_param(disable, charp, 0660);
+
+unsigned long hook_func_enable;
+unsigned long hook_func_disable;
 // Call it in a preempt-safe context
 void count(void *dummy)
 {
@@ -60,7 +68,8 @@ static __init int mod_init(void)
 
 	int err = 0;
 	
-	pr_info("Module Init\n");
+	kstrtoul(enable, 16, &hook_func_enable);
+	kstrtoul(disable, 16, &hook_func_disable);
 
 	err = setup_devices();
 	if (err) {
