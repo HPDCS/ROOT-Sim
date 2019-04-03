@@ -6,7 +6,7 @@
 #define MAX_ID_EVENT 7
 #define numCPU sysconf(_SC_NPROCESSORS_ONLN)
 #define MAX_CPU 256
-#define MAX_BUFFER_SIZE 64
+#define MAX_BUFFER_SIZE 65536
 
 struct pmc_stats {
 	int pmc_id;
@@ -17,7 +17,8 @@ struct sampling_spec {
 	int pmc_id;
     int event_id;
 	int cpu_id[MAX_ID_CPU]; 
-	uint64_t start_value; 
+	uint64_t start_value;
+	uint64_t reset_value; 
 	int enable_PEBS[MAX_ID_CPU];
 	int user[MAX_ID_CPU];
 	int kernel[MAX_ID_CPU];

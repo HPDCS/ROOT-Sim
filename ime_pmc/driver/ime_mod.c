@@ -7,6 +7,7 @@
 #include "ime_pebs.h"
 #include "ime_fops.h"
 
+extern unsigned long abc;
 
 static __init int hop_init(void)
 {
@@ -26,6 +27,7 @@ void __exit hop_exit(void)
 	cleanup_resources();
 	disable_nmi();
 	cleanup_pmc();
+	pr_info("Not catched events: %llx\n", abc);
 }// hop_exit
 
 

@@ -11,6 +11,8 @@ void set_mitigation(void* arg);
 
 void clear_mitigation(void* arg);
 
+void disablePMC(void* arg);
+
 extern u64 user_events[MAX_NUM_EVENT];
 
 #endif
