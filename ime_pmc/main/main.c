@@ -13,14 +13,15 @@
 
 const char * device = "/dev/ime/pmc";
 int exit_ = 0;
-//pmc mask, cpu mask, event mask, start values, pebs mask, user mask, kernel mask, on/off
-#define ARGS "p:c:e:s:b:u:k:d:m:n"
+//pmc mask, cpu mask, event mask, start values, pebs mask, user mask, kernel mask, reset value
+#define ARGS "p:c:e:s:b:u:k:d:m:r:"
 #define MAX_LEN 256
 typedef struct{
 	int pmc_id[MAX_ID_PMC];
 	int event_id[MAX_ID_PMC];
 	int cpu_id[MAX_ID_PMC][MAX_ID_CPU]; 
-	uint64_t start_value[MAX_ID_PMC]; 
+	uint64_t start_value[MAX_ID_PMC];
+	uint64_t reset_value[MAX_ID_PMC]; 
 	int enable_PEBS[MAX_ID_PMC][MAX_ID_CPU];
     int user[MAX_ID_PMC][MAX_ID_CPU];
     int kernel[MAX_ID_PMC][MAX_ID_CPU];
@@ -125,6 +126,7 @@ int ioctl_cmd(int fd)
 					printf("%d", current_config.kernel[i][k]);
 				}
 				printf(" | START VALUE: %lx", current_config.start_value[i]);
+				printf(" | RESET VALUE: %lx", current_config.reset_value[i]);
                 printf(" | PEBS DIM: %d", current_config.buffer_pebs_length);
                 printf(" | MODULE DIM: %d\n", current_config.buffer_module_length);
 			}
@@ -156,6 +158,7 @@ int ioctl_cmd(int fd)
 				output->enable_PEBS[k] = current_config.enable_PEBS[i][k];
 			}
 			output->start_value = current_config.start_value[i];
+			output->reset_value = current_config.reset_value[i];
 			for(k = 0; k < MAX_ID_CPU; k++){
 				output->cpu_id[k] = current_config.cpu_id[i][k];
 			}
@@ -238,6 +241,8 @@ int main(int argc, char **argv)
 	char path[128];
     int len, i, k;
     uint64_t sval;
+	char delim[] = ",";
+	char *ptr;
 	
 	fd = open(device, 0666);
 
@@ -248,6 +253,12 @@ int main(int argc, char **argv)
 
     err = 0;
     option = getopt(argc, argv, ARGS);
+
+
+	for(i = 0; i < MAX_ID_PMC; i++){
+		current_config.start_value[i] = -1;
+		current_config.reset_value[i] = -1;
+	}
 
     while(!err && option != -1) {
         switch(option) {
@@ -312,15 +323,27 @@ int main(int argc, char **argv)
             }
             break;
         case 's':
-            sscanf(optarg, "%lx", &sval);
-            for(i = 0; i < MAX_ID_PMC; i++){
-				if(i == 0){
-					current_config.start_value[i] = 0ULL;
-					continue;
-				}
-                current_config.start_value[i] = sval;
-            }
-            break;
+			ptr = strtok(optarg, delim);
+			i = 0;
+			while(ptr != NULL && i < MAX_ID_PMC){
+				sscanf(ptr, "%lx", &sval);
+				current_config.start_value[i] = sval;
+				ptr = strtok(NULL, delim);
+				++i;
+			}
+			break;
+		case 'r':
+			printf("OPT: %s\n", optarg);
+			ptr = strtok(optarg, delim);
+			i = 0;
+			while(ptr != NULL && i < MAX_ID_PMC){
+				printf("STR: %s\n", ptr);
+				sscanf(ptr, "%lx", &sval);
+				current_config.reset_value[i] = sval;
+				ptr = strtok(NULL, delim);
+				++i;
+			}
+			break;
         case 'u':
             if(!check_len(optarg)) break;
             

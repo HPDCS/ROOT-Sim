@@ -18,8 +18,8 @@ extern unsigned long write_cycle;
 extern unsigned long read_cycle;
 extern int nRecords_module;
 extern u64 samples_pmc;
-u64 pmc_mask = 0;
-u64 start_value[MAX_ID_PMC];
+extern u64 collected_samples;
+u64 reset_value_pmc[MAX_ID_PMC];
 
 DECLARE_BITMAP(pmc_bitmap, sizeof(MAX_PMC));
 
@@ -34,7 +34,7 @@ u64 user_events[MAX_NUM_EVENT] = {
 };
 
 void set_mitigation(void* arg){
-	wrmsrl(MSR_IA32_DEBUGCTL, BIT(12));
+	wrmsrl(MSR_IA32_DEBUGCTL, 0ULL);
 	wrmsrl(MSR_IA32_PERF_GLOBAL_CTRL, 0ULL);
 }
 
@@ -65,6 +65,7 @@ void debugPMC(void* arg){
 	rdmsrl(pmu, msr);
 	args->percpu_value[cpu] = msr;
 	preempt_enable();
+	print_reg();
 }
 
 void resetPMC(void* arg){
@@ -73,7 +74,6 @@ void resetPMC(void* arg){
 	if(args->cpu_id[smp_processor_id()] == 0) return;
 	pmc_id = args->pmc_id; 
 	preempt_disable();
-	wrmsrl(MSR_IA32_PERF_GLOBAL_CTRL, 0ULL);
 	wrmsrl(MSR_IA32_PERFEVTSEL(pmc_id), 0ULL);
 	wrmsrl(MSR_IA32_PMC(pmc_id), 0ULL);
 	preempt_enable();
@@ -81,19 +81,22 @@ void resetPMC(void* arg){
 
 void setupPMC(void* arg){
 	int pmc_id;
-	u64 msr;
+	u64 msr, pmc_mask;
 	struct sampling_spec* args = (struct sampling_spec*) arg;
 	if(args->cpu_id[smp_processor_id()] == 0) return;
 	pmc_id = args->pmc_id;
-	wrmsrl(MSR_IA32_PERFEVTSEL(pmc_id), 0ULL);
-	if(/*!args->enable_PEBS[smp_processor_id()]*/ pmc_id == 0) pmc_mask |= BIT(20);
+	pmc_mask = 0ULL;
+	if(!args->enable_PEBS[smp_processor_id()]) pmc_mask |= BIT(20);
 	if(args->user[smp_processor_id()]) pmc_mask |= BIT(16);
 	if(args->kernel[smp_processor_id()]) pmc_mask |= BIT(17); 
 	u64 event = user_events[args->event_id];
 	preempt_disable();
-	wrmsrl(MSR_IA32_PMC(pmc_id), ~(args->start_value));
+	wrmsrl(MSR_IA32_PERFEVTSEL(pmc_id), 0ULL);
+	wrmsrl(MSR_IA32_PMC(pmc_id), 0ULL);
+	if(args->start_value != -1) wrmsrl(MSR_IA32_PMC(pmc_id), ~(args->start_value));
 	wrmsrl(MSR_IA32_PERFEVTSEL(pmc_id), BIT(22) | pmc_mask | event);
 	rdmsrl(MSR_IA32_PERFEVTSEL(pmc_id), msr);
+	//pr_info("[CPU%d] MSR_IA32_PERFEVTSEL(%d): %llx\n", smp_processor_id(), pmc_id, msr);
 	preempt_enable();
 	
 }
@@ -122,7 +125,7 @@ long ime_ctl_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
 		else{
 			if(test_bit(args->pmc_id, pmc_bitmap)) goto out_pmc;
 			set_bit(args->pmc_id, pmc_bitmap);
-			start_value[args->pmc_id] = ~(args->start_value);
+			reset_value_pmc[args->pmc_id] = args->reset_value;
 			on_each_cpu(pebs_init, (void *)args, 1);
 			on_each_cpu(setupPMC, (void *) args, 1);
 		}
@@ -171,7 +174,7 @@ long ime_ctl_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
 		current_write = write_index;
 		current_rcycle = read_cycle;
 		current_wcycle = write_cycle;
-		pr_info("samples: %llx\n", write_index);
+		pr_info("samples: %llx\n", collected_samples*327);
 		/*for(; !(current_read == current_write && current_wcycle == current_rcycle) && k < args->last_index;){
 			int new_index;
 			memcpy(&(args->buffer_sample[k]), &(buffer_sample[current_read]), sizeof(struct pebs_user));
