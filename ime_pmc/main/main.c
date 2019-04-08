@@ -272,13 +272,9 @@ int main(int argc, char **argv)
 			ioctl(fd, IME_RESET_BUFFER);
             break;
         case 'c':
-            len = strnlen(optarg, MAX_LEN);
-            if(len != MAX_ID_CPU){
-                err = 1;
-                break;
-            }
+			if(!check_len(optarg)) break;
 
-            for(i = 0; i < len; i++){
+            for(i = 0; i < MAX_ID_PMC; i++){
                 char c = toupper(optarg[i]);
                 if(current_config.pmc_id[i] == 1 && convert_binary(c) != NULL){
                     char* cpu = convert_binary(c);

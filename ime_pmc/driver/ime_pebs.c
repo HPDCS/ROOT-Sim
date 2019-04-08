@@ -3,7 +3,7 @@
 #include <asm/smp.h>
 #include <linux/vmalloc.h>
 #include <linux/interrupt.h>
-
+#include <linux/hashtable.h>
 
 #include "msr_config.h" 
 #include "ime_pebs.h"
@@ -26,10 +26,11 @@ spinlock_t lock_buffer;
 struct pebs_user* buffer_sample;
 static DEFINE_PER_CPU(unsigned long, percpu_old_ds);
 static DEFINE_PER_CPU(unsigned long, percpu_index);
-u64 reset_value_pebs[MAX_ID_PMC];
+extern u64 reset_value_pmc[MAX_ID_PMC];
 u64 collected_samples;
+DECLARE_HASHTABLE(hash_samples, 10);
 
-static int allocate_buffer(void)
+void allocate_buffer(void* arg)
 {
 	int index_array;
 	pebs_arg_t *ppebs;
@@ -39,9 +40,9 @@ static int allocate_buffer(void)
 	ppebs = (pebs_arg_t *) kzalloc (PEBS_STRUCT_SIZE*nRecords_pebs, GFP_KERNEL);
 	if (!ppebs) {
 		pr_err("Cannot allocate PEBS buffer\n");
-		return -1;
+		return;
 	}
-	
+	__this_cpu_write(percpu_index, 0);
 	index_array = __this_cpu_read(percpu_index);
 
 	for(i = 0; i < MAX_ARRAY_BUFFER; i++){
@@ -52,7 +53,7 @@ static int allocate_buffer(void)
 	buffer_bh[index_array].buffer = ppebs;
 	buffer_bh[index_array].allocated = 1;
 	buffer_bh[index_array].usage = 1;
-	
+
 	ds->bts_buffer_base 			= 0;
 	ds->bts_index					= 0;
 	ds->bts_absolute_maximum		= 0;
@@ -61,14 +62,16 @@ static int allocate_buffer(void)
 	ds->pebs_index					= ppebs;
 	ds->pebs_absolute_maximum		= ppebs + (nRecords_pebs-1);
 	ds->pebs_interrupt_threshold	= ppebs + (nRecords_pebs-1);
-	ds->pebs_counter0_reset			= reset_value_pebs[0];
-	ds->pebs_counter1_reset			= reset_value_pebs[1];
-	ds->pebs_counter2_reset			= reset_value_pebs[2];
-	ds->pebs_counter3_reset			= reset_value_pebs[3];
 	ds->reserved					= 0;
-	return 0;
 }
 
+void set_reset_value(void){
+	debug_store_t *ds = this_cpu_ptr(percpu_ds);
+	ds->pebs_counter0_reset			= ~reset_value_pmc[0];
+	ds->pebs_counter1_reset			= ~reset_value_pmc[1];
+	ds->pebs_counter2_reset			= ~reset_value_pmc[2];
+	ds->pebs_counter3_reset			= ~reset_value_pmc[3];
+}
 
 void write_buffer(void){
 	int i, index_array;
@@ -82,7 +85,11 @@ void write_buffer(void){
 	buffer_bh = this_cpu_ptr(percpu_buffer);
 	index_array = __this_cpu_read(percpu_index);
 
-	data = (bh_data_t*) kzalloc (sizeof(bh_data_t), GFP_KERNEL);
+	data = (bh_data_t*) kzalloc (sizeof(bh_data_t), GFP_ATOMIC);
+	if (!data) {
+		pr_err("Cannot allocate DATA buffer\n");
+		return;
+	}
 	data->start = (unsigned long) ds->pebs_buffer_base;
 	data->end = (unsigned long) ds->pebs_index;
 	data->index = index_array;
@@ -123,18 +130,6 @@ void write_buffer(void){
 		return -1;
 	}
 	buffer_bh[index_array].usage = 1;
-	/*index_array = (++index_array)%MAX_ARRAY_BUFFER;
-	pr_info("Change buffer\n");
-	if(!buffer_bh[index_array].allocated){
-		pr_info("Allocate buffer\n");
-		buffer_bh[index_array].buffer = (pebs_arg_t *) kzalloc (PEBS_STRUCT_SIZE*nRecords_pebs, GFP_KERNEL);
-		if (!buffer_bh[index_array].buffer) {
-			pr_err("Cannot allocate PEBS buffer\n");
-			return -1;
-		}
-		buffer_bh[index_array].allocated = 1;
-	}
-	ppebs = buffer_bh[index_array].buffer;*/
 	__this_cpu_write(percpu_index, index_array);
 	//pr_info("[CPU%d]Switch to index: %d\n",smp_processor_id(), i);
 	ds->pebs_buffer_base			= ppebs;
@@ -156,18 +151,24 @@ int init_pebs_struct(void){
 		pr_err("Cannot allocate BUFFER sample buffer\n");
 		return -1;
 	}
-	/*buffer_bh = (pebs_array_t*) kzalloc (sizeof(pebs_arg_t)*MAX_ARRAY_BUFFER, GFP_KERNEL);
-	if(!buffer_bh) return -1;*/
+	on_each_cpu(allocate_buffer, NULL, 1);
+	hash_init(hash_samples);
 	return 0;
 }
 
-void exit_pebs_struct(void){
+void release_buffer(void* arg){
 	int i;
 	pebs_array_t* buffer_bh = this_cpu_ptr(percpu_buffer);
-	free_percpu(percpu_ds);
 	for(i = 0; i < MAX_ARRAY_BUFFER; i++){
-		if(buffer_bh[i].allocated) kfree(buffer_bh[i].buffer);
+		if(buffer_bh[i].allocated) {
+			kfree(buffer_bh[i].buffer);
+		}
 	}
+}
+
+void exit_pebs_struct(void){
+	on_each_cpu(release_buffer, NULL, 1);
+	free_percpu(percpu_ds);
 	free_percpu(percpu_buffer);
 	vfree(buffer_sample);
 }
@@ -180,20 +181,10 @@ void pebs_init(void *arg)
 	struct sampling_spec* args = (struct sampling_spec*) arg;
 	if(args->enable_PEBS[smp_processor_id()] == 0) return;
 	pmc_id = args->pmc_id;
-	if(args->reset_value != -1) reset_value_pebs[pmc_id] = ~args->reset_value;
-	else reset_value_pebs[pmc_id] = 0ULL;
-	/*if(args->buffer_pebs_length > 0){
-		nRecords_pebs = args->buffer_pebs_length;
-	}
-	if(args->buffer_module_length > 0){
-		nRecords_module = args->buffer_module_length;
-	}*/
-
-	__this_cpu_write(percpu_index, 0);
-
-	allocate_buffer(); 
 
 	collected_samples = 0;
+
+	set_reset_value();
 
 	rdmsrl(MSR_IA32_DS_AREA, old_ds);
 	__this_cpu_write(percpu_old_ds, old_ds);
@@ -221,14 +212,17 @@ void tasklet_handler(unsigned long data){
 	pebs_array_t* buffer_bh;
 	unsigned long flags;
 	bh_data_t *bh_data = (bh_data_t*)data;
+	sample_arg_t *current_sample, *new_sample;
 	//pr_info("[TASK] Start%d\n", bh_data->index);
+	int written_samples = 0;
 	buffer_bh = this_cpu_ptr(percpu_buffer);
 	pebs = (pebs_arg_t *)bh_data->start;
 	end = (pebs_arg_t *)bh_data->end;
 	spin_lock_irqsave(&(lock_buffer), flags);
 	for (; pebs < end; pebs = (pebs_arg_t *)((char *)pebs + PEBS_STRUCT_SIZE)) {
+		int found = 0;
 		//pr_info("Index buffer: %d\n", write_index);
-		memcpy(&(buffer_sample[write_index]), pebs, sizeof(struct pebs_user));
+		/*memcpy(&(buffer_sample[write_index]), pebs, sizeof(struct pebs_user));
 		write_index++;
 		if(read_cycle < write_cycle){
 			unsigned long new_read_index = write_index%nRecords_module;
@@ -240,9 +234,66 @@ void tasklet_handler(unsigned long data){
 		if(write_index == nRecords_module){
 			write_index = 0;
 			write_cycle++;
+		}*/
+		hash_for_each_possible(hash_samples, current_sample, sample_node, pebs->add){
+			if(current_sample->address == pebs->add) {
+				++found;
+				++current_sample->times;
+			}
 		}
+		if(found == 0){
+			new_sample = (sample_arg_t*) kzalloc (sizeof(sample_arg_t), GFP_KERNEL);
+			new_sample->address = pebs->add;
+			new_sample->times = 1;
+			hash_add(hash_samples, &new_sample->sample_node, new_sample->address);
+		}
+		++written_samples;
 	}
 	spin_unlock_irqrestore(&(lock_buffer), flags);
 	buffer_bh[bh_data->index].usage = 0;
 	//pr_info("[TASK] End%d\n", bh_data->index);
+}
+
+void print_buffer_samples(void){
+	int c;
+	//u64 l = 0;
+	sample_arg_t *cursor;
+	hash_for_each(hash_samples, c, cursor, sample_node){
+		pr_info("Address: %llx -- times: %llx\n", cursor->address, cursor->times);
+		//++l;
+	}
+	//pr_info("samples: %llx\n", l);
+}
+
+void reset_hashtable(void){
+	int c;
+	while(!hash_empty(hash_samples)){
+		c = 0;
+		sample_arg_t *cursor;
+		hash_for_each(hash_samples, c, cursor, sample_node){
+			//pr_info("remove node\n");
+			hash_del(&(cursor->sample_node));
+			kfree(cursor);
+		}
+	}
+}
+
+void empty_pebs_buffer(void){
+	int index_array;
+	debug_store_t *ds;
+	bh_data_t *data;
+	ds = this_cpu_ptr(percpu_ds);
+	index_array = __this_cpu_read(percpu_index);
+
+	data = (bh_data_t*) kzalloc (sizeof(bh_data_t), GFP_ATOMIC);
+	if (!data) {
+		pr_err("Cannot allocate DATA buffer\n");
+		return;
+	}
+	data->start = (unsigned long) ds->pebs_buffer_base;
+	data->end = (unsigned long) ds->pebs_index;
+	data->index = index_array;
+	tasklet_handler(data);
+
+	ds->pebs_index = ds->pebs_buffer_base;
 }

@@ -53,6 +53,7 @@ void enablePMC(void* arg){
 void disablePMC(void* arg){
 	preempt_disable();
 	wrmsrl(MSR_IA32_PERF_GLOBAL_CTRL, 0ULL);
+	empty_pebs_buffer();
 	preempt_enable();
 }
 
@@ -65,7 +66,7 @@ void debugPMC(void* arg){
 	rdmsrl(pmu, msr);
 	args->percpu_value[cpu] = msr;
 	preempt_enable();
-	print_reg();
+	//print_reg();
 }
 
 void resetPMC(void* arg){
@@ -183,6 +184,8 @@ long ime_ctl_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
 			current_read = new_index;
 			k++;
 		}*/
+		print_buffer_samples();
+		reset_hashtable();
 		args->last_index = k;
 
 		err = access_ok(VERIFY_WRITE, (void *)arg, sizeof(struct buffer_struct));
@@ -190,12 +193,12 @@ long ime_ctl_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
 		err = copy_to_user((void *)arg, args, sizeof(struct buffer_struct));
 		if(err) goto out_read;
 
-		preempt_disable();
+		/*preempt_disable();
 		write_index = 0;
 		read_index = 0;
 		write_cycle = 0;
 		read_cycle = 0;
-		preempt_enable();
+		preempt_enable();*/
 
 		vfree(args);
 		return 0;
