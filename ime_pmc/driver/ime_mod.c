@@ -9,7 +9,7 @@
 
 extern unsigned long abc;
 
-static __init int hop_init(void)
+static __init int ime_init(void)
 {
 	//check_for_pebs_support();
 	cleanup_pmc();
@@ -17,22 +17,23 @@ static __init int hop_init(void)
 	setup_resources();
 	init_pebs_struct();
 	on_each_cpu(set_mitigation, NULL, 1);
+	pr_info("IME module loaded");
 	return 0;
-}// hop_init
+}// ime_init
 
-void __exit hop_exit(void)
+void __exit ime_exit(void)
 {
 	on_each_cpu(clear_mitigation, NULL, 1);
 	exit_pebs_struct();
 	cleanup_resources();
 	disable_nmi();
 	cleanup_pmc();
-	pr_info("Not catched events: %llx\n", abc);
-}// hop_exit
+	pr_info("IME module removed");
+}// ime_exit
 
 
-module_init(hop_init);
-module_exit(hop_exit);
+module_init(ime_init);
+module_exit(ime_exit);
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Serena Ferracci");

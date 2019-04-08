@@ -1,17 +1,20 @@
+#include <linux/hashtable.h>
+
 void pebs_init(void *arg);
-
 void pebs_exit(void *arg);
-
 void write_buffer(void);
-
-void prinf_pebs(void);
-
 int init_pebs_struct(void);
-
 void exit_pebs_struct(void);
-
 void tasklet_handler(unsigned long);
+void print_buffer_samples(void);
+void reset_hashtable(void);
+void empty_pebs_buffer(void);
 
+typedef struct{
+	unsigned long times;
+	unsigned long address;
+	struct hlist_node sample_node;
+}sample_arg_t;
 typedef struct{
     unsigned long start;
 	unsigned long end;
