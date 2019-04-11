@@ -1,16 +1,16 @@
 SECTIONS  {
         .data_i :
         {
-        APP-incremental.o (.data)
-        APP-incremental.o (.data1)
+        APP-instr.o (.data)
+        APP-instr.o (.data1)
         }
         .bss_i :
         {
-        APP-incremental.o (.bss)
+        APP-instr.o (.bss)
         }
         .rodata_i :
         {
-        APP-incremental.o (.rodata)
-        APP-incremental.o (.rodata1)
+        APP-instr.o (.rodata)
+        APP-instr.o (.rodata1)
         }
 }

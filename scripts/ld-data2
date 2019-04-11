@@ -1,16 +1,16 @@
 SECTIONS  {
         .data_l :
         {
-        APP-non-incremental.o (.data)
-        APP-non-incremental.o (.data1)
+        APP-non-instr.o (.data)
+        APP-non-instr.o (.data1)
         }
         .bss_l :
         {
-        APP-non-incremental.o (.bss)
+        APP-non-instr.o (.bss)
         }
         .rodata_l :
         {
-        APP-non-incremental.o (.rodata)
-        APP-non-incremental.o (.rodata1)
+        APP-non-instr.o (.rodata)
+        APP-non-instr.o (.rodata1)
         }
 }
