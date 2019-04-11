@@ -1,4 +1,5 @@
 #include <linux/hashtable.h>
+#include "../main/ime-ioctl.h"
 
 void pebs_init(void *arg);
 void pebs_exit(void *arg);
@@ -6,9 +7,10 @@ void write_buffer(void);
 int init_pebs_struct(void);
 void exit_pebs_struct(void);
 void tasklet_handler(unsigned long);
-void print_buffer_samples(void);
+void read_buffer_samples(struct buffer_struct*);
 void reset_hashtable(void);
 void empty_pebs_buffer(void);
+u64 retrieve_buffer_size(void);
 
 typedef struct{
 	unsigned long times;

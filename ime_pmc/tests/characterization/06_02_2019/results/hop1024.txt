@@ -1,0 +1,7 @@
+ID 4082 - Execution Time: 14508 msec
+
+Tid: 4082
+Busy: 0
+Ring0: 0
+Memory: 1712518
+Total: 23010348

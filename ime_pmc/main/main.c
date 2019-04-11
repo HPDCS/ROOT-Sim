@@ -14,7 +14,8 @@
 const char * device = "/dev/ime/pmc";
 int exit_ = 0;
 //pmc mask, cpu mask, event mask, start values, pebs mask, user mask, kernel mask, reset value
-#define ARGS "p:c:e:s:b:u:k:d:m:r:"
+//n: set pmc, i: interactive, o: print buffer on file
+#define ARGS "p:c:e:s:b:u:k:d:m:r:niof"
 #define MAX_LEN 256
 typedef struct{
 	int pmc_id[MAX_ID_PMC];
@@ -29,6 +30,7 @@ typedef struct{
     int buffer_pebs_length;
 }configuration_t;
 
+configuration_t current_config;
 char binary[16][5] = {"0000", "0001", "0010", "0011", "0100",
  "0101", "0110", "0111", "1000", "1001", "1010", "1011", "1100", "1101", "1110", "1111"};
 
@@ -49,7 +51,7 @@ int convert_decimal(char c){
 int check_len(char* input){
     int len = strnlen(input, MAX_LEN);
     if(len != MAX_ID_PMC){
-        return 0;
+        return 0; 
     }
     return 1;
 }
@@ -64,7 +66,81 @@ int int_from_stdin()
 	return i;
 }// int_from_stdin
 
-configuration_t current_config;
+int read_buffer(int fd){
+	int err = 0;
+	unsigned long size_buffer, i;
+	struct buffer_struct* args;
+	if ((err = ioctl(fd, IME_SIZE_BUFFER, &size_buffer)) < 0){
+		printf("IOCTL: IME_SIZE_BUFFER failed\n");
+		return err;
+	}
+	printf("IOCTL: IME_SIZE_BUFFER success\n");
+	if(!size_buffer) return 0;
+	args = (struct buffer_struct*) malloc (sizeof(struct buffer_struct)*size_buffer);
+	if ((err = ioctl(fd, IME_READ_BUFFER, args)) < 0){
+		printf("IOCTL: IME_READ_BUFFER failed\n");
+		return err;
+	}
+	printf("IOCTL: IME_READ_BUFFER success\n");
+	
+	FILE *f = fopen("file.txt", "w");
+	if (f == NULL)
+	{
+		printf("Error opening file!\n");
+		exit(1);
+	}
+
+	for(i = 0; i < size_buffer; i++){
+		fprintf(f, "0x%lx\t%d\n", args[i].address << 12, args[i].times);
+		printf("0x%lx\t%d\n", args[i].address << 12, args[i].times);
+	}
+	fclose(f);
+	free(args);
+	return err;
+}
+
+int set_reset_pmc(int fd, int on){
+	int err = 0;
+	struct sampling_spec* output = (struct sampling_spec*) malloc (sizeof(struct sampling_spec));
+	int i, k;
+	for (i = 0; i < MAX_ID_PMC; i++){
+		if(current_config.pmc_id[i] == 0) continue;
+		output->pmc_id = i;
+		output->event_id = current_config.event_id[i];
+		output->buffer_module_length = current_config.buffer_module_length;
+		output->buffer_pebs_length = current_config.buffer_pebs_length;
+		for(k = 0; k < MAX_ID_CPU; k++){
+			output->enable_PEBS[k] = current_config.enable_PEBS[i][k];
+		}
+		output->start_value = current_config.start_value[i];
+		output->reset_value = current_config.reset_value[i];
+		for(k = 0; k < MAX_ID_CPU; k++){
+			output->cpu_id[k] = current_config.cpu_id[i][k];
+		}
+		for(k = 0; k < MAX_ID_CPU; k++){
+			output->user[k] = current_config.user[i][k];
+		}
+		for(k = 0; k < MAX_ID_CPU; k++){
+			output->kernel[k] = current_config.kernel[i][k];
+		}
+		if(on == 1){	
+			if ((err = ioctl(fd, IME_SETUP_PMC, output)) < 0){
+				printf("IOCTL: IME_SETUP_PMC failed\n");
+				return err;
+			}
+			printf("IOCTL: IME_SETUP_PMC success\n");
+		}
+		else{
+			if ((err = ioctl(fd, IME_RESET_PMC, output)) < 0){
+				printf("IOCTL: IME_RESET_PMC failed\n");
+				return err;
+			}
+			printf("IOCTL: IME_RESET_PMC success\n");
+		}
+	}
+	free(output);
+	return err;
+}
 
 int ioctl_cmd(int fd)
 {
@@ -137,54 +213,20 @@ int ioctl_cmd(int fd)
 	if(cmd == _IOC_NR(IME_PROFILER_ON)) {
 		ioctl(fd, IME_PROFILER_ON);
 		printf("IOCTL: IME_PROFILER_ON success\n");
+		return 0;
 	}
 
 	if(cmd == _IOC_NR(IME_PROFILER_OFF))  {
 		ioctl(fd, IME_PROFILER_OFF);
 		printf("IOCTL: IME_PROFILER_OFF success\n");
-	}
-	if(cmd == _IOC_NR(IME_SETUP_PMC) || cmd == _IOC_NR(IME_RESET_PMC)){
-		int on = 0;
-		if(cmd == _IOC_NR(IME_SETUP_PMC)) on = 1;
-		struct sampling_spec* output = (struct sampling_spec*) malloc (sizeof(struct sampling_spec));
-		int i, k;
-		for (i = 0; i < MAX_ID_PMC; i++){
-			if(current_config.pmc_id[i] == 0) continue;
-			output->pmc_id = i;
-			output->event_id = current_config.event_id[i];
-            output->buffer_module_length = current_config.buffer_module_length;
-            output->buffer_pebs_length = current_config.buffer_pebs_length;
-			for(k = 0; k < MAX_ID_CPU; k++){
-				output->enable_PEBS[k] = current_config.enable_PEBS[i][k];
-			}
-			output->start_value = current_config.start_value[i];
-			output->reset_value = current_config.reset_value[i];
-			for(k = 0; k < MAX_ID_CPU; k++){
-				output->cpu_id[k] = current_config.cpu_id[i][k];
-			}
-            for(k = 0; k < MAX_ID_CPU; k++){
-				output->user[k] = current_config.user[i][k];
-			}
-            for(k = 0; k < MAX_ID_CPU; k++){
-				output->kernel[k] = current_config.kernel[i][k];
-			}
-			if(on == 1){	
-				if ((err = ioctl(fd, IME_SETUP_PMC, output)) < 0){
-					printf("IOCTL: IME_SETUP_PMC failed\n");
-					return err;
-				}
-				printf("IOCTL: IME_SETUP_PMC success\n");
-			}
-			else{
-				if ((err = ioctl(fd, IME_RESET_PMC, output)) < 0){
-					printf("IOCTL: IME_RESET_PMC failed\n");
-					return err;
-				}
-				printf("IOCTL: IME_RESET_PMC success\n");
-			}
-		}
-		free(output);
 		return 0;
+	}
+	if(cmd == _IOC_NR(IME_SETUP_PMC)){
+		return set_reset_pmc(fd, 1);
+	}
+
+	if(cmd == _IOC_NR(IME_RESET_PMC)){
+		return set_reset_pmc(fd, 0);
 	}
 
    if(cmd == _IOC_NR(IME_PMC_STATS)){
@@ -206,19 +248,7 @@ int ioctl_cmd(int fd)
 	}
 
 	if(cmd == _IOC_NR(IME_READ_BUFFER)){
-		int i;
-		struct buffer_struct* args = (struct buffer_struct*) malloc (sizeof(struct buffer_struct));
-		args->last_index = MAX_BUFFER_SIZE;
-		if ((err = ioctl(fd, IME_READ_BUFFER, args)) < 0){
-			printf("IOCTL: IME_READ_BUFFER failed\n");
-			return err;
-		}
-		printf("IOCTL: IME_READ_BUFFER success\n");
-
-		for(i = 0; i < args->last_index; i++){
-			printf("The global value of index%d is: %lu\n", i, args->buffer_sample[i].stat);
-		}
-		free(args);
+		return read_buffer(fd);
 	}
 
 	if(cmd == _IOC_NR(IME_RESET_BUFFER)){
@@ -227,13 +257,13 @@ int ioctl_cmd(int fd)
 			return err;
 		}
 		printf("IOCTL: IME_RESET_BUFFER success\n");
+		return 0;
 	}
 	return err;
 }// ioctl_cmd
 
 int main(int argc, char **argv)
 {
-
 	/* nothing to do */
 	if (argc < 2) goto open_device;
 
@@ -254,17 +284,14 @@ int main(int argc, char **argv)
     err = 0;
     option = getopt(argc, argv, ARGS);
 
-
 	for(i = 0; i < MAX_ID_PMC; i++){
 		current_config.start_value[i] = -1;
 		current_config.reset_value[i] = -1;
 	}
-
     while(!err && option != -1) {
         switch(option) {
         case 'p':
             if(!check_len(optarg)) break;
-
             for(i = 0; i < MAX_ID_PMC; i++){
                 if(optarg[i] == '1') current_config.pmc_id[i] = 1;
                 else current_config.pmc_id[i] = 0;
@@ -329,11 +356,9 @@ int main(int argc, char **argv)
 			}
 			break;
 		case 'r':
-			printf("OPT: %s\n", optarg);
 			ptr = strtok(optarg, delim);
 			i = 0;
 			while(ptr != NULL && i < MAX_ID_PMC){
-				printf("STR: %s\n", ptr);
 				sscanf(ptr, "%lx", &sval);
 				current_config.reset_value[i] = sval;
 				ptr = strtok(NULL, delim);
@@ -368,6 +393,15 @@ int main(int argc, char **argv)
                 }
             }
             break;
+		case 'n':
+			set_reset_pmc(fd, 1);
+			break;
+		case 'f':
+			set_reset_pmc(fd, 0);
+			break;
+		case 'o':
+			read_buffer(fd);
+			break;
         case 'd':
             val = atoi(optarg);
             current_config.buffer_pebs_length = val;
@@ -376,12 +410,15 @@ int main(int argc, char **argv)
             val = atoi(optarg);
             current_config.buffer_module_length = val;
             break;    
-        default:
-            goto end;
+        case 'i':
+            goto interactive;
+		default:
+			break;
         }
         /* get next arg */
         option = getopt(argc, argv, ARGS);
     }
+	goto no_interactive;
 
 open_device:
     fd = open(device, 0666);
@@ -390,11 +427,12 @@ open_device:
 		printf("Error, cannot open %s\n", device);
 		return -1;
 	}
-end:
+interactive:
 	while (1)	{
 		if (ioctl_cmd(fd)) printf("IOCTL ERROR\n");
 		if(exit_ == 1) break;
 	}
+no_interactive:
 
   	close(fd);
 	return 0;

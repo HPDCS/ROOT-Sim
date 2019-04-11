@@ -1,0 +1,10 @@
+Start profiling ThreadID: 3302
+Stop profiling ThreadID: 3302
+ID 3302 - Execution Time: 7166 msec
+
+
+Tid: 3302
+Busy: 0
+Ring0: 0
+Memory: 272998
+Total: 4459371

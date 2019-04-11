@@ -1,0 +1,10 @@
+Start profiling ThreadID: 3308
+Stop profiling ThreadID: 3308
+ID 3308 - Execution Time: 6366 msec
+
+
+Tid: 3308
+Busy: 0
+Ring0: 0
+Memory: 134222
+Total: 2201888

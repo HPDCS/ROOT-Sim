@@ -20,6 +20,7 @@ extern int nRecords_module;
 extern u64 samples_pmc;
 extern u64 collected_samples;
 u64 reset_value_pmc[MAX_ID_PMC];
+u64 size_buffer_samples;
 
 DECLARE_BITMAP(pmc_bitmap, sizeof(MAX_PMC));
 
@@ -106,6 +107,28 @@ long ime_ctl_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
     int err = 0;
 	if(cmd == IME_PROFILER_ON) on_each_cpu(enablePMC, NULL, 1);
 	if(cmd == IME_PROFILER_OFF) on_each_cpu(disablePMC, NULL, 1);
+	if(cmd == IME_SIZE_BUFFER){
+		unsigned long* args = (unsigned long*)kzalloc (sizeof(unsigned long), GFP_KERNEL);
+		if (!args) return -ENOMEM;
+		err = access_ok(VERIFY_READ, (void *)arg, sizeof(unsigned long));
+		if(!err) goto out_size;
+		err = copy_from_user(args, (void *)arg, sizeof(unsigned long));
+		if(err) goto out_size;
+
+		*args = retrieve_buffer_size();
+		size_buffer_samples = *args;
+
+		err = access_ok(VERIFY_WRITE, (void *)arg, sizeof(unsigned long));
+		if(!err) goto out_size;
+		err = copy_to_user((void *)arg, args, sizeof(unsigned long));
+		if(err) goto out_size;
+
+		kfree(args);
+		return 0;
+	out_size:
+		kfree(args);
+		return -1;
+	}
     if(cmd == IME_SETUP_PMC || cmd == IME_RESET_PMC){
         int on = 0;
         struct sampling_spec* args;
@@ -164,19 +187,20 @@ long ime_ctl_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
 	if(cmd == IME_READ_BUFFER){
 		int k = 0, current_read, current_write;
 		unsigned long current_wcycle, current_rcycle;
-		struct buffer_struct* args = (struct buffer_struct*) vmalloc (sizeof(struct buffer_struct));
+		pr_info("Size buffer: %llx\n", size_buffer_samples);
+		struct buffer_struct* args = (struct buffer_struct*) vmalloc (sizeof(struct buffer_struct)*size_buffer_samples);
         if (!args) return -ENOMEM;
-		err = access_ok(VERIFY_READ, (void *)arg, sizeof(struct buffer_struct));
+		err = access_ok(VERIFY_READ, (void *)arg, sizeof(struct buffer_struct)*size_buffer_samples);
 		if(!err) goto out_read;
-		err = copy_from_user(args, (void *)arg, sizeof(struct buffer_struct));
+		err = copy_from_user(args, (void *)arg, sizeof(struct buffer_struct)*size_buffer_samples);
 		if(err) goto out_read;
 
-		current_read = read_index;
+		/*current_read = read_index;
 		current_write = write_index;
 		current_rcycle = read_cycle;
 		current_wcycle = write_cycle;
 		pr_info("samples: %llx\n", collected_samples*327);
-		/*for(; !(current_read == current_write && current_wcycle == current_rcycle) && k < args->last_index;){
+		for(; !(current_read == current_write && current_wcycle == current_rcycle) && k < args->last_index;){
 			int new_index;
 			memcpy(&(args->buffer_sample[k]), &(buffer_sample[current_read]), sizeof(struct pebs_user));
 			new_index = (current_read+1)%nRecords_module;
@@ -184,13 +208,12 @@ long ime_ctl_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
 			current_read = new_index;
 			k++;
 		}*/
-		print_buffer_samples();
+		read_buffer_samples(args);
 		reset_hashtable();
-		args->last_index = k;
 
-		err = access_ok(VERIFY_WRITE, (void *)arg, sizeof(struct buffer_struct));
+		err = access_ok(VERIFY_WRITE, (void *)arg, sizeof(struct buffer_struct)*size_buffer_samples);
 		if(!err) goto out_read;
-		err = copy_to_user((void *)arg, args, sizeof(struct buffer_struct));
+		err = copy_to_user((void *)arg, args, sizeof(struct buffer_struct)*size_buffer_samples);
 		if(err) goto out_read;
 
 		/*preempt_disable();

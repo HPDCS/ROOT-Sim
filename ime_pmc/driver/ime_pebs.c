@@ -235,15 +235,15 @@ void tasklet_handler(unsigned long data){
 			write_index = 0;
 			write_cycle++;
 		}*/
-		hash_for_each_possible(hash_samples, current_sample, sample_node, pebs->add){
-			if(current_sample->address == pebs->add) {
+		hash_for_each_possible(hash_samples, current_sample, sample_node, (pebs->add >> 12)){
+			if(current_sample->address == (pebs->add >> 12)) {
 				++found;
 				++current_sample->times;
 			}
 		}
-		if(found == 0){
+		if(found == 0 && ((pebs->add >> 32) == 0x4000)){
 			new_sample = (sample_arg_t*) kzalloc (sizeof(sample_arg_t), GFP_KERNEL);
-			new_sample->address = pebs->add;
+			new_sample->address = pebs->add >> 12;
 			new_sample->times = 1;
 			hash_add(hash_samples, &new_sample->sample_node, new_sample->address);
 		}
@@ -251,30 +251,43 @@ void tasklet_handler(unsigned long data){
 	}
 	spin_unlock_irqrestore(&(lock_buffer), flags);
 	buffer_bh[bh_data->index].usage = 0;
+	kfree(bh_data);
 	//pr_info("[TASK] End%d\n", bh_data->index);
 }
 
-void print_buffer_samples(void){
+void read_buffer_samples(struct buffer_struct* args){
 	int c;
-	//u64 l = 0;
+	u64 l = 0;
 	sample_arg_t *cursor;
 	hash_for_each(hash_samples, c, cursor, sample_node){
-		pr_info("Address: %llx -- times: %llx\n", cursor->address, cursor->times);
-		//++l;
+		//pr_info("Address: %llx -- times: %llx\n", cursor->address, cursor->times);
+		args[l].address = cursor->address;
+		args[l].times = cursor->times;
+		++l;
 	}
 	//pr_info("samples: %llx\n", l);
 }
 
+u64 retrieve_buffer_size(void){
+	int c;
+	u64 n_samples = 0;
+	sample_arg_t *cursor;
+	hash_for_each(hash_samples, c, cursor, sample_node){
+		//pr_info("Address: %llx -- times: %llx\n", cursor->address, cursor->times);
+		++n_samples;
+	}
+	pr_info("samples: %llx\n", n_samples);
+	return n_samples;
+}
+
 void reset_hashtable(void){
 	int c;
-	while(!hash_empty(hash_samples)){
-		c = 0;
-		sample_arg_t *cursor;
-		hash_for_each(hash_samples, c, cursor, sample_node){
-			//pr_info("remove node\n");
-			hash_del(&(cursor->sample_node));
-			kfree(cursor);
-		}
+	struct hlist_node *next;
+	sample_arg_t *cursor;
+	hash_for_each_safe(hash_samples, c, next, cursor, sample_node){
+		//pr_info("remove node\n");
+		hash_del(&(cursor->sample_node));
+		kfree(cursor);
 	}
 }
 
