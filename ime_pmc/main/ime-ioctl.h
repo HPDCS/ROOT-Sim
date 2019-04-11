@@ -56,8 +56,8 @@ struct pebs_user{
 };
 
 struct buffer_struct {
-	struct pebs_user buffer_sample[MAX_BUFFER_SIZE];
-	int last_index;
+	unsigned long address;
+	int times;
 };
 
 /* Use 'j' as magic number */
@@ -72,5 +72,6 @@ struct buffer_struct {
 #define IME_PMC_STATS						_IO(IME_IOC_MAGIC, _IO_NB+4)
 #define IME_READ_BUFFER						_IO(IME_IOC_MAGIC, _IO_NB+5)
 #define IME_RESET_BUFFER					_IO(IME_IOC_MAGIC, _IO_NB+6)
+#define IME_SIZE_BUFFER						_IO(IME_IOC_MAGIC, _IO_NB+7)
 
 #endif /* _IME_IOCTL_H_ */

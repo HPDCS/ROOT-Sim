@@ -1,0 +1,10 @@
+Start profiling ThreadID: 3260
+Stop profiling ThreadID: 3260
+ID 3260 - Execution Time: 8804 msec
+
+
+Tid: 3260
+Busy: 0
+Ring0: 0
+Memory: 557165
+Total: 9121296
