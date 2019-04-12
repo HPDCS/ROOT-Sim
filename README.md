@@ -67,16 +67,16 @@ executable, which is the model code already linked with the ROOT-sim library.
 `gcc` can be passed to `rootsim-cc`.
 
 To test the correctness of the model, it can be run sequentially, typing    
-`./model --sequential --nprc <number of required LPs>`
+`./model --sequential --lp <number of required LPs>`
 This allows to spot errors in the implementation more easily.
 
 Then, to run it in parallel, type    
-`./model --np <number of available Cores> --nprc <number of required LPs>`
+`./model --wt <number of desired threads> --lp <number of required LPs>`
 
 To run in a distributed environment, you can use standard MPI commands,
 such as:    
-`mpiexec -n 2 --hostfile hosts --map-by node ./model --np 2 --nprc 16`
+`mpiexec -n 2 --hostfile hosts --map-by node ./model --wt 2 --lp 16`
 
 This command runs the simulation model on two nodes (`-n 2`) specified in the
-`hosts` file. Each node uses two concurrent threads (`--np 2`). The simulation
-involves 16 total Logical Processes (`--nprc 16`).
+`hosts` file. Each node uses two concurrent threads (`--wt 2`). The simulation
+involves 16 total Logical Processes (`--lp 16`).

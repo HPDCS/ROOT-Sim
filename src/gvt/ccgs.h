@@ -39,7 +39,8 @@
 enum {
 	CKTRM_INVALID = 0,	/**< By convention 0 is the invalid field */
 	CKTRM_NORMAL,		/**< Normal CheckTermination */
-	CKTRM_INCREMENTAL	/**< Incremental CheckTermination */
+	CKTRM_INCREMENTAL,	/**< Incremental CheckTermination */
+	CKTRM_ACCURATE		/**< Accurate CheckTermination */
 };
 
 #include <mm/state.h>

@@ -132,9 +132,6 @@ void initialize_lps(void)
 		lp->queue_states = new_list(state_t);
 		lp->rendezvous_queue = new_list(msg_t);
 
-		// Initialize the LP lock
-		spinlock_init(&lp->lock);
-
 		// No event has been processed so far
 		lp->bound = NULL;
 

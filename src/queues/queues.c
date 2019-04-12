@@ -92,19 +92,10 @@ simtime_t next_event_timestamp(struct lp_struct *lp)
 */
 msg_t *advance_to_next_event(struct lp_struct *lp)
 {
-
-	if (unlikely(lp->bound == NULL)) {
-		if (likely(!list_empty(lp->queue_in))) {
-			lp->bound = list_head(lp->queue_in);
-		} else {
-			return NULL;
-		}
+	if (likely(list_next(lp->bound) != NULL)) {
+		lp->bound = list_next(lp->bound);
 	} else {
-		if (likely(list_next(lp->bound) != NULL)) {
-			lp->bound = list_next(lp->bound);
-		} else {
-			return NULL;
-		}
+		return NULL;
 	}
 
 	return lp->bound;
@@ -167,8 +158,7 @@ void process_bottom_halves(void)
 				// It's an antimessage
 			case negative:
 
-				statistics_post_data(receiver, STAT_ANTIMESSAGE,
-						     1.0);
+				statistics_post_data(receiver, STAT_ANTIMESSAGE, 1.0);
 
 				// Find the message matching the antimessage
 				matched_msg = list_tail(receiver->queue_in);
@@ -189,19 +179,13 @@ void process_bottom_halves(void)
 				// If the matched message is in the past, we have to rollback
 				if (matched_msg->timestamp <= lvt(receiver)) {
 
-					receiver->bound =
-					    list_prev(matched_msg);
+					receiver->bound = list_prev(matched_msg);
 					while ((receiver->bound != NULL)
-					       && D_EQUAL(receiver->bound->
-							  timestamp,
-							  msg_to_process->
-							  timestamp)) {
-						receiver->bound =
-						    list_prev(receiver->bound);
+						&& D_EQUAL(receiver->bound->timestamp, msg_to_process->timestamp)) {
+						receiver->bound = list_prev(receiver->bound);
 					}
-
+					
 					receiver->state = LP_STATE_ROLLBACK;
-
 				}
 #ifdef HAVE_MPI
 				register_incoming_msg(msg_to_process);
@@ -227,15 +211,10 @@ void process_bottom_halves(void)
 				// A contemporaneous event does not cause a causal violation.
 				if (msg_to_process->timestamp < lvt(receiver)) {
 
-					receiver->bound =
-					    list_prev(msg_to_process);
+					receiver->bound = list_prev(msg_to_process);
 					while ((receiver->bound != NULL)
-					       && D_EQUAL(receiver->bound->
-							  timestamp,
-							  msg_to_process->
-							  timestamp)) {
-						receiver->bound =
-						    list_prev(receiver->bound);
+					       && D_EQUAL(receiver->bound->timestamp, msg_to_process->timestamp)) {
+						receiver->bound = list_prev(receiver->bound);
 					}
 
 					receiver->state = LP_STATE_ROLLBACK;
@@ -257,8 +236,7 @@ void process_bottom_halves(void)
 				break;
 
 			default:
-				rootsim_error(true,
-					      "Received a message which is neither positive nor negative. Aborting...\n");
+				rootsim_error(true, "Received a message which is neither positive nor negative. Aborting...\n");
 			}
 		}
 	}

@@ -40,6 +40,7 @@
 #include <core/core.h>
 #include <core/init.h>
 #include <core/timer.h>
+#include <gvt/ccgs.h>
 #include <mm/mm.h>
 #include <datatypes/calqueue.h>
 #include <statistics/statistics.h>
@@ -108,6 +109,7 @@ void serial_simulation(void)
 	timer serial_event_execution;
 	timer serial_gvt_timer;
 	msg_t *event;
+	bool new_termination_decision;
 	unsigned int completed = 0;
 
 #ifdef EXTRA_CHECKS
@@ -130,6 +132,7 @@ void serial_simulation(void)
 
 		current = find_lp_by_gid(event->receiver);
 		current->bound = event;
+		current_evt = event;
 
 #ifdef EXTRA_CHECKS
 		if (event->size > 0) {
@@ -138,9 +141,15 @@ void serial_simulation(void)
 #endif
 
 		timer_start(serial_event_execution);
-		ProcessEvent_light(current->gid.to_int, event->timestamp,
-				   event->type, event->event_content,
-				   event->size, current->current_base_pointer);
+		if(&abm_settings){
+			ProcessEventABM();
+		}else if (&topology_settings){
+			ProcessEventTopology();
+		}else{
+			ProcessEvent_light(current->gid.to_int, event->timestamp,
+					event->type, event->event_content,
+					event->size, current->current_base_pointer);
+		}
 
 		statistics_post_data_serial(STAT_EVENT, 1.0);
 		statistics_post_data_serial(STAT_EVENT_TIME, timer_value_seconds(serial_event_execution));
@@ -159,10 +168,39 @@ void serial_simulation(void)
 
 		// Termination detection can happen only after the state is initialized
 		if (likely(current->current_base_pointer != NULL)) {
-			// Should we terminate the simulation?
-			if (!serial_completed_simulation[event->receiver.to_int] && current->OnGVT(event->receiver.to_int, current->current_base_pointer)) {
-				completed++;
-				serial_completed_simulation[event->receiver.to_int] = true;
+
+			// We have just executed a new event at some LP. Depending on the type of requested termination detection,
+			// we call or skip the termination detection for the current LP.
+			if(rootsim_config.check_termination_mode == CKTRM_INCREMENTAL) {
+				// In incremental termination detection we are dealing with stable termination
+				// predicates. We can suppose that after that an LP decided to terminate the
+				// simulation, it will never change its mind.
+				if (!serial_completed_simulation[event->receiver.to_int] && current->OnGVT(event->receiver.to_int, current->current_base_pointer)) {
+					completed++;
+					serial_completed_simulation[event->receiver.to_int] = true;
+					if (unlikely(completed == n_prc_tot)) {
+						serial_simulation_complete = true;
+					}
+				}
+			} else {
+				// Normal and accurate termination detection policies are the same in sequential simulation.
+				// We have to be sure that, at the current time, all the LPs are agreeing on termination.
+				// We therefore keep track of past per-LP decisions and increment/decrement the termination counter depending
+				// on changed decision.
+				new_termination_decision = current->OnGVT(event->receiver.to_int, current->current_base_pointer);
+
+				if(serial_completed_simulation[event->receiver.to_int] != new_termination_decision) {
+					if(new_termination_decision) {
+						// Changed from false to true
+						completed++;
+					} else {
+						// Changed from true to false
+						completed--;
+					}
+				}
+
+				serial_completed_simulation[event->receiver.to_int] = new_termination_decision;
+
 				if (unlikely(completed == n_prc_tot)) {
 					serial_simulation_complete = true;
 				}

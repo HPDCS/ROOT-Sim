@@ -118,8 +118,7 @@ void ccgs_compute_snapshot(state_t * time_barrier_pointer[], simtime_t gvt)
 		i++;
 
 		// If termination detection is incremental, we skip the current LP
-		if (rootsim_config.check_termination_mode == CKTRM_INCREMENTAL
-		    && lps_termination[lp->lid.to_int]) {
+		if (rootsim_config.check_termination_mode == CKTRM_INCREMENTAL && lps_termination[lp->lid.to_int]) {
 			continue;
 		}
 
@@ -169,8 +168,7 @@ void ccgs_compute_snapshot(state_t * time_barrier_pointer[], simtime_t gvt)
 		log_delete(temporary_log.log);
 
 		// Early stop
-		if (rootsim_config.check_termination_mode == CKTRM_INCREMENTAL
-		    && !check_res) {
+		if (rootsim_config.check_termination_mode == CKTRM_INCREMENTAL && !check_res) {
 			break;
 		}
 
@@ -183,6 +181,7 @@ void ccgs_compute_snapshot(state_t * time_barrier_pointer[], simtime_t gvt)
 void ccgs_init(void)
 {
 	lps_termination = rsalloc(sizeof(bool) * n_prc);
+	memset(lps_termination, 0, sizeof(bool) * n_prc);
 }
 
 void ccgs_fini(void)

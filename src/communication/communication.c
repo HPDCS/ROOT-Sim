@@ -288,7 +288,7 @@ void ParallelScheduleNewEvent(unsigned int gid_receiver, simtime_t timestamp, un
 			      lvt(current), timestamp);
 	}
 	// Check if the event type is mapped to an internal control message
-	if (unlikely(event_type >= MIN_VALUE_CONTROL)) {
+	if (unlikely(event_type >= RESERVED_MSG_CODE)) {
 		rootsim_error(true, "LP %u is generating an event with type %d which is a reserved type. Switch event type to a value less than %d. Aborting...\n",
 			      current->gid, event_type, MIN_VALUE_CONTROL);
 	}

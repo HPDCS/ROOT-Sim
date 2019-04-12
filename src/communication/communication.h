@@ -56,6 +56,11 @@
  * considered to be a model-specific message code.
  */
 enum _control_msgs {
+	RESERVED_MSG_CODE = 65532,
+	TOPOLOGY_UPDATE,		/**< Used by the topology API to convey remote updates on costs/probabilities */
+	ABM_UPDATE,			/**< Used by ABM API, right now these are treated as normal positive messages */
+	ABM_VISITING,			/**< Used by ABM API, right now these are treated as normal positive messages */
+	ABM_LEAVING,			/**< Used by ABM API, right now these are treated as normal positive messages */
 	MIN_VALUE_CONTROL = 65537,	///< Separation value between model and platform messages
 	RENDEZVOUS_START,		///< ECS protocol: start synchronizing two LPs for a page fault
 	RENDEZVOUS_ACK,			///< ECS protocol: the sender LP has been synchronized and is now blocked

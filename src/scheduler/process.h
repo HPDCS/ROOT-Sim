@@ -41,6 +41,8 @@
 #include <datatypes/msgchannel.h>
 #include <arch/ult.h>
 #include <lib/numerical.h>
+#include <lib/abm_layer.h>
+#include <lib/topology.h>
 #include <communication/communication.h>
 #include <arch/x86/linux/rootsim/ioctl.h>
 
@@ -78,9 +80,6 @@ struct lp_struct {
 
 	/// Global ID of the LP
 	GID_t gid;
-
-	/// Logical Process lock, used to serialize accesses to concurrent data structures
-	spinlock_t lock;	// TODO: is this still used anywhere?
 
 	/// ID of the worker thread towards which the LP is bound
 	unsigned int worker_thread;
@@ -149,6 +148,12 @@ struct lp_struct {
 	/* Per-Library variables */
 	numerical_state_t numerical;
 
+	/// pointer to the topology struct
+	topology_t *topology;
+
+	/// pointer to the region struct
+	region_abm_t *region;
+	
 };
 
 // LPs process control blocks and binding control blocks
@@ -167,10 +172,10 @@ extern __thread unsigned int __lp_counter;
 extern __thread unsigned int __lp_bound_counter;
 
 #define foreach_lp(lp)		__lp_counter = 0;\
-				for(struct lp_struct *(lp) = lps_blocks[__lp_counter]; __lp_counter < n_prc; (lp) = lps_blocks[++__lp_counter])
+				for(struct lp_struct *(lp) = lps_blocks[__lp_counter]; __lp_counter < n_prc && ((lp) = lps_blocks[__lp_counter]); ++__lp_counter)
 
 #define foreach_bound_lp(lp)	__lp_bound_counter = 0;\
-				for(struct lp_struct *(lp) = lps_bound_blocks[__lp_bound_counter]; __lp_bound_counter < n_prc_per_thread; (lp) = lps_bound_blocks[++__lp_bound_counter])
+				for(struct lp_struct *(lp) = lps_bound_blocks[__lp_bound_counter]; __lp_bound_counter < n_prc_per_thread && ((lp) = lps_bound_blocks[__lp_bound_counter]); ++__lp_bound_counter)
 
 #define LPS_bound_set(entry, lp)	lps_bound_blocks[(entry)] = (lp);
 

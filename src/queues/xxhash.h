@@ -64,7 +64,6 @@ typedef struct {
 } XXH64_state_t;
 
 unsigned int XXH32(const void *input, size_t length, unsigned seed);
-unsigned long long XXH64(const void *input, size_t length,
-			 unsigned long long seed);
+unsigned long long XXH64(const void *input, size_t length, unsigned long long seed);
 
 #endif
