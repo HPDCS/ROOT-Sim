@@ -91,7 +91,7 @@ static unsigned directions_count(void) {
  * it checks for the correctness of the JSON file,
  * it sets the correct values for the global struct,
  * it calls the right specific topology parser,
- * it makes cleanup (still the returned malloc'ed area needs to be freed)
+ * it makes cleanup (the returned malloc'ed area needs to be freed at simulation shutdown)
  * @param file_name the path of the file containing the topology info
  * @return an opaque malloc'ed area used by the specific topology initiators
  */
@@ -201,6 +201,10 @@ static void compute_edge(void){
 	topology_global.edge = edge;
 }
 
+/**
+ * Initialize the topology module for each LP hosted on the machine.
+ * This needs to be called right after LP basic initialization before starting to process events.
+ */
 void topology_init(void) {
 	if(!&topology_settings)
 		// the weak symbol isn't defined: we aren't needed
@@ -225,11 +229,11 @@ void topology_init(void) {
 		case TOPOLOGY_COSTS:
 			topology_global.chkp_size = size_checkpoint_costs();
 			break;
-		case TOPOLOGY_OBSTACLES:
-			topology_global.chkp_size = size_checkpoint_obstacles();
-			break;
 		case TOPOLOGY_PROBABILITIES:
 			topology_global.chkp_size = size_checkpoint_probabilities();
+			break;
+		case TOPOLOGY_OBSTACLES:
+			topology_global.chkp_size = size_checkpoint_obstacles();
 			break;
 	}
 	// initialize the topology struct
@@ -366,6 +370,13 @@ unsigned int NeighboursCount(unsigned region){
 	return res;
 }
 
+/**
+ * Compute the id of the LP positioned in the specified direction adjacent to the given LP.
+ * @param from The id of the starting point LP
+ * @param direction The direction needed to get to the desired neighbour
+ * @return the id of the adjacent LP in the requested direction or INVALID_DIRECTION if there's no LP satisfying the
+ * request
+ */
 unsigned int get_raw_receiver(unsigned int from, direction_t direction) {
 	unsigned int x, y;
 	unsigned receiver;
@@ -604,6 +615,17 @@ unsigned int FindReceiverToward(unsigned int to) {
 	return receiver;
 }
 
+/**
+ * Compute the path from 2 LPs given a tree rooted in @p source represented as a parent array (the classic output of the
+ * Dijkstra algorithm). We expect source and dest to be different LP ids.
+ *
+ * @param lp_cnt The size of the tree
+ * @param result A caller supplied array which will hold the path as sequence of LP ids
+ * @param previous The tree represented as a parent array (the i-th entry is the id of the parent of the LP with id i)
+ * @param source The id of the source LP
+ * @param dest The id of the destination LP which must be different from the source
+ * @return 0 if there's no path between the 2 specified LPs in the given tree, else the number of hops in the returned path
+ */
 unsigned build_path(unsigned lp_cnt, unsigned result[lp_cnt], const unsigned int previous[lp_cnt], unsigned source, unsigned dest) {
 	unsigned mid_cell;
 	unsigned *res_aux;
@@ -617,7 +639,7 @@ unsigned build_path(unsigned lp_cnt, unsigned result[lp_cnt], const unsigned int
 	// we fill in the obvious last hop
 	*res_aux = dest;
 
-	unsigned hops = 1; // we need at least one hop (we disallow ComputeMinTour() from and to the same region)
+	unsigned hops = 1;
 
 	mid_cell = previous[dest];
 	// while the previous hop is not the actual source
