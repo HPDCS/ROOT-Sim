@@ -128,11 +128,11 @@ static void put_instruction_cmov(rtx insn, rtx condition, rtx then_expression, r
 	const char *fn1 = write_1 ? "__write_mem" : "__read_mem";
 	const char *fn2 = write_2 ? "__write_mem" : "__read_mem";
 	if(then_expression != NULL){
-		if(GET_CODE(XEXP(then_expression, 0)) == PRE_DEC || GET_CODE(XEXP(then_expression, 0)) == POST_INC /*|| GET_CODE(XEXP(operand, 0)) == SCRATCH*/)
+		if(GET_CODE(XEXP(then_expression, 0)) == PRE_DEC || GET_CODE(XEXP(then_expression, 0)) == POST_INC || GET_CODE(XEXP(then_expression), 0)) == SCRATCH)
 			return;
 	}
 	if (else_expression != NULL){
-		if(GET_CODE(XEXP(else_expression, 0)) == PRE_DEC || GET_CODE(XEXP(else_expression, 0)) == POST_INC /*|| GET_CODE(XEXP(operand, 0)) == SCRATCH*/)
+		if(GET_CODE(XEXP(else_expression, 0)) == PRE_DEC || GET_CODE(XEXP(else_expression, 0)) == POST_INC || GET_CODE(XEXP(else_expression, 0)) == SCRATCH)
 			return;
 	}
 
