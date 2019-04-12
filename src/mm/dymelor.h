@@ -39,6 +39,7 @@
 #include <core/core.h>
 #include <datatypes/bitmap.h>
 #include <mm/state.h>
+#include <mm/memtrace.h>
 #include <core/timer.h>
 
 /**************************************
@@ -144,7 +145,6 @@ typedef struct _malloc_state malloc_state;
 
 // DyMeLoR API
 extern void set_force_full(unsigned int, int);
-extern void dirty_mem(void *, int);
 extern size_t get_state_size(int);
 extern size_t get_log_size(malloc_state *);
 extern size_t get_inc_log_size(void *);

@@ -192,13 +192,35 @@ $LD -r ${OBJECTS//.o/.o.rs} -o APP-instr.o
 ############ INSERIRE QUI IL CODICE PER GENERARE LA VERSIONE INSTRUMENTATA #################
 
 # Incremental linking non-instrumented version
-$LD -r -L $libdir --wrap strcpy --wrap strncpy --wrap strcat --wrap strncat --wrap memcpy --wrap memmove --wrap memset --wrap strdup --wrap strndup -o APP-lib-wrapped.o APP.o -lwrapperl
-$LD -r -L $libdir --wrap malloc --wrap free --wrap realloc --wrap calloc -o APP-non-instr.o APP-lib-wrapped.o --whole-archive -ldymelor
+$LD -r -L $libdir --wrap strcpy\
+		  --wrap strncpy\
+		  --wrap strcat\
+		  --wrap strncat\
+		  --wrap memcpy\
+		  --wrap memmove\
+		  --wrap memset\
+		  --wrap strdup\
+		  --wrap strndup\
+		  --wrap malloc\
+		  --wrap free\
+		  --wrap realloc\
+		  --wrap calloc -o APP-non-instr.o APP.o --whole-archive -ldymelor
 check_term
 
 # Incremental linking instrumented version
-$LD -r -L $libdir --wrap strcpy --wrap strncpy --wrap strcat --wrap strncat --wrap memcpy --wrap memmove --wrap memset --wrap strdup --wrap strndup -o APP-lib-wrapped.o APP-instr.o -lwrapperl
-$LD -r -L $libdir --wrap malloc --wrap free --wrap realloc --wrap calloc -o APP-instr.o APP-lib-wrapped.o --whole-archive -ldymelor
+$LD -r -L $libdir --wrap strcpy\
+		  --wrap strncpy\
+		  --wrap strcat\
+		  --wrap strncat\
+		  --wrap memcpy\
+		  --wrap memmove\
+		  --wrap memset\
+		  --wrap strdup\
+		  --wrap strndup\
+		  --wrap malloc\
+		  --wrap free\
+		  --wrap realloc\
+		  --wrap calloc -o APP-instr.o APP.o --whole-archive -ldymelor
 check_term
 
 # Merge two relocatable objects together

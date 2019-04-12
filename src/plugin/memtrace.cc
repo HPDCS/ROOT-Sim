@@ -128,11 +128,11 @@ static void put_instruction_cmov(rtx insn, rtx condition, rtx then_expression, r
 	const char *fn1 = write_1 ? "__write_mem" : "__read_mem";
 	const char *fn2 = write_2 ? "__write_mem" : "__read_mem";
 	if(then_expression != NULL){
-		if(GET_CODE(XEXP(then_expression, 0)) == PRE_DEC || GET_CODE(XEXP(then_expression, 0)) == POST_INC || GET_CODE(XEXP(operand, 0)) == SCRATCH)
+		if(GET_CODE(XEXP(then_expression, 0)) == PRE_DEC || GET_CODE(XEXP(then_expression, 0)) == POST_INC /*|| GET_CODE(XEXP(operand, 0)) == SCRATCH*/)
 			return;
 	}
 	if (else_expression != NULL){
-		if(GET_CODE(XEXP(else_expression, 0)) == PRE_DEC || GET_CODE(XEXP(else_expression, 0)) == POST_INC || GET_CODE(XEXP(operand, 0)) == SCRATCH)
+		if(GET_CODE(XEXP(else_expression, 0)) == PRE_DEC || GET_CODE(XEXP(else_expression, 0)) == POST_INC /*|| GET_CODE(XEXP(operand, 0)) == SCRATCH*/)
 			return;
 	}
 
@@ -155,11 +155,11 @@ static void put_instruction_cmov(rtx insn, rtx condition, rtx then_expression, r
 	JUMP_LABEL(if_then_else) = label_x;
 	LABEL_NUSES (label_x) += 1;
 
-	
+
 	jmp_x1 = gen_rtx_SET(pc_rtx, gen_rtx_LABEL_REF(VOIDmode, label_x1));
 	JUMP_LABEL(jmp_x1) = label_x1;
 	LABEL_NUSES (label_x1) += 1;
-	
+
 
 
 	push1 = rtx_alloc(SET);
@@ -179,7 +179,7 @@ static void put_instruction_cmov(rtx insn, rtx condition, rtx then_expression, r
 	XEXP(pop1, 1) = gen_rtx_MEM(DImode,
 				gen_rtx_POST_INC(DImode, gen_rtx_REG(DImode, 7))
 			);
-	
+
 	pop2 = rtx_alloc(SET);
 	XEXP(pop2, 0) = gen_rtx_REG(DImode, 4);
 	XEXP(pop2, 1) = gen_rtx_MEM(DImode,
@@ -202,8 +202,8 @@ static void put_instruction_cmov(rtx insn, rtx condition, rtx then_expression, r
 	else {
 		parm1_then = NULL;
 		parm2_then = NULL;
-	}	
-	
+	}
+
 	if (else_expression != NULL){
 		parm1_else = rtx_alloc(SET);
 		XEXP(parm1_else, 0) = gen_rtx_REG(SImode, 5);
@@ -232,7 +232,7 @@ static void put_instruction_cmov(rtx insn, rtx condition, rtx then_expression, r
 	(if_then_else (cond)
 		jmp L_(x)
 		pc))
-	
+
 	/*that code only if (else) is a MEM
 
 	mov rdi, (else)
@@ -249,7 +249,7 @@ static void put_instruction_cmov(rtx insn, rtx condition, rtx then_expression, r
 	mov rdi, (then)
 	mov rsi, sizeof(then)
 	call __write/read_mem
-	
+
 	/*up to here
 
 	code_label(L_(x+1))
@@ -262,7 +262,7 @@ static void put_instruction_cmov(rtx insn, rtx condition, rtx then_expression, r
 	emit_insn_before(push1, insn);
 	emit_insn_before(push2, insn);
 	emit_jump_insn_before(if_then_else, insn);
-	
+
 	if (else_expression != NULL){
 		emit_insn_before(parm1_else, insn);
 		emit_insn_before(parm2_else, insn);
@@ -277,7 +277,7 @@ static void put_instruction_cmov(rtx insn, rtx condition, rtx then_expression, r
 		emit_insn_before(parm2_then, insn);
 		emit_insn_before(call_1, insn);
 	}
-	
+
 
 	emit_insn_before(label_x1, insn);
 
@@ -309,7 +309,7 @@ static void put_instruction_cmov(rtx insn, rtx condition, rtx then_expression, r
 	print_rtl_single(stdout, label_x1);
 	if (then_expression == NULL)
 		print_rtl_single(stdout, label_x);
-		
+
 	print_rtl_single(stdout, pop2);
 	print_rtl_single(stdout, pop1);
 	printf("********\n");
@@ -348,13 +348,13 @@ static void put_instruction(rtx insn, rtx operand, bool write)
 	XEXP(pop1, 1) = gen_rtx_MEM(DImode,
 				gen_rtx_POST_INC(DImode, gen_rtx_REG(DImode, 7))
 			);
-	
+
 	pop2 = rtx_alloc(SET);
 	XEXP(pop2, 0) = gen_rtx_REG(DImode, 4);
 	XEXP(pop2, 1) = gen_rtx_MEM(DImode,
 				gen_rtx_POST_INC(DImode, gen_rtx_REG(DImode, 7))
 			);
-	
+
 	parm1 = rtx_alloc(SET);
 	XEXP(parm1, 0) = gen_rtx_REG(DImode, 5);
 	XEXP(parm1, 1) = XEXP(operand, 0);
@@ -409,7 +409,7 @@ static unsigned int memtrace_cleanup_execute(void)
  		/* Check the expression code of the insn */
 		if (!INSN_P(insn) || BARRIER_P(insn) || NOTE_P(insn) || CALL_P(insn))
 			continue;
-		
+
 		/* CMOVE %eax %ebx
 		(set (reg:SI 3 bx [orig:90 _4 ] [90])
     		(if_then_else:SI (ne (reg:CCZ 17 flags)
@@ -495,12 +495,12 @@ static unsigned int memtrace_cleanup_execute(void)
 						printf("dst: MEMORY ACCESS FOUND:\n");
 						print_rtl_single(stdout, XEXP(first, 0));
 						put_instruction(insn, first, true);
-					} 
+					}
 					if (GET_CODE(second) == MEM){
 						printf("src: MEMORY ACCESS FOUND:\n");
 						print_rtl_single(stdout, XEXP(second, 0));
 						put_instruction(insn, second, false);
-					} 
+					}
 				}
 			}
 		}
