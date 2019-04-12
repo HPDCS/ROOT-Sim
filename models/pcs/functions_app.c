@@ -52,7 +52,7 @@ double recompute_ta(double ref_ta, simtime_t time_now) {
 }
 
 
-double generate_cross_path_gain(lp_state_type *pointer) {
+double generate_cross_path_gain(void) {
 	double value;
 	double variation;
 
@@ -62,7 +62,7 @@ double generate_cross_path_gain(lp_state_type *pointer) {
 	return (value);
 }
 
-double generate_path_gain(lp_state_type *pointer) {
+double generate_path_gain(void) {
 	double value;
 	double variation;
 
@@ -72,7 +72,7 @@ double generate_path_gain(lp_state_type *pointer) {
 	return (value);
 }
 
-void deallocation(unsigned int me, lp_state_type *pointer, int ch, event_content_type *evt, simtime_t lvt) {
+void deallocation(unsigned int me, lp_state_type *pointer, int ch, simtime_t lvt) {
 	channel *c;
 
 	c = pointer->channels;
@@ -117,14 +117,14 @@ void fading_recheck(lp_state_type *pointer) {
 
 int allocation(lp_state_type *pointer) {
 
-	int i;
+	unsigned int i;
   	int index;
 	double summ;
 
 	channel *c, *ch;
 
 	index = -1;
-	for(i = 0; i < pointer->channels_per_cell; i++){
+	for(i = 0; i < channels_per_cell; i++){
 		if(!CHECK_CHANNEL(pointer,i)){
 			index = i;
 			break;
@@ -156,23 +156,26 @@ int allocation(lp_state_type *pointer) {
 
 		summ = 0.0;
 
-		if (pointer->check_fading) {
+	//	if (pointer->check_fading) {
+	//force this
+
+		if(1){
 			ch = pointer->channels->prev;
 
 			while(ch != NULL){
 				ch->sir_data->fading = Expent(1.0);
 
-				summ += generate_cross_path_gain(pointer) *  ch->sir_data->power * ch->sir_data->fading ;
+				summ += generate_cross_path_gain() *  ch->sir_data->power * ch->sir_data->fading ;
 				ch = ch->prev;
 			}
 		}
 
-		if (summ == 0.0) {
+		if (fabsf(summ) < FLT_EPSILON) {
 			// The newly allocated channel receives the minimal power
 			c->sir_data->power = MIN_POWER;
 		} else {
 		  	c->sir_data->fading = Expent(1.0);
-			c->sir_data->power = ((SIR_AIM * summ) / (generate_path_gain(pointer) * c->sir_data->fading));
+			c->sir_data->power = ((SIR_AIM * summ) / (generate_path_gain() * c->sir_data->fading));
 			if (c->sir_data->power < MIN_POWER) c->sir_data->power = MIN_POWER;
 			if (c->sir_data->power > MAX_POWER) c->sir_data->power = MAX_POWER;
 		}

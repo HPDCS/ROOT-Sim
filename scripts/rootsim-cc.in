@@ -15,18 +15,17 @@
 ##############################################################################
 # Global configuration variables
 ##############################################################################
-CC=@CC@
-CFLAGS=@CFLAGS@
-VERSION=@VERSION@
-ARCH=@ARCH@
-bindir=@bindir@
-libdir=@libdir@
-includedir=@includedir@
-datadir=@datadir@
-SCRIPT_LINES=@scriptlines@
-LD_DATA1_LINES=@lddata1lines@
-LD_DATA2_LINES=@lddata2lines@
-LD_FINAL_LINES=@ldfinallines@
+CC="@CC@"
+CFLAGS="@CFLAGS@"
+VERSION="@VERSION@"
+bindir="@bindir@"
+libdir="@libdir@"
+includedir="@includedir@"
+datadir="@datadir@"
+SCRIPT_LINES="@scriptlines@"
+LD_DATA1_LINES="@lddata1lines@"
+LD_DATA2_LINES="@lddata2lines@"
+LD_FINAL_LINES="@ldfinallines@"
 
 
 ##############################################################################
@@ -72,8 +71,9 @@ build_cleanup()
 #rm $$.ld-data1
 #rm $$.ld-data2
 #rm $$.ld-final
-rm *.o
-rm *.o.rs
+rm -f ${SOURCES//.c/.o}
+rm -f ${SOURCES//.c/.o.rs}
+rm -f APP*.o
 #rm branch-table
 #rm branch-table-light
 #rm offset-table-start-inc
@@ -85,8 +85,7 @@ rm *.o.rs
 #rm padding-monitor.c
 #rm riferimenti
 #rm riferimenti-mon
-rm original
-echo "process done"
+rm -f original
 }
 
 
@@ -269,6 +268,8 @@ check_term
 
 # Clean temporary files
 build_cleanup
+
+echo "process done"
 
 exit 0
 

@@ -1,18 +1,20 @@
 #include <stdlib.h>
 #include <stdio.h>
-#include <string.h>
+#include <strings.h>
 #include <ROOT-Sim.h>
 
 #include "application.h"
 
 
-#define LOOP 100000
+//#define LOOP 100000
+#define LOOP 1000
 
+struct _topology_settings_t topology_settings = {.type = TOPOLOGY_OBSTACLES, .default_geometry = TOPOLOGY_GRAPH, .write_enabled = false};
 
 void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_type *event_content, unsigned int size, void *ptr) {
-
+	(void)size;
 	int i;
-	int j;
+	int target;
 
 	event_content_type new_event_content;
 	simtime_t timestamp;
@@ -53,8 +55,10 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 
 		case START_TX:
 
-			state->residual_tx_ops = RandomRange(MIN_OP_COUNT, MAX_OP_COUNT);
-			state->read_set_size = RandomRange(10, MAX_RS_SIZE);
+			state->residual_tx_ops = RandomRange(MAX_OP_COUNT-10, MAX_OP_COUNT);
+			state->read_set_size = RandomRange(MAX_RS_SIZE - 10, MAX_RS_SIZE);
+//			state->write_set_size = RandomRange(10, MAX_RS_SIZE);
+			state->tx_ops_displacement = 0;
 //			state->read_set = malloc(sizeof(int) * state->read_set_size);
 
 			timestamp = now + (simtime_t)Expent(TX_OP_ARRIVAL);
@@ -70,18 +74,26 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 
 
 			state->residual_tx_ops--;
+			state->tx_ops_displacement += 1;
 			timestamp= now + (simtime_t)Expent(TX_OP);
 
 			if(state->residual_tx_ops > 0) {
 
 				ScheduleNewEvent(me, timestamp, TX_OP, NULL, 0);
+				state->read_set[state->tx_ops_displacement] = RandomRange(10,10000);
+				for(i=0;i<state->tx_ops_displacement;i++){
+					if (state->read_set[i] != state->read_set[state->tx_ops_displacement]) {
+						//found conflicting item
+					}
+				}
+				state->tx_ops_displacement += 1;
 
 			} else {
 
-				int recv = FindReceiver(TOPOLOGY_MESH);
+				int recv = FindReceiver();
 				int recv2;
 				do {
-					recv2 = FindReceiver(TOPOLOGY_MESH);
+					recv2 = FindReceiver();
 				} while (recv == recv2);
 
 
@@ -102,6 +114,21 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 				ScheduleNewEvent(me, timestamp, START_TX, NULL, 0);
 			state->committed_tx++;
 
+			if ( memcmp((void*)state->read_set,(void*)state->write_set,sizeof(int)*MAX_RS_SIZE)){
+					state->conflicted_tx++;
+					for(i=0;i<MAX_RS_SIZE;i++){
+						if (state->read_set[i] != state->write_set[i]) {
+							//found conflicting item
+						}
+					}
+				}
+
+			#ifndef ECS
+			for(i = 0; i < event_content->size; i++) {
+				state->read_set[i] = 0;
+			}
+			#endif
+
 			}
 
 			break;
@@ -110,11 +137,17 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 
 			for(i = 0; i < event_content->size; i++) {
 				#ifdef ECS
-				event_content->read_set_ptr[i] = me;
+				//event_content->read_set_ptr[i] = me;
+				target = event_content->read_set_ptr[i] ;
 				#else
-				event_content->read_set[i] = me;
+				//event_content->read_set[i] = me;
+				target = event_content->read_set[i] ;
 				#endif
+				state->write_set[i] = target;
 			}
+			#ifdef ECS
+		 	memset((void*)event_content->read_set_ptr,0,sizeof(int)*MAX_RS_SIZE);
+			#endif
 
 			timestamp= now + (simtime_t)Expent(50);
 
@@ -125,6 +158,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 				new_event_content.second = false;
 			}
 //			ScheduleNewEvent(event_content->from, timestamp, COMMIT, &event_content, sizeof(new_event_content));
+			ScheduleNewEvent(me, timestamp, COMMIT, &event_content, sizeof(new_event_content));
 //
 			break;
 
@@ -132,6 +166,21 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 
 		case COMMIT:
 
+			if ( memcmp((void*)state->read_set,(void*)state->write_set,sizeof(int)*MAX_RS_SIZE)){
+					state->conflicted_tx++;
+					for(i=0;i<MAX_RS_SIZE;i++){
+
+						if (state->read_set[i] != 0){
+							if (state->read_set[i] != state->write_set[i]) {
+								//found conflicting item
+							}
+						}
+					}
+				}
+
+//			printf("aborting transaction\n");
+
+//			break;
 			state->committed_tx++;
 
 			if(event_content->second) {
@@ -152,8 +201,8 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 
 
 bool OnGVT(unsigned int me, lp_state_type *state) {
-
-	printf("%d: %f\% (%d/%d)\n", me, 100 * state->committed_tx / (double)TOTAL_COMMITTED_TX, state->committed_tx, TOTAL_COMMITTED_TX);
+	(void)me;
+	//printf("%d: %f\% (%d/%d)\n", me, 100 * state->committed_tx / (double)TOTAL_COMMITTED_TX, state->committed_tx, TOTAL_COMMITTED_TX);
 
 	if(state->committed_tx < TOTAL_COMMITTED_TX)
 		return false;

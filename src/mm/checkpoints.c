@@ -1,14 +1,19 @@
 /**
-*			Copyright (C) 2008-2015 HPDCS Group
-*			http://www.dis.uniroma1.it/~hpdcs
+* @file mm/checkpoints.c
 *
+* @brief State saving and restore for model state buffers
+*
+* State saving and restore for model state buffers
+*
+* @copyright
+* Copyright (C) 2008-2019 HPDCS Group
+* https://hpdcs.github.io
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
 *
 * ROOT-Sim is free software; you can redistribute it and/or modify it under the
 * terms of the GNU General Public License as published by the Free Software
-* Foundation; either version 3 of the License, or (at your option) any later
-* version.
+* Foundation; only version 3 of the License applies.
 *
 * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
 * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
@@ -18,9 +23,6 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file checkpoints.c
-* @brief This module implements the routines to save and restore checkpoints,
-*        both full and incremental
 * @author Roberto Toccaceli
 * @author Alessandro Pellegrini
 * @author Roberto Vitali
@@ -30,14 +32,12 @@
 #include <stdio.h>
 #include <fcntl.h>
 
-#include <mm/dymelor.h>
-#include <mm/malloc.h>
+#include <mm/mm.h>
 #include <core/timer.h>
 #include <core/core.h>
 #include <scheduler/scheduler.h>
 #include <scheduler/process.h>
 #include <statistics/statistics.h>
-
 
 /**
 * This function creates a full log of the current simulation states and returns a pointer to it.
@@ -66,137 +66,112 @@
 * @author Alessandro Pellegrini
 * @author Roberto Vitali
 *
-* @param lid The logical process' local identifier
+* @param lp A pointer to the lp_struct of the LP for which we are taking
+*           a full log of the buffers keeping the current simulation state.
 * @return A pointer to a malloc()'d memory area which contains the full log of the current simulation state,
 *         along with the relative meta-data which can be used to perform a restore operation.
 *
 * @todo must be declared static. This will entail changing the logic in gvt.c to save a state before rebuilding.
 */
-void *log_full(int lid) {
+void *log_full(struct lp_struct *lp)
+{
 
-	void *ptr, *ckpt;
-	int i, j, k, idx, bitmap_blocks;
-	size_t size, chunk_size;
-	malloc_area * m_area;
+	void *ptr = NULL, *ckpt = NULL;
+	int i;
+	size_t size, chunk_size, bitmap_size;
+	malloc_area *m_area;
 
 	// Timers for self-tuning of the simulation platform
 	timer checkpoint_timer;
 	timer_start(checkpoint_timer);
 
-	size = sizeof(malloc_state)  + sizeof(seed_type) + m_state[lid]->busy_areas * sizeof(malloc_area) + m_state[lid]->bitmap_size + m_state[lid]->total_log_size;
+	lp->mm->m_state->is_incremental = false;
+	size = get_log_size(lp->mm->m_state);
 
-	// This code is in a malloc-wrapper package, so here we call the real malloc
 	ckpt = rsalloc(size);
 
-	if(ckpt == NULL)
-		rootsim_error(true, "(%d) Unable to acquire memory for ckptging the current state (memory exhausted?)");
-
+	if (unlikely(ckpt == NULL)) {
+		rootsim_error(true, "(%d) Unable to acquire memory for checkpointing the current state (memory exhausted?)", lp->lid.to_int);
+	}
 
 	ptr = ckpt;
 
 	// Copy malloc_state in the ckpt
-	memcpy(ptr, m_state[lid], sizeof(malloc_state));
+	memcpy(ptr, lp->mm->m_state, sizeof(malloc_state));
 	ptr = (void *)((char *)ptr + sizeof(malloc_state));
-	((malloc_state*)ckpt)->timestamp = current_lvt;
-	((malloc_state*)ckpt)->is_incremental = 0;
+	((malloc_state *) ckpt)->timestamp = lvt(lp);
 
+	for (i = 0; i < lp->mm->m_state->num_areas; i++) {
 
-	// Copy the per-LP Seed State (to make the numerical library rollbackable and PWD)
-	memcpy(ptr, &LPS[lid]->seed, sizeof(seed_type));
-	ptr = (void *)((char *)ptr + sizeof(seed_type));
-
-
-	for(i = 0; i < m_state[lid]->num_areas; i++){
-
-		m_area = &m_state[lid]->areas[i];
+		m_area = &lp->mm->m_state->areas[i];
 
 		// Copy the bitmap
-		bitmap_blocks = m_area->num_chunks / NUM_CHUNKS_PER_BLOCK;
-		if (bitmap_blocks < 1)
-			bitmap_blocks = 1;
+
+		bitmap_size = bitmap_required_size(m_area->num_chunks);
 
 		// Check if there is at least one chunk used in the area
-		if(m_area->alloc_chunks == 0){
+		if (unlikely(m_area->alloc_chunks == 0)) {
 
 			m_area->dirty_chunks = 0;
 			m_area->state_changed = 0;
 
-			if (m_area->use_bitmap != NULL) {
-				for(j = 0; j < bitmap_blocks; j++)
-					m_area->dirty_bitmap[j] = 0;
+			if (likely(m_area->use_bitmap != NULL)) {
+				memset(m_area->dirty_bitmap, 0, bitmap_size);
 			}
 
 			continue;
 		}
-
 		// Copy malloc_area into the ckpt
 		memcpy(ptr, m_area, sizeof(malloc_area));
-		ptr = (void*)((char*)ptr + sizeof(malloc_area));
+		ptr = (void *)((char *)ptr + sizeof(malloc_area));
 
-		memcpy(ptr, m_area->use_bitmap, bitmap_blocks * BLOCK_SIZE);
-		ptr = (void*)((char*)ptr + bitmap_blocks * BLOCK_SIZE);
+		memcpy(ptr, m_area->use_bitmap, bitmap_size);
+		ptr = (void *)((char *)ptr + bitmap_size);
 
-		chunk_size = m_area->chunk_size;
-		RESET_BIT_AT(chunk_size, 0);	// ckpt Mode bit
-		RESET_BIT_AT(chunk_size, 1);	// Lock bit
+		chunk_size = UNTAGGED_CHUNK_SIZE(m_area);
 
 		// Check whether the area should be completely copied (not on a per-chunk basis)
 		// using a threshold-based heuristic
-		if(CHECK_LOG_MODE_BIT(m_area)){
+		if (CHECK_LOG_MODE_BIT(m_area)) {
 
 			// If the malloc_area is almost (over a threshold) full, copy it entirely
 			memcpy(ptr, m_area->area, m_area->num_chunks * chunk_size);
-			ptr = (void*)((char*)ptr + m_area->num_chunks * chunk_size);
+			ptr = (void *)((char *)ptr + m_area->num_chunks * chunk_size);
 
 		} else {
+
+#define copy_from_area(x) ({\
+			memcpy(ptr, (void*)((char*)m_area->area + ((x) * chunk_size)), chunk_size);\
+			ptr = (void*)((char*)ptr + chunk_size);})
+
 			// Copy only the allocated chunks
-			for(j = 0; j < bitmap_blocks; j++){
+			bitmap_foreach_set(m_area->use_bitmap, bitmap_size, copy_from_area);
 
-				// Check the allocation bitmap on a per-block basis, to enhance scan speed
-				if(m_area->use_bitmap[j] == 0) {
-					// Empty (no-chunks-allocated) block: skip to the next
-					continue;
-
-				} else {
-					// At least one chunk is allocated: per-bit scan of the block is required
-					for(k = 0; k < NUM_CHUNKS_PER_BLOCK; k++){
-
-						if(CHECK_BIT_AT(m_area->use_bitmap[j], k)){
-
-							idx = j * NUM_CHUNKS_PER_BLOCK + k;
-							memcpy(ptr, (void*)((char*)m_area->area + (idx * chunk_size)), chunk_size);
-							ptr = (void*)((char*)ptr + chunk_size);
-
-						}
-					}
-				}
-			}
+#undef copy_from_area
 		}
 
 		// Reset Dirty Bitmap, as there is a full ckpt in the chain now
 		m_area->dirty_chunks = 0;
 		m_area->state_changed = 0;
-		bzero((void *)m_area->dirty_bitmap, bitmap_blocks * BLOCK_SIZE);
+		bzero((void *)m_area->dirty_bitmap, bitmap_size);
 
-	} // For each m_area in m_state
+	}			// For each malloc area
 
 	// Sanity check
-	if ((char *)ckpt + size != ptr){
-		rootsim_error(false, "Actual (full) ckpt size different from the estimated one! ckpt = %p size = %x (%d), ptr = %p\n", ckpt, size, size, ptr);
-	}
+	if (unlikely((char *)ckpt + size != ptr))
+		rootsim_error(true, "Actual (full) ckpt size is wrong by %d bytes!\nlid = %d ckpt = %p size = %#x (%d), ptr = %p, ckpt + size = %p\n",
+			      (char *)ckpt + size - (char *)ptr, lp->lid.to_int,
+			      ckpt, size, size, ptr, (char *)ckpt + size);
 
-	m_state[lid]->dirty_areas = 0;
-	m_state[lid]->dirty_bitmap_size = 0;
-	m_state[lid]->total_inc_size = 0;
+	lp->mm->m_state->dirty_areas = 0;
+	lp->mm->m_state->dirty_bitmap_size = 0;
+	lp->mm->m_state->total_inc_size = 0;
 
-	int checkpoint_time = timer_value_micro(checkpoint_timer);
-	statistics_post_lp_data(lid, STAT_CKPT_TIME, (double)checkpoint_time);
-	statistics_post_lp_data(lid, STAT_CKPT_MEM, (double)size);
+	statistics_post_data(lp, STAT_CKPT_TIME, (double)timer_value_micro(checkpoint_timer));
+	statistics_post_data(lp, STAT_CKPT_MEM, (double)size);
 
 	return ckpt;
 }
-
-
 
 /**
 * This function is the only log function which should be called from the simulation platform. Actually,
@@ -204,25 +179,24 @@ void *log_full(int lid) {
 * platform. Note that this function only returns a pointer to a malloc'd area which contains the
 * state buffers. This means that this memory area cannot be used as-is, but should be wrapped
 * into a state_t structure, which gives information about the simulation state pointer (defined
-* via <SetState>() by the application-level code and the lvt associated with the log.
-* This is done implicitly by the <LogState>() function, which in turn connects the newly taken
+* via SetState() by the application-level code and the lvt associated with the log.
+* This is done implicitly by the LogState() function, which in turn connects the newly taken
 * snapshot with the currencly-scheduled LP.
 * Therefore, any point of the simulator which wants to take a (real) log, shouldn't call directly this
-* function, rather <LogState>() should be used, after having correctly set current_lp and current_lvt.
+* function, rather LogState() should be used, after having correctly set current and current_lvt.
 *
 * @author Alessandro Pellegrini
 *
-* @param lid The logical process' local identifier
+* @param lp A pointer to the lp_struct of the LP for which we want to take
+*           a snapshot of the buffers used by the model to keep state variables.
 * @return A pointer to a malloc()'d memory area which contains the log of the current simulation state,
 *         along with the relative meta-data which can be used to perform a restore operation.
 */
-void *log_state(int lid) {
-	statistics_post_lp_data(lid, STAT_CKPT, 1.0);
-	return log_full(lid);
+void *log_state(struct lp_struct *lp)
+{
+	statistics_post_data(lp, STAT_CKPT, 1.0);
+	return log_full(lp);
 }
-
-
-
 
 /**
 * This function restores a full log in the address space where the logical process will be
@@ -243,15 +217,16 @@ void *log_state(int lid) {
 * @author Roberto Vitali
 * @author Alessandro Pellegrini
 *
-* @param lid The logical process' local identifier
-* @param queue_node a pointer to the simulation state which must be restored in the logical process
+* @param lp A pointer to the lp_struct of the LP for which we are restoring
+*           the content of simulation state buffers, taking it from the checkpoint
+* @param ckpt A pointer to the checkpoint to take the previous content of
+*             the buffers to be restored
 */
-void restore_full(int lid, void *ckpt) {
-
-	void * ptr;
-	int i, j, k, bitmap_blocks, idx, original_num_areas, restored_areas;
-	unsigned int bitmap;
-	size_t chunk_size;
+void restore_full(struct lp_struct *lp, void *ckpt)
+{
+	void *ptr;
+	int i, original_num_areas, restored_areas;
+	size_t chunk_size, bitmap_size;
 	malloc_area *m_area, *new_area;
 
 	// Timers for simulation platform self-tuning
@@ -259,152 +234,112 @@ void restore_full(int lid, void *ckpt) {
 	timer_start(recovery_timer);
 	restored_areas = 0;
 	ptr = ckpt;
-	original_num_areas = m_state[lid]->num_areas;
-	new_area = m_state[lid]->areas;
+	original_num_areas = lp->mm->m_state->num_areas;
+	new_area = lp->mm->m_state->areas;
 
 	// Restore malloc_state
-	memcpy(m_state[lid], ptr, sizeof(malloc_state));
-	ptr = (void*)((char*)ptr + sizeof(malloc_state));
+	memcpy(lp->mm->m_state, ptr, sizeof(malloc_state));
+	ptr = (void *)((char *)ptr + sizeof(malloc_state));
 
-	// Restore the per-LP Seed State (to make the numerical library rollbackable and PWD)
-	memcpy(&LPS[lid]->seed, ptr, sizeof(seed_type));
-	ptr = (void *)((char *)ptr + sizeof(seed_type));
-
-	m_state[lid]->areas = new_area;
+	lp->mm->m_state->areas = new_area;
 
 	// Scan areas and chunk to restore them
-	for(i = 0; i < m_state[lid]->num_areas; i++){
+	for (i = 0; i < lp->mm->m_state->num_areas; i++) {
 
-		m_area = &m_state[lid]->areas[i];
+		m_area = &lp->mm->m_state->areas[i];
 
-		bitmap_blocks = m_area->num_chunks / NUM_CHUNKS_PER_BLOCK;
-		if(bitmap_blocks < 1)
-			bitmap_blocks = 1;
+		bitmap_size = bitmap_required_size(m_area->num_chunks);
 
-		if(restored_areas == m_state[lid]->busy_areas || m_area->idx != ((malloc_area*)ptr)->idx){
+		if (restored_areas == lp->mm->m_state->busy_areas || m_area->idx != ((malloc_area *) ptr)->idx) {
 
 			m_area->dirty_chunks = 0;
 			m_area->state_changed = 0;
-			if (m_area->use_bitmap != NULL){
-				for(j = 0; j < bitmap_blocks; j++) {
-				  m_area->dirty_bitmap[j] = 0;
-				}
-			}
 			m_area->alloc_chunks = 0;
 			m_area->next_chunk = 0;
 			RESET_LOG_MODE_BIT(m_area);
 			RESET_AREA_LOCK_BIT(m_area);
-			if (m_area->use_bitmap != NULL) {
-				for(j = 0; j < bitmap_blocks; j++)
-					m_area->use_bitmap[j] = 0;
-				for(j = 0; j < bitmap_blocks; j++)
-					m_area->dirty_bitmap[j] = 0;
+
+			if (likely(m_area->use_bitmap != NULL)) {
+				memset(m_area->use_bitmap, 0, bitmap_size);
+				memset(m_area->dirty_bitmap, 0, bitmap_size);
 			}
-			m_area->last_access = m_state[lid]->timestamp;
+			m_area->last_access = lp->mm->m_state->timestamp;
 
 			continue;
 		}
-
 		// Restore the malloc_area
 		memcpy(m_area, ptr, sizeof(malloc_area));
-		ptr = (void*)((char*)ptr + sizeof(malloc_area));
-
+		ptr = (void *)((char *)ptr + sizeof(malloc_area));
 
 		restored_areas++;
 
 		// Restore use bitmap
-		memcpy(m_area->use_bitmap, ptr, bitmap_blocks * BLOCK_SIZE);
-		ptr = (void*)((char*)ptr + bitmap_blocks * BLOCK_SIZE);
+		memcpy(m_area->use_bitmap, ptr, bitmap_size);
+		ptr = (void *)((char *)ptr + bitmap_size);
 
 		// Reset dirty bitmap
-		bzero(m_area->dirty_bitmap, bitmap_blocks * BLOCK_SIZE);
+		bzero(m_area->dirty_bitmap, bitmap_size);
 		m_area->dirty_chunks = 0;
 		m_area->state_changed = 0;
 
-
-		chunk_size = m_area->chunk_size;
-		RESET_BIT_AT(chunk_size, 0);
-		RESET_BIT_AT(chunk_size, 1);
+		chunk_size = UNTAGGED_CHUNK_SIZE(m_area);
 
 		// Check how the area has been logged
-		if(CHECK_LOG_MODE_BIT(m_area)){
+		if (CHECK_LOG_MODE_BIT(m_area)) {
 			// The area has been entirely logged
 			memcpy(m_area->area, ptr, m_area->num_chunks * chunk_size);
-			ptr = (void*)((char*)ptr + m_area->num_chunks * chunk_size);
+			ptr = (void *)((char *)ptr + m_area->num_chunks * chunk_size);
 
 		} else {
 			// The area was partially logged.
 			// Logged chunks are the ones associated with a used bit whose value is 1
 			// Their number is in the alloc_chunks counter
-			for(j = 0; j < bitmap_blocks; j++){
 
-				bitmap = m_area->use_bitmap[j];
+#define copy_to_area(x) ({\
+		memcpy((void*)((char*)m_area->area + ((x) * chunk_size)), ptr, chunk_size);\
+		ptr = (void*)((char*)ptr + chunk_size);})
 
-				// Check the allocation bitmap on a per-block basis, to enhance scan speed
-				if(bitmap == 0){
-					// Empty (no-chunks-allocated) block: skip to the next
-					continue;
+			bitmap_foreach_set(m_area->use_bitmap, bitmap_size, copy_to_area);
 
-				} else {
-					// Scan the bitmap on a per-bit basis
-					for(k = 0; k < NUM_CHUNKS_PER_BLOCK; k++){
-
-						if(CHECK_BIT_AT(bitmap, k)){
-
-							idx = j * NUM_CHUNKS_PER_BLOCK + k;
-							memcpy((void*)((char*)m_area->area + (idx * chunk_size)), ptr, chunk_size);
-							ptr = (void*)((char*)ptr + chunk_size);
-
-						}
-					}
-				}
-			}
+#undef copy_to_area
 		}
 
 	}
 
-
 	// Check whether there are more allocated areas which are not present in the log
-	if(original_num_areas > m_state[lid]->num_areas){
+	if (original_num_areas > lp->mm->m_state->num_areas) {
 
-		for(i = m_state[lid]->num_areas; i < original_num_areas; i++){
+		for (i = lp->mm->m_state->num_areas; i < original_num_areas; i++) {
 
-			m_area = &m_state[lid]->areas[i];
+			m_area = &lp->mm->m_state->areas[i];
 			m_area->alloc_chunks = 0;
 			m_area->dirty_chunks = 0;
 			m_area->state_changed = 0;
 			m_area->next_chunk = 0;
-			m_area->last_access = m_state[lid]->timestamp;
-			m_state[lid]->areas[m_area->prev].next = m_area->idx;
+			m_area->last_access = lp->mm->m_state->timestamp;
+			lp->mm->m_state->areas[m_area->prev].next = m_area->idx;
 
 			RESET_LOG_MODE_BIT(m_area);
 			RESET_AREA_LOCK_BIT(m_area);
 
-			if (m_area->use_bitmap != NULL) {
-				bitmap_blocks = m_area->num_chunks / NUM_CHUNKS_PER_BLOCK;
-				if(bitmap_blocks < 1)
-					bitmap_blocks = 1;
+			if (likely(m_area->use_bitmap != NULL)) {
+				bitmap_size = bitmap_required_size(m_area->num_chunks);
 
-				for(j = 0; j < bitmap_blocks; j++)
-					m_area->use_bitmap[j] = 0;
-				for(j = 0; j < bitmap_blocks; j++)
-                        	        m_area->dirty_bitmap[j] = 0;
+				memset(m_area->use_bitmap, 0, bitmap_size);
+				memset(m_area->dirty_bitmap, 0, bitmap_size);
 			}
 		}
-		m_state[lid]->num_areas = original_num_areas;
+		lp->mm->m_state->num_areas = original_num_areas;
 	}
 
-	m_state[lid]->timestamp = -1;
-	m_state[lid]->is_incremental = -1;
-	m_state[lid]->dirty_areas = 0;
-	m_state[lid]->dirty_bitmap_size = 0;
-	m_state[lid]->total_inc_size = 0;
+	lp->mm->m_state->timestamp = -1;
+	lp->mm->m_state->is_incremental = false;
+	lp->mm->m_state->dirty_areas = 0;
+	lp->mm->m_state->dirty_bitmap_size = 0;
+	lp->mm->m_state->total_inc_size = 0;
 
-	int recovery_time = timer_value_micro(recovery_timer);
-	statistics_post_lp_data(lid, STAT_RECOVERY_TIME, (double)recovery_time);
+	statistics_post_data(lp, STAT_RECOVERY_TIME, (double)timer_value_micro(recovery_timer));
 }
-
-
 
 /**
 * Upon the decision of performing a rollback operation, this function is invoked by the simulation
@@ -415,15 +350,16 @@ void restore_full(int lid, void *ckpt) {
 * @author Alessandro Pellegrini
 * @author Roberto Vitali
 *
-* @param lid The logical process' local identifier
-* @param queue_node a pointer to the simulation state which must be restored in the logical process
+* @param lp A pointer to the lp_struct of the LP for which we are restoring
+*           model-specific buffers keeping the simulation state
+* @param state_queue_node a pointer to a node in the state queue keeping the state
+*        which must be restored in the logical process live image
 */
-void log_restore(int lid, state_t *state_queue_node) {
-	statistics_post_lp_data(lid, STAT_RECOVERY, 1.0);
-	restore_full(lid, state_queue_node->log);
+void log_restore(struct lp_struct *lp, state_t *state_queue_node)
+{
+	statistics_post_data(lp, STAT_RECOVERY, 1.0);
+	restore_full(lp, state_queue_node->log);
 }
-
-
 
 /**
 * This function is called directly from the simulation platform kernel to delete a certain log
@@ -432,12 +368,12 @@ void log_restore(int lid, state_t *state_queue_node) {
 * @author Alessandro Pellegrini
 * @author Roberto Vitali
 *
-* @param queue_node a pointer to the simulation state which must be restored in the logical process
+* @param ckpt a pointer to the simulation state which must be deleted
 *
 */
-void log_delete(void *ckpt){
-	if(log != NULL) {
+void log_delete(void *ckpt)
+{
+	if (likely(ckpt != NULL)) {
 		rsfree(ckpt);
 	}
 }
-

@@ -21,7 +21,10 @@
 // Event types
 #define ALLOC		1
 #define DEALLOC 	2
+#define LOOP		3
 
+#define COMPLETE_EVENTS 10000	// for the LOOP traditional case
+#define LOOP_COUNT	1000
 
 
 // This is the events' payload which is exchanged across LPs
@@ -40,6 +43,11 @@ typedef struct _buffers {
 
 // LP simulation state
 typedef struct _lp_state_type {
+	bool traditional;
+	unsigned int events;
+	int loop_counter;
+
+
 	unsigned int cont_allocation;
 	unsigned int num_elementi;
 	int actual_size;
@@ -62,9 +70,10 @@ extern int	object_total_size,
 		max_size,
 		min_size,
 		num_buffers,
-		complete_alloc,
 		read_correction,
 		write_correction;
+extern unsigned int 
+		complete_alloc;
 extern double	write_distribution,
 		read_distribution,
 		tau;

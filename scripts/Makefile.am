@@ -22,9 +22,8 @@ do_subst = $(SED)	-e 's,[@]bindir[@],$(bindir),g' \
 			-e 's,[@]includedir[@],$(includedir),g' \
 			-e 's,[@]datadir[@],$(datadir),g' \
 			-e 's,[@]VERSION[@],$(VERSION),g' \
-			-e 's,[@]VERSION[@],$(VERSION),g' \
 			-e 's,[@]CC[@],$(CC),g' \
-			-e 's,[@]CFLAGS[@],$(PTHREAD_CFLAGS),g' \
+			-e 's,[@]CFLAGS[@],$(CFLAGS),g' \
 			-e 's,[@]ARCH[@],$(ARCH),g' \
 			-e 's,[@]scriptlines[@],$(SCRIPT_LINES),g' \
 			-e 's,[@]lddata1lines[@],$(LD_DATA1_LINES),g' \
