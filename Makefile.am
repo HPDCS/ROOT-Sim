@@ -22,7 +22,7 @@ BUILT_SOURCES = src/arch/asm_defines.h
 CLEANFILES = src/arch/asm_defines.h
 src/arch/asm_defines.h: src/arch/asm_defines.c
 	echo "Generating defines for assembly modules..."
-	@$(COMPILE) -DASM_DEFINES -S $< -o - | $(AWK) '($$1 == "->") { print "#define " $$2 " " substr($$3, 2) }' > $(top_srcdir)/$@ 
+	@$(COMPILE) -DASM_DEFINES -S $< -o - | $(AWK) '($$1 == "->") { print "#define " $$2 " " substr($$3, 2) }' > $(top_srcdir)/$@
 
 
 # From here on, there are main ROOT-Sim build rules
@@ -52,9 +52,9 @@ librootsim_a_SOURCES =	src/main.c \
 			src/gvt/fossil.c \
 			src/gvt/ccgs.c \
 			src/lib/topology/topology.c \
-			src/lib/topology/topology_costs.c \
-			src/lib/topology/topology_obstacles.c \
-			src/lib/topology/topology_probabilities.c \
+			src/lib/topology/costs.c \
+			src/lib/topology/obstacles.c \
+			src/lib/topology/probabilities.c \
 			src/lib/numerical.c \
 			src/lib/abm_layer.c \
 			src/lib/jsmn_helper.c \
