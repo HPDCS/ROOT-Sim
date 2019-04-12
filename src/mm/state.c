@@ -1,7 +1,17 @@
 /**
-*                       Copyright (C) 2008-2018 HPDCS Group
-*                       http://www.dis.uniroma1.it/~hpdcs
+* @file mm/state.c
 *
+* @brief LP state management
+*
+* The state module is responsible for managing LPs' simulation states.
+* In particular, it allows to take a snapshot, to restore a previous snapshot,
+* and to silently re-execute a portion of simulation events to bring
+* a LP to a partiuclar LVT value for which no simulation state is available
+* in the log chain.
+*
+* @copyright
+* Copyright (C) 2008-2019 HPDCS Group
+* https://hpdcs.github.io
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
 *
@@ -17,11 +27,6 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file state.c
-* @brief The state module is responsible for managing LPs' simulation states.
-*	In particular, it allows to take a snapshot, to restore a previous snapshot,
-*	and to silently re-execute a portion of simulation events to bring
-*	a LP to a partiuclar LVT value for which no simulation state
 * @author Francesco Quaglia
 * @author Alessandro Pellegrini
 */
@@ -44,7 +49,8 @@
 /**
 * This function is used to create a state log to be added to the LP's log chain
 *
-* @param lid The Light Process Identifier
+* @param lp A pointer to the lp_struct of the LP for which a checkpoint
+*           is to be taken.
 */
 bool LogState(struct lp_struct *lp)
 {
@@ -105,6 +111,16 @@ bool LogState(struct lp_struct *lp)
 		memcpy(&new_state->numerical, &lp->numerical,
 		       sizeof(numerical_state_t));
 
+		if(&topology_settings && topology_settings.write_enabled){
+			new_state->topology = rsalloc(topology_global.chkp_size);
+			memcpy(new_state->topology, lp->topology,
+					topology_global.chkp_size);
+		}
+
+		if(&abm_settings){
+			new_state->region_data = abm_do_checkpoint(lp->region);
+		}
+
 		// Link the new checkpoint to the state chain
 		list_insert_tail(lp->queue_states, new_state);
 
@@ -126,6 +142,14 @@ void RestoreState(struct lp_struct *lp, state_t * restore_state)
 	memcpy(&lp->numerical, &restore_state->numerical,
 	       sizeof(numerical_state_t));
 
+	if(&topology_settings && topology_settings.write_enabled){
+		memcpy(lp->topology, restore_state->topology,
+				topology_global.chkp_size);
+	}
+
+	if(&abm_settings)
+		abm_restore_checkpoint(restore_state->region_data, lp->region);
+
 #ifdef HAVE_CROSS_STATE
 	lp->ECS_index = 0;
 	lp->wait_on_rendezvous = 0;
@@ -139,14 +163,14 @@ void RestoreState(struct lp_struct *lp, state_t * restore_state)
 * @author Francesco Quaglia
 * @author Alessandro Pellegrini
 *
-* @param lid The id of the Light Process
-* @param state_buffer The simulation state to be passed to the LP
+* @param lp A pointer to the LP's lp_struct for which we want to silently
+*           reprocess already-executed events
 * @param evt A pointer to the event from which start the re-execution
-* @param final_evt A pointer to the first event which should not be reprocessed in silent execution
+* @param final_evt A pointer to the first event which should *not* be reprocessed in silent execution
 *
 * @return The number of events re-processed during the silent execution
 */
-unsigned int silent_execution(struct lp_struct *lp, msg_t * evt, msg_t * final_evt)
+unsigned int silent_execution(struct lp_struct *lp, msg_t *evt, msg_t *final_evt)
 {
 	unsigned int events = 0;
 	unsigned short int old_state;
@@ -191,7 +215,7 @@ unsigned int silent_execution(struct lp_struct *lp, msg_t * evt, msg_t * final_e
 * @author Francesco Quaglia
 * @author Alessandro Pellegrini
 *
-* @param lid The Logical Process Id
+* @param lp A pointer to the lp_struct of the LP to rollback
 */
 void rollback(struct lp_struct *lp)
 {
@@ -241,13 +265,17 @@ void rollback(struct lp_struct *lp)
 }
 
 /**
-* This function computes the time barrier, namely the first state snapshot
-* which is associated with a simulation time <= that the passed simtime
+* This function computes a time barrier, namely the first state snapshot
+* which is associated with a simulation time <= than the simtime value
+* passed as an argument.
+* The time barrier, in the runtime environment, is used to safely install
+* a new computed GVT.
 *
 * @author Francesco Quaglia
 * @author Alessandro Pellegrini
 *
-* @param lid The light Process Id
+* @param lp A pointer to the lp_struct of the LP for which we are looking
+*           for the current time barrier
 * @param simtime The simulation time to be associated with a state barrier
 * @return A pointer to the state that represents the time barrier
 */
@@ -314,7 +342,8 @@ void set_checkpoint_mode(int ckpt_mode)
 * @author Francesco Quaglia
 * @author Alessandro Pellegrini
 *
-* @param lid The Logical Process Id
+* @param lp A pointer to the LP's lp_struct which should have its
+*           checkpoint period changed.
 * @param period The new checkpoint period
 */
 void set_checkpoint_period(struct lp_struct *lp, int period)
@@ -329,7 +358,8 @@ void set_checkpoint_period(struct lp_struct *lp, int period)
 *
 * @author Alessandro Pellegrini
 *
-* @param lid The Logical Process Id
+* @param lp A pointer to the lp_struct of the LP for which the checkpoint
+*           shold be forced after the next call to LogState()
 */
 void force_LP_checkpoint(struct lp_struct *lp)
 {

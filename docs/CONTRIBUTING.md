@@ -5,6 +5,21 @@ Thanks for your interest in ROOT-Sim! ROOT-Sim stems from an inter-university re
 
 This guide is intended to give you some advices on how to contribute to the project, ensuring that your patches are consistent with the code base and easy to maintain by people which will come after you.
 
+## TL;DR
+
+If you want to contribute to ROOT-Sim, these are the essential steps:
+
+* Fork a new branch named `hotfix-*` from `master` if you want to provide a bugfix for a bug in production, or named _whatever_ from `develop` if you want to provide a new feature.
+* Implement your changes, trying to adhere to coding styles as much as possible. Use `doxygen` syntax to document _functions_, _variables_, _structures_, _enums_, _global variables_, everything!
+* Update `ChangeLog` in the `[Unreleased]` section.
+* Update the wiki (if necessary).
+* Update manpages (if necessary).
+* Clone `gh-pages` and create a post describing your new feature (it's made using [jekyll](https://jekyllrb.com/])).
+* Test everything using the script `./scripts/tests.sh` (Travis-CI does that for you every time that you commit on your branch).
+* Create a pull request to `develop` or `master`. A `hotfix-*` branch should be merged in both.
+
+Thanks a lot for your help!
+
 
 Branching Model
 ---------------
@@ -405,42 +420,46 @@ Documentation
 
 ROOT-Sim documentation is organised into three different parts, some of which are updated automatically, others need manual intervention.
 
+### Change Log
+
+The `ChangeLog` file in the master folder is an important living document which should be updated any time that a new feature is added, or something is changed in the code. Therefore, before committing to any branch, take some time to understand whether you should put some note on what you are doing in that file. This simplifies a lot the release of a new version, as this reduces the time required to navigate back the git log.
+
+Changes in the `ChangeLog` file should go in the `[Unreleased]` section which is at the top of the file. This also helps users at understanding what changes are expected to come in the next releases.
+
+Once a new release is being rolled out, the `[Unreleased]` section should be renamed into the release version, and a new empty `[Unreleased]` section should be created. This new section should carry all the required subsections (`Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`) which are later removed upon a release, if they are empty.
+
 ### Doxygen
 
 Please use Doxygen to comment your code. Any time that a new version is merged into `master`, the continuous integration system will rebuild the documentation and publish it on the project website, to be sure that everything is always up to date.
 
-For blocks, we use the following syntax
-```
+For blocks, we use the following syntax:
+```c
 /**
  * @file buddy.h
  * @brief Buddy-system memory allocator
  */
-```     
- 
- On the other hand, for one-line comments, we use the following syntax:
- 
 ```
+
+ On the other hand, for one-line comments, we use the following syntax:
+
+```c
 struct tw_lptype {
-        init_f init; /**< @brief LP setup routine */
-        pre_run_f pre_run; /**< @brief Second stage LP initialization */
-    };
+	init_f init; ///< LP setup routine
+	pre_run_f pre_run; ///< Second stage LP initialization
+};
 ```
 
 Comments using `///` can also be used, but they must be placed before the definition which the comment is referring to, in order for Doxygen to correctly use it.
 
 ### Wiki
 
-Wiki is a quite important part of the project. There is no actual way to keep it updated automatically. Please, take some time when contributing to mark changes in the wiki as well!
+Wiki is a quite important part of the project. Please, take some time when contributing to mark changes in the wiki as well! There are some pages of the wiki (those related to download, usage, and system libraries) which are automatically reflected in the website by the continuous integration system, so do keep them updated.
 
 ### Manpages
 
 manpages should document anything that is exposed to application-model developers. They are located in the `man/` subforlder of the project.
 
 Anytime that you add or modify something that is exposed, please take time to update manpages. This significantly helps at keeping the quality of the project high.
-
-manpages
-
-
 
 Short Notes on the Project Website
 ----------------------------------

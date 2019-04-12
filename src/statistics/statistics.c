@@ -1,30 +1,55 @@
 /**
-*			Copyright (C) 2008-2018 HPDCS Group
-*			http://www.dis.uniroma1.it/~hpdcs
-*
-*
-* This file is part of ROOT-Sim (ROme OpTimistic Simulator).
-*
-* ROOT-Sim is free software; you can redistribute it and/or modify it under the
-* terms of the GNU General Public License as published by the Free Software
-* Foundation; only version 3 of the License applies.
-*
-* ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
-* WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-* A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-*
-* You should have received a copy of the GNU General Public License along with
-* ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
-* 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-*
-* @file statistics.c
-* @brief State Management Subsystem
-* @author Francesco Quaglia
-* @author Andrea Piccione
-* @author Alessandro Pellegrini
-* @author Tommaso Tocci
-* @author Roberto Vitali
-*/
+ * @file statistics/statistics.c
+ *
+ * @brief Statistics module
+ *
+ * All facitilies to collect, gather, and dump statistics are implemented
+ * in this module. The statistics subsystem relies on the struct @ref stat_t
+ * type to keep the relevant fields. Every statistic variable *must* be
+ * a @c double, because the aggregation functions are type-agnostic and
+ * consider every value to be a @c double. This allows to speedup some
+ * aggregations by relying on vectorized instructions.
+ *
+ * There are two main entry points in this module:
+ *
+ * * statistics_post_data() can be called anywhere in the runtime library,
+ *   allowing to specify a numerical code which identifies some statistic
+ *   information. A value can be also passed, which is handled depending on
+ *   the type of statistics managed. This function allows to update statistics
+ *   values for each LP of the system.
+ *
+ * * statistics_get_lp_data() can be called to retrieve current per-LP
+ *   statistical values. This is useful to implement autonomic policies
+ *   which self-tune the behaviour of the runtime depending on, e.g.,
+ *   workload factors.
+ *
+ * At the end of the simulation (or if the simulation is stopped), this
+ * module implements a coordination protocol to reduce all values, both
+ * at a machine level, and among distributed processes (using MPI).
+ *
+ * @copyright
+ * Copyright (C) 2008-2019 HPDCS Group
+ * https://hpdcs.github.io
+ *
+ * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
+ *
+ * ROOT-Sim is free software; you can redistribute it and/or modify it under the
+ * terms of the GNU General Public License as published by the Free Software
+ * Foundation; only version 3 of the License applies.
+ *
+ * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+ * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+ *
+ * @author Andrea Piccione
+ * @author Alessandro Pellegrini
+ * @author Tommaso Tocci
+ * @author Roberto Vitali
+ */
 
 #include <unistd.h>
 #include <stdio.h>
@@ -95,13 +120,17 @@ static struct stat_t system_wide_stats = {.gvt_round_time_min = INFTY};
 struct stat_t global_stats = {.gvt_round_time_min = INFTY};
 #endif
 
-/*!
- * @brief This is a pseudo asprintf() implementation needed in order to stop GCC 8 from complaining
- * @param format the format string as in the real asprintf()
- * @param ... the arguments list as in the real asprintf()
- * @returns a mallocated string containing the snprintf()-processed string
+/**
+ * This is a pseudo asprintf() implementation needed in order to stop GCC 8 from complaining
  *
- *	TODO: transform into a function for safety
+ * @param ret_addr A char ** pointer where the function stores the
+ *                 address of a large-enough string to hold the output
+ * @param format The format string as in the real asprintf()
+ * @param ... The arguments list as in the real asprintf()
+ *
+ * @return a malloc'd string containing the snprintf()-processed string
+ *
+ * @todo tranform into a function for safety.
  * GCC 8 cares a lot for our security so we have to be sure snprintf() doesn't truncate.
  */
 #define safe_asprintf(ret_addr, format, ...) ({					\
@@ -224,7 +253,6 @@ static void print_config_to_file(FILE *f)
 		"Halt Simulation After: %d\n"
 		"LPs Distribution Mode across Kernels: %s\n"
 		"Check Termination Mode: %s\n"
-		"Blocking GVT: %s\n"
 		"Set Seed: %ld\n",
 		n_ker,
 		get_cores(),
@@ -242,7 +270,6 @@ static void print_config_to_file(FILE *f)
 		rootsim_config.simulation_time,
 		param_to_text[PARAM_LPS_DISTRIBUTION][rootsim_config.lps_distribution],
 		param_to_text[PARAM_CKTRM_MODE][rootsim_config.check_termination_mode],
-		((rootsim_config.blocking_gvt)? "yes":"no"),
 		rootsim_config.set_seed);
 }
 

@@ -1,7 +1,13 @@
 /**
-*			Copyright (C) 2008-2018 HPDCS Group
-*			http://www.dis.uniroma1.it/~hpdcs
+* @file mm/dymelor.c
 *
+* @brief Dynamic Memory Logger and Restorer (DyMeLoR)
+*
+* LP's memory manager.
+*
+* @copyright
+* Copyright (C) 2008-2019 HPDCS Group
+* https://hpdcs.github.io
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
 *
@@ -17,11 +23,12 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file dymelor.c
-* @brief LP's memory pre-allocator. This layer stands below DyMeLoR, and is the
-* 		connection point to the Linux Kernel Module for Memory Management, when
-* 		activated.
+* @author Roberto Toccaceli
 * @author Alessandro Pellegrini
+* @author Roberto Vitali
+* @author Francesco Quaglia
+*
+* @date April 02, 2008
 */
 
 #include <core/init.h>
@@ -65,14 +72,7 @@ static void malloc_area_init(malloc_area * m_area, size_t size, int num_chunks)
 }
 
 /**
-* This function inizializes a malloc_state
-*
-* @author Roberto Toccaceli
-* @author Francesco Quaglia
-* @author Alessandro Pellegrini
-* @author Roberto Vitali
-*
-* @param state The pointer to the malloc_state to initialize
+* This function inizializes a malloc_state.
 */
 malloc_state *malloc_state_init(void)
 {
@@ -669,7 +669,8 @@ void *__wrap_realloc(void *ptr, size_t size)
 *
 * @author Roberto Vitali
 *
-* @param size The size of the allocation
+* @param nmemb The number of elements to be allocated
+* @param size The size of each allocated member
 * @return A pointer to the newly allocated buffer
 *
 */
@@ -709,11 +710,8 @@ void clean_buffers_on_gvt(struct lp_struct *lp, simtime_t time_barrier)
 
 			if (m_area->self_pointer != NULL) {
 
-#ifdef HAVE_PARALLEL_ALLOCATOR
-				free_lp_memory(lp, m_area->self_pointer);
-#else
+				//free_lp_memory(lp, m_area->self_pointer);
 				rsfree(m_area->self_pointer);
-#endif
 
 				m_area->use_bitmap = NULL;
 				m_area->dirty_bitmap = NULL;

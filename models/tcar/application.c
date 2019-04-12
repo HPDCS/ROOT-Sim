@@ -4,19 +4,20 @@
 
 #include "application.h"
 
+struct _topology_settings_t topology_settings = {.type = TOPOLOGY_OBSTACLES, .write_enabled = false, .default_geometry = TOPOLOGY_SQUARE};
+struct _abm_settings_t abm_settings = {sizeof(unsigned), _TRAVERSE, false};
 
-void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *event_content, int event_size, lp_state_type *pointer) {
+void ProcessEvent(unsigned me, simtime_t now, int event_type, void *unused, unsigned event_size, lp_state_type *pointer) {
 
-	event_content_type new_event_content;
+	(void) me;
+	(void) unused;
+	(void) event_size;
 
-	new_event_content.cell = -1;
-	new_event_content.new_trails = -1;
-
-	int i;
-	int receiver, TEMP;
-	int trails;
-
-	simtime_t timestamp=0;
+	unsigned i, j;
+	unsigned receiver;
+	unsigned *trails_p;
+	unsigned min_trails;
+	simtime_t timestamp = 0;
 
 	switch(event_type) {
 
@@ -24,41 +25,26 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 
 			pointer = (lp_state_type *)malloc(sizeof(lp_state_type));
 			if(pointer == NULL){
-				rootsim_error(true, "%s:%d: Unable to allocate memory!\n", __FILE__, __LINE__);
+				printf("Out of memory!\n");
+				exit(EXIT_FAILURE);
 			}
+			pointer->trails = 0;
 			SetState(pointer);
 
-			if(NUM_CELLE_OCCUPATE > n_prc_tot){
-				rootsim_error(true, "%s:%d: Require more cell than available LPs\n", __FILE__, __LINE__);
+			if(OCCUPIED_CELLS > n_prc_tot){
+				printf("We require more cells to start the simulation!\n");
+				exit(EXIT_FAILURE);
 			}
 
-			if((NUM_CELLE_OCCUPATE % 2) == 0){
-				//Occupo le "prime" e "ultime" celle
-				if(me < (NUM_CELLE_OCCUPATE/2) || me >= ((n_prc_tot)-(NUM_CELLE_OCCUPATE/2))) {
-					for(i = 0; i < ROBOT_PER_CELLA; i++) {
-						// genero un evento di REGION_IN
-						ScheduleNewEvent(me, now + (simtime_t)(20 * Random()), REGION_IN, NULL, 0);
-					}
-				}
-			} else {
-				if(me <= (NUM_CELLE_OCCUPATE / 2) || me >= ((n_prc_tot) - (NUM_CELLE_OCCUPATE / 2))){
-					for(i = 0; i < ROBOT_PER_CELLA; i++){
-						// genero un evento di REGION_IN
-						ScheduleNewEvent(me, now + (simtime_t)(20 * Random()), REGION_IN, NULL, 0);
-					}
+			// Occupy the "first" and "last" cells
+			if(me < ((OCCUPIED_CELLS + 1)/2) || me >= ((n_prc_tot)-(OCCUPIED_CELLS/2))) {
+				for(i = 0; i < ROBOTS_PER_CELL; i++) {
+					ScheduleNewEvent(me, now + (simtime_t)(20 * Random()), REGION_IN, NULL, 0);
 				}
 			}
 
-
-			// Set the values for neighbours. If one is non valid, then set it to -1
-			for(i = 0; i < 6; i++) {
-				if(isValidNeighbour(me, i)) {
-					pointer->neighbour_trails[i] = 0;
-				} else {
-					pointer->neighbour_trails[i] = -1;
-				}
-			}
-
+			TrackNeighbourInfo(&pointer->trails);
+			ScheduleNewEvent(me, now + 10, PING, NULL, 0);
 			break;
 
 
@@ -66,57 +52,34 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 
 			pointer->trails++;
 
-			new_event_content.cell = me;
-			new_event_content.new_trails = pointer->trails;
-
-			for (i = 0; i < 6; i++) {
-				if(pointer->neighbour_trails[i] != -1) {
-					receiver = GetNeighbourId(me, i);
-					if(receiver >= n_prc_tot || receiver < 0)
-						printf("%s:%d: %d -> %d\n", __FILE__, __LINE__, me, receiver);
-					ScheduleNewEvent(receiver, now + TIME_STEP/100000, UPDATE_NEIGHBORS, &new_event_content, sizeof(new_event_content));
-				}
-			}
-
-			// genero un evento di REGION_OUT
 			ScheduleNewEvent(me, now + TIME_STEP/100000, REGION_OUT, NULL, 0);
 
 			break;
 
-
-		case UPDATE_NEIGHBORS:
-
-			for (i = 0; i < 6; i++) {
-				if(event_content->cell == GetNeighbourId(me, i)) {
-					pointer->neighbour_trails[i] = event_content->new_trails;
-				}
-			}
-
-			break;
-
-
 		case REGION_OUT:
 
 			// Go to the neighbour who has the smallest trails count
-			trails = INT_MAX;
-			for(i = 0; i < 6; i++) {
-				if(pointer->neighbour_trails[i] != -1) {
-					if(pointer->neighbour_trails[i] < trails) {
-						trails = pointer->neighbour_trails[i];
-						receiver = i;
-					}
+			min_trails = UINT_MAX;
+			i = DirectionsCount();
+			while(i--) {
+				if(GetNeighbourInfo(i, &j, (void **)&trails_p) != -1 && min_trails > *trails_p){
+					min_trails = *trails_p;
+					receiver = j;
 				}
 			}
-			TEMP = receiver;
-			receiver = GetNeighbourId(me, receiver);
 
-			switch (DISTRIBUZIONE) {
+			while(1){
+				if(GetNeighbourInfo(Random()*DirectionsCount(), &receiver, (void **)&trails_p) != -1 && min_trails == *trails_p)
+					break;
+			}
 
-				case UNIFORME:
+			switch (DISTRIBUTION) {
+
+				case UNIFORM:
 					timestamp= now + (simtime_t) (TIME_STEP * Random());
 					break;
 
-				case ESPONENZIALE:
+				case EXPONENTIAL:
 					timestamp= now + (simtime_t)(Expent(TIME_STEP));
 					break;
 
@@ -126,23 +89,25 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 
 			}
 
-					if(receiver >= n_prc_tot || receiver < 0)
-						printf("%s:%d: %d -> %d\n", __FILE__, __LINE__, me, receiver);
 			ScheduleNewEvent(receiver, timestamp, REGION_IN, NULL, 0);
 			break;
 
+		case PING:
+			ScheduleNewEvent(me, now + 10, PING, NULL, 0);
+			break;
+		case _TRAVERSE:
       		default:
-			rootsim_error(true, "Error: unsupported event: %d\n", event_type);
+      			printf("Unsupported event!\n");
+      			exit(EXIT_FAILURE);
 			break;
 	}
 }
 
 
-// funzione dell'applicazione invocata dalla piattaforma
-// per stabilire se la simulazione e' terminata
 int OnGVT(unsigned int me, lp_state_type *snapshot) {
+	(void) me;
 
- 	if(snapshot->trails > VISITE_MINIME)
+ 	if(snapshot->trails > MINIMUM_VISITS)
 		return true;
 
 	return false;

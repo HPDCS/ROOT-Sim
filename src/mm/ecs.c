@@ -1,7 +1,14 @@
 /**
-*			Copyright (C) 2008-2018 HPDCS Group
-*			http://www.dis.uniroma1.it/~hpdcs
+* @file mm/ecs.c
 *
+* @brief Event & Cross State Synchornization
+*
+* Event & Cross State Synchronization. This module implements the userspace handler
+* of the artificially induced memory faults to implement transparent distributed memory.
+*
+* @copyright
+* Copyright (C) 2008-2019 HPDCS Group
+* https://hpdcs.github.io
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
 *
@@ -17,12 +24,9 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file ecs.c
-* @brief Event Cross State Synchronization. This module implements the userspace handler
-*        of the artificially induced memory faults to implement transparent distributed memory.
 * @author Alessandro Pellegrini
-* @author Matteo Principe
 * @author Francesco Quaglia
+* @author Matteo Principe
 */
 
 #ifdef HAVE_CROSS_STATE

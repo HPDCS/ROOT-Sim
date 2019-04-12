@@ -7,8 +7,6 @@
 #include <sys/types.h>
 #include <pthread.h>
 #include <stdlib.h>
-#include <stdio.h>
-#include <stdarg.h>
 
 #define actual_malloc(siz) malloc(siz)
 #define actual_free(ptr) free(ptr)
@@ -16,9 +14,11 @@
 #include <mm/mm.h>
 #include <core/init.h>
 
-#define N_TOTAL		500
+#include "common.h"
+
+#define N_TOTAL		50
 #define N_THREADS	4
-#define N_TOTAL_PRINT	50
+#define N_TOTAL_PRINT	5
 #define MEMORY		(1ULL << 26)
 
 #define RANDOM(s)	(rng() % (s))
@@ -64,57 +64,10 @@ int n_total = 0;
 int n_total_max = N_TOTAL;
 int n_running;
 
-simulation_configuration rootsim_config = { 0 };
 
-__thread struct lp_struct *current;
-__thread struct lp_struct context;
 __thread struct thread_st *st;
-unsigned int n_prc_tot;
 
-void _rootsim_error(bool fatal, const char *msg, ...)
-{
-	char buf[1024];
-	va_list args;
-
-	va_start(args, msg);
-	vsnprintf(buf, 1024, msg, args);
-	va_end(args);
-
-	fprintf(stderr, (fatal ? "[FATAL ERROR] " : "[WARNING] "));
-
-	fprintf(stderr, "%s", buf);
-	fflush(stderr);
-
-	if (fatal) {
-		exit(EXIT_FAILURE);
-	}
-}
-
-void *__real_malloc(size_t size)
-{
-	return actual_malloc(size);
-}
-
-void __real_free(void *ptr)
-{
-	actual_free(ptr);
-}
-
-void *__real_realloc(void *ptr, size_t size)
-{
-	(void)ptr;
-	(void)size;
-	abort();
-}
-
-void *__real_calloc(size_t nmemb, size_t size)
-{
-	(void)nmemb;
-	(void)size;
-	abort();
-}
-
-/*
+	/*
  * Ultra-fast RNG: Use a fast hash of integers.
  * 2**64 Period.
  * Passes Diehard and TestU01 at maximum settings

@@ -1,27 +1,41 @@
 /**
-*                       Copyright (C) 2008-2018 HPDCS Group
-*                       http://www.dis.uniroma1.it/~hpdcs
-*
-*
-* This file is part of ROOT-Sim (ROme OpTimistic Simulator).
-*
-* ROOT-Sim is free software; you can redistribute it and/or modify it under the
-* terms of the GNU General Public License as published by the Free Software
-* Foundation; only version 3 of the License applies.
-*
-* ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
-* WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-* A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-*
-* You should have received a copy of the GNU General Public License along with
-* ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
-* 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-*
-* @file ult.h
-* @brief The User-Level Thread module allows the creation/scheduling of a user-level thread
-* 	in an architecture-dependent way.
-* @author Alessandro Pellegrini
-*/
+ * @file arch/ult.h
+ *
+ * @brief User-Level Threads Headers
+ *
+ * The User-Level Thread module allows the creation/scheduling of multiple
+ * co-routines which can yield the CPU to a different one, or that can
+ * be preëmpted by some asynchronous event.
+ *
+ * Due to the possibility of external preëmption, ULTs store the whole
+ * CPU context in an ad-hoc buffer. This is a significant difference with
+ * respect standard facilities such as setjmp/longjmp which only store
+ * callee-save registers.
+ *
+ * ULTs are used to implement both runtime-level routines (each worker
+ * thread has its own execution context) and model-level routines (each
+ * LP has its own execution context).
+ *
+ * @copyright
+ * Copyright (C) 2008-2019 HPDCS Group
+ * https://hpdcs.github.io
+ *
+ * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
+ *
+ * ROOT-Sim is free software; you can redistribute it and/or modify it under the
+ * terms of the GNU General Public License as published by the Free Software
+ * Foundation; only version 3 of the License applies.
+ *
+ * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+ * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+ *
+ * @author Alessandro Pellegrini
+ */
 
 #pragma once
 
@@ -35,10 +49,23 @@
 
 #include <arch/jmp.h>
 
+/// Definition of an execution context for an LP. This is just syntactic sugar.
 typedef exec_context_t LP_context_t;
+
+/// Definition of an execution context for a worker thread. This is just syntactic sugar.
 typedef exec_context_t kernel_context_t;
 
-/// Save machine context for userspace context switch. This is used only in initialization.
+/**
+ * @brief Save machine context for userspace context switch
+ *
+ * This macro performs a context save in the specified context (a pointer).
+ *
+ * This is used only in initialization to setup the execution contexts.
+ * After that, the platform only relies on context_switch()
+ *
+ * @param context A pointer to the @ref exec_context_t to save the current
+ *                CPU context into.
+ */
 #define context_save(context) set_jmp(context)
 
 /// Restore machine context for userspace context switch. This is used only in inizialitaion.

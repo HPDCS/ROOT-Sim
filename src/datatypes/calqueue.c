@@ -1,7 +1,26 @@
 /**
-*			Copyright (C) 2008-2018 HPDCS Group
-*			http://www.dis.uniroma1.it/~hpdcs
+* @file datatypes/calqueue.c
 *
+* @brief Calendar Queue Implementation
+*
+* Classical Calendar Queue implementation. It is an array of lists of
+* events which reorganizes itself upon each insertion/deletion, ensuring
+* amortized O(1) operations.
+*
+* Due to the nature of the calendar queue, you cannot insert events which
+* "happen before" the last extracted events, otherwise the list breaks
+* and starts returning dummy events.
+*
+* For a thorough description of the algorithm, refer to:
+*
+* R. Brown
+* “Calendar Queues: A Fast 0(1) Priority Queue Implementation for the
+* Simulation Event Set Problem”
+* CACM, Vol. 31, No. 10, pp. 1220-1227, Oct. 1988.
+*
+* @copyright
+* Copyright (C) 2008-2019 HPDCS Group
+* https://hpdcs.github.io
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
 *
@@ -17,8 +36,6 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file calqueue.c
-* @brief A Calendar Queue Implementation
 * @author R. Brown
 */
 #include <stdlib.h>

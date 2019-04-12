@@ -1,7 +1,13 @@
 /**
-*                       Copyright (C) 2008-2018 HPDCS Group
-*                       http://www.dis.uniroma1.it/~hpdcs
+* @file communication/wnd.h
 *
+* @brief Message delivery support
+*
+* Message delivery support
+*
+* @copyright
+* Copyright (C) 2008-2019 HPDCS Group
+* https://hpdcs.github.io
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
 *
@@ -17,15 +23,10 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file wnd.c
-* @brief Message Delivery Support Module
 * @author Tommaso Tocci
 */
 
 #pragma once
-
-#ifndef _WND_H_
-#define _WND_H_
 
 #ifdef HAVE_MPI
 
@@ -36,27 +37,25 @@
 #include <ROOT-Sim.h>
 #include <arch/atomic.h>
 
+/// The structure representing a node in the @ref outgoing_queue list
 typedef struct _outgoing_msg {
-	MPI_Request req;
-	struct _outgoing_msg *next;
-	struct _outgoing_msg *prev;
-	msg_t *msg;
+	MPI_Request req;		///< The MPI Request used to keep track of the delivery operation
+	struct _outgoing_msg *next;	///< next pointer for the list
+	struct _outgoing_msg *prev;	///< prev pointer for the list
+	msg_t *msg;			///< A pointer to the @ref msg_t which MPI is delivering
 } outgoing_msg;
 
+
+/// An outgoing queue, to keep track of pending MPI-based message delivery
 typedef struct _outgoing_queue {
-	spinlock_t lock;
-	 list(outgoing_msg) queue;
+	spinlock_t lock;		///< A lock used to protect access to the actual queue
+	list(outgoing_msg) queue;	///< The actual list of pending message delivery operations
 } outgoing_queue;
 
-void outgoing_window_init(void);
-void outgoing_window_finalize(void);
-outgoing_msg *allocate_outgoing_msg(void);
-bool is_msg_delivered(outgoing_msg * msg);
-void store_outgoing_msg(outgoing_msg * out_msg, unsigned int dest_kid);
-int prune_outgoing_queue(outgoing_queue * oq);
-int prune_outgoing_queues(void);
-simtime_t min_timestamp_outgoing_msgs(void);
-size_t outgoing_queues_size(void);
+extern void outgoing_window_init(void);
+extern void outgoing_window_finalize(void);
+extern void store_outgoing_msg(outgoing_msg * out_msg, unsigned int dest_kid);
+extern int prune_outgoing_queues(void);
+extern outgoing_msg *allocate_outgoing_msg(void);
 
-#endif				/* HAVE_MPI */
-#endif				/* _WND_H_ */
+#endif	/* HAVE_MPI */

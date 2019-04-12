@@ -1,7 +1,18 @@
 /**
-*			Copyright (C) 2008-2018 HPDCS Group
-*			http://www.dis.uniroma1.it/~hpdcs
+* @file arch/x86/jmp.S
+* 
+* @brief x86 ULT support header
 *
+* This header defines all the facilities to implement User-Level Threads
+* on x86.
+*
+* The core of the implementation is found in jmp.S which is written in
+* assembly. jmp.S is undocumented here, but looking at its source will
+* give an explanation of all the functions and how they behave.
+*
+* @copyright
+* Copyright (C) 2008-2019 HPDCS Group
+* https://hpdcs.github.io
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
 *
@@ -16,10 +27,9 @@
 * You should have received a copy of the GNU General Public License along with
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-*
-* @file jmp.S
-* @brief setjmp / longjmp variant which saves all registers
+* 
 * @author Alessandro Pellegrini
+* 
 * @date December, 2015
 */
 

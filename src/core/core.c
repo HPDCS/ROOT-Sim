@@ -1,7 +1,13 @@
 /**
-*			Copyright (C) 2008-2018 HPDCS Group
-*			http://www.dis.uniroma1.it/~hpdcs
+* @file core/core.c
 *
+* @brief Core ROOT-Sim functionalities
+*
+* Core ROOT-Sim functionalities
+*
+* @copyright
+* Copyright (C) 2008-2019 HPDCS Group
+* https://hpdcs.github.io
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
 *
@@ -17,12 +23,10 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file core.c
-* @brief This module implements core functionalities for ROOT-Sim and declares
-*        core global variables for the simulator
 * @author Francesco Quaglia
 * @author Alessandro Pellegrini
 * @author Roberto Vitali
+*
 * @date 3/18/2011
 */
 
@@ -184,9 +188,9 @@ void simulation_shutdown(int code)
 
 		if (master_thread()) {
 			statistics_fini();
-			scheduler_fini();
 			gvt_fini();
 			communication_fini();
+			scheduler_fini();
 			base_fini();
 		}
 

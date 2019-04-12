@@ -1,7 +1,13 @@
 /**
-*			Copyright (C) 2008-2018 HPDCS Group
-*			http://www.dis.uniroma1.it/~hpdcs
+* @file lib/numerical.h
 *
+* @brief Numerical Library
+*
+* Piece-Wise Deterministic Random Number Generators.
+*
+* @copyright
+* Copyright (C) 2008-2019 HPDCS Group
+* https://hpdcs.github.io
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
 *
@@ -17,12 +23,9 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file numerical.h
-* @brief This header is used to define symbols which must be accessible by the simulator
-* 	but not by the application-level code. Any symbol needed by the application-
-* 	level code (i.e. random distributions) is found in ROOT-Sim.h
-*        numerical distribution implementations
 * @author Alessandro Pellegrini
+*
+* @date March 16, 2011
 */
 
 #pragma once
@@ -43,3 +46,25 @@ typedef struct _numerical_state {
 } numerical_state_t;
 
 void numerical_init(void);
+
+
+// without this stuff dijkstra on thousands of nodes would probably fail horribly:
+// this is needed in order to lose less precision on hundreds of double additions
+
+/// this represents a partial Neumaier sum
+struct _sum_helper_t{
+	double sum;
+	double crt;
+};
+
+double 			NeumaierSum	(unsigned cnt, double addendums[cnt]);
+struct _sum_helper_t 	PartialNeumaierSum(struct _sum_helper_t sh, double addendum);
+
+#define ValueSumHelper(a) (a.crt + a.sum)
+
+#define CmpSumHelpers(a, b) ({\
+	double __a_s = a.sum + a.crt;\
+	double __b_s = b.sum + b.crt;\
+	(__a_s > __b_s) - (__b_s > __a_s);\
+})
+

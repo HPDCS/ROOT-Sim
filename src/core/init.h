@@ -1,7 +1,13 @@
 /**
-*			Copyright (C) 2008-2018 HPDCS Group
-*			http://www.dis.uniroma1.it/~hpdcs
+* @file core/init.h
 *
+* @brief Initialization routines
+*
+* This module implements the simulator initialization routines
+*
+* @copyright
+* Copyright (C) 2008-2019 HPDCS Group
+* https://hpdcs.github.io
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
 *
@@ -17,14 +23,12 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file init.h
-* @brief This module implements the simulator initialization routines
 * @author Francesco Quaglia
-* @author Roberto Vitali
+* @author Andrea Piccione
 * @author Alessandro Pellegrini
+* @author Roberto Vitali
 */
 #pragma once
-#ifndef _INIT_H
 
 #include <statistics/statistics.h>
 
@@ -62,7 +66,6 @@ typedef struct _simulation_configuration {
 	int ckpt_period;		///< Number of events to execute before taking a snapshot in PSS (ignored otherwise)
 	int snapshot;			///< Type of snapshot (e.g., full, incremental, autonomic, ...)
 	int check_termination_mode;	///< Check termination strategy: standard or incremental
-	bool blocking_gvt;		///< GVT protocol blocking or not
 	bool deterministic_seed;	///< Does not change the seed value config file that will be read during the next runs
 	int verbose;			///< Kernel verbose
 	enum stats_levels stats;	///< Produce performance statistic file (default STATS_ALL)
@@ -74,13 +77,8 @@ typedef struct _simulation_configuration {
 	bool disable_preemption;	///< If compiled for preemptive Time Warp, it can be disabled at runtime
 #endif
 
-#ifdef HAVE_PARALLEL_ALLOCATOR
-	bool disable_allocator;
-#endif
 } simulation_configuration;
 
 extern simulation_configuration rootsim_config;
 
 extern void SystemInit(int argc, char **argv);
-
-#endif /* _INIT_H */

@@ -27,10 +27,11 @@
 #include "init.h"
 
 void ProcessEvent(unsigned int me, simtime_t now, int event_type, void *event, size_t size, lp_state_type *state) {
+	(void)now;
+
 	simtime_t timestamp = 0;
 	event_content_type new_event;
 	int receiver;
-	int i;
 	car_t *car;
 
 	event_content_type *event_content = (event_content_type *)event;

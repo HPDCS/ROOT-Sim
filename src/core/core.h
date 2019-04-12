@@ -1,7 +1,13 @@
 /**
-*			Copyright (C) 2008-2018 HPDCS Group
-*			http://www.dis.uniroma1.it/~hpdcs
+* @file core/core.h
 *
+* @brief Core ROOT-Sim functionalities
+*
+* Core ROOT-Sim functionalities
+*
+* @copyright
+* Copyright (C) 2008-2019 HPDCS Group
+* https://hpdcs.github.io
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
 *
@@ -17,17 +23,14 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file core.h
-* @brief This header defines all the shared symbols which are needed by different subsystems
 * @author Francesco Quaglia
-* @author Roberto Vitali
 * @author Alessandro Pellegrini
+* @author Roberto Vitali
 *
+* @date 3/18/2011
 */
 
 #pragma once
-#ifndef _PLATFORM_H_
-#define _PLATFORM_H_
 
 #include <ROOT-Sim.h>
 #include <stdio.h>
@@ -37,11 +40,8 @@
 #include <stdint.h>
 #include <setjmp.h>
 
-#include <lib/numerical.h>
 #include <arch/thread.h>
 
-/// If set, ROOT-Sim will produce statistics on the execution
-#define PLATFORM_STATS
 
 /// This macro expands to true if the local kernel is the master kernel
 #define master_kernel() (kid == 0)
@@ -49,21 +49,21 @@
 // XXX: This should be moved to state or queues
 enum {
 	SNAPSHOT_INVALID = 0,	/**< By convention 0 is the invalid field */
-	SNAPSHOT_FULL,			/**< xxx documentation */
+	SNAPSHOT_FULL,		/**< xxx documentation */
 };
 
 /// Maximum number of kernels the distributed simulator can handle
 #define N_KER_MAX	128
 
 /// Maximum number of LPs the simulator will handle
-#define MAX_LPs		65536
+#define MAX_LPs		250000
 
 // XXX: this should be moved somewhere else...
 enum {
 	VERBOSE_INVALID = 0,	/**< By convention 0 is the invalid field */
-	VERBOSE_INFO,			/**< xxx documentation */
-	VERBOSE_DEBUG,			/**< xxx documentation */
-	VERBOSE_NO				/**< xxx documentation */
+	VERBOSE_INFO,		/**< xxx documentation */
+	VERBOSE_DEBUG,		/**< xxx documentation */
+	VERBOSE_NO		/**< xxx documentation */
 };
 
 extern jmp_buf exit_jmp;
@@ -73,14 +73,11 @@ extern jmp_buf exit_jmp;
 /// Optimize the branch as likely not taken
 #define unlikely(exp) __builtin_expect(exp, 0)
 
-// XXX Do we still use transient time?
-/// Transient duration (in msec)
-#define STARTUP_TIME	0
 
 enum {
 	LP_DISTRIBUTION_INVALID = 0,	/**< By convention 0 is the invalid field */
-	LP_DISTRIBUTION_BLOCK,			/**< Distribute exceeding LPs according to a block policy */
-	LP_DISTRIBUTION_CIRCULAR		/**< Distribute exceeding LPs according to a circular policy */
+	LP_DISTRIBUTION_BLOCK,		/**< Distribute exceeding LPs according to a block policy */
+	LP_DISTRIBUTION_CIRCULAR	/**< Distribute exceeding LPs according to a circular policy */
 };
 
 // XXX should be moved to a more librarish header
@@ -124,11 +121,28 @@ enum {
 #define UNION_CAST(x, destType) (((union {__typeof__(x) a; destType b;})x).b)
 
 // GID and LID types
+
+/**
+ * @brief Definition of a GID.
+ *
+ * This structure defines a GID. The purpose of this structure is to make
+ * functions dealing with GIDs and LIDs type safe, to avoid runtime problems
+ * if the two are mixed when calling a function.
+ */
 typedef struct _gid_t {
-	unsigned int to_int;
+	unsigned int to_int;	///< The GID numerical value
 } GID_t;
+
+
+/**
+ * @brief Definition of a LID.
+ *
+ * This structure defines a LID. The purpose of this structure is to make
+ * functions dealing with GIDs and LIDs type safe, to avoid runtime problems
+ * if the two are mixed when calling a function.
+ */
 typedef struct _lid_t {
-	unsigned int to_int;
+	unsigned int to_int;	///< The LID numerical value
 } LID_t;
 
 #define is_lid(val) __builtin_types_compatible_p(__typeof__ (val), LID_t)
@@ -172,7 +186,7 @@ typedef struct _msg_t {
 	unsigned long long rendezvous_mark;	/// Unique identifier of the message, used for rendez-vous events
 
 	// Model data
-	int size;
+	unsigned int size;
 	unsigned char event_content[];
 } msg_t;
 
@@ -193,11 +207,6 @@ typedef struct _msg_hdr_t {
 	unsigned long long mark;
 } msg_hdr_t;
 
-// This is a structure used to setup an obstacle map in a grid of cells
-typedef struct obstacles_t {
-	size_t size;
-	unsigned int grid[];
-} obstacles_t;
 
 /// Barrier for all worker threads
 extern barrier_t all_thread_barrier;
@@ -224,6 +233,4 @@ extern inline bool user_requested_exit(void);
 extern inline bool simulation_error(void);
 extern void initialization_complete(void);
 
-#define rootsim_error(fatal, msg, ...) _rootsim_error(fatal, "%s:%d: %s()" msg, __FILE__, __LINE__, __FUNCTION__ __VA_OPT__(,) __VA_ARGS__)
-
-#endif
+#define rootsim_error(fatal, msg, ...) _rootsim_error(fatal, "%s:%d: %s(): " msg, __FILE__, __LINE__, __FUNCTION__, ##__VA_ARGS__)

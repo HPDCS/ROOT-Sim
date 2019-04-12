@@ -1,29 +1,38 @@
 /**
-*			Copyright (C) 2008-2018 HPDCS Group
-*			http://www.dis.uniroma1.it/~hpdcs
-*
-*
-* This file is part of ROOT-Sim (ROme OpTimistic Simulator).
-*
-* ROOT-Sim is free software; you can redistribute it and/or modify it under the
-* terms of the GNU General Public License as published by the Free Software
-* Foundation; only version 3 of the License applies.
-*
-* ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
-* WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-* A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-*
-* You should have received a copy of the GNU General Public License along with
-* ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
-* 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-*
-* @file scheduler.h
-* @brief Scheduling Subsystem main header file. Scheduler-specific data structures
-*        and defines should be placed into specific headers, not here.
-* @author Francesco Quaglia
-* @author Alessandro Pellegrini
-* @author Roberto Vitali
-*/
+ * @file scheduler/scheduler.h
+ *
+ * @brief The ROOT-Sim scheduler main module header
+ *
+ * This module implements the schedule() function, which is the main
+ * entry point for all the schedulers implemented in ROOT-Sim, and
+ * several support functions which allow to initialize worker threads.
+ *
+ * Also, the LP_main_loop() function, which is the function where all
+ * the User-Level Threads associated with Logical Processes live, is
+ * defined here.
+ *
+ * @copyright
+ * Copyright (C) 2008-2019 HPDCS Group
+ * https://hpdcs.github.io
+ *
+ * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
+ *
+ * ROOT-Sim is free software; you can redistribute it and/or modify it under the
+ * terms of the GNU General Public License as published by the Free Software
+ * Foundation; only version 3 of the License applies.
+ *
+ * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+ * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+ *
+ * @author Francesco Quaglia
+ * @author Alessandro Pellegrini
+ * @author Roberto Vitali
+ */
 
 #pragma once
 #ifndef _SCHEDULER_H_
@@ -49,6 +58,7 @@ enum {
 extern void scheduler_init(void);
 extern void scheduler_fini(void);
 extern void schedule(void);
+extern void schedule_on_init(struct lp_struct *next);
 extern void initialize_worker_thread(void);
 extern void activate_LP(struct lp_struct *, msg_t *);
 extern void LP_main_loop(void *args);

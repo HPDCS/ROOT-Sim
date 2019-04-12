@@ -1,8 +1,10 @@
 #include <ROOT-Sim.h>
 #include "application.h"
 
+struct _topology_settings_t topology_settings = {.default_geometry = TOPOLOGY_GRAPH};
 
 void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, event_t *content, unsigned int size, lp_state_t *state) {
+	(void)size;
 	event_t new_event;
 	simtime_t timestamp;
 
@@ -29,7 +31,7 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, event_t *c
 			new_event.pointer = state->pointer;
 			new_event.sender = me;
 
-			int recv = FindReceiver(TOPOLOGY_MESH);
+			int recv = FindReceiver();
 
 			timestamp = now + Expent(DELAY);
 
@@ -40,6 +42,8 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, event_t *c
 
 
 bool OnGVT(unsigned int me, lp_state_t *snapshot) {
+	(void)me;
+
 	if (snapshot->packet_count >= PACKETS)
 		return true;
 	return false;

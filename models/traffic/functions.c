@@ -20,6 +20,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <strings.h>
 
 #include "application.h"
 #include "normal_cdf.h"
@@ -27,6 +28,8 @@
 
 
 static car_t *reorder_queue(car_t *head, simtime_t now) {
+    (void)now;
+
     car_t *curr;
     car_t *prev;
     bool didSwap = false;
@@ -131,8 +134,8 @@ static simtime_t compute_traverse_time(lp_state_type *state, double mean_speed) 
 
 
 void release_cars(unsigned int me, lp_state_type *state) {
+	(void)me;
 	car_t *curr_car;
-	simtime_t leave_time;
 
 	curr_car = state->queue;
 	while(curr_car != NULL) {
@@ -146,7 +149,6 @@ void release_cars(unsigned int me, lp_state_type *state) {
 
 car_t *enqueue_car(int me, int from, lp_state_type *state) {
 	car_t *new_car;
-	car_t *curr_car;
 
 	// Create the car node
 	new_car = malloc(sizeof(car_t));
@@ -327,6 +329,7 @@ int check_car_leaving(lp_state_type *state, int from, int me) {
 
 
 car_t *car_dequeue(unsigned int me, lp_state_type *state, unsigned long long *mark) {
+	(void)me;
 	car_t *curr_car;
 	car_t *ret_car;
 

@@ -1,7 +1,15 @@
 /**
-*			Copyright (C) 2008-2018 HPDCS Group
-*			http://www.dis.uniroma1.it/~hpdcs
+* @file gvt/ccgs.c
 *
+* @brief Consistent and Committed Global State
+*
+* Consistent and Committed Global State (CCGS) is a subsystem that (poeriodically)
+* recomputes a global state on which the LPs can inspect the simulation trajectory
+* and determine whether the simulation can stop, by relying on the OnGVT() callback.
+*
+* @copyright
+* Copyright (C) 2008-2019 HPDCS Group
+* https://hpdcs.github.io
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
 *
@@ -17,16 +25,13 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file ccgs.c
-* @brief Consistent and Committed Global State (CCGS) is a subsystem that (poeriodically)
-* 	recomputes a global state on which the LPs can inspect the simulation trajectory
-* 	and determine whether the simulation can stop, by relying on the OnGVT() callback.
-* @date 2007
 * @author Francesco Quaglia
 * @author Paolo Romano
 * @author Alessandro Pellegrini
 * @author Diego Cucuzzo
 * @author Stefano D’Alessio
+*
+* @date 2007
 */
 
 #include <stdbool.h>
@@ -113,8 +118,7 @@ void ccgs_compute_snapshot(state_t * time_barrier_pointer[], simtime_t gvt)
 		i++;
 
 		// If termination detection is incremental, we skip the current LP
-		if (rootsim_config.check_termination_mode == CKTRM_INCREMENTAL
-		    && lps_termination[lp->lid.to_int]) {
+		if (rootsim_config.check_termination_mode == CKTRM_INCREMENTAL && lps_termination[lp->lid.to_int]) {
 			continue;
 		}
 
@@ -164,8 +168,7 @@ void ccgs_compute_snapshot(state_t * time_barrier_pointer[], simtime_t gvt)
 		log_delete(temporary_log.log);
 
 		// Early stop
-		if (rootsim_config.check_termination_mode == CKTRM_INCREMENTAL
-		    && !check_res) {
+		if (rootsim_config.check_termination_mode == CKTRM_INCREMENTAL && !check_res) {
 			break;
 		}
 
@@ -178,6 +181,7 @@ void ccgs_compute_snapshot(state_t * time_barrier_pointer[], simtime_t gvt)
 void ccgs_init(void)
 {
 	lps_termination = rsalloc(sizeof(bool) * n_prc);
+	memset(lps_termination, 0, sizeof(bool) * n_prc);
 }
 
 void ccgs_fini(void)

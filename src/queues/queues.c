@@ -1,7 +1,13 @@
 /**
-*			Copyright (C) 2008-2018 HPDCS Group
-*			http://www.dis.uniroma1.it/~hpdcs
+* @file queues/queues.c
 *
+* @brief Message queueing subsystem
+*
+* This module implements the event/message queues subsystem.
+*
+* @copyright
+* Copyright (C) 2008-2019 HPDCS Group
+* https://hpdcs.github.io
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
 *
@@ -17,11 +23,11 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file queues.c
-* @brief This module implements the event/message queues subsystem
 * @author Francesco Quaglia
 * @author Roberto Vitali
 * @author Alessandro Pellegrini
+*
+* @date March 16, 2011
 */
 
 #include <stdlib.h>
@@ -49,7 +55,8 @@
 * @author Alessandro Pellegrini
 * @author Francesco Quaglia
 *
-* @param lid The Logicall Process id
+* @param lp A pointer to the LP's lp_struct for which we want to discover
+*           the timestamp of the next event
 * @return The timestamp of the next-to-execute event
 */
 simtime_t next_event_timestamp(struct lp_struct *lp)
@@ -79,24 +86,16 @@ simtime_t next_event_timestamp(struct lp_struct *lp)
 * @author Alessandro Pellegrini
 * @author Francesco Quaglia
 *
-* @param lid The Light Process id
+* @param lp A pointer to the LP's lp_struct which should have its bound
+*           updated in order to point to the next event to be processed
 * @return The pointer to the event is going to be processed
 */
 msg_t *advance_to_next_event(struct lp_struct *lp)
 {
-
-	if (unlikely(lp->bound == NULL)) {
-		if (likely(!list_empty(lp->queue_in))) {
-			lp->bound = list_head(lp->queue_in);
-		} else {
-			return NULL;
-		}
+	if (likely(list_next(lp->bound) != NULL)) {
+		lp->bound = list_next(lp->bound);
 	} else {
-		if (likely(list_next(lp->bound) != NULL)) {
-			lp->bound = list_next(lp->bound);
-		} else {
-			return NULL;
-		}
+		return NULL;
 	}
 
 	return lp->bound;
@@ -159,8 +158,7 @@ void process_bottom_halves(void)
 				// It's an antimessage
 			case negative:
 
-				statistics_post_data(receiver, STAT_ANTIMESSAGE,
-						     1.0);
+				statistics_post_data(receiver, STAT_ANTIMESSAGE, 1.0);
 
 				// Find the message matching the antimessage
 				matched_msg = list_tail(receiver->queue_in);
@@ -181,19 +179,13 @@ void process_bottom_halves(void)
 				// If the matched message is in the past, we have to rollback
 				if (matched_msg->timestamp <= lvt(receiver)) {
 
-					receiver->bound =
-					    list_prev(matched_msg);
+					receiver->bound = list_prev(matched_msg);
 					while ((receiver->bound != NULL)
-					       && D_EQUAL(receiver->bound->
-							  timestamp,
-							  msg_to_process->
-							  timestamp)) {
-						receiver->bound =
-						    list_prev(receiver->bound);
+						&& D_EQUAL(receiver->bound->timestamp, msg_to_process->timestamp)) {
+						receiver->bound = list_prev(receiver->bound);
 					}
-
+					
 					receiver->state = LP_STATE_ROLLBACK;
-
 				}
 #ifdef HAVE_MPI
 				register_incoming_msg(msg_to_process);
@@ -219,15 +211,10 @@ void process_bottom_halves(void)
 				// A contemporaneous event does not cause a causal violation.
 				if (msg_to_process->timestamp < lvt(receiver)) {
 
-					receiver->bound =
-					    list_prev(msg_to_process);
+					receiver->bound = list_prev(msg_to_process);
 					while ((receiver->bound != NULL)
-					       && D_EQUAL(receiver->bound->
-							  timestamp,
-							  msg_to_process->
-							  timestamp)) {
-						receiver->bound =
-						    list_prev(receiver->bound);
+					       && D_EQUAL(receiver->bound->timestamp, msg_to_process->timestamp)) {
+						receiver->bound = list_prev(receiver->bound);
 					}
 
 					receiver->state = LP_STATE_ROLLBACK;
@@ -249,8 +236,7 @@ void process_bottom_halves(void)
 				break;
 
 			default:
-				rootsim_error(true,
-					      "Received a message which is neither positive nor negative. Aborting...\n");
+				rootsim_error(true, "Received a message which is neither positive nor negative. Aborting...\n");
 			}
 		}
 	}
@@ -277,7 +263,8 @@ void process_bottom_halves(void)
 *
 * @author Alessandro Pellegrini
 *
-* @param lid The local Id of the Light Process
+* @param lp A pointer to the LP's lp_struct for which we want to generate
+*           a system-wide unique mark
 * @return A value to be used as a unique mark for the message within the LP
 */
 unsigned long long generate_mark(struct lp_struct *lp)

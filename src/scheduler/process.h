@@ -1,30 +1,34 @@
 /**
-*			Copyright (C) 2008-2018 HPDCS Group
-*			http://www.dis.uniroma1.it/~hpdcs
-*
-*
-* This file is part of ROOT-Sim (ROme OpTimistic Simulator).
-*
-* ROOT-Sim is free software; you can redistribute it and/or modify it under the
-* terms of the GNU General Public License as published by the Free Software
-* Foundation; only version 3 of the License applies.
-*
-* ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
-* WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-* A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-*
-* You should have received a copy of the GNU General Public License along with
-* ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
-* 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-*
-* @file process.h
-* @brief This header defines a LP control block, keeping information about both
-*        simulation state and execution state as a user thread.
-* @author Alessandro Pellegrini
-* @author Roberto Vitali
-*
-* @date November 5, 2013
-*/
+ * @file scheduler/process.h
+ *
+ * @brief LP control blocks
+ *
+ * This header defines a LP control block, keeping information about both
+ * simulation state and execution state as a user thread.
+ *
+ * @copyright
+ * Copyright (C) 2008-2019 HPDCS Group
+ * https://hpdcs.github.io
+ *
+ * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
+ *
+ * ROOT-Sim is free software; you can redistribute it and/or modify it under the
+ * terms of the GNU General Public License as published by the Free Software
+ * Foundation; only version 3 of the License applies.
+ *
+ * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+ * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+ *
+ * @author Alessandro Pellegrini
+ * @author Roberto Vitali
+ *
+ * @date November 5, 2013
+ */
 
 #pragma once
 
@@ -37,6 +41,8 @@
 #include <datatypes/msgchannel.h>
 #include <arch/ult.h>
 #include <lib/numerical.h>
+#include <lib/abm_layer.h>
+#include <lib/topology.h>
 #include <communication/communication.h>
 #include <arch/x86/linux/cross_state_manager/cross_state_manager.h>
 
@@ -74,9 +80,6 @@ struct lp_struct {
 
 	/// Global ID of the LP
 	GID_t gid;
-
-	/// Logical Process lock, used to serialize accesses to concurrent data structures
-	spinlock_t lock;	// TODO: is this still used anywhere?
 
 	/// ID of the worker thread towards which the LP is bound
 	unsigned int worker_thread;
@@ -145,6 +148,12 @@ struct lp_struct {
 	/* Per-Library variables */
 	numerical_state_t numerical;
 
+	/// pointer to the topology struct
+	topology_t *topology;
+
+	/// pointer to the region struct
+	region_abm_t *region;
+	
 };
 
 // LPs process control blocks and binding control blocks
@@ -163,10 +172,10 @@ extern __thread unsigned int __lp_counter;
 extern __thread unsigned int __lp_bound_counter;
 
 #define foreach_lp(lp)		__lp_counter = 0;\
-				for(struct lp_struct *(lp) = lps_blocks[__lp_counter]; __lp_counter < n_prc; (lp) = lps_blocks[++__lp_counter])
+				for(struct lp_struct *(lp) = lps_blocks[__lp_counter]; __lp_counter < n_prc && ((lp) = lps_blocks[__lp_counter]); ++__lp_counter)
 
 #define foreach_bound_lp(lp)	__lp_bound_counter = 0;\
-				for(struct lp_struct *(lp) = lps_bound_blocks[__lp_bound_counter]; __lp_bound_counter < n_prc_per_thread; (lp) = lps_bound_blocks[++__lp_bound_counter])
+				for(struct lp_struct *(lp) = lps_bound_blocks[__lp_bound_counter]; __lp_bound_counter < n_prc_per_thread && ((lp) = lps_bound_blocks[__lp_bound_counter]); ++__lp_bound_counter)
 
 #define LPS_bound_set(entry, lp)	lps_bound_blocks[(entry)] = (lp);
 

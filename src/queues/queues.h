@@ -1,7 +1,13 @@
 /**
-*			Copyright (C) 2008-2018 HPDCS Group
-*			http://www.dis.uniroma1.it/~hpdcs
+* @file queues/queues.h
 *
+* @brief Message queueing subsystem
+*
+* This module implements the event/message queues subsystem.
+*
+* @copyright
+* Copyright (C) 2008-2019 HPDCS Group
+* https://hpdcs.github.io
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
 *
@@ -17,18 +23,14 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file queues.h
-* @brief Event and State queueing Subsystem main header
 * @author Francesco Quaglia
-* @author Alessandro Pellegrini
 * @author Roberto Vitali
-* @date 3/16/2011
+* @author Alessandro Pellegrini
 *
+* @date March 16, 2011
 */
 
 #pragma once
-#ifndef _QUEUES_H
-#define _QUEUES_H
 
 #include <core/core.h>
 #include <scheduler/process.h>
@@ -41,5 +43,3 @@ extern msg_t *advance_to_next_event(struct lp_struct *);
 extern void insert_bottom_half(msg_t * msg);
 extern void process_bottom_halves(void);
 extern unsigned long long generate_mark(struct lp_struct *);
-
-#endif				/* _QUEUES_H */

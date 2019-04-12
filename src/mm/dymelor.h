@@ -1,7 +1,13 @@
 /**
-*			Copyright (C) 2008-2018 HPDCS Group
-*			http://www.dis.uniroma1.it/~hpdcs
+* @file mm/dymelor.h
 *
+* @brief Dynamic Memory Logger and Restorer (DyMeLoR)
+*
+* LP's memory manager.
+*
+* @copyright
+* Copyright (C) 2008-2019 HPDCS Group
+* https://hpdcs.github.io
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
 *
@@ -17,18 +23,15 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file dymelor.h
-* @brief This is the Memory Management Subsystem main header file
-* @author Francesco Quaglia
+* @author Roberto Toccaceli
 * @author Alessandro Pellegrini
 * @author Roberto Vitali
-* @date April 02, 2008
+* @author Francesco Quaglia
 *
+* @date April 02, 2008
 */
 
 #pragma once
-#ifndef _DYMELOR_H
-#define _DYMELOR_H
 
 #include <math.h>
 #include <string.h>
@@ -177,5 +180,3 @@ extern void ecs_init(void);
 
 // This is used to help ensure that the platform is not using malloc.
 #pragma GCC poison malloc free realloc calloc
-
-#endif

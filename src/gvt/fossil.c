@@ -1,7 +1,14 @@
 /**
-*			Copyright (C) 2008-2018 HPDCS Group
-*			http://www.dis.uniroma1.it/~hpdcs
+* @file gvt/fossil.c
 *
+* @brief Housekeeping operations
+*
+* In this module all the housekeeping operations related to GVT computation phase
+* are present.
+*
+* @copyright
+* Copyright (C) 2008-2019 HPDCS Group
+* https://hpdcs.github.io
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
 *
@@ -17,9 +24,6 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file fossil.c
-* @brief In this module all the housekeeping operations related to GVT computation phase
-* 	 are present.
 * @author Alessandro Pellegrini
 * @author Francesco Quaglia
 */
@@ -57,6 +61,10 @@ void fossil_collection(struct lp_struct *lp, simtime_t time_barrier)
 	while ((state = list_head(lp->queue_states)) != NULL
 	       && state->lvt < time_barrier) {
 		log_delete(state->log);
+		if(&topology_settings && topology_settings.write_enabled)
+			rsfree(state->topology);
+		if(&abm_settings)
+			rsfree(state->region_data);
 #ifndef NDEBUG
 		state->last_event = (void *)0xDEADBABE;
 #endif

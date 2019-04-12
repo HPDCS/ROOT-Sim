@@ -1,7 +1,13 @@
 /**
-*			Copyright (C) 2008-2018 HPDCS Group
-*			http://www.dis.uniroma1.it/~hpdcs
+* @file core/init.c
 *
+* @brief Initialization routines
+*
+* This module implements the simulator initialization routines
+*
+* @copyright
+* Copyright (C) 2008-2019 HPDCS Group
+* https://hpdcs.github.io
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
 *
@@ -17,11 +23,10 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file init.c
-* @brief This module implements the simulator initialization routines
 * @author Francesco Quaglia
-* @author Roberto Vitali
+* @author Andrea Piccione
 * @author Alessandro Pellegrini
+* @author Roberto Vitali
 */
 
 #include <unistd.h>
@@ -49,6 +54,8 @@
 #include <mm/mm.h>
 #include <statistics/statistics.h>
 #include <lib/numerical.h>
+#include <lib/topology.h>
+#include <lib/abm_layer.h>
 #include <serial/serial.h>
 #ifdef HAVE_MPI
 #include <communication/mpi.h>
@@ -77,7 +84,6 @@ enum _opt_codes{
 	OPT_INC,
 	OPT_A,
 	OPT_GVT,
-	OPT_BLOCKING_GVT,
 	OPT_GVT_SNAPSHOT_CYCLES,
 	OPT_SIMULATION_TIME,
 	OPT_DETERMINISTIC_SEED,
@@ -88,11 +94,6 @@ enum _opt_codes{
 #ifdef HAVE_PREEMPTION
 	OPT_PREEMPTION,
 #endif
-
-#ifdef HAVE_PARALLEL_ALLOCATOR
-	OPT_ALLOCATOR,
-#endif
-
 	OPT_LAST
 };
 
@@ -105,7 +106,8 @@ const char * const param_to_text[][5] = {
 	[OPT_CKTRM_MODE - OPT_FIRST] = {
 			[CKTRM_INVALID] = "invalid termination checking",
 			[CKTRM_NORMAL] = "normal",
-			[CKTRM_INCREMENTAL] = "incremental"
+			[CKTRM_INCREMENTAL] = "incremental",
+			[CKTRM_ACCURATE] = "accurate"
 	},
 	[OPT_LPS_DISTRIBUTION - OPT_FIRST] = {
 			[LP_DISTRIBUTION_INVALID] = "invalid LPs distribution",
@@ -136,7 +138,7 @@ const char * const param_to_text[][5] = {
 	}
 };
 
-const char *argp_program_version 	= PACKAGE_STRING "\nCopyright (C) 2008-2018 HPDCS Group";
+const char *argp_program_version 	= PACKAGE_STRING "\nCopyright (C) 2008-2019 HPDCS Group";
 const char *argp_program_bug_address 	= PACKAGE_BUGREPORT;
 
 // Directly from argp documentation:
@@ -150,8 +152,8 @@ static char doc[] = "ROOT-Sim - a fast distributed multithreaded Parallel Discre
 static char args_doc[] = "";
 // the options recognized by argp
 static const struct argp_option argp_options[] = {
-	{"np",			OPT_NP,			"VALUE",	0,		"Number of total cores being used by the simulation", 0},
-	{"nprc",		OPT_NPRC,		"VALUE",	0,		"Total number of Logical Processes being lunched at simulation startup", 0},
+	{"wt",			OPT_NP,			"VALUE",	0,		"Number of total cores being used by the simulation", 0},
+	{"lp",			OPT_NPRC,		"VALUE",	0,		"Total number of Logical Processes being launched at simulation startup", 0},
 	{"output-dir",		OPT_OUTPUT_DIR,		"PATH",		0,		"Path to a folder where execution statistics are stored. If not present, it is created", 0},
 	{"scheduler",		OPT_SCHEDULER,		"TYPE",		0,		"LP Scheduling algorithm. Supported values are: stf", 0},
 	{"npwd",		OPT_NPWD,		0,		0,		"Non Piece-Wise-Deterministic simulation model. See manpage for accurate description", 0},
@@ -160,8 +162,7 @@ static const struct argp_option argp_options[] = {
 	{"inc",			OPT_INC,		0,		0,		"Take only incremental logs (still to be released)", 0},
 	{"A",			OPT_A,			0,		0,		"Autonomic subsystem: set checkpointing interval and log mode automatically at runtime (still to be released)", 0},
 	{"gvt",			OPT_GVT,		"VALUE",	0,		"Time between two GVT reductions (in milliseconds)", 0},
-	{"cktrm-mode",		OPT_CKTRM_MODE,		"TYPE",		0,		"Termination Detection mode. Supported values: normal, incremental", 0},
-	{"blocking-gvt",	OPT_BLOCKING_GVT,	0,		0,		"Blocking GVT. All distributed nodes block until a consensus is agreed", 0},
+	{"cktrm-mode",		OPT_CKTRM_MODE,		"TYPE",		0,		"Termination Detection mode. Supported values: normal, incremental, accurate", 0},
 	{"gvt-snapshot-cycles",	OPT_GVT_SNAPSHOT_CYCLES, "VALUE",	0,		"Termination detection is invoked after this number of GVT reductions", 0},
 	{"simulation-time",	OPT_SIMULATION_TIME, 	"VALUE",	0,		"Halt the simulation when all LPs reach this logical time. 0 means infinite", 0},
 	{"lps-distribution",	OPT_LPS_DISTRIBUTION, 	"TYPE",		0,		"LPs distributions over simulation kernels policies. Supported values: block, circular", 0},
@@ -175,9 +176,6 @@ static const struct argp_option argp_options[] = {
 
 #ifdef HAVE_PREEMPTION
 	{"no-preemption",	OPT_PREEMPTION,		0,		0,		"Disable Preemptive Time Warp", 0},
-#endif
-#ifdef HAVE_PARALLEL_ALLOCATOR
-	{"no-allocator",	OPT_ALLOCATOR,		0,		0,		"Disable parallel allocator", 0},
 #endif
 	{0}
 };
@@ -230,7 +228,11 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 
 	switch (key) {
 		case OPT_NP:
-			n_cores = parse_ullong_limits(1, UINT_MAX);
+			if(strcmp(arg, "auto") == 0){
+				n_cores = get_cores();
+			}else{
+				n_cores = parse_ullong_limits(1, UINT_MAX);
+			}
 			break;
 
 		case OPT_NPRC:
@@ -241,11 +243,11 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 			rootsim_config.output_dir = arg;
 			break;
 
-		handle_string_option(OPT_SCHEDULER, 	rootsim_config.scheduler);
-		handle_string_option(OPT_FULL, 			rootsim_config.snapshot);
-		handle_string_option(OPT_CKTRM_MODE, 	rootsim_config.check_termination_mode);
-		handle_string_option(OPT_VERBOSE, 		rootsim_config.verbose);
-		handle_string_option(OPT_STATS, 		rootsim_config.stats);
+		handle_string_option(OPT_SCHEDULER, rootsim_config.scheduler);
+		handle_string_option(OPT_FULL, rootsim_config.snapshot);
+		handle_string_option(OPT_CKTRM_MODE, rootsim_config.check_termination_mode);
+		handle_string_option(OPT_VERBOSE, rootsim_config.verbose);
+		handle_string_option(OPT_STATS, rootsim_config.stats);
 		handle_string_option(OPT_LPS_DISTRIBUTION, rootsim_config.lps_distribution);
 
 		case OPT_NPWD:
@@ -280,10 +282,6 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 			rootsim_config.gvt_time_period = parse_ullong_limits(1, 10000);
 			break;
 
-		case OPT_BLOCKING_GVT:
-			rootsim_config.blocking_gvt = true;
-			break;
-
 		case OPT_GVT_SNAPSHOT_CYCLES:
 			rootsim_config.gvt_snapshot_cycles = parse_ullong_limits(1, INT_MAX);
 			break;
@@ -314,12 +312,6 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 			break;
 #endif
 
-#ifdef HAVE_PARALLEL_ALLOCATOR
-		case OPT_ALLOCATOR:
-			rootsim_config.disable_allocator = true;
-			break;
-#endif
-
 		case ARGP_KEY_INIT:
 
 			memset(&rootsim_config, 0, sizeof(rootsim_config));
@@ -337,7 +329,6 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 			rootsim_config.gvt_snapshot_cycles = 2;
 			rootsim_config.ckpt_period = 10;
 			rootsim_config.simulation_time = 0;
-			rootsim_config.blocking_gvt = false;
 			rootsim_config.deterministic_seed = false;
 			rootsim_config.set_seed = 0;
 			rootsim_config.serial = false;
@@ -346,21 +337,16 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 #ifdef HAVE_PREEMPTION
 			rootsim_config.disable_preemption = false;
 #endif
-
-#ifdef HAVE_PARALLEL_ALLOCATOR
-			rootsim_config.disable_allocator = false;
-#endif
-
 			break;
 
 		case ARGP_KEY_SUCCESS:
 
 			// sanity checks
 			if(!rootsim_config.serial && !bitmap_check(scanned, OPT_NP - OPT_FIRST))
-				rootsim_error(true, "Number of cores was not provided \"--np\"\n");
+				rootsim_error(true, "Number of cores was not provided \"--wt\"\n");
 
 			if(!bitmap_check(scanned, OPT_NPRC - OPT_FIRST))
-				rootsim_error(true, "Number of LPs was not provided \"--nprc\"\n");
+				rootsim_error(true, "Number of LPs was not provided \"--lp\"\n");
 
 			if(n_cores > get_cores())
 				rootsim_error(true, "Demanding %u cores, which are more than available (%d)\n", n_cores, get_cores());
@@ -441,6 +427,8 @@ void SystemInit(int argc, char **argv)
 		numerical_init();
 		statistics_init();
 		serial_init();
+		topology_init();
+		abm_layer_init();
 		return;
 	} else {
 		ScheduleNewEvent = ParallelScheduleNewEvent;
@@ -458,6 +446,8 @@ void SystemInit(int argc, char **argv)
 	communication_init();
 	gvt_init();
 	numerical_init();
+	topology_init();
+	abm_layer_init();
 
 	// This call tells the simulation engine that the sequential initial simulation is complete
 	initialization_complete();

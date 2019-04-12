@@ -26,6 +26,16 @@
 #include "application.h"
 #include "init.h"
 
+#define parseDouble(s) ({\
+			double __value;\
+			char *__endptr;\
+			__value = strtod(s, &__endptr);\
+			if(!(*s != '\0' && *__endptr == '\0')) {\
+				fprintf(stderr, "%s:%d: Invalid conversion value: %s\n", __FILE__, __LINE__, s);\
+			}\
+			__value;\
+		       })
+
 static int find_lp_by_name(char *name, FILE *f) {
 	char line[LINE_LENGTH];
 	char *saveptr;

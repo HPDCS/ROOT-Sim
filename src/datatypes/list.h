@@ -1,7 +1,13 @@
 /**
-*			Copyright (C) 2008-2018 HPDCS Group
-*			http://www.dis.uniroma1.it/~hpdcs
+* @file datatypes/list.h
 *
+* @brief Generic Lists
+*
+* This header defines macros to access lists of generic objects.
+*
+* @copyright
+* Copyright (C) 2008-2019 HPDCS Group
+* https://hpdcs.github.io
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
 *
@@ -17,16 +23,12 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file list.h
-* @brief This header defines macros for accessing the general-purpose list
-* 	 implementation used in the simulator
 * @author Alessandro Pellegrini
+*
 * @date November 5, 2013
 */
 
 #pragma once
-#ifndef __LIST_DATATYPE_H
-#define __LIST_DATATYPE_H
 
 #include <stddef.h>
 #include <string.h>
@@ -293,5 +295,3 @@ typedef struct rootsim_list {
 	})
 
 #define list_size(list) ((rootsim_list *)(list))->size
-
-#endif				/* __LIST_DATATYPE_H */

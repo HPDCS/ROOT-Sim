@@ -1,28 +1,38 @@
 /**
-*			Copyright (C) 2008-2018 HPDCS Group
-*			http://www.dis.uniroma1.it/~hpdcs
-*
-*
-* This file is part of ROOT-Sim (ROme OpTimistic Simulator).
-*
-* ROOT-Sim is free software; you can redistribute it and/or modify it under the
-* terms of the GNU General Public License as published by the Free Software
-* Foundation; only version 3 of the License applies.
-*
-* ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
-* WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-* A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-*
-* You should have received a copy of the GNU General Public License along with
-* ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
-* 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-*
-* @file scheduler.c
-* @brief Re-entrant scheduler for LPs on worker threads
-* @author Francesco Quaglia
-* @author Alessandro Pellegrini
-* @author Roberto Vitali
-*/
+ * @file scheduler/scheduler.c
+ *
+ * @brief The ROOT-Sim scheduler main module
+ *
+ * This module implements the schedule() function, which is the main
+ * entry point for all the schedulers implemented in ROOT-Sim, and
+ * several support functions which allow to initialize worker threads.
+ *
+ * Also, the LP_main_loop() function, which is the function where all
+ * the User-Level Threads associated with Logical Processes live, is
+ * defined here.
+ *
+ * @copyright
+ * Copyright (C) 2008-2019 HPDCS Group
+ * https://hpdcs.github.io
+ *
+ * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
+ *
+ * ROOT-Sim is free software; you can redistribute it and/or modify it under the
+ * terms of the GNU General Public License as published by the Free Software
+ * Foundation; only version 3 of the License applies.
+ *
+ * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+ * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+ *
+ * @author Francesco Quaglia
+ * @author Alessandro Pellegrini
+ * @author Roberto Vitali
+ */
 
 #include <stdlib.h>
 #include <string.h>
@@ -34,15 +44,13 @@
 #include <arch/atomic.h>
 #include <arch/ult.h>
 #include <arch/thread.h>
+#include <core/init.h>
 #include <scheduler/binding.h>
 #include <scheduler/process.h>
 #include <scheduler/scheduler.h>
 #include <scheduler/stf.h>
 #include <mm/state.h>
 #include <communication/communication.h>
-
-#define _INIT_FROM_MAIN
-#include <core/init.h>
 
 #ifdef HAVE_CROSS_STATE
 #include <mm/ecs.h>
@@ -153,14 +161,19 @@ void LP_main_loop(void *args)
 		timer_start(event_timer);
 
 		// Process the event
-		switch_to_application_mode();
-		current->ProcessEvent(current->gid.to_int,
+		if(&abm_settings){
+			ProcessEventABM();
+		}else if (&topology_settings){
+			ProcessEventTopology();
+		}else{
+			switch_to_application_mode();
+			current->ProcessEvent(current->gid.to_int,
 				      current_evt->timestamp, current_evt->type,
 				      current_evt->event_content,
 				      current_evt->size,
 				      current->current_base_pointer);
-		switch_to_platform_mode();
-
+			switch_to_platform_mode();
+		}
 		int delta_event_timer = timer_value_micro(event_timer);
 
 #ifdef EXTRA_CHECKS
@@ -190,8 +203,6 @@ void initialize_worker_thread(void)
 {
 	msg_t *init_event;
 
-	communication_init_thread();
-
 	// Divide LPs among worker threads, for the first time here
 	rebind_LPs();
 	if (master_thread() && master_kernel()) {
@@ -216,9 +227,10 @@ void initialize_worker_thread(void)
 		lp->state_log_forced = true;
 	}
 
+	thread_barrier(&all_thread_barrier);
+
 	foreach_bound_lp(lp) {
-		(void)lp;
-		schedule();
+		schedule_on_init(lp);
 	}
 
 	// Worker Threads synchronization barrier: they all should start working together
@@ -242,10 +254,8 @@ void initialize_worker_thread(void)
 *
 * @date November 11, 2013
 *
-* @param lp The id of the LP to be scheduled
-* @param lvt The lvt at which the LP is scheduled
+* @param next A pointer to the lp_struct of the LP which has to be activated
 * @param evt A pointer to the event to be processed by the LP
-* @param state The simulation state to be passed to the LP
 */
 void activate_LP(struct lp_struct *next, msg_t * evt)
 {
@@ -374,6 +384,59 @@ void schedule(void)
 		next->state = LP_STATE_RUNNING_ECS;
 	else
 		next->state = LP_STATE_RUNNING;
+
+	activate_LP(next, event);
+
+	if (!is_blocked_state(next->state)) {
+		next->state = LP_STATE_READY;
+		send_outgoing_msgs(next);
+	}
+#ifdef HAVE_CROSS_STATE
+	if (resume_execution && !is_blocked_state(next->state)) {
+		//printf("ECS event is finished mark %llu !!!\n", next->wait_on_rendezvous);
+		fflush(stdout);
+		unblock_synchronized_objects(next);
+
+		// This is to avoid domino effect when relying on rendezvous messages
+		force_LP_checkpoint(next);
+	}
+#endif
+
+	// Log the state, if needed
+	LogState(next);
+}
+
+void schedule_on_init(struct lp_struct *next)
+{
+	msg_t *event;
+
+#ifdef HAVE_CROSS_STATE
+	bool resume_execution = false;
+#endif
+
+	event = list_head(next->queue_in);
+	next->bound = event;
+
+
+	// Sanity check: if we get here, it means that lid is a LP which has
+	// at least one event to be executed. If advance_to_next_event() returns
+	// NULL, it means that lid has no events to be executed. This is
+	// a critical condition and we abort.
+	if (unlikely(event == NULL) || event->type != INIT) {
+		rootsim_error(true,
+			      "Critical condition: LP %d should have an INIT event but I cannot find it. Aborting...\n",
+			      next->gid);
+	}
+
+#ifdef HAVE_CROSS_STATE
+	// In case we are resuming an interrupted execution, we keep track of this.
+	// If at the end of the scheduling the LP is not blocked, we can unblock all the remote objects
+	if (is_blocked_state(next->state) || next->state == LP_STATE_READY_FOR_SYNCH) {
+		resume_execution = true;
+	}
+#endif
+
+	next->state = LP_STATE_RUNNING;
 
 	activate_LP(next, event);
 

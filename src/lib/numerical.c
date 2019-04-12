@@ -1,7 +1,13 @@
 /**
-*			Copyright (C) 2008-2018 HPDCS Group
-*			http://www.dis.uniroma1.it/~hpdcs
+* @file lib/numerical.c
 *
+* @brief Numerical Library
+*
+* Piece-Wise Deterministic Random Number Generators.
+*
+* @copyright
+* Copyright (C) 2008-2019 HPDCS Group
+* https://hpdcs.github.io
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
 *
@@ -17,11 +23,9 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file numerical.c
-* @brief In this module there are the implementations of Piece-Wise Deterministic
-*        numerical distribution implementations
 * @author Alessandro Pellegrini
-* @date 3/16/2011
+*
+* @date March 16, 2011
 */
 
 #include <stdlib.h>
@@ -49,7 +53,6 @@ static seed_type master_seed;
 
 static double do_random(void)
 {
-
 	uint32_t *seed1;
 	uint32_t *seed2;
 
@@ -101,9 +104,7 @@ int RandomRangeNonUniform(int x, int min, int max)
 	double ret;
 	switch_to_platform_mode();
 
-	ret =
-	    (((RandomRange(0, x) | RandomRange(min, max))) % (max - min + 1)) +
-	    min;
+	ret = (((RandomRange(0, x) | RandomRange(min, max))) % (max - min + 1)) + min;
 
 	switch_to_application_mode();
 	return ret;
@@ -151,7 +152,7 @@ double Normal(void)
 			v1 = 2.0 * Random() - 1.0;
 			v2 = 2.0 * Random() - 1.0;
 			rsq = v1 * v1 + v2 * v2;
-		} while (rsq >= 1.0 || D_DIFFER_ZERO(rsq));
+		} while (rsq >= 1.0 || D_EQUAL_ZERO(rsq));
 
 		fac = sqrt(-2.0 * log(rsq) / rsq);
 
@@ -262,9 +263,8 @@ int Zipf(double skew, int limit)
 static seed_type sanitize_seed(seed_type cur_seed)
 {
 
-	uint32_t *seed1 = (uint32_t *) & (cur_seed);
-	uint32_t *seed2 =
-	    (uint32_t *) ((char *)&(cur_seed) + (sizeof(uint32_t)));
+	uint32_t *seed1 = (uint32_t *) &(cur_seed);
+	uint32_t *seed2 = (uint32_t *) ((char *)&(cur_seed) + (sizeof(uint32_t)));
 
 	// Sanitize seed1
 	// Any integer multiple of 0x9068FFFF, including 0, is a bad state
@@ -326,7 +326,7 @@ static seed_type sanitize_seed(seed_type cur_seed)
 static void load_seed(void)
 {
 
-	static bool single_print = false;	// To print only once a message about manual initialization
+	static bool single_print = false; // To print only once a message about manual initialization
 	seed_type new_seed;
 	char conf_file[512];
 	FILE *fp;
@@ -342,21 +342,16 @@ static void load_seed(void)
 		_mkdir(conf_file);
 
 		// Create and initialize the file
-		sprintf(conf_file, "%s/.rootsim/numerical.conf",
-			getenv("HOME"));
+		sprintf(conf_file, "%s/.rootsim/numerical.conf", getenv("HOME"));
 		if ((fp = fopen(conf_file, "w")) == NULL) {
-			rootsim_error(true,
-				      "Unable to create the numerical library configuration file %s. Aborting...",
-				      conf_file);
+			rootsim_error(true, "Unable to create the numerical library configuration file %s. Aborting...", conf_file);
 		}
 
 		// We now initialize the first long random number. Thanks Unix!
 		// TODO: THIS IS NOT PORTABLE!
 		int fd;
 		if ((fd = open("/dev/random", O_RDONLY)) == -1) {
-			rootsim_error(true,
-				      "Unable to initialize the numerical library configuration file %s. Aborting...",
-				      conf_file);
+			rootsim_error(true, "Unable to initialize the numerical library configuration file %s. Aborting...", conf_file);
 
 		}
 		read(fd, &new_seed, sizeof(seed_type));
@@ -371,17 +366,14 @@ static void load_seed(void)
 
 		if (!single_print) {
 			single_print = true;
-			printf("Manually setting master seed to %llu\n",
-			       (unsigned long long)rootsim_config.set_seed);
+			printf("Manually setting master seed to %llu\n", (unsigned long long)rootsim_config.set_seed);
 		}
 		master_seed = rootsim_config.set_seed;
 	}
 
 	// Load the configuration for the numerical library
 	if ((fp = fopen(conf_file, "r+")) == NULL) {
-		rootsim_error(true,
-			      "Unable to load numerical distribution configuration: %s. Aborting...",
-			      conf_file);
+		rootsim_error(true, "Unable to load numerical distribution configuration: %s. Aborting...", conf_file);
 	}
 
 	// Load the initial seed
@@ -398,6 +390,7 @@ static void load_seed(void)
 	fclose(fp);
 }
 
+
 // TODO: con un (non tanto) alto numero di processi logici (> numero di bit di un intero!!), lo shift
 // circolare restituisce a due LP differenti lo stesso seme iniziale. Questo fa sì che, se la logica di
 // programma è la stessa e basata soltanto su numeri casuali, due o più nodi eseguano sempre la stessa
@@ -412,10 +405,7 @@ void numerical_init(void)
 
 	// Initialize the per-LP seed
 	foreach_lp(lp) {
-		lp->numerical.seed =
-		    sanitize_seed(ROR
-				  ((int64_t) master_seed,
-				   lp->gid.to_int % RS_WORD_LENGTH));
+		lp->numerical.seed = sanitize_seed(ROR((int64_t) master_seed, lp->gid.to_int % RS_WORD_LENGTH));
 	}
 
 }
@@ -423,6 +413,61 @@ void numerical_init(void)
 #undef RS_WORD_LENGTH
 #undef ROR
 
-void numerical_fini(void)
-{
+
+/**
+* Calculates a sum within double variables with bounded approximation error
+*
+* This implements a variant of the Kahan summation algorithm:
+* https://en.wikipedia.org/wiki/Kahan_summation_algorithm
+* This is used in the topology module to calculate minimum costs and weighted probabilities
+* since the classic iterated floating point sum may result in unbounded errors
+* originated from the limited precision of the underlying floating point representation.
+*
+* @author Andrea Piccione
+* @param cnt the number of addendums to sum
+* @param addendums a pointer to a sequence of cnt doubles
+* @return the sum between the addendums with bounded error
+*/
+__attribute__((const))
+double NeumaierSum(unsigned cnt, double addendums[cnt]) {
+	if(!cnt)
+		return 0.0;
+	double sum = addendums[0];
+	double crt = 0.0;
+	double tmp;
+	while (--cnt) {
+		tmp = sum + addendums[cnt];
+		if(fabs(sum) >= fabs(addendums[cnt])) {
+			crt += (sum - tmp) + addendums[cnt];
+		} else {
+			crt += (addendums[cnt] - tmp) + sum;
+		}
+		sum = tmp;
+	}
+	return sum + crt;
 }
+
+
+/**
+* Calculates a partial sum within double variables with bounded approximation error
+*
+* This has similar utilization to <NeumaierSum>() with the difference that this can be used
+* to calculate partial sums, adding doubles one by one.
+*
+* @author Andrea Piccione
+* @param sh a struct _sum_helper_t holding the partial result typically from a previous sum
+* @param addendum the double floating point value to add
+* @return a struct _sum_helper_t holding the sum between sh and addendum
+*/
+__attribute__((const))
+struct _sum_helper_t PartialNeumaierSum(struct _sum_helper_t sh, double addendum){
+	double tmp = sh.sum + addendum;
+	if(fabs(sh.sum) >= fabs(addendum)) {
+		sh.crt += (sh.sum - tmp) + addendum;
+	} else {
+		sh.crt += (addendum - tmp) + sh.sum;
+	}
+	sh.sum = tmp;
+	return sh;
+}
+
