@@ -1,31 +1,34 @@
-/*                       Copyright (C) 2008-2018 HPDCS Group
-*                       http://www.dis.uniroma1.it/~hpdcs
+/**
+* @file arch/x86/linux/cross_state_manager/cross_state_manager.c
 *
+* @brief Per-thread page table
+*
+* This Linux kernel module implements a modification to the x86_64 page
+* table management to support event cross state dependency tracking
+*
+* @copyright
+* Copyright (C) 2008-2019 HPDCS Group
+* https://hpdcs.github.io
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
-* 
+*
 * ROOT-Sim is free software; you can redistribute it and/or modify it under the
 * terms of the GNU General Public License as published by the Free Software
 * Foundation; only version 3 of the License applies.
-* 
+*
 * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
 * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
 * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-* 
+*
 * You should have received a copy of the GNU General Public License along with
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-* 
-* @file cross_state_manager.c 
-* @brief This Linux kernel module implements a modification to the x86_64 page
-* 	 table management to support event cross state dependency tracking
-* 
+*
 * @author Alessandro Pellegrini
 * @author Francesco Quaglia
 *
-* @date 
-*       November 15, 2013 - Initial version
-*       September 19, 2015 - Full restyle of the module, to use dynamic scheduler
+* @date November 15, 2013 - Initial version
+* @date September 19, 2015 - Full restyle of the module, to use dynamic scheduler
 * 			     patching
 */
 
@@ -274,7 +277,7 @@ static void set_page_privilege(ioctl_info *info) {
 
 			if(pte[j] == 0)
 				continue;
-			
+
 			if(info->write_mode) {
 				SET_BIT(&pte[j], 1);
 			} else {
@@ -390,7 +393,7 @@ void root_sim_page_fault(struct pt_regs* regs, long error_code, do_page_fault_t 
 			// Pass the address of the faulting instruction to userland
 			auxiliary_stack_pointer = (ulong *)regs->sp;
 			auxiliary_stack_pointer--;
-			copy_to_user((void *)auxiliary_stack_pointer, (void *)&regs->ip, 8);	
+			copy_to_user((void *)auxiliary_stack_pointer, (void *)&regs->ip, 8);
 			regs->sp = (long)auxiliary_stack_pointer;
 			regs->ip = callback;
 
@@ -430,7 +433,7 @@ int rs_ktblmgr_release(struct inode *inode, struct file *filp) {
 	void *address;
 
 	/* already logged by ancestor set */
-	pml4 = restore_pml4; 
+	pml4 = restore_pml4;
 	involved_pml4 = restore_pml4_entries;
 
 	for (j=0;j<SIBLING_PGD;j++){
@@ -445,11 +448,11 @@ int rs_ktblmgr_release(struct inode *inode, struct file *filp) {
 
 			pgd_entry = (void **)pgd_addr[i];
 			for (i=0; i<involved_pml4; i++){
-			
+
 			 	printk("\tPML4 ENTRY FOR CLOSE DEVICE IS %d\n",pml4);
 
 				temp = pgd_entry[pml4];
-				temp = (void *)((ulong) temp & 0xfffffffffffff000);	
+				temp = (void *)((ulong) temp & 0xfffffffffffff000);
 				printk("temp is %p\n", temp);
 				address = (void *)__va(temp);
 				if(address!=NULL){
@@ -517,19 +520,19 @@ static long rs_ktblmgr_ioctl(struct file *filp, unsigned int cmd, unsigned long 
 				flush_cache_all();
 
 				/* already logged by ancestor set */
-				pml4 = restore_pml4; 
+				pml4 = restore_pml4;
 				involved_pml4 = restore_pml4_entries;
-	
+
 				pgd_entry = (void **)pgd_addr[descriptor];
-	
+
 				for (i = 0; i < involved_pml4; i++) {
-				
+
 					address = (void *)__get_free_pages(GFP_KERNEL, 0); /* allocate and reset new PDP */
 					memset(address,0,4096);
-				
+
 					temp = pgd_entry[pml4];
-			
-					temp = (void *)((ulong) temp & 0x0000000000000fff);	
+
+					temp = (void *)((ulong) temp & 0x0000000000000fff);
 					address = (void *)__pa(address);
 					temp = (void *)((ulong)address | (ulong)temp);
 					pgd_entry[pml4] = temp;
@@ -538,10 +541,10 @@ static long rs_ktblmgr_ioctl(struct file *filp, unsigned int cmd, unsigned long 
 				}
 			}
 			printk("Leaving IOCTL_GET_PGD\n");
-			
+
 			break;
 
-	 	case IOCTL_SCHEDULE_ON_PGD:	
+	 	case IOCTL_SCHEDULE_ON_PGD:
 			//flush_cache_all();
 			descriptor = ((ioctl_info*)arg)->ds;
 			//scheduled_object = ((ioctl_info*)arg)->id;
@@ -554,7 +557,7 @@ static long rs_ktblmgr_ioctl(struct file *filp, unsigned int cmd, unsigned long 
 				for(i = 0; i < scheduled_objects_count; i++) {
 
 					//scheduled_object = TODO COPY FROM USER check return value
-			        	copy_from_user((void *)&scheduled_object,(void *)&scheduled_objects[i],sizeof(int));	
+			        	copy_from_user((void *)&scheduled_object,(void *)&scheduled_objects[i],sizeof(int));
 					open_index[descriptor]++;
 					currently_open[descriptor][open_index[descriptor]]=scheduled_object;
 
@@ -569,7 +572,7 @@ static long rs_ktblmgr_ioctl(struct file *filp, unsigned int cmd, unsigned long 
 
 					/* actual opening of the PDP entry */
 					my_pdp[OBJECT_TO_PDP(scheduled_object)] = ancestor_pdp[OBJECT_TO_PDP(scheduled_object)];
-				}// end for 
+				}// end for
 
 				/* actual change of the view on memory */
 				root_sim_processes[descriptor] = current->pid;
@@ -581,7 +584,7 @@ static long rs_ktblmgr_ioctl(struct file *filp, unsigned int cmd, unsigned long 
 			break;
 
 
-		case IOCTL_UNSCHEDULE_ON_PGD:	
+		case IOCTL_UNSCHEDULE_ON_PGD:
 
 			descriptor = arg;
 
@@ -593,14 +596,14 @@ static long rs_ktblmgr_ioctl(struct file *filp, unsigned int cmd, unsigned long 
 				for(i=open_index[descriptor];i>=0;i--){
 
 					object_to_close = currently_open[descriptor][i];
-	
+
 					pml4 = restore_pml4 + OBJECT_TO_PML4(object_to_close);
 					my_pgd =(void **)pgd_addr[descriptor];
 					my_pdp =(void *)my_pgd[pml4];
 					my_pdp = __va((ulong)my_pdp & 0xfffffffffffff000);
-	
+
 					/* actual closure of the PDP entry */
-	
+
 					my_pdp[OBJECT_TO_PDP(object_to_close)] = NULL;
 				}
 				open_index[descriptor] = -1;
@@ -614,9 +617,9 @@ static long rs_ktblmgr_ioctl(struct file *filp, unsigned int cmd, unsigned long 
 		case IOCTL_SET_VM_RANGE:
 
 			flush_cache_all(); /* to make new range visible across multiple runs */
-			
+
 			mapped_processes = (((ioctl_info*)arg)->mapped_processes);
-			involved_pml4 = (((ioctl_info*)arg)->mapped_processes) >> 9; 
+			involved_pml4 = (((ioctl_info*)arg)->mapped_processes) >> 9;
 			if ( (unsigned)((ioctl_info*)arg)->mapped_processes & 0x00000000000001ff ) involved_pml4++;
 
 			callback = ((ioctl_info*)arg)->callback;
@@ -655,8 +658,8 @@ void the_pager(void) {
 	int i;
 
 	if(current->mm != NULL){
-		for(i=0;i<SIBLING_PGD;i++){	
-			if ((root_sim_processes[i])==(current->pid)){	
+		for(i=0;i<SIBLING_PGD;i++){
+			if ((root_sim_processes[i])==(current->pid)){
 				rootsim_load_cr3(pgd_addr[i]);
 			}
 		}
@@ -764,7 +767,7 @@ static int rs_ktblmgr_init(void) {
 	if (!register_kprobe(&kp)) {
 		flush_tlb_all_lookup = (void *) kp.addr;
 		unregister_kprobe(&kp);
-	} 
+	}
 
 
 	return 0;
@@ -777,7 +780,7 @@ static int rs_ktblmgr_init(void) {
 	unregister_chrdev(major, "rs_ktblmgr");
     failed_chrdevreg:
 	return ret;
- 
+
 
     bad_alloc:
 	printk(KERN_ERR "rs_ktblmgr: something wrong while preallocatin pgds\n");

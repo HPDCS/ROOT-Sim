@@ -1,32 +1,43 @@
 /**
-*                       Copyright (C) 2008-2018 HPDCS Group
-*                       http://www.dis.uniroma1.it/~hpdcs
-*
-*
-* This file is part of ROOT-Sim (ROme OpTimistic Simulator).
-*
-* ROOT-Sim is free software; you can redistribute it and/or modify it under the
-* terms of the GNU General Public License as published by the Free Software
-* Foundation; only version 3 of the License applies.
-*
-* ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
-* WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-* A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-*
-* You should have received a copy of the GNU General Public License along with
-* ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
-* 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-*
-* @file instruction.h
-* @brief Header to represent a disassembled x86 instruction and keep track of the
-*        disassembly state.
-* @author Alessandro Pellegrini
-* @author Roberto Vitali
-* @author Fernando Visca
-* @author Davide Cingolani
-* @author Simone Economo
-* @date September 19, 2008
-*/
+ * @file arch/x86/disassemble.h
+ *
+ * @brief x86 ISA disassembler header
+ *
+ * This is an x86 ISA disassembler. The disassembly (which is table-based)
+ * extracts every possible information from an instruction, given a
+ * pointer to it.
+ *
+ * This is a complete disassembler until SSE2 instructions. Newer
+ * instructions support is far from complete. Although it has been
+ * extensively tested (it has correctly disassembled the Linux kernel and
+ * Photoshop), it is extremely possible that some bugs are hidden somewhere.
+ *
+ * @copyright
+ * Copyright (C) 2008-2019 HPDCS Group
+ * https://hpdcs.github.io
+ *
+ * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
+ *
+ * ROOT-Sim is free software; you can redistribute it and/or modify it under the
+ * terms of the GNU General Public License as published by the Free Software
+ * Foundation; only version 3 of the License applies.
+ *
+ * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+ * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+ *
+ * @author Alessandro Pellegrini
+ * @author Davide Cingolani
+ * @author Simone Economo
+ * @author Fernando Visca
+ * @author Alice Porfirio
+ *
+ * @date September 19, 2008
+ */
 
 #pragma once
 

@@ -1,39 +1,48 @@
 /**
-*                       Copyright (C) 2008-2018 HPDCS Group
-*			 http://www.dis.uniroma1.it/~hpdcs
-*
-* This file is part of ROOT-Sim (ROme OpTimistic Simulator).
-*
-* ROOT-Sim is free software; you can redistribute it and/or modify it under the
-* terms of the GNU General Public License as published by the Free Software
-* Foundation; only version 3 of the License applies.
-*
-* ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
-* WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-* A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-*
-* You should have received a copy of the GNU General Public License along with
-* ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
-* 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-*
-* @file thread.h
-* @brief This module implements Kernel Level Thread supports
-* @author Alessandro Pellegrini
-* @date Jan 25, 2012
-*/
+ * @file arch/thread.h
+ *
+ * @brief Generic thread management facilities.
+ *
+ * This module provides generic facilities for thread management.
+ * In particular, helper functions to startup worker threads are exposed,
+ * and a function to synchronize multiple threads on a software barrier.
+ *
+ * The software barrier also offers a leader election facility, so that
+ * once all threads are synchronized on the barrier, the function returns
+ * true to only one of them.
+ *
+ * @copyright
+ * Copyright (C) 2008-2019 HPDCS Group
+ * https://hpdcs.github.io
+ *
+ * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
+ *
+ * ROOT-Sim is free software; you can redistribute it and/or modify it under the
+ * terms of the GNU General Public License as published by the Free Software
+ * Foundation; only version 3 of the License applies.
+ *
+ * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+ * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+ *
+ * @author Alessandro Pellegrini
+ * @date Jan 25, 2012
+ */
 
 #pragma once
 
 #include <stdbool.h>
 #include <arch/atomic.h>
 
-
 #if defined(OS_LINUX)
 
 #include <sched.h>
 #include <unistd.h>
 #include <pthread.h>
-
 
 // Macros to get information about the hosting machine
 
@@ -59,18 +68,20 @@ static inline void set_affinity(int core) {
 
 #include <windows.h>
 
+/// Macro to get the core count on the hosting machine
 #define get_cores() ({\
 			SYSTEM_INFO _sysinfo;\
 			GetSystemInfo( &_sysinfo );\
 			_sysinfo.dwNumberOfProcessors;\
 			})
 
-// How do we identify a thread?
+/// How do we identify a thread?
 typedef HANDLE tid_t;
 
 /// Spawn a new thread
 #define new_thread(entry, arg)	CreateThread(NULL, 0, entry, arg, 0, &os_tid)
 
+/// Macro to set the affinity of the thread which calls it
 #define set_affinity(core) SetThreadAffinityMask(GetCurrentThread(), 1<<core)
 
 #else /* OS_LINUX || OS_WINDOWS */
@@ -78,20 +89,53 @@ typedef HANDLE tid_t;
 #endif
 
 
+/// This structure is used to call the thread creation helper function
+struct _helper_thread {
+	void *(*start_routine)(void *);	///< A pointer to the entry point of the next-to-be thread
+	void *arg;			///< Arguments to be passed to @ref start_routine
+};
 
 /* The global tid is obtained by concatenating of the `kid` and the `local_tid`
  * and is stored into an unsigned int. Since we are using half of the unsigned int
  * for each part we have that the total number of kernels and
  * the number of threads per kernel must be less then (2^HALF_UINT_BITS - 1)
  */
-#define HALF_UINT_BITS (sizeof(unsigned int)*8/2)
+#define HALF_UINT_BITS (sizeof(unsigned int) * 8 / 2)
 
+
+/**
+ * This macro tells what is the maximum number of simulation kernel instances
+ * which are supported.
+ * This has to do with the maximum representable number give the fact that
+ * half of the available bits in a tid are used to keep track of the kid
+ * on which that kernel resides.
+ *
+ * @todo This information is not actually needed, so we can drop this limitation
+ */
 #define MAX_KERNELS ((1 << HALF_UINT_BITS) - 1)
+
+
+/**
+ * This macro tells how many threads we can have on a single simulation
+ * kernel. The logis is the same as that of @ref MAX_KERNELS, i.e. sharing
+ * the available bit in an unsigned long to keep both representations.
+ */
 #define MAX_THREADS_PER_KERNEL ((1 << HALF_UINT_BITS) - 1)
 
-#define to_global_tid(kid, local_tid) ( (kid << HALF_UINT_BITS) | local_tid )
-#define to_local_tid(global_tid) ( global_tid & ((1 << HALF_UINT_BITS)-1) )
 
+/**
+ * @brief Convert a local tid in a global tid
+ *
+ * This macro takes a local tid and inserts in the upper part of the bits
+ * the id of the kernel on which that thread is running. This makes the
+ * global tid.
+ *
+ * @param kid The kid on which a thread is running
+ * @param local_tid The locally-assigned tid of the thread
+ *
+ * @return The global kid
+ */
+#define to_global_tid(kid, local_tid) ( (kid << HALF_UINT_BITS) | local_tid )
 
 /// This macro expands to true if the current KLT is the master thread for the local kernel
 #define master_thread() (local_tid == 0)

@@ -1,7 +1,14 @@
 /**
-*			Copyright (C) 2008-2018 HPDCS Group
-*			http://www.dis.uniroma1.it/~hpdcs
+* @file gvt/gvt.c
 *
+* @brief Global Virtual Time
+*
+* This module implements the GVT reduction. The current implementation
+* is non blocking for observable simulation plaftorms.
+*
+* @copyright
+* Copyright (C) 2008-2019 HPDCS Group
+* https://hpdcs.github.io
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
 *
@@ -17,13 +24,12 @@
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file gvt.c
-* @brief This module implements the GVT reduction. The current implementation
-* 	 is non blocking for observable simulation plaftorms.
 * @author Alessandro Pellegrini
 * @author Francesco Quaglia
+* @author Tommaso Tocci
+*
+* @date June 14, 2014
 */
-
 
 #include <ROOT-Sim.h>
 #include <arch/thread.h>
@@ -34,10 +40,9 @@
 #include <core/init.h>
 #include <core/timer.h>
 #include <scheduler/process.h>
-#include <scheduler/scheduler.h> // this is for n_prc_per_thread
-//#include <scheduler/binding.h> // this is for force_rebind_GLP
+#include <scheduler/scheduler.h>
 #include <statistics/statistics.h>
-#include <mm/dymelor.h>
+#include <mm/mm.h>
 #include <communication/mpi.h>
 #include <communication/gvt.h>
 
@@ -72,7 +77,6 @@ timer gvt_timer;
 
 timer gvt_round_timer;
 
-
 #ifdef HAVE_MPI
 static atomic_t init_kvt_tkn;
 static atomic_t commit_gvt_tkn;
@@ -89,7 +93,6 @@ static atomic_t idle_tkn;
 static atomic_t counter_initialized;
 static atomic_t counter_kvt;
 static atomic_t counter_finalized;
-
 
 /// To be used with CAS to determine who is starting the next GVT reduction phase
 static atomic_t current_GVT_round = 0;
@@ -128,11 +131,10 @@ static simtime_t *local_min;
 static simtime_t *local_min_barrier;
 
 /**
-* Initialization of the GVT subsystem
-*
-* @author Alessandro Pellegrini
+* Initialization of the GVT subsystem.
 */
-void gvt_init(void) {
+void gvt_init(void)
+{
 	unsigned int i;
 
 	// This allows the first GVT phase to start
@@ -141,23 +143,25 @@ void gvt_init(void) {
 	// Initialize the local minima
 	local_min = rsalloc(sizeof(simtime_t) * n_cores);
 	local_min_barrier = rsalloc(sizeof(simtime_t) * n_cores);
-	for(i = 0; i < n_cores; i++) {
+	for (i = 0; i < n_cores; i++) {
 		local_min[i] = INFTY;
 		local_min_barrier[i] = INFTY;
 	}
 
 	timer_start(gvt_timer);
+
+	// Initialize the CCGS subsystem
+	ccgs_init();
 }
 
-
-
-
 /**
-* Finalizer of the GVT subsystem
-*
-* @author Alessandro Pellegrini
+* Finalizer of the GVT subsystem.
 */
-void gvt_fini(void){
+void gvt_fini(void)
+{
+	// Finalize the CCGS subsystem
+	ccgs_fini();
+
 #ifdef HAVE_MPI
 	if((atomic_read(&kernel_phase) == kphase_idle && !master_thread() && gvt_init_pending())
 	   || atomic_read(&kernel_phase) == kphase_start) {
@@ -172,27 +176,24 @@ void gvt_fini(void){
 #endif
 }
 
-
 /**
  * This function returns the last computed GVT value at each thread.
  * It can be safely used concurrently to keep track of the evolution of
  * the committed trajectory. It's so far mainly used for termination
  * detection based on passed simulation time.
  */
-inline simtime_t get_last_gvt(void) {
+inline simtime_t get_last_gvt(void)
+{
 	return last_gvt;
 }
 
-
-static inline void reduce_local_gvt(void) {
-	unsigned int i;
-
-	for(i = 0; i < n_prc_per_thread; i++) {
-
+static inline void reduce_local_gvt(void)
+{
+	foreach_bound_lp(lp) {
 		// If no message has been processed, local estimate for
 		// GVT is forced to 0.0. This can happen, e.g., if
 		// GVT is computed very early in the run
-		if(unlikely(LPS_bound(i)->bound == NULL)) {
+		if (unlikely(lp->bound == NULL)) {
 			local_min[local_tid] = 0.0;
 			break;
 		}
@@ -201,89 +202,91 @@ static inline void reduce_local_gvt(void) {
 		// events, we can safely assume that it should not
 		// participate to the computation of the GVT, because any
 		// event to it will appear *after* the GVT
-		if(LPS_bound(i)->bound->next == NULL)
+		if (lp->bound->next == NULL)
 			continue;
 
-		local_min[local_tid] = min(local_min[local_tid], LPS_bound(i)->bound->timestamp);
+		local_min[local_tid] =
+		    min(local_min[local_tid], lp->bound->timestamp);
 	}
 	atomic_thread_fence(memory_order_acquire);
 }
 
-
-simtime_t GVT_phases(void){
+simtime_t GVT_phases(void)
+{
 	unsigned int i;
 
-	if(thread_phase == tphase_A) {
-		#ifdef HAVE_MPI
+	if (thread_phase == tphase_A) {
+#ifdef HAVE_MPI
 		// Check whether we have new ingoing messages sent by remote instances
 		receive_remote_msgs();
-		#endif
+#endif
 		process_bottom_halves();
 
 		reduce_local_gvt();
 
-		thread_phase = tphase_send;     // Entering phase send
+		thread_phase = tphase_send;	// Entering phase send
 		atomic_dec(&counter_A);	// Notify finalization of phase A
 		return -1.0;
 	}
 
-	if(thread_phase == tphase_send && atomic_read(&counter_A) == 0) {
-		#ifdef HAVE_MPI
+	if (thread_phase == tphase_send && atomic_read(&counter_A) == 0) {
+#ifdef HAVE_MPI
 		// Check whether we have new ingoing messages sent by remote instances
 		receive_remote_msgs();
-		#endif
+#endif
 		process_bottom_halves();
 		schedule();
 		thread_phase = tphase_B;
 		atomic_dec(&counter_send);
-		return  -1.0;
+		return -1.0;
 	}
 
-	if(thread_phase == tphase_B && atomic_read(&counter_send) == 0) {
-		#ifdef HAVE_MPI
+	if (thread_phase == tphase_B && atomic_read(&counter_send) == 0) {
+#ifdef HAVE_MPI
 		// Check whether we have new ingoing messages sent by remote instances
 		receive_remote_msgs();
-		#endif
+#endif
 		process_bottom_halves();
 
 		reduce_local_gvt();
 
-		#ifdef HAVE_MPI
+#ifdef HAVE_MPI
 		// WARNING: local thread cannot send any remote
 		// message between the two following calls
 		exit_red_phase();
-		local_min[local_tid] = min(local_min[local_tid], min_outgoing_red_msg[local_tid]);
-		#endif
+		local_min[local_tid] =
+		    min(local_min[local_tid], min_outgoing_red_msg[local_tid]);
+#endif
 
 		thread_phase = tphase_aware;
 		atomic_dec(&counter_B);
 
-		if(atomic_read(&counter_B) == 0){
+		if (atomic_read(&counter_B) == 0) {
 			simtime_t agreed_vt = INFTY;
-			for(i = 0; i < n_cores; i++) {
+			for (i = 0; i < n_cores; i++) {
 				agreed_vt = min(local_min[i], agreed_vt);
 			}
 			return agreed_vt;
 		}
-		return  -1.0;
+		return -1.0;
 	}
 
 	return -1.0;
 }
 
-
-bool start_new_gvt(void){
+bool start_new_gvt(void)
+{
 #ifdef HAVE_MPI
-	if(!master_kernel()){
+	if (!master_kernel()) {
 		//Check if we received a new GVT init msg
 		return gvt_init_pending();
 	}
 #endif
 
 	// Has enough time passed since the last GVT reduction?
-	return timer_value_milli(gvt_timer) > (int)rootsim_config.gvt_time_period;
+	return timer_value_milli(gvt_timer) >
+	    (int)rootsim_config.gvt_time_period;
 }
-
 
 /**
 * This is the entry point from the main simulation loop to the GVT subsystem.
@@ -295,15 +298,14 @@ bool start_new_gvt(void){
 * This function is called at every simulation loop, so at the beginning the code should
 * check whether a GVT computation is occurring, or if a computation must be started.
 *
-* @author Alessandro Pellegrini
-*
 * @return The newly computed GVT value, or -1.0. Only a Master Thread should return a value
 * 	  different from -1.0, to avoid generating too much information. If every thread
 * 	  will return a value different from -1.0, nothing will be broken, but all the values
 * 	  will be shown associated with the same kernel id (no way to distinguish between
 * 	  different threads here).
 */
-simtime_t gvt_operations(void) {
+simtime_t gvt_operations(void)
+{
 
 	// GVT reduction initialization.
 	// This is different from the paper's pseudocode to reduce
@@ -315,21 +317,21 @@ simtime_t gvt_operations(void) {
 
 			timer_start(gvt_round_timer);
 
-			#ifdef HAVE_MPI
+#ifdef HAVE_MPI
 			//inform all the other kernels about the new gvt
-			if(master_kernel()){
+			if (master_kernel()) {
 				broadcast_gvt_init(current_GVT_round);
-			}else{
+			} else {
 				gvt_init_clear();
 			}
-			#endif
+#endif
 
 			// Reduce the current CCGS termination detection
 			ccgs_reduce_termination();
 
 			/* kernel GVT round setup */
 
-			#ifdef HAVE_MPI
+#ifdef HAVE_MPI
 			flush_white_msg_recv();
 
 			atomic_set(&init_kvt_tkn, 1);
@@ -354,7 +356,6 @@ simtime_t gvt_operations(void) {
 		}
 	}
 
-
 	/* Thread setup phase:
 	 * each thread needs to setup its own local context
 	 * before to partecipate to the new GVT round */
@@ -364,9 +365,9 @@ simtime_t gvt_operations(void) {
 		// Keep track of this update
 		my_GVT_round = current_GVT_round;
 
-		#ifdef HAVE_MPI
+#ifdef HAVE_MPI
 		enter_red_phase();
-		#endif
+#endif
 
 		local_min[local_tid] = INFTY;
 
@@ -386,7 +387,6 @@ simtime_t gvt_operations(void) {
 		return -1.0;
 	}
 
-
 #ifdef HAVE_MPI
 	if( atomic_read(&kernel_phase) == kphase_white_msg_redux && white_msg_redux_completed() && all_white_msg_received() ){
 		if(cmpxchg(&init_kvt_tkn, &one, 0)){
@@ -397,7 +397,6 @@ simtime_t gvt_operations(void) {
 	}
 #endif
 
-
 	/* KVT phase:
 	 * make all the threads agree on a common virtual time for this kernel */
 	if( atomic_read(&kernel_phase) == kphase_kvt && thread_phase != tphase_aware ) {
@@ -405,26 +404,25 @@ simtime_t gvt_operations(void) {
 		if( D_DIFFER(kvt, -1.0) ){
 			if(cmpxchg(&commit_kvt_tkn, &one, 0)) {
 
-				#ifdef HAVE_MPI
+#ifdef HAVE_MPI
 				join_gvt_redux(kvt);
 				atomic_set(&kernel_phase, kphase_gvt_redux);
 
-				#else
+#else
 				new_gvt = kvt;
 				atomic_set(&kernel_phase, kphase_fossil);
 
-				#endif
+#endif
 			}
 		}
 		return -1.0;
 	}
 
-
 #ifdef HAVE_MPI
 	if( atomic_read(&kernel_phase) == kphase_gvt_redux && gvt_redux_completed() ){
 		if(cmpxchg(&commit_gvt_tkn, &one, 0)){
 			int gvt_round_time = timer_value_micro(gvt_round_timer);
-			statistics_post_other_data(STAT_GVT_ROUND_TIME, gvt_round_time);
+			statistics_post_data(current, STAT_GVT_ROUND_TIME, gvt_round_time);
 
 			new_gvt = last_reduced_gvt();
 			atomic_set(&kernel_phase, kphase_fossil);
@@ -432,7 +430,6 @@ simtime_t gvt_operations(void) {
 		return -1.0;
 	}
 #endif
-
 
 	/* GVT adoption phase:
 	 * the last agreed GVT needs to be adopted by every thread */
@@ -447,7 +444,7 @@ simtime_t gvt_operations(void) {
 		adopt_new_gvt(new_gvt);
 
 		// Dump statistics
-		statistics_post_other_data(STAT_GVT, new_gvt);
+		statistics_on_gvt(new_gvt);
 
 		last_gvt = new_gvt;
 

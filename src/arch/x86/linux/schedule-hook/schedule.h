@@ -1,5 +1,5 @@
 /**
-*			Copyright (C) 2008-2018 HPDCS Group
+*			Copyright (C) 2008-2019 HPDCS Group
 *                       http://www.dis.uniroma1.it/~hpdcs
 *
 * This is free software;
@@ -16,7 +16,7 @@
 * this file; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 *
-* @file timestretch.h
+* @file schedule.h
 * @brief This is the header file to configure the timestretch module
 * @author Francesco Quaglia
 * @author Alessandro Pellegrini

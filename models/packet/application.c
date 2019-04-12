@@ -1,8 +1,10 @@
 #include <ROOT-Sim.h>
 #include "application.h"
 
+struct _topology_settings_t topology_settings = {.default_geometry = TOPOLOGY_GRAPH};
 
 void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, event_t *content, unsigned int size, lp_state_t *state) {
+	(void)size;
 	event_t new_event;
 	simtime_t timestamp;
 
@@ -21,18 +23,18 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, event_t *c
 		case PACKET: {
 			state->packet_count++;
 			if(content != NULL && content->sender != me) {
-				if(content->pointer!=NULL){
-					content->pointer[0]++;
-				}
+			//	if(content->pointer!=NULL){
+			//		content->pointer[0]++;
+			//	}
 			}
 			new_event.sent_at = now;
 			new_event.pointer = state->pointer;
 			new_event.sender = me;
-			
-			int recv = FindReceiver(TOPOLOGY_MESH);
-		
+
+			int recv = FindReceiver();
+
 			timestamp = now + Expent(DELAY);
-	
+
 			ScheduleNewEvent(recv, timestamp, PACKET, &new_event, sizeof(new_event));
 		}
 	}
@@ -40,12 +42,9 @@ void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, event_t *c
 
 
 bool OnGVT(unsigned int me, lp_state_t *snapshot) {
+	(void)me;
 
-	if(me == 0) {
-		printf("Completed work: %f\%\n", (double)snapshot->packet_count/PACKETS*100);
-	}
-
-	if (snapshot->packet_count < PACKETS)
-		return false;
-	return true;
+	if (snapshot->packet_count >= PACKETS)
+		return true;
+	return false;
 }

@@ -1,7 +1,15 @@
 /**
-*                       Copyright (C) 2008-2018 HPDCS Group
-*                       http://www.dis.uniroma1.it/~hpdcs
+* @file arch/x86/linux/cross_state_manager/cross_state_manager.h
 *
+* @brief Per-thread page table
+*
+*
+* This Linux kernel module implements a modification to the x86_64 page
+* table management to support event cross state dependency tracking
+*
+* @copyright
+* Copyright (C) 2008-2019 HPDCS Group
+* https://hpdcs.github.io
 *
 * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
 *
@@ -16,14 +24,12 @@
 * You should have received a copy of the GNU General Public License along with
 * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
 * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-*
-* @file ktblmgr.h
-* @brief This is the main header for the Linux Kernel Module which implements
-*	per-kernel-thread different page table for supporting shared state.
 * @author Alessandro Pellegrini
 * @author Francesco Quaglia
 *
-* @date November 15, 2013
+* @date November 15, 2013 - Initial version
+* @date September 19, 2015 - Full restyle of the module, to use dynamic scheduler
+* 			     patching
 */
 
 #pragma once

@@ -41,6 +41,8 @@ const struct argp_option model_options[] = {
 	break
 
 static error_t model_parse(int key, char *arg, struct argp_state *state) {
+	(void)state;
+
 	switch (key) {
 
 		HANDLE_ARGP_CASE(OPT_OTS, 	"%d", 	object_total_size);
@@ -48,9 +50,9 @@ static error_t model_parse(int key, char *arg, struct argp_state *state) {
 		HANDLE_ARGP_CASE(OPT_MAXS, 	"%d", 	max_size);
 		HANDLE_ARGP_CASE(OPT_MINS, 	"%d", 	min_size);
 		HANDLE_ARGP_CASE(OPT_NB, 	"%d", 	num_buffers);
-		HANDLE_ARGP_CASE(OPT_CA, 	"%d", 	complete_alloc);
+		HANDLE_ARGP_CASE(OPT_CA, 	"%u", 	complete_alloc);
 		HANDLE_ARGP_CASE(OPT_RC, 	"%d", 	read_correction);
-		HANDLE_ARGP_CASE(OPT_WC, 	"%lf", 	write_correction);
+		HANDLE_ARGP_CASE(OPT_WC, 	"%d", 	write_correction);
 		HANDLE_ARGP_CASE(OPT_WD, 	"%lf", 	write_distribution);
 		HANDLE_ARGP_CASE(OPT_RD, 	"%lf", 	read_distribution);
 		HANDLE_ARGP_CASE(OPT_TAU, 	"%lf", 	tau);
@@ -78,6 +80,7 @@ static error_t model_parse(int key, char *arg, struct argp_state *state) {
 
 #undef HANDLE_ARGP_CASE
 
+struct _topology_settings_t topology_settings = {.type = TOPOLOGY_OBSTACLES, .default_geometry = TOPOLOGY_GRAPH, .write_enabled = false};
 struct argp model_argp = {model_options, model_parse, NULL, NULL, NULL, NULL, NULL};
 
 // These global variables are used to store execution configuration values
@@ -87,15 +90,16 @@ int	object_total_size = OBJECT_TOTAL_SIZE,
 	max_size = MAX_SIZE,
 	min_size = MIN_SIZE,
 	num_buffers = NUM_BUFFERS,
-	complete_alloc = COMPLETE_ALLOC,
 	read_correction = NO_DISTR,
 	write_correction = NO_DISTR;
+unsigned int complete_alloc = COMPLETE_ALLOC;
 double	write_distribution = WRITE_DISTRIBUTION,
 	read_distribution = READ_DISTRIBUTION,
 	tau = TAU;
 
 
 void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *event_content, unsigned int size, void *state) {
+	(void)size;
 
 	simtime_t timestamp;
 	int 	i, j,
@@ -148,47 +152,47 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 				state_ptr->num_elementi = 0;
 				state_ptr->total_size = 0;
 				state_ptr->next_lp = 0;
-	
+
 				// Allocate memory for counters and pointers
 				state_ptr->taglie = malloc(num_buffers * sizeof(int));
 				state_ptr->elementi = malloc(num_buffers * sizeof(int));
 				state_ptr->head_buffs = malloc(num_buffers * sizeof(buffers *));
 				state_ptr->tail_buffs = malloc(num_buffers * sizeof(buffers *));
-	
+
 				if(num_buffers > 1)
 					step = (max_size - min_size) / (num_buffers - 1);
 				else
 					step = 0; // the only element will have min_size size
-	
+
 				current_size = min_size;
 				remaining_size = object_total_size;
-	
+
 				// Allocate memory for buffers
 				for (i = 0; i < num_buffers; i++){
-	
+
 					state_ptr->head_buffs[i] = NULL;
 					state_ptr->tail_buffs[i] = NULL;
 					state_ptr->taglie[i] = (int)current_size;
-	
-	
+
+
 					curr_num_buff = (int)ceil(remaining_size / num_buffers / current_size);
-	
+
 					if(curr_num_buff == 0)
 						curr_num_buff = 1;
-	
+
 					state_ptr->elementi[i] = curr_num_buff;
-	
+
 					state_ptr->num_elementi += curr_num_buff;
 					state_ptr->total_size += (current_size * curr_num_buff);
-	
+
 					printf("[%d, %d] ", curr_num_buff, (int)current_size);
-	
+
 					state_ptr->head_buffs[i] = malloc(sizeof(buffers));
 					state_ptr->head_buffs[i]->prev = NULL;
 					state_ptr->head_buffs[i]->next = NULL;
 					state_ptr->head_buffs[i]->buffer = malloc((int)current_size);
 					state_ptr->tail_buffs[i] = state_ptr->head_buffs[i];
-	
+
 					for(j = 0; j < curr_num_buff - 1; j++) {
 						buffers *tmp = malloc(sizeof(buffers));
 						tmp->prev = state_ptr->tail_buffs[i];
@@ -197,20 +201,20 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 						state_ptr->tail_buffs[i]->next = tmp;
 						state_ptr->tail_buffs[i] = tmp;
 					}
-	
+
 					remaining_size -= current_size * curr_num_buff;
 					current_size += step;
-	
+
 				}
-	
+
 				state_ptr->actual_size += current_size;
-	
-	
+
+
 				if(me == 0) {
 					ScheduleNewEvent(me, timestamp, DEALLOC, NULL, 0);
 				}
 			}
-	
+
 			break;
 
 
@@ -222,7 +226,7 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 			timestamp = now + (simtime_t)(Expent(TAU));
 			ScheduleNewEvent(me, timestamp, LOOP, NULL, 0);
 			if(Random() < 0.2)
-				ScheduleNewEvent(FindReceiver(TOPOLOGY_MESH), timestamp, LOOP, NULL, 0);
+				ScheduleNewEvent(FindReceiver(), timestamp, LOOP, NULL, 0);
 			break;
 
 
@@ -241,7 +245,7 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 			// Get size of the buffer to be deallocated
 			current_size = deallocation_op(state_ptr);
 
-			int recv = state_ptr->next_lp;
+			unsigned int recv = state_ptr->next_lp;
 			state_ptr->next_lp = (state_ptr->next_lp + (n_prc_tot / 4 + 1)) % n_prc_tot;
 			if (recv >= n_prc_tot)
 				recv = n_prc_tot - 1;
@@ -260,7 +264,7 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 			}
 
 			// Is there a buffer to be deallocated?
-			if(current_size == -1) {
+			if(fabsf(current_size + 1) < FLT_EPSILON) {
 				ScheduleNewEvent(me, timestamp, DEALLOC, NULL, 0);
 				break;
 			} else {
@@ -286,12 +290,9 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 
 
 bool OnGVT(unsigned int me, lp_state_type *snapshot) {
+	(void)me;
 
-
-//	if(me == 0)
-//		printf("%d: Executed %d events\n", me, snapshot->events);
-
-	if(1 || snapshot->traditional) {
+	if(snapshot->traditional) {
 		if(snapshot->events < COMPLETE_EVENTS)
 			return false;
 		return true;
