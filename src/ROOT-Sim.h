@@ -123,9 +123,9 @@ typedef enum _direction_t {
 } direction_t;
 
 enum _topology_type_t{
+	TOPOLOGY_OBSTACLES,	//!< all crossing costs and probabilities are set to 1, but there can be not crossable regions
 	TOPOLOGY_COSTS, 	//!< decisions on next hops are taken based on the costs undertaken to cross the boundaries
-	TOPOLOGY_PROBABILITIES,	//!< decisions are taken at random but are weighted on the palatability of neighbours
-	TOPOLOGY_OBSTACLES	//!< all crossing costs and probabilities are set to 1, but there can be not crossable regions
+	TOPOLOGY_PROBABILITIES 	//!< decisions are taken at random but are weighted on the palatability of neighbours
 };
 
 /**

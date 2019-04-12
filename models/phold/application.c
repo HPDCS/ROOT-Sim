@@ -41,6 +41,8 @@ const struct argp_option model_options[] = {
 	break
 
 static error_t model_parse(int key, char *arg, struct argp_state *state) {
+	(void)state;
+
 	switch (key) {
 
 		HANDLE_ARGP_CASE(OPT_OTS, 	"%d", 	object_total_size);
@@ -48,9 +50,9 @@ static error_t model_parse(int key, char *arg, struct argp_state *state) {
 		HANDLE_ARGP_CASE(OPT_MAXS, 	"%d", 	max_size);
 		HANDLE_ARGP_CASE(OPT_MINS, 	"%d", 	min_size);
 		HANDLE_ARGP_CASE(OPT_NB, 	"%d", 	num_buffers);
-		HANDLE_ARGP_CASE(OPT_CA, 	"%d", 	complete_alloc);
+		HANDLE_ARGP_CASE(OPT_CA, 	"%u", 	complete_alloc);
 		HANDLE_ARGP_CASE(OPT_RC, 	"%d", 	read_correction);
-		HANDLE_ARGP_CASE(OPT_WC, 	"%lf", 	write_correction);
+		HANDLE_ARGP_CASE(OPT_WC, 	"%d", 	write_correction);
 		HANDLE_ARGP_CASE(OPT_WD, 	"%lf", 	write_distribution);
 		HANDLE_ARGP_CASE(OPT_RD, 	"%lf", 	read_distribution);
 		HANDLE_ARGP_CASE(OPT_TAU, 	"%lf", 	tau);
@@ -88,15 +90,16 @@ int	object_total_size = OBJECT_TOTAL_SIZE,
 	max_size = MAX_SIZE,
 	min_size = MIN_SIZE,
 	num_buffers = NUM_BUFFERS,
-	complete_alloc = COMPLETE_ALLOC,
 	read_correction = NO_DISTR,
 	write_correction = NO_DISTR;
+unsigned int complete_alloc = COMPLETE_ALLOC;
 double	write_distribution = WRITE_DISTRIBUTION,
 	read_distribution = READ_DISTRIBUTION,
 	tau = TAU;
 
 
 void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *event_content, unsigned int size, void *state) {
+	(void)size;
 
 	simtime_t timestamp;
 	int 	i, j,
@@ -242,7 +245,7 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 			// Get size of the buffer to be deallocated
 			current_size = deallocation_op(state_ptr);
 
-			int recv = state_ptr->next_lp;
+			unsigned int recv = state_ptr->next_lp;
 			state_ptr->next_lp = (state_ptr->next_lp + (n_prc_tot / 4 + 1)) % n_prc_tot;
 			if (recv >= n_prc_tot)
 				recv = n_prc_tot - 1;
@@ -261,7 +264,7 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 			}
 
 			// Is there a buffer to be deallocated?
-			if(current_size == -1) {
+			if(fabsf(current_size + 1) < FLT_EPSILON) {
 				ScheduleNewEvent(me, timestamp, DEALLOC, NULL, 0);
 				break;
 			} else {
@@ -287,12 +290,9 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 
 
 bool OnGVT(unsigned int me, lp_state_type *snapshot) {
+	(void)me;
 
-
-//	if(me == 0)
-//		printf("%d: Executed %d events\n", me, snapshot->events);
-
-	if(1 || snapshot->traditional) {
+	if(snapshot->traditional) {
 		if(snapshot->events < COMPLETE_EVENTS)
 			return false;
 		return true;

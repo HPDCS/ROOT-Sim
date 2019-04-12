@@ -45,8 +45,7 @@ static void move_healthy_people(unsigned me, region_t *region, simtime_t now){
 		else
 			bitmap_set(explored, i); // this way we won't ask for that direction again
 	}
-	// we do this in 2 rounds to minimize the effect of the bias of the binomial generator
-	// xxx: is it needed? perfom some tests!
+	// we do this in 2 rounds to minimize the effect of the bias of the binomial generator xxx: is it needed? Perform some tests!
 	while(actual_neighbours){
 		// we pick a new random direction
 		i = Random()*neighbours;
@@ -65,8 +64,8 @@ static void move_healthy_people(unsigned me, region_t *region, simtime_t now){
 	}
 }
 
-// we handle infects visits move at timesteps 0.0, 1.0, 2.0, 3.0...
-// healthy people are moved at timesteps 0.5, 1.5, 2.5, 3.5...
+// we handle infects visits move at slightly randomized timesteps 1.0, 2.0, 3.0...
+// healthy people are moved at slightly randomized timesteps 0.5, 1.5, 2.5, 3.5...
 // this way we preserve the order of operation as in the original model
 void ProcessEvent(unsigned int me, simtime_t now, int event_type,
 		union {agent_t *agent; unsigned *n; infection_t *i_m; init_t *in_m;} payload, unsigned int event_size, region_t *state) {
@@ -124,7 +123,6 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type,
 }
 
 int OnGVT(unsigned int me, region_t *snapshot) {
-	// TODO this code is miserable, ideally we want a complete overview of the state
 	if(!me){
 		printf("healthy %u, infected %u\n", snapshot->healthy, CountAgents());
 		return snapshot->now > END_TIME;

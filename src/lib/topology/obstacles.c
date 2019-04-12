@@ -203,7 +203,11 @@ unsigned int find_receiver_obstacles(void) {
 		break;
 
 		case TOPOLOGY_STAR:
-			rootsim_error(true, "not implemented yet");
+			if(sender != 0) {
+				receiver = 0;
+			} else {
+				receiver = ((topology_global.lp_cnt - 1) * Random()) + 1;
+			}
 	}
 	return receiver;
 }

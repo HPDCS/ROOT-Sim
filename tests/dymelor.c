@@ -16,9 +16,9 @@
 
 #include "common.h"
 
-#define N_TOTAL		500
+#define N_TOTAL		50
 #define N_THREADS	4
-#define N_TOTAL_PRINT	50
+#define N_TOTAL_PRINT	5
 #define MEMORY		(1ULL << 26)
 
 #define RANDOM(s)	(rng() % (s))

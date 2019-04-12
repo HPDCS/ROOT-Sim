@@ -14,7 +14,7 @@ double 	ref_ta = TA,   // Initial call interarrival frequency (same for all cell
 	ta_duration = TA_DURATION, // Average duration of a call
 	ta_change = TA_CHANGE; // Average time after which a call is diverted to another cell
 
-enum{
+enum {
 	OPT_STAT = 128, /// this tells argp to not assign short options
 	OPT_TA,
 	OPT_TAD,
@@ -45,7 +45,9 @@ const struct argp_option model_options[] = {
 		} \
 	break
 
-static error_t model_parse (int key, char *arg, struct argp_state *state){
+static error_t model_parse (int key, char *arg, struct argp_state *state) {
+	(void)state;
+	
 	switch (key) {
 		HANDLE_CASE(OPT_TA, "%lf", ref_ta);
 		HANDLE_CASE(OPT_TAD, "%lf", ta_duration);
@@ -78,9 +80,11 @@ static error_t model_parse (int key, char *arg, struct argp_state *state){
 
 struct argp model_argp = {model_options, model_parse, NULL, NULL, NULL, NULL, NULL};
 
-struct _topology_settings_t topology_settings = {.type = TOPOLOGY_OBSTACLES, .default_geometry = TOPOLOGY_HEXAGON, .write_enabled = false};
+struct _topology_settings_t topology_settings = {.default_geometry = TOPOLOGY_HEXAGON};
 
 void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_type *event_content, unsigned int size, void *ptr) {
+	(void)size;
+	
 	unsigned int w;
 
 	//printf("%d executing %d at %f\n", me, event_type, now);
@@ -309,6 +313,8 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 
 
 bool OnGVT(unsigned int me, lp_state_type *snapshot) {
+	(void)me;
+	
 	if (snapshot->complete_calls < complete_calls)
 		return false;
 	return true;
