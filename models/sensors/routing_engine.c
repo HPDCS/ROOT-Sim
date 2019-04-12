@@ -22,39 +22,7 @@
 #include <ROOT-Sim.h>
 #include "application.h"
 
-/* GLOBAL VARIABLES - start
- *
- * Default values of the parameters for the routing engine (check routing_engine.h for a description)
- */
-
-double update_route_timer=UPDATE_ROUTE_TIMER;
-unsigned int max_one_hop_etx=MAX_ONE_HOP_ETX;
-unsigned int parent_switch_threshold=PARENT_SWITCH_THRESHOLD;
-double min_beacons_send_interval=MIN_BEACONS_SEND_INTERVAL;
-double max_beacons_send_interval=MAX_BEACONS_SEND_INTERVAL;
-
-/* GLOBAL VARIABLES - end */
-
 extern node_statistics* node_statistics_list;
-
-/*
- * PARSE SIMULATION PARAMETERS FOR THE ROUTING ENGINE
- */
-
-void parse_routing_engine_parameters(void* event_content){
-
-        if(IsParameterPresent(event_content, "update_route_timer"))
-                update_route_timer=GetParameterDouble(event_content,"update_route_timer");
-        if(IsParameterPresent(event_content, "max_one_hop_etx"))
-                max_one_hop_etx=(unsigned int)GetParameterInt(event_content,"max_one_hop_etx");
-        if(IsParameterPresent(event_content, "parent_switch_threshold"))
-                parent_switch_threshold=(unsigned int)GetParameterInt(event_content,"parent_switch_threshold");
-        if(IsParameterPresent(event_content, "min_beacons_send_interval"))
-                min_beacons_send_interval=GetParameterDouble(event_content,"min_beacons_send_interval");
-        if(IsParameterPresent(event_content, "max_beacons_send_interval"))
-                max_beacons_send_interval=GetParameterDouble(event_content,"max_beacons_send_interval");
-}
-
 
 /*
  * Method to initialize a variable describing a path from one node to the root: simply sets all the fields to  their

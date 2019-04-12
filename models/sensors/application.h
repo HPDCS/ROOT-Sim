@@ -4,60 +4,10 @@
 #include "link_estimator.h"
 #include "routing_engine.h"
 #include "forwarding_engine.h"
+#include "parameters.h"
 #include <ROOT-Sim.h>
 #include <math.h>
 #include <pthread.h>
-
-/*
- * PARAMETERS OF THE SIMULATION - start
- */
-
-/*
- * FAILURE LAMBDA
- *
- * The lambda parameter of the exponential failure distribution: it depends on the devices used as node of the collection
- * tree and is equivalent to the failure rate or MTTF(Mean Time To Failure)
- */
-
-#ifndef FAILURE_LAMBDA
-#define FAILURE_LAMBDA 0.0005
-#endif
-
-/*
- * FAILURE PROBABILITY THRESHOLD
- *
- * The exponential failure distribution tells the probability that a failure occurs before a certain time =>
- * the following parameter determines which is the minimum probability for the node to be considered as failed by the
- * simulator
- */
-
-#ifndef FAILURE_THRESHOLD
-#define FAILURE_THRESHOLD 0.9
-#endif
-
-/*
- * MAX SIMULATION TIME
- *
- * Maximum value for the simulation time: when reached, the simulation stops (in seconds)
- */
-
-#ifndef MAX_TIME
-#define MAX_TIME 10
-#endif
-
-/*
- * COLLECTED DATA PACKETS GOAL
- *
- * Lower bound of data packets received by the root from each node for the simulation to stop
- */
-
-#ifndef COLLECTED_DATA_PACKETS_GOAL
-#define COLLECTED_DATA_PACKETS_GOAL 10
-#endif
-
-/*
- * PARAMETERS OF THE SIMULATION - end
- */
 
 /*
  * EVENT TYPES

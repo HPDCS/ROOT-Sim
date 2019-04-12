@@ -100,16 +100,6 @@ typedef struct _lp_state_type{
 	simtime_t lvt; // Last executed event was at this simulation time
 
 	double ta; // Current call interarrival frequency for this cell
-	double ref_ta; // Initial call interarrival frequency (same for all cells)
-	double ta_duration; // Average duration of a call
-	double ta_change; // Average time after which a call is diverted to another cell
-
-	int channels_per_cell; // Total channels in this cell
-	int total_calls;
-
-	bool check_fading; // Is the model set up to periodically recompute the fading of all ongoing calls?
-	bool fading_recheck;
-	bool variable_ta; // Should the call interarrival frequency change depending on the current time?
 
 	unsigned int *channel_state;
 	struct _channel *channels;
@@ -117,6 +107,7 @@ typedef struct _lp_state_type{
 	bool dummy_flag;
 } lp_state_type;
 
+extern unsigned int channels_per_cell;
 
 double recompute_ta(double ref_ta, simtime_t now);
 double generate_cross_path_gain(void);
@@ -124,8 +115,5 @@ double generate_path_gain(void);
 void deallocation(unsigned int lp, lp_state_type *state, int channel, simtime_t);
 int allocation(lp_state_type *state);
 void fading_recheck(lp_state_type *pointer);
-
-
-extern int channels_per_cell;
 
 

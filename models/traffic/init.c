@@ -26,34 +26,44 @@
 #include "application.h"
 #include "init.h"
 
+#define parseDouble(s) ({\
+			double __value;\
+			char *__endptr;\
+			__value = strtod(s, &__endptr);\
+			if(!(*s != '\0' && *__endptr == '\0')) {\
+				fprintf(stderr, "%s:%d: Invalid conversion value: %s\n", __FILE__, __LINE__, s);\
+			}\
+			__value;\
+		       })
+
 static int find_lp_by_name(char *name, FILE *f) {
 	char line[LINE_LENGTH];
 	char *saveptr;
 	int count = 0;
 
 	rewind(f);
-	
+
 	while(fgets(line, LINE_LENGTH, f) != NULL) {
 		line[strlen(line) - 1] = '\0'; // Remove trailing '\n'
 		if(line[0] == '\0') // The only \n was overwritten with a \0
 			continue;
-		
+
 		if(line[0] == '#')
 			continue;
-			
+
 		if(strcmp(line, ROUTES_STR) == 0)
 			continue;
-			
+
 		if(strcmp(line, INTERSECT_STR) == 0)
 			continue;
-		
+
 		if(strcmp(strtok_r(line, ", \t", &saveptr), name) == 0) {
 			return count;
 		}
-		
+
 		count++;
 	}
-	
+
 	fprintf(stderr, "Unable to find intersection named %s\n", name);
 	fflush(stderr);
 	exit(EXIT_FAILURE);
@@ -99,7 +109,7 @@ static void tokenize_route(char *line, lp_state_type *state, char *name, char fr
 	char *source = line;
 	char *saveptr;
 	int pass = 0;	// This is the tokenization pass
-	
+
 	while((token = strtok_r(source, ", \t", &saveptr)) != NULL) { // space and newline are there to ignore them
 
 		switch(pass) {
@@ -135,7 +145,7 @@ static void tokenize_route(char *line, lp_state_type *state, char *name, char fr
 static bool parse_topology_line(unsigned int me, unsigned int *line_counter, char *line, int *state, lp_state_type *sim_state, FILE *f) {
 	char to[NAME_LENGTH];
 	char from[NAME_LENGTH];
-	
+
 	// Skip empty lines
 	if(line[0] == '\0') // The only \n was overwritten with a \0
 		return false;
@@ -165,17 +175,17 @@ static bool parse_topology_line(unsigned int me, unsigned int *line_counter, cha
 		} else {
 			sim_state->lp_type = SEGMENT;
 			tokenize_route(line, sim_state, sim_state->name, from, to);
-			
+
 			// A route has only 2 neighbours, one source and one destination
 			sim_state->topology = malloc(sizeof(topology_t));
 			sim_state->topology->num_neighbours = 2;
 			sim_state->topology->neighbours = malloc(sizeof(int) * 2);
-	
+
 			// Find the id of the to/from neighbours
 			sim_state->topology->neighbours[0] = find_lp_by_name(from, f);
 			sim_state->topology->neighbours[1] = find_lp_by_name(to, f);
 		}
-		
+
 		return true;
 	}
 
@@ -194,70 +204,70 @@ static void connect_junction(lp_state_type *sim_state, FILE *f) {
 	char from[NAME_LENGTH];
 	char name[NAME_LENGTH];
 	int state = NORMAL_S;
-	
+
 	// Count all LPs which have a to/from as the current name
 	rewind(f);
 	while(fgets(line, LINE_LENGTH, f) != NULL) {
 		line[strlen(line) - 1] = '\0'; // Remove trailing '\n'
 		if(line[0] == '\0') // The only \n was overwritten with a \0
 			continue;
-		
+
 		if(line[0] == '#')
 			continue;
-			
+
 		if(strcmp(line, ROUTES_STR) == 0) {
 			state = ROUTES_S;
 			continue;
 		}
-			
+
 		if(strcmp(line, INTERSECT_STR) == 0)
 			continue;
-		
+
 		if(state == ROUTES_S) {
 			tokenize_route(line, sim_state, name, from, to);
-			
+
 			if(strcmp(from, sim_state->name) == 0) {
 				num_neighbours++;
 			}
-			
+
 			if(strcmp(to, sim_state->name) == 0) {
 				num_neighbours++;
 			}
 		}
 	}
-	
+
 	// Allocate space
 	sim_state->topology = malloc(sizeof(topology_t));
 	sim_state->topology->num_neighbours = num_neighbours;
 	sim_state->topology->neighbours = malloc(sizeof(int) * num_neighbours);
-	
+
 	// Make the actual connections
 	for(i = 0; i < num_neighbours; i++) {
-		
+
 		rewind(f);
 		while(fgets(line, LINE_LENGTH, f) != NULL) {
 			line[strlen(line) - 1] = '\0'; // Remove trailing '\n'
 			if(line[0] == '\0') // The only \n was overwritten with a \0
 				continue;
-			
+
 			if(line[0] == '#')
 				continue;
-				
+
 			if(strcmp(line, ROUTES_STR) == 0) {
 				state = ROUTES_S;
 				continue;
 			}
-				
+
 			if(strcmp(line, INTERSECT_STR) == 0)
 				continue;
-			
+
 			if(state == ROUTES_S) {
 				tokenize_route(line, sim_state, name, from, to);
-				
+
 				if(strcmp(from, sim_state->name) == 0) {
 					sim_state->topology->neighbours[i++] = find_lp_by_name(name, f);
 				}
-				
+
 				if(strcmp(to, sim_state->name) == 0) {
 					sim_state->topology->neighbours[i++] = find_lp_by_name(name, f);
 				}
@@ -271,7 +281,7 @@ void init_my_state(int me, lp_state_type *sim_state) {
 	int i;
 	char line[LINE_LENGTH];
 	int state = NORMAL_S;
-	
+
 	// This variable keeps track of the line number
 	unsigned int line_count = 0;
 
@@ -282,7 +292,7 @@ void init_my_state(int me, lp_state_type *sim_state) {
 		fflush(stderr);
 		exit(EXIT_FAILURE);
 	}
-		
+
 	// Now build the topology
 	while(fgets(line, LINE_LENGTH, f) != NULL) {
 		line[strlen(line) - 1] = '\0'; // Remove trailing '\n'
@@ -294,14 +304,14 @@ void init_my_state(int me, lp_state_type *sim_state) {
 			exit(EXIT_FAILURE);
 		}
 	}
-	
+
 	// Make connections for junctions (1:N). Segments are already connected.
 	if(sim_state->lp_type == JUNCTION) {
 		connect_junction(sim_state, f);
 	}
-	
+
 	fclose(f);
-	
+
 	printf("LP %d (%s) is a%s with ", me, sim_state->name, ( sim_state->lp_type == JUNCTION ? "n intersection" : " route" ));
 	if(sim_state->topology != NULL)
 		printf("%d neighbours: ", sim_state->topology->num_neighbours);

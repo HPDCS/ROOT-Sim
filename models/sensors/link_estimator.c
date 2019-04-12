@@ -21,44 +21,7 @@
 #include "link_estimator.h"
 #include "application.h"
 #include "link_layer.h"
-
-/* GLOBAL VARIABLES - start
- *
- * Default values of the parameters for the link estimator (check link_estimator.h for a description)
- */
-
-unsigned int evict_worst_etx_threshold=EVICT_WORST_ETX_THRESHOLD;
-unsigned int evict_best_etx_threshold=EVICT_BEST_ETX_THRESHOLD;
-unsigned int max_pkt_gap=MAX_PKT_GAP;
-unsigned short alpha=ALPHA;
-unsigned int dlq_pkt_window=DLQ_PKT_WINDOW;
-unsigned int blq_pkt_window=BLQ_PKT_WINDOW;
-
-/* GLOBAL VARIABLES - end */
-
-/*
- * PARSE SIMULATION PARAMETERS FOR THE LINK ESTIMATOR
- */
-
-void parse_link_estimator_parameters(void* event_content){
-
-        if(IsParameterPresent(event_content, "evict_worst_etx_threshold"))
-                evict_worst_etx_threshold=(unsigned int)GetParameterInt(event_content,"evict_worst_etx_threshold");
-        if(IsParameterPresent(event_content, "evict_best_etx_threshold"))
-                evict_best_etx_threshold=(unsigned int)GetParameterInt(event_content,"evict_best_etx_threshold");
-        if(IsParameterPresent(event_content, "max_pkt_gap"))
-                max_pkt_gap=(unsigned int)GetParameterInt(event_content,"max_pkt_gap");
-        if(IsParameterPresent(event_content, "alpha"))
-                alpha=(unsigned short)GetParameterInt(event_content,"alpha");
-        if(IsParameterPresent(event_content, "dlq_pkt_window"))
-                dlq_pkt_window=(unsigned short)GetParameterInt(event_content,"dlq_pkt_window");
-        if(IsParameterPresent(event_content, "blq_pkt_window"))
-                blq_pkt_window=(unsigned short)GetParameterInt(event_content,"blq_pkt_window");
-}
-
-/*
- * LINK ESTIMATOR TABLE OPERATIONS - start
- */
+#include "parameters.h"
 
 /*
  * INIT TABLE ENTRY

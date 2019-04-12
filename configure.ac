@@ -1,6 +1,6 @@
 AC_PREREQ([2.67])
 
-AC_INIT([ROOT-Sim],[2.0.0],[rootsim@googlegroups.com],[rootsim],[http://www.dis.uniroma1.it/~hpdcs/ROOT-Sim/])
+AC_INIT([ROOT-Sim],[2.0.0],[rootsim@googlegroups.com],[rootsim],[https://github.com/HPDCS/ROOT-Sim/])
 AC_CONFIG_SRCDIR([src])
 AM_INIT_AUTOMAKE([-Wno-portability 1.10.1 -Wall foreign subdir-objects])
 
@@ -21,8 +21,8 @@ AM_CONDITIONAL([DEBUG], [test x$enable_debug = xyes])
 
 # Setup compilation flags
 CFLAGS_COMMON="-std=c11 -fno-omit-frame-pointer -ffloat-store -fno-common -fstrict-aliasing -fgnu89-inline -rdynamic -lm -U_FORTIFY_SOURCE"
-CFLAGS_WARNINGS="-Wall -Wextra -Wcast-align -Wpointer-arith -Wstrict-overflow=5 -Wstrict-prototypes -Winline -Wundef -Wnested-externs -Wshadow -Wunreachable-code -Wfloat-equal -Wredundant-decls -Wold-style-definition -Wno-switch-enum"
-#FLAGS_WARNINGS="$CFLAGS_WARNINGS -Wconversion"
+CFLAGS_WARNINGS="-Wall -Wextra -Wmisleading-indentation -Wcast-align -Wpointer-arith -Wstrict-overflow=5 -Wstrict-prototypes -Winline -Wundef -Wnested-externs -Wshadow -Wunreachable-code -Wfloat-equal -Wredundant-decls -Wold-style-definition -Wno-switch-enum"
+#CFLAGS_WARNINGS="$CFLAGS_WARNINGS -Wconversion"
 
 # Flag to enable debugging the platform
 AS_IF([test x$enable_debug = xyes],
@@ -32,8 +32,7 @@ AS_IF([test x$enable_debug = xyes],
 
 # Flag to enable code coverage
 AS_IF([test x$enable_coverage = xyes],
-      [CFLAGS="$CFLAGS -coverage"])
-
+      [CFLAGS="-coverage $CFLAGS"])
 
 # Extra check flags
 AC_ARG_ENABLE(extra-checks,
@@ -50,6 +49,19 @@ AC_ARG_ENABLE([profile],
 AS_IF([test "x$enable_profile" = "xyes"], [
 	CFLAGS="-pg $CFLAGS"
 ])
+
+
+#----------------------------------------------------------------------------
+# Doxygen Documentation
+#
+# If doxygen is installed on the box, generate a commodity Makefile in the
+# doc subfolder to generate the documentation. This must be called explicitly,
+# as it is separated from the main Makefile.
+#----------------------------------------------------------------------------
+AC_CHECK_PROGS([DOXYGEN], [doxygen])
+AM_CONDITIONAL([HAVE_DOXYGEN], [test -n "$DOXYGEN"])
+AM_COND_IF([HAVE_DOXYGEN], [AC_CONFIG_FILES([docs/doxy.conf])])
+AM_COND_IF([HAVE_DOXYGEN], [AC_CONFIG_FILES([docs/Makefile])])
 
 
 #----------------------------------------------------------------------------
@@ -121,8 +133,12 @@ AC_PROG_MAKE_SET
 AC_PROG_MKDIR_P
 AC_PROG_CC_C_O
 AM_PROG_CC_C_O
-m4_ifdef([AM_PROG_AR], [AM_PROG_AR])
+AM_PROG_AR
+# Silence warning: ar: 'u' modifier ignored since 'D' is the default
+AC_SUBST(AR_FLAGS, [cr])
+AC_SUBST(ARFLAGS, [cr])
 AM_PROG_AS
+AC_PROG_AWK
 LT_INIT
 
 
@@ -199,112 +215,11 @@ case $host_os in
         ;;
 esac
 
-
-
-
-
-#----------------------------------------------------------------------------
-# Check if we can use the tick timer
-#----------------------------------------------------------------------------
-
-
-AC_MSG_CHECKING([if assembler knows rdtsc instruction])
-
-AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[]], [[
-  do {
-    unsigned int lo;
-    unsigned int hi;
-    __asm__ __volatile__ ("rdtsc" : "=a" (lo), "=d" (hi));
-    ((unsigned long long)hi) << 32 | lo;
-  }
-  while (0)
-]])], [
-AC_DEFINE([HAVE_RDTSC])
-AC_MSG_RESULT([yes])
-ac_have_as_rdtsc=yes
-], [
-AC_MSG_RESULT([no])
-])
-
-
-#----------------------------------------------------------------------------
-# Family instructions checks.
-# These are used to support a specific version of the memcmp for the
-# early check termination.
-#----------------------------------------------------------------------------
-
-
-# does the assembler understand SSE3 instructions?
-AC_MSG_CHECKING([if assembler knows SSE3])
-
-AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[]], [[
-  do { long long int x;
-     __asm__ __volatile__("fisttpq (%0)" : :"r"(&x) ); }
-  while (0)
-]])], [
-AC_DEFINE([HAVE_SSE3])
-AC_MSG_RESULT([yes])
-ac_have_as_sse3=yes
-], [
-AC_MSG_RESULT([no])
-])
-
-# does the assembler understand SSSE3 instructions?
-AC_MSG_CHECKING([if assembler knows SSSE3])
-
-save_CFLAGS="$CFLAGS"
-CFLAGS="$CFLAGS -msse"
-AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[]], [[
-  do { long long int x;
-   __asm__ __volatile__(
-      "pabsb (%0),%%xmm7" : : "r"(&x) : "xmm7" ); }
-  while (0)
-]])], [
-AC_DEFINE([HAVE_SSSE3])
-AC_MSG_RESULT([yes])
-ac_have_as_ssse3=yes
-], [
-AC_MSG_RESULT([no])
-])
-CFLAGS="$save_CFLAGS"
-
-# does the assembler understand SSE 4.2 instructions?
-AC_MSG_CHECKING([if assembler knows SSE4.2])
-
-AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[]], [[
-  do { long long int x;
-   __asm__ __volatile__(
-      "crc32q %%r15,%%r15" : : : "r15" );
-   __asm__ __volatile__(
-      "pblendvb (%%rcx), %%xmm11" : : : "memory", "xmm11");
-   __asm__ __volatile__(
-      "aesdec %%xmm2, %%xmm1" : : : "xmm2", "xmm1"); }
-  while (0)
-]])], [
-AC_DEFINE([HAVE_SSE42])
-AC_MSG_RESULT([yes])
-ac_have_as_sse42=yes
-], [
-AC_MSG_RESULT([no])
-])
-
-
 #----------------------------------------------------------------------------
 # COMPILE TIME OPTIONS
 #
 # From here on, we enable/disable compile time switches for the simulator
 #----------------------------------------------------------------------------
-
-
-# Disable ULT. Everything is run in the same context, in the same stack
-
-AC_ARG_ENABLE([ult],
-    AS_HELP_STRING([--disable-ult], [Disable User-Level Threads for LP scheduling]))
-
-AS_IF([test "x$enable_ult" != "xno"], [
-  AC_DEFINE([ENABLE_ULT])
-  ac_enable_ult=yes
-])
 
 
 # LP binding support
@@ -314,15 +229,6 @@ AS_HELP_STRING([--disable-rebinding], [Disable LPs Rebinding (Enabled by default
 AS_IF([test "x$enable_rebinding" != "xno"], [
         AC_DEFINE([HAVE_LP_REBINDING])
         ac_have_lp_rebinding=yes
-])
-
-# Custom Parallel Allocator can be disabled, to fallback to standard malloc library
-AC_ARG_ENABLE([allocator],
-AS_HELP_STRING([--disable-allocator], [Disable Parallel Allocator (Enabled by default)]))
-
-AS_IF([test "x$enable_allocator" != "xno"], [
-        AC_DEFINE([HAVE_PARALLEL_ALLOCATOR])
-        ac_have_parallel_allocator=yes
 ])
 
 
@@ -337,100 +243,100 @@ ac_kernel_headers=no
 ac_disable_modules=yes
 ac_system_map=no
 
-if test "x$ac_on_linux" = "xyes"
-then
+#if test "x$ac_on_linux" = "xyes"
+#then
 
 	# If our libtimestretch library is installed, then we can use Preemptive Time Warp
-	AC_CHECK_LIB(timestretch, ts_start, [libtimestretch=yes], [libtimestretch=no])
-	if test "x$libtimestretch" = "xyes" -a "x$enable_ult" != "xno"
-	then
+#	AC_CHECK_LIB(timestretch, ts_start, [libtimestretch=yes], [libtimestretch=no])
+#	if test "x$libtimestretch" = "xyes"
+#	then
 			#
 			# We have found everything that we need, but the user can disable the subsystem
 			#
 
-		AC_ARG_ENABLE([preemption],
-		AS_HELP_STRING([--disable-preemption], [Disable Preemptive Time Warp)]))
+#		AC_ARG_ENABLE([preemption],
+#		AS_HELP_STRING([--disable-preemption], [Disable Preemptive Time Warp)]))
 
-		AS_IF([test "x$enable_preemption" != "xno"], [
-			AC_DEFINE([HAVE_PREEMPTION])
-			ac_have_preemption=yes
-			CFLAGS="$CFLAGS -ltimestretch"
-		])
-	fi
+#		AS_IF([test "x$enable_preemption" != "xno"], [
+#			AC_DEFINE([HAVE_PREEMPTION])
+#			ac_have_preemption=yes
+#			CFLAGS="$CFLAGS -ltimestretch"
+#		])
+#	fi
 
 	# Test for linux headers, to compile kernel modules
-	ac_kernel_headers=no
-	AC_CHECK_HEADERS([linux/ioctl.h],
-		[ac_kernel_headers=yes])
+#	ac_kernel_headers=no
+#	AC_CHECK_HEADERS([linux/ioctl.h],
+#		[ac_kernel_headers=yes])
 
-	if test "x$ac_kernel_headers" = "xyes"
-	then
+#	if test "x$ac_kernel_headers" = "xyes"
+#	then
 		# Configure kernel module paths
-		AC_SUBST([with_kernel], [`uname -r`])
-		AC_SUBST([with_kernel_mod], [/lib/modules/$with_kernel/extra])
-		AC_SUBST([KERNEL_SRC], [/lib/modules/$with_kernel/build])
-		AC_SUBST([KERNEL_MOD], [$with_kernel_mod])
-	fi
+#		AC_SUBST([with_kernel], [`uname -r`])
+#		AC_SUBST([with_kernel_mod], [/lib/modules/$with_kernel/extra])
+#		AC_SUBST([KERNEL_SRC], [/lib/modules/$with_kernel/build])
+#		AC_SUBST([KERNEL_MOD], [$with_kernel_mod])
+#	fi
 
 	# We might want to disable all kernel modules explicitly. This is useful, for example,
 	# when installing the simulator in a per-user space, in a system where the modules
 	# were already installed. Using the --disable-modules won't compile nor try to
 	# install any module.
-	AC_ARG_ENABLE([modules],
-		AS_HELP_STRING([--enable-modules], [Enable compilation/installation of kernel modules]))
+	#AC_ARG_ENABLE([modules],
+	#	AS_HELP_STRING([--enable-modules], [Enable compilation/installation of kernel modules]))
 
-	AS_IF([test "x$enable_modules" = "xyes"], [
-		ac_disable_modules=no
-		ac_kernel_headers=yes
-	])
+#	AS_IF([test "x$enable_modules" = "xyes"], [
+#		ac_disable_modules=no
+#		ac_kernel_headers=yes
+#	])
 
 
 	# Check if System.map is available. Some kernel modules require access to special symbols
 	# which are not exported, but are available in System.map.
-	AC_CHECK_FILE("/boot/System.map-$(uname -r)", [ac_system_map=yes])
+#	AC_CHECK_FILE("/boot/System.map-$(uname -r)", [ac_system_map=yes])
 
 	# Per-module checks. To be run only if we are on Linux and kernel headers are available
-	if test "x$ac_kernel_headers" = "xyes"
-	then
+#	if test "x$ac_kernel_headers" = "xyes"
+#	then
 
 		# Here go modules which require System.map
-		if test "x$ac_system_map" = "xyes"
-		then
+#		if test "x$ac_system_map" = "xyes"
+#		then
 
 			# Get finish_task_switch in the current kernel
-			AC_MSG_CHECKING([for finish_task_switch in the current kernel])
-			fts_line=$($GREP -n finish_task_switch /boot/System.map-$(uname -r) | $SED 's/:.*//')
-			finish_task_switch=$($SED "${fts_line}q;d" /boot/System.map-$(uname -r) | $SED 's/ .*//')
-			if test -z "$finish_task_switch"; then
-				AC_MSG_ERROR([Address of finish_task_switch not found in kernel map])
-			fi
-			AC_MSG_RESULT([found at 0x$finish_task_switch])
-			AC_SUBST([FTS_ADDR], [0x$finish_task_switch])
+#			AC_MSG_CHECKING([for finish_task_switch in the current kernel])
+#			fts_line=$($GREP -n finish_task_switch /boot/System.map-$(uname -r) | $SED 's/:.*//')
+#			finish_task_switch=$($SED "${fts_line}q;d" /boot/System.map-$(uname -r) | $SED 's/ .*//')
+#			if test -z "$finish_task_switch"; then
+#				AC_MSG_ERROR([Address of finish_task_switch not found in kernel map])
+#			fi
+#			AC_MSG_RESULT([found at 0x$finish_task_switch])
+#			AC_SUBST([FTS_ADDR], [0x$finish_task_switch])
 
 			# Get function after finish_task_switch in the current kernel
-			AC_MSG_CHECKING([the address of function next to finish_task_switch in the current kernel])
-			let fts_line=$fts_line+1
-			finish_task_switch_next=$($SED "${fts_line}q;d" /boot/System.map-$(uname -r) | $SED 's/ .*//')
-			if test -z "$finish_task_switch_next"; then
-				AC_MSG_ERROR([Address of function after finish_task_switch not found in kernel map])
-			fi
-			AC_MSG_RESULT([found at 0x$finish_task_switch_next])
-			AC_SUBST([FTS_ADDR_NEXT], [0x$finish_task_switch_next])
+#			AC_MSG_CHECKING([the address of function next to finish_task_switch in the current kernel])
+#			let fts_line=$fts_line+1
+#			finish_task_switch_next=$($SED "${fts_line}q;d" /boot/System.map-$(uname -r) | $SED 's/ .*//')
+#			if test -z "$finish_task_switch_next"; then
+#				AC_MSG_ERROR([Address of function after finish_task_switch not found in kernel map])
+#			fi
+#			AC_MSG_RESULT([found at 0x$finish_task_switch_next])
+#			AC_SUBST([FTS_ADDR_NEXT], [0x$finish_task_switch_next])
 
-		fi # closes the System.map modules check
+#		fi # closes the System.map modules check
 
-	fi # closes the global Linux kernel headers availability check
+#	fi # closes the global Linux kernel headers availability check
 
 	# Event Cross State dependency manager
-	AC_ARG_ENABLE([ecs],
-	AS_HELP_STRING([--enable-ecs], [Enable Event Cross-State Management]))
+	#AC_ARG_ENABLE([ecs],
+	#AS_HELP_STRING([--enable-ecs], [Enable Event Cross-State Management]))
 
-	AS_IF([test "x$enable_ecs" = "xyes"], [
-		AC_DEFINE([HAVE_CROSS_STATE])
-		ac_have_cross_state=yes
-	])
+#	AS_IF([test "x$enable_ecs" = "xyes"], [
+#		AC_DEFINE([HAVE_CROSS_STATE])
+#		ac_have_cross_state=yes
+#	])
 
-fi # Closes che global check for Linux availability
+#fi # Closes che global check for Linux availability
 
 # This instructs the Makefile to build kernel modules only when possible
 AM_CONDITIONAL([NO_KERNEL_MODULES], [test "x$ac_disable_modules" = "xyes"])
@@ -452,12 +358,10 @@ AC_MSG_RESULT([ok])
 
 
 # Generate Makefiles for all these subfolders
-#AC_OUTPUT
 AC_CONFIG_FILES([Makefile
 		 man/Makefile
 		 scripts/Makefile
-		 src/Makefile
-		 src/arch/linux/modules/Makefile])
+		 src/arch/x86/linux/Makefile])
 AC_OUTPUT
 
 
@@ -468,44 +372,12 @@ AC_OUTPUT
 # autoconfigured stuff.
 #----------------------------------------------------------------------------
 
-# Compose the message regarding the CPU
-current_cpu="${host_cpu} (available supports: "
-if test "x$ac_have_as_rdtsc" = "xyes"
-then
-	current_cpu="${current_cpu}rdtcs "
-fi
-
-if test "x$ac_have_as_sse3" = "xyes"
-then
-	current_cpu="${current_cpu}SSE3 "
-fi
-
-if test "x$ac_have_as_ssse3" = "xyes"
-then
-	current_cpu="${current_cpu}SSSE3 "
-fi
-
-if test "x$ac_have_as_sse42" = "xyes"
-then
-	current_cpu="${current_cpu}SSE4.2 "
-fi
-current_cpu="${current_cpu})"
-
-
 # Compose the debugging message
 if test "x$enable_debug" = "xyes"
 then
 	enable_debug="Enabled"
 else
 	enable_debug="Disabled (use --enable-debug if wanted)"
-fi
-
-# Compose the ULT message
-if test "x$ac_enable_ult" = "xyes"
-then
-	ac_enable_ult="Enabled (use --disable-ult if not wanted)"
-else
-	ac_enable_ult="Disabled"
 fi
 
 # Compose the message regarding MPI
@@ -519,14 +391,6 @@ then
 	fi
 else
 	enable_mpi="Disabled (enable with --enable-mpi)"
-fi
-
-# Compose the message regarding the Parallel Allocator
-if test "x$ac_have_parallel_allocator" = "xyes"
-then
-	ac_parallel_allocator="Enabled (By default, use --disable-allocator if not wanted)"
-else
-	ac_parallel_allocator="Disabled (manually excluded)"
 fi
 
 
@@ -545,24 +409,20 @@ then
 	ac_preemption="Enabled (by default with libtimestretch, use --disable-preemption if not wanted)"
 else
 	ac_preemption="Disabled"
-	if test "x$enable_ult" = "xno"
+	if test "x$libtimestretch" = "xyes"
 	then
-		ac_preemption="${ac_preemption} (User-Level Threads are necessary)"
+		ac_preemption="${ac_preemption} by the user"
 	else
-		if test "x$libtimestretch" = "xyes"
-		then
-			ac_preemption="${ac_preemption} by the user"
-		else
-			ac_preemption="${ac_preemption} (libtimestretch not found)"
-		fi
+		ac_preemption="${ac_preemption} (libtimestretch not found)"
 	fi
 fi
 
 
 # Compose the message regarding ECS
+ac_have_cross_state="no"
 if test "x$ac_have_cross_state" = "xyes"
 then
-	ac_ecs="Enabled)"
+	ac_ecs="Enabled"
 else
 	ac_ecs="Disabled"
 	if test "x$ac_on_linux" = "xyes"
@@ -600,21 +460,20 @@ then
 	fi
 fi
 
-
+# This is the line to reintroduce the ECS and modules messages
+#Event Cross State......... : ${ac_ecs}
+#Linux Kernel Modules...... : ${ac_modules}
 cat<<EOF
 
 
    * ROOT-Sim Configuration on Current Machine *
 
-CPU Architecture.......... : ${current_cpu}
+CPU Architecture.......... : ${host_cpu}
 Operating System.......... : ${host_os}
 Debugging Support......... : ${enable_debug}
 MPI....................... : ${enable_mpi}
-User-Level Threads........ : ${ac_enable_ult}
-Parallel Allocator........ : ${ac_parallel_allocator}
 LP Preemption Support..... : ${ac_preemption}
 LP Rebinding.............. : ${ac_lp_rebinding}
-Linux Kernel Modules...... : ${ac_modules}
-Event Cross State......... : ${ac_ecs}
+
 
 EOF

@@ -46,8 +46,8 @@ typedef struct _lp_state_type {
 	bool traditional;
 	unsigned int events;
 	int loop_counter;
-	
-	
+
+
 	unsigned int cont_allocation;
 	unsigned int num_elementi;
 	int actual_size;
@@ -70,9 +70,10 @@ extern int	object_total_size,
 		max_size,
 		min_size,
 		num_buffers,
-		complete_alloc,
 		read_correction,
 		write_correction;
+extern unsigned int 
+		complete_alloc;
 extern double	write_distribution,
 		read_distribution,
 		tau;
