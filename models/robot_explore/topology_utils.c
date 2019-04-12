@@ -54,25 +54,6 @@ static unsigned int opposite_direction_of(unsigned int direction) {
 	return opposite;
 }
 
-static char *direction_name(unsigned int direction) {
-
-	switch(direction) {
-		case DIRECTION_NE:
-			return "NE";
-		case DIRECTION_E:
-			return "E";
-		case DIRECTION_SE:
-			return "SE";
-		case DIRECTION_SW:
-			return "SW";
-		case DIRECTION_W:
-			return "W";
-		case DIRECTION_NW:
-			return "NW";
-	}
-	return "UNKNOWN";
-}
-
 static double a_star(agent_state_type *state, unsigned int current_cell, unsigned int *good_direction) {
 	unsigned int i;
 	double min_distance = DBL_MAX;
@@ -80,8 +61,6 @@ static double a_star(agent_state_type *state, unsigned int current_cell, unsigne
 	double dx, dy;
 	unsigned int x1, y1, x2, y2;
 	unsigned int tentative_cell;
-	double distance_increment;
-
 
 	*good_direction = UINT_MAX;
 
@@ -113,7 +92,6 @@ static double a_star(agent_state_type *state, unsigned int current_cell, unsigne
 			map_linear_to_hexagon(tentative_cell, &x2, &y2);
 			dx = x1-x2;
 			dy = y2-y1;
-			distance_increment = a_star(state, tentative_cell, good_direction);
 			current_distance = sqrt( dx*dx + dy*dy );
 
 			// Is it a good choice?

@@ -1,4 +1,4 @@
-#include "../bug_explore/application.h"
+#include "../stupid_model/application.h"
 
 #include <stdio.h>
 
@@ -18,6 +18,7 @@ typedef struct _region_t {
 
 typedef struct _bug_t {
 	double size;
+	bool first; // to render the runs consistent in time we render the first spawned bug immortal
 } bug_t;
 
 void ProcessEvent(unsigned int me, simtime_t now, int event_type, agent_t *agent_p, unsigned int event_size, region_t *state) {
@@ -49,8 +50,8 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, agent_t *agent
 			TrackNeighbourInfo(&region->bugs);
 			// for simplicity we spawn a single bug at region 0
 			if(me < NUM_OCCUPIED_CELLS){
-				// here we call ourselves (XXX does this work as expected under ROOT-Sim environment?)
-				ProcessEvent(me, now, SPAWN_BUG, NULL, 0, region);
+				// here we call ourselves
+				ProcessEvent(me, 0, SPAWN_BUG, NULL, 0, region);
 			}
 
 			ScheduleNewEvent(me, now + TIME_STEP, PRODUCE_FOOD, NULL, 0);
@@ -128,7 +129,8 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, agent_t *agent
 				// we initialize our custom fields
 				this_bug = DataAgent(this_agent, NULL);
 				this_bug->size = 1;
-				// we call ourselves to make the bug eat and eventually leave this region xxx again, does this work correctly?
+				this_bug->first = now <= 0.0;
+				// we call ourselves to make the bug eat and eventually leave this region
 				ProcessEvent(me, now, BUG_VISIT, &this_agent, sizeof(this_agent), state);
 			}
 
@@ -140,8 +142,11 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, agent_t *agent
 			state->bugs--; //one way or another we get rid of this bug (lulz a word pun!)
 
 			if(RandomRange(0, 100) >= SURVIVAL_PROBABILITY) {
-				KillAgent(*agent_p); // :(
-				break;
+				this_bug = DataAgent(*agent_p, NULL);
+				if(!this_bug->first){
+					KillAgent(*agent_p); // :(
+					break;
+				}
 			}
 
 			// here we verify there is at least a suitable neighbour to visit before randomly picking one
@@ -177,10 +182,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, agent_t *agent
 }
 
 int OnGVT(unsigned int me, region_t *snapshot) {
+	(void)me;
 
-	//printf("LP[%u] I'm %sexplored", me, snapshot->is_explored ? "" : "not ");
-	if(snapshot->bugs && (int)(snapshot->lvt) % 10 == 0) printf("There's still at least a bug here\n");
-	//if(snapshot->violation) printf(", the constraint has been violated %u time%s", snapshot->violation, snapshot->violation > 1 ? "s" : "");
-
-	return snapshot->is_explored;/// XXX fix with whatever stuff you prefer
+	return snapshot->is_explored;
 }

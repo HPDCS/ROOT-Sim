@@ -12,6 +12,17 @@ SUBDIRS += src/arch/x86/linux
 endif
 DIST_SUBDIRS = src/arch/x86/linux
 
+EXTRA_DIST =	docs/doxy.conf.in \
+		docs/Makefile.in \
+		man/Makefile.in \
+		src/arch/x86/linux/Makefile \
+		scripts/Makefile.in \
+		scripts/ld-data1 \
+		scripts/ld-data2 \
+		scripts/ld-final \
+		scripts/rootsim-cc.in \
+		src/arch/asm_defines.c
+
 # We need to generate some constants at compile time which
 # are used by assembly code. The following lines do exactly that.
 # substr() in the awk command is used to remove the leading '$'
@@ -22,7 +33,7 @@ BUILT_SOURCES = src/arch/asm_defines.h
 CLEANFILES = src/arch/asm_defines.h
 src/arch/asm_defines.h: src/arch/asm_defines.c
 	echo "Generating defines for assembly modules..."
-	@$(COMPILE) -DASM_DEFINES -S $< -o - | $(AWK) '($$1 == "->") { print "#define " $$2 " " substr($$3, 2) }' > $(top_srcdir)/$@ 
+	@$(COMPILE) -DASM_DEFINES -S $< -o - | $(AWK) '($$1 == "->") { print "#define " $$2 " " substr($$3, 2) }' > $(top_srcdir)/$@
 
 
 # From here on, there are main ROOT-Sim build rules
@@ -52,9 +63,9 @@ librootsim_a_SOURCES =	src/main.c \
 			src/gvt/fossil.c \
 			src/gvt/ccgs.c \
 			src/lib/topology/topology.c \
-			src/lib/topology/topology_costs.c \
-			src/lib/topology/topology_obstacles.c \
-			src/lib/topology/topology_probabilities.c \
+			src/lib/topology/costs.c \
+			src/lib/topology/obstacles.c \
+			src/lib/topology/probabilities.c \
 			src/lib/numerical.c \
 			src/lib/abm_layer.c \
 			src/lib/jsmn_helper.c \
@@ -70,7 +81,57 @@ librootsim_a_SOURCES =	src/main.c \
 			src/scheduler/stf.c \
 			src/scheduler/scheduler.c \
 			src/serial/serial.c \
-			src/statistics/statistics.c
+			src/statistics/statistics.c \
+			src/queues/queues.h \
+			src/queues/xxhash.h \
+			src/lib/numerical.h \
+			src/lib/jsmn_helper.h \
+			src/lib/jsmn.h \
+			src/lib/abm_layer.h \
+			src/lib/topology.h \
+			src/ROOT-Sim.h \
+			src/mm/dymelor.h \
+			src/mm/ecs.h \
+			src/mm/state.h \
+			src/mm/mm.h \
+			src/communication/wnd.h \
+			src/communication/gvt.h \
+			src/communication/mpi.h \
+			src/communication/communication.h \
+			src/gvt/ccgs.h \
+			src/gvt/gvt.h \
+			src/serial/serial.h \
+			src/statistics/statistics.h \
+			src/datatypes/bitmap.h \
+			src/datatypes/array.h \
+			src/datatypes/list.h \
+			src/datatypes/msgchannel.h \
+			src/datatypes/hash_map.h \
+			src/datatypes/calqueue.h \
+			src/datatypes/heap.h \
+			src/arch/thread.h \
+			src/arch/ult.h \
+			src/arch/memusage.h \
+			src/arch/asm_defines.h \
+			src/arch/x86/linux/cross_state_manager/cross_state_manager.h \
+			src/arch/x86/linux/schedule-hook/ld.h \
+			src/arch/x86/linux/schedule-hook/schedule.h \
+			src/arch/x86/linux/schedule-hook/lend.h \
+			src/arch/x86/linux/intercept/traps-dummy.h \
+			src/arch/x86/linux/intercept/my_page_fault.h \
+			src/arch/x86/jmp.h \
+			src/arch/x86/disassemble.h \
+			src/arch/atomic.h \
+			src/arch/jmp.h \
+			src/arch/x86.h \
+			src/core/timer.h \
+			src/core/core.h \
+			src/core/init.h \
+			src/scheduler/binding.h \
+			src/scheduler/process.h \
+			src/scheduler/scheduler.h \
+			src/scheduler/stf.h
+
 
 libwrapperl_a_SOURCES = src/lib-wrapper/wrapper.c
 
