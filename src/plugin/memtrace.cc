@@ -119,19 +119,15 @@ static unsigned int memtrace_instrument_execute(void)
 
 static void put_instruction_cmov(rtx insn, rtx condition, rtx then_expression, rtx else_expression, bool write_1, bool write_2)
 {
-	return; // FIXME
-
-	#if 0
-
 	rtx parm1_then, parm2_then, parm1_else, parm2_else, call_1, call_2, push1, push2, pop1, pop2, if_then_else, label_x, label_x1, jmp_x1;
 	const char *fn1 = write_1 ? "__write_mem" : "__read_mem";
 	const char *fn2 = write_2 ? "__write_mem" : "__read_mem";
 	if(then_expression != NULL){
-		if(GET_CODE(XEXP(then_expression, 0)) == PRE_DEC || GET_CODE(XEXP(then_expression, 0)) == POST_INC /*|| GET_CODE(XEXP(then_expression), 0)*/) == SCRATCH)
+		if(GET_CODE(XEXP(then_expression, 0)) == PRE_DEC || GET_CODE(XEXP(then_expression, 0)) == POST_INC || GET_CODE(XEXP(then_expression, 0)) == SCRATCH)
 			return;
 	}
 	if (else_expression != NULL){
-		if(GET_CODE(XEXP(else_expression, 0)) == PRE_DEC || GET_CODE(XEXP(else_expression, 0)) == POST_INC /*|| GET_CODE(XEXP(else_expression, 0)*/) == SCRATCH)
+		if(GET_CODE(XEXP(else_expression, 0)) == PRE_DEC || GET_CODE(XEXP(else_expression, 0)) == POST_INC || GET_CODE(XEXP(else_expression, 0)) == SCRATCH)
 			return;
 	}
 
@@ -313,7 +309,6 @@ static void put_instruction_cmov(rtx insn, rtx condition, rtx then_expression, r
 	printf("********\n");
 
 	return;
-	#endif
 }
 
 static void put_instruction(rtx insn, rtx operand, bool write)
@@ -418,14 +413,14 @@ static unsigned int memtrace_cleanup_execute(void)
 		if(GET_CODE(body) == SET){
 			rtx first = XEXP(body, 0);
 			//print_rtl_single(stdout, first);
-			if ((mode & W_MODE) && GET_CODE(first) == MEM){
+			if ((mode & W_MODE) && GET_CODE(first) == MEM) {
 				// dest operand
 				printf("dst: MEMORY ACCESS FOUND!\n");
 
 				put_instruction(insn, first, true);
 
 			}
-			else if (GET_CODE(first) == IF_THEN_ELSE){
+			else if (GET_CODE(first) == IF_THEN_ELSE) {
 				rtx then_expression = XEXP(first, 1);
 				rtx else_expression = XEXP(first, 2);
 				if ((mode & W_MODE) && GET_CODE(then_expression) == MEM && GET_CODE(else_expression) == MEM){
@@ -448,7 +443,7 @@ static unsigned int memtrace_cleanup_execute(void)
 				}
 			}
 			rtx second = XEXP(body, 1);
-			if (GET_CODE(second) == IF_THEN_ELSE){
+			if (GET_CODE(second) == IF_THEN_ELSE) {
 				rtx try_then_expression = XEXP(second, 1);
 				rtx try_else_expression = XEXP(second, 2);
 				//rtx then_expression = (GET_CODE(try_then_expression) != REG)? try_then_expression : gen_rtx_MEM(DImode, try_then_expression);
