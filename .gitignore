@@ -8,9 +8,18 @@
 *.so.*
 *.dylib
 *.out
+*.gcno
+*.gcda
+*.gcov
+
+model
+
+html/
 
 Makefile
 Makefile.in
+
+asm_defines.h
 
 /aclocal.m4
 /autom4te.cache/
@@ -42,3 +51,13 @@ outputs/
 
 doxy.conf
 doxyfile.stamp
+
+Module.symvers
+modules.order
+*.o.cmd
+*.ko.cmd
+*.mod.c
+.tmp_versions
+
+/dymelor
+/numerical

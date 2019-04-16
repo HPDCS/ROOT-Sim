@@ -1,34 +1,36 @@
-
-
-ROOT-Sim is developed by the High Perfomance and Dependable Computing Systems (HPDCS)
-at Sapienza, University of Rome.
-
+ROOT-Sim is developed by the High Perfomance and Dependable Computing Systems (HPDCS).
 For support, please contact the developers using the official mailing list:
 
 	rootsim@googlegroups.com
 
-
 Current Developers:
 
- - Francesco Quaglia <quaglia@dis.uniroma1.it>
  - Alessandro Pellegrini <pellegrini@dis.uniroma1.it>
+ - Francesco Quaglia <quaglia@dis.uniroma1.it>
+ - Matteo Principe <matteo.principe92@gmail.com>
+ - Andrea Piccione <piccions@gmx.com>
 
 
 Former Developers:
 
- - Roberto Vitali <vitali@dis.uniroma1.it>
- - Sebastiano Peluso <peluso@dis.uniroma1.it>
+ - Davide Cingolani <cingolani@diag.uniroma1.it>
  - Diego Didona <didona@gsd.inesc-id.pt>
- - Francesco Antonacci
- - Roberto Toccaceli
- - Tiziano Santoro
- - Valerio Gheri
- - Giovanni Castellari
- - Stefano d'Alessio
- - Diego Cucuzzo
+ - Sebastiano Peluso <peluso@dis.uniroma1.it>
+ - Tommaso Tocci <tommaso.tocci@bsc.es>
+ - Roberto Vitali <vitali@dis.uniroma1.it>
 
 
 Contributors:
 
- - Mario (preso da un commento) =)
+ - Francesco Antonacci
+ - Giovanni Castellari
+ - Diego Cucuzzo
+ - Stefano d'Alessio
+ - Simone Economo
+ - Valerio Gheri
  - Davide Italiano
+ - Davide Leoni
+ - Alice Porfirio
+ - Tiziano Santoro
+ - Roberto Toccaceli
+ - Fernando Visca

@@ -15,17 +15,17 @@
 ##############################################################################
 # Global configuration variables
 ##############################################################################
-CC=@CC@
+CC="@CC@"
 CFLAGS="@CFLAGS@"
-VERSION=@VERSION@
-ARCH=@ARCH@
-bindir=@bindir@
-libdir=@libdir@
-includedir=@includedir@
-datadir=@datadir@
-SCRIPT_LINES=@scriptlines@
-HIJACKER_CONF_LINES=@hijacker_conf_lines@
-HAVE_MIXED_SS=@have_mixed_ss@
+VERSION="@VERSION@"
+bindir="@bindir@"
+libdir="@libdir@"
+includedir="@includedir@"
+datadir="@datadir@"
+SCRIPT_LINES="@scriptlines@"
+LD_DATA1_LINES="@lddata1lines@"
+LD_DATA2_LINES="@lddata2lines@"
+LD_FINAL_LINES="@ldfinallines@"
 
 
 ##############################################################################
@@ -44,7 +44,7 @@ OPTIONS:
    -h    Print this help screen
    -c    Do not link against the ROOT-Sim library (multistage compilation)
    -o N  Specify N as output name
-   
+
 Please note that any other option supported by the underlying compiler (gcc)
 can be safely passed to rootsim-cc
 EOF
@@ -65,10 +65,24 @@ tail -n +$START_LINES "$0" | head -n +$HIJACKER_CONF_LINES > $$.xml
 
 build_cleanup()
 {
-rm $$.xml
-#rm *.o
-#rm *.o.rs
-echo "process done"
+#rm $$.ld-data1
+#rm $$.ld-data2
+#rm $$.ld-final
+rm -f ${SOURCES//.c/.o}
+rm -f ${SOURCES//.c/.o.rs}
+rm -f APP*.o
+#rm branch-table
+#rm branch-table-light
+#rm offset-table-start-inc
+#unlink offset-table-start-full # :)
+#rm monitor-table
+#rm offset-table
+#rm offset-table-light
+#rm padding.c
+#rm padding-monitor.c
+#rm riferimenti
+#rm riferimenti-mon
+rm -f original
 }
 
 
@@ -109,6 +123,10 @@ do
 			;;
 		-MT)
 			CFLAGS="$CFLAGS -MT"
+			next_in_cflags="yes"
+			;;
+		-L)
+			CFLAGS="$CFLAGS -L"
 			next_in_cflags="yes"
 			;;
 		-MF)
@@ -188,12 +206,14 @@ $LD -r -L $libdir --wrap strcpy --wrap strncpy --wrap strcat --wrap strncat --wr
 $LD -r -L $libdir --wrap malloc --wrap free --wrap realloc --wrap calloc -o APP-dym-wrapped.o APP-lib-wrapped.o --whole-archive -ldymelor
 check_term
 #$CC -Xlinker --no-check-sections -Xlinker -T -Xlinker $$.ld-final -Xlinker --section-start -Xlinker .warp=$APPLICATION_START_POINT -Xlinker --section-start -Xlinker .warl=$APPLICATION_START_POINT_LIGHT  APP-dym-wrapped.o -lrootsim -lm -DGATHER_DATA -o $OUTNAME
-$CC $CFLAGS APP-dym-wrapped.o -lrootsim -lm -DGATHER_DATA -o $OUTNAME
+$CC APP-dym-wrapped.o $CFLAGS -lrootsim -lm -DGATHER_DATA -o $OUTNAME
 check_term
 
 
 # Clean temporary files
 build_cleanup
+
+echo "process done"
 
 exit 0
 
