@@ -90,8 +90,21 @@ extern __thread volatile bool platform_mode;
 				   }\
 				  } while(0)
 
-#define switch_to_application_mode() platform_mode = false
+#define switch_to_application_mode() do {\
+					if(LPS[current_lp]->state != LP_STATE_SILENT_EXEC) {\
+						if(min_in_transit_lvt[tid] < current_lvt){\
+							atomic_inc(&need_resched);\
+							resched();\
+						}\
+						platform_mode = false;\
+					}\
+				} while(0)
+
+#define flag_rolling_back() rolling_back = true
+#define unflag_rolling_back() rolling_back = false
+
 #else
+
 #define switch_to_platform_mode() {}
 #define switch_to_application_mode() {}
 #endif				/* HAVE_PREEMPTION */

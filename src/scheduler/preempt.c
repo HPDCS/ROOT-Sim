@@ -29,6 +29,7 @@
  * @date March, 2015
  */
 
+
 #ifdef HAVE_PREEMPTION
 
 #include <timestretch.h>
@@ -46,8 +47,11 @@ static simtime_t *volatile min_in_transit_lvt;
 atomic_t preempt_count;
 atomic_t overtick_platform;
 atomic_t would_preempt;
+atomic_t overtick_user;
+atomic_t need_resched;
 
 __thread volatile bool platform_mode = true;
+__thread volatile bool rolling_back = false;
 
 void preempt_init(void)
 {
@@ -67,6 +71,8 @@ void preempt_init(void)
 	if (ret == TS_OPEN_ERROR) {
 		rootsim_error(false, "libtimestretch unavailable: is the module mounted? Will run without preemption...\n");
 		rootsim_config.disable_preemption = true;
+	} else {
+		printf("TS OPEN OK\n");
 	}
 
 	atomic_set(&preempt_count, 0);
@@ -120,8 +126,6 @@ void update_min_in_transit(unsigned int thread, simtime_t lvt)
 	// simtime_t is 64-bits wide, so we use 64-bits CAS
 	} while (!CAS((uint64_t *) & min_in_transit_lvt[thread], UNION_CAST(local_min, uint64_t), UNION_CAST(lvt, uint64_t)));
 }
-
-__thread bool rolling_back = false;
 
 /**
  * This function is activated when control is transferred back from
@@ -203,7 +207,6 @@ void enable_preemption(void)
 	if (ts_start(0) != TS_START_OK) {
 		rootsim_error(true, "General error\n");
 	}
-
 }
 
 void disable_preemption(void)

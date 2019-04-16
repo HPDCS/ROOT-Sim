@@ -90,6 +90,8 @@ static bool end_computing(void)
 extern atomic_t preempt_count;
 extern atomic_t overtick_platform;
 extern atomic_t would_preempt;
+extern atomic_t overtick_user;
+extern atomic_t need_resched;
 #endif
 
 /**
@@ -158,7 +160,6 @@ static void *main_simulation_loop(void *arg)
 				     atomic_read(&would_preempt));
 #else
 				printf("TIME BARRIER %f\n", my_time_barrier);
-
 #endif
 
 				fflush(stdout);

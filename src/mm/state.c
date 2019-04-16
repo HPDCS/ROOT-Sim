@@ -183,6 +183,8 @@ unsigned int silent_execution(struct lp_struct *lp, msg_t *evt, msg_t *final_evt
 	if (evt == final_evt)
 		goto out;
 
+//	flag_rolling_back();
+
 	evt = list_next(evt);
 	final_evt = list_next(final_evt);
 
@@ -224,6 +226,8 @@ void rollback(struct lp_struct *lp)
 	msg_t *last_restored_event;
 	unsigned int reprocessed_events;
 
+//	flag_rolling_back();
+
 	// Sanity check
 	if (unlikely(lp->state != LP_STATE_ROLLBACK)) {
 		rootsim_error(false, "I'm asked to roll back LP %d's execution, but rollback_bound is not set. Ignoring...\n",
@@ -262,6 +266,7 @@ void rollback(struct lp_struct *lp)
 	// value, so it should be the last function to be called within rollback()
 	// Control messages must be rolled back as well
 	rollback_control_message(lp, last_correct_event->timestamp);
+//	unflag_rolling_back();
 }
 
 /**

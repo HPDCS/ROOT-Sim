@@ -133,7 +133,8 @@ librootsim_a_SOURCES =	src/main.c \
 			src/scheduler/stf.h
 
 
-libwrapperl_a_SOURCES = src/lib-wrapper/wrapper.c
+libwrapperl_a_SOURCES = src/lib-wrapper/stdlib.c \
+			src/lib-wrapper/math.c
 
 libdymelor_a_SOURCES = 	src/mm/checkpoints.c \
 			src/mm/platform.c \
