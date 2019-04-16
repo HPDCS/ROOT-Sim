@@ -98,8 +98,10 @@ static int __init rootsim_init(void)
 
 	printk(KERN_INFO "%s: ROOT-Sim device registered with major number %d\n", KBUILD_MODNAME, major);
 
-	setup_idt();
 	scheduler_init();
+	timer_init();
+	fault_init();
+	setup_idt();
 
 	return 0;
 
@@ -114,9 +116,11 @@ static int __init rootsim_init(void)
 
 static void __exit rootsim_exit(void)
 {
-	scheduler_fini();
 	restore_idt();
-
+	fault_fini();
+	timer_fini();
+	scheduler_fini();
+	
 	device_destroy(dev_cl, MKDEV(major, 0));
 	class_unregister(dev_cl);
 	class_destroy(dev_cl);

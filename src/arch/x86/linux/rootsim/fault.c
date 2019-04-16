@@ -131,50 +131,7 @@ void ____rootsim_page_fault(struct pt_regs *regs, long error_code, do_page_fault
 }
 */
 
-static atomic_t synch_leave;
-static atomic_t synch_enter;
-static unsigned long flags;
-
-static void synchronize_all_slaves(void *info)
-{
-	(void)info;
-
-	printk(KERN_DEBUG "%s: cpu %d entering synchronize_all_slaves\n", KBUILD_MODNAME, smp_processor_id());
-
-	atomic_dec(&synch_enter);
-	preempt_disable();
-
-	while(atomic_read(&synch_leave) > 0);
-
-	preempt_enable();
-	printk(KERN_DEBUG "%s: cpu %d leaving synchronize_all_slaves\n", KBUILD_MODNAME, smp_processor_id());
-}
-
-void synchronize_all(void)
-{
-
-	printk("cpu %d asking from unpreemptive synchronization\n", smp_processor_id());
-	atomic_set(&synch_enter, num_online_cpus() - 1);
-	atomic_set(&synch_leave, 1);
-
-	local_irq_save(flags);
-	preempt_disable();
-	smp_call_function_many(cpu_online_mask, synchronize_all_slaves, NULL, false);
-
-	while(atomic_read(&synch_enter) > 0);
-
-	printk("cpu %d all kernel threads synchronized\n", smp_processor_id());
-}
-
-void unsynchronize_all(void)
-{
-	printk("cpu %d freeing other kernel threads\n", smp_processor_id());
-
-	atomic_set(&synch_leave, 0);
-	preempt_enable();
-	local_irq_restore(flags);
-}
-
+/*
 int setup_idt(void)
 {
 	struct desc_ptr idtr;
@@ -231,5 +188,12 @@ void restore_idt(void)
 	protect_memory();
 	unsynchronize_all();
 }
+*/
 
+void fault_init(void) {
+	// TODO: use the IDT registration facility to hook the new
+	// fault handler
+}
 
+void fault_fini(void) {
+}

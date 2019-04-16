@@ -147,3 +147,10 @@ ENABLE 	my__setup_APIC_LVTT(stretch_cycles, 0, 1);
 	return;
 }
 
+void timer_init(void)
+{
+}
+
+void timer_fini(void)
+{
+}

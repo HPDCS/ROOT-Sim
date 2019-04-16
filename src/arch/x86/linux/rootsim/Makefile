@@ -1,5 +1,5 @@
 obj-m := rootsim.o
-rootsim-objs := fault.o fault_handler.o ioctl.o main.o pagetable.o scheduler.o timer.o
+rootsim-objs := fault.o fault_handler.o ioctl.o main.o pagetable.o scheduler.o timer.o idt.o
 
 CURRENT_PATH = $(shell pwd)
 LINUX_KERNEL = $(shell uname -r)
