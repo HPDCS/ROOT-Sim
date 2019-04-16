@@ -20,6 +20,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <strings.h>
 
 #include "application.h"
 #include "normal_cdf.h"
@@ -27,6 +28,8 @@
 
 
 static car_t *reorder_queue(car_t *head, simtime_t now) {
+    (void)now;
+
     car_t *curr;
     car_t *prev;
     bool didSwap = false;
@@ -36,9 +39,9 @@ static car_t *reorder_queue(car_t *head, simtime_t now) {
         for(curr = head; (curr != NULL && curr->next != NULL); curr = curr->next) {
                 if(curr->leave > curr->next->leave) {
                         if (head == curr) {
-                            head = curr->next;      
-                            curr->next = head->next; 
-                            head->next = curr; 
+                            head = curr->next;
+                            curr->next = head->next;
+                            head->next = curr;
                             prev = head;
                         } else {
                             prev->next = curr->next;
@@ -131,23 +134,22 @@ static simtime_t compute_traverse_time(lp_state_type *state, double mean_speed) 
 
 
 void release_cars(unsigned int me, lp_state_type *state) {
+	(void)me;
 	car_t *curr_car;
-	simtime_t leave_time;
-	
+
 	curr_car = state->queue;
 	while(curr_car != NULL) {
 		if(curr_car->accident == true) {
 			curr_car->accident = false;
 		}
-			
+
 		curr_car = curr_car->next;
 	}
 }
 
 car_t *enqueue_car(int me, int from, lp_state_type *state) {
 	car_t *new_car;
-	car_t *curr_car;
-	
+
 	// Create the car node
 	new_car = malloc(sizeof(car_t));
 	bzero(new_car, sizeof(car_t));
@@ -157,32 +159,32 @@ car_t *enqueue_car(int me, int from, lp_state_type *state) {
 	new_car->car_id = get_mark(me, state->car_id++);
 	if(state->accident)
 		new_car->accident = true;
-	
+
 	state->queued_elements++;
 /*
 	if(state->queue == NULL) {
 		state->queue = new_car;
 		return new_car->leave;
 	}
-	
+
 	if(state->queue->leave < new_car->leave) {
 		new_car->next = state->queue;
 		state->queue = new_car;
 		return new_car->leave;
 	}
-	
+
 	// Insert the car in reverse time order
 	curr_car = state->queue;
 	while(curr_car->next != NULL && curr_car->next->leave > new_car->leave)
 		curr_car = curr_car->next;
-	
+
 	new_car->next = curr_car->next;
 	curr_car->next = new_car;
 */
 
 	new_car->next = state->queue;
 	state->queue = new_car;
-	
+
 	//~printf("\n%d: Enqueueing %llu: ", me, new_car->car_id);
 //	curr_car = state->queue;
 //	while(curr_car != NULL) {
@@ -191,7 +193,7 @@ car_t *enqueue_car(int me, int from, lp_state_type *state) {
 //	}
 
 	state->queue = reorder_queue(state->queue, state->lvt);
-	
+
 	return new_car;
 }
 
@@ -229,7 +231,7 @@ void cause_accident(lp_state_type *state, int me) {
 	int i;
 	car_t *curr_car;
 	simtime_t duration;
-	
+
 	// if there is already an accident, don't cause another one
 	if(state->accident) {
 		return;
@@ -261,7 +263,7 @@ void cause_accident(lp_state_type *state, int me) {
 
 	// Toss a coin to check whether an accident occured or not
 	coin = Random();
-	
+
 	// If there is an accident, set the parameters accordingly and determine how long the accident will last
 	if(coin <= prob) {
 
@@ -271,11 +273,11 @@ void cause_accident(lp_state_type *state, int me) {
 		do {
 			duration = (simtime_t)(Gaussian(ACCIDENT_DURATION, ACCIDENT_SIGMA));
 		} while(duration <= 0);
-		
+
 		ScheduleNewEvent(me, state->lvt + duration, FINISH_ACCIDENT, NULL, 0);
 
 		//~printf("(%d) Accident at node %s at time %f, until %f\n", me, state->name, state->lvt, state->lvt + duration);
-		
+
 		// Select cars involved in the accident
 		involved_car = RandomRange(0, state->queued_elements - 1);
 		curr_car = state->queue;
@@ -284,7 +286,7 @@ void cause_accident(lp_state_type *state, int me) {
 			curr_car = curr_car->next;
 			i++;
 		}
-		
+
 		while(curr_car != NULL) {
 			curr_car->accident = true;
 			curr_car = curr_car->next;
@@ -327,18 +329,19 @@ int check_car_leaving(lp_state_type *state, int from, int me) {
 
 
 car_t *car_dequeue(unsigned int me, lp_state_type *state, unsigned long long *mark) {
+	(void)me;
 	car_t *curr_car;
 	car_t *ret_car;
-	
+
 	//~printf("\n%d: looking for %llu... ", me, *mark);
-	
+
 	curr_car = state->queue;
-	
+
 	if(curr_car == NULL) {
 		printf("Model error 1\n");
 		abort();
 	}
-	
+
 	if(curr_car->car_id == *mark) {
 		if(curr_car->accident || curr_car->stopped) {
 			return NULL;
@@ -348,28 +351,28 @@ car_t *car_dequeue(unsigned int me, lp_state_type *state, unsigned long long *ma
 		state->queued_elements--;
 		return curr_car;
 	}
-	
+
 	while(curr_car->next != NULL && curr_car->next->car_id != *mark) {
 		//~printf("%llu, ", curr_car->next->car_id);
 		curr_car = curr_car->next;
 	}
-	
+
 	if(curr_car->next == NULL) {
 		printf("Model error 2\n");
 		abort();
 	}
-	
+
 	//~printf("%llu, ", curr_car->next->car_id);
-	
+
 	ret_car = curr_car->next;
 	if(ret_car->accident || ret_car->stopped) {
 		return NULL;
 	}
 
 	curr_car->next = curr_car->next->next;
-	
+
 	state->queued_elements--;
-	
+
 	return ret_car;
 }
 
@@ -392,7 +395,7 @@ void determine_stop(lp_state_type *state) {
 
 void update_car_leave(lp_state_type *state, unsigned long long id, simtime_t new) {
 	car_t *curr_car = state->queue;
-	
+
 	while(curr_car != NULL) {
 		if(curr_car->car_id == id) {
 			curr_car->stopped = false;

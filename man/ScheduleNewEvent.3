@@ -3,10 +3,12 @@
 .\" Sapienza, University of Rome
 .\" http://www.dis.uniroma1.it/~hpdcs
 .\"
+.\" Nov 15 2018, Alessandro Pellegrini
+.\" 	Revised manpages
 .\" May 09 2011, Alessandro Pellegrini
 .\" 	First version of the manpages
 
-.TH ScheduleNewEvent 3 2011-05-09 "The ROme OpTimistic Simulator"
+.TH ScheduleNewEvent 3 2018-11-15 "The ROme OpTimistic Simulator"
 
 .SH NAME
 ScheduleNewEvent - Injects new simulation events within the simulation environment.
@@ -15,20 +17,20 @@ ScheduleNewEvent - Injects new simulation events within the simulation environme
 .B #include <ROOT-Sim.h>
 
 
-.B void ScheduleNewEvent(int \fIwhere\fP, time_type \fItimestamp\fP, int \fIevent_type\fP, void *\fIcontent\fP, int \fIsize\fP);
+.B void ScheduleNewEvent(unsigned int \fIto\fP, simtime_t \fItimestamp\fP, int \fIevent_type\fP, void *\fIcontent\fP, unsigned int \fIsize\fP);
 
 
 .SH DESCRIPTION
 
 ScheduleNewEvent is part of the ROOT-Sim API. It allows the simulation model to generate a new
-event and inject it into the system, destined at any simulation object. By using this function,
+event and inject it into the system, destined to any simulation object. By using this function,
 the application-level programmer can make the simulation advance at the same logical process,
 or create interaction between different objects in the system.
 
 The arguments passed to this funtion are:
 
 .IP * 2
-\fIwhere\fP: the global id of the logical processes where the simulation event must be delivered to.
+\fIto\fP: the global id of the logical processes where the simulation event must be delivered to.
 .IP * 2
 \fItimestamp\fP: the logical time when the recipient of the event must execute it at.
 .IP * 2
@@ -42,6 +44,8 @@ The arguments passed to this funtion are:
 
 The application-level code can be aware of the total number of the Logical Processes belonging
 to the simulation model by using the variable \fIn_prc_tot\fP defined into \fIROOT-Sim.h\fP.
+Additionally, the offered topology library allows to implement complex interactions
+across the various Logical Processes, mimicking different real-world scenarios.
 See that manpage to find further details.
 
 .SH ERRORS

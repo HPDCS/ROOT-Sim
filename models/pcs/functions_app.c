@@ -115,14 +115,14 @@ void fading_recheck(lp_state_type *pointer) {
 
 int allocation(lp_state_type *pointer) {
 
-	int i;
+	unsigned int i;
   	int index;
 	double summ;
 
 	channel *c, *ch;
 
 	index = -1;
-	for(i = 0; i < pointer->channels_per_cell; i++){
+	for(i = 0; i < channels_per_cell; i++){
 		if(!CHECK_CHANNEL(pointer,i)){
 			index = i;
 			break;
@@ -168,7 +168,7 @@ int allocation(lp_state_type *pointer) {
 			}
 		}
 
-		if (summ == 0.0) {
+		if (fabsf(summ) < FLT_EPSILON) {
 			// The newly allocated channel receives the minimal power
 			c->sir_data->power = MIN_POWER;
 		} else {

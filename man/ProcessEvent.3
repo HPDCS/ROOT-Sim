@@ -3,10 +3,12 @@
 .\" Sapienza, University of Rome
 .\" http://www.dis.uniroma1.it/~hpdcs
 .\"
+.\" Nov 15 2018, Alessandro Pellegrini
+.\" 	Revised manpages
 .\" May 09 2011, Alessandro Pellegrini
 .\" 	First version of the manpages
 
-.TH ProcessEvent 3 2011-05-09 "The ROme OpTimistic Simulator"
+.TH ProcessEvent 3 2018-11-15 "The ROme OpTimistic Simulator"
 
 .SH NAME
 ProcessEvent - Schedules the execution of a simulation event at a certain logical process.
@@ -15,12 +17,13 @@ ProcessEvent - Schedules the execution of a simulation event at a certain logica
 .B #include <ROOT-Sim.h>
 
 
-.B void ProcessEvent(int \fIme\fP, time_type \fInow\fP, int \fIevent_type\fP, void *\fIcontent\fP, int \fIsize\fP, void *\fIstate\fP);
+.B void ProcessEvent(unsigned int \fIme\fP, simtime_t \fInow\fP, int \fIevent_type\fP, void *\fIcontent\fP, unsigned int \fIsize\fP, void *\fIstate\fP);
 
 .SH DESCRIPTION
 
 ProcessEvent is the main application-level callback. A simulation model must implement this function
-in order to provide control to the application for the actual processing of simulation events.
+to specify the logic associated with the event handlers associated with the model, so as to
+actually process simulation events.
 
 The arguments passed to this callback are:
 
@@ -39,27 +42,27 @@ The arguments passed to this callback are:
 
 .PP
 ProcessEvent is the sole entry point at application level which is used to schedule the actual
-events to be simulated. Therefore, it should be implemented using a \fIswitch-case\fP construct to
-demultiplex the various events belonging to the simulation model.
+events to be simulated. Therefore, it must act as a demultiplexer of event handlers, depending
+on the \fIevent_type\fP code which is passed by the runtime environment. Typically, this is
+implemented using a \fIswitch-case\fP construct.
 
-Upon initialization, ROOT-Sim schedules all the Logical Processes the \fBINIT\fP event (the
-numerical code of which is 0). This means both that the code should handle this event in the
-switch-case construct, and that and event with id 0 cannot be used by the application-level
-code. INIT is defined into \fIROOT-Sim.h\fP.
+The values associated with \fIevent_type\fP are model-specific, and should be decided by the
+developer (typically, in the form of a set of defines or using an enum).
+
+Upon initialization, ROOT-Sim schedules to all the Logical Processes the \fBINIT\fP event (the
+numerical code of which is 0). This means that the implementation of ProcessEvent should 
+explicitly handle this event, and that code 0 cannot be used by the application-level
+code as a user-defined event. \fBINIT\fP is defined into \fIROOT-Sim.h\fP.
 The purpose of this event is to allow logical processes to perform initialization operations
-(such as allocating space for their states).
-INIT's payload \fIcontent\fP is not user defined. Instead, it consists of a NULL-terminated array of strings
-containing all the parameters passed at command line (or via the interactive shell) which
-do not belong to ROOT-Sim (see \fIrootsim\fP manpage for further details on this). At the same
-time, \fIsize\fP contains the number of elements in this array.
-In this way, the application-level code can initialiaze the actual instance of simulation
-accordingly to the needs.
+(such as allocating memory for their initial simulation states).
+\fBINIT\fP's payload \fIcontent\fP is NULL by definition.
 
 Other events bring a payload which could be NULL or any buffer, and \fIsize\fP states what is
 the size of the current payload, allowing the programmer to use different payloads associated with
 different events, if needed.
 
-A simulation object is not dispatched again, unless an event is scheduled to it during the simulation run.
+An LP is not dispatched again after the execution of \fBINIT\fP, unless an event is scheduled
+to it during the simulation run.
 
 .SH ERRORS
 
@@ -67,7 +70,7 @@ This function returns no errors.
 
 .SH EXAMPLES
 
-In this minimal example, one single event is specified, and a state structure
+In the following minimal example, one single event is specified, and a state structure
 containing an event counter is defined. Each Logical Process in the simulation
 model schedules an event to a random process according to a Uniform distribution,
 and the times associated with the events are determined according to the same
@@ -81,7 +84,7 @@ typedef struct _state_type {
 	int events_executed;
 } state_type;
 
-void ProcessEvent(int me, time_type now, int event_type, void ∗content, void ∗state) {
+void ProcessEvent(unsigned int me, simtime_t now, int event_type, void ∗content, unsigned int size, void ∗state) {
 
 	time_type timestamp = (time_type)(now + 10 ∗ Random());
 	int receiver = (int)(n_prc_tot * Random());

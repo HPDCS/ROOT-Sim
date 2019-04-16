@@ -1,35 +1,38 @@
 /**
-*			Copyright (C) 2008-2015 HPDCS Group
-*			http://www.dis.uniroma1.it/~hpdcs
-*
-*
-* This file is part of ROOT-Sim (ROme OpTimistic Simulator).
-*
-* ROOT-Sim is free software; you can redistribute it and/or modify it under the
-* terms of the GNU General Public License as published by the Free Software
-* Foundation; either version 3 of the License, or (at your option) any later
-* version.
-*
-* ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
-* WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-* A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-*
-* You should have received a copy of the GNU General Public License along with
-* ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
-* 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-*
-* @file memusage.c
-* @brief This module provides system-dependend functions to retrieve the current/peak
-* 	 memory usage. This is used for statistics. The original implementation is
-* 	 from David Robert Nadeau, which released its code under the Creative Commons
-* 	 Attribution 3.0 Unported License ( http://creativecommons.org/licenses/by/3.0/deed.en_US )
-* @author David Robert Nadeau - http://NadeauSoftware.com/
-*/
-
-
-#include <mm/dymelor.h>
+ * @file arch/memusage.c
+ *
+ * @brief Memory usage module
+ *
+ * This module provides system-dependend functions to retrieve the
+ * current/peak memory usage. This is used for statistics. The original
+ * implementation is from David Robert Nadeau, which released its code
+ * under the Creative Commons Attribution 3.0 Unported License
+ * ( http://creativecommons.org/licenses/by/3.0/deed.en_US )
+ *
+ * @copyright
+ * Copyright (C) 2008-2019 HPDCS Group
+ * https://hpdcs.github.io
+ *
+ * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
+ *
+ * ROOT-Sim is free software; you can redistribute it and/or modify it under the
+ * terms of the GNU General Public License as published by the Free Software
+ * Foundation; only version 3 of the License applies.
+ *
+ * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+ * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+ *
+ * @author David Robert Nadeau - http://NadeauSoftware.com/
+ */
 
 #include <arch/memusage.h>
+#include <mm/dymelor.h>
+
 
 #if defined(_WIN32)
 #include <windows.h>
@@ -57,12 +60,12 @@
 
 
 
-
-
 /**
- * Returns the peak (maximum so far) resident set size (physical
- * memory use) measured in bytes, or zero if the value cannot be
- * determined on this OS.
+ * This function is used to compute the peak resident set (physical memory
+ * usage) computed in an OS-independent way.
+ *
+ * @return peak resident set measured in bytes, or zero if the value
+ *         cannot be determined
  */
 size_t getPeakRSS(void)
 {
@@ -107,8 +110,11 @@ size_t getPeakRSS(void)
 
 
 /**
- * Returns the current resident set size (physical memory use) measured
- * in bytes, or zero if the value cannot be determined on this OS.
+ * This function computes the current resident set size (physical memory
+ * use) in an OS-independent way.
+ *
+ * @return current resident set measured in bytes, or zero if the value
+ *         cannot be determined
  */
 size_t getCurrentRSS(void)
 {
@@ -133,13 +139,13 @@ size_t getCurrentRSS(void)
 	FILE* fp = NULL;
 	if ( (fp = fopen( "/proc/self/statm", "r" )) == NULL )
 		return (size_t)0L;		/* Can't open? */
-	if ( fscanf( fp, "%*s%ld", &rss ) != 1 )
+	if ( fscanf( fp, "%*d %ld", &rss ) != 1 )
 	{
 		fclose( fp );
 		return (size_t)0L;		/* Can't read? */
 	}
 	fclose( fp );
-	return (size_t)rss * (size_t)sysconf( _SC_PAGESIZE);
+	return (size_t)rss * 1024L;
 
 #else
 	/* AIX, BSD, Solaris, and Unknown OS ------------------------ */
