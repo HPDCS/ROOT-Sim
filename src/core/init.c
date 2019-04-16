@@ -159,7 +159,7 @@ static const struct argp_option argp_options[] = {
 	{"npwd",		OPT_NPWD,		0,		0,		"Non Piece-Wise-Deterministic simulation model. See manpage for accurate description", 0},
 	{"p",			OPT_P,			"VALUE",	0,		"Checkpointing interval", 0},
 	{"full",		OPT_FULL,		0,		0,		"Take only full logs", 0},
-	{"inc",			OPT_INC,		0,		0,		"Take only incremental logs (still to be released)", 0},
+	{"inc",			OPT_INC,		0,		0,		"Take only incremental logs", 0},
 	{"A",			OPT_A,			0,		0,		"Autonomic subsystem: set checkpointing interval and log mode automatically at runtime (still to be released)", 0},
 	{"gvt",			OPT_GVT,		"VALUE",	0,		"Time between two GVT reductions (in milliseconds)", 0},
 	{"cktrm-mode",		OPT_CKTRM_MODE,		"TYPE",		0,		"Termination Detection mode. Supported values: normal, incremental, accurate", 0},

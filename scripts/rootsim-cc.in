@@ -6,6 +6,8 @@
 # CHANGELOG:
 #   22 sep 2012 - Alessandro Pellegrini <pellegrini@dis.uniroma1.it>
 #	Created the first version of this script
+#   10 apr 2019 - Alessandro Pellegrini <pellegrini@dis.uniroma1.it>
+#       Instrumentation is now carried out using gcc plugin
 #
 # ROOT-Sim CC: this is just a gcc/mpicc wrapper which follows through the
 # various steps in order to correctly compile a simulation model against
@@ -55,33 +57,25 @@ EOF
 ##############################################################################
 # Handle temporary files
 ##############################################################################
-extract_support_data()
+generate_linker_scripts()
 {
 START_LINES=$SCRIPT_LINES
 (( START_LINES += 1 ))
-tail -n +$START_LINES "$0" | head -n +$HIJACKER_CONF_LINES > $$.xml
-(( START_LINES += $HIJACKER_CONF_LINES ))
+tail -n +$START_LINES "$0" | head -n +$LD_DATA1_LINES > $$.ld-data1
+(( START_LINES += $LD_DATA1_LINES ))
+tail -n +$START_LINES "$0" | head -n +$LD_DATA2_LINES > $$.ld-data2
+(( START_LINES += $LD_DATA2_LINES ))
+tail -n +$START_LINES "$0" | head -n +$LD_FINAL_LINES > $$.ld-final
 }
 
 build_cleanup()
 {
-#rm $$.ld-data1
-#rm $$.ld-data2
-#rm $$.ld-final
+rm $$.ld-data1
+rm $$.ld-data2
+rm $$.ld-final
 rm -f ${SOURCES//.c/.o}
 rm -f ${SOURCES//.c/.o.rs}
 rm -f APP*.o
-#rm branch-table
-#rm branch-table-light
-#rm offset-table-start-inc
-#unlink offset-table-start-full # :)
-#rm monitor-table
-#rm offset-table
-#rm offset-table-light
-#rm padding.c
-#rm padding-monitor.c
-#rm riferimenti
-#rm riferimenti-mon
 rm -f original
 }
 
@@ -160,61 +154,86 @@ fi
 # If partial compilation is invoked, simply call the compiler.
 # -c is actually included into CFLAGS
 if [[ $PARTIAL = 1 ]]; then
-	$CC $CFLAGS $SOURCES -o $OUTNAME
+	$CC $CFLAGS $SOURCES -DOnGVT=OnGVT_light -DProcessEvent=ProcessEvent_light -o $OUTNAME
 	exit 0
 fi
 
 
-####
-#### Ok, no partial compilation. Now start the loooong compilation procedure for ROOT-Sim
-####
-
-
 # Generate linker scripts
-extract_support_data
+generate_linker_scripts
 
-
-###
-### Compile all the sources into a single object, which we will later mangle
-###
+### Compile all the sources into a single object: this is the non-instrumented version
 OBJECTS=${SOURCES//.c/.o}
-echo "Compiling $SOURCES..."
+
 for f in $SOURCES; do
 	if [ "${f: -2:2}" = ".o" ]; then
 		mv $f $f.rs
 	else
-		$CC $CFLAGS -c $f -o ${f/.c/.o.rs}
+		$CC $CFLAGS -c $f -DOnGVT=OnGVT_light -DProcessEvent=ProcessEvent_light -o ${f/.c/.o.rs}
 	fi
 	check_term
 done
 
 $LD -r ${OBJECTS//.o/.o.rs} -o APP.o
 
-# Now instrument the code, if required
+### Compile all the sources into a single object: this is the instrumented version
+rm ${OBJECTS//.o/.o.rs}
+for f in $SOURCES; do
+	if [ "${f: -2:2}" = ".o" ]; then
+		mv $f $f.rs
+	else
+		$CC -fplugin=$libdir/libmemtrace.so -fplugin-arg-libmemtrace-instrument-mode="w" $CFLAGS -c $f -DOnGVT=OnGVT_instr -DProcessEvent=ProcessEvent_instr -o ${f/.c/.o.rs}
+	fi
+	check_term
+done
 
-if test "x${HAVE_MIXED_SS}" = "xyes"
-then
-echo "Instrumenting the application code..."
-hijacker -i APP.o -c "$$.xml" -o APP-instrumented.o
-check_term
-else
-cp APP.o APP-instrumented.o
-fi
+$LD -r ${OBJECTS//.o/.o.rs} -o APP-inst.o
 
-echo "Linking..."
-$LD -r -L $libdir --wrap strcpy --wrap strncpy --wrap strcat --wrap strncat --wrap memcpy --wrap memmove --wrap memset --wrap strdup --wrap strndup -o APP-lib-wrapped.o APP-instrumented.o -lwrapperl
-$LD -r -L $libdir --wrap malloc --wrap free --wrap realloc --wrap calloc -o APP-dym-wrapped.o APP-lib-wrapped.o --whole-archive -ldymelor
-check_term
-#$CC -Xlinker --no-check-sections -Xlinker -T -Xlinker $$.ld-final -Xlinker --section-start -Xlinker .warp=$APPLICATION_START_POINT -Xlinker --section-start -Xlinker .warl=$APPLICATION_START_POINT_LIGHT  APP-dym-wrapped.o -lrootsim -lm -DGATHER_DATA -o $OUTNAME
-$CC APP-dym-wrapped.o $CFLAGS -lrootsim -lm -DGATHER_DATA -o $OUTNAME
+############ INSERIRE QUI IL CODICE PER GENERARE LA VERSIONE INSTRUMENTATA #################
+
+# Incremental linking non-instrumented version
+$LD -r -L $libdir --wrap strcpy\
+		  --wrap strncpy\
+		  --wrap strcat\
+		  --wrap strncat\
+		  --wrap memcpy\
+		  --wrap memmove\
+		  --wrap memset\
+		  --wrap strdup\
+		  --wrap strndup\
+		  --wrap malloc\
+		  --wrap free\
+		  --wrap realloc\
+		  --wrap calloc -o APP-non-instr.o APP.o --whole-archive -ldymelor
 check_term
 
+# Incremental linking instrumented version
+$LD -r -L $libdir --wrap strcpy\
+		  --wrap strncpy\
+		  --wrap strcat\
+		  --wrap strncat\
+		  --wrap memcpy\
+		  --wrap memmove\
+		  --wrap memset\
+		  --wrap strdup\
+		  --wrap strndup\
+		  --wrap malloc\
+		  --wrap free\
+		  --wrap realloc\
+		  --wrap calloc -o APP-instr.o APP-inst.o --whole-archive -ldymelor
+check_term
+
+# Merge two relocatable objects together
+$LD -r -T $$.ld-data1 APP-instr.o -o APP-incremental-resectioned.o
+$LD -r -T $$.ld-data2 APP-non-instr.o -o APP-non-incremental-resectioned.o
+$LD -r -z muldefs APP-incremental-resectioned.o APP-non-incremental-resectioned.o -o APP-final.o
+
+$CC -Xlinker -T -Xlinker $$.ld-final APP-final.o $CFLAGS -lrootsim -lm -o $OUTNAME
+check_term
 
 # Clean temporary files
 build_cleanup
 
-echo "process done"
-
 exit 0
 
-# Raw support scripts start here!
+# Raw linker scripts start here!

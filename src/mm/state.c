@@ -73,19 +73,19 @@ bool LogState(struct lp_struct *lp)
 	// Switch on the checkpointing mode
 	switch (rootsim_config.checkpointing) {
 
-	case STATE_SAVING_COPY:
-		take_snapshot = true;
-		break;
-
-	case STATE_SAVING_PERIODIC:
-		if (lp->from_last_ckpt >= lp->ckpt_period) {
+		case STATE_SAVING_COPY:
 			take_snapshot = true;
-			lp->from_last_ckpt = 0;
-		}
-		break;
+			break;
 
-	default:
-		rootsim_error(true, "State saving mode not supported.");
+		case STATE_SAVING_PERIODIC:
+			if (lp->from_last_ckpt >= lp->ckpt_period) {
+				take_snapshot = true;
+				lp->from_last_ckpt = 0;
+			}
+			break;
+
+		default:
+			rootsim_error(true, "State saving mode not supported.");
 	}
 
  skip_switch:

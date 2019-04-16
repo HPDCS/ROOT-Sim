@@ -1,0 +1,16 @@
+SECTIONS  {
+  .data_inc :
+    {
+        *(.data)
+        *(.data1)
+    }
+  .bss_inc :
+    {
+        *(.bss)
+    }
+  .rodata_inc :
+    {
+        *(.rodata)
+        *(.rodata1)
+    }
+}

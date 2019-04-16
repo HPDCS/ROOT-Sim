@@ -1,13 +1,15 @@
 AC_PREREQ([2.67])
+LT_PREREQ([2.2])
 
 AC_INIT([ROOT-Sim],[2.0.0],[rootsim@googlegroups.com],[rootsim],[https://github.com/HPDCS/ROOT-Sim/])
 AC_CONFIG_SRCDIR([src])
 AM_INIT_AUTOMAKE([-Wno-portability 1.10.1 -Wall foreign subdir-objects])
 
+AC_SUBST([GCCPLUGVERS], [0:0:0])
+
 AC_CONFIG_MACRO_DIR([m4])
 
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
-
 
 # Debugging symbols or not?
 AC_ARG_ENABLE([debug],
@@ -20,7 +22,7 @@ AC_ARG_ENABLE([coverage],
 AM_CONDITIONAL([DEBUG], [test x$enable_debug = xyes])
 
 # Setup compilation flags
-CFLAGS_COMMON="-std=c11 -fno-omit-frame-pointer -ffloat-store -fno-common -fstrict-aliasing -fgnu89-inline -rdynamic -lm -U_FORTIFY_SOURCE"
+CFLAGS_COMMON="-std=c11 -fvisibility=hidden -fno-omit-frame-pointer -ffloat-store -fno-common -fstrict-aliasing -fgnu89-inline -rdynamic -lm -U_FORTIFY_SOURCE"
 CFLAGS_WARNINGS="-Wall -Wextra -Wmisleading-indentation -Wcast-align -Wpointer-arith -Wstrict-overflow=5 -Wstrict-prototypes -Winline -Wundef -Wnested-externs -Wshadow -Wunreachable-code -Wfloat-equal -Wredundant-decls -Wold-style-definition -Wno-switch-enum"
 #CFLAGS_WARNINGS="$CFLAGS_WARNINGS -Wconversion"
 
@@ -93,16 +95,17 @@ AS_IF([test x"$with_mpi" = xyes],[
 #----------------------------------------------------------------------------
 # Check for languages and compilation support
 #----------------------------------------------------------------------------
-AC_LANG([C])
+AC_LANG([C],[C++])
 AC_PROG_CC([gcc])
 AX_CHECK_COMPILE_FLAG([-std=c11], [ac_c11=yes], [ac_c11=no])
 AS_IF([test x$ac_c11 != xyes],[
 	AC_MSG_FAILURE([No. ROOT-Sim requires a compiler speaking the C11 standard.])
 ])
+AC_PROG_CXX([g++])
 
 
 #----------------------------------------------------------------------------
-# Check for GCC version
+# Check for GCC stuff
 #----------------------------------------------------------------------------
 AC_USE_SYSTEM_EXTENSIONS
 AX_COMPILER_VERSION
@@ -114,11 +117,12 @@ AS_IF([test $GCC_VERSION_MAJOR -lt 4 -a $GCC_VERSION_MINOR -lt 9],[
 	AC_MSG_FAILURE([At least version 4.9.0 is required.])
 ])
 
+
 # GCC7 complains about switch cases fallthrough. We use this in some highly-
 # optimized portions of the code. The -Wimplicit-fallthrough=3 compile-time
 # flag can prevent the compiler from emitting warnings in all fallthrough
 # cases where a "fallthrough" comment has been places (in a way compliant with
-# the [[fallthrough]] C14 tag which we don't support here.
+# the [[fallthrough]] C14 tag which we don't support here).
 # Yet, previous version of the compiler fail badly if we simply use that
 # flag. We check here for the compiler version, and if we're of GCC >= 7.0 we
 # set the flag, only in debug mode.
@@ -126,12 +130,17 @@ AS_IF([test $GCC_VERSION_MAJOR -ge 7 -a "x$enable_debug" == "xyes"],[
 	CFLAGS="$CFLAGS -Wimplicit-fallthrough=3"
 ])
 
+# Check for include path to generate the GCC plugin which we use for
+# incremental state saving
+AC_SUBST([GCCPLUGINDIR],[$( ${CXX} -print-file-name=plugin )])
+
 #----------------------------------------------------------------------------
 # Checks for programs.
 #----------------------------------------------------------------------------
 AC_PROG_MAKE_SET
 AC_PROG_MKDIR_P
 AC_PROG_CC_C_O
+AC_PROG_CXX_C_O
 AM_PROG_CC_C_O
 AM_PROG_AR
 # Silence warning: ar: 'u' modifier ignored since 'D' is the default
@@ -139,7 +148,7 @@ AC_SUBST(AR_FLAGS, [cr])
 AC_SUBST(ARFLAGS, [cr])
 AM_PROG_AS
 AC_PROG_AWK
-LT_INIT
+LT_INIT([dlopen shared])
 
 
 
@@ -181,6 +190,7 @@ CC="$PTHREAD_CC"
 AC_SUBST([LIBS])
 AC_SUBST([CFLAGS])
 AC_SUBST([CC])
+AC_SUBST([CXX])
 
 
 
@@ -350,9 +360,10 @@ AM_CONDITIONAL([NO_KERNEL_MODULES], [test "x$ac_disable_modules" = "xyes"])
 # of the linker scripts provided in the installation.
 #----------------------------------------------------------------------------
 AC_MSG_CHECKING([compiler and linker scripts sizes])
-AC_SUBST([cc_have_mixed_ss], [$ac_have_mixed_ss])
 AC_SUBST([cc_script_lines], [$(wc -l scripts/rootsim-cc.in | sed 's,\ .*,,g')])
-AC_SUBST([cc_hijacker_conf_lines], [$(wc -l scripts/hijacker-conf.xml | sed 's,\ .*,,g')])
+AC_SUBST([cc_lddata1_lines], [$(wc -l scripts/ld-data1 | sed 's,\ .*,,g')])
+AC_SUBST([cc_lddata2_lines], [$(wc -l scripts/ld-data2 | sed 's,\ .*,,g')])
+AC_SUBST([cc_ldfinal_lines], [$(wc -l scripts/ld-final | sed 's,\ .*,,g')])
 AC_MSG_RESULT([ok])
 
 
@@ -462,7 +473,6 @@ fi
 # This is the line to reintroduce the ECS and modules messages
 #Event Cross State......... : ${ac_ecs}
 #Linux Kernel Modules...... : ${ac_modules}
-
 cat<<EOF
 
 
@@ -474,5 +484,6 @@ Debugging Support......... : ${enable_debug}
 MPI....................... : ${enable_mpi}
 LP Preemption Support..... : ${ac_preemption}
 LP Rebinding.............. : ${ac_lp_rebinding}
+
 
 EOF
