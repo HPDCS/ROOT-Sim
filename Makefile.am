@@ -42,8 +42,7 @@ librootsim_include_HEADERS = src/ROOT-Sim.h
 librootsim_includedir = $(includedir)
 lib_LIBRARIES = librootsim.a
 noinst_LTLIBRARIES = libdymmemtrace.la
-lib_LTLIBRARIES = libdymelor.la
-# libmemtrace.la
+lib_LTLIBRARIES = libdymelor.la libmemtrace.la
 
 librootsim_a_SOURCES =	src/main.c \
 			src/arch/memusage.c \

@@ -41,7 +41,7 @@
 
 enum {
 	STATE_SAVING_INVALID = 0,	/**< By convention 0 is the invalid field */
-	STATE_SAVING_COPY,			/**< Copy State Saving checkpointing interval */
+	STATE_SAVING_COPY,		/**< Copy State Saving checkpointing interval */
 	STATE_SAVING_PERIODIC		/**< Periodic State Saving checkpointing interval */
 };
 
@@ -67,7 +67,7 @@ typedef struct _state_t {
 
 	/* Library state fields */
 	numerical_state_t numerical;
-	
+
 	topology_t *topology;
 
 	void *region_data;

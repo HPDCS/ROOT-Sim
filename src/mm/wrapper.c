@@ -43,49 +43,49 @@ void *__real_memmove(void *, const void *, size_t);
 void *__real_memset(void *, int, size_t);
 
 // Actual wrappers
-char *__wrap_strcpy(char *s, const char *ct)
+__visible char *__wrap_strcpy(char *s, const char *ct)
 {
 	__write_mem(s, -1);
 	return __real_strcpy(s, ct);
 }
 
-char *__wrap_strncpy(char *s, const char *ct, size_t n)
+__visible char *__wrap_strncpy(char *s, const char *ct, size_t n)
 {
 	__write_mem((void *)s, n);
 	return __real_strncpy(s, ct, n);
 }
 
-char *__wrap_strcat(char *s, const char *ct)
+__visible char *__wrap_strcat(char *s, const char *ct)
 {
 	__write_mem(s, -1);
 	return __real_strcat(s, ct);
 }
 
-char *__wrap_strncat(char *s, const char *ct, size_t n)
+__visible char *__wrap_strncat(char *s, const char *ct, size_t n)
 {
 	__write_mem(s, n);
 	return __real_strncat(s, ct, n);
 }
 
-void *__wrap_memcpy(void *s, const void *ct, size_t n)
+__visible void *__wrap_memcpy(void *s, const void *ct, size_t n)
 {
 	__write_mem(s, n);
 	return __real_memcpy(s, ct, n);
 }
 
-void *__wrap_memmove(void *s, const void *ct, size_t n)
+__visible void *__wrap_memmove(void *s, const void *ct, size_t n)
 {
 	__write_mem(s, n);
 	return __real_memmove(s, ct, n);
 }
 
-void *__wrap_memset(void *s, int c, size_t n)
+__visible void *__wrap_memset(void *s, int c, size_t n)
 {
 	__write_mem(s, n);
 	return __real_memset(s, c, n);
 }
 
-char *__wrap_strdup(const char *s)
+__visible char *__wrap_strdup(const char *s)
 {
 	char *ret = (char *)__wrap_malloc(strlen(s) + 1);
 	__real_strcpy(ret, s);
@@ -93,7 +93,7 @@ char *__wrap_strdup(const char *s)
 	return ret;
 }
 
-char *__wrap_strndup(const char *s, size_t n)
+__visible char *__wrap_strndup(const char *s, size_t n)
 {
 	char *ret = (char *)__wrap_malloc(n);
 	__real_strncpy(ret, s, n);

@@ -52,7 +52,7 @@
 static bool serial_simulation_complete = false;
 static bool *serial_completed_simulation;
 
-void SerialScheduleNewEvent(unsigned int rcv, simtime_t stamp,
+__visible void SerialScheduleNewEvent(unsigned int rcv, simtime_t stamp,
 			    unsigned int event_type, void *event_content,
 			    unsigned int event_size)
 {

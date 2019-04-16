@@ -480,7 +480,7 @@ size_t get_log_size(malloc_state * logged_state)
 * @return A pointer to the allocated memory
 *
 */
-void *__wrap_malloc(size_t size)
+__visible void *__wrap_malloc(size_t size)
 {
 	void *ptr;
 
@@ -516,7 +516,7 @@ void *__wrap_malloc(size_t size)
 * @param ptr A memory buffer to be free'd
 *
 */
-void __wrap_free(void *ptr)
+__visible void __wrap_free(void *ptr)
 {
 	switch_to_platform_mode();
 
@@ -542,7 +542,7 @@ void __wrap_free(void *ptr)
 * @return A pointer to the newly allocated buffer
 *
 */
-void *__wrap_realloc(void *ptr, size_t size)
+__visible void *__wrap_realloc(void *ptr, size_t size)
 {
 	void *new_buffer;
 	size_t old_size;
@@ -591,7 +591,7 @@ void *__wrap_realloc(void *ptr, size_t size)
 * @return A pointer to the newly allocated buffer
 *
 */
-void *__wrap_calloc(size_t nmemb, size_t size)
+__visible void *__wrap_calloc(size_t nmemb, size_t size)
 {
 	void *buffer;
 
