@@ -1,16 +1,16 @@
 SECTIONS  {
-        .data_i :
-        {
-        APP-instr.o (.data)
-        APP-instr.o (.data1)
-        }
-        .bss_i :
-        {
-        APP-instr.o (.bss)
-        }
-        .rodata_i :
-        {
-        APP-instr.o (.rodata)
-        APP-instr.o (.rodata1)
-        }
+  .data_inc :
+    {
+        *(.data)
+        *(.data1)
+    }
+  .bss_inc :
+    {
+        *(.bss)
+    }
+  .rodata_inc :
+    {
+        *(.rodata)
+        *(.rodata1)
+    }
 }

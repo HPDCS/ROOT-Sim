@@ -176,18 +176,18 @@ done
 
 $LD -r ${OBJECTS//.o/.o.rs} -o APP.o
 
-### Compile all the sources into a single object: the instrumented version
+### Compile all the sources into a single object: this is the instrumented version
 rm ${OBJECTS//.o/.o.rs}
 for f in $SOURCES; do
 	if [ "${f: -2:2}" = ".o" ]; then
 		mv $f $f.rs
 	else
-		$CC -fplugin=$libdir/libmemtrace.so $CFLAGS -c $f -DOnGVT=OnGVT_instr -DProcessEvent=ProcessEvent_instr -o ${f/.c/.o.rs}
+		$CC -fplugin=$libdir/libmemtrace.so -fplugin-arg-libmemtrace-instrument-mode="w" $CFLAGS -c $f -DOnGVT=OnGVT_instr -DProcessEvent=ProcessEvent_instr -o ${f/.c/.o.rs}
 	fi
 	check_term
 done
 
-$LD -r ${OBJECTS//.o/.o.rs} -o APP-instr.o
+$LD -r ${OBJECTS//.o/.o.rs} -o APP-inst.o
 
 ############ INSERIRE QUI IL CODICE PER GENERARE LA VERSIONE INSTRUMENTATA #################
 
@@ -220,7 +220,7 @@ $LD -r -L $libdir --wrap strcpy\
 		  --wrap malloc\
 		  --wrap free\
 		  --wrap realloc\
-		  --wrap calloc -o APP-instr.o APP.o --whole-archive -ldymelor
+		  --wrap calloc -o APP-instr.o APP-inst.o --whole-archive -ldymelor
 check_term
 
 # Merge two relocatable objects together
@@ -228,7 +228,7 @@ $LD -r -T $$.ld-data1 APP-instr.o -o APP-incremental-resectioned.o
 $LD -r -T $$.ld-data2 APP-non-instr.o -o APP-non-incremental-resectioned.o
 $LD -r -z muldefs APP-incremental-resectioned.o APP-non-incremental-resectioned.o -o APP-final.o
 
-$CC -Xlinker --no-check-sections -Xlinker -T -Xlinker $$.ld-final APP-final.o $CFLAGS -lrootsim -lm -o $OUTNAME
+$CC -Xlinker -T -Xlinker $$.ld-final APP-final.o $CFLAGS -lrootsim -lm -o $OUTNAME
 
 #$CC APP-dym-wrapped.o $CFLAGS -lrootsim -lm -DGATHER_DATA -o $OUTNAME
 check_term
