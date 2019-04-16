@@ -5,9 +5,15 @@
 
 #include "print-rtl.h"
 
+#define print_rtl_single(...) {}
+#define printf(...) {}
+
 int plugin_is_GPL_compatible;
 
-static int track_frame_size = -1;
+#define R_MODE 1
+#define W_MODE 2
+static unsigned char mode = 0;
+
 static const char track_function1[] = "__write_mem";
 static const char track_function2[] = "__read_mem";
 
@@ -18,9 +24,8 @@ static const char track_function2[] = "__read_mem";
 static GTY(()) tree track_function_decl;
 
 static struct plugin_info memtrace_plugin_info = {
-	.version = "201707101337",
-	.help = "track-min-size=nn\ttrack stack for functions with a stack frame size >= nn bytes\n"
-		"disable\t\tdo not activate the plugin\n"
+	.version = "201904160000",
+	.help = "instrument-mode=rw\t'r' for read access, 'w' for write access 'rw' for read/write accesso\n"
 };
 
 static void memtrace_add_track_stack(gimple_stmt_iterator *gsi, bool after)
@@ -112,27 +117,21 @@ static unsigned int memtrace_instrument_execute(void)
 	return 0;
 }
 
-static bool large_stack_frame(void)
-{
-#if BUILDING_GCC_VERSION >= 8000
-	return maybe_ge(get_frame_size(), track_frame_size);
-#else
-	return (get_frame_size() >= track_frame_size);
-#endif
-}
-
 static void put_instruction_cmov(rtx insn, rtx condition, rtx then_expression, rtx else_expression, bool write_1, bool write_2)
 {
+	return; // FIXME
+
+	#if 0
 
 	rtx parm1_then, parm2_then, parm1_else, parm2_else, call_1, call_2, push1, push2, pop1, pop2, if_then_else, label_x, label_x1, jmp_x1;
 	const char *fn1 = write_1 ? "__write_mem" : "__read_mem";
 	const char *fn2 = write_2 ? "__write_mem" : "__read_mem";
 	if(then_expression != NULL){
-		if(GET_CODE(XEXP(then_expression, 0)) == PRE_DEC || GET_CODE(XEXP(then_expression, 0)) == POST_INC || GET_CODE(XEXP(then_expression), 0)) == SCRATCH)
+		if(GET_CODE(XEXP(then_expression, 0)) == PRE_DEC || GET_CODE(XEXP(then_expression, 0)) == POST_INC /*|| GET_CODE(XEXP(then_expression), 0)*/) == SCRATCH)
 			return;
 	}
 	if (else_expression != NULL){
-		if(GET_CODE(XEXP(else_expression, 0)) == PRE_DEC || GET_CODE(XEXP(else_expression, 0)) == POST_INC || GET_CODE(XEXP(else_expression, 0)) == SCRATCH)
+		if(GET_CODE(XEXP(else_expression, 0)) == PRE_DEC || GET_CODE(XEXP(else_expression, 0)) == POST_INC /*|| GET_CODE(XEXP(else_expression, 0)*/) == SCRATCH)
 			return;
 	}
 
@@ -222,7 +221,6 @@ static void put_instruction_cmov(rtx insn, rtx condition, rtx then_expression, r
 		parm1_else = NULL;
 		parm2_else = NULL;
 	}
-
 
 	/*
 	Or it is possible to write an assembly-like code like that
@@ -315,7 +313,7 @@ static void put_instruction_cmov(rtx insn, rtx condition, rtx then_expression, r
 	printf("********\n");
 
 	return;
-
+	#endif
 }
 
 static void put_instruction(rtx insn, rtx operand, bool write)
@@ -420,7 +418,7 @@ static unsigned int memtrace_cleanup_execute(void)
 		if(GET_CODE(body) == SET){
 			rtx first = XEXP(body, 0);
 			//print_rtl_single(stdout, first);
-			if (GET_CODE(first) == MEM){
+			if ((mode & W_MODE) && GET_CODE(first) == MEM){
 				// dest operand
 				printf("dst: MEMORY ACCESS FOUND!\n");
 
@@ -430,19 +428,19 @@ static unsigned int memtrace_cleanup_execute(void)
 			else if (GET_CODE(first) == IF_THEN_ELSE){
 				rtx then_expression = XEXP(first, 1);
 				rtx else_expression = XEXP(first, 2);
-				if (GET_CODE(then_expression) == MEM && GET_CODE(else_expression) == MEM){
+				if ((mode & W_MODE) && GET_CODE(then_expression) == MEM && GET_CODE(else_expression) == MEM){
 					printf("dst: MEMORY ACCESS FOUND!\n");
 					// insert instructions
 					rtx condition = XEXP(first, 0);
 					put_instruction_cmov(insn, condition, then_expression, else_expression, true, true);
 				}
-				else if (GET_CODE(then_expression) == MEM){
+				else if ((mode & W_MODE) && GET_CODE(then_expression) == MEM){
 					printf("dst: MEMORY ACCESS FOUND!\n");
 					// insert instructions
 					rtx condition = XEXP(first, 0);
 					put_instruction_cmov(insn, condition, then_expression, NULL, true, false);
 				}
-				else if (GET_CODE(else_expression) == MEM){
+				else if ((mode & W_MODE) && GET_CODE(else_expression) == MEM){
 					printf("dst: MEMORY ACCESS FOUND!\n");
 					// insert instructions
 					rtx condition = XEXP(first, 0);
@@ -458,24 +456,24 @@ static unsigned int memtrace_cleanup_execute(void)
 				//rtx else_expression = (GET_CODE(try_else_expression) != REG)? try_else_expression : gen_rtx_MEM(DImode, try_else_expression);
 				rtx else_expression = try_else_expression;
 				//print_rtl_single(stdout, else_expression);
-				if (GET_CODE(then_expression) == MEM && GET_CODE(else_expression) == MEM){
+				if ((mode & R_MODE) && GET_CODE(then_expression) == MEM && GET_CODE(else_expression) == MEM){
 					printf("src: MEMORY ACCESS FOUND!\n");
 					// insert instructions
 					rtx condition = XEXP(second, 0);
 					print_rtl_single(stdout, condition);
 					put_instruction_cmov(insn, condition, then_expression, else_expression, false, false);
 				}
-				else if (GET_CODE(then_expression) == MEM){
+				else if ((mode & R_MODE) && GET_CODE(then_expression) == MEM){
 					printf("src: MEMORY ACCESS FOUND!\n");
 					// insert instructions
 					put_instruction_cmov(insn, XEXP(second, 0), then_expression, NULL, false, false);
 				}
-				else if (GET_CODE(else_expression) == MEM){
+				else if ((mode & R_MODE) && GET_CODE(else_expression) == MEM){
 					printf("src: MEMORY ACCESS FOUND!\n");
 					put_instruction_cmov(insn, XEXP(second, 0), NULL, else_expression, false, false);
 				}
 			}
-			else if (GET_CODE(second) == MEM){
+			else if ((mode & R_MODE) && GET_CODE(second) == MEM){
 				// src operand
 				printf("src: MEMORY ACCESS FOUND!\n");
 
@@ -491,12 +489,12 @@ static unsigned int memtrace_cleanup_execute(void)
 					rtx first, second;
 					first = XEXP(expression, 0);
 					second = XEXP(expression, 1);
-					if (GET_CODE(first) == MEM){
+					if ((mode & W_MODE) && GET_CODE(first) == MEM){
 						printf("dst: MEMORY ACCESS FOUND:\n");
 						print_rtl_single(stdout, XEXP(first, 0));
 						put_instruction(insn, first, true);
 					}
-					if (GET_CODE(second) == MEM){
+					if ((mode & R_MODE) && GET_CODE(second) == MEM){
 						printf("src: MEMORY ACCESS FOUND:\n");
 						print_rtl_single(stdout, XEXP(second, 0));
 						put_instruction(insn, second, false);
@@ -533,7 +531,8 @@ static bool memtrace_gate(void)
 			return false;
 	}
 
-	return track_frame_size >= 0;
+//	return track_frame_size >= 0;
+	return true;
 }
 
 /* Build the function declaration for dirty_mem() */
@@ -631,22 +630,20 @@ __visible int plugin_init(struct plugin_name_args *plugin_info,
 
 	/* Parse the plugin arguments */
 	for (i = 0; i < argc; i++) {
-		if (!strcmp(argv[i].key, "disable"))
-			return 0;
-
-		if (!strcmp(argv[i].key, "track-min-size")) {
+		if (!strcmp(argv[i].key, "instrument-mode")) {
 			if (!argv[i].value) {
-				error(G_("no value supplied for option '-fplugin-arg-%s-%s'"),
+				error(G_("no value supplied for option '-fplugin-arg-%s-%s', plugin is disabled"),
 					plugin_name, argv[i].key);
-				return 1;
+				return 0;
 			}
 
-			track_frame_size = atoi(argv[i].value);
-			if (track_frame_size < 0) {
-				error(G_("invalid option argument '-fplugin-arg-%s-%s=%s'"),
-					plugin_name, argv[i].key, argv[i].value);
-				return 1;
-			}
+			if(strncmp(argv[i].value, "r", 1) == 0)
+				mode = R_MODE;
+			if(strncmp(argv[i].value, "w", 1) == 0)
+				mode = W_MODE;
+			if(strncmp(argv[i].value, "rw", 2) == 0)
+				mode = (R_MODE | W_MODE);
+
 		} else {
 			error(G_("unknown option '-fplugin-arg-%s-%s'"),
 					plugin_name, argv[i].key);
@@ -655,16 +652,13 @@ __visible int plugin_init(struct plugin_name_args *plugin_info,
 	}
 
 	/* Give the information about the plugin */
-	register_callback(plugin_name, PLUGIN_INFO, NULL,
-						&memtrace_plugin_info);
+	register_callback(plugin_name, PLUGIN_INFO, NULL, &memtrace_plugin_info);
 
 	/* Register to be called before processing a translation unit */
-	register_callback(plugin_name, PLUGIN_START_UNIT,
-					&memtrace_start_unit, NULL);
+	register_callback(plugin_name, PLUGIN_START_UNIT, &memtrace_start_unit, NULL);
 
 	/* Register an extra GCC garbage collector (GGC) root table */
-	register_callback(plugin_name, PLUGIN_REGISTER_GGC_ROOTS, NULL,
-					(void *)&gt_ggc_r_gt_memtrace);
+	register_callback(plugin_name, PLUGIN_REGISTER_GGC_ROOTS, NULL, (void *)&gt_ggc_r_gt_memtrace);
 
 	/*
 	 * Hook into the Pass Manager to register new gcc passes.
@@ -674,11 +668,8 @@ __visible int plugin_init(struct plugin_name_args *plugin_info,
 	 * So we register two gcc passes to instrument every function at first
 	 * and remove the unneeded instrumentation later.
 	 */
-	register_callback(plugin_name, PLUGIN_PASS_MANAGER_SETUP, NULL,
-					&memtrace_instrument_pass_info);
-
-	register_callback(plugin_name, PLUGIN_PASS_MANAGER_SETUP, NULL,
-					&memtrace_cleanup_pass_info);
+	register_callback(plugin_name, PLUGIN_PASS_MANAGER_SETUP, NULL, &memtrace_instrument_pass_info);
+	register_callback(plugin_name, PLUGIN_PASS_MANAGER_SETUP, NULL, &memtrace_cleanup_pass_info);
 
 	return 0;
 }
