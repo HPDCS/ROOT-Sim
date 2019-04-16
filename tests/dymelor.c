@@ -12,11 +12,27 @@
 #define actual_free(ptr) free(ptr)
 
 #include <mm/mm.h>
+#include <core/timer.h>
 #include <core/init.h>
 
 #include "common.h"
 
-#define N_TOTAL		50
+__thread timer alloc_timer;
+__thread timer free_timer;
+__thread timer checkpoint_timer;
+__thread timer restore_timer;
+
+__thread int allocs = 0;
+__thread int frees = 0;
+__thread int logs = 0;
+__thread int restores = 0;
+
+__thread unsigned long long alloc_time = 0;
+__thread unsigned long long free_time = 0;
+__thread unsigned long long checkpoint_time = 0;
+__thread unsigned long long restore_time = 0;
+
+#define N_TOTAL		10
 #define N_THREADS	4
 #define N_TOTAL_PRINT	5
 #define MEMORY		(1ULL << 26)
@@ -43,6 +59,7 @@ struct bin {
 	unsigned char *ptr;
 	size_t size;
 	enum subsystem subs;
+	int bytes_written;
 };
 
 struct bin_info {
@@ -67,7 +84,15 @@ int n_running;
 
 __thread struct thread_st *st;
 
-	/*
+
+void statistics_post_data(struct lp_struct *lp, enum stat_msg_t type, double data) {
+	(void)lp;
+	(void)type;
+	(void)data;
+}
+
+
+/*
  * Ultra-fast RNG: Use a fast hash of integers.
  * 2**64 Period.
  * Passes Diehard and TestU01 at maximum settings
@@ -89,8 +114,9 @@ static inline unsigned rng(void)
 	return x;
 }
 
-static void mem_init(unsigned char *ptr, size_t size)
-{
+static void mem_init(struct bin *m) {
+	unsigned char *ptr = m->ptr;
+	size_t size = m->size;
 	size_t i, j;
 
 	bzero(ptr, size);
@@ -100,13 +126,16 @@ static void mem_init(unsigned char *ptr, size_t size)
 	for (i = 0; i < size; i += 2047) {
 		j = (size_t)ptr ^ i;
 		ptr[i] = j ^ (j >> 8);
+		m->bytes_written++;
 	}
 	j = (size_t)ptr ^ (size - 1);
 	ptr[size - 1] = j ^ (j >> 8);
+	m->bytes_written++;
 }
 
-static int mem_check(unsigned char *ptr, size_t size)
-{
+static int mem_check(struct bin *m) {
+	unsigned char *ptr = m->ptr;
+	size_t size = m->size;
 	size_t i, j;
 
 	if (!size)
@@ -143,8 +172,12 @@ static int zero_check(void *p, size_t size)
 }
 
 static void free_it(struct bin *m) {
-	if(m->subs == DYMELOR)
+	if(m->subs == DYMELOR) {
+		timer_start(free_timer);
 		__wrap_free(m->ptr);
+		free_time += timer_value_micro(free_timer);
+		frees++;
+	}
 	if(m->subs == SLAB)
 		slab_free(current->mm->slab, m->ptr);
 	if(m->subs == BUDDY)
@@ -157,7 +190,9 @@ static void free_it(struct bin *m) {
  */
 static void bin_alloc(struct bin *m, size_t size, unsigned r)
 {
-	if (mem_check(m->ptr, m->size)) {
+	void *checkpoint;
+	
+	if (mem_check(m)) {
 		printf("[%d] memory corrupt at %p!\n", st->counter, m->ptr);
 		abort();
 	}
@@ -207,7 +242,10 @@ static void bin_alloc(struct bin *m, size_t size, unsigned r)
 		// malloc
 		if (m->size > 0)
 			free_it(m);
+		timer_start(alloc_timer);
 		m->ptr = __wrap_malloc(size);
+		alloc_time += timer_value_micro(alloc_timer);
+		allocs++;
 		m->subs = DYMELOR;
 	}
 	if (!m->ptr) {
@@ -217,7 +255,20 @@ static void bin_alloc(struct bin *m, size_t size, unsigned r)
 
 	m->size = size;
 
-	mem_init(m->ptr, m->size);
+	mem_init(m);
+
+	if(r < 10) {
+		timer_start(checkpoint_timer);
+		checkpoint = log_full(current);
+		checkpoint_time += timer_value_micro(checkpoint_timer);
+		logs++;
+
+		timer_start(restore_timer);
+		restore_full(current, checkpoint);
+		restore_time = timer_value_micro(restore_timer);
+		__real_free(checkpoint);
+		restores++;
+	}
 }
 
 /* Free a bin. */
@@ -226,7 +277,7 @@ static void bin_free(struct bin *m)
 	if (!m->size)
 		return;
 
-	if (mem_check(m->ptr, m->size)) {
+	if (mem_check(m)) {
 		printf("[%d] memory corrupt at %p!\n", st->counter, m->ptr);
 		abort();
 	}
@@ -240,7 +291,7 @@ static void bin_test(struct bin_info *p)
 	size_t b;
 
 	for (b = 0; b < p->bins; b++) {
-		if (mem_check(p->m[b].ptr, p->m[b].size)) {
+		if (mem_check(&p->m[b])) {
 			printf("[%d] memory corrupt at %p!\n", st->counter, p->m[b].ptr);
 			abort();
 		}
@@ -252,6 +303,7 @@ static void *malloc_test(void *ptr)
 	int i, pid = 1;
 	unsigned b, j, actions, action;
 	struct bin_info p;
+	size_t writes = 0;
 
 	st = ptr;
 
@@ -270,6 +322,7 @@ static void *malloc_test(void *ptr)
 		p.m[b].size = 0;
 		p.m[b].subs = NEW;
 		p.m[b].ptr = NULL;
+		p.m[b].bytes_written = 0;
 		if (!RANDOM(2))
 			bin_alloc(&p.m[b], RANDOM(p.size) + 1, rng());
 	}
@@ -295,8 +348,15 @@ static void *malloc_test(void *ptr)
 		i += actions;
 	}
 
-	for (b = 0; b < p.bins; b++)
+	for (b = 0; b < p.bins; b++) {
+		writes += p.m[b].bytes_written;
 		bin_free(&p.m[b]);
+	}
+	printf("Written %d bytes \n", writes);
+	printf("Malloc time: %f usec \n", (double)alloc_time/allocs);
+	printf("Free time: %f usec \n", (double)free_time/frees);
+	printf("Checkpoint time: %f usec \n", (double)checkpoint_time/logs);
+	printf("Restore time: %f usec \n", (double)restore_time/restores);
 
 	actual_free(p.m);
 
@@ -340,6 +400,7 @@ int main(int argc, char *argv[])
 	int i_max = I_MAX;
 	size_t size = MSIZE;
 	struct thread_st *st;
+	size_t total_writes = 0;
 
 	n_prc_tot = n_thr;
 
