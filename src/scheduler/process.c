@@ -107,9 +107,14 @@ void initialize_lps(void)
 
 		// Which version of OnGVT and ProcessEvent should we use?
 		if (rootsim_config.snapshot == SNAPSHOT_FULL) {
-			lp->OnGVT = &OnGVT_light;
-			lp->ProcessEvent = &ProcessEvent_light;
-		}		// TODO: add here an else for ISS
+			lp->OnGVT = &OnGVT;
+			lp->ProcessEvent = &ProcessEvent;
+		} else if(rootsim_config.snapshot == SNAPSHOT_INCREMENTAL) {
+			lp->OnGVT = &OnGVT;//_instr;
+			lp->ProcessEvent = &ProcessEvent;//_instr;
+		} else {
+			rootsim_error(true, "Wrong type of snapshot: neither full nor incremental\n");
+		}
 
 		// Allocate LP stack
 		lp->stack = get_ult_stack(LP_STACK_SIZE);

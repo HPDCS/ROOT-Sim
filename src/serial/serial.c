@@ -147,7 +147,7 @@ void serial_simulation(void)
 		}else if (&topology_settings){
 			ProcessEventTopology();
 		}else{
-			ProcessEvent_light(current->gid.to_int, event->timestamp,
+			ProcessEvent(current->gid.to_int, event->timestamp,
 					event->type, event->event_content,
 					event->size, current->current_base_pointer);
 		}

@@ -31,30 +31,6 @@ LD_FINAL_LINES="@ldfinallines@"
 
 
 ##############################################################################
-# usage(): print usage of this script
-##############################################################################
-usage()
-{
-cat << EOF
-$0 version $VERSION
-usage: $0 [options] sources
-
-This is the ROOT-Sim compiler.
-It allows compiling C sources against the ROOT-Sim library.
-
-OPTIONS:
-   -h    Print this help screen
-   -c    Do not link against the ROOT-Sim library (multistage compilation)
-   -o N  Specify N as output name
-
-Please note that any other option supported by the underlying compiler (gcc)
-can be safely passed to rootsim-cc
-EOF
-}
-
-
-
-##############################################################################
 # Handle temporary files
 ##############################################################################
 generate_linker_scripts()
@@ -154,7 +130,7 @@ fi
 # If partial compilation is invoked, simply call the compiler.
 # -c is actually included into CFLAGS
 if [[ $PARTIAL = 1 ]]; then
-	$CC $CFLAGS $SOURCES -DOnGVT=OnGVT_light -DProcessEvent=ProcessEvent_light -o $OUTNAME
+	$CC $CFLAGS $SOURCES -o $OUTNAME
 	exit 0
 fi
 
@@ -162,34 +138,62 @@ fi
 # Generate linker scripts
 generate_linker_scripts
 
-### Compile all the sources into a single object: this is the non-instrumented version
+### INSTRUMENTED VERSION OF THE EXECUTABLE
 OBJECTS=${SOURCES//.c/.o}
-
 for f in $SOURCES; do
 	if [ "${f: -2:2}" = ".o" ]; then
 		mv $f $f.rs
 	else
-		$CC $CFLAGS -c $f -DOnGVT=OnGVT_light -DProcessEvent=ProcessEvent_light -o ${f/.c/.o.rs}
+		$CC -fplugin=$libdir/libmemtrace.so -fplugin-arg-libmemtrace-instrument-mode="w" $CFLAGS -c $f -o ${f/.c/.o.rs}
+	fi
+	check_term
+done
+
+# Link together and rename all symbols
+$LD -r ${OBJECTS//.o/.o.rs} -o APP.o
+check_term
+
+# Use a custom linker script to finish mangling the object
+$LD -r -T $$.ld-data1 APP.o -o APP-resectioned.o
+check_term
+
+cp APP-resectioned.o incremental.foo
+
+
+# Link againts DyMeLoR
+$LD -r -L $libdir --wrap strcpy\
+		  --wrap strncpy\
+		  --wrap strcat\
+		  --wrap strncat\
+		  --wrap memcpy\
+		  --wrap memmove\
+		  --wrap memset\
+		  --wrap strdup\
+		  --wrap strndup\
+		  --wrap malloc\
+		  --wrap free\
+		  --wrap realloc\
+		  --wrap calloc -o APP-instr.o APP-resectioned.o --whole-archive -ldymelor
+check_term
+
+### NON-INSTRUMENTED VERSION OF THE EXECUTABLE
+rm ${OBJECTS//.o/.o.rs}
+for f in $SOURCES; do
+	if [ "${f: -2:2}" = ".o" ]; then
+		mv $f $f.rs
+	else
+		$CC $CFLAGS -c $f -o ${f/.c/.o.rs}
 	fi
 	check_term
 done
 
 $LD -r ${OBJECTS//.o/.o.rs} -o APP.o
 
-### Compile all the sources into a single object: this is the instrumented version
-rm ${OBJECTS//.o/.o.rs}
-for f in $SOURCES; do
-	if [ "${f: -2:2}" = ".o" ]; then
-		mv $f $f.rs
-	else
-		$CC -fplugin=$libdir/libmemtrace.so -fplugin-arg-libmemtrace-instrument-mode="w" $CFLAGS -c $f -DOnGVT=OnGVT_instr -DProcessEvent=ProcessEvent_instr -o ${f/.c/.o.rs}
-	fi
-	check_term
-done
+# Use a custom linker script to finish mangling the object
+$LD -r -T $$.ld-data2 APP.o -o APP-resectioned.o
+check_term
 
-$LD -r ${OBJECTS//.o/.o.rs} -o APP-inst.o
-
-############ INSERIRE QUI IL CODICE PER GENERARE LA VERSIONE INSTRUMENTATA #################
+cp APP-resectioned.o non-incremental.foo
 
 # Incremental linking non-instrumented version
 $LD -r -L $libdir --wrap strcpy\
@@ -204,30 +208,12 @@ $LD -r -L $libdir --wrap strcpy\
 		  --wrap malloc\
 		  --wrap free\
 		  --wrap realloc\
-		  --wrap calloc -o APP-non-instr.o APP.o --whole-archive -ldymelor
+		  --wrap calloc -o APP-non-instr.o APP-resectioned.o --whole-archive -ldymelor
 check_term
 
-# Incremental linking instrumented version
-$LD -r -L $libdir --wrap strcpy\
-		  --wrap strncpy\
-		  --wrap strcat\
-		  --wrap strncat\
-		  --wrap memcpy\
-		  --wrap memmove\
-		  --wrap memset\
-		  --wrap strdup\
-		  --wrap strndup\
-		  --wrap malloc\
-		  --wrap free\
-		  --wrap realloc\
-		  --wrap calloc -o APP-instr.o APP-inst.o --whole-archive -ldymelor
-check_term
-
-# Merge two relocatable objects together
-$LD -r -T $$.ld-data1 APP-instr.o -o APP-incremental-resectioned.o
-$LD -r -T $$.ld-data2 APP-non-instr.o -o APP-non-incremental-resectioned.o
-$LD -r -z muldefs APP-incremental-resectioned.o APP-non-incremental-resectioned.o -o APP-final.o
-
+# Merge the two relocatable objects together and finish generating the application
+$LD -r -z muldefs APP-instr.o APP-non-instr.o -o APP-final.o
+cp APP-final.o mixed.foo
 $CC -Xlinker -T -Xlinker $$.ld-final APP-final.o $CFLAGS -lrootsim -lm -o $OUTNAME
 check_term
 

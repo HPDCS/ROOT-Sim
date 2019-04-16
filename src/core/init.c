@@ -135,6 +135,7 @@ const char * const param_to_text[][5] = {
 	[OPT_SNAPSHOT - OPT_FIRST] = {
 			[SNAPSHOT_INVALID] = "invalid snapshot specification",
 			[SNAPSHOT_FULL] = "full",
+			[SNAPSHOT_INCREMENTAL] = "incremental",
 	}
 };
 
@@ -271,7 +272,7 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 			break;
 
 		case OPT_INC:
-			argp_failure(state, EXIT_FAILURE, ENOSYS, "incremental state saving is not supported in stable version yet...\nAborting");
+			rootsim_config.snapshot = SNAPSHOT_INCREMENTAL;
 			break;
 
 		case OPT_A:

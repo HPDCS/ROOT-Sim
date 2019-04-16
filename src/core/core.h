@@ -51,7 +51,8 @@
 // XXX: This should be moved to state or queues
 enum {
 	SNAPSHOT_INVALID = 0,	/**< By convention 0 is the invalid field */
-	SNAPSHOT_FULL,		/**< xxx documentation */
+	SNAPSHOT_FULL,		/**< Full State Saving */
+	SNAPSHOT_INCREMENTAL,	/**< Incremental State Saving */
 };
 
 /// Maximum number of kernels the distributed simulator can handle
@@ -220,8 +221,8 @@ extern unsigned int	kid,		/* Kernel ID for the local kernel */
 			n_prc,		/* Number of LPs hosted by the current kernel instance */
 			* kernel;
 
-extern void ProcessEvent_light(unsigned int me, simtime_t now, int event_type, void *event_content, unsigned int size, void *state);
-bool OnGVT_light(unsigned int me, void *snapshot);
+extern void ProcessEvent(unsigned int me, simtime_t now, int event_type, void *event_content, unsigned int size, void *state);
+bool OnGVT(unsigned int me, void *snapshot);
 extern void ProcessEvent_instr(unsigned int me, simtime_t now, int event_type, void *event_content, unsigned int size, void *state);
 bool OnGVT_instr(unsigned int me, void *snapshot);
 
