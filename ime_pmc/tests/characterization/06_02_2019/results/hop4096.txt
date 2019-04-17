@@ -1,7 +1,0 @@
-ID 4088 - Execution Time: 8371 msec
-
-Tid: 4088
-Busy: 0
-Ring0: 0
-Memory: 397398
-Total: 5341755
