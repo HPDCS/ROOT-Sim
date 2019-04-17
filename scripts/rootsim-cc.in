@@ -144,7 +144,7 @@ for f in $SOURCES; do
 	if [ "${f: -2:2}" = ".o" ]; then
 		mv $f $f.rs
 	else
-		$CC -fplugin=$libdir/libmemtrace.so -fplugin-arg-libmemtrace-instrument-mode="w" -fplugin-arg-libmemtrace-function-suffix="instr" $CFLAGS -c $f -o ${f/.c/.o.rs}
+		$CC -fplugin=$libdir/libmemtrace.so -fplugin-arg-libmemtrace-instrument-mode="w" $CFLAGS -c $f -o ${f/.c/.o.rs}
 	fi
 	check_term
 done
