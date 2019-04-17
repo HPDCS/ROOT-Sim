@@ -171,7 +171,7 @@ typedef unsigned char rootsim_bitmap;
 		unsigned __ret = UINT_MAX;					\
 		B_BLOCK_TYPE __cur_block, *__block_b = B_UNION_CAST(bitmap);	\
 		for(__i = 0; __i < __blocks; ++__i){				\
-			if((__cur_block = ~__block_b[__i])){			\
+			if((__cur_block = ~__block_b[__i])) {			\
 				__ret = B_CTZ(__cur_block);			\
 				break;						\
 			}							\
@@ -192,13 +192,13 @@ typedef unsigned char rootsim_bitmap;
 #define bitmap_foreach_set(bitmap, bitmap_size, func) ({ 			\
 		unsigned __i, __fnd, __blocks = bitmap_size / B_BLOCK_SIZE;	\
 		B_BLOCK_TYPE __cur_block, *__block_b = B_UNION_CAST(bitmap);	\
-		for(__i = 0; __i < __blocks; ++__i){				\
-			if((__cur_block = __block_b[__i])){			\
-				do{						\
+		for(__i = 0; __i < __blocks; ++__i) {				\
+			if((__cur_block = __block_b[__i])) {			\
+				do {						\
 					__fnd = B_CTZ(__cur_block);		\
 					B_RESET_BIT_AT(__cur_block, __fnd);	\
 					func((__fnd + __i * B_BITS_PER_BLOCK));	\
-				}while(__cur_block);				\
+				} while(__cur_block);				\
 			}							\
 		}								\
 	})
