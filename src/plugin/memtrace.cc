@@ -7,13 +7,16 @@
 #include "print-rtl.h"
 
 #define print_rtl_single(...) {}
-#define printf(...) {}
+//#define printf(...) {}
 
 int plugin_is_GPL_compatible;
 
 #define R_MODE 1
 #define W_MODE 2
 static unsigned char mode = 0;
+
+#define SUFFIX_LEN 512	
+static char suffix_fn[SUFFIX_LEN];
 
 static const char track_function1[] = "__write_mem";
 static const char track_function2[] = "__read_mem";
@@ -97,22 +100,26 @@ static unsigned int memtrace_instrument_execute(function *fun)
 	 * currently processed.
 	 */
 
+	// Rename the function, if required
+	if(suffix_fn[0] == '\0')
+		return 0;
+		
 	FOR_EACH_BB_FN(bb, fun) {
-		printf("-------------------------------------\n");
-		//printf("%d\n", bb->index);
-		printf("Function Name: %s\n", function_name(fun));
 		if (bb->index == 2){
-			if(function_name(fun)[0] == 0)
+			printf("-------------------------------------\n");
+			printf("Function Name: %s\n", function_name(fun));
+			if(function_name(fun)[0] == '\0')
 				continue;
+
 			unsigned int fname_size = fun->decl->decl_minimal.name->identifier.id.len;
-			char* str = (char*)fun->decl->decl_minimal.name->identifier.id.str;
-			if (*(str+fname_size-1) == '_')
-				*(str+fname_size-1) = 'x';
-			else
-				*(str+fname_size-1) = '_';
+			char *str = (char *)xmalloc(fname_size + strlen(suffix_fn) + 2);
+			snprintf(str, fname_size + strlen(suffix_fn) + 2, "%s_%s", fun->decl->decl_minimal.name->identifier.id.str, suffix_fn);
+			fun->decl->decl_minimal.name->identifier.id.str = (const unsigned char *)str;
+			fun->decl->decl_minimal.name->identifier.id.len = fname_size + strlen(suffix_fn) + 1;
 			printf("Function name: %s\n", function_name(fun));
+			printf("-------------------------------------\n"); 		
 		}
-		printf("-------------------------------------\n"); 		
+		
 	}
 	return 0;
 }
@@ -640,6 +647,10 @@ __visible int plugin_init(struct plugin_name_args *plugin_info,
 				mode = W_MODE;
 			if(strncmp(argv[i].value, "rw", 2) == 0)
 				mode = (R_MODE | W_MODE);
+		} else if(!strcmp(argv[i].key, "function-suffix")) {
+			printf("SUFFIX: %s\n", argv[i].value);
+			strncpy(suffix_fn, argv[i].value, SUFFIX_LEN - 1);
+			printf("SUFFIX-copy: %s (%d)\n", suffix_fn, strlen(suffix_fn));
 		} else {
 			error(G_("unknown option '-fplugin-arg-%s-%s'"),
 					plugin_name, argv[i].key);
