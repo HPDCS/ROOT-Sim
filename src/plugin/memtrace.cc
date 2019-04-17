@@ -14,6 +14,9 @@ int plugin_is_GPL_compatible;
 #define W_MODE 2
 static unsigned char mode = 0;
 
+#define SUFFIX_LEN 512
+static char suffix[SUFFIX_LEN];
+
 static const char track_function1[] = "__write_mem";
 static const char track_function2[] = "__read_mem";
 
@@ -26,6 +29,7 @@ static GTY(()) tree track_function_decl;
 static struct plugin_info memtrace_plugin_info = {
 	.version = "201904160000",
 	.help = "instrument-mode=rw\t'r' for read access, 'w' for write access 'rw' for read/write accesso\n"
+		"function-suffix=<str>\tadd this suffix to function names\n"
 };
 
 static void memtrace_add_track_stack(gimple_stmt_iterator *gsi, bool after)
@@ -638,7 +642,8 @@ __visible int plugin_init(struct plugin_name_args *plugin_info,
 				mode = W_MODE;
 			if(strncmp(argv[i].value, "rw", 2) == 0)
 				mode = (R_MODE | W_MODE);
-
+		} else if(!strcmp(argv[i].key, "function-suffix")) {
+			strncpy(suffix, argv[i].value, SUFFIX_LEN-1);
 		} else {
 			error(G_("unknown option '-fplugin-arg-%s-%s'"),
 					plugin_name, argv[i].key);
