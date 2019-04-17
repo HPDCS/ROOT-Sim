@@ -86,11 +86,6 @@ void *log_full(struct lp_struct *lp)
 	size = get_log_size(lp->mm->m_state);
 
 	ckpt = rsalloc(size);
-
-	if (unlikely(ckpt == NULL)) {
-		rootsim_error(true, "(%d) Unable to acquire memory for checkpointing the current state (memory exhausted?)", lp->lid.to_int);
-	}
-
 	ptr = ckpt;
 
 	// Copy malloc_state in the ckpt
@@ -406,8 +401,9 @@ void restore_full(struct lp_struct *lp, void *ckpt)
 			// Their number is in the alloc_chunks counter
 
 #define copy_to_area(x) ({\
-		memcpy((void*)((char*)m_area->area + ((x) * chunk_size)), ptr, chunk_size);\
-		ptr = (void*)((char*)ptr + chunk_size);})
+			memcpy((void*)((char*)m_area->area + ((x) * chunk_size)), ptr, chunk_size);\
+			ptr = (void*)((char*)ptr + chunk_size);\
+		})
 
 			bitmap_foreach_set(m_area->use_bitmap, bitmap_size, copy_to_area);
 #undef copy_to_area
@@ -502,10 +498,8 @@ void restore_incremental(struct lp_struct *lp, state_t *queue_node) {
 	// max_areas: it's possible, scanning backwards, to find a greater number of active areas than the one
 	// in the state we're rolling back to. Hence, max_areas keeps the greater number of areas ever reached
 	// during the simulation
-        unsigned int **already_restored = rsalloc(m_state->max_num_areas * sizeof(unsigned int *));
-
-	for (i = 0; i < m_state->max_num_areas; i++)
-		already_restored[i] = NULL;
+        rootsim_bitmap **to_be_restored = rsalloc(m_state->max_num_areas * sizeof(rootsim_bitmap *));
+        memset(to_be_restored, 0, m_state->max_num_areas * sizeof(rootsim_bitmap *));
 
 	curr_node = queue_node;
 
@@ -535,11 +529,13 @@ void restore_incremental(struct lp_struct *lp, state_t *queue_node) {
 			bitmap_size = bitmap_required_size(m_area->num_chunks);
 
 			// Check whether the malloc_area has not already been restored
-                        if(already_restored[curr_m_area->idx] == NULL) {
+                        if(to_be_restored[curr_m_area->idx] == NULL) {
 
                                 // No chunks restored so far
-                                already_restored[curr_m_area->idx] = rsalloc(bitmap_size);
-                                bzero(already_restored[curr_m_area->idx], bitmap_size);
+                        	to_be_restored[curr_m_area->idx] = rsalloc(bitmap_size);
+                        	// little "hack", this allows us to save some negations
+                        	// and reuse the bitmap iterations functions
+                                memset(to_be_restored[curr_m_area->idx], UCHAR_MAX, bitmap_size);
 
                                 // Restore m_area
                                 memcpy(m_area, curr_m_area, sizeof(malloc_area));
@@ -565,53 +561,16 @@ void restore_incremental(struct lp_struct *lp, state_t *queue_node) {
                         // make ptr point to chunks
                         ptr = (void *)((char *)ptr + bitmap_size);
 
-
-#define copy_to_area(x) ({\
-			memcpy((void*)((char*)m_area->area + ((x) * chunk_size)), ptr, chunk_size);\
+#define copy_to_area_check_already(x) ({\
+			if(bitmap_check(to_be_restored[curr_m_area->idx], x)){\
+				memcpy((void*)((char*)m_area->area + ((x) * chunk_size)), ptr, chunk_size);\
+				bitmap_reset(to_be_restored[curr_m_area->idx], x);\
+			}\
 			ptr = (void*)((char*)ptr + chunk_size);\
 		})
 
-			bitmap_foreach_set(m_area->use_bitmap, bitmap_size, copy_to_area);
-#undef copy_to_area
-
-			// Check dirty bitmap for chunks to be restored
-			for(j = 0; j < bitmap_blocks; j++){
-
-				bitmap = bitmap_pointer[j];
-
-				if(bitmap == 0){
-					// No dirty chunks
-					continue;
-				} else {
-					// At least one dirty chunk
-
-					// Generate a new bitmap, telling what chunks must be restored
-					xored_bitmap = already_restored[curr_m_area->idx][j] | bitmap;
-					xored_bitmap = xored_bitmap ^ already_restored[curr_m_area->idx][j];
-
-					for(k = 0; k < NUM_CHUNKS_PER_BLOCK; k++){
-
-						// Chunk present?
-						if(CHECK_BIT_AT(bitmap, k)){
-
-							// Chunk to be restored?
-							if(CHECK_BIT_AT(xored_bitmap, k)) {
-
-								// Restore chunk
-								index = j * NUM_CHUNKS_PER_BLOCK + k;
-								memcpy((void*)((char*)m_area->area + (index * chunk_size)), ptr, chunk_size);
-								ptr = (void*)((char*)ptr + chunk_size);
-							} else {
-								// Skip chunk
-								ptr = (void*)((char*)ptr + chunk_size);
-							}
-						}
-					}
-
-					// Save restored chunks
-					already_restored[curr_m_area->idx][j] |= xored_bitmap;
-				}
-			}
+			bitmap_foreach_set(m_area->use_bitmap, bitmap_size, copy_to_area_check_already);
+#undef copy_to_area_check_already
 		}
 
 		// Handle previous log
@@ -655,40 +614,34 @@ void restore_incremental(struct lp_struct *lp, state_t *queue_node) {
 		m_area = (malloc_area *)&m_state->areas[curr_m_area->idx];
 		ptr = (void *)((char *)ptr + sizeof(malloc_area));
 
-		chunk_size = curr_m_area->chunk_size;
-		RESET_BIT_AT(chunk_size, 0);
-		RESET_BIT_AT(chunk_size, 1);
+		chunk_size = UNTAGGED_CHUNK_SIZE(curr_m_area);
 
-		bitmap_blocks = curr_m_area->num_chunks / NUM_CHUNKS_PER_BLOCK;
-		if(bitmap_blocks < 1)
-                                bitmap_blocks = 1;
-
-
+		bitmap_size = bitmap_required_size(curr_m_area->num_chunks);
 
 		// Check whether the malloc_area has not already been restored
-		if(already_restored[curr_m_area->idx] == NULL) {
+		if(to_be_restored[curr_m_area->idx] == NULL) {
 
 			// No chunks restored so far
-			already_restored[curr_m_area->idx] = rsalloc(bitmap_blocks * BLOCK_SIZE);
-			bzero(already_restored[curr_m_area->idx], bitmap_blocks * BLOCK_SIZE);
+			to_be_restored[curr_m_area->idx] = rsalloc(bitmap_size);
+			memset(to_be_restored[curr_m_area->idx], UCHAR_MAX, bitmap_size);
 
 			// Restore m_area
 			memcpy(m_area, curr_m_area, sizeof(malloc_area));
 
 			// Restore use bitmap
-			memcpy(m_area->use_bitmap, ptr, bitmap_blocks * BLOCK_SIZE);
+			memcpy(m_area->use_bitmap, ptr, bitmap_size);
 
 			// Reset dirty bitmapstatistics_post_data(lp, STAT_CKPT_MEM, (double)size);
 			m_area->dirty_chunks = 0;
 			m_area->state_changed = 0;
-			bzero((void *)m_area->dirty_bitmap, bitmap_blocks * BLOCK_SIZE);
+			bzero((void *)m_area->dirty_bitmap, bitmap_size);
 		}
 
 		// ptr points to use bitmap
 		bitmap_pointer = (unsigned int*)ptr;
 
 		// ptr points to chunks
-		ptr = (void *)((char *)ptr + bitmap_blocks * BLOCK_SIZE);
+		ptr = (void *)((char *)ptr + bitmap_size);
 
 
 		if(CHECK_LOG_MODE_BIT(curr_m_area)){
@@ -696,74 +649,26 @@ void restore_incremental(struct lp_struct *lp, state_t *queue_node) {
 			// So far, we have restored just the needed chunks. Anyway,
 			// There are still some chunks to be skipped, at the tail of
 			// the log.
+			// There's no need to set the to_be_restored bitmap here, since this is the last read of it
+#define copy_to_area_no_check(x) ({\
+			memcpy((void*)((char*)m_area->area + ((x) * chunk_size)), ptr, chunk_size);\
+			ptr = (void*)((char*)ptr + chunk_size);\
+		})
 
-			int processed_chunks = 0;
+			bitmap_foreach_set(to_be_restored, bitmap_size, copy_to_area_no_check);
+#undef copy_to_area_no_check
 
-			for(j = 0; j < bitmap_blocks; j++) {
-				//bitmap = bitmap_pointer[j] ;
-
-				// bitmap = bitmap_pointer[j] | m_area->use_bitmap[j];
-				bitmap = bitmap_pointer[j];
-
-				if(bitmap == 0) {
-					if(processed_chunks + NUM_CHUNKS_PER_BLOCK >= curr_m_area->num_chunks) {
-						ptr = (void *)((char *)ptr + (curr_m_area->num_chunks - processed_chunks) * chunk_size);
-						break;
-					} else {
-						ptr = (void *)((char *)ptr + NUM_CHUNKS_PER_BLOCK * chunk_size);
-						processed_chunks += NUM_CHUNKS_PER_BLOCK;
-						continue;
-					}
-				} else {
-					// Generate a new bitmap, telling what chunks must be restored
-					xored_bitmap = ~already_restored[curr_m_area->idx][j];
-
-					for(k = 0; k < NUM_CHUNKS_PER_BLOCK; k++){
-
-						if(CHECK_BIT_AT(xored_bitmap, k)) {
-							// Restore chunk
-							index = j * NUM_CHUNKS_PER_BLOCK + k;
-							memcpy((void*)((char*)m_area->area + (index * chunk_size)), ptr, chunk_size);
-						}
-
-						ptr = (void*)((char*)ptr + chunk_size);
-					}
-
-					processed_chunks += NUM_CHUNKS_PER_BLOCK;
-				}
-			}
 		} else {
-			// Check use bitmap for chunks to be restored
-			for(j = 0; j < bitmap_blocks; j++){
+	// There's no need to set the to_be_restored bitmap here, since this is the last read of it
+#define copy_to_area_check_already(x) ({\
+			if(bitmap_check(to_be_restored[curr_m_area->idx], x)){\
+				memcpy((void*)((char*)m_area->area + ((x) * chunk_size)), ptr, chunk_size);\
+			}\
+			ptr = (void*)((char*)ptr + chunk_size);\
+		})
 
-				bitmap = bitmap_pointer[j];
-				if(bitmap == 0){
-					// No dirty chunks
-					continue;
-				} else {
-					// At least one dirty chunk
-					// Generate a new bitmap, telling what chunks must be restored
-					xored_bitmap = ~already_restored[curr_m_area->idx][j];
-
-					for(k = 0; k < NUM_CHUNKS_PER_BLOCK; k++){
-
-						// Chunk present?
-						if(CHECK_BIT_AT(bitmap, k)){
-
-							// Chunk to be restored?
-							if(CHECK_BIT_AT(xored_bitmap, k)) {
-
-								// Restore chunk
-								index = j * NUM_CHUNKS_PER_BLOCK + k;
-								memcpy((void*)((char*)m_area->area + (index * chunk_size)), ptr, chunk_size);
-							}
-
-							// Skip chunk
-							ptr = (void*)((char*)ptr + chunk_size);
-						}
-					}
-				}
-			}
+			bitmap_foreach_set(bitmap_pointer, bitmap_size, copy_to_area_check_already);
+#undef copy_to_area_check_already
 		}
 	}
 
@@ -777,7 +682,7 @@ void restore_incremental(struct lp_struct *lp, state_t *queue_node) {
 	// Vitali: realloc bug fix
 	for(i = 0; i < m_state->num_areas; i++){
 
-		if (already_restored[i] == NULL){
+		if (to_be_restored[i] == NULL){
 			m_area = &m_state->areas[i];
 			m_area->alloc_chunks = 0;
 			m_area->dirty_chunks = 0;
@@ -787,15 +692,10 @@ void restore_incremental(struct lp_struct *lp, state_t *queue_node) {
 
 			RESET_LOG_MODE_BIT(m_area);
 			RESET_AREA_LOCK_BIT(m_area);
-			bitmap_blocks = m_area->num_chunks / NUM_CHUNKS_PER_BLOCK;
-			if(bitmap_blocks < 1)
-                       	        bitmap_blocks = 1;
 			if (m_area->use_bitmap != NULL) {
-				for(j = 0; j < bitmap_blocks; j++)  // Take dirty_bitmap into account as well
-					m_area->use_bitmap[j] = 0;
-
-				for(j = 0; j < bitmap_blocks; j++)
-       		                        m_area->dirty_bitmap[j] = 0;
+				bitmap_size = bitmap_required_size(m_area->num_chunks);
+				bzero(m_area->use_bitmap, bitmap_size);
+				bzero(m_area->dirty_bitmap, bitmap_size);// Take dirty_bitmap into account as well
 			}
 		}
 	}
@@ -816,15 +716,9 @@ void restore_incremental(struct lp_struct *lp, state_t *queue_node) {
 			RESET_AREA_LOCK_BIT(m_area);
 
 			if (m_area->use_bitmap != NULL) {
-
-				bitmap_blocks = m_area->num_chunks / NUM_CHUNKS_PER_BLOCK;
-				if(bitmap_blocks < 1)
-	                                bitmap_blocks = 1;
-				for(j = 0; j < bitmap_blocks; j++)  // Take dirty_bitmap into account as well
-					m_area->use_bitmap[j] = 0;
-
-				for(j = 0; j < bitmap_blocks; j++)
-        	                        m_area->dirty_bitmap[j] = 0;
+				bitmap_size = bitmap_required_size(m_area->num_chunks);
+				bzero(m_area->use_bitmap, bitmap_size);
+				bzero(m_area->dirty_bitmap, bitmap_size);// Take dirty_bitmap into account as well
 			}
 		}
 		m_state->num_areas = original_num_areas;
@@ -833,11 +727,11 @@ void restore_incremental(struct lp_struct *lp, state_t *queue_node) {
 
 	// Release data structures
 	for(i = 0; i < m_state->max_num_areas ; i++) {
-		if(already_restored[i] != NULL) {
-			rsfree(already_restored[i]);
+		if(to_be_restored[i] != NULL) {
+			rsfree(to_be_restored[i]);
 		}
 	}
-	rsfree(already_restored);
+	rsfree(to_be_restored);
 
 	m_state->timestamp = -1;
 	m_state->is_incremental = -1;
