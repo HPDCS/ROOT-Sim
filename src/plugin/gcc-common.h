@@ -1,6 +1,25 @@
-/* SPDX-License-Identifier: GPL-2.0 */
-#ifndef GCC_COMMON_H_INCLUDED
-#define GCC_COMMON_H_INCLUDED
+#pragma once
+
+// GCC uses autohell, we use autohell, make gcc shut up about the fact
+// that we're using autohell global defines
+#ifdef PACKAGE_BUGREPORT
+#undef PACKAGE_BUGREPORT	
+#endif
+#ifdef PACKAGE_NAME
+#undef PACKAGE_NAME
+#endif
+#ifdef PACKAGE_STRING
+#undef PACKAGE_STRING
+#endif
+#ifdef PACKAGE_TARNAME
+#undef PACKAGE_TARNAME 
+#endif
+#ifdef PACKAGE_URL
+#undef PACKAGE_URL
+#endif
+#ifdef PACKAGE_VERSION
+#undef PACKAGE_VERSION
+#endif
 
 #include "bversion.h"
 #if BUILDING_GCC_VERSION >= 6000
@@ -969,4 +988,3 @@ static inline void debug_gimple_stmt(const_gimple s)
 #define SET_DECL_MODE(decl, mode)	DECL_MODE(decl) = (mode)
 #endif
 
-#endif

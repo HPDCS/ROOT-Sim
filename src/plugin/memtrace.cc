@@ -7,7 +7,7 @@
 #include "print-rtl.h"
 
 #define print_rtl_single(...) {}
-//#define printf(...) {}
+#define printf(...) {}
 
 int plugin_is_GPL_compatible;
 
@@ -33,46 +33,6 @@ static struct plugin_info memtrace_plugin_info = {
 		"function-suffix=<str>\tadd this suffix to function names\n"
 };
 
-static void memtrace_add_track_stack(gimple_stmt_iterator *gsi, bool after)
-{
-	return;
-
-	gimple stmt;
-	gcall *dirty_mem;
-	cgraph_node_ptr node;
-	int frequency;
-	basic_block bb;
-
-	/* Insert call to void dirty_mem(void) */
-	stmt = gimple_build_call(track_function_decl, 0);
-	dirty_mem = as_a_gcall(stmt);
-	if (after) {
-		gsi_insert_after(gsi, dirty_mem, GSI_CONTINUE_LINKING);
-	} else {
-		gsi_insert_before(gsi, dirty_mem, GSI_SAME_STMT);
-	}
-
-	/* Update the cgraph */
-	bb = gimple_bb(dirty_mem);
-	node = cgraph_get_create_node(track_function_decl);
-	gcc_assert(node);
-	frequency = compute_call_stmt_bb_frequency(current_function_decl, bb);
-	cgraph_create_edge(cgraph_get_node(current_function_decl), node,
-			dirty_mem, bb->count, frequency);
-}
-
-static bool is_alloca(gimple stmt)
-{
-	if (gimple_call_builtin_p(stmt, BUILT_IN_ALLOCA))
-		return true;
-
-#if BUILDING_GCC_VERSION >= 4007
-	if (gimple_call_builtin_p(stmt, BUILT_IN_ALLOCA_WITH_ALIGN))
-		return true;
-#endif
-
-	return false;
-}
 
 /*
  * Work with the GIMPLE representation of the code. Insert the
@@ -85,20 +45,6 @@ static unsigned int memtrace_instrument_execute(function *fun)
 
 	printf("Chiamato GIMPLE\n");
 	fflush(stdout);
-
-	/*
-	 * ENTRY_BLOCK_PTR is a basic block which represents possible entry
-	 * point of a function. This block does not contain any code and
-	 * has a CFG edge to its successor.
-	 */
-	//gcc_assert(single_succ_p(ENTRY_BLOCK_PTR_FOR_FN(cfun)));
-	//entry_bb = single_succ(ENTRY_BLOCK_PTR_FOR_FN(cfun));
-
-	/*
-	 * Loop through the GIMPLE statements in each of cfun basic blocks.
-	 * cfun is a global variable which represents the function that is
-	 * currently processed.
-	 */
 
 	// Rename the function, if required
 	if(suffix_fn[0] == '\0')
@@ -151,7 +97,7 @@ static void put_instruction_cmov(rtx insn, rtx condition, rtx then_expression, r
 	CODE_LABEL_NUMBER(label_x1) = 201;
 
 	rtx ref_label_x =  gen_rtx_LABEL_REF(VOIDmode, label_x);
-	rtx ref_label_x1 =  gen_rtx_LABEL_REF(VOIDmode, label_x1);
+//	rtx ref_label_x1 =  gen_rtx_LABEL_REF(VOIDmode, label_x1);
 	rtx iff = gen_rtx_IF_THEN_ELSE(VOIDmode, condition, ref_label_x, pc_rtx);
 	if_then_else = gen_rtx_SET(pc_rtx, iff);
 	JUMP_LABEL(if_then_else) = label_x;
@@ -225,41 +171,6 @@ static void put_instruction_cmov(rtx insn, rtx condition, rtx then_expression, r
 		parm2_else = NULL;
 	}
 
-	/*
-	Or it is possible to write an assembly-like code like that
-
-	push rdi
-	push rsi
-	(if_then_else (cond)
-		jmp L_(x)
-		pc))
-
-	/*that code only if (else) is a MEM
-
-	mov rdi, (else)
-	mov rsi, sizeof(else)
-	call __write/read_mem
-
-	/* up to here
-
-	jmp L_(x+1)
-
-	/*that code only if (then) is a MEM
-
-	code_label(L_(x))
-	mov rdi, (then)
-	mov rsi, sizeof(then)
-	call __write/read_mem
-
-	/*up to here
-
-	code_label(L_(x+1))
-	((((code_label(L_(x)))))) only in case (then) it is not a MEM
-	pop rsi
-	pop rdi
-	*/
-
-
 	emit_insn_before(push1, insn);
 	emit_insn_before(push2, insn);
 	emit_jump_insn_before(if_then_else, insn);
@@ -289,8 +200,6 @@ static void put_instruction_cmov(rtx insn, rtx condition, rtx then_expression, r
 	emit_insn_before(pop2, insn);
 	emit_insn_before(pop1, insn);
 
-
-	//printf("********\n");
 	print_rtl_single(stdout, push1);
 	print_rtl_single(stdout, push2);
 	print_rtl_single(stdout, if_then_else);
@@ -313,7 +222,6 @@ static void put_instruction_cmov(rtx insn, rtx condition, rtx then_expression, r
 
 	print_rtl_single(stdout, pop2);
 	print_rtl_single(stdout, pop1);
-	//printf("********\n");
 
 	return;
 }
@@ -327,9 +235,7 @@ static void put_instruction(rtx insn, rtx operand, bool write)
 	if(GET_CODE(XEXP(operand, 0)) == PRE_DEC || GET_CODE(XEXP(operand, 0)) == POST_INC || GET_CODE(XEXP(operand, 0)) == SCRATCH)
 		return;
 
-	//printf("++++++++\n");
 	print_rtl_single(stdout, operand);
-	//printf("++++++++\n");
 
 	push1 = rtx_alloc(SET);
 	XEXP(push1, 0) = gen_rtx_MEM(DImode,
@@ -377,7 +283,6 @@ static void put_instruction(rtx insn, rtx operand, bool write)
 	emit_insn_before(pop2, insn);
 	emit_insn_before(pop1, insn);
 
-	//printf("********\n");
 	print_rtl_single(stdout, push1);
 	print_rtl_single(stdout, push2);
 	print_rtl_single(stdout, parm1);
@@ -385,7 +290,6 @@ static void put_instruction(rtx insn, rtx operand, bool write)
 	print_rtl_single(stdout, call);
 	print_rtl_single(stdout, pop2);
 	print_rtl_single(stdout, pop1);
-	//printf("********\n");
 
 	return;
 }
@@ -394,10 +298,8 @@ static void put_instruction(rtx insn, rtx operand, bool write)
 static unsigned int memtrace_cleanup_execute(void)
 {
 	rtx_insn *insn, *next;
-	int code;
 
 	for (insn = get_insns(); insn; insn = next) {
-		//printf("----------------------------\n");
 		rtx body;
 
 		body = PATTERN(insn);

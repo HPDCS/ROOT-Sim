@@ -113,8 +113,8 @@ GCC_VERSION=$ax_cv_c_compiler_version
 GCC_VERSION_MAJOR=$(echo $GCC_VERSION | cut -d'.' -f1)
 GCC_VERSION_MINOR=$(echo $GCC_VERSION | cut -d'.' -f2)
 GCC_VERSION_PATCH=$(echo $GCC_VERSION | cut -d'.' -f3)
-AS_IF([test $GCC_VERSION_MAJOR -lt 4 -a $GCC_VERSION_MINOR -lt 9],[
-	AC_MSG_FAILURE([At least version 4.9.0 is required.])
+AS_IF([test $GCC_VERSION_MAJOR -lt 6],[
+	AC_MSG_FAILURE([At least version 6.0.0 is required.])
 ])
 
 
@@ -131,8 +131,21 @@ AS_IF([test $GCC_VERSION_MAJOR -ge 7 -a "x$enable_debug" == "xyes"],[
 ])
 
 # Check for include path to generate the GCC plugin which we use for
-# incremental state saving
+# incremental state saving. We must also check whether we have GCC
+# headers or not, otherwise compiling the plugin will fail badly.
 AC_SUBST([GCCPLUGINDIR],[$( ${CXX} -print-file-name=plugin )])
+
+ac_gcc_headers=no
+AC_LANG_PUSH([C++])
+CXXFLAGS="-I ${GCCPLUGINDIR}/include"
+AC_CHECK_HEADERS([gcc-plugin.h],
+	[ac_gcc_headers=yes])
+if test "x$ac_gcc_headers" = "xyes"
+then
+	AC_SUBST([HAS_GCC_PLUGIN], [/lib/modules/$with_kernel/build])
+fi
+AM_CONDITIONAL([COMPILE_GCC_PLUGIN], [test "x$ac_gcc_headers" = "xyes"])
+AC_LANG_POP([C++])
 
 #----------------------------------------------------------------------------
 # Checks for programs.
