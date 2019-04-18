@@ -124,7 +124,7 @@ public:
 
 #ifndef NO_EXECUTE
 #if BUILDING_GCC_VERSION >= 5000
-	virtual unsigned int execute(function *) { return _EXECUTE(); }
+	virtual unsigned int execute(function * fun) { return _EXECUTE(fun); }
 #else
 	virtual unsigned int execute(void) { return _EXECUTE(); }
 #endif

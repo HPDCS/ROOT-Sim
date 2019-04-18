@@ -1,18 +1,22 @@
 #include <stdbool.h>
 
+
 #include "gcc-common.h"
 #include "calls.h"
 
 #include "print-rtl.h"
 
 #define print_rtl_single(...) {}
-#define printf(...) {}
+//#define printf(...) {}
 
 int plugin_is_GPL_compatible;
 
 #define R_MODE 1
 #define W_MODE 2
 static unsigned char mode = 0;
+
+#define SUFFIX_LEN 512	
+static char suffix_fn[SUFFIX_LEN];
 
 static const char track_function1[] = "__write_mem";
 static const char track_function2[] = "__read_mem";
@@ -26,6 +30,7 @@ static GTY(()) tree track_function_decl;
 static struct plugin_info memtrace_plugin_info = {
 	.version = "201904160000",
 	.help = "instrument-mode=rw\t'r' for read access, 'w' for write access 'rw' for read/write accesso\n"
+		"function-suffix=<str>\tadd this suffix to function names\n"
 };
 
 static void memtrace_add_track_stack(gimple_stmt_iterator *gsi, bool after)
@@ -74,12 +79,9 @@ static bool is_alloca(gimple stmt)
  * dirty_mem() call after alloca() and into the beginning
  * of the function if it is not instrumented.
  */
-static unsigned int memtrace_instrument_execute(void)
+static unsigned int memtrace_instrument_execute(function *fun)
 {
-	basic_block bb, entry_bb;
-	gimple_stmt_iterator gsi;
-
-	return 0;
+	basic_block bb;	
 
 	printf("Chiamato GIMPLE\n");
 	fflush(stdout);
@@ -89,31 +91,36 @@ static unsigned int memtrace_instrument_execute(void)
 	 * point of a function. This block does not contain any code and
 	 * has a CFG edge to its successor.
 	 */
-	gcc_assert(single_succ_p(ENTRY_BLOCK_PTR_FOR_FN(cfun)));
-	entry_bb = single_succ(ENTRY_BLOCK_PTR_FOR_FN(cfun));
+	//gcc_assert(single_succ_p(ENTRY_BLOCK_PTR_FOR_FN(cfun)));
+	//entry_bb = single_succ(ENTRY_BLOCK_PTR_FOR_FN(cfun));
 
 	/*
 	 * Loop through the GIMPLE statements in each of cfun basic blocks.
 	 * cfun is a global variable which represents the function that is
 	 * currently processed.
 	 */
-	FOR_EACH_BB_FN(bb, cfun) {
-		for (gsi = gsi_start_bb(bb); !gsi_end_p(gsi); gsi_next(&gsi)) {
-			gimple stmt;
 
-			stmt = gsi_stmt(gsi);
-
-			printf("%d: ", stmt->code);
-			print_gimple_stmt(stdout, stmt, 0, 0);
-
-			if(stmt->code != 6 && stmt->code != 7) // TODO: find the corresponding macro
+	// Rename the function, if required
+	if(suffix_fn[0] == '\0')
+		return 0;
+		
+	FOR_EACH_BB_FN(bb, fun) {
+		if (bb->index == 2){
+			printf("-------------------------------------\n");
+			printf("Function Name: %s\n", function_name(fun));
+			if(function_name(fun)[0] == '\0')
 				continue;
 
-			/* Insert dirty_mem() call after alloca() */
-			//memtrace_add_track_stack(&gsi, false);
+			unsigned int fname_size = fun->decl->decl_minimal.name->identifier.id.len;
+			char *str = (char *)xmalloc(fname_size + strlen(suffix_fn) + 2);
+			snprintf(str, fname_size + strlen(suffix_fn) + 2, "%s_%s", fun->decl->decl_minimal.name->identifier.id.str, suffix_fn);
+			fun->decl->decl_minimal.name->identifier.id.str = (const unsigned char *)str;
+			fun->decl->decl_minimal.name->identifier.id.len = fname_size + strlen(suffix_fn) + 1;
+			printf("Function name: %s\n", function_name(fun));
+			printf("-------------------------------------\n"); 		
 		}
+		
 	}
-
 	return 0;
 }
 
@@ -283,7 +290,7 @@ static void put_instruction_cmov(rtx insn, rtx condition, rtx then_expression, r
 	emit_insn_before(pop1, insn);
 
 
-	printf("********\n");
+	//printf("********\n");
 	print_rtl_single(stdout, push1);
 	print_rtl_single(stdout, push2);
 	print_rtl_single(stdout, if_then_else);
@@ -306,7 +313,7 @@ static void put_instruction_cmov(rtx insn, rtx condition, rtx then_expression, r
 
 	print_rtl_single(stdout, pop2);
 	print_rtl_single(stdout, pop1);
-	printf("********\n");
+	//printf("********\n");
 
 	return;
 }
@@ -320,9 +327,9 @@ static void put_instruction(rtx insn, rtx operand, bool write)
 	if(GET_CODE(XEXP(operand, 0)) == PRE_DEC || GET_CODE(XEXP(operand, 0)) == POST_INC || GET_CODE(XEXP(operand, 0)) == SCRATCH)
 		return;
 
-	printf("++++++++\n");
+	//printf("++++++++\n");
 	print_rtl_single(stdout, operand);
-	printf("++++++++\n");
+	//printf("++++++++\n");
 
 	push1 = rtx_alloc(SET);
 	XEXP(push1, 0) = gen_rtx_MEM(DImode,
@@ -370,7 +377,7 @@ static void put_instruction(rtx insn, rtx operand, bool write)
 	emit_insn_before(pop2, insn);
 	emit_insn_before(pop1, insn);
 
-	printf("********\n");
+	//printf("********\n");
 	print_rtl_single(stdout, push1);
 	print_rtl_single(stdout, push2);
 	print_rtl_single(stdout, parm1);
@@ -378,7 +385,7 @@ static void put_instruction(rtx insn, rtx operand, bool write)
 	print_rtl_single(stdout, call);
 	print_rtl_single(stdout, pop2);
 	print_rtl_single(stdout, pop1);
-	printf("********\n");
+	//printf("********\n");
 
 	return;
 }
@@ -390,7 +397,7 @@ static unsigned int memtrace_cleanup_execute(void)
 	int code;
 
 	for (insn = get_insns(); insn; insn = next) {
-		printf("----------------------------\n");
+		//printf("----------------------------\n");
 		rtx body;
 
 		body = PATTERN(insn);
@@ -415,7 +422,7 @@ static unsigned int memtrace_cleanup_execute(void)
 			//print_rtl_single(stdout, first);
 			if ((mode & W_MODE) && GET_CODE(first) == MEM) {
 				// dest operand
-				printf("dst: MEMORY ACCESS FOUND!\n");
+				//printf("dst: MEMORY ACCESS FOUND!\n");
 
 				put_instruction(insn, first, true);
 
@@ -424,19 +431,19 @@ static unsigned int memtrace_cleanup_execute(void)
 				rtx then_expression = XEXP(first, 1);
 				rtx else_expression = XEXP(first, 2);
 				if ((mode & W_MODE) && GET_CODE(then_expression) == MEM && GET_CODE(else_expression) == MEM){
-					printf("dst: MEMORY ACCESS FOUND!\n");
+					//printf("dst: MEMORY ACCESS FOUND!\n");
 					// insert instructions
 					rtx condition = XEXP(first, 0);
 					put_instruction_cmov(insn, condition, then_expression, else_expression, true, true);
 				}
 				else if ((mode & W_MODE) && GET_CODE(then_expression) == MEM){
-					printf("dst: MEMORY ACCESS FOUND!\n");
+					//printf("dst: MEMORY ACCESS FOUND!\n");
 					// insert instructions
 					rtx condition = XEXP(first, 0);
 					put_instruction_cmov(insn, condition, then_expression, NULL, true, false);
 				}
 				else if ((mode & W_MODE) && GET_CODE(else_expression) == MEM){
-					printf("dst: MEMORY ACCESS FOUND!\n");
+					//printf("dst: MEMORY ACCESS FOUND!\n");
 					// insert instructions
 					rtx condition = XEXP(first, 0);
 					put_instruction_cmov(insn, condition, NULL, else_expression, false, true);
@@ -452,25 +459,25 @@ static unsigned int memtrace_cleanup_execute(void)
 				rtx else_expression = try_else_expression;
 				//print_rtl_single(stdout, else_expression);
 				if ((mode & R_MODE) && GET_CODE(then_expression) == MEM && GET_CODE(else_expression) == MEM){
-					printf("src: MEMORY ACCESS FOUND!\n");
+					//printf("src: MEMORY ACCESS FOUND!\n");
 					// insert instructions
 					rtx condition = XEXP(second, 0);
 					print_rtl_single(stdout, condition);
 					put_instruction_cmov(insn, condition, then_expression, else_expression, false, false);
 				}
 				else if ((mode & R_MODE) && GET_CODE(then_expression) == MEM){
-					printf("src: MEMORY ACCESS FOUND!\n");
+					//printf("src: MEMORY ACCESS FOUND!\n");
 					// insert instructions
 					put_instruction_cmov(insn, XEXP(second, 0), then_expression, NULL, false, false);
 				}
 				else if ((mode & R_MODE) && GET_CODE(else_expression) == MEM){
-					printf("src: MEMORY ACCESS FOUND!\n");
+					//printf("src: MEMORY ACCESS FOUND!\n");
 					put_instruction_cmov(insn, XEXP(second, 0), NULL, else_expression, false, false);
 				}
 			}
 			else if ((mode & R_MODE) && GET_CODE(second) == MEM){
 				// src operand
-				printf("src: MEMORY ACCESS FOUND!\n");
+				//printf("src: MEMORY ACCESS FOUND!\n");
 
 				put_instruction(insn, second, false);
 
@@ -485,12 +492,12 @@ static unsigned int memtrace_cleanup_execute(void)
 					first = XEXP(expression, 0);
 					second = XEXP(expression, 1);
 					if ((mode & W_MODE) && GET_CODE(first) == MEM){
-						printf("dst: MEMORY ACCESS FOUND:\n");
+						//printf("dst: MEMORY ACCESS FOUND:\n");
 						print_rtl_single(stdout, XEXP(first, 0));
 						put_instruction(insn, first, true);
 					}
 					if ((mode & R_MODE) && GET_CODE(second) == MEM){
-						printf("src: MEMORY ACCESS FOUND:\n");
+						//printf("src: MEMORY ACCESS FOUND:\n");
 						print_rtl_single(stdout, XEXP(second, 0));
 						put_instruction(insn, second, false);
 					}
@@ -507,7 +514,7 @@ static bool memtrace_gate(void)
 {
 	tree section;
 
-	printf("Chiamato GATE\n");
+	printf("Chiamato GIMPLE GATE\n");
 	fflush(stdout);
 
 	return true;
@@ -567,7 +574,9 @@ static bool memtrace_instrument_gate(void)
 
 static bool memtrace_cleanup_gate(void)
 {
-	return memtrace_gate();
+	printf("Chiamato RTL GATE\n");
+	return true;
+	//return memtrace_gate();
 }
 
 #define PASS_NAME memtrace_cleanup
@@ -607,7 +616,7 @@ __visible int plugin_init(struct plugin_name_args *plugin_info,
 	 * versions of the plugin this new pass was inserted before the
 	 * "tree_profile" pass, which is currently called "profile".
 	 */
-	PASS_INFO(memtrace_instrument, "optimized", 1, PASS_POS_INSERT_BEFORE);
+	PASS_INFO(memtrace_instrument, "ssa", 1, PASS_POS_INSERT_AFTER);
 
 	/*
 	 * The stackleak_cleanup pass should be executed before the "*free_cfg"
@@ -638,7 +647,10 @@ __visible int plugin_init(struct plugin_name_args *plugin_info,
 				mode = W_MODE;
 			if(strncmp(argv[i].value, "rw", 2) == 0)
 				mode = (R_MODE | W_MODE);
-
+		} else if(!strcmp(argv[i].key, "function-suffix")) {
+			printf("SUFFIX: %s\n", argv[i].value);
+			strncpy(suffix_fn, argv[i].value, SUFFIX_LEN - 1);
+			printf("SUFFIX-copy: %s (%d)\n", suffix_fn, strlen(suffix_fn));
 		} else {
 			error(G_("unknown option '-fplugin-arg-%s-%s'"),
 					plugin_name, argv[i].key);
