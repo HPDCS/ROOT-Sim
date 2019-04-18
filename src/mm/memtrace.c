@@ -32,6 +32,8 @@
 */
 
 #include <mm/memtrace.h>
+#include <mm/dymelor.h>
+#include <scheduler/scheduler.h>
 
 /**
 * This function marks a memory chunk as dirty.
@@ -56,7 +58,6 @@ void __write_mem(unsigned char *base, size_t size)
 
 	return;
 
-#if 0
 //      unsigned long long current_cost;
 
 	// Sanity check on passed address
@@ -97,10 +98,10 @@ void __write_mem(unsigned char *base, size_t size)
 
 		if (m_area->state_changed == 1) {
 			if (m_area->dirty_chunks == 0)
-				lp->mm->m_state->dirty_bitmap_size += bitmap_size;
+				current->mm->m_state->dirty_bitmap_size += bitmap_size;
 		} else {
-			lp->mm->m_state->dirty_areas++;
-			lp->mm->m_state->dirty_bitmap_size += bitmap_size * 2;
+			current->mm->m_state->dirty_areas++;
+			current->mm->m_state->dirty_bitmap_size += bitmap_size * 2;
 			m_area->state_changed = 1;
 		}
 
@@ -109,11 +110,10 @@ void __write_mem(unsigned char *base, size_t size)
 			// If it is dirtied a clean chunk, set it dirty and increase dirty object count for the malloc_area
 			if (!bitmap_check(m_area->dirty_bitmap, i)) {
 				bitmap_set(m_area->dirty_bitmap, i);
-				lp->mm->m_state->total_inc_size += chk_size;
+				current->mm->m_state->total_inc_size += chk_size;
 
 				m_area->dirty_chunks++;
 			}
 		}
 	}
-#endif
 }

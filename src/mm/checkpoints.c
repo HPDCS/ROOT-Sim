@@ -35,6 +35,7 @@
 #include <mm/mm.h>
 #include <core/timer.h>
 #include <core/core.h>
+#include <core/init.h>
 #include <scheduler/scheduler.h>
 #include <scheduler/process.h>
 #include <statistics/statistics.h>
@@ -300,6 +301,8 @@ void *log_incremental(struct lp_struct *lp) {
 void *log_state(struct lp_struct *lp)
 {
 	statistics_post_data(lp, STAT_CKPT, 1.0);
+	if(rootsim_config.snapshot == SNAPSHOT_INCREMENTAL)
+		return log_incremental(lp);
 	return log_full(lp);
 }
 
@@ -472,9 +475,8 @@ void restore_full(struct lp_struct *lp, void *ckpt)
 */
 void restore_incremental(struct lp_struct *lp, state_t *queue_node) {
 	void *ptr, *log;
-	int	i, j, k, index, num_areas,
+	int	i, num_areas,
 		original_num_areas;
-	unsigned int bitmap, xored_bitmap;
 	unsigned int *bitmap_pointer;
 	size_t chunk_size, bitmap_size;
 	malloc_area *m_area, *curr_m_area;
