@@ -153,8 +153,11 @@ void initialize_lps(void)
 #endif
 
 		// Create User-Level Thread
-		context_create(&lp->context, LP_main_loop, NULL, lp->stack,
-			       LP_STACK_SIZE);
+		context_create(&lp->context, LP_main_loop, NULL, lp->stack, LP_STACK_SIZE);
+
+		// If we run using incremental state saving, the very first snapshot must
+		// be anyhow a full checkpoint
+		set_force_full(lp);
 	}
 }
 

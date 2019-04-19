@@ -40,6 +40,12 @@
 #include <scheduler/process.h>
 #include <statistics/statistics.h>
 
+void set_force_full(struct lp_struct *lp)
+{
+	lp->state_log_full_forced = true;
+}
+
+
 /**
 * This function creates a full log of the current simulation states and returns a pointer to it.
 * The algorithm behind this function is based on packing of the really allocated memory chunks into
@@ -300,9 +306,13 @@ void *log_incremental(struct lp_struct *lp) {
 */
 void *log_state(struct lp_struct *lp)
 {
+	printf("Requested to take a checkpoint for LP %d. Force full is %d\n", lp->lid.to_int, lp->state_log_full_forced);
+
 	statistics_post_data(lp, STAT_CKPT, 1.0);
-	if(rootsim_config.snapshot == SNAPSHOT_INCREMENTAL)
+	if(rootsim_config.snapshot == SNAPSHOT_INCREMENTAL && !lp->state_log_full_forced)
 		return log_incremental(lp);
+	if(lp->state_log_full_forced)
+		lp->state_log_full_forced = false;
 	return log_full(lp);
 }
 
@@ -488,6 +498,8 @@ void restore_incremental(struct lp_struct *lp, state_t *queue_node) {
 	timer recovery_timer;
 	timer_start(recovery_timer);
 
+	printf("#");
+
 	original_num_areas = m_state->num_areas;
 
 	new_area = m_state->areas;
@@ -506,7 +518,7 @@ void restore_incremental(struct lp_struct *lp, state_t *queue_node) {
 	curr_node = queue_node;
 
 	// Handle incremental logs
-	while(((malloc_state *)(curr_node->log))->is_incremental > 0) {
+	while(((malloc_state *)(curr_node->log))->is_incremental) {
 
 		log = curr_node->log;
 		ptr = log;
@@ -577,7 +589,7 @@ void restore_incremental(struct lp_struct *lp, state_t *queue_node) {
 
 		// Handle previous log
 
-		curr_node = list_next(curr_node);
+		curr_node = list_prev(curr_node);
 
 		if(curr_node == NULL) {
 			printf("PANIC!\n");

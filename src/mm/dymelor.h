@@ -144,7 +144,7 @@ typedef struct _malloc_state malloc_state;
  ***************/
 
 // DyMeLoR API
-extern void set_force_full(unsigned int, int);
+extern void set_force_full(struct lp_struct *lp);
 extern size_t get_state_size(int);
 extern size_t get_log_size(malloc_state *);
 extern size_t get_inc_log_size(void *);

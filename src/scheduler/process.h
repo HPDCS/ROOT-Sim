@@ -96,6 +96,9 @@ struct lp_struct {
 	/// If this variable is set, the next invocation to LogState() takes a new state log, independently of the checkpointing interval
 	bool state_log_forced;
 
+	/// If this variable is set, the next invocation to LogState() takes a full checkpointing, independently of the checkpointing mode or policies
+	bool state_log_full_forced;
+
 	/// The current state base pointer (updated by SetState())
 	void *current_base_pointer;
 

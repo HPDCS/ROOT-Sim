@@ -32,7 +32,6 @@
 */
 
 #include <mm/memtrace.h>
-#include <mm/dymelor.h>
 #include <scheduler/scheduler.h>
 
 /**
@@ -51,12 +50,6 @@ __attribute__((used))
 __attribute__((no_caller_saved_registers))
 void __write_mem(unsigned char *base, size_t size)
 {
-
-	// TODO: Quando reintegriamo l'incrementale questo qui deve ricomparire!
-	(void)base;
-	(void)size;
-
-	return;
 
 //      unsigned long long current_cost;
 

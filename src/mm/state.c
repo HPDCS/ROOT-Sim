@@ -297,14 +297,14 @@ state_t *find_time_barrier(struct lp_struct *lp, simtime_t simtime)
 		barrier_state = list_head(lp->queue_states);
 	}
 
-/*
-	// TODO Search for the first full log before the gvt
+
+	// Search for the first full log before the gvt
 	while(true) {
-		if(is_incremental(current->log) == false)
+		printf(".");
+		if(is_incremental(barrier_state->log) == false)
 			break;
-	  	current = list_prev(current);
+		barrier_state = list_prev(barrier_state);
 	}
-*/
 
 	return barrier_state;
 }
