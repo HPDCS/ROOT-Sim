@@ -59,7 +59,6 @@ typedef struct rootsim_list {
 #define new_list(type)	(type *)({ \
 				void *__lmptr; \
 				__lmptr = (void *)rsalloc(sizeof(struct rootsim_list)); \
-				bzero(__lmptr, sizeof(struct rootsim_list));\
 				__lmptr;\
 			})
 

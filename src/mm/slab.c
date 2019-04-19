@@ -36,7 +36,8 @@
 #include <assert.h>
 
 #include <core/core.h>
-#include <mm/mm.h>
+#include <mm/dymelor.h>
+#include <scheduler/process.h>
 
 #define SLOTS_ALL_ZERO ((uint64_t) 0)
 #define SLOTS_FIRST ((uint64_t) 1)
@@ -123,7 +124,7 @@ struct slab_chain *slab_init(const size_t itemsize)
 	assert(itemsize >= 1 && itemsize <= SIZE_MAX);
 	assert(POWEROF2(PAGE_SIZE));
 
-	struct slab_chain *sch = rsalloc(sizeof(struct slab_chain));
+	struct slab_chain *sch = __real_malloc(sizeof(struct slab_chain));
 	sch->itemsize = itemsize;
 	spinlock_init(&sch->lock);
 
@@ -153,10 +154,12 @@ struct slab_chain *slab_init(const size_t itemsize)
 	return sch;
 }
 
-void *slab_alloc(struct slab_chain *const sch)
+void *slab_alloc(struct lp_struct *lp)
 {
 	void *ret = NULL;
-	assert(sch != NULL);
+	assert(lp != NULL);
+
+	struct slab_chain *const sch = lp->mm->slab;
 
 	spin_lock(&sch->lock);
 
@@ -263,9 +266,12 @@ void *slab_alloc(struct slab_chain *const sch)
 	return ret;
 }
 
-void slab_free(struct slab_chain *const sch, const void *const addr)
+void slab_free(struct lp_struct *lp, const void *const addr)
 {
-	assert(sch != NULL);
+	assert(lp != NULL);
+
+	struct slab_chain *sch = lp->mm->slab;
+
 	spin_lock(&sch->lock);
 	assert(slab_is_valid(sch));
 

@@ -168,6 +168,7 @@ $LD -r -L $libdir --wrap strcpy\
 		  --wrap memcpy\
 		  --wrap memmove\
 		  --wrap memset\
+		  --wrap bzero\
 		  --wrap strdup\
 		  --wrap strndup\
 		  --wrap malloc\
@@ -203,6 +204,7 @@ $LD -r -L $libdir --wrap strcpy\
 		  --wrap memcpy\
 		  --wrap memmove\
 		  --wrap memset\
+		  --wrap bzero\
 		  --wrap strdup\
 		  --wrap strndup\
 		  --wrap malloc\
@@ -212,7 +214,7 @@ $LD -r -L $libdir --wrap strcpy\
 check_term
 
 # Merge the two relocatable objects together and finish generating the application
-$LD -r -z muldefs APP-instr.o APP-non-instr.o -o APP-final.o
+$LD -r -z muldefs APP-non-instr.o APP-instr.o -o APP-final.o
 cp APP-final.o mixed.foo
 $CC -Xlinker -T -Xlinker $$.ld-final APP-final.o $CFLAGS -lrootsim -lm -o $OUTNAME
 check_term

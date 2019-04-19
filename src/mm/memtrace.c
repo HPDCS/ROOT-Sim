@@ -31,7 +31,7 @@
 * @date April 02, 2008
 */
 
-#include <mm/memtrace.h>
+#include <mm/dymelor.h>
 #include <scheduler/scheduler.h>
 
 /**
@@ -48,35 +48,44 @@
 */
 __attribute__((used))
 __attribute__((no_caller_saved_registers))
-void __write_mem(unsigned char *base, size_t size)
+void __write_mem(unsigned char *address, size_t size)
 {
+	struct malloc_area *m_area = NULL, *cur_m_area;
+	struct malloc_state *m_state;
+	size_t bitmap_size, chk_size;
+	int i, first_chunk;
 
-//      unsigned long long current_cost;
+	// Find the correct malloc area. It could be that the write operation
+	// falls outside of every malloc area, because we here intercept also
+	// writes executed during INIT (e.g., related to the parsing of model-specific
+	// parameters), or writes on local variables. In that case, we have to
+	// return as fast as possible to the model.
 
-	// Sanity check on passed address
-/*	if(base == NULL) {
-		rootsim_error(false, "Trying to access NULL. Memory interception aborted\n");
-		return;
+	m_state = current->mm->m_state;
+
+	for (i = 0; i < m_state->num_areas; i++) {
+		cur_m_area = &m_state->areas[i];
+		if(cur_m_area == NULL || cur_m_area->area == NULL)
+			continue;
+
+		printf("(%d) Comparing %p with area %d [%p, %p]\n", current->gid.to_int, address, cur_m_area->idx, cur_m_area->area, (unsigned char *)cur_m_area->area + cur_m_area->chunk_size * cur_m_area->num_chunks);
+		fflush(stdout);
+
+		if (address >= (unsigned char *)cur_m_area->area && address < (unsigned char *)cur_m_area->area + cur_m_area->chunk_size * cur_m_area->num_chunks) {
+			printf("(%d) Found a write on a malloc area %d\n", current->gid.to_int, cur_m_area->idx);
+			fflush(stdout);
+			m_area = cur_m_area;
+			break;
+		}
 	}
-*/
-/*	if (rootsim_config.snapshot == AUTONOMIC_SNAPSHOT ||
-	    rootsim_config.snapshot == AUTONOMIC_INC_SNAPSHOT ||
-	    rootsim_config.snapshot == AUTONOMIC_FULL_SNAPSHOT)
-		add_counter++;
-*/
-	int first_chunk, last_chunk, i, chk_size;
 
-	size_t bitmap_size;
+	if (m_area == NULL)
+		return;
+/*
 
-	malloc_area *m_area = get_area(base);
-
-	if (m_area != NULL) {
-
-		chk_size = UNTAGGED_CHUNK_SIZE(m_area->chunk_size);
-
-		// Compute the number of chunks affected by the write
-		first_chunk =
-		    (int)(((char *)base - (char *)m_area->area) / chk_size);
+	// Determine the number of chunks affected by the write operation
+	chk_size = UNTAGGED_CHUNK_SIZE(m_area->chunk_size);
+	first_chunk = (int)(((char *)base - (char *)m_area->area) / chk_size);
 
 		// If size == -1, then we adopt a conservative approach: dirty all the chunks from the base to the end
 		// of the actual malloc area base address belongs to.
@@ -109,4 +118,5 @@ void __write_mem(unsigned char *base, size_t size)
 			}
 		}
 	}
+	*/
 }

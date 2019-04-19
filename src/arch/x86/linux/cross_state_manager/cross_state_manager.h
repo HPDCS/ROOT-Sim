@@ -37,6 +37,7 @@
 //#ifdef HAVE_CROSS_STATE
 
 #include <linux/ioctl.h>
+typedef unsigned long		ulong;
 
 #define CROSS_STATE_IOCTL_MAGIC 'R'
 

@@ -32,15 +32,6 @@
 #include <core/init.h>
 #include <mm/dymelor.h>
 
-// Definitions to functions which will be wrapped by the linker
-char *__real_strcpy(char *, const char *);
-char *__real_strncpy(char *, const char *, size_t);
-char *__real_strcat(char *, const char *);
-char *__real_strncat(char *, const char *, size_t);
-void *__real_memcpy(void *, const void *, size_t);
-void *__real_memmove(void *, const void *, size_t);
-void *__real_memset(void *, int, size_t);
-
 // Actual wrappers
 __visible char *__wrap_strcpy(char *s, const char *ct)
 {
@@ -89,6 +80,10 @@ __visible void *__wrap_memset(void *s, int c, size_t n)
 	if(rootsim_config.snapshot == SNAPSHOT_INCREMENTAL)
 		__write_mem((unsigned char *)s, n);
 	return __real_memset(s, c, n);
+}
+
+__visible void __wrap_bzero(void *s, size_t n) {
+	__wrap_memset(s, 0, n);
 }
 
 __visible char *__wrap_strdup(const char *s)

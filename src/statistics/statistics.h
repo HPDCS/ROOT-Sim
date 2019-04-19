@@ -53,7 +53,6 @@
 
 #pragma once
 
-#include <scheduler/process.h>
 
 /// This macro specified the default output directory, if nothing is passed as an option
 #define DEFAULT_OUTPUT_DIR "outputs"
@@ -139,6 +138,10 @@ struct stat_t {
 	    gvt_round_time,
 	    gvt_round_time_min, gvt_round_time_max, max_resident_set;
 };
+
+
+struct lp_struct;
+
 
 extern void _mkdir(const char *path);
 

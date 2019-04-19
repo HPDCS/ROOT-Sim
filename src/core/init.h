@@ -31,6 +31,7 @@
 #pragma once
 
 #include <statistics/statistics.h>
+#include <lib/numerical.h>
 
 /*! \public
  * These are used to index the first level of the param_to_text array.

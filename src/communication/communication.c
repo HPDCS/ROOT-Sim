@@ -132,7 +132,7 @@ void msg_hdr_release(msg_hdr_t *msg)
 	struct lp_struct *lp;
 
 	lp = find_lp_by_gid(msg->sender);
-	slab_free(lp->mm->slab, msg);
+	slab_free(lp, msg);
 }
 
 
@@ -191,7 +191,7 @@ msg_hdr_t *get_msg_hdr_from_slab(struct lp_struct *lp)
 */
 msg_t *get_msg_from_slab(struct lp_struct *lp)
 {
-	msg_t *msg = (msg_t *) slab_alloc(lp->mm->slab);
+	msg_t *msg = (msg_t *) slab_alloc(lp);
 	bzero(msg, SLAB_MSG_SIZE);
 	return msg;
 }
@@ -227,7 +227,7 @@ void msg_release(msg_t *msg)
 
 	if (likely(sizeof(msg_t) + msg->size <= SLAB_MSG_SIZE)) {
 		lp = which_slab_to_use(msg->sender, msg->receiver);
-		slab_free(lp->mm->slab, msg);
+		slab_free(lp, msg);
 	} else {
 		rsfree(msg);
 	}

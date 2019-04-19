@@ -94,7 +94,7 @@ bool LogState(struct lp_struct *lp)
 	if (take_snapshot) {
 
 		// Allocate the state buffer
-		new_state = rsalloc(sizeof(*new_state));
+		new_state = malloc(sizeof(*new_state));
 
 		// Associate the checkpoint with current LVT and last-executed event
 		new_state->lvt = lvt(lp);
@@ -112,7 +112,7 @@ bool LogState(struct lp_struct *lp)
 		       sizeof(numerical_state_t));
 
 		if(&topology_settings && topology_settings.write_enabled){
-			new_state->topology = rsalloc(topology_global.chkp_size);
+			new_state->topology = malloc(topology_global.chkp_size);
 			memcpy(new_state->topology, lp->topology,
 					topology_global.chkp_size);
 		}

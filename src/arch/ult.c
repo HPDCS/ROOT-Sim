@@ -45,7 +45,7 @@
 #include <arch/ult.h>
 #include <core/core.h>
 #include <scheduler/process.h>
-#include <mm/dymelor.h>
+#include <mm/mm.h>
 
 /// This is the execution context of the simulation kernel
 __thread kernel_context_t kernel_context;

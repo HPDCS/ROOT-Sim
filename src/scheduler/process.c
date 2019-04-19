@@ -29,6 +29,7 @@
  * @date December 14, 2017
  */
 
+#include <stdlib.h>
 #include <limits.h>
 
 #include <core/core.h>
@@ -154,10 +155,6 @@ void initialize_lps(void)
 
 		// Create User-Level Thread
 		context_create(&lp->context, LP_main_loop, NULL, lp->stack, LP_STACK_SIZE);
-
-		// If we run using incremental state saving, the very first snapshot must
-		// be anyhow a full checkpoint
-		set_force_full(lp);
 	}
 }
 

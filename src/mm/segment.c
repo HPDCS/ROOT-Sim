@@ -32,7 +32,7 @@
 #include <fcntl.h>
 #include <sys/types.h>
 
-#include <mm/mm.h>
+#include <mm/dymelor.h>
 #include <mm/ecs.h>
 #include <arch/x86/linux/cross_state_manager/cross_state_manager.h>
 #include <scheduler/process.h>
@@ -77,7 +77,7 @@ struct segment *get_segment(GID_t gid)
 	void *the_address;
 	struct segment *seg;
 
-	seg = rsalloc(sizeof(struct segment));
+	seg = __real_malloc(sizeof(struct segment));
 	if (seg == NULL)
 		return NULL;
 
@@ -139,7 +139,7 @@ void segment_init(void)
 
 void initialize_memory_map(struct lp_struct *lp)
 {
-	lp->mm = rsalloc(sizeof(struct memory_map));
+	lp->mm = __real_malloc(sizeof(struct memory_map));
 
 	lp->mm->segment = NULL;	//get_segment(lp->gid);
 	lp->mm->buddy = NULL;	//buddy_new(lp, PER_LP_PREALLOCATED_MEMORY / BUDDY_GRANULARITY);
@@ -152,5 +152,5 @@ void finalize_memory_map(struct lp_struct *lp)
 	malloc_state_wipe(&lp->mm->m_state);
 	//buddy_destroy(lp->mm->buddy);
 	// No free segment function here!
-	rsfree(lp->mm);
+	__real_free(lp->mm);
 }

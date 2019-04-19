@@ -34,8 +34,8 @@
 
 #include <stdbool.h>
 
-#include <mm/state.h>
 #include <mm/mm.h>
+#include <mm/state.h>
 #include <mm/ecs.h>
 #include <datatypes/list.h>
 #include <datatypes/msgchannel.h>
@@ -156,7 +156,7 @@ struct lp_struct {
 
 	/// pointer to the region struct
 	region_abm_t *region;
-	
+
 };
 
 // LPs process control blocks and binding control blocks
