@@ -34,6 +34,8 @@
 #include <mm/dymelor.h>
 #include <scheduler/scheduler.h>
 
+#define printf(...) {}
+
 #ifdef HAS_GCC_PLUGIN
 
 /**
@@ -95,7 +97,7 @@ void __write_mem(unsigned char *address, size_t size)
 
 	printf("(%d) The found malloc area handles chunks of size %ld\n", current->gid.to_int, chk_size);
 
-	// If size == -1, then we adopt a conservative approach: dirty all the chunks from the base to the end
+	// If size == SIZE_MAX, then we adopt a conservative approach: dirty all the chunks from the base to the end
 	// of the actual malloc area base address belongs to.
 	// This has been inserted to support the wrapping of third-party libraries where the size of the
 	// update (or even the actual update) cannot be statically/dynamically determined.

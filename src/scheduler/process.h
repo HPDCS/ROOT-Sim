@@ -93,6 +93,9 @@ struct lp_struct {
 	/// Counts how many events executed from the last checkpoint (to support PSS)
 	unsigned int from_last_ckpt;
 
+	/// Counts how many incremental checkpoints have been taken (to support ISS)
+	unsigned int from_last_full_ckpt;
+
 	/// If this variable is set, the next invocation to LogState() takes a new state log, independently of the checkpointing interval
 	bool state_log_forced;
 

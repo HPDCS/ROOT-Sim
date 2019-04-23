@@ -313,8 +313,6 @@ void *log_incremental(struct lp_struct *lp) {
 */
 void *log_state(struct lp_struct *lp)
 {
-	printf("Requested to take a checkpoint for LP %d. Force full is %d\n", lp->lid.to_int, lp->state_log_full_forced);
-
 	statistics_post_data(lp, STAT_CKPT, 1.0);
 #ifdef HAS_GCC_PLUGIN
 	if(rootsim_config.snapshot == SNAPSHOT_INCREMENTAL && !lp->state_log_full_forced)
