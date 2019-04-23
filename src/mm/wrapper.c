@@ -35,50 +35,64 @@
 // Actual wrappers
 __visible char *__wrap_strcpy(char *s, const char *ct)
 {
+#ifdef HAS_GCC_PLUGIN
 	if(rootsim_config.snapshot == SNAPSHOT_INCREMENTAL)
 		__write_mem((unsigned char *)s, SIZE_MAX);
+#endif
 	return __real_strcpy(s, ct);
 }
 
 __visible char *__wrap_strncpy(char *s, const char *ct, size_t n)
 {
+#ifdef HAS_GCC_PLUGIN
 	if(rootsim_config.snapshot == SNAPSHOT_INCREMENTAL)
 		__write_mem((unsigned char *)s, n);
+#endif
 	return __real_strncpy(s, ct, n);
 }
 
 __visible char *__wrap_strcat(char *s, const char *ct)
 {
+#ifdef HAS_GCC_PLUGIN
 	if(rootsim_config.snapshot == SNAPSHOT_INCREMENTAL)
 		__write_mem((unsigned char *)s, SIZE_MAX);
+#endif
 	return __real_strcat(s, ct);
 }
 
 __visible char *__wrap_strncat(char *s, const char *ct, size_t n)
 {
+#ifdef HAS_GCC_PLUGIN
 	if(rootsim_config.snapshot == SNAPSHOT_INCREMENTAL)
 		__write_mem((unsigned char *)s, n);
+#endif
 	return __real_strncat(s, ct, n);
 }
 
 __visible void *__wrap_memcpy(void *s, const void *ct, size_t n)
 {
+#ifdef HAS_GCC_PLUGIN
 	if(rootsim_config.snapshot == SNAPSHOT_INCREMENTAL)
 		__write_mem((unsigned char *)s, n);
+#endif
 	return __real_memcpy(s, ct, n);
 }
 
 __visible void *__wrap_memmove(void *s, const void *ct, size_t n)
 {
+#ifdef HAS_GCC_PLUGIN
 	if(rootsim_config.snapshot == SNAPSHOT_INCREMENTAL)
 		__write_mem((unsigned char *)s, n);
+#endif
 	return __real_memmove(s, ct, n);
 }
 
 __visible void *__wrap_memset(void *s, int c, size_t n)
 {
+#ifdef HAS_GCC_PLUGIN
 	if(rootsim_config.snapshot == SNAPSHOT_INCREMENTAL)
 		__write_mem((unsigned char *)s, n);
+#endif
 	return __real_memset(s, c, n);
 }
 
@@ -90,8 +104,10 @@ __visible char *__wrap_strdup(const char *s)
 {
 	char *ret = (char *)__wrap_malloc(strlen(s) + 1);
 	__real_strcpy(ret, s);
+#ifdef HAS_GCC_PLUGIN
 	if(rootsim_config.snapshot == SNAPSHOT_INCREMENTAL)
 		__write_mem((unsigned char *)ret, strlen(s));
+#endif
 	return ret;
 }
 
@@ -99,7 +115,9 @@ __visible char *__wrap_strndup(const char *s, size_t n)
 {
 	char *ret = (char *)__wrap_malloc(n);
 	__real_strncpy(ret, s, n);
+#ifdef HAS_GCC_PLUGIN
 	if(rootsim_config.snapshot == SNAPSHOT_INCREMENTAL)
 		__write_mem((unsigned char *)ret, n);
+#endif
 	return ret;
 }
