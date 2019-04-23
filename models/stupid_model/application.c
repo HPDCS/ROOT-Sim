@@ -1,4 +1,6 @@
-#include "../stupid_model/application.h"
+#include <stdlib.h>
+
+#include "application.h"
 
 #include <stdio.h>
 
