@@ -42,6 +42,13 @@ inline void *rsalloc(size_t size)
 	return mem_block;
 }
 
+inline void *rszalloc(size_t size)
+{
+	void *mem_block = rsalloc(size);
+	__real_bzero(mem_block, size);
+	return mem_block;
+}
+
 inline void rsfree(void *ptr)
 {
 	__real_free(ptr);

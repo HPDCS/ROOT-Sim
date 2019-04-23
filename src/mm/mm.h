@@ -57,6 +57,7 @@ extern void slab_free(struct lp_struct *, const void *const addr);
 
 /* Simulation Platform Memory APIs */
 extern inline void *rsalloc(size_t);
+extern inline void *rszalloc(size_t size);
 extern inline void rsfree(void *);
 extern inline void *rsrealloc(void *, size_t);
 extern inline void *rscalloc(size_t, size_t);
