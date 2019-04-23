@@ -95,7 +95,7 @@ bool LogState(struct lp_struct *lp)
 
 		// Check if we have to force a full checkpoint
 		lp->from_last_full_ckpt++;
-		if(lp->from_last_full_ckpt == 10) {
+		if(lp->from_last_full_ckpt >= 10) {
 			set_force_full(lp);
 			lp->from_last_full_ckpt = 0;
 		}
@@ -306,11 +306,16 @@ state_t *find_time_barrier(struct lp_struct *lp, simtime_t simtime)
 
 
 	// Search for the first full log before the gvt
+#ifdef HAS_GCC_PLUGIN
+	printf("Find barrier: ");
 	while(true) {
+		printf("%d", is_incremental(barrier_state->log));
 		if(is_incremental(barrier_state->log) == false)
 			break;
 		barrier_state = list_prev(barrier_state);
 	}
+	printf("\n");
+#endif
 
 	return barrier_state;
 }

@@ -181,10 +181,11 @@ then
 			  --wrap realloc\
 			  --wrap calloc -o APP-instr.o APP-resectioned.o --whole-archive -ldymelor
 	check_term
+
+	rm ${OBJECTS//.o/.o.rs}
 fi
 
 ### NON-INSTRUMENTED VERSION OF THE EXECUTABLE
-rm ${OBJECTS//.o/.o.rs}
 for f in $SOURCES; do
 	if [ "${f: -2:2}" = ".o" ]; then
 		mv $f $f.rs

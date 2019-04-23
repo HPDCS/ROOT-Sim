@@ -42,11 +42,11 @@
 
 void set_force_full(struct lp_struct *lp)
 {
-	#ifdef HAS_GCC_PLUGIN
+#ifdef HAS_GCC_PLUGIN
 	lp->state_log_full_forced = true;
-	#else
+#else
 	(void)lp;
-	#endif
+#endif
 }
 
 
@@ -505,8 +505,6 @@ void restore_incremental(struct lp_struct *lp, state_t *queue_node) {
 	timer recovery_timer;
 	timer_start(recovery_timer);
 
-	printf("#");
-
 	original_num_areas = m_state->num_areas;
 
 	new_area = m_state->areas;
@@ -525,7 +523,9 @@ void restore_incremental(struct lp_struct *lp, state_t *queue_node) {
 	curr_node = queue_node;
 
 	// Handle incremental logs
-	while(((struct malloc_state *)(curr_node->log))->is_incremental) {
+	printf("Restore Incremental: ");
+	while(is_incremental((struct malloc_state *)(curr_node->log))) {
+		printf("%d", is_incremental((struct malloc_state *)(curr_node->log)));
 
 		log = curr_node->log;
 		ptr = log;
@@ -594,20 +594,18 @@ void restore_incremental(struct lp_struct *lp, state_t *queue_node) {
 #undef copy_to_area_check_already
 		}
 
-		// Handle previous log
-
-		curr_node = list_prev(curr_node);
-
-		if(curr_node == NULL) {
-			rootsim_error(true, "Unable to scan the log chain. Aborting...\n");
-		}
-
 		// Sanity check
 		siz = sizeof(struct malloc_state) + ((struct malloc_state *)log)->dirty_areas * sizeof(struct malloc_area) + ((struct malloc_state *)log)->dirty_bitmap_size + ((struct malloc_state *)log)->total_inc_size;
         	if (ptr != (char *)log + siz){
 			rootsim_error(true, "The incremental log size does not match. Aborting...\n");
         	}
 
+		// Handle previous log
+		curr_node = list_prev(curr_node);
+
+		if(curr_node == NULL) {
+			rootsim_error(true, "Unable to scan through the incremental log chain. The state queue has %d total checkpoints. Aborting...\n", list_size(lp->queue_states));
+		}
 	}
 
 

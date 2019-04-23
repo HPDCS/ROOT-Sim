@@ -125,7 +125,7 @@ void __write_mem(unsigned char *address, size_t size)
 		if (!bitmap_check(m_area->dirty_bitmap, i)) {
 			bitmap_set(m_area->dirty_bitmap, i);
 			current->mm->m_state->total_inc_size += chk_size;
-				m_area->dirty_chunks++;
+			m_area->dirty_chunks++;
 		}
 	}
 
