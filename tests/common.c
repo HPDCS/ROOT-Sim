@@ -19,7 +19,11 @@ __thread unsigned int __lp_counter = 0;
 
 void _mkdir(const char *path) {
 	(void)path;
-}	
+}
+
+void statistics_post_data(struct lp_struct *lp, enum stat_msg_t type, double data)
+{
+}
 
 void _rootsim_error(bool fatal, const char *msg, ...)
 {
@@ -62,4 +66,19 @@ void *__real_calloc(size_t nmemb, size_t size)
 	(void)nmemb;
 	(void)size;
 	abort();
+}
+
+void __real_bzero(void *ptr, size_t size)
+{
+	bzero(ptr, size);
+}
+
+void __real_memset(void *ptr, int c, size_t size)
+{
+	memset(ptr, c, size);
+}
+
+void __real_memcpy(void *dst, void *src, size_t size)
+{
+	memcpy(dst, src, size);
 }

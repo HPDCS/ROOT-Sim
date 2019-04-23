@@ -72,7 +72,8 @@ static int slab_is_valid(const struct slab_chain *const sch)
 	const struct slab_header *const heads[] =
 	    { sch->full, sch->empty, sch->partial };
 
-	for (size_t head = 0; head < 3; ++head) {
+	size_t head;
+	for (head = 0; head < 3; ++head) {
 		const struct slab_header *prev = NULL, *slab;
 
 		for (slab = heads[head]; slab != NULL; slab = slab->next) {
@@ -369,7 +370,7 @@ void slab_free(struct lp_struct *lp, const void *const addr)
 		slab->slots |= SLOTS_FIRST << slot;
 	}
 
- out:
+    out:
 	spin_unlock(&sch->lock);
 }
 
@@ -381,7 +382,8 @@ void slab_destroy(const struct slab_chain *const sch)
 	struct slab_header *const heads[] = { sch->partial, sch->empty, sch->full };
 	struct slab_header *pages_head = NULL, *pages_tail;
 
-	for (size_t i = 0; i < 3; ++i) {
+	size_t i;
+	for (i = 0; i < 3; ++i) {
 		struct slab_header *slab = heads[i];
 
 		while (slab != NULL) {

@@ -93,7 +93,7 @@ static void mem_init(unsigned char *ptr, size_t size)
 {
 	size_t i, j;
 
-	explicit_bzero(ptr, size);
+	__real_bzero(ptr, size);
 
 	if (!size)
 		return;
