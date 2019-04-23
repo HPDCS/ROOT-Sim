@@ -265,18 +265,22 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 			} else {
 				rootsim_config.checkpointing = STATE_SAVING_PERIODIC;
 				rootsim_config.ckpt_period = parse_ullong_limits(1, 40);
-				// This is a micro optimization that makes the LogState function to avoid checking the checkpointing interval and keeping track of the logs taken
+				// This is a micro optimization that makes the LogState function avoid checking the checkpointing interval and keeping track of the logs taken
 				if(rootsim_config.ckpt_period == 1)
 					rootsim_config.checkpointing = STATE_SAVING_COPY;
 			}
 			break;
 
 		case OPT_INC:
+			#ifdef HAS_GCC_PLUGIN
 			rootsim_config.snapshot = SNAPSHOT_INCREMENTAL;
+			#else
+			argp_failure(state, EXIT_FAILURE, ENOSYS, "No support for Incremental State Saving found while compiling.\nAborting...");
+			#endif
 			break;
 
 		case OPT_A:
-			argp_failure(state, EXIT_FAILURE, ENOSYS, "autonomic state saving is not supported in stable version yet...\nAborting");
+			argp_failure(state, EXIT_FAILURE, ENOSYS, "autonomic state saving is not supported in stable version yet.\nAborting...");
 			break;
 
 		case OPT_GVT:

@@ -135,6 +135,7 @@ AS_IF([test $GCC_VERSION_MAJOR -ge 7 -a "x$enable_debug" == "xyes"],[
 # headers or not, otherwise compiling the plugin will fail badly.
 AC_SUBST([GCCPLUGINDIR],[$( ${CXX} -print-file-name=plugin )])
 
+ac_iss="Disabled"
 ac_gcc_headers=no
 AC_LANG_PUSH([C++])
 CXXFLAGS="-I ${GCCPLUGINDIR}/include"
@@ -142,7 +143,8 @@ AC_CHECK_HEADERS([gcc-plugin.h],
 	[ac_gcc_headers=yes])
 if test "x$ac_gcc_headers" = "xyes"
 then
-	AC_SUBST([HAS_GCC_PLUGIN], [/lib/modules/$with_kernel/build])
+	AC_DEFINE([HAS_GCC_PLUGIN])
+	ac_iss="Enabled (Software based)"
 fi
 AM_CONDITIONAL([COMPILE_GCC_PLUGIN], [test "x$ac_gcc_headers" = "xyes"])
 AC_LANG_POP([C++])
@@ -364,21 +366,23 @@ ac_system_map=no
 # This instructs the Makefile to build kernel modules only when possible
 AM_CONDITIONAL([NO_KERNEL_MODULES], [test "x$ac_disable_modules" = "xyes"])
 
+
 #----------------------------------------------------------------------------
-# Check scripts sizes.
+# Configure rootsim-cc.
 # The compiler script is dynamically built in order to create ad compile
 # time linker scripts which will be used to produce the final version
 # of the executable. We compute here the sizes of those cat'd scripts
 # in order to make the compiler behave consistently with the last version
 # of the linker scripts provided in the installation.
+# Also, we must tell the compiler if ISS is available or not
 #----------------------------------------------------------------------------
 AC_MSG_CHECKING([compiler and linker scripts sizes])
 AC_SUBST([cc_script_lines], [$(wc -l scripts/rootsim-cc.in | sed 's,\ .*,,g')])
 AC_SUBST([cc_lddata1_lines], [$(wc -l scripts/ld-data1 | sed 's,\ .*,,g')])
 AC_SUBST([cc_lddata2_lines], [$(wc -l scripts/ld-data2 | sed 's,\ .*,,g')])
 AC_SUBST([cc_ldfinal_lines], [$(wc -l scripts/ld-final | sed 's,\ .*,,g')])
+AC_SUBST([iss_support], ["x$ac_gcc_headers"])
 AC_MSG_RESULT([ok])
-
 
 # Generate Makefiles for all these subfolders
 AC_CONFIG_FILES([Makefile
@@ -497,6 +501,7 @@ Debugging Support......... : ${enable_debug}
 MPI....................... : ${enable_mpi}
 LP Preemption Support..... : ${ac_preemption}
 LP Rebinding.............. : ${ac_lp_rebinding}
+Incremental State Saving.. : ${ac_iss}
 
 
 EOF

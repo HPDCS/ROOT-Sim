@@ -24,6 +24,7 @@ bindir="@bindir@"
 libdir="@libdir@"
 includedir="@includedir@"
 datadir="@datadir@"
+iss_support="@iss_support@"
 SCRIPT_LINES="@scriptlines@"
 LD_DATA1_LINES="@lddata1lines@"
 LD_DATA2_LINES="@lddata2lines@"
@@ -138,44 +139,49 @@ fi
 # Generate linker scripts
 generate_linker_scripts
 
-### INSTRUMENTED VERSION OF THE EXECUTABLE
 OBJECTS=${SOURCES//.c/.o}
-for f in $SOURCES; do
-	if [ "${f: -2:2}" = ".o" ]; then
-		mv $f $f.rs
-	else
-		$CC -fplugin=$libdir/libmemtrace.so -fplugin-arg-libmemtrace-instrument-mode="w" -fplugin-arg-libmemtrace-function-suffix="instr" $CFLAGS -c $f -o ${f/.c/.o.rs}
-	fi
+
+if test "$iss_support" = "xyes"
+then
+
+	### INSTRUMENTED VERSION OF THE EXECUTABLE
+	for f in $SOURCES; do
+		if [ "${f: -2:2}" = ".o" ]; then
+			mv $f $f.rs
+		else
+			$CC -fplugin=$libdir/libmemtrace.so -fplugin-arg-libmemtrace-instrument-mode="w" -fplugin-arg-libmemtrace-function-suffix="instr" $CFLAGS -c $f -o ${f/.c/.o.rs}
+		fi
+		check_term
+	done
+
+	# Link together
+	$LD -r ${OBJECTS//.o/.o.rs} -o APP.o
 	check_term
-done
 
-# Link together and rename all symbols
-$LD -r ${OBJECTS//.o/.o.rs} -o APP.o
-check_term
+	# Use a custom linker script to finish mangling the object
+	$LD -r -T $$.ld-data1 APP.o -o APP-resectioned.o
+	check_term
 
-# Use a custom linker script to finish mangling the object
-$LD -r -T $$.ld-data1 APP.o -o APP-resectioned.o
-check_term
-
-cp APP-resectioned.o incremental.foo
+	cp APP-resectioned.o incremental.foo
 
 
-# Link againts DyMeLoR
-$LD -r -L $libdir --wrap strcpy\
-		  --wrap strncpy\
-		  --wrap strcat\
-		  --wrap strncat\
-		  --wrap memcpy\
-		  --wrap memmove\
-		  --wrap memset\
-		  --wrap bzero\
-		  --wrap strdup\
-		  --wrap strndup\
-		  --wrap malloc\
-		  --wrap free\
-		  --wrap realloc\
-		  --wrap calloc -o APP-instr.o APP-resectioned.o --whole-archive -ldymelor
-check_term
+	# Link againts DyMeLoR
+	$LD -r -L $libdir --wrap strcpy\
+			  --wrap strncpy\
+			  --wrap strcat\
+			  --wrap strncat\
+			  --wrap memcpy\
+			  --wrap memmove\
+			  --wrap memset\
+			  --wrap bzero\
+			  --wrap strdup\
+			  --wrap strndup\
+			  --wrap malloc\
+			  --wrap free\
+			  --wrap realloc\
+			  --wrap calloc -o APP-instr.o APP-resectioned.o --whole-archive -ldymelor
+	check_term
+fi
 
 ### NON-INSTRUMENTED VERSION OF THE EXECUTABLE
 rm ${OBJECTS//.o/.o.rs}
@@ -213,11 +219,18 @@ $LD -r -L $libdir --wrap strcpy\
 		  --wrap calloc -o APP-non-instr.o APP-resectioned.o --whole-archive -ldymelor
 check_term
 
-# Merge the two relocatable objects together and finish generating the application
-$LD -r -z muldefs APP-non-instr.o APP-instr.o -o APP-final.o
-cp APP-final.o mixed.foo
-$CC -Xlinker -T -Xlinker $$.ld-final APP-final.o $CFLAGS -lrootsim -lm -o $OUTNAME
-check_term
+if test "$iss_support" = "xyes"
+then
+	# Merge the two relocatable objects together and finish generating the application
+	$LD -r -z muldefs APP-non-instr.o APP-instr.o -o APP-final.o
+	cp APP-final.o mixed.foo
+	$CC -Xlinker -T -Xlinker $$.ld-final APP-final.o $CFLAGS -lrootsim -lm -o $OUTNAME
+	check_term
+else
+	# Only one version of the executable is available
+	$CC -Xlinker -T -Xlinker $$.ld-final APP-non-instr.o $CFLAGS -lrootsim -lm -o $OUTNAME
+	check_term
+fi
 
 # Clean temporary files
 build_cleanup

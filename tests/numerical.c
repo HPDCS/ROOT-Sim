@@ -2,6 +2,7 @@
 #include <assert.h>
 #include <math.h>
 #include <stdbool.h>
+#include <stdlib.h>
 
 #include "common.h"
 
@@ -20,11 +21,11 @@ enum _dis {
 
 
 static double get_sample(enum _dis distr) {
-	
+
 	switch(distr) {
 		case RANDOM:
 			return Random();
-		
+
 		case EXPENT:
 			return Expent(10);
 
@@ -58,11 +59,11 @@ static bool ks_test(uint32_t N, uint32_t nBins, enum _dis distr)
 	uint32_t i, index, cumulativeSum;
 	double rf, ksThreshold, countPerBin;
 	uint32_t bins[nBins];
-	
+
 	// Fill the bins
 	for (i = 0; i < nBins; i++)
 		bins[i] = 0;
-		
+
 	for (i = 0; i < N; i++) {
 		rf = get_sample(distr);
 		index = floor(rf * nBins);
@@ -71,7 +72,7 @@ static bool ks_test(uint32_t N, uint32_t nBins, enum _dis distr)
 
 		bins[index]++;
 	}
-	
+
 	// Test the bins
 	ksThreshold = 1.358 / sqrt((double)N);
 	countPerBin = (double)N / nBins;
@@ -86,7 +87,7 @@ static bool ks_test(uint32_t N, uint32_t nBins, enum _dis distr)
 
 static bool aux_ks_test(enum _dis distr) {
 	bool passed = true;
-	
+
 	passed &= ks_test(1000000, 1000, distr);
 	passed &= ks_test(100000, 1000, distr);
 	passed &= ks_test(10000, 100, distr);
@@ -144,7 +145,7 @@ int main(void)
 {
 	bool passed = true;
 	int ret = 0;
-	
+
 	current = &context;
 	current->numerical.seed = 7319936632422683443ULL;
 
@@ -157,6 +158,6 @@ int main(void)
 	do_test("Kolmogorov-Smirnov test on Gamma()... ", aux_ks_test, GAMMA2);
 	do_test("Kolmogorov-Smirnov test on Poisson()... ", aux_ks_test, POISSON);
 	do_test("Kolmogorov-Smirnov test on Zipf()... ", aux_ks_test, ZIPF);
-	
+
 	return ret;
 }

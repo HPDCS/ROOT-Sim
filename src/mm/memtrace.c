@@ -34,6 +34,8 @@
 #include <mm/dymelor.h>
 #include <scheduler/scheduler.h>
 
+#ifdef HAS_GCC_PLUGIN
+
 /**
 * This function marks a memory chunk as dirty.
 * It is invoked from assembly modules invoked by calls injected by the instrumentor, and from the
@@ -130,3 +132,5 @@ void __write_mem(unsigned char *address, size_t size)
 	switch_to_application_mode();
 	return;
 }
+
+#endif

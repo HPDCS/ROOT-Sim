@@ -42,7 +42,11 @@
 
 void set_force_full(struct lp_struct *lp)
 {
+	#ifdef HAS_GCC_PLUGIN
 	lp->state_log_full_forced = true;
+	#else
+	(void)lp;
+	#endif
 }
 
 
@@ -171,6 +175,7 @@ void *log_full(struct lp_struct *lp)
 	return ckpt;
 }
 
+#ifdef HAS_GCC_PLUGIN
 
 /**
 * This function creates a partial (incremental) log of the current simulation states and returns
@@ -285,6 +290,8 @@ void *log_incremental(struct lp_struct *lp) {
 	return log;
 }
 
+#endif
+
 /**
 * This function is the only log function which should be called from the simulation platform. Actually,
 * it is a demultiplexer which calls the correct function depending on the current configuration of the
@@ -309,10 +316,12 @@ void *log_state(struct lp_struct *lp)
 	printf("Requested to take a checkpoint for LP %d. Force full is %d\n", lp->lid.to_int, lp->state_log_full_forced);
 
 	statistics_post_data(lp, STAT_CKPT, 1.0);
+#ifdef HAS_GCC_PLUGIN
 	if(rootsim_config.snapshot == SNAPSHOT_INCREMENTAL && !lp->state_log_full_forced)
 		return log_incremental(lp);
 	if(lp->state_log_full_forced)
 		lp->state_log_full_forced = false;
+#endif
 	return log_full(lp);
 }
 
@@ -460,7 +469,7 @@ void restore_full(struct lp_struct *lp, void *ckpt)
 }
 
 
-
+#ifdef HAS_GCC_PLUGIN
 
 /**
 * This function restores a full log in the address space where the logical process will be
@@ -754,7 +763,7 @@ void restore_incremental(struct lp_struct *lp, state_t *queue_node) {
 }
 
 
-
+#endif
 
 /**
 * Upon the decision of performing a rollback operation, this function is invoked by the simulation
@@ -772,10 +781,12 @@ void restore_incremental(struct lp_struct *lp, state_t *queue_node) {
 */
 void log_restore(struct lp_struct *lp, state_t *state_queue_node)
 {
+#ifdef HAS_GCC_PLUGIN
 	statistics_post_data(lp, STAT_RECOVERY, 1.0);
 	if (((struct malloc_state *)(state_queue_node->log))->is_incremental)
 		restore_incremental(lp, state_queue_node);
 	else
+#endif
 		restore_full(lp, state_queue_node->log);
 }
 
