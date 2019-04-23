@@ -272,7 +272,7 @@ void *log_incremental(struct lp_struct *lp) {
 
 	// Sanity check
 	if ((char *)log + size != ptr){
-		rootsim_error(false, "Actual (inc) log size different from the estimated one! Possible Undefined Behaviour! log = %x size = %x, ptr = %x. %d/%d + %d + %d", log, size, ptr, dirty_areas_count, m_state->dirty_areas, m_state->dirty_bitmap_size, m_state->total_inc_size);
+		rootsim_error(true, "Actual (inc) log size different from the estimated one! Aborting...\n\tlog = %x size = %x, ptr = %x. %d/%d + %d + %d\n", log, size, ptr, dirty_areas_count, m_state->dirty_areas, m_state->dirty_bitmap_size, m_state->total_inc_size);
 	}
 
         m_state->dirty_areas = 0;
@@ -592,15 +592,13 @@ void restore_incremental(struct lp_struct *lp, state_t *queue_node) {
 		curr_node = list_prev(curr_node);
 
 		if(curr_node == NULL) {
-			printf("PANIC!\n");
-			fflush(stdout);
+			rootsim_error(true, "Unable to scan the log chain. Aborting...\n");
 		}
 
 		// Sanity check
 		siz = sizeof(struct malloc_state) + ((struct malloc_state *)log)->dirty_areas * sizeof(struct malloc_area) + ((struct malloc_state *)log)->dirty_bitmap_size + ((struct malloc_state *)log)->total_inc_size;
         	if (ptr != (char *)log + siz){
-                	printf("ERROR: The incremental log size does not match\n");
-	                fflush(stdout);
+			rootsim_error(true, "The incremental log size does not match. Aborting...\n");
         	}
 
 	}
@@ -689,8 +687,7 @@ void restore_incremental(struct lp_struct *lp, state_t *queue_node) {
 	// Sanity check
 	siz = sizeof(struct malloc_state) + ((struct malloc_state *)log)->busy_areas * sizeof(struct malloc_area) + ((struct malloc_state *)log)->bitmap_size + ((struct malloc_state *)log)->total_log_size;
 	if (ptr != (char *)log + siz){
-		printf("ERROR: full log size does not match\n");
-		fflush(stdout);
+		rootsim_error(true, "The full log size does not match. Aborting...\n");
 	}
 
 	// Vitali: realloc bug fix

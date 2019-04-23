@@ -36,7 +36,7 @@
 __visible char *__wrap_strcpy(char *s, const char *ct)
 {
 	if(rootsim_config.snapshot == SNAPSHOT_INCREMENTAL)
-		__write_mem((unsigned char *)s, -1);
+		__write_mem((unsigned char *)s, SIZE_MAX);
 	return __real_strcpy(s, ct);
 }
 
@@ -50,7 +50,7 @@ __visible char *__wrap_strncpy(char *s, const char *ct, size_t n)
 __visible char *__wrap_strcat(char *s, const char *ct)
 {
 	if(rootsim_config.snapshot == SNAPSHOT_INCREMENTAL)
-		__write_mem((unsigned char *)s, -1);
+		__write_mem((unsigned char *)s, SIZE_MAX);
 	return __real_strcat(s, ct);
 }
 
