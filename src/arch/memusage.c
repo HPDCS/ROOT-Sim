@@ -31,7 +31,7 @@
  */
 
 #include <arch/memusage.h>
-#include <mm/dymelor.h>
+#include <mm/mm.h>
 
 
 #if defined(_WIN32)

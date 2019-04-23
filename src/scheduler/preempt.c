@@ -37,7 +37,7 @@
 #include <core/core.h>
 #include <scheduler/process.h>
 #include <scheduler/scheduler.h>
-#include <mm/dymelor.h>
+#include <mm/mm.h>
 
 extern void preempt_callback(void);
 
