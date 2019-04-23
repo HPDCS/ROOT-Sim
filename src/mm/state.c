@@ -93,6 +93,13 @@ bool LogState(struct lp_struct *lp)
 	// Shall we take a log?
 	if (take_snapshot) {
 
+		// Check if we have to force a full checkpoint
+		lp->from_last_full_ckpt++;
+		if(lp->from_last_full_ckpt == 10) {
+			set_force_full(lp);
+			lp->from_last_full_ckpt = 0;
+		}
+
 		// Allocate the state buffer
 		new_state = malloc(sizeof(*new_state));
 
@@ -300,7 +307,6 @@ state_t *find_time_barrier(struct lp_struct *lp, simtime_t simtime)
 
 	// Search for the first full log before the gvt
 	while(true) {
-		printf(".");
 		if(is_incremental(barrier_state->log) == false)
 			break;
 		barrier_state = list_prev(barrier_state);
