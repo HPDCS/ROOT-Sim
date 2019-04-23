@@ -76,11 +76,11 @@ static void put_instruction_cmov(rtx insn, rtx condition, rtx then_expression, r
 	const char *fn1 = write_1 ? "__write_mem" : "__read_mem";
 	const char *fn2 = write_2 ? "__write_mem" : "__read_mem";
 	if(then_expression != NULL){
-		if(GET_CODE(XEXP(then_expression, 0)) == PRE_DEC || GET_CODE(XEXP(then_expression, 0)) == POST_INC || GET_CODE(XEXP(then_expression, 0)) == SCRATCH)
+		if(GET_CODE(XEXP(then_expression, 0)) == PRE_DEC || GET_CODE(XEXP(then_expression, 0)) == POST_INC || GET_CODE(XEXP(then_expression, 0)) == SCRATCH || GET_CODE(XEXP(then_expression, 0)) == PRE_MODIFY)
 			return;
 	}
 	if (else_expression != NULL){
-		if(GET_CODE(XEXP(else_expression, 0)) == PRE_DEC || GET_CODE(XEXP(else_expression, 0)) == POST_INC || GET_CODE(XEXP(else_expression, 0)) == SCRATCH)
+		if(GET_CODE(XEXP(else_expression, 0)) == PRE_DEC || GET_CODE(XEXP(else_expression, 0)) == POST_INC || GET_CODE(XEXP(else_expression, 0)) == SCRATCH || GET_CODE(XEXP(else_expression, 0)) == PRE_MODIFY)
 			return;
 	}
 
@@ -140,7 +140,11 @@ static void put_instruction_cmov(rtx insn, rtx condition, rtx then_expression, r
 
 		parm2_then = rtx_alloc(SET);
 		XEXP(parm2_then, 0) = gen_rtx_REG(DImode, 4);
+		#if BUILDING_GCC_VERSION >= 8000
 		XEXP(parm2_then, 1) = gen_rtx_CONST_INT(DImode, MEM_SIZE(then_expression).to_constant()); //before it was SImode, why?
+		#else
+		XEXP(parm2_then, 1) = gen_rtx_CONST_INT(DImode, MEM_SIZE(then_expression));
+		#endif		
 
 		call_1 = gen_rtx_CALL(VOIDmode,
 				gen_rtx_MEM(QImode, gen_rtx_SYMBOL_REF(DImode, fn1)),
@@ -159,7 +163,11 @@ static void put_instruction_cmov(rtx insn, rtx condition, rtx then_expression, r
 
 		parm2_else = rtx_alloc(SET);
 		XEXP(parm2_else, 0) = gen_rtx_REG(DImode, 4);
+		#if BUILDING_GCC_VERSION >= 8000
 		XEXP(parm2_else, 1) = gen_rtx_CONST_INT(DImode, MEM_SIZE(else_expression).to_constant()); //before it was SImode, why?
+		#else
+		XEXP(parm2_else, 1) = gen_rtx_CONST_INT(DImode, MEM_SIZE(else_expression));
+		#endif
 
 		call_2 = gen_rtx_CALL(VOIDmode,
 				gen_rtx_MEM(QImode, gen_rtx_SYMBOL_REF(DImode, fn2)),
@@ -232,7 +240,7 @@ static void put_instruction(rtx insn, rtx operand, bool write)
 	rtx parm1, parm2, call, push1, push2, pop1, pop2;
 	const char *fn = write ? "__write_mem" : "__read_mem";
 
-	if(GET_CODE(XEXP(operand, 0)) == PRE_DEC || GET_CODE(XEXP(operand, 0)) == POST_INC || GET_CODE(XEXP(operand, 0)) == SCRATCH)
+	if(GET_CODE(XEXP(operand, 0)) == PRE_DEC || GET_CODE(XEXP(operand, 0)) == POST_INC || GET_CODE(XEXP(operand, 0)) == SCRATCH || GET_CODE(XEXP(operand, 0)) == PRE_MODIFY)
 		return;
 
 	print_rtl_single(stdout, operand);
@@ -267,7 +275,12 @@ static void put_instruction(rtx insn, rtx operand, bool write)
 
 	parm2 = rtx_alloc(SET);
 	XEXP(parm2, 0) = gen_rtx_REG(DImode, 4);
+	#if BUILDING_GCC_VERSION >= 8000
 	XEXP(parm2, 1) = gen_rtx_CONST_INT(DImode, MEM_SIZE(operand).to_constant()); //before it was SImode, why?
+	#else
+	XEXP(parm2, 1) = gen_rtx_CONST_INT(DImode, MEM_SIZE(operand));
+	#endif
+	
 
 
 	call = gen_rtx_CALL(VOIDmode,
