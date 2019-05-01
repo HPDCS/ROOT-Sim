@@ -7,6 +7,8 @@
 #include <linux/slab.h>
 #include <linux/printk.h>       // pr_info
 
+#include "rootsim.h"
+
 #define switch_func "finish_task_switch"
 
 typedef void h_func(void);
@@ -19,7 +21,7 @@ static int post_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 {
 	int ret = 0;
 
-	// ret = ...
+	on_context_switch();
 
 	return ret;
 }// post_handler

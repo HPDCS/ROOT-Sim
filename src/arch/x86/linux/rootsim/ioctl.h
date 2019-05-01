@@ -40,7 +40,7 @@ typedef struct _memory_trace_t {
 #define _IO_NB		1
 #define _IOR_NB		(_IO_NB << 0x3) // Reading data from the module
 #define _IOW_NB		(_IO_NB << 0x4) // Wrinting data into the module
-#define _IORW_NB	(_IO_NB << 0x5) // Bidirectional operations
+#define _IOWR_NB	(_IO_NB << 0x5) // Bidirectional operations
 
 
 // Cross-State Events
@@ -60,4 +60,6 @@ typedef struct _memory_trace_t {
 #define IOCTL_SETUP_CALLBACK 		_IOW(ROOTSIM_IOC_MAGIC, _IOW_NB + 7, void *) 
 
 // IME
-#define IOCTL_GET_MEM_TRACE		_IOR(ROOTSIM_IOC_MAGIC,	_IORW_NB, memory_trace_t *)
+#define IOCTL_GET_MEM_TRACE		_IOWR(ROOTSIM_IOC_MAGIC,_IOWR_NB, memory_trace_t *)
+#define IOCTL_ADD_THREAD		_IOW(ROOTSIM_IOC_MAGIC,	_IOW_NB + 8, pid_t)
+#define IOCTL_DEL_THREAD		_IOW(ROOTSIM_IOC_MAGIC,	_IOW_NB + 9, pid_t)

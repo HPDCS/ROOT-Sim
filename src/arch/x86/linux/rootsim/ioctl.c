@@ -50,6 +50,12 @@ long rootsim_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 			}
 			ret = length;
 			break;
+		case IOCTL_ADD_THREAD:
+			register_thread((pid_t) arg);
+			break;
+		case IOCTL_DEL_THREAD:
+			unregister_thread((pid_t) arg);
+			break;
 	}
 
 /*

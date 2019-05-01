@@ -17,7 +17,7 @@ extern void fault_fini(void);
 
 // scheduler.c
 extern int scheduler_init(void);
-extern int scheduler_fini(void);
+extern void scheduler_fini(void);
 
 // ioctl.c
 extern long rootsim_ioctl(struct file *filp, unsigned int cmd, unsigned long arg);
@@ -52,7 +52,6 @@ static inline void unprotect_memory(void)
 
 // ime/core.c
 extern int ime_init(void);
-
 extern void ime_fini(void);
 
 extern __percpu struct mem_data pcpu_mem_data;
@@ -69,5 +68,10 @@ struct mem_data {
 	unsigned index;
 	unsigned read;
 };
+
+// ime/thread.c
+int register_thread(pid_t pid);
+int unregister_thread(pid_t pid);
+void on_context_switch(void);
 
 
