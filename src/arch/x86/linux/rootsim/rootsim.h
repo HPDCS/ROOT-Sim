@@ -3,6 +3,7 @@
 #include <linux/types.h>
 #include <linux/fs.h>
 #include <asm/special_insns.h>
+#include <asm/desc.h>
 
 // main.c
 extern int rootsim_open(struct inode *inode, struct file *filp) ;
@@ -25,8 +26,11 @@ extern long rootsim_ioctl(struct file *filp, unsigned int cmd, unsigned long arg
 extern void release_pagetable(void);
 
 // idt.c
-extern int setup_idt(void);
-extern void restore_idt(void);
+extern gate_desc *clone_current_idt(void);
+extern int patch_system_idt(gate_desc *idt, unsigned size);
+extern void restore_system_idt(void);
+extern int install_hook(gate_desc *idt, unsigned long handler, 
+	unsigned vector, unsigned dpl);
 
 // timer.c
 extern void timer_init(void);
@@ -45,5 +49,25 @@ static inline void unprotect_memory(void)
 	cr0 = read_cr0();
 	write_cr0(cr0 & ~0x00010000);
 }
+
+// ime/core.c
+extern int ime_init(void);
+
+extern void ime_fini(void);
+
+extern __percpu struct mem_data pcpu_mem_data;
+
+#define NR_BUFFERS	1
+#define BUFFER_SIZE	(PAGE_SIZE * 1024)
+
+struct mem_data {
+	u64 **buf_poll;
+	unsigned nr_buf;
+	unsigned buf_size;
+
+	unsigned pos;
+	unsigned index;
+	unsigned read;
+};
 
 

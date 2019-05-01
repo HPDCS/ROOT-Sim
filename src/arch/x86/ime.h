@@ -5,7 +5,7 @@
 #include <stdint.h>
 
 #define PMU_MSR_HIGH_VALUE	0x0
-#define PMU_MSR_LOW_VALUE	0xf
+#define PMU_MSR_LOW_VALUE	0x3
 
 #define PMU_MSR_CODE		0x38f
 

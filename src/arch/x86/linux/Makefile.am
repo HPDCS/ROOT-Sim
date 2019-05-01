@@ -15,6 +15,7 @@ rootsim.ko:
 
 # Autotools hooks to install, uninstall and clean
 install-exec-hook: all-local
+	mkdir -p $(DESTDIR)$(KERNEL_MOD)
 	$(INSTALL) $(abs_srcdir)/rootsim/rootsim.ko $(DESTDIR)$(KERNEL_MOD)/rootsim.ko
 	depmod -a
 

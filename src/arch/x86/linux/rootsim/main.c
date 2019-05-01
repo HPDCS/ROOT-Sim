@@ -5,6 +5,7 @@
 #include <linux/version.h>
 
 #include "rootsim.h"
+#include "ime/core.h"
 
 MODULE_AUTHOR("Alessandro Pellegrini <pellegrini@dis.uniroma1.it>");
 MODULE_AUTHOR("Francesco Quaglia <francesco.quaglia@uniroma2.it>");
@@ -43,9 +44,9 @@ static struct device *device = NULL;
 int rootsim_open(struct inode *inode, struct file *filp) {
 
 	// It's meaningless to open this device in write mode
-	if (((filp->f_flags & O_ACCMODE) == O_WRONLY) || ((filp->f_flags & O_ACCMODE) == O_RDWR)) {
-		return -EACCES;
-	}
+	// if (((filp->f_flags & O_ACCMODE) == O_WRONLY) || ((filp->f_flags & O_ACCMODE) == O_RDWR)) {
+	// 	return -EACCES;
+	// }
 
 	// Only one access at a time
 	if (!mutex_trylock(&rootsim_mutex)) {
@@ -101,22 +102,26 @@ static int __init rootsim_init(void)
 	scheduler_init();
 	timer_init();
 	fault_init();
-	setup_idt();
 
+	err = ime_init();
+	if (err) goto failed_ime;
+	
 	return 0;
+failed_ime:
 
-  failed_devreg:
+failed_devreg:
 	class_unregister(dev_cl);
 	class_destroy(dev_cl);
-  failed_classreg:
+failed_classreg:
 	unregister_chrdev(major, KBUILD_MODNAME);
-  failed_chrdevreg:
+failed_chrdevreg:
 	return err;
 }
 
 static void __exit rootsim_exit(void)
 {
-	restore_idt();
+	// restore_idt();
+	ime_fini();
 	fault_fini();
 	timer_fini();
 	scheduler_fini();

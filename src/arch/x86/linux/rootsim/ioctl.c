@@ -1,4 +1,5 @@
 #include <asm-generic/errno-base.h>
+#include <asm/uaccess.h>
 
 #include "rootsim.h"
 #include "ioctl.h"
@@ -7,6 +8,49 @@
 long rootsim_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	long ret = 0;
+	struct mem_data *md;
+	size_t length;
+	memory_trace_t memory_trace;
+
+
+	switch (cmd) {
+
+// IME RELATED COMMANDS
+		case IOCTL_GET_MEM_TRACE:
+			copy_from_user(&memory_trace, arg, sizeof(memory_trace_t));
+			md = per_cpu_ptr(&pcpu_mem_data, memory_trace.cpu);
+			// No data to be read
+			// if (md->read >= ((md->buf_size * md->pos) + md->index)) {
+			if (md->read >= md->index) {
+				break;
+			}
+
+			length = md->index - md->read;
+			if (length > memory_trace.length)
+				length = memory_trace.length;
+
+			pr_info("Copying to %llx, from %llx, %d elems\n", memory_trace.addresses,
+				(void *)(md->buf_poll[0] + md->read), length);
+
+			ret = copy_to_user(memory_trace.addresses, (void *)(md->buf_poll[0] + md->read), length);
+			pr_info("Copied %d\n", ret);
+			if (!ret) {
+				ret = copy_to_user((void *) arg, (void *)&memory_trace, sizeof(memory_trace_t));
+				if (ret) {
+					pr_info("Something wrong during copy to user!\n");
+					ret = -1;
+					break;
+				}
+			}
+			pr_info("Read %llu, Index %llu\n", md->read, md->index);
+			md->read += length;
+			if (md->read == md->index) {
+				md->read = 0;
+				md->index = 0;
+			}
+			ret = length;
+			break;
+	}
 
 /*
 	switch (cmd) {

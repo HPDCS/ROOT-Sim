@@ -35,8 +35,6 @@
  */
 
 #pragma once
-#ifndef _SCHEDULER_H_
-#define _SCHEDULER_H_
 
 #include <ROOT-Sim.h>
 #include <core/core.h>
@@ -44,6 +42,7 @@
 #include <communication/communication.h>
 #include <scheduler/stf.h>
 #include <arch/ult.h>
+#include <arch/x86/ime.h>
 #include <scheduler/process.h>
 
 /// This macro defines after how many idle cycles the simulation is stopped
@@ -84,29 +83,34 @@ extern __thread unsigned int n_prc_per_thread;
 
 #ifdef HAVE_PREEMPTION
 extern __thread volatile bool platform_mode;
-#define switch_to_platform_mode() do {\
-				   if(current->state != LP_STATE_SILENT_EXEC) {\
-					platform_mode = true;\
-				   }\
-				  } while(0)
-
-#define switch_to_application_mode() do {\
-					if(LPS[current_lp]->state != LP_STATE_SILENT_EXEC) {\
-						if(min_in_transit_lvt[tid] < current_lvt){\
-							atomic_inc(&need_resched);\
-							resched();\
-						}\
-						platform_mode = false;\
-					}\
-				} while(0)
-
 #define flag_rolling_back() rolling_back = true
 #define unflag_rolling_back() rolling_back = false
-
-#else
-
-#define switch_to_platform_mode() {}
-#define switch_to_application_mode() {}
-#endif				/* HAVE_PREEMPTION */
-
 #endif
+
+static inline void switch_to_platform_mode(void)
+{
+#ifdef HAVE_PREEMPTION
+	if(current->state != LP_STATE_SILENT_EXEC) {
+		platform_mode = true;
+	}
+#endif
+#ifdef HAVE_PMU
+	toggle_pmu_trace();
+#endif
+}
+
+static inline void switch_to_application_mode(void)
+{
+#ifdef HAVE_PREEMPTION
+	if(LPS[current_lp]->state != LP_STATE_SILENT_EXEC) {
+		if(min_in_transit_lvt[tid] < current_lvt){
+			atomic_inc(&need_resched);
+			resched();
+		}
+		platform_mode = false;
+	}
+#endif
+#ifdef HAVE_PMU
+	toggle_pmu_trace();
+#endif
+}
