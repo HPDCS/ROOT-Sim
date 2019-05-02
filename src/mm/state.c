@@ -136,8 +136,10 @@ bool LogState(struct lp_struct *lp)
 	return take_snapshot;
 }
 
-void RestoreState(struct lp_struct *lp, state_t * restore_state)
+void RestoreState(struct lp_struct *lp, state_t *restore_state)
 {
+	//~ printf("(%d) Restoring state at %f\n", lp->gid.to_int, restore_state->lvt);
+
 	// Restore simulation model buffers
 	log_restore(lp, restore_state);
 
@@ -238,12 +240,15 @@ void rollback(struct lp_struct *lp)
 		return;
 	}
 
+	//~ printf("(%d) Rolling back at %f\n", lp->gid.to_int, lvt(lp));
+
 	// Discard any possible execution state related to a blocked execution
 	memcpy(&lp->context, &lp->default_context, sizeof(LP_context_t));
 
 	statistics_post_data(lp, STAT_ROLLBACK, 1.0);
 
 	last_correct_event = lp->bound;
+
 	// Send antimessages
 	send_antimessages(lp, last_correct_event->timestamp);
 
@@ -258,6 +263,7 @@ void rollback(struct lp_struct *lp)
 #endif
 		list_delete_by_content(lp->queue_states, s);
 	}
+
 	// Restore the simulation state and correct the state base pointer
 	RestoreState(lp, restore_state);
 

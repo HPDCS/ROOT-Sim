@@ -40,6 +40,8 @@
 #include <scheduler/process.h>
 #include <statistics/statistics.h>
 
+static spinlock_t foooo;
+
 void set_force_full(struct lp_struct *lp)
 {
 #ifdef HAS_GCC_PLUGIN
@@ -48,6 +50,12 @@ void set_force_full(struct lp_struct *lp)
 	(void)lp;
 #endif
 }
+
+#define printf(...) {}
+#undef spin_lock
+#undef spin_unlock
+#define spin_lock(...) {}
+#define spin_unlock(...) {}
 
 
 /**
@@ -92,6 +100,8 @@ void *log_full(struct lp_struct *lp)
 
 	timer checkpoint_timer;
 	timer_start(checkpoint_timer);
+
+	printf("(%d) TAKING A FULL LOG\n", lp->gid.to_int);
 
 	lp->mm->m_state->is_incremental = false;
 	size = get_log_size(lp->mm->m_state);
@@ -214,15 +224,31 @@ void *log_incremental(struct lp_struct *lp) {
 	timer checkpoint_timer;
 	timer_start(checkpoint_timer);
 
+	printf("(%d) Computing the expected incremental log size (LVT %f):\n"
+		"\tm_state->dirty_areas: %ld\n"
+		"\tm_state->dirty_areas * sizeof(struct malloc_area): %ld\n"
+		"\tm_state->dirty_bitmap_size: %ld\n"
+		"\tm_state->total_inc_size: %ld\n",
+		lp->gid.to_int,
+		lvt(lp),
+		m_state->dirty_areas,
+		m_state->dirty_areas * sizeof(struct malloc_area),
+		m_state->dirty_bitmap_size,
+		m_state->total_inc_size);
+
+
 	size = sizeof(struct malloc_state) + m_state->dirty_areas * sizeof(struct malloc_area) + m_state->dirty_bitmap_size + m_state->total_inc_size;
 	log = __real_malloc(size);
 	ptr = log;
 
+	printf("%d: current size = %d\n", __LINE__, ptr - log);
+
 	// Copy malloc_state into the log
 	__real_memcpy(ptr, m_state, sizeof(struct malloc_state));
 	ptr = (void*)((char*)ptr + sizeof(struct malloc_state));
+	printf("%d: current size = %d\n", __LINE__, ptr - log);
 	((struct malloc_state *)log)->timestamp = lvt(lp);
-	((struct malloc_state *)log)->is_incremental = 1;
+	((struct malloc_state *)log)->is_incremental = true;
 
 	for(i = 0; i < m_state->num_areas; i++){
 
@@ -232,6 +258,12 @@ void *log_incremental(struct lp_struct *lp) {
 			break;
 
 		bitmap_size = bitmap_required_size(m_area->num_chunks);
+
+		printf("Current m_area:\n"
+			"\tm_area->state_changed: %d\n"
+			"\tm_area->dirty_chunks: %d\n",
+			m_area->state_changed,
+			m_area->dirty_chunks);
 
 		// Check if there is at least one chunk used in the area
 		if(m_area->state_changed == 0){
@@ -247,24 +279,30 @@ void *log_incremental(struct lp_struct *lp) {
 		// Copy malloc_area into the log
 		__real_memcpy(ptr, m_area, sizeof(struct malloc_area));
 		ptr = (void*)((char*)ptr + sizeof(struct malloc_area));
+		printf("%d: current size = %d\n", __LINE__, ptr - log);
 
 		// The area has at least one allocated chunk. Copy the bitmap.
                 __real_memcpy(ptr, m_area->use_bitmap, bitmap_size);
                 ptr = (void*)((char*)ptr + bitmap_size);
+                printf("%d: current size = %d\n", __LINE__, ptr - log);
 
                 if (m_area->dirty_chunks == 0)
                         goto no_dirty;
 
                 __real_memcpy(ptr, m_area->dirty_bitmap, bitmap_size);
                 ptr = (void*)((char*)ptr + bitmap_size);
+                printf("%d: current size = %d\n", __LINE__, ptr - log);
 
 		chunk_size = UNTAGGED_CHUNK_SIZE(m_area);
 
 #define copy_from_area(x) ({\
 			__real_memcpy(ptr, (void*)((char*)m_area->area + ((x) * chunk_size)), chunk_size);\
-			ptr = (void*)((char*)ptr + chunk_size);})
+			ptr = (void*)((char*)ptr + chunk_size);\
+			printf("%d: current size = %d\n", __LINE__, ptr - log);\
+			ptr;\
+			})
 
-			// Copy only the allocated chunks
+			// Copy only the dirtied chunks
 			bitmap_foreach_set(m_area->dirty_bitmap, bitmap_size, copy_from_area);
 #undef copy_from_area
 
@@ -277,8 +315,11 @@ void *log_incremental(struct lp_struct *lp) {
 
 	// Sanity check
 	if ((char *)log + size != ptr){
-		rootsim_error(true, "Actual (inc) log size different from the estimated one! Aborting...\n\tlog = %x size = %x, ptr = %x. %d/%d + %d + %d\n", log, size, ptr, dirty_areas_count, m_state->dirty_areas, m_state->dirty_bitmap_size, m_state->total_inc_size);
+		rootsim_error(true, "Actual (inc) log size different from the estimated one! Aborting...\n\tlog = %x expected size = %d, actual size = %d, ptr = %x\n", log, size, ptr-log, ptr);
 	}
+
+	printf("COMPLETED\n");
+	fflush(stdout);
 
         m_state->dirty_areas = 0;
 	m_state->dirty_bitmap_size = 0;
@@ -313,13 +354,17 @@ void *log_incremental(struct lp_struct *lp) {
 */
 void *log_state(struct lp_struct *lp)
 {
+	spin_lock(&foooo);
 	statistics_post_data(lp, STAT_CKPT, 1.0);
 #ifdef HAS_GCC_PLUGIN
-	if(rootsim_config.snapshot == SNAPSHOT_INCREMENTAL && !lp->state_log_full_forced)
+	if(rootsim_config.snapshot == SNAPSHOT_INCREMENTAL && !lp->state_log_full_forced) {
+		spin_unlock(&foooo);
 		return log_incremental(lp);
+	}
 	if(lp->state_log_full_forced)
 		lp->state_log_full_forced = false;
 #endif
+	spin_unlock(&foooo);
 	return log_full(lp);
 }
 
@@ -523,9 +568,11 @@ void restore_incremental(struct lp_struct *lp, state_t *queue_node) {
 	curr_node = queue_node;
 
 	// Handle incremental logs
-	printf("Restore Incremental: ");
+	printf("Restore Incremental: \n");
+	fflush(stdout);
 	while(is_incremental((struct malloc_state *)(curr_node->log))) {
-		printf("%d", is_incremental((struct malloc_state *)(curr_node->log)));
+		printf("LVT: %f\n", curr_node->lvt);
+		fflush(stdout);
 
 		log = curr_node->log;
 		ptr = log;
@@ -542,6 +589,9 @@ void restore_incremental(struct lp_struct *lp, state_t *queue_node) {
 			// Get current malloc_area
 			curr_m_area = (struct malloc_area *)ptr;
 			m_area = (struct malloc_area *)&m_state->areas[curr_m_area->idx];
+
+			printf("Processing m_area %d\n", curr_m_area->idx);
+			fflush(stdout);
 
 			ptr = (void *)((char *)ptr + sizeof(struct malloc_area));
 
@@ -568,7 +618,7 @@ void restore_incremental(struct lp_struct *lp, state_t *queue_node) {
                                 __real_memcpy(m_area->use_bitmap, ptr, bitmap_size);
 
                                 // Reset dirty bitmap
-                                __real_bzero((void *)m_area->dirty_bitmap, bitmap_size);
+				__real_bzero((void *)m_area->dirty_bitmap, bitmap_size);
                         }
 
                         // make ptr point to dirty bitmap
@@ -577,6 +627,8 @@ void restore_incremental(struct lp_struct *lp, state_t *queue_node) {
                         if (curr_m_area->dirty_chunks == 0)
                                 continue;
 
+			// bitmap_pointer now points to the dirty bitmap
+			// which has been previously saved in the checkpoint
                         bitmap_pointer = (unsigned int*)ptr;
 
                         // make ptr point to chunks
@@ -590,14 +642,17 @@ void restore_incremental(struct lp_struct *lp, state_t *queue_node) {
 			ptr = (void*)((char*)ptr + chunk_size);\
 		})
 
-			bitmap_foreach_set(m_area->use_bitmap, bitmap_size, copy_to_area_check_already);
+			bitmap_foreach_set(bitmap_pointer, bitmap_size, copy_to_area_check_already);
 #undef copy_to_area_check_already
+
 		}
 
 		// Sanity check
 		siz = sizeof(struct malloc_state) + ((struct malloc_state *)log)->dirty_areas * sizeof(struct malloc_area) + ((struct malloc_state *)log)->dirty_bitmap_size + ((struct malloc_state *)log)->total_inc_size;
         	if (ptr != (char *)log + siz){
-			rootsim_error(true, "The incremental log size does not match. Aborting...\n");
+			//abort();
+			//rootsim_error(true, "The incremental log size does not match. Aborting...\n");
+			rootsim_error(false, "The incremental log size does not match. Aborting...\n");
         	}
 
 		// Handle previous log
@@ -611,6 +666,7 @@ void restore_incremental(struct lp_struct *lp, state_t *queue_node) {
 
 	/* Full log reached */
 
+	printf("FULL LOG REACHED\n");
 
 	// Handle areas in the full log reached
 	log = curr_node->log;
@@ -750,7 +806,7 @@ void restore_incremental(struct lp_struct *lp, state_t *queue_node) {
 	__real_free(to_be_restored);
 
 	m_state->timestamp = -1;
-	m_state->is_incremental = -1;
+	m_state->is_incremental = false;
 	m_state->dirty_areas = 0;
 	m_state->dirty_bitmap_size = 0;
 	m_state->total_inc_size = 0;
@@ -777,6 +833,7 @@ void restore_incremental(struct lp_struct *lp, state_t *queue_node) {
 */
 void log_restore(struct lp_struct *lp, state_t *state_queue_node)
 {
+	spin_lock(&foooo);
 #ifdef HAS_GCC_PLUGIN
 	statistics_post_data(lp, STAT_RECOVERY, 1.0);
 	if (((struct malloc_state *)(state_queue_node->log))->is_incremental)
@@ -784,6 +841,7 @@ void log_restore(struct lp_struct *lp, state_t *state_queue_node)
 	else
 #endif
 		restore_full(lp, state_queue_node->log);
+	spin_unlock(&foooo);
 }
 
 /**

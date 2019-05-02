@@ -337,8 +337,13 @@ void *do_malloc(struct lp_struct *lp, size_t size)
 	m_area->alloc_chunks++;
 	find_next_free(m_area);
 
-	// TODO: togliere
+	#ifndef NDEBUG
+	// In debug mode we set the chunk to a known value. If during a restore
+	// operation we find this value, then the metadata in the log are likely broken.
 	__real_memset(ptr, 0xe8, size);
+	#else
+	__real_memset(ptr, 0, size);
+	#endif
 
 	// Keep track of the malloc_area which this chunk belongs to
 	*(unsigned long long *)ptr = (unsigned long long)m_area->self_pointer;

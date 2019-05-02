@@ -31,10 +31,10 @@
 * @date April 02, 2008
 */
 
+#include <stdlib.h>
+
 #include <mm/dymelor.h>
 #include <scheduler/scheduler.h>
-
-#define printf(...) {}
 
 #ifdef HAS_GCC_PLUGIN
 
@@ -54,16 +54,20 @@ __attribute__((used))
 __attribute__((no_caller_saved_registers))
 void __write_mem(unsigned char *address, size_t size)
 {
+	register long long _rsp __asm__	("rsp");
+	unsigned char *rsp = (unsigned char *)_rsp;
+
 	struct malloc_area *m_area = NULL, *cur_m_area;
 	struct malloc_state *m_state;
 	size_t bitmap_size, chk_size;
 	int i, first_chunk, last_chunk;
 
+	if(address > rsp)
+		return;
+
 	assert(current != NULL);
 
 	switch_to_platform_mode();
-
-	printf("(%d) Intercepting a write of size %ld\n", current->gid.to_int, size);
 
 	// Find the correct malloc area. It could be that the write operation
 	// falls outside of malloc areas, because we here intercept also
@@ -77,25 +81,19 @@ void __write_mem(unsigned char *address, size_t size)
 		if(cur_m_area == NULL || cur_m_area->area == NULL)
 			continue;
 
-		printf("(%d) Comparing %p with area %d [%p, %p]\n", current->gid.to_int, address, cur_m_area->idx, cur_m_area->area, (unsigned char *)cur_m_area->area + cur_m_area->chunk_size * cur_m_area->num_chunks);
-		fflush(stdout);
-
 		if (address >= (unsigned char *)cur_m_area->area && address < (unsigned char *)cur_m_area->area + cur_m_area->chunk_size * cur_m_area->num_chunks) {
-			printf("(%d) Found a write on a malloc area %d\n", current->gid.to_int, cur_m_area->idx);
-			fflush(stdout);
 			m_area = cur_m_area;
 			break;
 		}
 	}
 
-	if (m_area == NULL)
+	if (m_area == NULL) {
 		goto out;
+	}
 
 	// Determine the number of chunks affected by the write operation
 	chk_size = UNTAGGED_CHUNK_SIZE(m_area);
 	first_chunk = (int)(((char *)address - (char *)m_area->area) / chk_size);
-
-	printf("(%d) The found malloc area handles chunks of size %ld\n", current->gid.to_int, chk_size);
 
 	// If size == SIZE_MAX, then we adopt a conservative approach: dirty all the chunks from the base to the end
 	// of the actual malloc area base address belongs to.
@@ -105,8 +103,6 @@ void __write_mem(unsigned char *address, size_t size)
 		last_chunk = m_area->num_chunks - 1;
 	else
 		last_chunk = (int)(((char *)address + size - 1 - (char *)m_area->area) / chk_size);
-
-	printf("(%d) Dirtied chunks: from %d to %d\n", current->gid.to_int, first_chunk, last_chunk);
 
 	bitmap_size = bitmap_required_size(m_area->num_chunks);
 
@@ -119,8 +115,15 @@ void __write_mem(unsigned char *address, size_t size)
 		m_area->state_changed = 1;
 	}
 
-	for (i = first_chunk; i <= last_chunk; i++) {
+	if(first_chunk >= m_area->num_chunks) {
+		printf("Wrong condition in __write_mem\n");
+		printf("address: %p\n", address);
+		printf("first chunk: %d\n", first_chunk);
+		printf("malloc_area->num_chunks: %d\n", m_area->num_chunks);
+		abort();
+	}
 
+	for (i = first_chunk; i <= last_chunk; i++) {
 		// If it is dirtied a clean chunk, set it dirty and increase dirty object count for the malloc_area
 		if (!bitmap_check(m_area->dirty_bitmap, i)) {
 			bitmap_set(m_area->dirty_bitmap, i);

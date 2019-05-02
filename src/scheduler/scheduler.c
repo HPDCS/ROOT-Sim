@@ -426,8 +426,10 @@ void schedule_on_init(struct lp_struct *lp)
 	lp->state = LP_STATE_RUNNING;
 
 	current = lp;
+	current_evt = event;
 	ProcessEvent(current->gid.to_int, event->timestamp, event->type,
 		     event->event_content, event->size, current->current_base_pointer);
+	current_evt = NULL;
 	current = NULL;
 
 	lp->state = LP_STATE_READY;
