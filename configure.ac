@@ -1,13 +1,15 @@
 AC_PREREQ([2.67])
+LT_PREREQ([2.2])
 
 AC_INIT([ROOT-Sim],[2.0.0],[rootsim@googlegroups.com],[rootsim],[https://github.com/HPDCS/ROOT-Sim/])
 AC_CONFIG_SRCDIR([src])
 AM_INIT_AUTOMAKE([-Wno-portability 1.10.1 -Wall foreign subdir-objects])
 
+AC_SUBST([GCCPLUGVERS], [0:0:0])
+
 AC_CONFIG_MACRO_DIR([m4])
 
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
-
 
 # Debugging symbols or not?
 AC_ARG_ENABLE([debug],
@@ -20,7 +22,7 @@ AC_ARG_ENABLE([coverage],
 AM_CONDITIONAL([DEBUG], [test x$enable_debug = xyes])
 
 # Setup compilation flags
-CFLAGS_COMMON="-std=c11 -fno-omit-frame-pointer -ffloat-store -fno-common -fstrict-aliasing -fgnu89-inline -rdynamic -lm -U_FORTIFY_SOURCE"
+CFLAGS_COMMON="-std=c11 -fvisibility=hidden -fno-omit-frame-pointer -ffloat-store -fno-common -fstrict-aliasing -fgnu89-inline -rdynamic -lm -U_FORTIFY_SOURCE"
 CFLAGS_WARNINGS="-Wall -Wextra -Wmisleading-indentation -Wcast-align -Wpointer-arith -Wstrict-overflow=5 -Wstrict-prototypes -Winline -Wundef -Wnested-externs -Wshadow -Wunreachable-code -Wfloat-equal -Wredundant-decls -Wold-style-definition -Wno-switch-enum"
 #CFLAGS_WARNINGS="$CFLAGS_WARNINGS -Wconversion"
 
@@ -93,16 +95,17 @@ AS_IF([test x"$with_mpi" = xyes],[
 #----------------------------------------------------------------------------
 # Check for languages and compilation support
 #----------------------------------------------------------------------------
-AC_LANG([C])
+AC_LANG([C],[C++])
 AC_PROG_CC([gcc])
 AX_CHECK_COMPILE_FLAG([-std=c11], [ac_c11=yes], [ac_c11=no])
 AS_IF([test x$ac_c11 != xyes],[
 	AC_MSG_FAILURE([No. ROOT-Sim requires a compiler speaking the C11 standard.])
 ])
+AC_PROG_CXX([g++])
 
 
 #----------------------------------------------------------------------------
-# Check for GCC version
+# Check for GCC stuff
 #----------------------------------------------------------------------------
 AC_USE_SYSTEM_EXTENSIONS
 AX_COMPILER_VERSION
@@ -110,15 +113,16 @@ GCC_VERSION=$ax_cv_c_compiler_version
 GCC_VERSION_MAJOR=$(echo $GCC_VERSION | cut -d'.' -f1)
 GCC_VERSION_MINOR=$(echo $GCC_VERSION | cut -d'.' -f2)
 GCC_VERSION_PATCH=$(echo $GCC_VERSION | cut -d'.' -f3)
-AS_IF([test $GCC_VERSION_MAJOR -lt 4 -a $GCC_VERSION_MINOR -lt 9],[
-	AC_MSG_FAILURE([At least version 4.9.0 is required.])
+AS_IF([test $GCC_VERSION_MAJOR -lt 6],[
+	AC_MSG_FAILURE([At least version 6.0.0 is required.])
 ])
+
 
 # GCC7 complains about switch cases fallthrough. We use this in some highly-
 # optimized portions of the code. The -Wimplicit-fallthrough=3 compile-time
 # flag can prevent the compiler from emitting warnings in all fallthrough
 # cases where a "fallthrough" comment has been places (in a way compliant with
-# the [[fallthrough]] C14 tag which we don't support here.
+# the [[fallthrough]] C14 tag which we don't support here).
 # Yet, previous version of the compiler fail badly if we simply use that
 # flag. We check here for the compiler version, and if we're of GCC >= 7.0 we
 # set the flag, only in debug mode.
@@ -126,12 +130,32 @@ AS_IF([test $GCC_VERSION_MAJOR -ge 7 -a "x$enable_debug" == "xyes"],[
 	CFLAGS="$CFLAGS -Wimplicit-fallthrough=3"
 ])
 
+# Check for include path to generate the GCC plugin which we use for
+# incremental state saving. We must also check whether we have GCC
+# headers or not, otherwise compiling the plugin will fail badly.
+AC_SUBST([GCCPLUGINDIR],[$( ${CXX} -print-file-name=plugin )])
+
+ac_iss="Disabled"
+ac_gcc_headers=no
+AC_LANG_PUSH([C++])
+CXXFLAGS="-I ${GCCPLUGINDIR}/include"
+AC_CHECK_HEADERS([gcc-plugin.h],
+	[ac_gcc_headers=yes])
+if test "x$ac_gcc_headers" = "xyes"
+then
+	AC_DEFINE([HAS_GCC_PLUGIN])
+	ac_iss="Enabled (Software based)"
+fi
+AM_CONDITIONAL([COMPILE_GCC_PLUGIN], [test "x$ac_gcc_headers" = "xyes"])
+AC_LANG_POP([C++])
+
 #----------------------------------------------------------------------------
 # Checks for programs.
 #----------------------------------------------------------------------------
 AC_PROG_MAKE_SET
 AC_PROG_MKDIR_P
 AC_PROG_CC_C_O
+AC_PROG_CXX_C_O
 AM_PROG_CC_C_O
 AM_PROG_AR
 # Silence warning: ar: 'u' modifier ignored since 'D' is the default
@@ -139,7 +163,7 @@ AC_SUBST(AR_FLAGS, [cr])
 AC_SUBST(ARFLAGS, [cr])
 AM_PROG_AS
 AC_PROG_AWK
-LT_INIT
+LT_INIT([dlopen shared])
 
 
 
@@ -181,6 +205,7 @@ CC="$PTHREAD_CC"
 AC_SUBST([LIBS])
 AC_SUBST([CFLAGS])
 AC_SUBST([CC])
+AC_SUBST([CXX])
 
 
 
@@ -312,21 +337,23 @@ fi # Closes che global check for Linux availability
 # This instructs the Makefile to build kernel modules only when possible
 AM_CONDITIONAL([NO_KERNEL_MODULES], [test "x$ac_disable_modules" = "xyes"])
 
+
 #----------------------------------------------------------------------------
-# Check scripts sizes.
+# Configure rootsim-cc.
 # The compiler script is dynamically built in order to create ad compile
 # time linker scripts which will be used to produce the final version
 # of the executable. We compute here the sizes of those cat'd scripts
 # in order to make the compiler behave consistently with the last version
 # of the linker scripts provided in the installation.
+# Also, we must tell the compiler if ISS is available or not
 #----------------------------------------------------------------------------
 AC_MSG_CHECKING([compiler and linker scripts sizes])
 AC_SUBST([cc_script_lines], [$(wc -l scripts/rootsim-cc.in | sed 's,\ .*,,g')])
 AC_SUBST([cc_lddata1_lines], [$(wc -l scripts/ld-data1 | sed 's,\ .*,,g')])
 AC_SUBST([cc_lddata2_lines], [$(wc -l scripts/ld-data2 | sed 's,\ .*,,g')])
 AC_SUBST([cc_ldfinal_lines], [$(wc -l scripts/ld-final | sed 's,\ .*,,g')])
+AC_SUBST([iss_support], ["x$ac_gcc_headers"])
 AC_MSG_RESULT([ok])
-
 
 # Generate Makefiles for all these subfolders
 AC_CONFIG_FILES([Makefile
@@ -414,5 +441,6 @@ MPI....................... : ${enable_mpi}
 LP Preemption Support..... : ${ac_preemption}
 LP Rebinding.............. : ${ac_lp_rebinding}
 Linux Kernel Modules...... : ${ac_modules}
+Incremental State Saving.. : ${ac_iss}
 
 EOF

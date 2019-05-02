@@ -47,7 +47,7 @@
 #endif
 
 /// This is the function pointer to correctly set ScheduleNewEvent API version, depending if we're running serially or in parallel
-void (*ScheduleNewEvent)(unsigned int gid_receiver, simtime_t timestamp, unsigned int event_type, void *event_content, unsigned int event_size);
+__visible void (*ScheduleNewEvent)(unsigned int gid_receiver, simtime_t timestamp, unsigned int event_type, void *event_content, unsigned int event_size);
 
 /**
 * @brief Initialize the communication subsystem
@@ -132,7 +132,7 @@ void msg_hdr_release(msg_hdr_t *msg)
 	struct lp_struct *lp;
 
 	lp = find_lp_by_gid(msg->sender);
-	slab_free(lp->mm->slab, msg);
+	slab_free(lp, msg);
 }
 
 
@@ -191,7 +191,7 @@ msg_hdr_t *get_msg_hdr_from_slab(struct lp_struct *lp)
 */
 msg_t *get_msg_from_slab(struct lp_struct *lp)
 {
-	msg_t *msg = (msg_t *) slab_alloc(lp->mm->slab);
+	msg_t *msg = (msg_t *) slab_alloc(lp);
 	bzero(msg, SLAB_MSG_SIZE);
 	return msg;
 }
@@ -227,7 +227,7 @@ void msg_release(msg_t *msg)
 
 	if (likely(sizeof(msg_t) + msg->size <= SLAB_MSG_SIZE)) {
 		lp = which_slab_to_use(msg->sender, msg->receiver);
-		slab_free(lp->mm->slab, msg);
+		slab_free(lp, msg);
 	} else {
 		rsfree(msg);
 	}
@@ -253,14 +253,14 @@ void msg_release(msg_t *msg)
  *
  * If the LP is running in silent execution, this function simply returns
  * as the event has already been sent during a previous event execution.
- * 
+ *
  * @param gid_receiver Global id of logical process at which the message must be delivered
  * @param timestamp Logical Virtual Time associated with the event enveloped into the message
  * @param event_type Type of the event
  * @param event_content Payload of the event
  * @param event_size Size of event's payload
  */
-void ParallelScheduleNewEvent(unsigned int gid_receiver, simtime_t timestamp, unsigned int event_type, void *event_content, unsigned int event_size)
+__visible void ParallelScheduleNewEvent(unsigned int gid_receiver, simtime_t timestamp, unsigned int event_type, void *event_content, unsigned int event_size)
 {
 	msg_t *event;
 	GID_t receiver;
@@ -659,7 +659,7 @@ unsigned int mark_to_gid(unsigned long long mark)
  *          use it in a production environment. The @c NDEBUG guard
  *          ensures that it is never compiled in a final version of the
  *          runtime environment, so keep it only as a debugging function.
- * 
+ *
  * @param msg A pointer to the message to validate
  */
 void validate_msg(msg_t *msg)

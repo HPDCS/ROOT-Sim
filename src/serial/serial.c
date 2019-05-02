@@ -52,7 +52,7 @@
 static bool serial_simulation_complete = false;
 static bool *serial_completed_simulation;
 
-void SerialScheduleNewEvent(unsigned int rcv, simtime_t stamp,
+__visible void SerialScheduleNewEvent(unsigned int rcv, simtime_t stamp,
 			    unsigned int event_type, void *event_content,
 			    unsigned int event_size)
 {
@@ -141,12 +141,13 @@ void serial_simulation(void)
 #endif
 
 		timer_start(serial_event_execution);
+
 		if(&abm_settings){
 			ProcessEventABM();
 		}else if (&topology_settings){
 			ProcessEventTopology();
 		}else{
-			ProcessEvent_light(current->gid.to_int, event->timestamp,
+			ProcessEvent(current->gid.to_int, event->timestamp,
 					event->type, event->event_content,
 					event->size, current->current_base_pointer);
 		}

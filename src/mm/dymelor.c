@@ -31,8 +31,10 @@
 * @date April 02, 2008
 */
 
+#include <stdlib.h>
+
 #include <core/init.h>
-#include <mm/mm.h>
+#include <mm/dymelor.h>
 #include <scheduler/scheduler.h>
 
 /**
@@ -46,7 +48,7 @@
 * @param size The chunks' size of the malloc_area
 * @param num_chunks The number of chunk of the new malloc_area
 */
-static void malloc_area_init(malloc_area * m_area, size_t size, int num_chunks)
+static void malloc_area_init(struct malloc_area * m_area, size_t size, int num_chunks)
 {
 	m_area->chunk_size = size;
 	m_area->alloc_chunks = 0;
@@ -74,13 +76,13 @@ static void malloc_area_init(malloc_area * m_area, size_t size, int num_chunks)
 /**
 * This function inizializes a malloc_state.
 */
-malloc_state *malloc_state_init(void)
+struct malloc_state *malloc_state_init(void)
 {
 	int i, num_chunks;
 	size_t chunk_size;
-	malloc_state *state;
+	struct malloc_state *state;
 
-	state = rsalloc(sizeof(malloc_state));
+	state = __real_malloc(sizeof(struct malloc_state));
 
 	state->total_log_size = 0;
 	state->total_inc_size = 0;
@@ -93,7 +95,7 @@ malloc_state *malloc_state_init(void)
 	state->timestamp = -1;
 	state->is_incremental = false;
 
-	state->areas = (malloc_area *) rsalloc(state->max_num_areas * sizeof(malloc_area));
+	state->areas = (struct malloc_area *) __real_malloc(state->max_num_areas * sizeof(struct malloc_area));
 	if (unlikely(state->areas == NULL)) {
 		rootsim_error(true, "Unable to allocate memory.\n");
 	}
@@ -111,16 +113,16 @@ malloc_state *malloc_state_init(void)
 	return state;
 }
 
-void malloc_state_wipe(malloc_state **state_ptr)
+void malloc_state_wipe(struct malloc_state **state_ptr)
 {
 	int i;
-	malloc_state *state = *state_ptr;
+	struct malloc_state *state = *state_ptr;
 
 	for (i = 0; i < NUM_AREAS; i++) {
-		rsfree(state->areas[i].self_pointer); // TODO: when reintroducing the buddy, this must be changed
+		__real_free(state->areas[i].self_pointer); // TODO: when reintroducing the buddy, this must be changed
 	}
 
-	rsfree(*state_ptr);
+	__real_free(*state_ptr);
 	*state_ptr = NULL;
 }
 
@@ -156,7 +158,7 @@ static size_t compute_size(size_t size)
 *
 * @param m_area The malloc_area to scan in order to find the next available chunk
 */
-static void find_next_free(malloc_area * m_area)
+static void find_next_free(struct malloc_area * m_area)
 {
 	m_area->next_chunk++;
 
@@ -166,12 +168,11 @@ static void find_next_free(malloc_area * m_area)
 
 		m_area->next_chunk++;
 	}
-
 }
 
 void *do_malloc(struct lp_struct *lp, size_t size)
 {
-	malloc_area *m_area, *prev_area = NULL;
+	struct malloc_area *m_area, *prev_area = NULL;
 	void *ptr;
 	size_t area_size, bitmap_size;
 
@@ -217,7 +218,7 @@ void *do_malloc(struct lp_struct *lp, size_t size)
 
 		if (lp->mm->m_state->num_areas == lp->mm->m_state->max_num_areas) {
 
-			malloc_area *tmp = NULL;
+			struct malloc_area *tmp = NULL;
 
 			if ((lp->mm->m_state->max_num_areas << 1) > MAX_LIMIT_NUM_AREAS) {
 #ifndef NDEBUG
@@ -229,7 +230,7 @@ void *do_malloc(struct lp_struct *lp, size_t size)
 			lp->mm->m_state->max_num_areas <<= 1;
 
 			rootsim_error(true, "To reimplement\n");
-//                      tmp = (malloc_area *)pool_realloc_memory(lp->mm->m_state->areas, lp->mm->m_state->max_num_areas * sizeof(malloc_area));
+//                      tmp = (struct malloc_area *)pool_realloc_memory(lp->mm->m_state->areas, lp->mm->m_state->max_num_areas * sizeof(struct malloc_area));
 			if (tmp == NULL) {
 
 				/**
@@ -269,11 +270,11 @@ void *do_malloc(struct lp_struct *lp, size_t size)
 
 		bitmap_size = bitmap_required_size(m_area->num_chunks);
 
-		area_size = sizeof(malloc_area *) + bitmap_size * 2 + m_area->num_chunks * size;
+		area_size = sizeof(struct malloc_area *) + bitmap_size * 2 + m_area->num_chunks * size;
 
-//              m_area->self_pointer = (malloc_area *)allocate_lp_memory(lp, area_size);
-		m_area->self_pointer = rsalloc(area_size);
-		bzero(m_area->self_pointer, area_size);
+//              m_area->self_pointer = (struct malloc_area *)allocate_lp_memory(lp, area_size);
+		m_area->self_pointer = __real_malloc(area_size);
+		__real_bzero(m_area->self_pointer, area_size);
 
 		if (unlikely(m_area->self_pointer == NULL)) {
 			rootsim_error(true, "Error while allocating memory.\n");
@@ -285,7 +286,7 @@ void *do_malloc(struct lp_struct *lp, size_t size)
 
 		m_area->use_bitmap =
 		    ((unsigned char *)m_area->self_pointer +
-		     sizeof(malloc_area *));
+		     sizeof(struct malloc_area *));
 
 		m_area->dirty_bitmap =
 		    ((unsigned char *)m_area->use_bitmap + bitmap_size);
@@ -336,8 +337,13 @@ void *do_malloc(struct lp_struct *lp, size_t size)
 	m_area->alloc_chunks++;
 	find_next_free(m_area);
 
-	// TODO: togliere
-	memset(ptr, 0xe8, size);
+	#ifndef NDEBUG
+	// In debug mode we set the chunk to a known value. If during a restore
+	// operation we find this value, then the metadata in the log are likely broken.
+	__real_memset(ptr, 0xe8, size);
+	#else
+	__real_memset(ptr, 0, size);
+	#endif
 
 	// Keep track of the malloc_area which this chunk belongs to
 	*(unsigned long long *)ptr = (unsigned long long)m_area->self_pointer;
@@ -353,12 +359,12 @@ void do_free(struct lp_struct *lp, void *ptr)
 {
 	(void)lp;
 
-	malloc_area *m_area = NULL;
+	struct malloc_area *m_area = NULL;
 	int idx;
 	size_t chunk_size, bitmap_size;
 
 	if (unlikely(rootsim_config.serial)) {
-		rsfree(ptr);
+		__real_free(ptr);
 		return;
 	}
 
@@ -439,89 +445,6 @@ void do_free(struct lp_struct *lp, void *ptr)
 }
 
 /**
-* This function marks a memory chunk as dirty.
-* It is invoked from assembly modules invoked by calls injected by the instrumentor, and from the
-* third-party library wrapper. Invocations from other parts of the kernel should be handled with
-* great care.
-*
-* @author Alessandro Pellegrini
-* @author Roberto Vitali
-*
-* @param base The initial to the start address of the update
-* @param size The number of bytes being updated
-*/
-void dirty_mem(void *base, int size)
-{
-
-	// TODO: Quando reintegriamo l'incrementale questo qui deve ricomparire!
-	(void)base;
-	(void)size;
-
-	return;
-
-#if 0
-//      unsigned long long current_cost;
-
-	// Sanity check on passed address
-/*	if(base == NULL) {
-		rootsim_error(false, "Trying to access NULL. Memory interception aborted\n");
-		return;
-	}
-*/
-/*	if (rootsim_config.snapshot == AUTONOMIC_SNAPSHOT ||
-	    rootsim_config.snapshot == AUTONOMIC_INC_SNAPSHOT ||
-	    rootsim_config.snapshot == AUTONOMIC_FULL_SNAPSHOT)
-		add_counter++;
-*/
-	int first_chunk, last_chunk, i, chk_size;
-
-	size_t bitmap_size;
-
-	malloc_area *m_area = get_area(base);
-
-	if (m_area != NULL) {
-
-		chk_size = UNTAGGED_CHUNK_SIZE(m_area->chunk_size);
-
-		// Compute the number of chunks affected by the write
-		first_chunk =
-		    (int)(((char *)base - (char *)m_area->area) / chk_size);
-
-		// If size == -1, then we adopt a conservative approach: dirty all the chunks from the base to the end
-		// of the actual malloc area base address belongs to.
-		// This has been inserted to support the wrapping of third-party libraries where the size of the
-		// update (or even the actual update) cannot be statically/dynamically determined.
-		if (size == -1)
-			last_chunk = m_area->num_chunks - 1;
-		else
-			last_chunk = (int)(((char *)base + size - 1 - (char *)m_area->area) / chk_size);
-
-		bitmap_size = bitmap_required_size(m_area->num_chunks);
-
-		if (m_area->state_changed == 1) {
-			if (m_area->dirty_chunks == 0)
-				lp->mm->m_state->dirty_bitmap_size += bitmap_size;
-		} else {
-			lp->mm->m_state->dirty_areas++;
-			lp->mm->m_state->dirty_bitmap_size += bitmap_size * 2;
-			m_area->state_changed = 1;
-		}
-
-		for (i = first_chunk; i <= last_chunk; i++) {
-
-			// If it is dirtied a clean chunk, set it dirty and increase dirty object count for the malloc_area
-			if (!bitmap_check(m_area->dirty_bitmap, i)) {
-				bitmap_set(m_area->dirty_bitmap, i);
-				lp->mm->m_state->total_inc_size += chk_size;
-
-				m_area->dirty_chunks++;
-			}
-		}
-	}
-#endif
-}
-
-/**
 * This function returns the whole size of a state. It can be used as the total size to pack a log
 *
 * @author Alessandro Pellegrini
@@ -531,19 +454,19 @@ void dirty_mem(void *base, int size)
 * @return The whole size of the state (metadata included)
 *
 */
-size_t get_log_size(malloc_state * logged_state)
+size_t get_log_size(struct malloc_state * logged_state)
 {
 	if (unlikely(logged_state == NULL))
 		return 0;
 
 	if (is_incremental(logged_state)) {
-		return sizeof(malloc_state) +
-		    logged_state->dirty_areas * sizeof(malloc_area) +
+		return sizeof(struct malloc_state) +
+		    logged_state->dirty_areas * sizeof(struct malloc_area) +
 		    logged_state->dirty_bitmap_size +
 		    logged_state->total_inc_size;
 	} else {
-		return sizeof(malloc_state) +
-		    logged_state->busy_areas * sizeof(malloc_area) +
+		return sizeof(struct malloc_state) +
+		    logged_state->busy_areas * sizeof(struct malloc_area) +
 		    logged_state->bitmap_size + logged_state->total_log_size;
 	}
 }
@@ -563,14 +486,14 @@ size_t get_log_size(malloc_state * logged_state)
 * @return A pointer to the allocated memory
 *
 */
-void *__wrap_malloc(size_t size)
+__visible void *__wrap_malloc(size_t size)
 {
 	void *ptr;
 
 	switch_to_platform_mode();
 
 	if (unlikely(rootsim_config.serial)) {
-		ptr = rsalloc(size);
+		ptr = __real_malloc(size);
 		goto out;
 	}
 
@@ -599,12 +522,12 @@ void *__wrap_malloc(size_t size)
 * @param ptr A memory buffer to be free'd
 *
 */
-void __wrap_free(void *ptr)
+__visible void __wrap_free(void *ptr)
 {
 	switch_to_platform_mode();
 
 	if (unlikely(rootsim_config.serial)) {
-		rsfree(ptr);
+		__real_free(ptr);
 		goto out;
 	}
 
@@ -625,12 +548,12 @@ void __wrap_free(void *ptr)
 * @return A pointer to the newly allocated buffer
 *
 */
-void *__wrap_realloc(void *ptr, size_t size)
+__visible void *__wrap_realloc(void *ptr, size_t size)
 {
 	void *new_buffer;
 	size_t old_size;
 	size_t copy_size;
-	malloc_area *m_area;
+	struct malloc_area *m_area;
 
 	if (unlikely(rootsim_config.serial)) {
 		return rsrealloc(ptr, size);
@@ -657,7 +580,7 @@ void *__wrap_realloc(void *ptr, size_t size)
 		return NULL;
 
 	copy_size = min(size, old_size);
-	memcpy(new_buffer, ptr, copy_size);
+	__real_memcpy(new_buffer, ptr, copy_size);
 	__wrap_free(ptr);
 
 	return new_buffer;
@@ -674,7 +597,7 @@ void *__wrap_realloc(void *ptr, size_t size)
 * @return A pointer to the newly allocated buffer
 *
 */
-void *__wrap_calloc(size_t nmemb, size_t size)
+__visible void *__wrap_calloc(size_t nmemb, size_t size)
 {
 	void *buffer;
 
@@ -689,7 +612,7 @@ void *__wrap_calloc(size_t nmemb, size_t size)
 	if (unlikely(buffer == NULL))
 		return NULL;
 
-	bzero(buffer, nmemb * size);
+	__real_bzero(buffer, nmemb * size);
 
 	return buffer;
 }
@@ -697,8 +620,8 @@ void *__wrap_calloc(size_t nmemb, size_t size)
 void clean_buffers_on_gvt(struct lp_struct *lp, simtime_t time_barrier)
 {
 	int i;
-	malloc_area *m_area;
-	malloc_state *state = lp->mm->m_state;
+	struct malloc_area *m_area;
+	struct malloc_state *state = lp->mm->m_state;
 
 	// The first NUM_AREAS malloc_areas are placed according to their chunks' sizes. The exceeding malloc_areas can be compacted
 	for (i = NUM_AREAS; i < state->num_areas; i++) {
@@ -711,7 +634,7 @@ void clean_buffers_on_gvt(struct lp_struct *lp, simtime_t time_barrier)
 			if (m_area->self_pointer != NULL) {
 
 				//free_lp_memory(lp, m_area->self_pointer);
-				rsfree(m_area->self_pointer);
+				__real_free(m_area->self_pointer);
 
 				m_area->use_bitmap = NULL;
 				m_area->dirty_bitmap = NULL;
@@ -727,7 +650,7 @@ void clean_buffers_on_gvt(struct lp_struct *lp, simtime_t time_barrier)
 
 				// Swap, if possible
 				if (i < state->num_areas - 1) {
-					memcpy(m_area, &state->areas[state->num_areas - 1], sizeof(malloc_area));
+					__real_memcpy(m_area, &state->areas[state->num_areas - 1], sizeof(struct malloc_area));
 					m_area->idx = i;
 					if (m_area->prev != -1)
 						state->areas[m_area->prev].next = m_area->idx;

@@ -77,7 +77,7 @@ static double do_random(void)
 *
 * @return A random number, in between (0,1)
 */
-double Random(void)
+__visible double Random(void)
 {
 	double ret;
 	switch_to_platform_mode();
@@ -88,7 +88,7 @@ double Random(void)
 	return ret;
 }
 
-int RandomRange(int min, int max)
+__visible int RandomRange(int min, int max)
 {
 	double ret;
 	switch_to_platform_mode();
@@ -99,7 +99,7 @@ int RandomRange(int min, int max)
 	return ret;
 }
 
-int RandomRangeNonUniform(int x, int min, int max)
+__visible int RandomRangeNonUniform(int x, int min, int max)
 {
 	double ret;
 	switch_to_platform_mode();
@@ -138,7 +138,7 @@ double Expent(double mean)
 *
 * @return A random number
 */
-double Normal(void)
+__visible double Normal(void)
 {
 	double fac, rsq, v1, v2;
 	bool *iset;
@@ -176,7 +176,7 @@ double Normal(void)
 * @param ia Integer Order of the Gamma Distribution
 * @return A random number
 */
-double Gamma(int ia)
+__visible double Gamma(int ia)
 {
 	int j;
 	double am, e, s, v1, v2, x, y;
@@ -220,7 +220,7 @@ double Gamma(int ia)
 *
 * @return A random number
 */
-double Poisson(void)
+__visible double Poisson(void)
 {
 	return Gamma(1);
 }
@@ -234,7 +234,7 @@ double Poisson(void)
 * @param limit The largest sample to retrieve
 * @return A random number
 */
-int Zipf(double skew, int limit)
+__visible int Zipf(double skew, int limit)
 {
 	double a = skew;
 	double b = pow(2., a - 1.);
@@ -429,7 +429,7 @@ void numerical_init(void)
 * @return the sum between the addendums with bounded error
 */
 __attribute__((const))
-double NeumaierSum(unsigned cnt, double addendums[cnt]) {
+__visible double NeumaierSum(unsigned cnt, double addendums[cnt]) {
 	if(!cnt)
 		return 0.0;
 	double sum = addendums[0];
@@ -460,7 +460,7 @@ double NeumaierSum(unsigned cnt, double addendums[cnt]) {
 * @return a struct _sum_helper_t holding the sum between sh and addendum
 */
 __attribute__((const))
-struct _sum_helper_t PartialNeumaierSum(struct _sum_helper_t sh, double addendum){
+__visible struct _sum_helper_t PartialNeumaierSum(struct _sum_helper_t sh, double addendum){
 	double tmp = sh.sum + addendum;
 	if(fabs(sh.sum) >= fabs(addendum)) {
 		sh.crt += (sh.sum - tmp) + addendum;

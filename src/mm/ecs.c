@@ -47,7 +47,7 @@
 
 
 #include <core/core.h>
-#include <mm/mm.h>
+#include <mm/dymelor.h>
 #include <scheduler/scheduler.h>
 #include <scheduler/process.h>
 #include <communication/communication.h>
@@ -269,7 +269,7 @@ void ecs_send_pages(msg_t *msg) {
 	ecs_page_request_t *the_pages;
 
 	the_request = (ecs_page_request_t *)&(msg->event_content);
-	the_pages = rsalloc(sizeof(ecs_page_request_t) + the_request->count * PAGE_SIZE);
+	the_pages = __real_malloc(sizeof(ecs_page_request_t) + the_request->count * PAGE_SIZE);
 	the_pages->write_mode = the_request->write_mode;
 	the_pages->base_address = the_request->base_address;
 	the_pages->count = the_request->count;
@@ -285,7 +285,7 @@ void ecs_send_pages(msg_t *msg) {
 	control_msg->rendezvous_mark = msg->rendezvous_mark;
 	Send(control_msg);
 
-	rsfree(the_pages);
+	__real_free(the_pages);
 }
 
 void ecs_install_pages(msg_t *msg) {

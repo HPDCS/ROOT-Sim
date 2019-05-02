@@ -75,7 +75,8 @@ struct _leave_evt{
 	unsigned leave_code;
 };
 
-static inline unsigned long long get_agent_mark(region_abm_t *region){
+static inline unsigned long long get_agent_mark(region_abm_t *region)
+{
 	unsigned long long ret = region->next_mark;
 	region->next_mark += RegionsCount();
 	return ret;
@@ -87,7 +88,8 @@ static inline unsigned long long get_agent_mark(region_abm_t *region){
 *
 * @param agent A pointer to the agent
 */
-static unsigned agent_dump_size(const struct _agent_abm_t *agent) {
+static unsigned agent_dump_size(const struct _agent_abm_t *agent)
+{
 	return (unsigned)(sizeof(agent->key) + sizeof(agent->user_data_size) + agent->user_data_size
 			+ array_dump_size(agent->future) + abm_settings.keep_history * array_dump_size(agent->past));
 }
@@ -100,7 +102,8 @@ static unsigned agent_dump_size(const struct _agent_abm_t *agent) {
 * @param event_size The size in bytes of the buffer
 * @return a newly instantiated agent struct, the deserialized agent
 */
-static struct _agent_abm_t* agent_from_buffer(const unsigned char* event_content, unsigned event_size){
+static struct _agent_abm_t *agent_from_buffer(const unsigned char *event_content, unsigned event_size)
+{
 	// keep track of original pointer
 	const unsigned char *buffer = event_content;
 	// allocate the memory for the visiting agent
@@ -158,7 +161,8 @@ static void agent_to_buffer(struct _agent_abm_t *agent, unsigned char* buffer){
 * @param region A pointer to the region struct to be checkpointed
 * @return A malloc'ed buffer holding all the region data
 */
-unsigned char * abm_do_checkpoint(region_abm_t *region){
+unsigned char *abm_do_checkpoint(region_abm_t *region)
+{
 	// calculate dump size
 	size_t chkp_size_tot = region->chkp_size;
 	chkp_size_tot += hash_map_dump_size(region->agents_table);
@@ -195,7 +199,8 @@ unsigned char * abm_do_checkpoint(region_abm_t *region){
 * @param data A pointer to the region struct to be checkpointed
 * @return A malloc'ed buffer holding all the region data
 */
-void abm_restore_checkpoint(unsigned char *data, region_abm_t *region){
+void abm_restore_checkpoint(unsigned char *data, region_abm_t *region)
+{
 	struct _agent_abm_t *agent;
 
 	assert(((region_abm_t *)data)->chkp_size == region->chkp_size);
@@ -232,8 +237,8 @@ void abm_restore_checkpoint(unsigned char *data, region_abm_t *region){
 * This needs to be called before starting processing events, after basic
 * initialization of the lps.
 */
-void abm_layer_init(void) {
-
+void abm_layer_init(void)
+{
 	unsigned actual_neighbours, i, region_alloc_size;
 	unsigned data_offset;
 	region_abm_t *region;
@@ -294,7 +299,8 @@ static void update_neighbours(void);
 * Handle a visit to a region. This is called by the abm layer when a visit message is received.
 * We expect the event to have the serialized visiting agent as payload.
 */
-static void on_abm_visit(void){
+static void on_abm_visit(void)
+{
 	struct _visit_abm_t vis;
 	// parse the entering agent
 	struct _agent_abm_t *agent = agent_from_buffer(current_evt->event_content, current_evt->size);
@@ -323,9 +329,10 @@ static void on_abm_visit(void){
 * Handle an agent departure. This is called by the abm layer when a leave message is received.
 * We expect the event to have the the agent key as payload.
 */
-static void on_abm_leave(void){
+static void on_abm_leave(void)
+{
 	struct _visit_abm_t vis;
-	unsigned char* to_send;
+	unsigned char *to_send;
 	unsigned buffer_size;
 	// we search for the agent who's leaving
 	assert(current_evt->size == sizeof(struct _leave_evt));
@@ -416,7 +423,8 @@ static void on_abm_leave(void){
 * Handle an update receive. This updates the corresponding entry in the region struct, which will be used to
 * serve fresh neighbour data to the user.
 */
-static void receive_update(void){
+static void receive_update(void)
+{
 	//if(abm_settings.neighbour_data_size != current_evt->size)
 		//rootsim_error(true, "Misuse of ABM api, regions do not agree on neighbours info size! EXITING!");
 
@@ -435,7 +443,8 @@ static void receive_update(void){
 * Keep updated the neighbours of changes in the tracked data. This is called after each event and boradcasts eventual
 * changes to neighbours
 */
-static void update_neighbours(void){
+static void update_neighbours(void)
+{
 	region_abm_t *region = current->region;
 	unsigned char* published_data = ((unsigned char *)region) + region->published_data_offset;
 	// we check whether we need to update our neighbours about some changes in the tracked data
@@ -483,7 +492,8 @@ void ProcessEventABM(void) {
 	update_neighbours();
 }
 
-int GetNeighbourInfo(direction_t i, unsigned int *region_id, void **data_p){
+__visible int GetNeighbourInfo(direction_t i, unsigned int *region_id, void **data_p)
+{
 	region_abm_t *region = current->region;
 	if(unlikely(i >= DirectionsCount()))
 		rootsim_error(true, "bad argument in abm call");
@@ -496,11 +506,13 @@ int GetNeighbourInfo(direction_t i, unsigned int *region_id, void **data_p){
 	return 0;
 }
 
-void TrackNeighbourInfo(void *neighbour_data) {
+__visible void TrackNeighbourInfo(void *neighbour_data)
+{
 	current->region->tracked_data = neighbour_data;
 }
 
-bool IterAgents(agent_t *agent_p) {
+__visible bool IterAgents(agent_t *agent_p)
+{
 	switch_to_platform_mode();
 	// fixme preemption breaks this
 	static __thread map_size_t closure = 0;
@@ -513,11 +525,13 @@ bool IterAgents(agent_t *agent_p) {
 	return true;
 }
 
-unsigned CountAgents(void) {
+__visible unsigned CountAgents(void)
+{
 	return hash_map_count(current->region->agents_table);
 }
 
-agent_t SpawnAgent(unsigned user_data_size) {
+__visible agent_t SpawnAgent(unsigned user_data_size)
+{
 	switch_to_platform_mode();
 
 	unsigned long long new_key = get_agent_mark(current->region);
@@ -542,7 +556,8 @@ agent_t SpawnAgent(unsigned user_data_size) {
 	return ret->key;
 }
 
-void KillAgent(agent_t agent_id) {
+__visible void KillAgent(agent_t agent_id)
+{
 	switch_to_platform_mode();
 	struct _agent_abm_t *agent = retrieve_agent(agent_id);
 
@@ -555,14 +570,16 @@ void KillAgent(agent_t agent_id) {
 	switch_to_application_mode();
 }
 
-void * DataAgent(agent_t agent_id, unsigned *data_size_p){
+__visible void *DataAgent(agent_t agent_id, unsigned *data_size_p)
+{
 	struct _agent_abm_t *agent = retrieve_agent(agent_id);
 	if(data_size_p)
 		*data_size_p = agent->user_data_size;
 	return agent->user_data;
 }
 
-void ScheduleNewLeaveEvent(simtime_t time, unsigned int event_type, agent_t agent_id) {
+__visible void ScheduleNewLeaveEvent(simtime_t time, unsigned int event_type, agent_t agent_id)
+{
 	switch_to_platform_mode();
 
 	struct _agent_abm_t *agent = retrieve_agent(agent_id);
@@ -578,11 +595,13 @@ void ScheduleNewLeaveEvent(simtime_t time, unsigned int event_type, agent_t agen
 	switch_to_application_mode();
 }
 
-unsigned CountPastVisits(agent_t agent_id){
+__visible unsigned CountPastVisits(agent_t agent_id)
+{
 	return array_count(retrieve_agent(agent_id)->past);
 }
 
-void GetPastVisit(agent_t agent_id, unsigned *region_p, unsigned *event_type_p, simtime_t *time_p, unsigned i){
+__visible void GetPastVisit(agent_t agent_id, unsigned *region_p, unsigned *event_type_p, simtime_t *time_p, unsigned i)
+{
 	switch_to_platform_mode();
 
 	struct _agent_abm_t *agent = retrieve_agent(agent_id);
@@ -596,11 +615,13 @@ void GetPastVisit(agent_t agent_id, unsigned *region_p, unsigned *event_type_p, 
 	switch_to_application_mode();
 }
 
-unsigned CountVisits(agent_t agent_id){
+__visible unsigned CountVisits(agent_t agent_id)
+{
 	return array_count(retrieve_agent(agent_id)->future);
 }
 
-void GetVisit(agent_t agent_id, unsigned *region_p, unsigned *event_type_p, unsigned i){
+__visible void GetVisit(agent_t agent_id, unsigned *region_p, unsigned *event_type_p, unsigned i)
+{
 	struct _agent_abm_t *agent = retrieve_agent(agent_id);
 	if(unlikely(i >= array_count(agent->future)))
 		rootsim_error(true, "trying to access an out of bounds future visit from agent %llu", agent_id);
@@ -609,7 +630,8 @@ void GetVisit(agent_t agent_id, unsigned *region_p, unsigned *event_type_p, unsi
 	*event_type_p = array_get_at(agent->future, i).action;
 }
 
-void SetVisit(agent_t agent_id, unsigned region, unsigned event_type, unsigned i){
+__visible void SetVisit(agent_t agent_id, unsigned region, unsigned event_type, unsigned i)
+{
 	struct _agent_abm_t *agent = retrieve_agent(agent_id);
 	if(unlikely(i >= array_count(agent->future) || event_type == ACTION_START || region >= RegionsCount())) {
 		rootsim_error(true, "bad argument in abm call for agent %llu", agent_id);
@@ -619,7 +641,8 @@ void SetVisit(agent_t agent_id, unsigned region, unsigned event_type, unsigned i
 	array_items(agent->future)[i].action = event_type;
 }
 
-void EnqueueVisit(agent_t agent_id, unsigned region, unsigned event_type){
+__visible void EnqueueVisit(agent_t agent_id, unsigned region, unsigned event_type)
+{
 	struct _agent_abm_t *agent = retrieve_agent(agent_id);
 	if(unlikely(event_type == ACTION_START || region >= RegionsCount())) {
 		rootsim_error(true, "bad argument in abm call for agent %llu", agent_id);
@@ -629,7 +652,8 @@ void EnqueueVisit(agent_t agent_id, unsigned region, unsigned event_type){
 	array_push(agent->future, visit);
 }
 
-void AddVisit(agent_t agent_id, unsigned region, unsigned event_type, unsigned i){
+__visible void AddVisit(agent_t agent_id, unsigned region, unsigned event_type, unsigned i)
+{
 	struct _agent_abm_t *agent = retrieve_agent(agent_id);
 	if(unlikely(i > array_count(agent->future) || event_type == ACTION_START || region >= RegionsCount())) {
 		rootsim_error(true, "bad argument in abm call for agent %llu", agent_id);
@@ -643,7 +667,8 @@ void AddVisit(agent_t agent_id, unsigned region, unsigned event_type, unsigned i
 		array_add_at(agent->future, i, visit);
 }
 
-void RemoveVisit(agent_t agent_id, unsigned i) {
+__visible void RemoveVisit(agent_t agent_id, unsigned i)
+{
 	struct _agent_abm_t *agent = retrieve_agent(agent_id);
 	if(i >= array_count(agent->future)) {
 		rootsim_error(true, "bad argument in abm call for agent %llu", agent_id);

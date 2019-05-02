@@ -161,11 +161,11 @@ void LP_main_loop(void *args)
 		timer_start(event_timer);
 
 		// Process the event
-		if(&abm_settings){
+		if(&abm_settings) {
 			ProcessEventABM();
-		}else if (&topology_settings){
+		} else if (&topology_settings) {
 			ProcessEventTopology();
-		}else{
+		} else {
 			switch_to_application_mode();
 			current->ProcessEvent(current->gid.to_int,
 				      current_evt->timestamp, current_evt->type,
@@ -174,6 +174,7 @@ void LP_main_loop(void *args)
 				      current->current_base_pointer);
 			switch_to_platform_mode();
 		}
+
 		int delta_event_timer = timer_value_micro(event_timer);
 
 #ifdef EXTRA_CHECKS
@@ -224,7 +225,6 @@ void initialize_worker_thread(void)
 		pack_msg(&init_event, lp->gid, lp->gid, INIT, 0.0, 0.0, 0, NULL);
 		init_event->mark = generate_mark(lp);
 		list_insert_head(lp->queue_in, init_event);
-		lp->state_log_forced = true;
 	}
 
 	thread_barrier(&all_thread_barrier);
@@ -244,7 +244,7 @@ void initialize_worker_thread(void)
 }
 
 /**
-* This function is the application-level ProcessEvent() callback entry point.
+* This function is the application-level __ProcessEvent() callback entry point.
 * It allows to specify which lp must be scheduled, specifying its lvt, its event
 * to be executed and its simulation state.
 * This provides a general entry point to application-level code, to be used
@@ -406,17 +406,12 @@ void schedule(void)
 	LogState(next);
 }
 
-void schedule_on_init(struct lp_struct *next)
+void schedule_on_init(struct lp_struct *lp)
 {
 	msg_t *event;
 
-#ifdef HAVE_CROSS_STATE
-	bool resume_execution = false;
-#endif
-
-	event = list_head(next->queue_in);
-	next->bound = event;
-
+	event = list_head(lp->queue_in);
+	lp->bound = event;
 
 	// Sanity check: if we get here, it means that lid is a LP which has
 	// at least one event to be executed. If advance_to_next_event() returns
@@ -425,36 +420,26 @@ void schedule_on_init(struct lp_struct *next)
 	if (unlikely(event == NULL) || event->type != INIT) {
 		rootsim_error(true,
 			      "Critical condition: LP %d should have an INIT event but I cannot find it. Aborting...\n",
-			      next->gid);
+			      lp->gid.to_int);
 	}
 
-#ifdef HAVE_CROSS_STATE
-	// In case we are resuming an interrupted execution, we keep track of this.
-	// If at the end of the scheduling the LP is not blocked, we can unblock all the remote objects
-	if (is_blocked_state(next->state) || next->state == LP_STATE_READY_FOR_SYNCH) {
-		resume_execution = true;
-	}
-#endif
+	lp->state = LP_STATE_RUNNING;
 
-	next->state = LP_STATE_RUNNING;
+	current = lp;
+	current_evt = event;
+	ProcessEvent(current->gid.to_int, event->timestamp, event->type,
+		     event->event_content, event->size, current->current_base_pointer);
+	current_evt = NULL;
+	current = NULL;
 
-	activate_LP(next, event);
+	lp->state = LP_STATE_READY;
+	send_outgoing_msgs(lp);
 
-	if (!is_blocked_state(next->state)) {
-		next->state = LP_STATE_READY;
-		send_outgoing_msgs(next);
-	}
-#ifdef HAVE_CROSS_STATE
-	if (resume_execution && !is_blocked_state(next->state)) {
-		//printf("ECS event is finished mark %llu !!!\n", next->wait_on_rendezvous);
-		fflush(stdout);
-		unblock_synchronized_objects(next);
-
-		// This is to avoid domino effect when relying on rendezvous messages
-		force_LP_checkpoint(next);
-	}
-#endif
+	// If we run using incremental state saving, the very first snapshot must
+	// be anyhow a full checkpoint
+	set_force_full(lp);
+	force_LP_checkpoint(lp);
 
 	// Log the state, if needed
-	LogState(next);
+	LogState(lp);
 }

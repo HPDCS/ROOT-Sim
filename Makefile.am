@@ -37,9 +37,16 @@ src/arch/asm_defines.h: src/arch/asm_defines.c
 
 
 # From here on, there are main ROOT-Sim build rules
+
 librootsim_include_HEADERS = src/ROOT-Sim.h
 librootsim_includedir = $(includedir)
-lib_LIBRARIES = librootsim.a libwrapperl.a libdymelor.a
+lib_LIBRARIES = librootsim.a
+noinst_LTLIBRARIES = libdymmemtrace.la
+lib_LTLIBRARIES = libdymelor.la
+
+if COMPILE_GCC_PLUGIN
+lib_LTLIBRARIES += libmemtrace.la
+endif
 
 librootsim_a_SOURCES =	src/main.c \
 			src/arch/memusage.c \
@@ -134,12 +141,20 @@ librootsim_a_SOURCES =	src/main.c \
 			src/scheduler/stf.h
 
 
-libwrapperl_a_SOURCES = src/lib-wrapper/stdlib.c \
-			src/lib-wrapper/math.c
+libdymmemtrace_la_CFLAGS = $(AM_CFLAGS) -mgeneral-regs-only
+libdymmemtrace_la_SOURCES = src/mm/memtrace.c
 
-libdymelor_a_SOURCES = 	src/mm/checkpoints.c \
+libdymelor_la_LIBADD = libdymmemtrace.la
+libdymelor_la_SOURCES =	src/mm/checkpoints.c \
 			src/mm/platform.c \
 			src/mm/dymelor.c \
 			src/mm/buddy.c \
 			src/mm/segment.c \
-			src/mm/slab.c
+			src/mm/slab.c \
+			src/mm/wrapper.c
+
+libmemtrace_la_includedir = $(includedir)
+libmemtrace_la_CXXFLAGS = -std=c++11 -Wall -fno-rtti -Wno-literal-suffix -I$(GCCPLUGINDIR)/include
+libmemtrace_la_LDFLAGS = -version-info $(GCCPLUGVERS)
+libmemtrace_la_SOURCES = src/plugin/memtrace.cc
+

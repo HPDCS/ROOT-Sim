@@ -129,6 +129,7 @@ void ccgs_compute_snapshot(state_t * time_barrier_pointer[], simtime_t gvt)
 
 		// Log the current state so that after we can restore it.
 		current = lp;
+		set_force_full(lp);
 		temporary_log.log = log_state(lp);
 		temporary_log.state = lp->state;
 		temporary_log.base_pointer = lp->current_base_pointer;
@@ -171,7 +172,6 @@ void ccgs_compute_snapshot(state_t * time_barrier_pointer[], simtime_t gvt)
 		if (rootsim_config.check_termination_mode == CKTRM_INCREMENTAL && !check_res) {
 			break;
 		}
-
 	}
 
 	// No real LP is running now!

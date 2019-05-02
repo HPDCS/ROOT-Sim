@@ -42,6 +42,8 @@
 
 #include <arch/thread.h>
 
+#define __visible __attribute__((visibility("default")))
+
 
 /// This macro expands to true if the local kernel is the master kernel
 #define master_kernel() (kid == 0)
@@ -49,7 +51,8 @@
 // XXX: This should be moved to state or queues
 enum {
 	SNAPSHOT_INVALID = 0,	/**< By convention 0 is the invalid field */
-	SNAPSHOT_FULL,		/**< xxx documentation */
+	SNAPSHOT_FULL,		/**< Full State Saving */
+	SNAPSHOT_INCREMENTAL,	/**< Incremental State Saving */
 };
 
 /// Maximum number of kernels the distributed simulator can handle
@@ -212,16 +215,16 @@ typedef struct _msg_hdr_t {
 extern barrier_t all_thread_barrier;
 
 // XXX: this should be refactored someway
-extern unsigned int kid,	/* Kernel ID for the local kernel */
- n_ker,				/* Total number of kernel instances */
- n_cores,			/* Total number of cores required for simulation */
- n_prc,				/* Number of LPs hosted by the current kernel instance */
-*kernel;
+extern unsigned int	kid,		/* Kernel ID for the local kernel */
+			n_ker,		/* Total number of kernel instances */
+			n_cores,	/* Total number of cores required for simulation */
+			n_prc,		/* Number of LPs hosted by the current kernel instance */
+			* kernel;
 
-extern void ProcessEvent_light(unsigned int me, simtime_t now, int event_type, void *event_content, unsigned int size, void *state);
-bool OnGVT_light(unsigned int me, void *snapshot);
-extern void ProcessEvent_inc(unsigned int me, simtime_t now, int event_type, void *event_content, unsigned int size, void *state);
-bool OnGVT_inc(unsigned int me, void *snapshot);
+extern void ProcessEvent(unsigned int me, simtime_t now, int event_type, void *event_content, unsigned int size, void *state);
+bool OnGVT(unsigned int me, void *snapshot);
+extern void ProcessEvent_instr(unsigned int me, simtime_t now, int event_type, void *event_content, unsigned int size, void *state);
+bool OnGVT_instr(unsigned int me, void *snapshot);
 
 extern void base_init(void);
 extern void base_fini(void);

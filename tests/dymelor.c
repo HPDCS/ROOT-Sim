@@ -11,7 +11,7 @@
 #define actual_malloc(siz) malloc(siz)
 #define actual_free(ptr) free(ptr)
 
-#include <mm/mm.h>
+#include <mm/dymelor.h>
 #include <core/init.h>
 
 #include "common.h"
@@ -93,7 +93,7 @@ static void mem_init(unsigned char *ptr, size_t size)
 {
 	size_t i, j;
 
-	bzero(ptr, size);
+	__real_bzero(ptr, size);
 
 	if (!size)
 		return;
@@ -146,7 +146,7 @@ static void free_it(struct bin *m) {
 	if(m->subs == DYMELOR)
 		__wrap_free(m->ptr);
 	if(m->subs == SLAB)
-		slab_free(current->mm->slab, m->ptr);
+		slab_free(current, m->ptr);
 	if(m->subs == BUDDY)
 		free_lp_memory(current, m->ptr);
 }
@@ -201,7 +201,7 @@ static void bin_alloc(struct bin *m, size_t size, unsigned r)
 		// slab
 		if (m->size > 0)
 			free_it(m);
-		m->ptr = slab_alloc(current->mm->slab);
+		m->ptr = slab_alloc(current);
 		m->subs = SLAB;
 	} else {
 		// malloc

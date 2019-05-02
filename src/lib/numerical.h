@@ -31,6 +31,7 @@
 #pragma once
 
 #include <stdbool.h>
+#include <stdint.h>
 
 /// Numerical seed type
 typedef uint64_t seed_type;

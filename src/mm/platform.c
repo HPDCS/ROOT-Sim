@@ -33,17 +33,19 @@
 #include <mm/dymelor.h>
 #include <core/core.h>
 
-extern void *__real_malloc(size_t);
-extern void __real_free(void *);
-extern void *__real_realloc(void *, size_t);
-extern void *__real_calloc(size_t, size_t);
-
 inline void *rsalloc(size_t size)
 {
 	void *mem_block = __real_malloc(size);
 	if (unlikely(mem_block == NULL)) {
 		rootsim_error(true, "Error in memory allocation, aborting...");
 	}
+	return mem_block;
+}
+
+inline void *rszalloc(size_t size)
+{
+	void *mem_block = rsalloc(size);
+	__real_bzero(mem_block, size);
 	return mem_block;
 }
 

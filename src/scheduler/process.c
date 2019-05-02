@@ -29,6 +29,7 @@
  * @date December 14, 2017
  */
 
+#include <stdlib.h>
 #include <limits.h>
 
 #include <core/core.h>
@@ -107,9 +108,16 @@ void initialize_lps(void)
 
 		// Which version of OnGVT and ProcessEvent should we use?
 		if (rootsim_config.snapshot == SNAPSHOT_FULL) {
-			lp->OnGVT = &OnGVT_light;
-			lp->ProcessEvent = &ProcessEvent_light;
-		}		// TODO: add here an else for ISS
+			lp->OnGVT = &OnGVT;
+			lp->ProcessEvent = &ProcessEvent;
+#ifdef HAS_GCC_PLUGIN
+		} else if(rootsim_config.snapshot == SNAPSHOT_INCREMENTAL) {
+			lp->OnGVT = &OnGVT_instr;
+			lp->ProcessEvent = &ProcessEvent_instr;
+#endif
+		} else {
+			rootsim_error(true, "Wrong type of snapshot: neither full nor incremental\n");
+		}
 
 		// Allocate LP stack
 		lp->stack = get_ult_stack(LP_STACK_SIZE);
@@ -148,8 +156,7 @@ void initialize_lps(void)
 #endif
 
 		// Create User-Level Thread
-		context_create(&lp->context, LP_main_loop, NULL, lp->stack,
-			       LP_STACK_SIZE);
+		context_create(&lp->context, LP_main_loop, NULL, lp->stack, LP_STACK_SIZE);
 	}
 }
 

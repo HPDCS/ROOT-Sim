@@ -47,7 +47,7 @@ const struct argp_option model_options[] = {
 
 static error_t model_parse (int key, char *arg, struct argp_state *state) {
 	(void)state;
-	
+
 	switch (key) {
 		HANDLE_CASE(OPT_TA, "%lf", ref_ta);
 		HANDLE_CASE(OPT_TAD, "%lf", ta_duration);
@@ -84,7 +84,7 @@ struct _topology_settings_t topology_settings = {.default_geometry = TOPOLOGY_HE
 
 void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_type *event_content, unsigned int size, void *ptr) {
 	(void)size;
-	
+
 	unsigned int w;
 
 	//printf("%d executing %d at %f\n", me, event_type, now);
@@ -106,14 +106,10 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 		state->executed_events++;
 	}
 
-
-//	for(w = 0; w < 10000000; w++);
-
-
 	switch(event_type) {
 
 		case INIT:
-
+//			printf("INIT\n");
 			// Initialize the LP's state
 			state = (lp_state_type *)malloc(sizeof(lp_state_type));
 			if (state == NULL){
@@ -148,6 +144,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 
 		case START_CALL:
 
+//			printf("START_CALL\n");
 			state->arriving_calls++;
 
 			if (state->channel_counter == 0) {
@@ -228,6 +225,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 
 		case END_CALL:
 
+//			printf("END_CALL\n");
 			state->channel_counter++;
 			state->complete_calls++;
 			deallocation(me, state, event_content->channel, now);
@@ -236,6 +234,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 
 		case HANDOFF_LEAVE:
 
+//			printf("HANDOFF_LEAVE");
 			state->channel_counter++;
 			state->leaving_handoffs++;
 			deallocation(me, state, event_content->channel, now);
@@ -247,6 +246,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 			break;
 
 		case HANDOFF_RECV:
+
 			state->arriving_handoffs++;
 			state->arriving_calls++;
 
@@ -317,7 +317,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 
 bool OnGVT(unsigned int me, lp_state_type *snapshot) {
 	(void)me;
-	
+
 	if (snapshot->complete_calls < complete_calls)
 		return false;
 	return true;

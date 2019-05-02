@@ -135,6 +135,7 @@ const char * const param_to_text[][5] = {
 	[OPT_SNAPSHOT - OPT_FIRST] = {
 			[SNAPSHOT_INVALID] = "invalid snapshot specification",
 			[SNAPSHOT_FULL] = "full",
+			[SNAPSHOT_INCREMENTAL] = "incremental",
 	}
 };
 
@@ -159,7 +160,7 @@ static const struct argp_option argp_options[] = {
 	{"npwd",		OPT_NPWD,		0,		0,		"Non Piece-Wise-Deterministic simulation model. See manpage for accurate description", 0},
 	{"p",			OPT_P,			"VALUE",	0,		"Checkpointing interval", 0},
 	{"full",		OPT_FULL,		0,		0,		"Take only full logs", 0},
-	{"inc",			OPT_INC,		0,		0,		"Take only incremental logs (still to be released)", 0},
+	{"inc",			OPT_INC,		0,		0,		"Take only incremental logs", 0},
 	{"A",			OPT_A,			0,		0,		"Autonomic subsystem: set checkpointing interval and log mode automatically at runtime (still to be released)", 0},
 	{"gvt",			OPT_GVT,		"VALUE",	0,		"Time between two GVT reductions (in milliseconds)", 0},
 	{"cktrm-mode",		OPT_CKTRM_MODE,		"TYPE",		0,		"Termination Detection mode. Supported values: normal, incremental, accurate", 0},
@@ -264,18 +265,22 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 			} else {
 				rootsim_config.checkpointing = STATE_SAVING_PERIODIC;
 				rootsim_config.ckpt_period = parse_ullong_limits(1, 40);
-				// This is a micro optimization that makes the LogState function to avoid checking the checkpointing interval and keeping track of the logs taken
+				// This is a micro optimization that makes the LogState function avoid checking the checkpointing interval and keeping track of the logs taken
 				if(rootsim_config.ckpt_period == 1)
 					rootsim_config.checkpointing = STATE_SAVING_COPY;
 			}
 			break;
 
 		case OPT_INC:
-			argp_failure(state, EXIT_FAILURE, ENOSYS, "incremental state saving is not supported in stable version yet...\nAborting");
+			#ifdef HAS_GCC_PLUGIN
+			rootsim_config.snapshot = SNAPSHOT_INCREMENTAL;
+			#else
+			argp_failure(state, EXIT_FAILURE, ENOSYS, "No support for Incremental State Saving found while compiling.\nAborting...");
+			#endif
 			break;
 
 		case OPT_A:
-			argp_failure(state, EXIT_FAILURE, ENOSYS, "autonomic state saving is not supported in stable version yet...\nAborting");
+			argp_failure(state, EXIT_FAILURE, ENOSYS, "autonomic state saving is not supported in stable version yet.\nAborting...");
 			break;
 
 		case OPT_GVT:

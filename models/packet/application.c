@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include <ROOT-Sim.h>
 #include "application.h"
 

@@ -1,10 +1,11 @@
-ACLOCAL_AMFLAGS = -I m4 
+ACLOCAL_AMFLAGS = -I m4
 AM_MAKEFLAGS = --no-print-directory
 
 SCRIPT_LINES=@cc_script_lines@
 LD_DATA1_LINES=@cc_lddata1_lines@
 LD_DATA2_LINES=@cc_lddata2_lines@
 LD_FINAL_LINES=@cc_ldfinal_lines@
+ISS_SUPPORT=@iss_support@
 
 
 # Install the compiler!
@@ -13,7 +14,7 @@ LD_FINAL_LINES=@cc_ldfinal_lines@
 .PHONY: rootsim-cc
 
 dist_bin_SCRIPTS = rootsim-cc
-CLEANFILES = $(dist_bin_SCRIPTS) 
+CLEANFILES = $(dist_bin_SCRIPTS)
 EXTRA_DIST = ld-data1 ld-data2 ld-final
 
 
@@ -25,6 +26,7 @@ do_subst = $(SED)	-e 's,[@]bindir[@],$(bindir),g' \
 			-e 's,[@]CC[@],$(CC),g' \
 			-e 's,[@]CFLAGS[@],$(CFLAGS),g' \
 			-e 's,[@]ARCH[@],$(ARCH),g' \
+			-e 's,[@]iss_support[@],$(ISS_SUPPORT),g' \
 			-e 's,[@]scriptlines[@],$(SCRIPT_LINES),g' \
 			-e 's,[@]lddata1lines[@],$(LD_DATA1_LINES),g' \
 			-e 's,[@]lddata2lines[@],$(LD_DATA2_LINES),g' \
@@ -36,4 +38,3 @@ rootsim-cc: rootsim-cc.in
 	@cat rootsim-cc.pre ld-data1 ld-data2 ld-final > rootsim-cc
 	@rm rootsim-cc.pre
 	@chmod +x rootsim-cc
-

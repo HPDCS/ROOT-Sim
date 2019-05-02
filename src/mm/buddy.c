@@ -33,7 +33,7 @@
 #include <errno.h>
 
 #include <core/core.h>
-#include <mm/mm.h>
+#include <mm/dymelor.h>
 #include <scheduler/process.h>
 
 static inline int left_child(int index)
@@ -88,8 +88,8 @@ struct buddy *buddy_new(struct lp_struct *lp, size_t num_of_fragments)
 	/* alloacte an array to represent a complete binary tree */
 	(void)lp;
 	//self = (struct buddy *)get_segment_memory(lp, sizeof(struct buddy) + 2 * num_of_fragments * sizeof(size_t));
-	self = (struct buddy *)rsalloc(sizeof(struct buddy) + 2 * num_of_fragments * sizeof(size_t));
-	bzero(self, sizeof(struct buddy) + 2 * num_of_fragments * sizeof(size_t));	// unnecessary, it is later initialized
+	self = (struct buddy *)__real_malloc(sizeof(struct buddy) + 2 * num_of_fragments * sizeof(size_t));
+	__real_bzero(self, sizeof(struct buddy) + 2 * num_of_fragments * sizeof(size_t));	// unnecessary, it is later initialized
 
 	self->size = num_of_fragments;
 	node_size = num_of_fragments * 2;
@@ -110,7 +110,7 @@ struct buddy *buddy_new(struct lp_struct *lp, size_t num_of_fragments)
 
 void buddy_destroy(struct buddy *self)
 {
-	rsfree(self);
+	__real_free(self);
 }
 
 /** allocate *size* from a buddy system *self*
