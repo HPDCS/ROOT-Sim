@@ -25,6 +25,7 @@ libdir="@libdir@"
 includedir="@includedir@"
 datadir="@datadir@"
 iss_support="@iss_support@"
+pmu_support="@pmu_support@"
 SCRIPT_LINES="@scriptlines@"
 LD_DATA1_LINES="@lddata1lines@"
 LD_DATA2_LINES="@lddata2lines@"
@@ -141,7 +142,7 @@ generate_linker_scripts
 
 OBJECTS=${SOURCES//.c/.o}
 
-if test "$iss_support" = "xyes"
+if test "$iss_support" = "xyes" -a "$pmu_support" = "xno"
 then
 
 	### INSTRUMENTED VERSION OF THE EXECUTABLE

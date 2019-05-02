@@ -36,7 +36,7 @@
 #include <mm/dymelor.h>
 #include <scheduler/scheduler.h>
 
-#ifdef HAS_GCC_PLUGIN
+#if defined(HAS_GCC_PLUGIN) || defined(HAVE_PMU)
 
 /**
 * This function marks a memory chunk as dirty.

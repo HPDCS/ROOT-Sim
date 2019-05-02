@@ -44,7 +44,7 @@ static spinlock_t foooo;
 
 void set_force_full(struct lp_struct *lp)
 {
-#ifdef HAS_GCC_PLUGIN
+#if defined(HAS_GCC_PLUGIN) || defined(HAVE_PMU)
 	lp->state_log_full_forced = true;
 #else
 	(void)lp;
@@ -185,7 +185,7 @@ void *log_full(struct lp_struct *lp)
 	return ckpt;
 }
 
-#ifdef HAS_GCC_PLUGIN
+#if defined(HAS_GCC_PLUGIN) || defined(HAVE_PMU)
 
 /**
 * This function creates a partial (incremental) log of the current simulation states and returns
@@ -356,7 +356,7 @@ void *log_state(struct lp_struct *lp)
 {
 	spin_lock(&foooo);
 	statistics_post_data(lp, STAT_CKPT, 1.0);
-#ifdef HAS_GCC_PLUGIN
+#if defined(HAS_GCC_PLUGIN) || defined(HAVE_PMU)
 	if(rootsim_config.snapshot == SNAPSHOT_INCREMENTAL && !lp->state_log_full_forced) {
 		spin_unlock(&foooo);
 		return log_incremental(lp);
@@ -512,7 +512,7 @@ void restore_full(struct lp_struct *lp, void *ckpt)
 }
 
 
-#ifdef HAS_GCC_PLUGIN
+#if defined(HAS_GCC_PLUGIN) || defined(HAVE_PMU)
 
 /**
 * This function restores a full log in the address space where the logical process will be
@@ -834,7 +834,7 @@ void restore_incremental(struct lp_struct *lp, state_t *queue_node) {
 void log_restore(struct lp_struct *lp, state_t *state_queue_node)
 {
 	spin_lock(&foooo);
-#ifdef HAS_GCC_PLUGIN
+#if defined(HAS_GCC_PLUGIN) || defined(HAVE_PMU)
 	statistics_post_data(lp, STAT_RECOVERY, 1.0);
 	if (((struct malloc_state *)(state_queue_node->log))->is_incremental)
 		restore_incremental(lp, state_queue_node);

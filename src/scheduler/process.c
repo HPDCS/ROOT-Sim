@@ -110,7 +110,7 @@ void initialize_lps(void)
 		if (rootsim_config.snapshot == SNAPSHOT_FULL) {
 			lp->OnGVT = &OnGVT;
 			lp->ProcessEvent = &ProcessEvent;
-#ifdef HAS_GCC_PLUGIN
+#if defined(HAS_GCC_PLUGIN) || defined(HAVE_PMU)
 		} else if(rootsim_config.snapshot == SNAPSHOT_INCREMENTAL) {
 			lp->OnGVT = &OnGVT_instr;
 			lp->ProcessEvent = &ProcessEvent_instr;

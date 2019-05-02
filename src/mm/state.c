@@ -317,15 +317,12 @@ state_t *find_time_barrier(struct lp_struct *lp, simtime_t simtime)
 
 
 	// Search for the first full log before the gvt
-#ifdef HAS_GCC_PLUGIN
-	printf("Find barrier: ");
+#if defined(HAS_GCC_PLUGIN) || defined(HAVE_PMU)
 	while(true) {
-		printf("%d", is_incremental(barrier_state->log));
 		if(is_incremental(barrier_state->log) == false)
 			break;
 		barrier_state = list_prev(barrier_state);
 	}
-	printf("\n");
 #endif
 
 	return barrier_state;

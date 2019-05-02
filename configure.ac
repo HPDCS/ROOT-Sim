@@ -291,9 +291,12 @@ AC_RUN_IFELSE([AC_LANG_PROGRAM([[
 AC_DEFINE([HAVE_PMU])
 AC_MSG_RESULT([yes])
 ac_pmu="(PMU available)"
+ac_pmu_cc="xyes"
+ac_iss="Enabled (Hardware based)"
 ], [
 AC_MSG_RESULT([no])
 ac_pmu=""
+ac_pmu_cc="xno"
 ])
 
 
@@ -353,6 +356,7 @@ AC_SUBST([cc_lddata1_lines], [$(wc -l scripts/ld-data1 | sed 's,\ .*,,g')])
 AC_SUBST([cc_lddata2_lines], [$(wc -l scripts/ld-data2 | sed 's,\ .*,,g')])
 AC_SUBST([cc_ldfinal_lines], [$(wc -l scripts/ld-final | sed 's,\ .*,,g')])
 AC_SUBST([iss_support], ["x$ac_gcc_headers"])
+AC_SUBST([pmu_support], ["$ac_pmu_cc"])
 AC_MSG_RESULT([ok])
 
 # Generate Makefiles for all these subfolders
