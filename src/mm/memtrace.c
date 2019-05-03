@@ -31,7 +31,7 @@
 * @date April 02, 2008
 */
 
-#include <stdlib.h>
+//#include <stdlib.h>
 
 #include <mm/dymelor.h>
 #include <scheduler/scheduler.h>

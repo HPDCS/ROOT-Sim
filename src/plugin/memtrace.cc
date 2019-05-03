@@ -6,8 +6,8 @@
 
 #include "print-rtl.h"
 
-#define print_rtl_single(...) {}
-#define printf(...) {}
+//#define print_rtl_single(...) {}
+//#define printf(...) {}
 
 int plugin_is_GPL_compatible;
 
@@ -29,9 +29,14 @@ static GTY(()) tree track_function_decl;
 
 static struct plugin_info memtrace_plugin_info = {
 	.version = "201904160000",
-	.help = "instrument-mode=rw\t'r' for read access, 'w' for write access 'rw' for read/write accesso\n"
+	.help = "instrument-mode=rw\t'r' for read access, 'w' for write access 'rw' for read/write access\n"
 		"function-suffix=<str>\tadd this suffix to function names\n"
 };
+
+static char** old_fn_names;
+static char** new_fn_names;
+static int fn_names_counter = 0, fn_names_arrays = 1;
+#define NUM_FUNCTIONS 512
 
 
 /*
@@ -59,6 +64,28 @@ static unsigned int memtrace_instrument_execute(function *fun)
 
 			unsigned int fname_size = fun->decl->decl_minimal.name->identifier.id.len;
 			char *str = (char *)xmalloc(fname_size + strlen(suffix_fn) + 2);
+			
+			//Add both old function name and new function name to the arrays, in order to change the call instructions later in the compilation
+			new_fn_names[fn_names_counter] = str;
+			char *old_name = (char*)xmalloc(fname_size+1);
+			strncpy(old_name, (char*)fun->decl->decl_minimal.name->identifier.id.str, fname_size+1);
+			old_fn_names[fn_names_counter] = old_name;
+			fn_names_counter++;
+
+			//check if we need to expand the old_fn_names and new_fn_names arrays
+			if (fn_names_counter >= NUM_FUNCTIONS*fn_names_arrays){
+				fn_names_arrays++;
+				char ** tmp = old_fn_names;
+				old_fn_names = (char**) xmalloc(fn_names_arrays*NUM_FUNCTIONS*sizeof(char*));
+				memcpy(old_fn_names, tmp, fn_names_counter - 1);
+				free(tmp);
+
+				tmp = new_fn_names;
+				new_fn_names = (char**) xmalloc(fn_names_arrays*NUM_FUNCTIONS*sizeof(char*));
+				memcpy(new_fn_names, tmp, fn_names_counter - 1);
+				free(tmp);
+			}	
+
 			snprintf(str, fname_size + strlen(suffix_fn) + 2, "%s_%s", fun->decl->decl_minimal.name->identifier.id.str, suffix_fn);
 			fun->decl->decl_minimal.name->identifier.id.str = (const unsigned char *)str;
 			fun->decl->decl_minimal.name->identifier.id.len = fname_size + strlen(suffix_fn) + 1;
@@ -308,6 +335,21 @@ static void put_instruction(rtx insn, rtx operand, bool write)
 }
 
 
+static char* find_function_call_name(char* name){
+	int c;
+	unsigned int len = strnlen(name, 1024);
+	for (c = 0; c < NUM_FUNCTIONS*fn_names_arrays; c++){
+		unsigned int cmp_len = (len >= strnlen(old_fn_names[c], 1024))? len : strnlen(old_fn_names[c], 1024);
+		if (strncmp(name, old_fn_names[c], cmp_len) == 0){
+			break;
+		}
+	}
+	if (c == NUM_FUNCTIONS*fn_names_arrays)
+		return NULL;
+	else return new_fn_names[c];
+}
+
+
 static unsigned int memtrace_cleanup_execute(void)
 {
 	rtx_insn *insn, *next;
@@ -322,7 +364,7 @@ static unsigned int memtrace_cleanup_execute(void)
  		next = NEXT_INSN(insn);
 
  		/* Check the expression code of the insn */
-		if (!INSN_P(insn) || BARRIER_P(insn) || NOTE_P(insn) || CALL_P(insn))
+		if (!INSN_P(insn) || BARRIER_P(insn) || NOTE_P(insn) || !CALL_P(insn))
 			continue;
 
 		/* CMOVE %eax %ebx
@@ -332,6 +374,15 @@ static unsigned int memtrace_cleanup_execute(void)
         		(reg:SI 3 bx [orig:90 _4 ] [90])
         		(reg:SI 0 ax [118])))
 		*/
+		if (GET_CODE(body) == CALL){
+			rtx mem = XEXP(body, 0);
+			rtx symbol = XEXP(mem, 0);
+			char* name = (char*) XSTR(symbol, 0);
+			char * new_name = find_function_call_name(name);
+			if (new_name != NULL){
+				XEXP(mem, 0) = gen_rtx_SYMBOL_REF(DImode, (const char*)new_name);
+			}
+		}
 		if(GET_CODE(body) == SET){
 			rtx first = XEXP(body, 0);
 			//print_rtl_single(stdout, first);
@@ -572,6 +623,9 @@ __visible int plugin_init(struct plugin_name_args *plugin_info,
 			return 1;
 		}
 	}
+
+	old_fn_names = (char**) xmalloc(NUM_FUNCTIONS*sizeof(char*));
+	new_fn_names = (char**) xmalloc(NUM_FUNCTIONS*sizeof(char*));
 
 	/* Give the information about the plugin */
 	register_callback(plugin_name, PLUGIN_INFO, NULL, &memtrace_plugin_info);
