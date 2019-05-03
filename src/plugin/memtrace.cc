@@ -338,15 +338,19 @@ static void put_instruction(rtx insn, rtx operand, bool write)
 static char* find_function_call_name(char* name){
 	int c;
 	unsigned int len = strnlen(name, 1024);
-	for (c = 0; c < NUM_FUNCTIONS*fn_names_arrays; c++){
-		unsigned int cmp_len = (len >= strnlen(old_fn_names[c], 1024))? len : strnlen(old_fn_names[c], 1024);
-		if (strncmp(name, old_fn_names[c], cmp_len) == 0){
+	for (c = 0; c < fn_names_counter; c++){
+		printf("Function name : %s, c = %d, \n", new_fn_names[c], c);
+		if (len != strnlen(old_fn_names[c], 1024))
+			continue;	
+		if (strncmp(name, old_fn_names[c], len) == 0){
 			break;
 		}
 	}
-	if (c == NUM_FUNCTIONS*fn_names_arrays)
+	printf("Exited from loop\n");
+	if (c == fn_names_counter)
 		return NULL;
-	else return new_fn_names[c];
+	else 
+		return new_fn_names[c];
 }
 
 
@@ -381,8 +385,29 @@ static unsigned int memtrace_cleanup_execute(void)
 			char * new_name = find_function_call_name(name);
 			if (new_name != NULL){
 				XEXP(mem, 0) = gen_rtx_SYMBOL_REF(DImode, (const char*)new_name);
+				printf("->->->->->->->->->->->->->->\n");
+				print_rtl_single(stdout, body);
+				printf("->->->->->->->->->->->->->->\n");
+			}
+			
+		}
+		else if (GET_CODE(body) == SET){
+			rtx call = XEXP(body, 1);
+			if (GET_CODE(call) == CALL){
+				rtx mem = XEXP(call, 0);
+				rtx symbol = XEXP(mem, 0);
+				char* name = (char*) XSTR(symbol, 0);
+				char * new_name = find_function_call_name(name);
+				if (new_name != NULL){
+					XEXP(mem, 0) = gen_rtx_SYMBOL_REF(DImode, (const char*)new_name);
+					printf("->->->->->->->->->->->->->->\n");
+					print_rtl_single(stdout, body);
+					printf("->->->->->->->->->->->->->->\n");
+				}
+			
 			}
 		}
+		
 		if(GET_CODE(body) == SET){
 			rtx first = XEXP(body, 0);
 			//print_rtl_single(stdout, first);
