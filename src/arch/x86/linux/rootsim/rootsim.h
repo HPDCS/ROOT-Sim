@@ -57,16 +57,16 @@ extern void ime_fini(void);
 extern __percpu struct mem_data pcpu_mem_data;
 
 #define NR_BUFFERS	1
-#define BUFFER_SIZE	(PAGE_SIZE * 1024)
+#define BUFFER_SIZE	(PAGE_SIZE * 256 * 1024)
 
 struct mem_data {
 	u64 **buf_poll;
 	unsigned nr_buf;
 	unsigned buf_size;
 
-	unsigned pos;
-	unsigned index;
-	unsigned read;
+	volatile unsigned pos;
+	volatile unsigned index;
+	volatile unsigned read;
 };
 
 // ime/thread.c

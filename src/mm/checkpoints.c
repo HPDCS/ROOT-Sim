@@ -40,8 +40,6 @@
 #include <scheduler/process.h>
 #include <statistics/statistics.h>
 
-static spinlock_t foooo;
-
 void set_force_full(struct lp_struct *lp)
 {
 #if defined(HAS_GCC_PLUGIN) || defined(HAVE_PMU)

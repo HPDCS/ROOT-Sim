@@ -49,10 +49,10 @@ int rootsim_open(struct inode *inode, struct file *filp) {
 	// }
 
 	// Only one access at a time
-	if (!mutex_trylock(&rootsim_mutex)) {
-		printk(KERN_INFO "%s: Trying to open an already-opened special device file\n", KBUILD_MODNAME);
-		return -EBUSY;
-	}
+	// if (!mutex_trylock(&rootsim_mutex)) {
+	// 	printk(KERN_INFO "%s: Trying to open an already-opened special device file\n", KBUILD_MODNAME);
+	// 	return -EBUSY;
+	// }
 
 	return 0;
 }
@@ -62,7 +62,7 @@ int rootsim_release(struct inode *inode, struct file *filp)
 {
 //	release_pagetable();
 
-	mutex_unlock(&rootsim_mutex);
+	// mutex_unlock(&rootsim_mutex);
 
 	return 0;
 }

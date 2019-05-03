@@ -4,6 +4,7 @@
 #include "core.h"
 #include "irq.h"
 #include "pmu.h"
+#include "msr_config.h"
 #include "intel_pmc_events.h"
 #include "../rootsim.h" /* idt features */
 
@@ -59,8 +60,20 @@ static int hw_init(void)
 		cfg->en = 1; 
 
 		cfg->pebs = 1;
-		cfg->counter = ~0x10000;
-		cfg->reset = ~0x10000ULL;
+		cfg->counter = ~0;
+		cfg->reset = ~0ULL;
+
+		cfg = get_pmc_config(1, cpu);
+
+		cfg->perf_evt_sel = EVT_MEM_INST_RETIRED_ALL_STORES;
+		
+		cfg->usr = 1;
+		cfg->pmi = 0;
+		cfg->en = 1; 
+
+		cfg->pebs = 0;
+		cfg->counter = ~0;
+		// cfg->reset = ~0ULL;
 	}
 
 	sync_system_pmu_state	();
@@ -186,6 +199,11 @@ out:
 // TODO manage
 void ime_fini(void)
 {
+
+	u64 msr = 0;
+
+	rdmsrl(MSR_IA32_PMC1, msr);
+	pr_info("Total store %llx\n", msr);
 
 	res_fini();
 

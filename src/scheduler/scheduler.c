@@ -65,6 +65,10 @@
 #include <arch/x86/linux/rootsim/ioctl.h>
 #include <queues/xxhash.h>
 
+#ifdef HAVE_PMU
+#include <sys/ioctl.h>  /* ioctl syscall*/
+#include <unistd.h>	/* close syscall */
+#endif
 /// This is used to keep track of how many LPs were bound to the current KLT
 __thread unsigned int n_prc_per_thread;
 
@@ -82,6 +86,12 @@ __thread struct lp_struct *current;
  */
 __thread msg_t *current_evt;
 
+#ifdef HAVE_PMU
+__thread int fd = 0;
+__thread memory_trace_t memory_trace;
+__thread bool logging_mode = false;
+#endif
+
 /*
 * This function initializes the scheduler. In particular, it relies on MPI to broadcast to every simulation kernel process
 * which is the actual scheduling algorithm selected.
@@ -92,6 +102,12 @@ __thread msg_t *current_evt;
 */
 void scheduler_init(void)
 {
+#ifdef HAVE_PMU
+	if (fd < 0) {
+		printf("Error, %s is not available\n", "/dev/rootsim");
+		abort();
+	}
+#endif
 #ifdef HAVE_PREEMPTION
 	preempt_init();
 #endif
@@ -176,6 +192,20 @@ void LP_main_loop(void *args)
 		}
 
 		int delta_event_timer = timer_value_micro(event_timer);
+
+#ifdef HAVE_PMU
+		logging_mode = true;
+		size_t size;
+		int i;
+
+		do {
+			size = ioctl(fd, IOCTL_GET_MEM_TRACE, &memory_trace);
+			for (i = 0; i < size; ++i)
+				__write_mem(memory_trace.addresses[i], 1);
+		} while(size > 0 && size == memory_trace.length);
+
+		logging_mode = false;
+#endif
 
 #ifdef EXTRA_CHECKS
 		if (current->bound->size > 0) {

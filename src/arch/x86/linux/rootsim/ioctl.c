@@ -3,6 +3,8 @@
 
 #include "rootsim.h"
 #include "ioctl.h"
+#include "ime/pmu.h"
+#include "ime/msr_config.h"
 
 
 long rootsim_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
@@ -10,50 +12,57 @@ long rootsim_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	long ret = 0;
 	struct mem_data *md;
 	size_t length;
+	u64 msr;
+	u64 tsc;
 	memory_trace_t memory_trace;
-
 
 	switch (cmd) {
 
-// IME RELATED COMMANDS
+		// IME RELATED COMMANDS
 		case IOCTL_GET_MEM_TRACE:
-			copy_from_user(&memory_trace, arg, sizeof(memory_trace_t));
-			md = per_cpu_ptr(&pcpu_mem_data, memory_trace.cpu);
-			// No data to be read
-			// if (md->read >= ((md->buf_size * md->pos) + md->index)) {
-			if (md->read >= md->index) {
+			/* Sanity check */
+			rdmsrl(MSR_IA32_PERF_GLOBAL_CTRL, msr);
+			if (msr) {
+				pr_err("[IOCTL] Reading while profiling... abort\n");
+				ret = -1; // TODO replace with the correct errno
 				break;
 			}
+
+			/* Get user metadata */
+			copy_from_user(&memory_trace, arg, sizeof(memory_trace_t));
+
+			/* Get PMU memory buffer */
+			md = per_cpu_ptr(&pcpu_mem_data, memory_trace.cpu);
+
+			/* Empty the current PEBS buffer */
+			flush_pebs_buffer(1);
+			
+			/* No data left */
+			if (md->read >= md->index) break;
 
 			length = md->index - md->read;
 			if (length > memory_trace.length)
 				length = memory_trace.length;
 
-			pr_info("Copying to %llx, from %llx, %d elems\n", memory_trace.addresses,
-				(void *)(md->buf_poll[0] + md->read), length);
-
 			ret = copy_to_user(memory_trace.addresses, (void *)(md->buf_poll[0] + md->read), length);
-			pr_info("Copied %d\n", ret);
-			if (!ret) {
-				ret = copy_to_user((void *) arg, (void *)&memory_trace, sizeof(memory_trace_t));
-				if (ret) {
-					pr_info("Something wrong during copy to user!\n");
-					ret = -1;
-					break;
-				}
+			if (ret) {
+				pr_err("Cannot copy %lu bytes to 0x%llx\n", ret, memory_trace.addresses);
+				ret = -ENOMEM;
+				break;
 			}
-			pr_info("Read %llu, Index %llu\n", md->read, md->index);
+
 			md->read += length;
-			if (md->read == md->index) {
-				md->read = 0;
-				md->index = 0;
-			}
+
+			if (md->read == md->index) md->read = md->index = 0;
+
 			ret = length;
 			break;
 		case IOCTL_ADD_THREAD:
+			pr_warn("[IOCTL] Registered PID %u\n", (pid_t) arg);
 			register_thread((pid_t) arg);
 			break;
 		case IOCTL_DEL_THREAD:
+			pr_warn("[IOCTL] Unregistered PID %u\n", (pid_t) arg);
 			unregister_thread((pid_t) arg);
 			break;
 	}

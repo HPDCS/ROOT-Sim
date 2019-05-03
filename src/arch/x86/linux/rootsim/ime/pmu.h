@@ -40,6 +40,12 @@ extern int pebs_init(void); // DONE
 
 extern void pebs_fini(void); // DONE
 
+/* PEBS utility methods */
+extern void flush_pebs_buffer(unsigned check);
+
+extern void flush_pebs_buffer_on_cpu(unsigned cpu, unsigned check);
+
+
 #define set_pmc_event(p, v)	p.evt = v
 #define set_pmc_umask(p, v)	p.umask = v
 #define set_pmc_pebs(p, v)	p.pebs = v
@@ -64,6 +70,8 @@ struct pmc_cfg {
 	// u64 cpu_mask;
 } __attribute__((packed));
 
+#define PEBS_SAMPLE_SIZE sizeof(struct pebs_sample)
+#define MEM_SAMPLE_SIZE sizeof(u64)
 
 struct pebs_sample {
 	u64 eflags;		// 0x00

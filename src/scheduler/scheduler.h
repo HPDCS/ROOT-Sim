@@ -44,6 +44,7 @@
 #include <arch/ult.h>
 #include <arch/x86/ime.h>
 #include <scheduler/process.h>
+#include <arch/x86/linux/rootsim/ioctl.h>
 
 /// This macro defines after how many idle cycles the simulation is stopped
 #define MAX_CONSECUTIVE_IDLE_CYCLES	1000
@@ -87,6 +88,12 @@ extern __thread volatile bool platform_mode;
 #define unflag_rolling_back() rolling_back = false
 #endif
 
+#ifdef HAVE_PMU
+extern __thread int fd;
+extern __thread memory_trace_t memory_trace;
+extern __thread bool logging_mode;
+#endif
+
 static inline void switch_to_platform_mode(void)
 {
 #ifdef HAVE_PREEMPTION
@@ -95,7 +102,7 @@ static inline void switch_to_platform_mode(void)
 	}
 #endif
 #ifdef HAVE_PMU
-	toggle_pmu_trace();
+	if (!logging_mode) off_pmu_trace();
 #endif
 }
 
@@ -111,6 +118,6 @@ static inline void switch_to_application_mode(void)
 	}
 #endif
 #ifdef HAVE_PMU
-	toggle_pmu_trace();
+	if (!logging_mode) on_pmu_trace();
 #endif
 }

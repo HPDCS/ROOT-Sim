@@ -37,6 +37,10 @@
 #include <scheduler/process.h>
 #include <scheduler/scheduler.h>
 
+#include <arch/x86/linux/rootsim/ioctl.h>
+#include <sys/ioctl.h>  /* ioctl syscall*/
+#include <unistd.h>	/* close syscall */
+
 // TODO: see issue #121 to see how to make this ugly hack disappear
 __thread unsigned int __lp_counter = 0;
 __thread unsigned int __lp_bound_counter = 0;
@@ -110,10 +114,15 @@ void initialize_lps(void)
 		if (rootsim_config.snapshot == SNAPSHOT_FULL) {
 			lp->OnGVT = &OnGVT;
 			lp->ProcessEvent = &ProcessEvent;
-#if defined(HAS_GCC_PLUGIN) || defined(HAVE_PMU)
+#ifdef HAS_GCC_PLUGIN
 		} else if(rootsim_config.snapshot == SNAPSHOT_INCREMENTAL) {
+#ifndef HAVE_PMU
 			lp->OnGVT = &OnGVT_instr;
 			lp->ProcessEvent = &ProcessEvent_instr;
+#else
+			lp->OnGVT = &OnGVT;
+			lp->ProcessEvent = &ProcessEvent;
+#endif
 #endif
 		} else {
 			rootsim_error(true, "Wrong type of snapshot: neither full nor incremental\n");

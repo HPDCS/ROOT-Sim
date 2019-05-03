@@ -2,15 +2,12 @@
 
 #ifdef HAVE_PMU
 
-#include <stdint.h>
+// #include <stdint.h>
 
-#define PMU_MSR_HIGH_VALUE	0x0
-#define PMU_MSR_LOW_VALUE	0x3
+#define PMU_MSR_CODE		0x38F
 
-#define PMU_MSR_CODE		0x38f
-
-extern uint32_t pmu_msr_high;
-extern uint32_t pmu_msr_low;
+// extern __thread uint32_t pmu_msr_high;
+// extern __thread uint32_t pmu_msr_low;
 
 static inline void __toggle_pmu_trace(unsigned int msr, uint32_t low, uint32_t high)
 {
@@ -18,9 +15,12 @@ static inline void __toggle_pmu_trace(unsigned int msr, uint32_t low, uint32_t h
 		     : : "c" (msr), "a"(low), "d" (high) : "memory");
 }
 
-static inline void toggle_pmu_trace(void) {
-	pmu_msr_low ^= PMU_MSR_LOW_VALUE;
-	__toggle_pmu_trace(PMU_MSR_CODE, pmu_msr_low, pmu_msr_high);
+static inline void on_pmu_trace(void) {
+	__toggle_pmu_trace(PMU_MSR_CODE, 0xFULL, 0x0);
+}
+
+static inline void off_pmu_trace(void) {
+	__toggle_pmu_trace(PMU_MSR_CODE, 0x0, 0x0);
 }
 
 

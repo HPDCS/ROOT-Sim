@@ -4,6 +4,8 @@
 #include "msr_config.h"
 #include "pmu.h"
 
+#include "../rootsim.h" /* idt features */
+
 // static DEFINE_PER_CPU(struct debug_store, pcpu_ds_bkp);
 
 DEFINE_PER_CPU(struct debug_store, pcpu_ds);
@@ -183,9 +185,9 @@ int pebs_init(void)
 		pebs_buf_len = PAGE_SIZE * 16;
 
 		/* Maximum number of samples */
-		offset = (pebs_buf_len / sizeof(struct pebs_sample)) * sizeof(struct pebs_sample);
+		offset = (pebs_buf_len / PEBS_SAMPLE_SIZE) * PEBS_SAMPLE_SIZE;
 		/* Fire interrupt when there is space for only 16 samples */
-		threshold = offset - (sizeof(struct pebs_sample) * 16);
+		threshold = offset - (PEBS_SAMPLE_SIZE * 16);
 		/* Allocate the maximum possible memory */
 		pebs_buf = kmalloc(pebs_buf_len, GFP_KERNEL);
 
@@ -351,4 +353,69 @@ void disable_all_pmc_system(void)
 {
 	// Must wait?
 	on_each_cpu(smp_disable_core_pmc, NULL, 1);
+}
+
+
+
+/* data[0] contains the base address while data[1] its size */
+void flush_pebs_buffer(unsigned check)
+{
+	u64 msr;
+	unsigned i, offset;
+	struct mem_data *md;
+	struct debug_store *ds;
+	
+	/* 'add' field offset */
+	i = offsetof(struct pebs_sample, add) / MEM_SAMPLE_SIZE;
+
+	/* Retrieve current buffer which is stored into DS area */
+	rdmsrl(MSR_IA32_DS_AREA, msr);	
+	ds = (struct debug_store *) msr;
+
+	if (ds->pebs_index == ds->pebs_buffer_base) return;
+
+	/* Samples Base */
+	u64 *base = (u64 *) ds->pebs_buffer_base;
+	
+	/* Navigate the buffer by 'add' field */
+	offset = (ds->pebs_index - ds->pebs_buffer_base) / MEM_SAMPLE_SIZE;
+
+	md = this_cpu_ptr(&pcpu_mem_data);
+
+	/* Sanity check */
+	if (check && md->read) {
+		msr = rdtsc();
+		pr_err("[IRQ] [%llx] STOP - Samples copied: p %u - i %u - r %u - s%u\n",
+		msr, md->pos, md->index, md->read, md->buf_size);
+		rdmsrl(MSR_IA32_PERFEVTSEL(0), msr);
+		wrmsrl(MSR_IA32_PERFEVTSEL(0), msr & ~BIT(22));
+		return;
+	}
+
+
+	for (; i < offset; i += (PEBS_SAMPLE_SIZE / MEM_SAMPLE_SIZE)) {
+		if (md->pos >= md->nr_buf) {
+			pr_info("[IRQ] No available buffer: %u\n", md->pos);
+			return;
+		}
+		md->buf_poll[md->pos][md->index] = base[i];
+		if (++(md->index) >= md->buf_size) {
+			md->pos++;
+			pr_info("[IRQ] Buffer is full\n");
+			// md->index = 0;
+		}
+	}
+
+	/* reset PEBS buffer index */
+	ds->pebs_index = ds->pebs_buffer_base;
+}
+
+static void smp_flush_pebs_buffer(void *d)
+{
+	flush_pebs_buffer(d);
+}
+
+void flush_pebs_buffer_on_cpu(unsigned cpu, unsigned check)
+{
+	smp_call_function_single(cpu, smp_flush_pebs_buffer, check, 1);
 }

@@ -17,6 +17,7 @@ void on_context_switch(void)
 		if (*state) {
 			wrmsrl(MSR_IA32_PERF_GLOBAL_CTRL, 0xFULL);
 			*state = 0;
+			pr_info("[Scheduler] pmu enabled\n");
 		}
 		
 		/* Set active thread bit */
@@ -31,6 +32,7 @@ void on_context_switch(void)
 			*state &= ~BIT(2);
 			/* Disable PMUs */
 			wrmsrl(MSR_IA32_PERF_GLOBAL_CTRL, 0);
+			pr_info("[Scheduler] pmu disabled (BKP %llx)\n", msr);
 		}
 
 	}
