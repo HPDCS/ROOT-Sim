@@ -72,7 +72,7 @@ static void malloc_area_init(malloc_area * m_area, size_t size, int num_chunks)
 }
 
 /**
-* This function inizializes a malloc_state.
+* This function initializes a malloc_state.
 */
 malloc_state *malloc_state_init(void)
 {
@@ -320,7 +320,7 @@ void *do_malloc(struct lp_struct *lp, size_t size)
 	}
 
 	m_area->state_changed = 1;
-	m_area->last_access = lvt(current);
+	m_area->last_access = current_evt->timestamp;
 
 	if (!CHECK_LOG_MODE_BIT(m_area)) {
 		if ((double)m_area->alloc_chunks / (double)m_area->num_chunks > MAX_LOG_THRESHOLD) {
@@ -418,7 +418,7 @@ void do_free(struct lp_struct *lp, void *ptr)
 
 	m_area->state_changed = 1;
 
-	m_area->last_access = lvt(current);
+	m_area->last_access = current_evt->timestamp;
 
 	if (CHECK_LOG_MODE_BIT(m_area)) {
 		if ((double)m_area->alloc_chunks / (double)m_area->num_chunks < MIN_LOG_THRESHOLD) {

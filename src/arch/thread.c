@@ -37,6 +37,7 @@
 #include <arch/thread.h>
 #include <core/init.h>
 #include <mm/mm.h>
+#include <src/scheduler/scheduler.h>
 
 /**
  * An OS-level thread id. We never do any join on worker threads, so
@@ -82,6 +83,8 @@ __thread unsigned int local_tid;
  */
 static unsigned int thread_counter = 0;
 
+/// Thread Control Blocks
+Thread_State **Threads;
 
 /**
 * This helper function is the actual entry point for every thread created
@@ -225,3 +228,88 @@ bool thread_barrier(barrier_t * b)
 
 	return false;
 }
+
+void threads_init(void) {
+    unsigned int i;
+    unsigned int curr_ct = 0;
+
+    // Check if we have enough threads to run an asymmetric simulation
+    if(rootsim_config.num_controllers > n_cores / 2) {
+        fprintf(stderr, "Running with %d threads, asked for %d controllers: there won't be enough PTs!\n", n_cores, rootsim_config.num_controllers);
+        exit(EXIT_FAILURE);
+    }
+
+    // Initialize Thread Control Blocks
+    Threads = rsalloc(sizeof(Thread_State *) * n_cores);
+    bzero(Threads, sizeof(Thread_State *) * n_cores);
+
+    for(i = 0; i < n_cores; i++) {
+        Threads[i] = rsalloc(sizeof(Thread_State));
+        bzero(Threads[i], sizeof(Thread_State));
+
+        // TODO: we should find a new way to orchestrate symmetric, controlling, and processing threads altogether!
+        if(rootsim_config.num_controllers == 0)
+            Threads[i]->incarnation = THREAD_SYMMETRIC;
+        else if(i < rootsim_config.num_controllers)
+            Threads[i]->incarnation = THREAD_CONTROLLER;
+        else
+            Threads[i]->incarnation = THREAD_PROCESSING;
+
+        // Initialize thread ports
+        Threads[i]->input_port[PORT_PRIO_HI] = init_channel();
+        Threads[i]->input_port[PORT_PRIO_LO] = init_channel();
+        Threads[i]->output_port = init_channel();
+        Threads[i]->port_batch_size = PORT_START_BATCH_SIZE;
+
+        // Initialize curr_scheduled_events
+        Threads[i]->curr_scheduled_events = rsalloc(sizeof(int)*n_prc);
+
+        // Initialize heap data structure used by controllers.
+        // We can initialize it for all threads with a minor cost since
+        // it actually allocs memory to store data on first push
+
+        /*Threads[i]->events_heap = rsalloc(sizeof(heap_t));
+          Threads[i]->events_heap->size = 0;
+          Threads[i]->events_heap->len = 0;   */
+        heap_init(Threads[i]->heap);
+
+        // Initialize the pointer of possible PTs for this thread
+        Threads[i]->num_PTs = 0;
+        //if(n_cores - rootsim_config.num_controllers > 0) {
+        if(i < rootsim_config.num_controllers) {
+            Threads[i]->PTs = rsalloc(sizeof(Thread_State *) * (n_cores - rootsim_config.num_controllers));
+            memset(Threads[i]->PTs, 0, sizeof(Thread_State *) * (n_cores - rootsim_config.num_controllers));
+        } else {
+            Threads[i]->PTs = NULL;
+        }
+
+        // This TCB is associated with a certain tid and global_tid.
+        // The actual thread which will take this tid depends on the race
+        // threads make upon their creation.
+        Threads[i]->tid = i;
+        Threads[i]->global_tid = to_global_tid(kid, i);
+
+    }
+
+    // In this second run, we mutually assign PTs to CTs and vice versa (we loop over PTs)
+    if(rootsim_config.num_controllers > 0) {
+        for(i = rootsim_config.num_controllers; i < n_cores; i++) {
+            Threads[i]->CT = Threads[curr_ct];
+            Threads[curr_ct]->PTs[Threads[curr_ct]->num_PTs] = Threads[i];
+
+            printf("PT %d sees as its CT: %d\n", Threads[i]->tid, Threads[i]->CT->tid);
+            printf("CT %d has got a new PT: %d\n", Threads[curr_ct]->tid, Threads[curr_ct]->PTs[Threads[curr_ct]->num_PTs]->tid);
+
+            Threads[curr_ct]->num_PTs++;
+            curr_ct = (curr_ct + 1) % rootsim_config.num_controllers;
+        }
+
+        // Alloc and set to zero the idle_microseconds array. Should be moved to statistics
+        total_idle_microseconds = rsalloc(sizeof(long)*n_cores);
+        bzero(total_idle_microseconds, sizeof(long)*n_cores);
+    }
+}
+
+
+
+

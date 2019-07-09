@@ -210,7 +210,7 @@ void lp_alloc_thread_init(void) {
 	lp_memory_ioctl_info.ds = -1;
 	ptr = get_base_pointer(LP0); // LP 0 is the first allocated one, and it's memory stock starts from the beginning of the PML4
 	lp_memory_ioctl_info.addr = ptr;
-	lp_memory_ioctl_info.mapped_processes = n_prc_tot;
+	lp_memory_ioctl_info.mapped_processes = n_LP_tot;
 
 	callback_function =  rootsim_cross_state_dependency_handler;
 	lp_memory_ioctl_info.callback = (ulong) callback_function;

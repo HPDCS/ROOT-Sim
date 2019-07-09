@@ -432,7 +432,7 @@ static void receive_update(void){
 }
 
 /**
-* Keep updated the neighbours of changes in the tracked data. This is called after each event and boradcasts eventual
+* Keep updated the neighbours of changes in the tracked data. This is called after each event and broadcasts possible
 * changes to neighbours
 */
 static void update_neighbours(void){

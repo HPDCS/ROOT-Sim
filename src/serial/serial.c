@@ -60,9 +60,9 @@ void SerialScheduleNewEvent(unsigned int rcv, simtime_t stamp,
 	msg_t *event;
 
 	// Sanity checks
-	if (unlikely(stamp < lvt(current))) {
+	if (unlikely(current->bound != NULL) && unlikely(stamp < current->bound->timestamp)) {
 		rootsim_error(true, "LP %d is trying to send events in the past. Current time: %f, scheduled time: %f\n",
-			      current->gid.to_int, lvt(current), stamp);
+			      current->gid.to_int, current->bound->timestamp, stamp);
 	}
 	// Populate the message data structure
 	set_gid(receiver, rcv);
@@ -72,7 +72,7 @@ void SerialScheduleNewEvent(unsigned int rcv, simtime_t stamp,
 	event->sender = current->gid;
 	event->receiver = receiver;
 	event->timestamp = stamp;
-	event->send_time = lvt(current);
+	event->send_time = current->bound != NULL ? current->bound->timestamp : 0.0;
 	event->type = event_type;
 	event->size = event_size;
 	memcpy(event->event_content, event_content, event_size);
@@ -84,15 +84,15 @@ void SerialScheduleNewEvent(unsigned int rcv, simtime_t stamp,
 void serial_init(void)
 {
 	// Sanity check on the number of LPs
-	if (unlikely(n_prc_tot == 0)) {
+	if (unlikely(n_LP_tot == 0)) {
 		rootsim_error(true, "You must specify the total number of Logical Processes\n");
 	}
 	// Initialize the calendar queue
 	calqueue_init();
 
 	// Initialize the per LP variables
-	serial_completed_simulation = rsalloc(sizeof(bool) * n_prc_tot);
-	bzero(serial_completed_simulation, sizeof(bool) * n_prc_tot);
+	serial_completed_simulation = rsalloc(sizeof(bool) * n_LP_tot);
+	bzero(serial_completed_simulation, sizeof(bool) * n_LP_tot);
 
 	// Generate the INIT events for all the LPs
 	foreach_lp(lp) {
@@ -136,7 +136,7 @@ void serial_simulation(void)
 
 #ifdef EXTRA_CHECKS
 		if (event->size > 0) {
-			hash1 = XXH64(event->event_content, event->size, current);
+			hash1 = XXH64(event->event_content, event->size, current->gid.to_int);
 		}
 #endif
 
@@ -156,7 +156,7 @@ void serial_simulation(void)
 
 #ifdef EXTRA_CHECKS
 		if (event->size > 0) {
-			hash2 = XXH64(event->event_content, event->size, current);
+			hash2 = XXH64(event->event_content, event->size, current->gid.to_int);
 		}
 
 		if (hash1 != hash2) {
@@ -178,7 +178,7 @@ void serial_simulation(void)
 				if (!serial_completed_simulation[event->receiver.to_int] && current->OnGVT(event->receiver.to_int, current->current_base_pointer)) {
 					completed++;
 					serial_completed_simulation[event->receiver.to_int] = true;
-					if (unlikely(completed == n_prc_tot)) {
+					if (unlikely(completed == n_LP_tot)) {
 						serial_simulation_complete = true;
 					}
 				}
@@ -201,7 +201,7 @@ void serial_simulation(void)
 
 				serial_completed_simulation[event->receiver.to_int] = new_termination_decision;
 
-				if (unlikely(completed == n_prc_tot)) {
+				if (unlikely(completed == n_LP_tot)) {
 					serial_simulation_complete = true;
 				}
 			}
@@ -215,8 +215,8 @@ void serial_simulation(void)
 		// Print the time advancement periodically
 		if (timer_value_milli(serial_gvt_timer) > (int)rootsim_config.gvt_time_period) {
 			timer_restart(serial_gvt_timer);
-			printf("TIME BARRIER: %f\n", lvt(current));
-			statistics_on_gvt_serial(lvt(current));
+			printf("TIME BARRIER: %f\n", current->bound->timestamp);
+			statistics_on_gvt_serial(current->bound->timestamp);
 		}
 
 		current = NULL;

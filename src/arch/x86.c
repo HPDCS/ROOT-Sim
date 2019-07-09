@@ -166,3 +166,20 @@ inline void spin_unlock(spinlock_t * s)
 			     :"m"(s->lock)
 			     :"eax", "memory");
 }
+
+/**
+* This function implements (on x86-64 architectures) the atomic add operation.
+* It adds 'i' units to the atomic counter 'v'
+*
+* @author Alessandro Pellegrini
+*
+* @param v the atomic counter which is the destination of the operation
+* @param i how much must be added
+*/
+inline void atomic_add(atomic_t *v, int i) {
+    __asm__ __volatile__(
+    LOCK "addl %1,%0"
+    : "=m" (v->count)
+    : "ir" (i), "m" (v->count)
+    );
+}

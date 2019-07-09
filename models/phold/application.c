@@ -292,6 +292,8 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 bool OnGVT(unsigned int me, lp_state_type *snapshot) {
 	(void)me;
 
+    fprintf(stdout,"PT%d: %f%% (%d events)\n", me, (double)snapshot->events/COMPLETE_EVENTS*100.0,snapshot->events);
+
 	if(snapshot->traditional) {
 		if(snapshot->events < COMPLETE_EVENTS)
 			return false;

@@ -104,7 +104,7 @@ struct segment *get_segment(GID_t gid)
 void segment_init(void)
 {
 	struct rlimit limit;
-	size_t max_address_space = PER_LP_PREALLOCATED_MEMORY * n_prc_tot * 2;
+	size_t max_address_space = PER_LP_PREALLOCATED_MEMORY * n_LP_tot * 2;
 
 	// Configure the system to allow mmapping 1GB of VM at a time
 	limit.rlim_cur = max_address_space;

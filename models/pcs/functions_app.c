@@ -98,8 +98,8 @@ void deallocation(unsigned int me, lp_state_type *pointer, int ch, simtime_t lvt
 
 		free(c);
 	} else {
-		printf("(%d) Unable to deallocate on %p, channel is %d at time %f\n", me, c, ch, lvt);
-		abort();
+		//printf("(%d) Unable to deallocate on %p, channel is %d at time %f\n", me, c, ch, lvt);
+		//abort();
 	}
 	return;
 }

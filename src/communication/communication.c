@@ -32,6 +32,8 @@
 #include <stdlib.h>
 #include <float.h>
 
+#include <arch/thread.h>
+#include <core/init.h>
 #include <core/core.h>
 #include <gvt/gvt.h>
 #include <queues/queues.h>
@@ -42,6 +44,8 @@
 #include <datatypes/list.h>
 #include <mm/mm.h>
 #include <arch/atomic.h>
+#include <src/arch/thread.h>
+
 #ifdef HAVE_MPI
 #include <communication/mpi.h>
 #endif
@@ -132,6 +136,11 @@ void msg_hdr_release(msg_hdr_t *msg)
 	struct lp_struct *lp;
 
 	lp = find_lp_by_gid(msg->sender);
+
+#ifndef NDEBUG
+	bzero(msg, sizeof(msg_hdr_t));
+#endif
+
 	slab_free(lp->mm->slab, msg);
 }
 
@@ -205,7 +214,7 @@ msg_t *get_msg_from_slab(struct lp_struct *lp)
  * antimessage, or a message which is now beyond the commit horizon
  * identified by the GVT).
  *
- * To free the message, this function checks againts the total size
+ * To free the message, this function checks against the total size
  * of the message, considering both the size of the @ref msg_t structure
  * and that of the payload kept in the @c event_content member of @ref msg_t.
  * If the total size is smaller than @ref SLAB_MSG_SIZE, then the message
@@ -223,14 +232,14 @@ msg_t *get_msg_from_slab(struct lp_struct *lp)
  */
 void msg_release(msg_t *msg)
 {
-	struct lp_struct *lp;
+    struct lp_struct *lp;
 
-	if (likely(sizeof(msg_t) + msg->size <= SLAB_MSG_SIZE)) {
-		lp = which_slab_to_use(msg->sender, msg->receiver);
-		slab_free(lp->mm->slab, msg);
-	} else {
-		rsfree(msg);
-	}
+    if (likely(sizeof(msg_t) + msg->size <= SLAB_MSG_SIZE)) {
+        lp = which_slab_to_use(msg->sender, msg->receiver);
+        slab_free(lp->mm->slab, msg);
+    } else {
+        rsfree(msg);
+    }
 }
 
 
@@ -277,15 +286,15 @@ void ParallelScheduleNewEvent(unsigned int gid_receiver, simtime_t timestamp, un
 		return;
 	}
 	// Check whether the destination LP is out of range
-	if (unlikely(gid_receiver > n_prc_tot - 1)) {	// It's unsigned, so no need to check whether it's < 0
+	if (unlikely(gid_receiver > n_LP_tot - 1)) {	// It's unsigned, so no need to check whether it's < 0
 		rootsim_error(false, "Warning: the destination LP %u is out of range. The event has been ignored\n", gid_receiver);
 		goto out;
 	}
-	// Check if the associated timestamp is negative
-	if (unlikely(timestamp < lvt(current))) {
+	// Check if the associated timestamp is negative. In asymmetric computation, anyhow, this sanity check doesn't hold.
+	if (unlikely(rootsim_config.num_controllers == 0 && timestamp < current_evt->timestamp)) {
 		rootsim_error(true, "LP %u is trying to generate an event (type %d) to %u in the past! (Current LVT = %f, generated event's timestamp = %f) Aborting...\n",
 			      current->gid, event_type, gid_receiver,
-			      lvt(current), timestamp);
+                      current_evt->timestamp, timestamp);
 	}
 	// Check if the event type is mapped to an internal control message
 	if (unlikely(event_type >= RESERVED_MSG_CODE)) {
@@ -294,15 +303,14 @@ void ParallelScheduleNewEvent(unsigned int gid_receiver, simtime_t timestamp, un
 	}
 
 	// Copy all the information into the event structure
-	pack_msg(&event, current->gid, receiver, event_type, timestamp, lvt(current), event_size, event_content);
+	pack_msg(&event, current->gid, receiver, event_type, timestamp, current_evt->timestamp, event_size, event_content);
 	event->mark = generate_mark(current);
 
 	if (unlikely(event->type == RENDEZVOUS_START)) {
 		event->rendezvous_mark = current_evt->rendezvous_mark;
-		printf("rendezvous_start mark=%llu\n", event->rendezvous_mark);
 		fflush(stdout);
 	}
-
+    validate_msg(event);
 	insert_outgoing_msg(event);
 
  out:
@@ -313,28 +321,29 @@ void ParallelScheduleNewEvent(unsigned int gid_receiver, simtime_t timestamp, un
 /**
  * @brief Send all antimessages for a certain LP
  *
- * This function send all the antimessages for a certain LP, provided
+ * This function sends all the antimessages for a certain LP, provided
  * a simulation time (which is associated with the time at which
- * we are rolling back.
+ * we are rolling back).
  *
  * After that the antimessage is sent, the header is immediately removed
  * from the output queue, as MPI guarantees that the antimessage is
  * eventually received at the destination.
  *
  * @param lp A pointer to the LP lp_struct for which antimessages should be sent
- * @param after_simtime The simulation time instant after which to send antimessages
+ * @param correct_event_ts The simulation time instant after which to send antimessages
  */
-void send_antimessages(struct lp_struct *lp, simtime_t after_simtime)
+void send_antimessages(struct lp_struct *lp, simtime_t correct_event_ts)
 {
 	msg_hdr_t *anti_msg, *anti_msg_prev;
 	msg_t *msg;
 
-	if (unlikely(list_empty(lp->queue_out)))
+
+    if (unlikely(list_empty(lp->queue_out)))
 		return;
 
 	// Scan the output queue backwards, sending all required antimessages
 	anti_msg = list_tail(lp->queue_out);
-	while (anti_msg != NULL && anti_msg->send_time > after_simtime) {
+	while (anti_msg != NULL && anti_msg->send_time > correct_event_ts) {
 		msg = get_msg_from_slab(which_slab_to_use(anti_msg->sender, anti_msg->receiver));
 		hdr_to_msg(anti_msg, msg);
 		msg->message_kind = negative;
@@ -395,14 +404,16 @@ void Send(msg_t *msg)
  */
 void insert_outgoing_msg(msg_t *msg)
 {
+    int index;
 
 	// if the model is generating many events at the same time, reallocate the outgoing buffer
 	if (unlikely(current->outgoing_buffer.size == current->outgoing_buffer.max_size)) {
 		current->outgoing_buffer.max_size *= 2;
 		current->outgoing_buffer.outgoing_msgs = rsrealloc(current->outgoing_buffer.outgoing_msgs, sizeof(msg_t *) * current->outgoing_buffer.max_size);
 	}
-
-	current->outgoing_buffer.outgoing_msgs[current->outgoing_buffer.size++] = msg;
+    index = current->outgoing_buffer.size++;
+	current->outgoing_buffer.outgoing_msgs[index] = msg;
+    validate_msg(current->outgoing_buffer.outgoing_msgs[index]);
 
 	// Store the minimum timestamp of outgoing messages
 	// TODO: check whether this is still used by preemptive Time Warp or not
@@ -448,6 +459,19 @@ void send_outgoing_msgs(struct lp_struct *lp)
 	lp->outgoing_buffer.size = 0;
 }
 
+void asym_send_outgoing_msgs(struct lp_struct *lp) {
+    register unsigned int i = 0;
+    msg_t *msg;
+    //printf("current gid: %d\n", lp->gid.to_int);
+
+    for(i = 0; i < lp->outgoing_buffer.size; i++) {
+        msg = lp->outgoing_buffer.outgoing_msgs[i];
+
+        pt_put_out_msg(msg);
+    }
+
+    lp->outgoing_buffer.size = 0;
+}
 
 /**
  * @brief Pack a message in a platform-level data structure
@@ -493,27 +517,106 @@ void send_outgoing_msgs(struct lp_struct *lp)
  */
 void pack_msg(msg_t **msg, GID_t sender, GID_t receiver, int type, simtime_t timestamp, simtime_t send_time, size_t size, void *payload)
 {
-	// Check if we can rely on a slab to initialize the message
-	if (likely(sizeof(msg_t) + size <= SLAB_MSG_SIZE)) {
-		*msg = get_msg_from_slab(which_slab_to_use(sender, receiver));
-	} else {
-		*msg = rsalloc(sizeof(msg_t) + size);
-		bzero(*msg, sizeof(msg_t) + size);
-	}
+// Check if we can rely on a slab to initialize the message
+    if (likely(sizeof(msg_t) + size <= SLAB_MSG_SIZE)) {
+        *msg = get_msg_from_slab(which_slab_to_use(sender, receiver));
+    } else {
+        *msg = rsalloc(sizeof(msg_t) + size);
+        bzero(*msg, sizeof(msg_t) + size);
+    }
 
-	(*msg)->sender = sender;
-	(*msg)->receiver = receiver;
-	(*msg)->type = type;
-	(*msg)->message_kind = positive;
-	(*msg)->timestamp = timestamp;
-	(*msg)->send_time = send_time;
-	(*msg)->size = size;
-	// TODO: si può generare qua dentro la marca, perché si usa sempre il sender. Occhio al gid/lid!!!!
+    (*msg)->sender = sender;
+    (*msg)->receiver = receiver;
+    (*msg)->type = type;
+    (*msg)->message_kind = positive;
+    (*msg)->timestamp = timestamp;
+    (*msg)->send_time = send_time;
+    (*msg)->size = size;
+    // TODO: si può generare qua dentro la marca, perché si usa sempre il sender. Occhio al gid/lid!!!!
 
-	if (payload != NULL && size > 0)
-		memcpy((*msg)->event_content, payload, size);
+    if (payload != NULL && size > 0)
+        memcpy((*msg)->event_content, payload, size);
 }
 
+void asym_extract_generated_msgs(void) {
+    struct lp_struct *lp_sender, *lp_receiver;
+    unsigned int i;
+    msg_t *msg;
+    msg_hdr_t *msg_hdr;
+    for(i = 0; i < Threads[tid]->num_PTs; i++) {
+            // printf("Output port size for PT %u: %d\n", Threads[tid]->PTs[i]->tid), atomic_read(&Threads[tid]->PTs[i]->output_port->size);
+        while((msg = pt_get_out_msg(Threads[tid]->PTs[i]->tid)) != NULL) {
+
+            validate_msg(msg);
+
+            if(is_control_msg(msg->type) && msg->type == ASYM_ROLLBACK_ACK) {
+
+                lp_receiver = find_lp_by_gid(msg->receiver);
+
+                /* We check against LP_STATE_ROLLBACK to account for the following pattern:
+                 *  - LP_x receives a straggler, its bound is rolled back and moves to LP_STATE_ROLLBACK
+                 *  - LP_x is picked by STF: NOTICE/BUBBLES are sent to PT
+                 *  - LP_x and LP_y receive a straggler, but LP_y goes behind LP_x
+                 *  - LP_y is picked by STF: NOTICE/BUBBLES are sent to PT
+                 *  - PT sends back ACK for LP_x, for the first incarnation of rollback
+                 */
+                if(lp_receiver->rollback_status == REQUESTED) {
+                    goto discard;
+                }
+
+                if(lp_receiver->rollback_status == PROCESSING && lp_receiver->rollback_mark > msg->mark){
+                    goto discard;
+                }
+
+                if(lp_receiver->rollback_status == IDLE) {  //integrity check
+                    printf("\tERROR: The impossible happened, LP%u with rollback_mark = %llu and rb_status IDLE just received a ROLLBACK_ACK",
+                            lp_receiver->gid.to_int,lp_receiver->rollback_mark);
+                    dump_msg_content(msg);
+                    abort();
+                }
+
+                if(lp_receiver->rollback_mark < msg->mark) {    //integrity check
+                    printf("\tERROR: msg mark (%llu) CANNOT BE BIGGER than LP%u's rollback mark (%llu)\n",msg->mark,lp_receiver->gid.to_int,lp_receiver->rollback_mark);
+                    dump_msg_content(msg);
+                    abort();
+                }
+
+                if(lp_receiver->rollback_status == PROCESSING && msg->mark == lp_receiver->rollback_mark) {
+
+                    // Sanity check
+                    if (lp_receiver->state != LP_STATE_WAIT_FOR_ROLLBACK_ACK) {
+                        printf("\tLP%u received a ROLLBACK_ACK but is in state %d\n", msg->receiver.to_int, lp_receiver->state);
+                        abort();
+                    }
+
+                    lp_receiver->state = LP_STATE_ROLLBACK_ALLOWED;
+                    lp_receiver->rollback_status = IDLE;
+                    goto discard;
+                }
+
+                printf("\tERROR: STRANGE ASYM_ROLLBACK_ACK received");
+                dump_msg_content(msg);
+                abort();
+
+                discard:
+                msg_release(msg);
+                continue;
+            }
+
+            Send(msg);
+
+            lp_sender = find_lp_by_gid(msg->sender);
+
+            msg_hdr = get_msg_hdr_from_slab(lp_sender);
+            msg_to_hdr(msg_hdr, msg);
+            // register the message in the sender's output queue, for antimessage management
+            // We can use msg->sender here (ensuring data separation) because we're extracting
+            // messages from an output port coming from a PT managed by the current CT, therefore
+            // involving only local LPs.
+            list_insert(lp_sender->queue_out, send_time, msg_hdr);
+        }
+    }
+}
 
 /**
  * @brief Convert a message to a message header
@@ -588,18 +691,21 @@ void hdr_to_msg(msg_hdr_t *hdr, msg_t *msg)
  */
 void dump_msg_content(msg_t *msg)
 {
-	printf("\tsender: %u\n", msg->sender.to_int);
-	printf("\treceiver: %u\n", msg->sender.to_int);
+
+    printf("\tMark: %llu |Sender: LP%u |Receiver: LP%u |TS: %f |Send T.: %f |Type: %d |Kind: %d |Randezvous: %llu \n", msg->mark, msg->sender.to_int,
+           msg->receiver.to_int, msg->timestamp, msg->send_time, msg->type, msg->message_kind, msg->rendezvous_mark);
+/*  printf("\tsender: %u\n", msg->sender.to_int);
+	printf("\treceiver: %u\n", msg->receiver.to_int); */
 #ifdef HAVE_MPI
 	printf("\tcolour: %d\n", msg->colour);
 #endif
-	printf("\ttype: %d\n", msg->type);
+/*	printf("\ttype: %d\n", msg->type);
 	printf("\tmessage_kind: %d\n", msg->message_kind);
 	printf("\ttimestamp: %f\n", msg->timestamp);
 	printf("\tsend_time: %f\n", msg->send_time);
 	printf("\tmark: %llu\n", msg->mark);
 	printf("\trendezvous_mark: %llu\n", msg->rendezvous_mark);
-	printf("\tsize: %d\n", msg->size);
+	printf("\tsize: %d\n", msg->size);  */
 }
 
 
@@ -663,11 +769,13 @@ unsigned int mark_to_gid(unsigned long long mark)
  */
 void validate_msg(msg_t *msg)
 {
-	assert(msg->sender.to_int <= n_prc_tot);
-	assert(msg->receiver.to_int <= n_prc_tot);
+    assert(msg->receiver.to_int <= n_LP_tot);
+    assert(msg->sender.to_int <= n_LP_tot);
+    assert(msg->send_time <= msg->timestamp);
 	assert(msg->message_kind == positive || msg->message_kind == negative || msg->message_kind == control);
-	assert(mark_to_gid(msg->mark) <= n_prc_tot);
-	assert(mark_to_gid(msg->rendezvous_mark) <= n_prc_tot);
+	assert(mark_to_gid(msg->mark) <= n_LP_tot);
+    assert(mark_to_gid(msg->mark) == msg->sender.to_int);
+	assert(mark_to_gid(msg->rendezvous_mark) <= n_LP_tot);
 	assert(msg->type < MAX_VALUE_CONTROL);
 }
 #endif

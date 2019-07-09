@@ -56,14 +56,15 @@ struct lp_struct *smallest_timestamp_first(void)
 	simtime_t evt_time, next_time = INFTY;
 
 	foreach_bound_lp(lp) {
-		// If waiting for synch, don't take into account the LP
+        // If waiting for synch, don't take into account the LP
 		if (is_blocked_state(lp->state)) {
-			continue;
+            spin_unlock(&lp->bound_lock);
+            continue;
 		}
 		// If the LP is in READY_FOR_SYNCH it has to handle the same ECS message
 		if (lp->state == LP_STATE_READY_FOR_SYNCH) {
 			// The LP handles the suspended event as the next event
-			evt_time = lvt(lp);
+			evt_time = lp->last_processed->timestamp;
 		} else {
 			// Compute the next event's timestamp.
 			evt_time = next_event_timestamp(lp);
@@ -73,7 +74,47 @@ struct lp_struct *smallest_timestamp_first(void)
 			next_time = evt_time;
 			next_lp = lp;
 		}
-	}
 
+    }
 	return next_lp;
+}
+
+/** This function implements a selection strategy similar
+* to smallest timestamp first algorithm for the asymmetric
+* architecture. It returns the LP of the logical process with
+* the smallest timestamp among the set of LPs passed as parameter
+* This is necessary to skip LPs for whom the respective input port
+* is already filled.
+*
+* @author Stefano Conoci
+* @author Alessandro Pellegrini */
+
+struct lp_struct *asym_smallest_timestamp_first(void)
+{
+    struct lp_struct *next_lp = NULL;
+    simtime_t evt_time, next_time = INFTY;
+
+    foreach_bound_mask_lp(lp) {
+        if (lp != NULL) {
+            //  If waiting for synch, don't take into account the LP
+            if (is_blocked_state(lp->state)) {
+                continue; // continue to the next element
+            }
+            //If the LP is in READY_FOR_SYNCH has to handle the same message of ECS
+            if (lp->state == LP_STATE_READY_FOR_SYNCH) {
+                spin_lock(&lp->bound_lock);
+                evt_time = lp->last_processed->timestamp;   // The LP handles the suspended event as the next event
+                spin_unlock(&lp->bound_lock);
+            } else {
+                // Compute the next event's timestamp. Translate the id from the local binding to the local ID
+                evt_time = next_event_timestamp(lp);
+            }
+            if (evt_time < next_time && evt_time < INFTY) {
+                next_time = evt_time;
+                next_lp = lp;
+            }
+        }
+
+    }
+    return next_lp;
 }

@@ -69,12 +69,14 @@ enum _control_msgs {
 	RENDEZVOUS_GET_PAGE,		///< ECS protocol: a remote LP is asked for a certain set of pages
 	RENDEZVOUS_GET_PAGE_ACK,	///< ECS protocol: the sender LP is giving a lease on a set of pages
 	RENDEZVOUS_PAGE_WRITE_BACK,	///< ECS protocol: modified pages are sent back to the owner LP
-	MAX_VALUE_CONTROL		///< Anything after this value is considered as an impossible message
+    ASYM_ROLLBACK_NOTICE,
+    ASYM_ROLLBACK_BUBBLE,
+	ASYM_ROLLBACK_ACK,
+    MAX_VALUE_CONTROL,		///< Anything after this value is considered as an impossible message
 };
 
 /// This macro tells whether a message is a control message, by its type
-#define is_control_msg(type)	(type >= MIN_VALUE_CONTROL && type != RENDEZVOUS_START)
-
+#define is_control_msg(type)    (type >= MIN_VALUE_CONTROL && type != RENDEZVOUS_START)
 
 /**
  * @brief Internal MPI tags.
@@ -135,6 +137,8 @@ extern void Send(msg_t * msg);
 extern void insert_outgoing_msg(msg_t * msg);
 extern void send_outgoing_msgs(struct lp_struct *);
 extern void send_antimessages(struct lp_struct *, simtime_t);
+extern void asym_send_outgoing_msgs(struct lp_struct*);
+extern void asym_extract_generated_msgs(void);
 
 extern void msg_hdr_release(msg_hdr_t * msg);
 extern msg_t *get_msg_from_slab(struct lp_struct *);

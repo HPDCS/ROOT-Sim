@@ -35,10 +35,12 @@
 #include <assert.h>
 
 #include <arch/atomic.h>
+#include <arch/thread.h>
 
 /// This structure defines a generic list.
 typedef struct rootsim_list {
 	size_t size;
+	uint32_t concurrency_canary;
 	void *head;		// Generic pointers: nodes of the list must have a next/prev pointer properly typed
 	void *tail;
 //      atomic_t counter;
@@ -60,8 +62,18 @@ typedef struct rootsim_list {
 				void *__lmptr; \
 				__lmptr = (void *)rsalloc(sizeof(struct rootsim_list)); \
 				bzero(__lmptr, sizeof(struct rootsim_list));\
+                ((rootsim_list *)__lmptr)->concurrency_canary = UINT32_MAX;\
 				__lmptr;\
 			})
+
+#define canary_enter(list) do { \
+            if(!iCAS(&((rootsim_list *)list)->concurrency_canary, UINT32_MAX, (uint32_t)tid)) { \
+                printf("Concurrent access to list detected for thread %d by thread %d", ((rootsim_list *)list)->concurrency_canary, tid); \
+                abort(); \
+            } \
+        } while(0)
+
+#define canary_leave(list) ((rootsim_list *)list)->concurrency_canary = UINT32_MAX;
 
 // Get the size of the current list.
 #define list_sizeof(list) ((struct rootsim_list *)list)->size
@@ -111,6 +123,7 @@ typedef struct rootsim_list {
 
 #define list_insert_tail(li, data) \
 	do {	\
+	    canary_enter(li); \
 		__typeof__(data) __new_n = (data); /* in-block scope variable */\
 		size_t __size_before;\
 		rootsim_list *__l;\
@@ -132,10 +145,12 @@ typedef struct rootsim_list {
 		} while(0);\
 		__l->size++;\
 		assert(__l->size == (__size_before + 1));\
+		canary_leave(li);\
 	} while(0)
 
 #define list_insert_head(li, data) \
 	do {	\
+	    canary_enter(li); \
 		__typeof__(data) __new_n = (data); /* in-block scope variable */\
 		size_t __size_before;\
 		rootsim_list *__l;\
@@ -157,11 +172,13 @@ typedef struct rootsim_list {
 		} while(0);\
 		__l->size++;\
 		assert(__l->size == (__size_before + 1));\
+		canary_leave(li); \
 	} while(0)
 
 /// Insert a new node in the list
 #define list_insert(li, key_name, data)\
 	do {\
+	    canary_enter(li); \
 		__typeof__(data) __n; /* in-block scope variable */\
 		__typeof__(data) __new_n = (data);\
 		size_t __key_position = my_offsetof((li), key_name);\
@@ -205,10 +222,12 @@ typedef struct rootsim_list {
 		} while(0);\
 		__l->size++;\
 		assert(__l->size == (__size_before + 1));\
+		canary_leave(li);\
 	} while(0)
 
 #define list_delete_by_content(li, node)\
 	do {\
+	    canary_enter(li); \
 		__typeof__(node) __n = (node); /* in-block scope variable */\
 		rootsim_list *__l;\
 		size_t __size_before;\
@@ -238,10 +257,12 @@ typedef struct rootsim_list {
 		__n->prev = (void *)0xDEADC0DE;\
 		__l->size--;\
 		assert(__l->size == (__size_before - 1));\
+		canary_leave(li);\
 	} while(0)
 
 #define list_pop(list)\
 	do {\
+	    canary_enter(list); \
 		rootsim_list *__l;\
 		size_t __size_before;\
 		__typeof__ (list) __n;\
@@ -262,11 +283,13 @@ typedef struct rootsim_list {
 			__l->size--;\
 			assert(__l->size == (__size_before - 1));\
 		}\
+		canary_leave(list);\
 	} while(0)
 
 /// Truncate a list up to a certain point, starting from the head.
 #define list_trunc(list, key_name, key_value, release_fn) \
 	({\
+	canary_enter(list); \
 	rootsim_list *__l = (rootsim_list *)(list);\
 	__typeof__(list) __n;\
 	__typeof__(list) __n_adjacent;\
@@ -291,6 +314,7 @@ typedef struct rootsim_list {
 	}\
 	__l->size -= __deleted;\
 	assert(__l->size == (__size_before - __deleted));\
+	canary_leave(list);\
 	__deleted;\
 	})
 

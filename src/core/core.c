@@ -47,6 +47,7 @@
 
 /// Barrier for all worker threads
 barrier_t all_thread_barrier;
+barrier_t controller_barrier;
 
 /// Mapping between kernel instances and logical processes
 unsigned int *kernel;
@@ -60,8 +61,11 @@ unsigned int n_ker;
 /// Total number of cores required for simulation
 unsigned int n_cores;
 
+/// Used to map a global id to a local id
+unsigned int *to_lid;
+
 /// Total number of logical processes running in the simulation
-unsigned int n_prc_tot;
+unsigned int n_LP_tot;
 
 /// Number of logical processes hosted by the current kernel instance
 unsigned int n_prc;
@@ -77,6 +81,9 @@ bool exit_silently_from_kernel = false;
 
 /// This flag is set when the initialization of the simulator is complete, with no errors
 static bool init_complete = false;
+
+/// Used to map a local id to a global id
+unsigned int *to_gid;
 
 bool user_exit_flag = false;
 
@@ -130,7 +137,12 @@ void base_init(void)
 {
 	struct sigaction new_act = { 0 };
 
-	barrier_init(&all_thread_barrier, n_cores);
+    if(rootsim_config.num_controllers > 0) {
+        barrier_init(&controller_barrier, rootsim_config.num_controllers);
+    } else {
+        barrier_init(&controller_barrier, n_cores);
+    }
+    barrier_init(&all_thread_barrier, n_cores);
 
 	// complete the sigaction struct init
 	new_act.sa_handler = handle_signal;
@@ -264,24 +276,24 @@ void distribute_lps_on_kernels(void)
 	int block_leftover;
 
 	// Sanity check on number of LPs
-	if (n_prc_tot < n_ker) {
-		rootsim_error(true, "Unable to allocate %d logical processes on %d kernels: must have at least %d LPs\n", n_prc_tot, n_ker, n_ker);
+	if (n_LP_tot < n_ker) {
+		rootsim_error(true, "Unable to allocate %d logical processes on %d kernels: must have at least %d LPs\n", n_LP_tot, n_ker, n_ker);
 	}
 
-	kernel = (unsigned int *)rsalloc(sizeof(unsigned int) * n_prc_tot);
+	kernel = (unsigned int *)rsalloc(sizeof(unsigned int) * n_LP_tot);
 
 	switch (rootsim_config.lps_distribution) {
 
 	case LP_DISTRIBUTION_BLOCK:
-		buf1 = (n_prc_tot / n_ker);
-		block_leftover = n_prc_tot - buf1 * n_ker;
+		buf1 = (n_LP_tot / n_ker);
+		block_leftover = n_LP_tot - buf1 * n_ker;
 
 		// It is a hack to bypass the first check that set offset to 0
 		if (block_leftover > 0)
 			buf1++;
 
 		offset = 0;
-		while (i < n_prc_tot) {
+		while (i < n_LP_tot) {
 			j = 0;
 			while (j < buf1) {
 				kernel[i] = offset;
@@ -300,7 +312,7 @@ void distribute_lps_on_kernels(void)
 		break;
 
 	case LP_DISTRIBUTION_CIRCULAR:
-		for (i = 0; i < n_prc_tot; i++) {
+		for (i = 0; i < n_LP_tot; i++) {
 			kernel[i] = i % n_ker;
 
 			if (kernel[i] == kid)

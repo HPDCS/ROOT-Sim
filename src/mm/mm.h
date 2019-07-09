@@ -35,6 +35,7 @@
 #include <core/core.h>
 #include <arch/atomic.h>
 #include <mm/dymelor.h>
+#include <unistd.h>
 
 struct segment {
 	unsigned char *base;

@@ -37,6 +37,10 @@
 
 #include <stdbool.h>
 #include <arch/atomic.h>
+#include <src/datatypes/msgchannel.h>
+#include <src/datatypes/heap.h>
+
+
 
 #if defined(OS_LINUX)
 
@@ -154,6 +158,54 @@ typedef struct {
 /// This macro expands to true if the current KLT is the master thread for the local kernel
 #define master_thread() (local_tid == 0)
 
+enum thread_incarnation {
+    THREAD_SYMMETRIC,
+    THREAD_CONTROLLER,
+    THREAD_PROCESSING
+};
+
+/// Thread State Control Block
+typedef struct _Thread_State {
+    /// This member tells what incarnation the thread has
+    enum thread_incarnation	incarnation;
+
+    /// tid, used to identify a thread within a local machine
+    unsigned int		tid;
+
+    /// Global tid, used to identify a thread within the whole system
+    unsigned int		global_tid;
+
+    /** Thread Input Port: if a thread is a Processing Thread, these are used to send messages to process.
+     * There are two input ports, which are associated with high and low priority messages to exchange. */
+    msg_channel		*input_port[2];
+
+    /// Thread Output Port: if a thread is a Processing Thread, this is used to send back generated events or control messages to the controller
+    msg_channel		*output_port;
+
+    /// Number of PTs assigned to this controller. 0 if the thread isn't a controller.
+    unsigned int		num_PTs;
+
+    /// Processing Threads assigned to this controller.
+    struct _Thread_State	**PTs;
+
+    /// If the thread is a PT, this points to the corresponding CT
+    struct _Thread_State	*CT;
+
+    /// If PT, it defines the current batch size for the input port
+    unsigned int port_batch_size;
+
+    /** Pointer to an array of chars used by controllers as a counter of the number
+     *of events scheduled for each LP during the execution of asym_schedule. */
+    int *curr_scheduled_events;
+
+    /** If CT, it is -NOT- a pointer to a priority queue used in BATCH_LOWEST_TIMESTAMP
+     * for scheduling a batch of events*/
+    rootsim_heap(msg_t) heap;
+
+    //  heap_t *events_heap;
+
+} Thread_State;
+
 /**
  * @brief Reset operation on a thread barrier
  *
@@ -170,6 +222,9 @@ typedef struct {
 						(atomic_set((&b->barr), -1)); \
 					} while (0)
 
+// Macros to differentiate across different input ports
+#define PORT_PRIO_HI	0
+#define PORT_PRIO_LO	1
 
 extern __thread unsigned int tid;
 extern __thread unsigned int local_tid;
@@ -177,4 +232,22 @@ extern __thread unsigned int local_tid;
 extern void barrier_init(barrier_t * b, int t);
 extern bool thread_barrier(barrier_t * b);
 extern void create_threads(unsigned short int n, void *(*start_routine)(void *), void *arg);
+void threads_init(void);
 
+
+// Macros to retrieve messages from PT port
+
+#define pt_get_lo_prio_msg() get_msg(Threads[tid]->input_port[PORT_PRIO_LO])
+#define pt_get_hi_prio_msg() get_msg(Threads[tid]->input_port[PORT_PRIO_HI])
+#define pt_get_out_msg(th_id) get_msg(Threads[(th_id)]->output_port)
+
+// Macros to send messages to PT port
+#define pt_put_lo_prio_msg(th_id, event) insert_msg(Threads[(th_id)]->input_port[PORT_PRIO_LO], (event))
+#define pt_put_hi_prio_msg(th_id, event) insert_msg(Threads[(th_id)]->input_port[PORT_PRIO_HI], (event))
+#define pt_put_out_msg(event) insert_msg(Threads[tid]->output_port, (event))
+
+/// Barrier for all worker threads
+extern barrier_t all_thread_barrier;
+extern barrier_t controller_barrier;
+
+extern Thread_State **Threads;

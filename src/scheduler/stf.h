@@ -38,3 +38,4 @@
 #include <scheduler/process.h>
 
 extern struct lp_struct *smallest_timestamp_first(void);
+extern struct lp_struct* asym_smallest_timestamp_first(void);

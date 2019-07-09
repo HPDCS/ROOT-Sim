@@ -10,6 +10,7 @@
 
 #include <datatypes/array.h>
 
+
 #define rootsim_heap(type) rootsim_array(type)
 
 #define heap_init(self)	array_init(self)
@@ -55,3 +56,14 @@
 	})
 
 #endif /* __HEAP_H_ */
+
+/*typedef struct {
+    double priority;
+    void *data;
+} node_heap_t;
+
+typedef struct {
+    node_heap_t *nodes;
+    int len;
+    int size;
+} heap_t;*/

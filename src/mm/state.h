@@ -53,7 +53,7 @@ typedef struct _state_t {
 
 	/// Simulation time associated with the state log
 	simtime_t lvt;
-	/// A pointer to the actual log
+	/// A pointer to the current log
 	void *log;
 	/// This log has been taken after the execution of this event
 	msg_t *last_event;
@@ -76,7 +76,7 @@ typedef struct _state_t {
 struct lp_struct;
 
 extern bool LogState(struct lp_struct *);
-extern void RestoreState(struct lp_struct *, state_t * restore_state);
+extern void RestoreState(struct lp_struct *, state_t * state_to_restore);
 extern void rollback(struct lp_struct *);
 extern state_t *find_time_barrier(struct lp_struct *, simtime_t time);
 extern void clean_queue_states(struct lp_struct *, simtime_t new_gvt);

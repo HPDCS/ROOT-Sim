@@ -22,6 +22,15 @@ extern struct _topology_global_t{
 	enum _topology_geometry_t geometry;	/**< the topology geometry (see ROOT-Sim.h) */
 } topology_global;
 
+
+typedef struct _event_content_type {
+    int cell; // The destination cell of an event
+    unsigned int from; // The sender of the event (in case of HANDOFF_RECV)
+    simtime_t sent_at; // Simulation time at which the call was handed off
+    int channel; // Channel to be freed in case of END_CALL
+    simtime_t   call_term_time; // Termination time of the call (used mainly in HANDOFF_RECV)
+} event_content_type;
+
 // this initializes the topology environment
 void topology_init(void);
 

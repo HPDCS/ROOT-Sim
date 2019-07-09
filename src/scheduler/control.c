@@ -211,7 +211,7 @@ bool receive_control_msg(msg_t * msg)
 }
 
 // return true if must be passed to the LP
-bool process_control_msg(msg_t * msg)
+bool to_be_sent_to_LP(msg_t * msg)
 {
 
 #ifdef HAVE_CROSS_STATE

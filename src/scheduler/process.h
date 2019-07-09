@@ -53,14 +53,19 @@
 #define LP_STATE_RUNNING_ECS		0x00004
 #define LP_STATE_ROLLBACK		0x00008
 #define LP_STATE_SILENT_EXEC		0x00010
+#define LP_STATE_ROLLBACK_ALLOWED	0x00020
 #define LP_STATE_SUSPENDED		0x01010
 #define LP_STATE_READY_FOR_SYNCH	0x00011	// This should be a blocked state! Check schedule() and stf()
 #define LP_STATE_WAIT_FOR_SYNCH		0x01001
 #define LP_STATE_WAIT_FOR_UNBLOCK	0x01002
 #define LP_STATE_WAIT_FOR_DATA		0x01004
+#define LP_STATE_WAIT_FOR_ROLLBACK_ACK	0x01008
 
 #define BLOCKED_STATE			0x01000
 #define is_blocked_state(state)	(bool)(state & BLOCKED_STATE)
+
+typedef enum { IDLE, REQUESTED, PROCESSING } rb_status;
+
 
 struct lp_struct {
 	/// LP execution state.
@@ -84,10 +89,13 @@ struct lp_struct {
 	/// ID of the worker thread towards which the LP is bound
 	unsigned int worker_thread;
 
+    /// ID of the Processing Thread (in case worker_thread above is a controller) which processes events
+    unsigned int processing_thread;
+
 	/// Current execution state of the LP
 	short unsigned int state;
 
-	/// This variable mainains the current checkpointing interval for the LP
+	/// This variable maintains the current checkpointing interval for the LP
 	unsigned int ckpt_period;
 
 	/// Counts how many events executed from the last checkpoint (to support PSS)
@@ -103,7 +111,13 @@ struct lp_struct {
 	 list(msg_t) queue_in;
 
 	/// Pointer to the last correctly processed event
+	msg_t *last_processed;
+
+	/// Pointer to the last scheduled event
 	msg_t *bound;
+
+	/// Bound lock
+	spinlock_t bound_lock;
 
 	/// Output messages queue
 	 list(msg_hdr_t) queue_out;
@@ -111,17 +125,27 @@ struct lp_struct {
 	/// Saved states queue
 	 list(state_t) queue_states;
 
+    /// Event retirement queue
+    list(msg_t) retirement_queue;
+
 	/// Bottom halves
 	msg_channel *bottom_halves;
 
 	/// Processed rendezvous queue
 	 list(msg_t) rendezvous_queue;
 
-	/// Unique identifier within the LP
-	unsigned long long mark;
+    /// Unique identifier within the LP
+    unsigned long long mark;
+
+    /// Variable used to keep track of NOTICES sent to PTs in asymmetrics to
+    /// avoid nested rollback processing
+    unsigned long long rollback_mark;
 
 	/// Buffer used by KLTs for buffering outgoing messages during the execution of an event
 	outgoing_t outgoing_buffer;
+
+    /// Current status of a possible rollback request
+	rb_status rollback_status;
 
 	/**
 	 * Implementation of OnGVT used for this LP. This can be changed
@@ -160,12 +184,17 @@ struct lp_struct {
 extern struct lp_struct **lps_blocks;
 extern __thread struct lp_struct **lps_bound_blocks;
 
+// Mask of LPs bounded to threads that are yet to be filled
+// in the current execution of asym_schedule. It resets
+// to lps_bound_block each time asym_schedule is called.
+extern __thread struct lp_struct **asym_lps_mask;
+
 /** This macro retrieves the LVT for the current LP. There is a small interval window
  *  where the value returned is the one of the next event to be processed. In particular,
  *  this happens in the scheduling function, when the bound is advanced to the next event to
  *  be processed, just before its actual execution.
  */
-#define lvt(lp) (lp->bound != NULL ? lp->bound->timestamp : 0.0)
+//#define lvt(lp) (lp->bound != NULL ? lp->bound->timestamp : 0.0)
 
 // TODO: see issue #121 to see how to make this ugly hack disappear
 extern __thread unsigned int __lp_counter;
@@ -175,7 +204,10 @@ extern __thread unsigned int __lp_bound_counter;
 				for(struct lp_struct *(lp) = lps_blocks[__lp_counter]; __lp_counter < n_prc && ((lp) = lps_blocks[__lp_counter]); ++__lp_counter)
 
 #define foreach_bound_lp(lp)	__lp_bound_counter = 0;\
-				for(struct lp_struct *(lp) = lps_bound_blocks[__lp_bound_counter]; __lp_bound_counter < n_prc_per_thread && ((lp) = lps_bound_blocks[__lp_bound_counter]); ++__lp_bound_counter)
+				for(struct lp_struct *(lp) = lps_bound_blocks[__lp_bound_counter]; __lp_bound_counter < n_lp_per_thread && ((lp) = lps_bound_blocks[__lp_bound_counter]); ++__lp_bound_counter)
+
+#define foreach_bound_mask_lp(lp)	__lp_bound_counter = 0;\
+				for(struct lp_struct *(lp) = asym_lps_mask[__lp_bound_counter]; __lp_bound_counter < n_lp_per_thread && ((lp) = asym_lps_mask[__lp_bound_counter]); ++__lp_bound_counter)
 
 #define LPS_bound_set(entry, lp)	lps_bound_blocks[(entry)] = (lp);
 

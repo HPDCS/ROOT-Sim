@@ -43,16 +43,23 @@ __thread unsigned int __lp_bound_counter = 0;
 /// Maintain LPs' simulation and execution states
 struct lp_struct **lps_blocks = NULL;
 
-/** Each KLT has a binding towards some LPs. This is the structure used
+/** Each KLT(CT) has a binding towards some LPs. This is the structure used
  *  to keep track of LPs currently being handled
  */
 __thread struct lp_struct **lps_bound_blocks = NULL;
+
+__thread struct lp_struct **asym_lps_mask = NULL;
+
 
 void initialize_binding_blocks(void)
 {
 	lps_bound_blocks =
 	    (struct lp_struct **)rsalloc(n_prc * sizeof(struct lp_struct *));
 	bzero(lps_bound_blocks, sizeof(struct lp_struct *) * n_prc);
+
+    asym_lps_mask = (struct lp_struct **)rsalloc(n_prc * sizeof(struct lp_struct *));
+    bzero(asym_lps_mask, sizeof(struct lp_struct *) * n_prc);
+
 }
 
 void initialize_lps(void)
@@ -75,7 +82,7 @@ void initialize_lps(void)
 	// We now iterate over all LP Gids. Everytime that we find an LP
 	// which should be locally hosted, we create the local lp_struct
 	// process control block.
-	for (i = 0; i < n_prc_tot; i++) {
+	for (i = 0; i < n_LP_tot; i++) {
 		set_gid(gid, i);
 		if (find_kernel_by_gid(gid) != kid)
 			continue;
@@ -130,6 +137,7 @@ void initialize_lps(void)
 		lp->queue_in = new_list(msg_t);
 		lp->queue_out = new_list(msg_hdr_t);
 		lp->queue_states = new_list(state_t);
+        lp->retirement_queue = new_list(msg_t);
 		lp->rendezvous_queue = new_list(msg_t);
 
 		// No event has been processed so far

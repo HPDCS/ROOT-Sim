@@ -61,6 +61,11 @@ inline int atomic_inc_and_test(atomic_t * v);
 inline bool spin_trylock(spinlock_t * s);
 inline void spin_unlock(spinlock_t * s);
 inline void spin_lock(spinlock_t * s);
+inline void atomic_add(atomic_t *, int);
+
+
+#define LOCK "lock; "
+
 
 /// Read operation on an atomic counter
 #define atomic_read(v)		((v)->count)
@@ -69,5 +74,6 @@ inline void spin_lock(spinlock_t * s);
 #define atomic_set(v,i)		(((v)->count) = (i))
 
 /// Spinlock initialization
-#define spinlock_init(s)	((s)->lock = 0)
+#define plain_spinlock_init(s)	((s)->lock = 0)
 
+ #define spinlock_init(s)	plain_spinlock_init(s) 

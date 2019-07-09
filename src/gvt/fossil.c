@@ -79,7 +79,8 @@ void fossil_collection(struct lp_struct *lp, simtime_t time_barrier)
 	committed_events =
 	    (double)list_trunc(lp->queue_in, timestamp,
 			       last_kept_event->timestamp, msg_release);
-	statistics_post_data(lp, STAT_COMMITTED, committed_events);
+    controller_committed_events += committed_events;
+    statistics_post_data(lp, STAT_COMMITTED, committed_events);
 
 	// Truncate the output queue
 	list_trunc(lp->queue_out, send_time, last_kept_event->timestamp,
@@ -97,7 +98,7 @@ void adopt_new_gvt(simtime_t new_gvt)
 {
 	unsigned int i;
 
-	state_t *time_barrier_pointer[n_prc_per_thread];
+	state_t *time_barrier_pointer[n_lp_per_thread];
 	bool compute_snapshot;
 
 	// Snapshot should be recomputed only periodically

@@ -90,6 +90,7 @@ enum _opt_codes{
 	OPT_SEED,
 	OPT_SERIAL,
 	OPT_NO_CORE_BINDING,
+	OPT_CONTROLLERS,
 
 #ifdef HAVE_PREEMPTION
 	OPT_PREEMPTION,
@@ -102,6 +103,7 @@ const char * const param_to_text[][5] = {
 	[OPT_SCHEDULER - OPT_FIRST] = {
 			[SCHEDULER_INVALID] = "invalid scheduler",
 			[SCHEDULER_STF] = "stf",
+            [BATCH_LOWEST_TIMESTAMP] ="batch"
 	},
 	[OPT_CKTRM_MODE - OPT_FIRST] = {
 			[CKTRM_INVALID] = "invalid termination checking",
@@ -173,6 +175,8 @@ static const struct argp_option argp_options[] = {
 	{"serial",		OPT_SERIAL,		0,		0,		"Run a serial simulation (using Calendar Queues)", 0},
 	{"sequential",		OPT_SERIAL,		0,		OPTION_ALIAS,	NULL, 0},
 	{"no-core-binding",	OPT_NO_CORE_BINDING,	0,		0,		"Disable the binding of threads to specific physical processing cores", 0},
+	{"ncontrollers",	OPT_CONTROLLERS,	"VALUE",		0,		"Initial number of Controller Threads", 0},
+
 
 #ifdef HAVE_PREEMPTION
 	{"no-preemption",	OPT_PREEMPTION,		0,		0,		"Disable Preemptive Time Warp", 0},
@@ -236,7 +240,7 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 			break;
 
 		case OPT_NPRC:
-			n_prc_tot = parse_ullong_limits(1, UINT_MAX);
+            n_LP_tot = parse_ullong_limits(1, UINT_MAX);
 			break;
 
 		case OPT_OUTPUT_DIR:
@@ -306,6 +310,10 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 			rootsim_config.core_binding = false;
 			break;
 
+		case OPT_CONTROLLERS:
+			rootsim_config.num_controllers = parse_ullong_limits(0,INT_MAX);
+			break;
+
 #ifdef HAVE_PREEMPTION
 		case OPT_PREEMPTION:
 			rootsim_config.disable_preemption = true;
@@ -354,11 +362,11 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 			if(n_cores > MAX_THREADS_PER_KERNEL)
 				rootsim_error(true, "Too many threads, maximum supported number is %u\n", MAX_THREADS_PER_KERNEL);
 
-			if(n_prc_tot > MAX_LPs)
+			if(n_LP_tot > MAX_LPs)
 				rootsim_error(true, "Too many LPs, maximum supported number is %u\n", MAX_LPs);
 
-			if(!rootsim_config.serial && n_prc_tot < n_cores)
-				rootsim_error(true, "Requested a simulation run with %u LPs and %u worker threads: the mapping is not possible\n", n_prc_tot, n_cores);
+			if(!rootsim_config.serial && n_LP_tot < n_cores)
+				rootsim_error(true, "Requested a simulation run with %u LPs and %u worker threads: the mapping is not possible\n", n_LP_tot, n_cores);
 
 			print_config();
 
@@ -444,6 +452,7 @@ void SystemInit(int argc, char **argv)
 	statistics_init();
 	scheduler_init();
 	communication_init();
+	threads_init();
 	gvt_init();
 	numerical_init();
 	topology_init();
