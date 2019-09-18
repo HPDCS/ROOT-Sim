@@ -90,6 +90,7 @@ enum _opt_codes{
 	OPT_SEED,
 	OPT_SERIAL,
 	OPT_NO_CORE_BINDING,
+	OPT_EVENT_EXTRACTION,
 
 #ifdef HAVE_PREEMPTION
 	OPT_PREEMPTION,
@@ -173,6 +174,7 @@ static const struct argp_option argp_options[] = {
 	{"serial",		OPT_SERIAL,		0,		0,		"Run a serial simulation (using Calendar Queues)", 0},
 	{"sequential",		OPT_SERIAL,		0,		OPTION_ALIAS,	NULL, 0},
 	{"no-core-binding",	OPT_NO_CORE_BINDING,	0,		0,		"Disable the binding of threads to specific physical processing cores", 0},
+	{"event-extraction", OPT_EVENT_EXTRACTION, 0, 0, "Enable event extraction of LPs in a CSV format", 0},
 
 #ifdef HAVE_PREEMPTION
 	{"no-preemption",	OPT_PREEMPTION,		0,		0,		"Disable Preemptive Time Warp", 0},
@@ -306,6 +308,14 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 			rootsim_config.core_binding = false;
 			break;
 
+		case OPT_EVENT_EXTRACTION:
+			rootsim_config.event_extraction = true;
+			FILE *fptr;
+			fptr = fopen("stats.csv", "w");
+			rootsim_config.events_file = fptr;
+			fprintf(rootsim_config.events_file,"# Source,Destination,Send Time,Receive Time,Event Size\n");
+			break;
+
 #ifdef HAVE_PREEMPTION
 		case OPT_PREEMPTION:
 			rootsim_config.disable_preemption = true;
@@ -333,6 +343,8 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 			rootsim_config.set_seed = 0;
 			rootsim_config.serial = false;
 			rootsim_config.core_binding = true;
+			rootsim_config.event_extraction = false;
+			rootsim_config.events_file = NULL;
 
 #ifdef HAVE_PREEMPTION
 			rootsim_config.disable_preemption = false;

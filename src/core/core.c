@@ -317,3 +317,25 @@ void initialization_complete(void)
 {
 	init_complete = true;
 }
+
+/*
+ * These two functions do the work for writing events to a file.
+ * csvEscape transforms the GID_t structure to a string for proper processing
+ * later.
+ */
+void write_msg_to_csv(msg_t *msg) {
+	fprintf(rootsim_config.events_file, "%d,%d,%d,%d\n", 
+																				msg->sender.to_int, 
+																				msg->receiver.to_int, 
+																				msg->send_time, 
+																				msg->timestamp);
+	// rootsim_config.rootsim_config << csvEscape(msg.sender) << ','
+  //              << csvEscape(msg.receiver) << ','
+  //              << std::to_string(msg.send_time) << ','
+  //              << std::to_string(msg.timestamp);
+}
+
+
+// std::string csvEscape(GID_t in) {
+// 	return std::to_string(in.to_int)
+// }
