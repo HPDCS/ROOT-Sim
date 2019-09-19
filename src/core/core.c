@@ -324,7 +324,7 @@ void initialization_complete(void)
  * later.
  */
 void write_msg_to_csv(msg_t *msg) {
-	fprintf(rootsim_config.events_file, "%d,%d,%d,%d\n", 
+	fprintf(rootsim_config.events_file, "%d,%d,%f,%f\n", 
 																				msg->sender.to_int, 
 																				msg->receiver.to_int, 
 																				msg->send_time, 

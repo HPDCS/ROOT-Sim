@@ -313,7 +313,7 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 			FILE *fptr;
 			fptr = fopen("stats.csv", "w");
 			rootsim_config.events_file = fptr;
-			fprintf(rootsim_config.events_file,"# Source,Destination,Send Time,Receive Time,Event Size\n");
+			fprintf(rootsim_config.events_file,"# Source,Destination,Send Time,Receive Time\n");
 			break;
 
 #ifdef HAVE_PREEMPTION
