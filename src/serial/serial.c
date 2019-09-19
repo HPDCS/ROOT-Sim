@@ -79,6 +79,11 @@ void SerialScheduleNewEvent(unsigned int rcv, simtime_t stamp,
 
 	// Put the event in the Calenda Queue
 	calqueue_put(stamp, event);
+
+	// Print out the events to CSV
+	if (rootsim_config.event_extraction) {
+		write_msg_to_csv(event);
+	}
 }
 
 void serial_init(void)
