@@ -58,16 +58,17 @@ void fossil_collection(struct lp_struct *lp, simtime_t time_barrier)
 
 	// State list must be handled specifically, as nodes point to malloc'd
 	// nodes. We therefore manually scan the list and free the memory.
-	while ((state = list_head(lp->queue_states)) != NULL
-	       && state->lvt < time_barrier) {
+	while ((state = list_head(lp->queue_states)) != NULL && state->lvt < time_barrier) {
 		log_delete(state->log);
 		if(&topology_settings && topology_settings.write_enabled)
 			rsfree(state->topology);
 		if(&abm_settings)
 			rsfree(state->region_data);
-#ifndef NDEBUG
+
+        #ifndef NDEBUG
 		state->last_event = (void *)0xDEADBABE;
-#endif
+        #endif
+
 		list_pop(lp->queue_states);
 	}
 
@@ -76,15 +77,12 @@ void fossil_collection(struct lp_struct *lp, simtime_t time_barrier)
 	last_kept_event = state->last_event;
 
 	// Truncate the input queue, accounting for the event which is pointed by the lastly kept state
-	committed_events =
-	    (double)list_trunc(lp->queue_in, timestamp,
-			       last_kept_event->timestamp, msg_release);
+	committed_events = (double)list_trunc(lp->queue_in, timestamp,last_kept_event->timestamp, msg_release);
     controller_committed_events += committed_events;
     statistics_post_data(lp, STAT_COMMITTED, committed_events);
 
 	// Truncate the output queue
-	list_trunc(lp->queue_out, send_time, last_kept_event->timestamp,
-		   msg_hdr_release);
+	list_trunc(lp->queue_out, send_time, last_kept_event->timestamp, msg_hdr_release);
 }
 
 /**

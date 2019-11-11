@@ -93,6 +93,7 @@ msg_channel *init_channel(void)
 	return mc;
 }
 
+
 void insert_msg(msg_channel * mc, msg_t * msg)
 {
 	spin_lock(&mc->write_lock);
@@ -109,9 +110,9 @@ void insert_msg(msg_channel * mc, msg_t * msg)
 			rootsim_error(true, "Unable to reallocate message channel\n");
 	}
 
-#ifndef NDEBUG
+    #ifndef NDEBUG
 	validate_msg(msg);
-#endif
+    #endif
 
 	int index = mc->buffers[M_WRITE]->written++;
 	mc->buffers[M_WRITE]->buffer[index] = msg;
@@ -126,6 +127,7 @@ void insert_msg(msg_channel * mc, msg_t * msg)
 
     atomic_inc(&mc->size);
 }
+
 
 void *get_msg(msg_channel * mc)
 {
@@ -145,15 +147,29 @@ void *get_msg(msg_channel * mc)
 	msg = mc->buffers[M_READ]->buffer[index];
 	atomic_dec(&mc->size);
 
-#ifndef NDEBUG
+    #ifndef NDEBUG
 	mc->buffers[M_READ]->buffer[index] = (void *)0xDEADB00B;
 	validate_msg(msg);
-#endif
+    #endif
 
  leave:
 	return msg;
 }
+
+
 // Retrieves the current amount of events in the respective input port
 int get_port_current_size(msg_channel *mc){
     return atomic_read(&mc->size);
+}
+
+
+
+bool are_input_channels_empty(int id){
+    return(get_port_current_size(Threads[id]->input_port[PORT_PRIO_LO]) == 0 &&
+           get_port_current_size(Threads[id]->input_port[PORT_PRIO_HI]) == 0);
+}
+
+
+bool is_out_channel_empty(unsigned int thread_id){
+    return( get_port_current_size(Threads[thread_id]->output_port) == 0);
 }

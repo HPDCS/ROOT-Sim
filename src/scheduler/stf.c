@@ -58,7 +58,7 @@ struct lp_struct *smallest_timestamp_first(void)
 	foreach_bound_lp(lp) {
         // If waiting for synch, don't take into account the LP
 		if (is_blocked_state(lp->state)) {
-            spin_unlock(&lp->bound_lock);
+            //spin_unlock(&lp->bound_lock);
             continue;
 		}
 		// If the LP is in READY_FOR_SYNCH it has to handle the same ECS message
@@ -102,9 +102,9 @@ struct lp_struct *asym_smallest_timestamp_first(void)
             }
             //If the LP is in READY_FOR_SYNCH has to handle the same message of ECS
             if (lp->state == LP_STATE_READY_FOR_SYNCH) {
-                spin_lock(&lp->bound_lock);
+                //spin_lock(&lp->bound_lock);
                 evt_time = lp->last_processed->timestamp;   // The LP handles the suspended event as the next event
-                spin_unlock(&lp->bound_lock);
+                //spin_unlock(&lp->bound_lock);
             } else {
                 // Compute the next event's timestamp. Translate the id from the local binding to the local ID
                 evt_time = next_event_timestamp(lp);

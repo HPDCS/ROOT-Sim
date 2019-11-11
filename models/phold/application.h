@@ -15,16 +15,16 @@
 #define MIN_SIZE		32
 #define OBJECT_TOTAL_SIZE	16000
 #define NUM_BUFFERS		3
-#define TAU			5
+#define TAU		        10.0
 #define COMPLETE_ALLOC		5000
-
 // Event types
-#define ALLOC		1
+#define ALLOC		11
 #define DEALLOC 	2
 #define LOOP		3
 
-#define COMPLETE_EVENTS 100000	// for the LOOP traditional case
-#define LOOP_COUNT	10000
+#define COMPLETE_EVENTS 2000	// for the LOOP traditional case
+#define LOOP_COUNT	1000
+//#define FANOUT 1
 
 
 // This is the events' payload which is exchanged across LPs

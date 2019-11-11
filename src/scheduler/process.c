@@ -51,10 +51,8 @@ __thread struct lp_struct **lps_bound_blocks = NULL;
 __thread struct lp_struct **asym_lps_mask = NULL;
 
 
-void initialize_binding_blocks(void)
-{
-	lps_bound_blocks =
-	    (struct lp_struct **)rsalloc(n_prc * sizeof(struct lp_struct *));
+void initialize_binding_blocks(void) {
+	lps_bound_blocks = (struct lp_struct **)rsalloc(n_prc * sizeof(struct lp_struct *));
 	bzero(lps_bound_blocks, sizeof(struct lp_struct *) * n_prc);
 
     asym_lps_mask = (struct lp_struct **)rsalloc(n_prc * sizeof(struct lp_struct *));
@@ -62,8 +60,13 @@ void initialize_binding_blocks(void)
 
 }
 
-void initialize_lps(void)
-{
+void free_binding_blocks(void){
+    rsfree(lps_bound_blocks);
+    rsfree(asym_lps_mask);
+}
+
+
+void initialize_lps(void) {
 	unsigned int i, j;
 	unsigned int lid = 0;
 	struct lp_struct *lp;
@@ -162,11 +165,18 @@ void initialize_lps(void)
 }
 
 // This works only for locally-hosted LPs!
-struct lp_struct *find_lp_by_gid(GID_t gid)
-{
+struct lp_struct *find_lp_by_gid(GID_t gid) {
 	foreach_lp(lp) {
 		if (lp->gid.to_int == gid.to_int)
 			return lp;
 	}
 	return NULL;
+}
+
+void update_last_processed(void){
+    foreach_bound_lp(lp){
+        if (lp->last_processed != lp->next_last_processed) {
+            lp->last_processed = lp->next_last_processed;
+        }
+    }
 }

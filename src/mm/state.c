@@ -98,8 +98,14 @@ bool LogState(struct lp_struct *lp)
 		new_state = rsalloc(sizeof(*new_state));
 
 		// Associate the checkpoint with current LVT and last-executed event
-		new_state->lvt = lp->last_processed->timestamp;
-		new_state->last_event = lp->last_processed;
+		if(rootsim_config.num_controllers>0) {
+            new_state->lvt = lp->next_last_processed->timestamp;
+            new_state->last_event = lp->next_last_processed;
+        }
+		else{
+            new_state->lvt = lp->last_processed->timestamp;
+            new_state->last_event = lp->last_processed;
+		}
 
 		// Log simulation model buffers
 		new_state->log = log_state(lp);

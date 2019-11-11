@@ -52,3 +52,5 @@ extern void fini_channel(msg_channel *);
 extern void insert_msg(msg_channel *, msg_t *);
 extern void *get_msg(msg_channel *);
 extern int get_port_current_size(msg_channel *);
+extern bool are_input_channels_empty(int id);
+extern bool is_out_channel_empty(unsigned int thread_id);

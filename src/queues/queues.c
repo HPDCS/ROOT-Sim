@@ -48,6 +48,13 @@
 #include <communication/gvt.h>
 #include <statistics/statistics.h>
 #include <gvt/gvt.h>
+#include <score/score.h>
+
+
+///keep the count of straggleres received
+
+__thread double stragglers_received = 0;
+__thread bool straggler_set;
 
 /**
 * This function return the timestamp of the next-to-execute event
@@ -93,12 +100,12 @@ msg_t *advance_to_next_event(struct lp_struct *lp)
 {
     msg_t *bound = NULL;
 
-    spin_lock(&lp->bound_lock);
+    //spin_lock(&lp->bound_lock);
 	if (likely(list_next(lp->bound) != NULL)) {
 		lp->bound = list_next(lp->bound);
 		bound = lp->bound;
 	}
-    spin_unlock(&lp->bound_lock);
+    //spin_unlock(&lp->bound_lock);
 
 	return bound;
 }
@@ -120,7 +127,7 @@ void insert_bottom_half(msg_t * msg)
 
 	validate_msg(msg);
 
-	insert_msg(lp->bottom_halves, msg);
+    insert_msg(lp->bottom_halves, msg);
 #ifdef HAVE_PREEMPTION
 	update_min_in_transit(lp->worker_thread, msg->timestamp);
 #endif
@@ -139,27 +146,39 @@ void process_bottom_halves(void)
 	msg_t *matched_msg;
     double ts_bound;
 
+    double straggler_percentage;
+
 	foreach_bound_lp(lp) {
+
+	    straggler_set = false;
 
 		while ((msg_to_process = get_msg(lp->bottom_halves)) != NULL) {
 			receiver = find_lp_by_gid(msg_to_process->receiver);
 
 
-            if (unlikely (msg_to_process->timestamp < get_last_gvt()))  // Sanity check
-                rootsim_error(true,"\tThe impossible happened: I'm receiving a message before the GVT\n");
+            if (unlikely (msg_to_process->timestamp < get_last_gvt())) { // Sanity check
+                dump_msg_content(msg_to_process);
+                printf("LAST GVT: %f\n", get_last_gvt());
+                printf("LP's boundTS: %f\n", receiver->bound->timestamp);
+                rootsim_error(true,"I'm receiving a message before the GVT\n");
+            }
 
-       			if (unlikely(!receive_control_msg(msg_to_process))) {   // Handle control messages
+            if (unlikely(!receive_control_msg(msg_to_process))) {   // Handle control messages
 				msg_release(msg_to_process);
 				continue;
 			}
+
+           /* if(local_tid==1)
+                printf("TS:%f, LAST GVT: %f\n", msg_to_process->timestamp, get_last_gvt());*/
+
 
             validate_msg(msg_to_process);
 
 			switch (msg_to_process->message_kind) {
 
-			case negative:  // It's an antimessage
+			    case negative:  // It's an antimessage
 
-			    spin_lock(&receiver->bound_lock);
+			    //spin_lock(&receiver->bound_lock);
 
 				statistics_post_data(receiver, STAT_ANTIMESSAGE, 1.0);
 
@@ -199,12 +218,13 @@ void process_bottom_halves(void)
 #ifdef HAVE_MPI
             register_incoming_msg(msg_to_process);
 #endif
-                spin_unlock(&receiver->bound_lock);
+                //spin_unlock(&receiver->bound_lock);
 				break;
 
 				// It's a positive message
-			case positive:
-                spin_lock(&receiver->bound_lock);
+			    case positive:
+
+                //spin_lock(&receiver->bound_lock);
 				// A positive message is directly placed in the queue
 				list_insert(receiver->queue_in, timestamp, msg_to_process);
 
@@ -215,6 +235,10 @@ void process_bottom_halves(void)
 
 				ts_bound = receiver->bound->timestamp;  // bound has been NULL once
 				if (msg_to_process->timestamp < ts_bound) {
+                    if(!straggler_set){
+                        straggler_set = true;       //for this particular LP belonging to THIS thread
+                        stragglers_received += 1;
+                    }
 
                     assert(list_prev(msg_to_process) != NULL);
 					receiver->bound = list_prev(msg_to_process);
@@ -227,15 +251,14 @@ void process_bottom_halves(void)
 					receiver->state = LP_STATE_ROLLBACK;
                     receiver->rollback_status = REQUESTED;
                  }
- #ifdef HAVE_MPI
-                 register_incoming_msg(msg_to_process);
- #endif
-                    spin_unlock(&receiver->bound_lock);
+				#ifdef HAVE_MPI
+				register_incoming_msg(msg_to_process);
+				#endif
+                    //spin_unlock(&receiver->bound_lock);
                  break;
 
-                 // It's a control message
-             case control:
-
+                // It's a control message
+                case control:
                  // Check if it is an anti control message
                  if (!anti_control_message(msg_to_process)) {
                      msg_release(msg_to_process);
@@ -247,18 +270,22 @@ void process_bottom_halves(void)
              default:
                  rootsim_error(true, "Received a message which is neither positive nor negative. Aborting...\n");
              }
-         }
-     }
+		}
+	}
+	straggler_set = false;
+    straggler_percentage = (stragglers_received / n_lp_per_thread) * 100;
+    post_stragglers_percentage(straggler_percentage);
+	stragglers_received = 0;
 
-     // We have processed all in transit messages.
-     // Actually, during this operation, some new in transit messages could
-     // be placed by other threads. In this case, we loose their presence.
-     // This is not a correctness error. The only issue could be that the
-     // preemptive scheme will not detect this, and some events could
-     // be in fact executed out of order.
- #ifdef HAVE_PREEMPTION
-     reset_min_in_transit(local_tid);
- #endif
+    // We have processed all in transit messages.
+    // Actually, during this operation, some new in transit messages could
+    // be placed by other threads. In this case, we loose their presence.
+    // This is not a correctness error. The only issue could be that the
+    // preemptive scheme will not detect this, and some events could
+    // be in fact executed out of order.
+    #ifdef HAVE_PREEMPTION
+    reset_min_in_transit(local_tid);
+    #endif
  }
 
  /**

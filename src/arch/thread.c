@@ -155,8 +155,7 @@ static void *__helper_create_thread(void *arg)
 *            threads' entry point
 *
 */
-void create_threads(unsigned short int n, void *(*start_routine)(void *), void *arg)
-{
+void create_threads(unsigned short int n, void *(*start_routine)(void *), void *arg) {
 	int i;
 
 	// We create our thread within our helper function, which accepts just
@@ -180,8 +179,7 @@ void create_threads(unsigned short int n, void *(*start_routine)(void *), void *
 * @param b the thread barrier to initialize
 * @param t the number of threads which will synchronize on the barrier
 */
-void barrier_init(barrier_t * b, int t)
-{
+void barrier_init(barrier_t * b, int t) {
 	b->num_threads = t;
 	thread_barrier_reset(b);
 }
@@ -200,8 +198,7 @@ void barrier_init(barrier_t * b, int t)
 *
 * @return false to all threads, except for one which is elected as the leader
 */
-bool thread_barrier(barrier_t * b)
-{
+bool thread_barrier(barrier_t * b) {
 	// Wait for the leader to finish resetting the barrier
 	while (atomic_read(&b->barr) != -1) ;
 
@@ -227,6 +224,49 @@ bool thread_barrier(barrier_t * b)
 	atomic_dec(&b->c2);
 
 	return false;
+}
+
+void threads_reassign(int modifier){
+
+    unsigned int idx;
+    unsigned int curr_ct = 0;
+
+    rootsim_config.num_controllers += modifier ;
+
+    for(idx = 0; idx < n_cores; idx++) {
+
+        if(idx < rootsim_config.num_controllers)
+           Threads[idx]->incarnation = THREAD_CONTROLLER;
+        else
+           Threads[idx]->incarnation = THREAD_PROCESSING;
+
+        Threads[idx]->port_batch_size = PORT_START_BATCH_SIZE;
+        Threads[idx]->num_PTs = 0;
+
+        if(Threads[idx]->PTs!=NULL){
+            rsfree(Threads[idx]->PTs);
+        }
+
+        if(idx < rootsim_config.num_controllers) {
+            Threads[idx]->PTs = rsalloc(sizeof(Thread_State *) * (n_cores - rootsim_config.num_controllers));
+            memset(Threads[idx]->PTs, 0, sizeof(Thread_State *) * (n_cores - rootsim_config.num_controllers));
+        } else {
+            Threads[idx]->PTs = NULL;
+        }
+    }
+
+    if(rootsim_config.num_controllers > 0) {
+        for(idx = rootsim_config.num_controllers; idx < n_cores; idx++) {
+            Threads[idx]->CT = Threads[curr_ct];
+            Threads[curr_ct]->PTs[Threads[curr_ct]->num_PTs] = Threads[idx];
+
+           /* printf("PT %d sees as its CT: %d\n", Threads[idx]->tid, Threads[idx]->CT->tid);
+            printf("CT %d has got a new PT: %d\n", Threads[curr_ct]->tid, Threads[curr_ct]->PTs[Threads[curr_ct]->num_PTs]->tid);*/
+
+            Threads[curr_ct]->num_PTs++;
+            curr_ct = (curr_ct + 1) % rootsim_config.num_controllers;
+        }
+    }
 }
 
 void threads_init(void) {
@@ -288,7 +328,6 @@ void threads_init(void) {
         // threads make upon their creation.
         Threads[i]->tid = i;
         Threads[i]->global_tid = to_global_tid(kid, i);
-
     }
 
     // In this second run, we mutually assign PTs to CTs and vice versa (we loop over PTs)

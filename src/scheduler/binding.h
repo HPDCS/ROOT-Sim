@@ -30,3 +30,4 @@
 
 extern void rebind_LPs(void);
 extern void force_rebind_GLP(void);
+extern void reassignation_rebind(void);

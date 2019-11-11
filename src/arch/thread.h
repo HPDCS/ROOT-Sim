@@ -108,8 +108,7 @@ typedef struct {
 	atomic_t c1;		///< First synchronization counter
 	atomic_t c2;		///< Second synchronization counter
 	atomic_t barr;		/**< "Barrier in a barrier": this is used to wait for the leader
-				 *   to correctly reset the barrier before re-entering
-				 */
+				          *   to correctly reset the barrier before re-entering  */
 } barrier_t;
 
 /**
@@ -233,6 +232,7 @@ extern void barrier_init(barrier_t * b, int t);
 extern bool thread_barrier(barrier_t * b);
 extern void create_threads(unsigned short int n, void *(*start_routine)(void *), void *arg);
 void threads_init(void);
+void threads_reassign(int modifier);
 
 
 // Macros to retrieve messages from PT port

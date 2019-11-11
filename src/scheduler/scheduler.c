@@ -64,6 +64,8 @@
 #include <statistics/statistics.h>
 #include <arch/x86/linux/cross_state_manager/cross_state_manager.h>
 #include <queues/xxhash.h>
+#include <score/score.h>
+
 
 /// This is used to keep track of how many LPs were bound to the current KLT
 __thread unsigned int n_lp_per_thread;
@@ -205,8 +207,7 @@ void LP_main_loop(void *args) {
 	}
 }
 
-void initialize_worker_thread(void)
-{
+void initialize_worker_thread(void) {
     msg_t *init_event;
 
 	// Divide LPs among worker threads, for the first time here
@@ -280,35 +281,43 @@ void initialize_worker_thread(void)
 void activate_LP(struct lp_struct *next_LP, msg_t *next_evt) {
 
 	// Notify the LP main execution loop of the information to be used for actual simulation
+	/*if(next_evt->timestamp<get_last_gvt()){
+	    dump_msg_content(next_evt);
+	    printf("%d\n",get_last_gvt);
+	}*/
 	current = next_LP;
 	current_evt = next_evt;
 
+     //#ifdef HAVE_PREEMPTION
+    //if(!rootsim_config.disable_preemption)
+    //  enable_preemption();
+    //#endif
 
-//      #ifdef HAVE_PREEMPTION
-//      if(!rootsim_config.disable_preemption)
-//              enable_preemption();
-//      #endif
-
-#ifdef HAVE_CROSS_STATE
+    #ifdef HAVE_CROSS_STATE
 	// Activate memory view for the current LP
 	lp_alloc_schedule();
-#endif
+    #endif
     context_switch(&kernel_context, &next_LP->context);
 
-//      #ifdef HAVE_PREEMPTION
-//        if(!rootsim_config.disable_preemption)
-//                disable_preemption();
-//        #endif
+    //#ifdef HAVE_PREEMPTION
+    //if(!rootsim_config.disable_preemption)
+    //        disable_preemption();
+    //#endif
 
-#ifdef HAVE_CROSS_STATE
+    #ifdef HAVE_CROSS_STATE
 	// Deactivate memory view for the current LP if no conflict has arisen
 	if (!is_blocked_state(next_LP->state)) {
 //              printf("Deschedule %d\n",lp);
 		lp_alloc_deschedule();
 	}
-#endif
+    #endif
+	if(rootsim_config.num_controllers > 0){
+	    next_LP->next_last_processed = next_evt;
+	}
+	else
+	    next_LP->last_processed = next_evt;
 
-    next_LP->last_processed = next_evt;
+
     next_evt->unprocessed = false;      ///CONTROLLARE
 
     current = NULL;
@@ -335,9 +344,9 @@ void asym_process_one_event(msg_t *msg) {
     struct lp_struct *LP;
     LP = find_lp_by_gid(msg->receiver);
 
-    spin_lock(&LP->bound_lock); //Process this event
+    //spin_lock(&LP->bound_lock); //Process this event
     activate_LP(LP, msg);
-    spin_unlock(&LP->bound_lock);
+    //spin_unlock(&LP->bound_lock);
 
     asym_send_outgoing_msgs(LP); //Send back to the controller the (possibly) generated events
     LogState(LP);
@@ -363,7 +372,7 @@ void find_a_match(msg_t *lo_prio_msg) {
                     fflush(stdout);
                     abort();
                 }
-                else{   //IT IS A NOTICE
+                else {   //IT IS A NOTICE
 
                     if(lo_prio_msg->receiver.to_int != hi_prio_msg->receiver.to_int){   //DIFFERENT RECEIVERS
                         printf("\tWARNING: lo/hi prio messages have DIFFERENT receivers\n");
@@ -390,12 +399,13 @@ void find_a_match(msg_t *lo_prio_msg) {
                 }
             }
             else {  //NOT A CONTROL MESSAGE
+
                 fprintf(stderr, "\tNON-CONTROL msg in hi_prio channel\n");
                 dump_msg_content(lo_prio_msg);
                 dump_msg_content(hi_prio_msg);
                 fflush(stdout);
                 abort();
-            }
+        }
     }
 }
 
@@ -519,12 +529,14 @@ void asym_schedule(void) {
         ///The bigger the utilization rate is, the smaller amount of free space the port can offer
         //   printf("port_current_size[PT->tid]: %d, utilization_rate: %f, port_batch_size: %d \n",port_current_size[PT->tid], utilization_rate,PT->port_batch_size);
         if (utilization_rate > UPPER_PORT_THRESHOLD) {
+            modify_score(UPPER_THRESHOLD_MODIFIER);
             if (PT->port_batch_size <= (MAX_PORT_SIZE - BATCH_STEP)) {
                 PT->port_batch_size += BATCH_STEP;
             } else if (PT->port_batch_size < MAX_PORT_SIZE) {
                 PT->port_batch_size++;
             }
         } else if (utilization_rate < LOWER_PORT_THRESHOLD) {
+            modify_score(LOWER_THRESHOLD_MODIFIER);
             if (PT->port_batch_size > BATCH_STEP) {
                 PT->port_batch_size -= BATCH_STEP;
             } else if (PT->port_batch_size > 1) {
@@ -583,6 +595,7 @@ void asym_schedule(void) {
                      chosen_LP->bound->timestamp, 0, NULL);// Send rollback notice in the high priority port
             rb_management->message_kind = control;
             rb_management->mark = mark;
+            chosen_LP->start = clock();   ///Start the turnaround timer
             pt_put_hi_prio_msg(chosen_LP->processing_thread, rb_management);
 
             chosen_LP->state = LP_STATE_WAIT_FOR_ROLLBACK_ACK;  //BLOCKED STATE
@@ -625,12 +638,17 @@ void asym_schedule(void) {
         if (unlikely(!to_be_sent_to_LP(chosen_EVT))) {    //NOT a message to be passed to the LP (a control msg)
             return;
         }
+        if(are_input_channels_empty(chosen_LP->processing_thread)){
+           exponential_moving_avg(1, EMPTY_PT_ID);
+        }
+        else
+           exponential_moving_avg(0,EMPTY_PT_ID);
 
         chosen_EVT->unprocessed = true;
         pt_put_lo_prio_msg(chosen_LP->processing_thread, chosen_EVT);
         sent_events++;
         events_to_fill_PT_port[chosen_LP->processing_thread]--;
-        int chosen_LP_id = chosen_LP->lid.to_int;
+        unsigned int chosen_LP_id = chosen_LP->lid.to_int;
 
         if (rootsim_config.scheduler == SCHEDULER_STF) {
 
@@ -789,6 +807,8 @@ void schedule_on_init(struct lp_struct *next)
 	next->state = LP_STATE_RUNNING;
 
 	activate_LP(next, event);
+	if(rootsim_config.num_controllers>0)
+	    next->last_processed = next->next_last_processed;
 
 	if (!is_blocked_state(next->state)) {
 		next->state = LP_STATE_READY;

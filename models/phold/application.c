@@ -1,3 +1,4 @@
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <ROOT-Sim.h>
@@ -98,12 +99,11 @@ double	write_distribution = WRITE_DISTRIBUTION,
 	tau = TAU;
 
 
-void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *event_content, unsigned int size, void *state) {
+void ProcessEvent(int curr_lp, simtime_t event_ts, int event_type, event_content_type *event_content, unsigned int size, void *state) {
 	(void)size;
 
 	simtime_t timestamp;
-	int 	i, j,
-		curr_num_buff;
+	int 	i, j,f,f_out,curr_num_buff;
 	double	current_size,
 		remaining_size,
 		step;
@@ -123,7 +123,7 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
                         }
 
 			// Explicitly tell ROOT-Sim this is our LP's state
-                        SetState(state_ptr);
+            SetState(state_ptr);
 
 			timestamp = (simtime_t) (20 * Random());
 
@@ -140,11 +140,11 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 //				state_ptr->loop_counter = GetParameterInt(event_content, "counter");
 				state_ptr->events = 0;
 
-				if(me == 0) {
+				if(curr_lp == 0) {
 					printf("Running a traditional loop-based PHOLD benchmark with counter set to %d, %d total events per LP\n", LOOP_COUNT, COMPLETE_EVENTS);
 				}
 
-				ScheduleNewEvent(me, timestamp, LOOP, NULL, 0);
+				ScheduleNewEvent(curr_lp, timestamp, LOOP, NULL, 0);
 			} else {
 
 				state_ptr->traditional = false;
@@ -210,8 +210,8 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 				state_ptr->actual_size += current_size;
 
 
-				if(me == 0) {
-					ScheduleNewEvent(me, timestamp, DEALLOC, NULL, 0);
+				if(curr_lp == 0) {
+					ScheduleNewEvent(curr_lp, timestamp, DEALLOC, NULL, 0);
 				}
 			}
 
@@ -222,12 +222,18 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 			for(i = 0; i < LOOP_COUNT; i++) {
 				j = i;
 			}
-			state_ptr->events++;
-			timestamp = now + (simtime_t)(Expent(TAU));
-			ScheduleNewEvent(me, timestamp, LOOP, NULL, 0);
-			if(Random() < 0.2)
-				ScheduleNewEvent(FindReceiver(), timestamp, LOOP, NULL, 0);
-			break;
+            f_out = RandomRange(1,3); 
+            state_ptr->events++;
+            timestamp = event_ts + (simtime_t)(Expent(TAU));
+	    for(f = 0; f < f_out; f++){
+                ScheduleNewEvent(GetReceiver(curr_lp,Random()*(DirectionsCount()+1),false), timestamp, LOOP, NULL, 0);
+                timestamp = event_ts + (simtime_t)(Expent(TAU));
+            }
+
+	   if(Random() < 0.2){
+		ScheduleNewEvent(FindReceiver(), timestamp, LOOP, NULL, 0);}
+
+		break;
 
 
 		case ALLOC: {
@@ -246,32 +252,32 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 			current_size = deallocation_op(state_ptr);
 
 			unsigned int recv = state_ptr->next_lp;
-			state_ptr->next_lp = (state_ptr->next_lp + (n_prc_tot / 4 + 1)) % n_prc_tot;
-			if (recv >= n_prc_tot)
-				recv = n_prc_tot - 1;
+			state_ptr->next_lp = (state_ptr->next_lp + (n_LP_tot / 4 + 1)) % n_LP_tot;
+			if (recv >= n_LP_tot)
+				recv = n_LP_tot - 1;
 
 			switch (timestamp_distribution) {
 				case UNIFORM: {
-					timestamp = now + (simtime_t)(tau * Random());
+					timestamp = event_ts + (simtime_t)(tau * Random());
 					break;
 				}
 				case EXPO: {
-					timestamp = now + (simtime_t)(Expent(tau));
+					timestamp = event_ts + (simtime_t)(Expent(tau));
 					break;
 				}
 				default:
-					timestamp = now + (simtime_t)(5 * Random());
+					timestamp = event_ts + (simtime_t)(5 * Random());
 			}
 
 			// Is there a buffer to be deallocated?
 			if(fabsf(current_size + 1) < FLT_EPSILON) {
-				ScheduleNewEvent(me, timestamp, DEALLOC, NULL, 0);
+				ScheduleNewEvent(curr_lp, timestamp, DEALLOC, NULL, 0);
 				break;
 			} else {
 
 				new_event.size = current_size;
 
-				ScheduleNewEvent(me, timestamp, ALLOC, &new_event, sizeof(event_content_type));
+				ScheduleNewEvent(curr_lp, timestamp, ALLOC, &new_event, sizeof(event_content_type));
 				ScheduleNewEvent(recv, timestamp, DEALLOC, NULL, 0);
 
 			}
@@ -291,10 +297,11 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 
 bool OnGVT(unsigned int me, lp_state_type *snapshot) {
 	(void)me;
-
-    fprintf(stdout,"PT%d: %f%% (%d events)\n", me, (double)snapshot->events/COMPLETE_EVENTS*100.0,snapshot->events);
-
-	if(snapshot->traditional) {
+/*    if((double)snapshot->events<COMPLETE_EVENTS)
+        fprintf(stdout,"PT%d: %.1f%% (%d events)\n", me, (double)snapshot->events/COMPLETE_EVENTS*100.0,snapshot->events);
+        else
+        fprintf(stdout,"PT%d: COMPLETE (%d events)\n", me, snapshot->events);*/  
+        if(snapshot->traditional) {
 		if(snapshot->events < COMPLETE_EVENTS)
 			return false;
 		return true;

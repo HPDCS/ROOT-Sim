@@ -44,6 +44,7 @@
 #include <scheduler/process.h>
 #include <gvt/gvt.h>
 #include <mm/mm.h>
+#include <score/score.h>
 
 #ifdef HAVE_CROSS_STATE
 #include <mm/ecs.h>
@@ -59,6 +60,20 @@
 int controller_committed_events = 0;
 atomic_t final_processed_events;
 __thread int my_processed_events = 0;
+timer threads_config_timer;
+double check_interval = 0.5;
+static int reassign = false;
+
+/// How many CTs have been stopped for thread reassignation (needed for the PT)
+static atomic_t CTs_to_stop;
+
+/// How many CTs have been stopped for thread reassignation (needed for the PT)
+static atomic_t PTs_to_stop;
+
+
+///add or remove CTs
+static int thread_configuration_modifier;
+
 
 /**
  * This jump buffer allows rootsim_error, in case of a failure, to jump
@@ -93,17 +108,22 @@ static bool end_computing(void) {
 	return false;
 }
 
-static void finish() {
+
+static void finish(void) {
 
     thread_barrier(&all_thread_barrier);
-
+    
     if (simulation_error()) {  //If we're exiting due to an error, we neatly shut down the simulation
         simulation_shutdown(EXIT_FAILURE);
     }
     simulation_shutdown(EXIT_SUCCESS);
 }
 
-static void symmetric_execution() {
+static void wait(void){
+    thread_barrier(&all_thread_barrier);
+}
+
+static void symmetric_execution(void) {
 
     simtime_t my_time_barrier = -1.0;
 
@@ -166,87 +186,182 @@ static void symmetric_execution() {
         collect_termination();
         #endif
     }
+    finish();
 }
 
-static void asymmetric_execution(enum thread_incarnation incarnation) {
+static void asymmetric_execution(void) {
 
     simtime_t my_time_barrier = -1.0;
+    timer_start(threads_config_timer);
 
-    if (incarnation == THREAD_CONTROLLER) {
+    if(master_kernel() && master_thread ()){
+        atomic_set(&CTs_to_stop, rootsim_config.num_controllers);
+        atomic_set(&PTs_to_stop, n_cores-rootsim_config.num_controllers);
+    }
 
-        initialize_worker_thread();  //Do the initial (local) LP binding, then execute INIT at all (local) LPs
+    if (Threads[tid]->incarnation == THREAD_CONTROLLER) {
+
+        initialize_worker_thread();//Do the initial (local) LP binding, then execute INIT at all (local) LPs
 
         #ifdef HAVE_MPI
         syncronize_all();
         #endif
 
+        CONTROLLER_THREAD:
+
         while (!end_computing()) {
 
-        // We assume that thread with tid 0 should be a controller.
-        // Should be adapted for MPI.
+            reset_score();
 
-        #ifdef HAVE_POWER_MANAGEMENT
-        if(master_thread()){
-            powercap_state_machine();
-        }
-        #endif
+            // We assume that thread with tid 0 should be a controller.
+            // Should be adapted for MPI.
 
-        rebind_LPs();  //Recompute the LPs-thread binding
+            #ifdef HAVE_POWER_MANAGEMENT
+            if(master_thread()){
+                powercap_state_machine();
+            }
+            #endif
 
-        #ifdef HAVE_MPI
-        // Check whether we have new ingoing messages sent by remote instances
-        receive_remote_msgs();
-        prune_outgoing_queues();
-        #endif
+            rebind_LPs();  //Recompute the LPs-thread binding
 
-        asym_extract_generated_msgs();  //Read output ports of all bound PTs
+            #ifdef HAVE_MPI
+            // Check whether we have new ingoing messages sent by remote instances
+            receive_remote_msgs();
+            prune_outgoing_queues();
+            #endif
 
-        process_bottom_halves();  //Forward the messages from the kernel incoming message queue to the destination LPs
+            update_last_processed();
 
-        asym_schedule();  //Activate one LP and process one event. Send messages produced during the events' execution
+            asym_extract_generated_msgs();  //Read output ports of all bound PTs
 
-        my_time_barrier = gvt_operations();
+            process_bottom_halves();  //Forward the messages from the kernel incoming message queue to the destination LPs
 
-        // Only a master thread on master kernel prints the time barrier
-        if (master_kernel() && master_thread () && D_DIFFER(my_time_barrier, -1.0)) {
-            if (rootsim_config.verbose == VERBOSE_INFO || rootsim_config.verbose == VERBOSE_DEBUG) {
+            asym_schedule();  //Activate one LP and process one event. Send messages produced during the events' execution
 
-                #ifdef HAVE_PREEMPTION
-                printf("TIME BARRIER %f - %d preemptions - %d in platform mode - %d would preempt\n", my_time_barrier, atomic_read(&preempt_count), atomic_read(&overtick_platform), atomic_read(&would_preempt));
-                #else
-                fprintf(stdout,"TIME BARRIER %f\n", my_time_barrier);
-                #endif
+            my_time_barrier = gvt_operations();
 
-                fprintf(stdout,"\tPorts-> ");
-                unsigned int i;
-                for(i = 0; i < n_cores; i++) {
-                    if(Threads[i]->incarnation == THREAD_PROCESSING){
-                        unsigned int port_curr_size = get_port_current_size(Threads[i]->input_port[PORT_PRIO_LO]);
-                        fprintf(stdout,"PT%d: %d/%d | ",i, port_curr_size, Threads[i]->port_batch_size);
+            // Only a master thread on master kernel prints the time barrier
+            if (master_kernel() && master_thread () && D_DIFFER(my_time_barrier, -1.0)) {
+                if (rootsim_config.verbose == VERBOSE_INFO || rootsim_config.verbose == VERBOSE_DEBUG) {
+
+                    #ifdef HAVE_PREEMPTION
+                    printf("TIME BARRIER %f - %d preemptions - %d in platform mode - %d would preempt\n", my_time_barrier, atomic_read(&preempt_count), atomic_read(&overtick_platform), atomic_read(&would_preempt));
+                    #else
+                    fprintf(stdout,"TIME BARRIER %f, # OF CONTROLLER THREADS:%d\n", my_time_barrier, rootsim_config.num_controllers);
+                    #endif
+
+                    //fprintf(stdout,"\tPorts-> ");
+                    unsigned int i;
+                    for(i = 0; i < n_cores; i++) {
+                        if(Threads[i]->incarnation == THREAD_PROCESSING){
+                            unsigned int port_curr_size = get_port_current_size(Threads[i]->input_port[PORT_PRIO_LO]);
+                            //fprintf(stdout,"PT%d: %d/%d | ",i, port_curr_size, Threads[i]->port_batch_size);
+                        }
                     }
+                    //fprintf(stdout,"\n");
+                    //fflush(stdout); 
                 }
-                fprintf(stdout,"\n");
-                fflush(stdout);
+            }
+
+            #ifdef HAVE_MPI
+            collect_termination();
+            #endif
+
+            if (master_kernel() && master_thread () && is_idle() ) {
+                if(get_score() >= SCORE_HIGHER_THRESHOLD && rootsim_config.num_controllers+1<= n_cores/2){
+                   // printf(">= SCORE_HIGHER_THRESHOLD - SCORE: %d\n",get_score());
+                    thread_configuration_modifier = 1;
+                }
+                else if(get_score() <= SCORE_LOWER_THRESHOLD && rootsim_config.num_controllers-1 >= 1){
+                   // printf("<= SCORE_LOWER_THRESHOLD - SCORE: %d\n",get_score());
+                    thread_configuration_modifier = -1;
+                }
+                else{
+                    thread_configuration_modifier = 0;
+                }
+
+                if (reassign == false && thread_configuration_modifier!=0 ){
+                    reassign = true;
+                   // fprintf(stdout,"\nREASSIGNATION... \n");
+                }
+                else if (reassign == true){
+                    printf("'false' reassign status expected\n");
+                    abort();
+                }
+            }
+
+            if(reassign == true) {
+                atomic_dec(&CTs_to_stop);
+
+                while(atomic_read(&PTs_to_stop) != 0);
+
+                asym_extract_generated_msgs();
+
+                if(check_output_channels_emptiness()==false) {
+                    printf("Channels are not empty\n");
+                    abort();
+                }
+
+                wait();
+                if(master_kernel() && master_thread ()) {
+                    threads_reassign(thread_configuration_modifier);
+                    update_participants();
+                   // fprintf(stdout, "REASSIGNATION DONE !\n\n");
+                    reassign = false;
+                    atomic_set(&CTs_to_stop, rootsim_config.num_controllers);
+                    atomic_set(&PTs_to_stop, n_cores-rootsim_config.num_controllers);
+
+                    timer_restart(threads_config_timer);
+                    wait();
+                }
+                else {
+                    wait();
+                }
+
+                if(Threads[local_tid]->incarnation == THREAD_PROCESSING){
+                    goto PROCESSING_THREAD;
+                }
+
+                reassignation_rebind();
             }
         }
 
-        #ifdef HAVE_MPI
-        collect_termination();
-        #endif
-        }
         finish();
     }
 
-    else if (incarnation == THREAD_PROCESSING) {
+
+    if (Threads[local_tid]->incarnation == THREAD_PROCESSING) {
 
         #ifdef HAVE_CROSS_STATE
         lp_alloc_thread_init();
         #endif
 
+        PROCESSING_THREAD:
+
         while (!end_computing()) {
             asym_process();
-        }
 
+            if(are_input_channels_empty(local_tid)){
+                if(reassign == true && atomic_read(&CTs_to_stop) == 0){
+                    atomic_dec(&PTs_to_stop);
+
+                    while(get_port_current_size(Threads[local_tid]->output_port) != 0);
+                    if(are_input_channels_empty(local_tid)&&is_out_channel_empty(tid)){
+                        wait();
+                    }
+                    else {
+                        printf("OUTPUT or INPUT CHANNELS NOT EMPTY\n");
+                        abort();
+                    }
+                    wait();
+                    if(Threads[local_tid]->incarnation == THREAD_CONTROLLER){
+                        reassignation_rebind();
+                        update_GVT();
+                        goto CONTROLLER_THREAD;
+                    }
+                }
+            }
+        }
         atomic_add(&final_processed_events, my_processed_events);
         finish();
     }
@@ -267,15 +382,15 @@ extern atomic_t would_preempt;
 static void *main_simulation_loop(void *arg) __attribute__((noreturn));
 static void *main_simulation_loop(void *arg) {
     (void)arg;
-
-    enum thread_incarnation incarnation = Threads[tid]->incarnation;
+    
+    enum thread_incarnation incarnation = Threads[local_tid]->incarnation;
 
     if(incarnation == THREAD_SYMMETRIC) {
         symmetric_execution();
     }
 
     else if(incarnation == THREAD_PROCESSING || incarnation == THREAD_CONTROLLER){
-        asymmetric_execution(incarnation);
+        asymmetric_execution();
     }
 
     else {

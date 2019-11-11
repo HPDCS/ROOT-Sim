@@ -139,6 +139,7 @@ extern void send_outgoing_msgs(struct lp_struct *);
 extern void send_antimessages(struct lp_struct *, simtime_t);
 extern void asym_send_outgoing_msgs(struct lp_struct*);
 extern void asym_extract_generated_msgs(void);
+extern bool check_output_channels_emptiness(void);
 
 extern void msg_hdr_release(msg_hdr_t * msg);
 extern msg_t *get_msg_from_slab(struct lp_struct *);

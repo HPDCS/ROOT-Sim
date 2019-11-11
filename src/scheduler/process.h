@@ -113,6 +113,9 @@ struct lp_struct {
 	/// Pointer to the last correctly processed event
 	msg_t *last_processed;
 
+	///Pointer to the last correctly processed event (to be confirmed by the CT)
+	msg_t *next_last_processed;
+
 	/// Pointer to the last scheduled event
 	msg_t *bound;
 
@@ -140,6 +143,9 @@ struct lp_struct {
     /// Variable used to keep track of NOTICES sent to PTs in asymmetrics to
     /// avoid nested rollback processing
     unsigned long long rollback_mark;
+
+    /// A per-LP timer to measure to turnaroud time of a rollback notice/ack message exchange
+    clock_t start, end;
 
 	/// Buffer used by KLTs for buffering outgoing messages during the execution of an event
 	outgoing_t outgoing_buffer;
@@ -212,5 +218,7 @@ extern __thread unsigned int __lp_bound_counter;
 #define LPS_bound_set(entry, lp)	lps_bound_blocks[(entry)] = (lp);
 
 extern void initialize_binding_blocks(void);
+extern void free_binding_blocks(void);
 extern void initialize_lps(void);
+extern void update_last_processed(void);
 extern struct lp_struct *find_lp_by_gid(GID_t);

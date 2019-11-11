@@ -152,7 +152,6 @@ void ProcessEvent(unsigned int curr_lp, simtime_t event_ts, int event_type, even
 
 
 		case START_CALL:
-
 			state->arriving_calls++;
 
 			if (state->channel_counter == 0) {
@@ -231,16 +230,16 @@ void ProcessEvent(unsigned int curr_lp, simtime_t event_ts, int event_type, even
 
 			break;
 
-		case END_CALL:
 
+		case END_CALL:
 			state->channel_counter++;
 			state->complete_calls++;
 			deallocation(curr_lp, state, event_content->channel, event_ts);
 
 			break;
 
-		case HANDOFF_LEAVE:
 
+		case HANDOFF_LEAVE:
 			state->channel_counter++;
 			state->leaving_handoffs++;
 			deallocation(curr_lp, state, event_content->channel, event_ts);
@@ -249,6 +248,7 @@ void ProcessEvent(unsigned int curr_lp, simtime_t event_ts, int event_type, even
 			new_event_content.from = curr_lp;
 			ScheduleNewEvent(event_content->cell, event_ts, HANDOFF_RECV, &new_event_content, sizeof(new_event_content));
 			break;
+
 
 		case HANDOFF_RECV:
 			state->arriving_handoffs++;
@@ -316,8 +316,10 @@ void ProcessEvent(unsigned int curr_lp, simtime_t event_ts, int event_type, even
 
 bool OnGVT(unsigned int me, lp_state_type *snapshot) {
 	(void)me;
-
-	//fprintf(stdout,"PT%d: %f%%\n", me, (double)snapshot->complete_calls/complete_calls*100.0);
+    if((double)snapshot->complete_calls/complete_calls*100.0<100.0)
+        fprintf(stdout,"LP%d: %.1f%%\n", me, (double)snapshot->complete_calls/complete_calls*100.0);
+   /* else
+        fprintf(stdout,"LP%d: COMPLETE\n", me);*/
 
 	if (snapshot->complete_calls < complete_calls)
 		return false;

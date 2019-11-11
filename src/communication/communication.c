@@ -45,6 +45,7 @@
 #include <mm/mm.h>
 #include <arch/atomic.h>
 #include <src/arch/thread.h>
+#include <score/score.h>
 
 #ifdef HAVE_MPI
 #include <communication/mpi.h>
@@ -450,7 +451,7 @@ void send_outgoing_msgs(struct lp_struct *lp)
 		msg = lp->outgoing_buffer.outgoing_msgs[i];
 		msg_to_hdr(msg_hdr, msg);
 
-		Send(msg);
+     	Send(msg);
 
 		// register the message in the sender's output queue, for antimessage management
 		list_insert(lp->queue_out, send_time, msg_hdr);
@@ -468,6 +469,7 @@ void asym_send_outgoing_msgs(struct lp_struct *lp) {
         msg = lp->outgoing_buffer.outgoing_msgs[i];
 
         pt_put_out_msg(msg);
+
     }
 
     lp->outgoing_buffer.size = 0;
@@ -538,18 +540,34 @@ void pack_msg(msg_t **msg, GID_t sender, GID_t receiver, int type, simtime_t tim
         memcpy((*msg)->event_content, payload, size);
 }
 
+
+bool check_output_channels_emptiness(void) {
+    unsigned int idx;
+
+    for(idx = 0; idx < Threads[tid]->num_PTs; idx++) {
+        if (!is_out_channel_empty(Threads[tid]->PTs[idx]->tid)){
+            return false;
+        }
+    }
+    return true;
+}
+
 void asym_extract_generated_msgs(void) {
+
     struct lp_struct *lp_sender, *lp_receiver;
     unsigned int i;
+    double cpu_time_used;
     msg_t *msg;
     msg_hdr_t *msg_hdr;
     for(i = 0; i < Threads[tid]->num_PTs; i++) {
+
             // printf("Output port size for PT %u: %d\n", Threads[tid]->PTs[i]->tid), atomic_read(&Threads[tid]->PTs[i]->output_port->size);
         while((msg = pt_get_out_msg(Threads[tid]->PTs[i]->tid)) != NULL) {
 
             validate_msg(msg);
 
             if(is_control_msg(msg->type) && msg->type == ASYM_ROLLBACK_ACK) {
+
 
                 lp_receiver = find_lp_by_gid(msg->receiver);
 
@@ -560,20 +578,16 @@ void asym_extract_generated_msgs(void) {
                  *  - LP_y is picked by STF: NOTICE/BUBBLES are sent to PT
                  *  - PT sends back ACK for LP_x, for the first incarnation of rollback
                  */
-                if(lp_receiver->rollback_status == REQUESTED) {
+                if(lp_receiver->rollback_status == REQUESTED || lp_receiver->rollback_mark > msg->mark) {
                     goto discard;
                 }
 
-                if(lp_receiver->rollback_status == PROCESSING && lp_receiver->rollback_mark > msg->mark){
-                    goto discard;
-                }
-
-                if(lp_receiver->rollback_status == IDLE) {  //integrity check
+               /* if(lp_receiver->rollback_status == IDLE) {  //integrity check
                     printf("\tERROR: The impossible happened, LP%u with rollback_mark = %llu and rb_status IDLE just received a ROLLBACK_ACK",
                             lp_receiver->gid.to_int,lp_receiver->rollback_mark);
                     dump_msg_content(msg);
                     abort();
-                }
+                }*/
 
                 if(lp_receiver->rollback_mark < msg->mark) {    //integrity check
                     printf("\tERROR: msg mark (%llu) CANNOT BE BIGGER than LP%u's rollback mark (%llu)\n",msg->mark,lp_receiver->gid.to_int,lp_receiver->rollback_mark);
@@ -591,6 +605,9 @@ void asym_extract_generated_msgs(void) {
 
                     lp_receiver->state = LP_STATE_ROLLBACK_ALLOWED;
                     lp_receiver->rollback_status = IDLE;
+                    lp_receiver->end = clock();
+                    cpu_time_used = (((double) (lp_receiver->end - lp_receiver->start)) / CLOCKS_PER_SEC)*100;
+                    exponential_moving_avg(cpu_time_used, BUBBLE_TURNAROUND_ID);
                     goto discard;
                 }
 
@@ -602,6 +619,7 @@ void asym_extract_generated_msgs(void) {
                 msg_release(msg);
                 continue;
             }
+
 
             Send(msg);
 

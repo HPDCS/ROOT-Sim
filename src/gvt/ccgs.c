@@ -157,8 +157,7 @@ void ccgs_compute_snapshot(state_t * time_barrier_pointer[], simtime_t gvt)
 
 */
 		// Call the application to check termination
-		lps_termination[lp->lid.to_int] =
-		    lp->OnGVT(lp->gid.to_int, lp->current_base_pointer);
+		lps_termination[lp->lid.to_int] = lp->OnGVT(lp->gid.to_int, lp->current_base_pointer);
 		check_res &= lps_termination[lp->lid.to_int];
 
 		// Restore the current state

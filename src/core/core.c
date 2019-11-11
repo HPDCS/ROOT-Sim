@@ -133,8 +133,7 @@ static void handle_signal(int signum)
 * @author Alessandro Pellegrini
 *
 */
-void base_init(void)
-{
+void base_init(void) {
 	struct sigaction new_act = { 0 };
 
     if(rootsim_config.num_controllers > 0) {
@@ -160,8 +159,7 @@ void base_init(void)
 * @author Roberto Vitali
 *
 */
-void base_fini(void)
-{
+void base_fini(void) {
 }
 
 /**
