@@ -54,7 +54,7 @@ void __write_mem(unsigned char *address, size_t size)
 	register long long _rsp __asm__	("rsp");
 	unsigned char *rsp = (unsigned char *)_rsp;
 
-	struct malloc_area *m_area = NULL, *cur_m_area;
+	struct malloc_area *m_area;
 	struct malloc_state *m_state;
 	size_t bitmap_size, chk_size;
 	int i, first_chunk, last_chunk;
@@ -74,22 +74,20 @@ void __write_mem(unsigned char *address, size_t size)
 	m_state = current->mm->m_state;
 
 	for (i = 0; i < m_state->num_areas; i++) {
-		cur_m_area = &m_state->areas[i];
-		if(cur_m_area == NULL || cur_m_area->area == NULL)
+		m_area = &m_state->areas[i];
+		if(m_area->area == NULL)
 			continue;
 
-		if (address >= (unsigned char *)cur_m_area->area && address < (unsigned char *)cur_m_area->area + cur_m_area->chunk_size * cur_m_area->num_chunks) {
-			m_area = cur_m_area;
+		chk_size = UNTAGGED_CHUNK_SIZE(m_area);
+		if (address >= (unsigned char *)m_area->area && address < (unsigned char *)m_area->area + chk_size * m_area->num_chunks) {
 			break;
 		}
 	}
 
-	if (m_area == NULL) {
+	if (i >= m_state->num_areas) {
 		goto out;
 	}
 
-	// Determine the number of chunks affected by the write operation
-	chk_size = UNTAGGED_CHUNK_SIZE(m_area);
 	first_chunk = (int)(((char *)address - (char *)m_area->area) / chk_size);
 
 	// If size == SIZE_MAX, then we adopt a conservative approach: dirty all the chunks from the base to the end
@@ -112,10 +110,11 @@ void __write_mem(unsigned char *address, size_t size)
 		m_area->state_changed = 1;
 	}
 
-	if(first_chunk >= m_area->num_chunks) {
+	if(first_chunk >= m_area->num_chunks || last_chunk >= m_area->num_chunks) {
 		printf("Wrong condition in __write_mem\n");
 		printf("address: %p\n", address);
 		printf("first chunk: %d\n", first_chunk);
+		printf("last chunk: %d\n", last_chunk);
 		printf("malloc_area->num_chunks: %d\n", m_area->num_chunks);
 		abort();
 	}
