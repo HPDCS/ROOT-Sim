@@ -110,11 +110,9 @@ void initialize_lps(void)
 		if (rootsim_config.snapshot == SNAPSHOT_FULL) {
 			lp->OnGVT = &OnGVT;
 			lp->ProcessEvent = &ProcessEvent;
-#ifdef HAS_GCC_PLUGIN
 		} else if(rootsim_config.snapshot == SNAPSHOT_INCREMENTAL) {
 			lp->OnGVT = &OnGVT_instr;
 			lp->ProcessEvent = &ProcessEvent_instr;
-#endif
 		} else {
 			rootsim_error(true, "Wrong type of snapshot: neither full nor incremental\n");
 		}

@@ -5,8 +5,6 @@ AC_INIT([ROOT-Sim],[2.0.0],[rootsim@googlegroups.com],[rootsim],[https://github.
 AC_CONFIG_SRCDIR([src])
 AM_INIT_AUTOMAKE([-Wno-portability 1.10.1 -Wall foreign subdir-objects])
 
-AC_SUBST([GCCPLUGVERS], [0:0:0])
-
 AC_CONFIG_MACRO_DIR([m4])
 
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
@@ -129,25 +127,6 @@ AS_IF([test $GCC_VERSION_MAJOR -lt 6],[
 AS_IF([test $GCC_VERSION_MAJOR -ge 7 -a "x$enable_debug" == "xyes"],[
 	CFLAGS="$CFLAGS -Wimplicit-fallthrough=3"
 ])
-
-# Check for include path to generate the GCC plugin which we use for
-# incremental state saving. We must also check whether we have GCC
-# headers or not, otherwise compiling the plugin will fail badly.
-AC_SUBST([GCCPLUGINDIR],[$( ${CXX} -print-file-name=plugin )])
-
-ac_iss="Disabled"
-ac_gcc_headers=no
-AC_LANG_PUSH([C++])
-CXXFLAGS="-I ${GCCPLUGINDIR}/include"
-AC_CHECK_HEADERS([gcc-plugin.h],
-	[ac_gcc_headers=yes])
-if test "x$ac_gcc_headers" = "xyes"
-then
-	AC_DEFINE([HAS_GCC_PLUGIN])
-	ac_iss="Enabled (Software based)"
-fi
-AM_CONDITIONAL([COMPILE_GCC_PLUGIN], [test "x$ac_gcc_headers" = "xyes"])
-AC_LANG_POP([C++])
 
 #----------------------------------------------------------------------------
 # Checks for programs.
@@ -501,7 +480,6 @@ Debugging Support......... : ${enable_debug}
 MPI....................... : ${enable_mpi}
 LP Preemption Support..... : ${ac_preemption}
 LP Rebinding.............. : ${ac_lp_rebinding}
-Incremental State Saving.. : ${ac_iss}
 
 
 EOF

@@ -312,7 +312,6 @@ state_t *find_time_barrier(struct lp_struct *lp, simtime_t simtime)
 
 
 	// Search for the first full log before the gvt
-#ifdef HAS_GCC_PLUGIN
 	printf("Find barrier: ");
 	while(true) {
 		printf("%d", is_incremental(barrier_state->log));
@@ -321,7 +320,6 @@ state_t *find_time_barrier(struct lp_struct *lp, simtime_t simtime)
 		barrier_state = list_prev(barrier_state);
 	}
 	printf("\n");
-#endif
 
 	return barrier_state;
 }

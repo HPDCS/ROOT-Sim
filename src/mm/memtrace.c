@@ -31,12 +31,10 @@
 * @date April 02, 2008
 */
 
-//#include <stdlib.h>
+#include <stdlib.h>
 
 #include <mm/dymelor.h>
 #include <scheduler/scheduler.h>
-
-#ifdef HAS_GCC_PLUGIN
 
 /**
 * This function marks a memory chunk as dirty.
@@ -51,7 +49,6 @@
 * @param size The number of bytes being updated
 */
 __attribute__((used))
-__attribute__((no_caller_saved_registers))
 void __write_mem(unsigned char *address, size_t size)
 {
 	register long long _rsp __asm__	("rsp");
@@ -138,4 +135,3 @@ void __write_mem(unsigned char *address, size_t size)
 	return;
 }
 
-#endif

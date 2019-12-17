@@ -272,11 +272,7 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 			break;
 
 		case OPT_INC:
-			#ifdef HAS_GCC_PLUGIN
 			rootsim_config.snapshot = SNAPSHOT_INCREMENTAL;
-			#else
-			argp_failure(state, EXIT_FAILURE, ENOSYS, "No support for Incremental State Saving found while compiling.\nAborting...");
-			#endif
 			break;
 
 		case OPT_A:
