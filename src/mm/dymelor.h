@@ -92,6 +92,8 @@
 #define POWEROF2(x) (1UL << (1 + (63 - __builtin_clzl((x) - 1))))
 #define IS_POWEROF2(x) ((x) != 0 && ((x) & ((x) - 1)) == 0)
 
+#define PER_LP_PREALLOCATED_MEMORY (262144L * PAGE_SIZE)	// This should be power of 2 multiplied by a page size. This is 1GB per LP.
+
 /// This structure let DyMeLoR handle one malloc area (for serving given-size memory requests)
 struct _malloc_area {
 #ifndef NDEBUG
@@ -151,7 +153,6 @@ extern size_t get_inc_log_size(void *);
 extern int get_granularity(void);
 extern size_t dirty_size(unsigned int, void *, double *);
 extern malloc_state *malloc_state_init(void);
-extern void malloc_state_wipe(malloc_state **);
 extern void *do_malloc(struct lp_struct *, size_t);
 extern void do_free(struct lp_struct *, void *ptr);
 extern void *allocate_lp_memory(struct lp_struct *, size_t);
@@ -169,12 +170,6 @@ extern void __wrap_free(void *);
 extern void *__wrap_realloc(void *, size_t);
 extern void *__wrap_calloc(size_t, size_t);
 extern void clean_buffers_on_gvt(struct lp_struct *, simtime_t);
-
-/* Simulation Platform Memory APIs */
-extern inline void *rsalloc(size_t);
-extern inline void rsfree(void *);
-extern inline void *rsrealloc(void *, size_t);
-extern inline void *rscalloc(size_t, size_t);
 
 extern void ecs_init(void);
 

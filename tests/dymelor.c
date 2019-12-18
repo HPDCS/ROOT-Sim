@@ -11,8 +11,8 @@
 #define actual_malloc(siz) malloc(siz)
 #define actual_free(ptr) free(ptr)
 
-#include <mm/mm.h>
-#include <core/timer.h>
+#include <mm/dymelor.h>
+#include <mm/buddy.h>
 #include <core/init.h>
 
 #include "common.h"
@@ -32,16 +32,16 @@ __thread unsigned long long free_time = 0;
 __thread unsigned long long checkpoint_time = 0;
 __thread unsigned long long restore_time = 0;
 
-#define N_TOTAL		10
+#define N_TOTAL		100
 #define N_THREADS	4
 #define N_TOTAL_PRINT	5
 #define MEMORY		(1ULL << 26)
 
 #define RANDOM(s)	(rng() % (s))
 
-#define MSIZE		10000
+#define MSIZE		100000
 #define I_MAX		10000
-#define ACTIONS_MAX	30
+#define ACTIONS_MAX	100
 
 /* For large allocation sizes, the time required by copying in
    realloc() can dwarf all other execution times.  Avoid this with a
@@ -181,7 +181,7 @@ static void free_it(struct bin *m) {
 	if(m->subs == SLAB)
 		slab_free(current->mm->slab, m->ptr);
 	if(m->subs == BUDDY)
-		free_lp_memory(current, m->ptr);
+		free_buddy_memory(current->mm->buddy, current->mm->segment->base, m->ptr);
 }
 
 /*
@@ -199,7 +199,7 @@ static void bin_alloc(struct bin *m, size_t size, unsigned r)
 
 	r %= 1024;
 
-	if (r < 120) {
+	if (r < 1) {
 		// calloc
 		if (m->size > 0)
 			free_it(m);
@@ -216,7 +216,7 @@ static void bin_alloc(struct bin *m, size_t size, unsigned r)
 			exit(1);
 		}
 
-	} else if ((r < 200) && (m->size < REALLOC_MAX)) {
+	} else if ((r < 2) && (m->size < REALLOC_MAX)) {
 		// realloc
 		if (!m->size)
 			m->ptr = NULL;
@@ -226,13 +226,13 @@ static void bin_alloc(struct bin *m, size_t size, unsigned r)
 		}
 		m->ptr = __wrap_realloc(m->ptr, size);
 		m->subs = DYMELOR;
-	} /*else if(r < 474) {
+	} else if(r < 1020) {
 		// buddy
 		if (m->size > 0)
 			free_it(m);
-		m->ptr = allocate_lp_memory(current, size);
+		m->ptr = allocate_buddy_memory(current->mm->buddy, current->mm->segment->base, size);
 		m->subs = BUDDY;
-	} */else if(r < 749 && size <= SLAB_MSG_SIZE) {
+	} else if(r < 1021 && size <= SLAB_MSG_SIZE) {
 		// slab
 		if (m->size > 0)
 			free_it(m);
@@ -278,7 +278,7 @@ static void bin_free(struct bin *m)
 		return;
 
 	if (mem_check(m)) {
-		printf("[%d] memory corrupt at %p!\n", st->counter, m->ptr);
+		printf("[%d] memory corrupt at %p! Type: %d\n", st->counter, m->ptr, m->subs);
 		abort();
 	}
 
@@ -292,7 +292,7 @@ static void bin_test(struct bin_info *p)
 
 	for (b = 0; b < p->bins; b++) {
 		if (mem_check(&p->m[b])) {
-			printf("[%d] memory corrupt at %p!\n", st->counter, p->m[b].ptr);
+			printf("[%d] memory corrupt at %p! Type: %d\n", st->counter, p->m[b].ptr, p->m[b].subs);
 			abort();
 		}
 	}
@@ -447,7 +447,6 @@ int main(int argc, char *argv[])
 		st[i].max = i_max;
 		st[i].size = size;
 		st[i].flags = 0;
-		//st[i].sp = 0;
 		st[i].counter = i;
 		st[i].seed = (i_max * size + i) ^ bins;
 		if (my_start_thread(&st[i])) {

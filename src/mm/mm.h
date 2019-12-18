@@ -41,12 +41,6 @@ struct segment {
 	unsigned char *brk;
 };
 
-struct buddy {
-	spinlock_t lock;
-	size_t size;
-	size_t longest[] __attribute__((aligned(sizeof(size_t))));
-};
-
 extern size_t __page_size;
 #define PAGE_SIZE ({ \
 			if(unlikely(__page_size == 0))\
@@ -93,10 +87,15 @@ extern void *get_base_pointer(GID_t gid);
 extern void initialize_memory_map(struct lp_struct *lp);
 extern void finalize_memory_map(struct lp_struct *lp);
 
-extern struct buddy *buddy_new(struct lp_struct *,
-			       unsigned long num_of_fragments);
-void buddy_destroy(struct buddy *);
-
 extern struct slab_chain *slab_init(const size_t itemsize);
-extern void *slab_alloc(struct slab_chain *const sch);
-extern void slab_free(struct slab_chain *const sch, const void *const addr);
+extern void *slab_alloc(struct slab_chain *);
+extern void slab_free(struct slab_chain *, const void *const addr);
+
+/* Simulation Platform Memory APIs */
+extern inline void *rsalloc(size_t);
+extern inline void *rszalloc(size_t size);
+extern inline void rsfree(void *);
+extern inline void *rsrealloc(void *, size_t);
+extern inline void *rscalloc(size_t, size_t);
+
+extern void malloc_state_wipe(struct memory_map *);
