@@ -41,7 +41,6 @@
 #include <scheduler/process.h>
 #include <datatypes/list.h>
 #include <mm/mm.h>
-#include <mm/buddy.h>
 #include <arch/atomic.h>
 #ifdef HAVE_MPI
 #include <communication/mpi.h>

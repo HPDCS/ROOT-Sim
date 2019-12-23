@@ -36,6 +36,7 @@
 #include <assert.h>
 
 #include <core/core.h>
+#include <mm/dymelor.h>
 #include <mm/mm.h>
 
 #define SLOTS_ALL_ZERO ((uint64_t) 0)

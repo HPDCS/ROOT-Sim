@@ -34,7 +34,6 @@
 #include <core/init.h>
 #include <mm/mm.h>
 #include <mm/dymelor.h>
-#include <mm/buddy.h>
 #include <scheduler/scheduler.h>
 
 /**

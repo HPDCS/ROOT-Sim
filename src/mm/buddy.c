@@ -30,8 +30,8 @@
 #include <stdlib.h>
 #include <limits.h>
 
+#include <mm/dymelor.h>
 #include <mm/mm.h>
-#include <mm/buddy.h>
 #include <datatypes/bitmap.h>
 
 static inline int left_child(int i)

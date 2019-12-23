@@ -33,7 +33,6 @@
 #include <sys/types.h>
 
 #include <mm/dymelor.h>
-#include <mm/buddy.h>
 #include <mm/ecs.h>
 #include <arch/x86/linux/cross_state_manager/cross_state_manager.h>
 #include <scheduler/process.h>

@@ -12,7 +12,6 @@
 #define actual_free(ptr) free(ptr)
 
 #include <mm/dymelor.h>
-#include <mm/buddy.h>
 #include <core/init.h>
 
 #include "common.h"
