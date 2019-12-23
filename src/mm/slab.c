@@ -37,7 +37,7 @@
 
 #include <core/core.h>
 #include <mm/dymelor.h>
-#include <scheduler/process.h>
+#include <mm/mm.h>
 
 #define SLOTS_ALL_ZERO ((uint64_t) 0)
 #define SLOTS_FIRST ((uint64_t) 1)

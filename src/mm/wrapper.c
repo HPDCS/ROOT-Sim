@@ -82,7 +82,8 @@ __visible void *__wrap_memset(void *s, int c, size_t n)
 	return __real_memset(s, c, n);
 }
 
-__visible void __wrap_bzero(void *s, size_t n) {
+__visible void __wrap_bzero(void *s, size_t n)
+{
 	__wrap_memset(s, 0, n);
 }
 

@@ -15,10 +15,12 @@
 #include <ROOT-Sim.h>
 #include <lib/topology.h>
 
+#include <mm/mm.h>
 #include <scheduler/scheduler.h>
 #include <lib/numerical.h>
 #include <datatypes/bitmap.h>
 #include <scheduler/process.h>
+
 
 typedef struct _topology_t {
 	unsigned neighbours_id[6];

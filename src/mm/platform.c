@@ -31,6 +31,7 @@
 #include <stdlib.h>
 
 #include <mm/dymelor.h>
+#include <mm/mm.h>
 #include <core/core.h>
 
 inline void *rsalloc(size_t size)

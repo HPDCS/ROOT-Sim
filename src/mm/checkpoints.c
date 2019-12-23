@@ -33,6 +33,7 @@
 #include <fcntl.h>
 
 #include <mm/dymelor.h>
+#include <mm/mm.h>
 #include <core/timer.h>
 #include <core/core.h>
 #include <core/init.h>
@@ -207,7 +208,7 @@ void *log_full(struct lp_struct *lp)
 *         along with the relative meta-data which can be used to perform a restore operation.
 */
 void *log_incremental(struct lp_struct *lp) {
-	void *ptr, *log;
+	unsigned char *ptr, *log;
 	int i, dirty_areas_count = 0;
 	size_t size, chunk_size, bitmap_size;
 	struct malloc_area *m_area;
@@ -261,7 +262,7 @@ void *log_incremental(struct lp_struct *lp) {
 		if(m_area->state_changed == 0){
 			m_area->dirty_chunks = 0;
 			if (m_area->use_bitmap != NULL) {
-				__real_bzero((void *)m_area->dirty_bitmap, bitmap_size);
+				__real_memset((void *)m_area->dirty_bitmap, 0, bitmap_size);
 			}
                         continue;
                 }
@@ -301,12 +302,12 @@ void *log_incremental(struct lp_struct *lp) {
 	    no_dirty:
 		m_area->dirty_chunks = 0;
 		m_area->state_changed = 0;
-		__real_bzero(m_area->dirty_bitmap, bitmap_size);
+		__real_memset(m_area->dirty_bitmap, 0, bitmap_size);
 
 	} // for each dirty m_area in m_state
 
 	// Sanity check
-	if ((char *)log + size != ptr){
+	if (log + size != ptr){
 		rootsim_error(true, "Actual (inc) log size different from the estimated one! Aborting...\n\tlog = %x expected size = %d, actual size = %d, ptr = %x\n", log, size, ptr-log, ptr);
 	}
 
@@ -433,7 +434,7 @@ void restore_full(struct lp_struct *lp, void *ckpt)
 		ptr = (void *)((char *)ptr + bitmap_size);
 
 		// Reset dirty bitmap
-		__real_bzero(m_area->dirty_bitmap, bitmap_size);
+		__real_memset(m_area->dirty_bitmap, 0, bitmap_size);
 		m_area->dirty_chunks = 0;
 		m_area->state_changed = 0;
 
@@ -601,7 +602,7 @@ void restore_incremental(struct lp_struct *lp, state_t *queue_node) {
                                 __real_memcpy(m_area->use_bitmap, ptr, bitmap_size);
 
                                 // Reset dirty bitmap
-				__real_bzero((void *)m_area->dirty_bitmap, bitmap_size);
+				__real_memset((void *)m_area->dirty_bitmap, 0, bitmap_size);
                         }
 
                         // make ptr point to dirty bitmap
@@ -690,7 +691,7 @@ void restore_incremental(struct lp_struct *lp, state_t *queue_node) {
 			// Reset dirty bitmapstatistics_post_data(lp, STAT_CKPT_MEM, (double)size);
 			m_area->dirty_chunks = 0;
 			m_area->state_changed = 0;
-			__real_bzero((void *)m_area->dirty_bitmap, bitmap_size);
+			__real_memset((void *)m_area->dirty_bitmap, 0, bitmap_size);
 		}
 
 		// ptr points to use bitmap
@@ -749,8 +750,8 @@ void restore_incremental(struct lp_struct *lp, state_t *queue_node) {
 			RESET_AREA_LOCK_BIT(m_area);
 			if (m_area->use_bitmap != NULL) {
 				bitmap_size = bitmap_required_size(m_area->num_chunks);
-				__real_bzero(m_area->use_bitmap, bitmap_size);
-				__real_bzero(m_area->dirty_bitmap, bitmap_size);// Take dirty_bitmap into account as well
+				__real_memset(m_area->use_bitmap, 0, bitmap_size);
+				__real_memset(m_area->dirty_bitmap, 0, bitmap_size);// Take dirty_bitmap into account as well
 			}
 		}
 	}
@@ -772,8 +773,8 @@ void restore_incremental(struct lp_struct *lp, state_t *queue_node) {
 
 			if (m_area->use_bitmap != NULL) {
 				bitmap_size = bitmap_required_size(m_area->num_chunks);
-				__real_bzero(m_area->use_bitmap, bitmap_size);
-				__real_bzero(m_area->dirty_bitmap, bitmap_size);// Take dirty_bitmap into account as well
+				__real_memset(m_area->use_bitmap, 0, bitmap_size);
+				__real_memset(m_area->dirty_bitmap, 0, bitmap_size);// Take dirty_bitmap into account as well
 			}
 		}
 		m_state->num_areas = original_num_areas;

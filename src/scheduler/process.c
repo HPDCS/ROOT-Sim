@@ -36,6 +36,7 @@
 #include <core/init.h>
 #include <scheduler/process.h>
 #include <scheduler/scheduler.h>
+#include <mm/mm.h>
 
 // TODO: see issue #121 to see how to make this ugly hack disappear
 __thread unsigned int __lp_counter = 0;
@@ -91,6 +92,10 @@ void initialize_lps(void)
 			fflush(stdout);
 			abort();
 		}
+		// We sequentially assign lids, and use the current gid
+		lp->lid.to_int = lid++;
+		lp->gid = gid;
+
 		// Initialize memory map
 		initialize_memory_map(lp);
 
@@ -101,10 +106,6 @@ void initialize_lps(void)
 
 		// Initialize bottom halves msg channel
 		lp->bottom_halves = init_channel();
-
-		// We sequentially assign lids, and use the current gid
-		lp->lid.to_int = lid++;
-		lp->gid = gid;
 
 		// Which version of OnGVT and ProcessEvent should we use?
 		if (rootsim_config.snapshot == SNAPSHOT_FULL) {

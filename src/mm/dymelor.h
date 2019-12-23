@@ -91,8 +91,6 @@
 #define POWEROF2(x) (1UL << (1 + (63 - __builtin_clzl((x) - 1))))
 #define IS_POWEROF2(x) ((x) != 0 && ((x) & ((x) - 1)) == 0)
 
-#define PER_LP_PREALLOCATED_MEMORY (262144L * PAGE_SIZE)	// This should be power of 2 multiplied by a page size. This is 1GB per LP.
-#define BUDDY_GRANULARITY PAGE_SIZE	// This is the smallest chunk released by the buddy in bytes. PER_LP_PREALLOCATED_MEMORY/BUDDY_GRANULARITY must be integer and a power of 2
 
 /// This structure let DyMeLoR handle one malloc area (for serving given-size memory requests)
 struct malloc_area {
@@ -169,39 +167,69 @@ struct slab_chain {
 	struct slab_header *partial, *empty, *full;
 };
 
-struct memory_map {
-	struct malloc_state *m_state;
-	struct buddy *buddy;
-	struct slab_chain *slab;
-	struct segment *segment;
-};
-
 #define get_top_pointer(ptr) ((unsigned long long *)((char *)ptr - sizeof(unsigned long long)))
 #define get_area_top_pointer(ptr) ( (struct malloc_area **)(*get_top_pointer(ptr)) )
 #define get_area(ptr) ( *(get_area_top_pointer(ptr)) )
 
-// Definition of wrapped functions
-__visible void *__wrap_malloc(size_t);
-__visible void __wrap_free(void *);
-__visible void *__wrap_realloc(void *, size_t);
-__visible void *__wrap_calloc(size_t, size_t);
+#define PER_LP_PREALLOCATED_MEMORY (262144L * PAGE_SIZE)	// This should be power of 2 multiplied by a page size. This is 1GB per LP.
+#define BUDDY_GRANULARITY PAGE_SIZE	// This is the smallest chunk released by the buddy in bytes. PER_LP_PREALLOCATED_MEMORY/BUDDY_GRANULARITY must be integer and a power of 2
 
-// Definitions to functions which will be wrapped by the linker
-extern void *__real_malloc(size_t);
-extern void __real_free(void *);
-extern void *__real_realloc(void *, size_t);
-extern void *__real_calloc(size_t, size_t);
-extern char *__real_strcpy(char *, const char *);
-extern char *__real_strncpy(char *, const char *, size_t);
-extern char *__real_strcat(char *, const char *);
-extern char *__real_strncat(char *, const char *, size_t);
-extern void *__real_memcpy(void *, const void *, size_t);
-extern void *__real_memmove(void *, const void *, size_t);
-extern void *__real_memset(void *, int, size_t);
-extern void *__real_bzero(void *, size_t);
 
-extern void __write_mem(unsigned char *, size_t);
 
-// This is used to help ensure that the mm is not using actual calls anywhere
-#pragma GCC poison malloc free realloc calloc strcpy strncpy strcat strncat
-#pragma GCC poison memcpy memmove memset bzero
+
+/***************
+ * EXPOSED API *
+ ***************/
+
+// DyMeLoR API
+__attribute__((used)) void __write_mem(unsigned char *address, size_t size);
+extern size_t get_state_size(int);
+extern size_t get_log_size(struct malloc_state *);
+extern size_t get_inc_log_size(void *);
+extern int get_granularity(void);
+extern size_t dirty_size(unsigned int, void *, double *);
+extern struct malloc_state *malloc_state_init(void);
+extern void *do_malloc(struct lp_struct *, size_t);
+extern void do_free(struct lp_struct *, void *ptr);
+extern void *allocate_lp_memory(struct lp_struct *, size_t);
+extern void free_lp_memory(struct lp_struct *, void *);
+
+
+// Userspace API
+__visible extern void *__wrap_malloc(size_t);
+__visible extern void __wrap_free(void *);
+__visible extern void *__wrap_realloc(void *, size_t);
+__visible extern void *__wrap_calloc(size_t, size_t);
+
+
+/***************************
+ * BUDDY SYSTEM
+ ***************************/
+
+// buddy block size expressed in 2^n, e.g.: BUDDY_BLOCK_SIZE_EXP = 4, block_size = 16 TODO make this the pagesize
+#define BUDDY_BLOCK_SIZE_EXP 12
+
+extern struct buddy *buddy_new(size_t requested_size);
+extern void buddy_destroy(struct buddy *self);
+extern void *allocate_buddy_memory(struct buddy *self, void *base_mem, size_t requested_size);
+extern void free_buddy_memory(struct buddy *self, void *base_mem, void *ptr);
+
+
+// This is used to help ensure that the platform is not using malloc.
+#pragma GCC poison malloc free realloc calloc
+
+extern char *__real_strcpy(char *s, const char *ct);
+extern char *__real_strncpy(char *s, const char *ct, size_t n);
+extern char *__real_strcat(char *s, const char *ct);
+extern char *__real_strncat(char *s, const char *ct, size_t n);
+extern void *__real_memcpy(void *s, const void *ct, size_t n);
+extern void *__real_memmove(void *s, const void *ct, size_t n);
+extern void *__real_memset(void *s, int c, size_t n);
+extern void __real_bzero(void *s, size_t n);
+extern char *__real_strdup(const char *s);
+extern char *__real_strndup(const char *s, size_t n);
+extern void *__real_malloc(size_t size);
+extern void __real_free(void *ptr);
+extern void *__real_realloc(void *ptr, size_t size);
+extern void *__real_calloc(size_t nmemb, size_t size);
+

@@ -27,84 +27,71 @@
 */
 
 #include <unistd.h>
-#include <stdio.h>
 #include <stdlib.h>
-#include <sys/mman.h>
-#include <errno.h>
+#include <limits.h>
 
-#include <core/core.h>
 #include <mm/dymelor.h>
-#include <scheduler/process.h>
+#include <mm/mm.h>
+#include <datatypes/bitmap.h>
 
-static inline int left_child(int index)
+static inline int left_child(int i)
 {
-	/* index * 2 + 1 */
-	return ((index << 1) + 1);
+	return ((i << 1) + 1);
 }
 
-static inline int right_child(int index)
+static inline int right_child(int i)
 {
-	/* index * 2 + 2 */
-	return ((index << 1) + 2);
+	return ((i << 1) + 2);
 }
 
-static inline int parent(int index)
+static inline int parent(int i)
 {
-	/* (index+1)/2 - 1 */
-	return (((index + 1) >> 1) - 1);
+	return (((i + 1) >> 1) - 1);
 }
 
-static inline bool is_power_of_2(int index)
+static inline bool is_power_of_2(size_t i)
 {
-	return !(index & (index - 1));
+	return !(i & (i - 1));
 }
 
 static inline size_t next_power_of_2(size_t size)
 {
-	/* depend on the fact that size < 2^32 */
+	size--;
 	size |= (size >> 1);
 	size |= (size >> 2);
 	size |= (size >> 4);
 	size |= (size >> 8);
 	size |= (size >> 16);
+	size |= (size >> 32);
 	return size + 1;
 }
+
 
 /** allocate a new buddy structure
  * @param lp A pointer to the lp_struct of the LP from whose buddy we are
  *           allocating memory
- * @param num_of_fragments number of fragments of the memory to be managed
+ * @param requested_size size in bytes of the memory area to manage
  * @return pointer to the allocated buddy structure */
-struct buddy *buddy_new(struct lp_struct *lp, size_t num_of_fragments)
+struct buddy *buddy_new(size_t requested_size)
 {
-	struct buddy *self = NULL;
-	size_t node_size;
-	int i;
-
-	if (num_of_fragments < 1 || !is_power_of_2(num_of_fragments)) {
+	if (!requested_size) {
 		return NULL;
 	}
 
-	/* alloacte an array to represent a complete binary tree */
-	(void)lp;
-	//self = (struct buddy *)get_segment_memory(lp, sizeof(struct buddy) + 2 * num_of_fragments * sizeof(size_t));
-	self = (struct buddy *)__real_malloc(sizeof(struct buddy) + 2 * num_of_fragments * sizeof(size_t));
-	__real_bzero(self, sizeof(struct buddy) + 2 * num_of_fragments * sizeof(size_t));	// unnecessary, it is later initialized
+	size_t fragments = (requested_size >> BUDDY_BLOCK_SIZE_EXP) + (B_CTZ(requested_size) < BUDDY_BLOCK_SIZE_EXP);
+	size_t nodes = 2 * fragments - 1;
+	struct buddy *self = rsalloc(sizeof(struct buddy) + nodes * sizeof(size_t));
 
-	self->size = num_of_fragments;
-	node_size = num_of_fragments * 2;
+	spinlock_init(&self->lock);
+	self->size = fragments;
 
-	/* initialize *longest* array for buddy structure */
-	int iter_end = num_of_fragments * 2 - 1;
-	for (i = 0; i < iter_end; i++) {
+	size_t i, node_size = fragments << 1; // little hack to have a correct iteration at i == 0
+	for (i = 0; i < nodes; i++) {
 		if (is_power_of_2(i + 1)) {
 			node_size >>= 1;
 		}
 		self->longest[i] = node_size;
 	}
-
-	spinlock_init(&self->lock);
-
 	return self;
 }
 
@@ -115,110 +102,96 @@ void buddy_destroy(struct buddy *self)
 
 /** allocate *size* from a buddy system *self*
  * @return the offset from the beginning of memory to be managed */
-int buddy_alloc(struct buddy *self, size_t size)
+static size_t buddy_alloc(struct buddy *self, size_t requested_blocks)
 {
-	if (self == NULL || self->size <= size) {
-		return -1;
-	}
+	// some sanity checks are run in the parent function allocate_buddy_memory()
+	requested_blocks = next_power_of_2(requested_blocks);
+	spin_lock(&self->lock);
 
-	size = next_power_of_2(size);
-
-	size_t index = 0;
-	if (self->longest[index] < size) {
-		return -1;
+	if (self->longest[0] < requested_blocks) {
+		spin_unlock(&self->lock);
+		return SIZE_MAX;
 	}
 
 	/* search recursively for the child */
-	size_t node_size = 0;
-	for (node_size = self->size; node_size != size; node_size >>= 1) {
-		/* choose the child with smaller longest value which is still larger
-		 * than *size* */
-		if (self->longest[left_child(index)] >= size) {
-			index = left_child(index);
+	int i = 0;
+	size_t node_size;
+	for (node_size = self->size; node_size > requested_blocks; node_size >>= 1) {
+		/* choose the child with smaller longest value which is still large at least *size* */
+		if (self->longest[left_child(i)] >= requested_blocks) {
+			i = left_child(i);
 		} else {
-			index = right_child(index);
+			i = right_child(i);
 		}
 	}
 
 	/* update the *longest* value back */
-	self->longest[index] = 0;
-	int offset = (index + 1) * node_size - self->size;
+	self->longest[i] = 0;
 
-	while (index) {
-		index = parent(index);
-		self->longest[index] = max(self->longest[left_child(index)], self->longest[right_child(index)]);
+	size_t offset = (i + 1) * node_size - self->size;
+
+	while (i) {
+		i = parent(i);
+		self->longest[i] = max(self->longest[left_child(i)], self->longest[right_child(i)]);
 	}
-
+	spin_unlock(&self->lock);
 	return offset;
 }
 
-void buddy_free(struct buddy *self, size_t offset)
+static void buddy_free(struct buddy *self, size_t offset)
 {
-	if (self == NULL || offset >= self->size) {
-		return;
+	// some sanity checks are run in the parent function free_buddy_memory()
+	size_t node_size = 1;
+	int i = offset + self->size - 1;
+
+	spin_lock(&self->lock);
+
+	for (; i && self->longest[i]; i = parent(i)) {
+		node_size <<= 1;
 	}
 
-	size_t node_size;
-	size_t index;
+	self->longest[i] = node_size;
 
-	/* get the corresponding index from offset */
-	node_size = 1;
-	index = offset + self->size - 1;
-
-	for (; self->longest[index] != 0; index = parent(index)) {
+	while (i) {
+		i = parent(i);
 		node_size <<= 1;
 
-		if (index == 0) {
-			break;
-		}
-	}
-
-	self->longest[index] = node_size;
-
-	while (index) {
-		index = parent(index);
-		node_size <<= 1;
-
-		size_t left_longest = self->longest[left_child(index)];
-		size_t right_longest = self->longest[right_child(index)];
+		size_t left_longest = self->longest[left_child(i)];
+		size_t right_longest = self->longest[right_child(i)];
 
 		if (left_longest + right_longest == node_size) {
-			self->longest[index] = node_size;
+			self->longest[i] = node_size;
 		} else {
-			self->longest[index] = max(left_longest, right_longest);
+			self->longest[i] = max(left_longest, right_longest);
 		}
 	}
+	spin_unlock(&self->lock);
 }
 
-void *allocate_lp_memory(struct lp_struct *lp, size_t size)
+void* allocate_buddy_memory(struct buddy* self, void* base_mem, size_t requested_size)
 {
-	long long offset, displacement;
-	size_t fragments;
-
-	if (size == 0)
+	if (unlikely(!requested_size || self == NULL))
 		return NULL;
 
-	// Get a number of fragments to contain 'size' bytes
-	// The operation involves a fast positive integer round up.
-	// The buddy can be accessed by multiple threads, so lock it
-	fragments = 1 + ((size - 1) / BUDDY_GRANULARITY);
-	spin_lock(&lp->mm->buddy->lock);
-	offset = buddy_alloc(lp->mm->buddy, fragments);
-	spin_unlock(&lp->mm->buddy->lock);
-	displacement = offset * BUDDY_GRANULARITY;
-
-	if (unlikely(offset == -1))
+	size_t requested_blocks = (requested_size >> BUDDY_BLOCK_SIZE_EXP) + (B_CTZ(requested_size) < BUDDY_BLOCK_SIZE_EXP);
+	if (unlikely(requested_blocks > self->size))
 		return NULL;
 
-	return (void *)((char *)lp->mm->segment->base + displacement);
+	size_t offset = buddy_alloc(self, requested_blocks);
+	if(unlikely(offset == SIZE_MAX))
+		return NULL;
+
+	return (char *)base_mem + (offset << BUDDY_BLOCK_SIZE_EXP);
 }
 
-void free_lp_memory(struct lp_struct *lp, void *ptr)
+void free_buddy_memory(struct buddy *self, void *base_mem, void *ptr)
 {
-	size_t displacement;
+	if (unlikely(self == NULL))
+		return;
 
-	displacement = (int)((char *)ptr - (char *)lp->mm->segment->base);
-	spin_lock(&lp->mm->buddy->lock);
-	buddy_free(lp->mm->buddy, displacement);
-	spin_unlock(&lp->mm->buddy->lock);
+	size_t offset = ((char *)ptr - (char *)base_mem) >> BUDDY_BLOCK_SIZE_EXP;
+	if(unlikely(offset >= self->size))
+		return;
+
+	buddy_free(self, offset);
 }

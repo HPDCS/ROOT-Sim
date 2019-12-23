@@ -34,6 +34,7 @@
 #include <stdlib.h>
 
 #include <mm/dymelor.h>
+#include <mm/mm.h>
 #include <scheduler/scheduler.h>
 
 /**

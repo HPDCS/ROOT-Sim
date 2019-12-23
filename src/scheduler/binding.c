@@ -30,6 +30,7 @@
 #include <string.h>
 #include <stdlib.h>
 
+#include <mm/mm.h>
 #include <arch/atomic.h>
 #include <core/core.h>
 #include <core/timer.h>
@@ -39,6 +40,7 @@
 #include <scheduler/scheduler.h>
 #include <statistics/statistics.h>
 #include <gvt/gvt.h>
+
 
 #include <arch/thread.h>
 

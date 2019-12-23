@@ -34,7 +34,6 @@
 
 #include <stdbool.h>
 
-#include <mm/mm.h>
 #include <mm/state.h>
 #include <mm/ecs.h>
 #include <datatypes/list.h>

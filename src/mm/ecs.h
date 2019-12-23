@@ -48,7 +48,9 @@ extern void lp_alloc_thread_init(void);
 extern void setup_ecs_on_segment(msg_t *);
 extern void ecs_send_pages(msg_t *);
 extern void ecs_install_pages(msg_t *);
-void unblock_synchronized_objects(LID_t lid);
+extern void unblock_synchronized_objects(LID_t lid);
+
+extern void ecs_init(void);
 
 #ifdef HAVE_ECS
 extern void remote_memory_init(void);
