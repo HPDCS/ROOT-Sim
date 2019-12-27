@@ -33,6 +33,7 @@
 
 #include <core/init.h>
 #include <mm/mm.h>
+#include <mm/dymelor.h>
 #include <scheduler/scheduler.h>
 
 /**
@@ -111,17 +112,15 @@ malloc_state *malloc_state_init(void)
 	return state;
 }
 
-void malloc_state_wipe(malloc_state **state_ptr)
+void malloc_state_wipe(struct memory_map *mm)
 {
 	int i;
-	malloc_state *state = *state_ptr;
 
 	for (i = 0; i < NUM_AREAS; i++) {
-		rsfree(state->areas[i].self_pointer); // TODO: when reintroducing the buddy, this must be changed
+		free_buddy_memory(mm->buddy, mm->segment->base, mm->m_state->areas[i].self_pointer);
 	}
 
-	rsfree(*state_ptr);
-	*state_ptr = NULL;
+	rsfree(mm->m_state);
 }
 
 /**
@@ -212,7 +211,6 @@ void *do_malloc(struct lp_struct *lp, size_t size)
 
 	if (m_area == NULL) {
 
-		printf("Initializing an additional area\n");
 		fflush(stdout);
 
 		if (lp->mm->m_state->num_areas == lp->mm->m_state->max_num_areas) {
@@ -271,9 +269,8 @@ void *do_malloc(struct lp_struct *lp, size_t size)
 
 		area_size = sizeof(malloc_area *) + bitmap_size * 2 + m_area->num_chunks * size;
 
-//              m_area->self_pointer = (malloc_area *)allocate_lp_memory(lp, area_size);
-		m_area->self_pointer = rsalloc(area_size);
-		bzero(m_area->self_pointer, area_size);
+		m_area->self_pointer = (malloc_area *)allocate_buddy_memory(lp->mm->buddy, lp->mm->segment->base, area_size);
+		memset(m_area->self_pointer, 0, area_size);
 
 		if (unlikely(m_area->self_pointer == NULL)) {
 			rootsim_error(true, "Error while allocating memory.\n");
@@ -297,9 +294,10 @@ void *do_malloc(struct lp_struct *lp, size_t size)
 	if (unlikely(m_area->area == NULL)) {
 		rootsim_error(true, "Error while allocating memory.\n");
 	}
+
 #ifndef NDEBUG
 	if (bitmap_check(m_area->use_bitmap, m_area->next_chunk)) {
-		rootsim_error(true, "Error: reallocating an already allocated chunk at %s:%d\n");
+		rootsim_error(true, "Error: reallocating an already allocated chunk\n");
 	}
 #endif
 
@@ -329,9 +327,6 @@ void *do_malloc(struct lp_struct *lp, size_t size)
 		} else
 			lp->mm->m_state->total_log_size += size;
 	}
-	//~ int chk_size = m_area->chunk_size;
-	//~ RESET_BIT_AT(chk_size, 0);
-	//~ RESET_BIT_AT(chk_size, 1);
 
 	m_area->alloc_chunks++;
 	find_next_free(m_area);

@@ -1,4 +1,4 @@
-CFLAGS_PRE=-coverage -I ./src/
+CFLAGS_PRE=-coverage -g -I ./src/
 CFLAGS_POST=-L . -lpthread -lm -std=gnu89
 
 .PHONY: dymelor numerical

@@ -32,10 +32,12 @@
 #include <fcntl.h>
 #include <sys/types.h>
 
-#include <mm/mm.h>
+#include <mm/dymelor.h>
 #include <mm/ecs.h>
 #include <arch/x86/linux/cross_state_manager/cross_state_manager.h>
 #include <scheduler/process.h>
+
+extern void *__real_malloc(size_t size);
 
 size_t __page_size = 0;
 
@@ -141,16 +143,16 @@ void initialize_memory_map(struct lp_struct *lp)
 {
 	lp->mm = rsalloc(sizeof(struct memory_map));
 
-	lp->mm->segment = NULL;	//get_segment(lp->gid);
-	lp->mm->buddy = NULL;	//buddy_new(lp, PER_LP_PREALLOCATED_MEMORY / BUDDY_GRANULARITY);
+	lp->mm->segment = get_segment(lp->gid);
+	lp->mm->buddy = buddy_new(PER_LP_PREALLOCATED_MEMORY);
 	lp->mm->slab = slab_init(SLAB_MSG_SIZE);
 	lp->mm->m_state = malloc_state_init();
 }
 
 void finalize_memory_map(struct lp_struct *lp)
 {
-	malloc_state_wipe(&lp->mm->m_state);
-	//buddy_destroy(lp->mm->buddy);
+	malloc_state_wipe(lp->mm);
+	buddy_destroy(lp->mm->buddy);
 	// No free segment function here!
 	rsfree(lp->mm);
 }

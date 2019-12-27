@@ -32,7 +32,7 @@
 #include <stdio.h>
 #include <fcntl.h>
 
-#include <mm/mm.h>
+#include <mm/dymelor.h>
 #include <core/timer.h>
 #include <core/core.h>
 #include <scheduler/scheduler.h>

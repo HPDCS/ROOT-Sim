@@ -18,8 +18,12 @@ For each release, we report what new features  have been added, what changes aff
 * _Segment Allocator_: 
 
 ### Deprecated
+
 ### Removed
+
 ### Fixed
+
+* _Buddy System_: Fixed off by one errors
 
 
 ## [2.0.0] - 2018-12-06

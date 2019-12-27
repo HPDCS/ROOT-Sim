@@ -85,6 +85,10 @@ void *__wrap_memset(void *s, int c, size_t n)
 	return __real_memset(s, c, n);
 }
 
+void __wrap_bzero(void *s, size_t n) {
+	__wrap_memset(s, 0, n);
+}
+
 char *__wrap_strdup(const char *s)
 {
 	char *ret = (char *)__wrap_malloc(strlen(s) + 1);
