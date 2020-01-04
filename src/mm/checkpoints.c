@@ -88,7 +88,7 @@ void *log_full(struct lp_struct *lp)
 
 	m_state = lp->mm->m_state;
 	m_state->is_incremental = false;
-	size = get_log_size(lp->mm->m_state);
+	size = get_log_size(m_state);
 
 	ckpt = rsalloc(size);
 
@@ -155,7 +155,7 @@ void *log_full(struct lp_struct *lp)
 		// Reset Dirty Bitmap, as there is a full ckpt in the chain now
 		m_area->dirty_chunks = 0;
 		m_area->state_changed = 0;
-		bzero((void *)m_area->dirty_bitmap, bitmap_size);
+		bzero(m_area->dirty_bitmap, bitmap_size);
 
 	}			// For each malloc area
 
@@ -235,7 +235,7 @@ void restore_full(struct lp_struct *lp, void *ckpt)
 	timer_start(recovery_timer);
 	ptr = ckpt;
 	m_state = lp->mm->m_state;
-	target_ptr = ptr + m_state->total_log_size;
+	target_ptr = ptr + ((malloc_state *) ptr)->total_log_size;
 	original_num_areas = m_state->num_areas;
 
 	// restore the old malloc state except for the malloc areas array

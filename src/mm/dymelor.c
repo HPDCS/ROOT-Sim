@@ -323,7 +323,7 @@ void *do_malloc(struct lp_struct *lp, size_t size)
 	if (!CHECK_LOG_MODE_BIT(m_area)) {
 		if ((double)m_area->alloc_chunks / (double)m_area->num_chunks > MAX_LOG_THRESHOLD) {
 			SET_LOG_MODE_BIT(m_area);
-			m_state->total_log_size += (m_area->num_chunks - (m_area->alloc_chunks - 1)) * size;
+			m_state->total_log_size += (m_area->num_chunks - m_area->alloc_chunks) * size;
 		} else
 			m_state->total_log_size += size;
 	}
