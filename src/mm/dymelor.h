@@ -47,9 +47,8 @@
 
 //ADDED BY MAT 0x00000200000000000
 #define LP_PREALLOCATION_INITIAL_ADDRESS	(void *)0x0000008000000000
-#define MASK 0x00000001		// Mask used to check, set and unset bits
 
-#define MIN_CHUNK_SIZE 128	// Size (in bytes) of the smallest chunk provideable by DyMeLoR
+#define MIN_CHUNK_SIZE 128U	// Size (in bytes) of the smallest chunk provideable by DyMeLoR
 #define MAX_CHUNK_SIZE 4194304	// Size (in bytes) of the biggest one. Notice that if this number
 				// is too large, performance (and memory usage) might be affected.
 				// If it is too small, large amount of memory requests by the
@@ -79,15 +78,15 @@
 #define GET_CACHE_LINE_NUMBER(P) ((unsigned long)((P >> 4) & (CACHE_SIZE - 1)))
 
 // Macros uset to check, set and unset special purpose bits
-#define SET_LOG_MODE_BIT(m_area)	(((malloc_area*)(m_area))->chunk_size |=  (MASK << 0))
-#define RESET_LOG_MODE_BIT(m_area)	(((malloc_area*)(m_area))->chunk_size &= ~(MASK << 0))
-#define CHECK_LOG_MODE_BIT(m_area)	(((malloc_area*)(m_area))->chunk_size &   (MASK << 0))
+#define SET_LOG_MODE_BIT(m_area)	(((malloc_area*)(m_area))->chunk_size |=  (1UL << 0))
+#define RESET_LOG_MODE_BIT(m_area)	(((malloc_area*)(m_area))->chunk_size &= ~(1UL << 0))
+#define CHECK_LOG_MODE_BIT(m_area)	(((malloc_area*)(m_area))->chunk_size &   (1UL << 0))
 
-#define SET_AREA_LOCK_BIT(m_area)	(((malloc_area*)(m_area))->chunk_size |=  (MASK << 1))
-#define RESET_AREA_LOCK_BIT(m_area)	(((malloc_area*)(m_area))->chunk_size &= ~(MASK << 1))
-#define CHECK_AREA_LOCK_BIT(m_area)	(((malloc_area*)(m_area))->chunk_size &   (MASK << 1))
+#define SET_AREA_LOCK_BIT(m_area)	(((malloc_area*)(m_area))->chunk_size |=  (1UL << 1))
+#define RESET_AREA_LOCK_BIT(m_area)	(((malloc_area*)(m_area))->chunk_size &= ~(1UL << 1))
+#define CHECK_AREA_LOCK_BIT(m_area)	(((malloc_area*)(m_area))->chunk_size &   (1UL << 1))
 
-#define UNTAGGED_CHUNK_SIZE(m_area)	(((malloc_area*)(m_area))->chunk_size & ~((MASK << 0) | (MASK << 1)))
+#define UNTAGGED_CHUNK_SIZE(m_area)	(((malloc_area*)(m_area))->chunk_size & ~((1UL << 0) | (1UL << 1)))
 
 #define POWEROF2(x) (1UL << (1 + (63 - __builtin_clzl((x) - 1))))
 #define IS_POWEROF2(x) ((x) != 0 && ((x) & ((x) - 1)) == 0)
@@ -122,12 +121,8 @@ struct _malloc_state {
 	bool is_incremental;	///< Tells if it is an incremental log or a full one (when used for logging)
 	size_t total_log_size;
 	size_t total_inc_size;
-	size_t bitmap_size;
-	size_t dirty_bitmap_size;
 	int num_areas;
 	int max_num_areas;
-	int busy_areas;
-	int dirty_areas;
 	simtime_t timestamp;
 	struct _malloc_area *areas;
 };
