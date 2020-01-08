@@ -130,6 +130,11 @@ void *log_full(struct lp_struct *lp)
 		memcpy(ptr, m_area->use_bitmap, bitmap_size);
 		ptr = (void *)((char *)ptr + bitmap_size);
 
+#ifdef HAVE_APPROXIMATED_ROLLBACK
+		memcpy(ptr, m_area->coredata_bitmap, bitmap_size);
+		ptr = (void *)((char *)ptr + bitmap_size);
+#endif
+
 		chunk_size = UNTAGGED_CHUNK_SIZE(m_area);
 
 		// Check whether the area should be completely copied (not on a per-chunk basis)
@@ -146,12 +151,21 @@ void *log_full(struct lp_struct *lp)
 			memcpy(ptr, (void*)((char*)m_area->area + ((x) * chunk_size)), chunk_size);\
 			ptr = (void*)((char*)ptr + chunk_size);})
 
-			// Copy only the allocated chunks
-			bitmap_foreach_set(m_area->use_bitmap, bitmap_size, copy_from_area);
+#ifdef HAVE_APPROXIMATED_ROLLBACK
 
+			if (m_state->is_approximated){
+				bitmap_foreach_set(m_area->coredata_bitmap, bitmap_size, copy_from_area);
+			} else {
+#endif
+				// Copy only the allocated chunks
+				bitmap_foreach_set(m_area->use_bitmap, bitmap_size, copy_from_area);
+
+#ifdef HAVE_APPROXIMATED_ROLLBACK
+			}
+#endif
 #undef copy_from_area
-		}
 
+		}
 		// Reset Dirty Bitmap, as there is a full ckpt in the chain now
 		m_area->dirty_chunks = 0;
 		m_area->state_changed = 0;
@@ -263,6 +277,9 @@ void restore_full(struct lp_struct *lp, void *ckpt)
 			if (likely(m_area->use_bitmap != NULL)) {
 				memset(m_area->use_bitmap, 0, bitmap_size);
 				memset(m_area->dirty_bitmap, 0, bitmap_size);
+#ifdef HAVE_APPROXIMATED_ROLLBACK
+				memset(m_area->coredata_bitmap, 0, bitmap_size);
+#endif
 			}
 			m_area->last_access = m_state->timestamp;
 
@@ -275,6 +292,11 @@ void restore_full(struct lp_struct *lp, void *ckpt)
 		// Restore use bitmap
 		memcpy(m_area->use_bitmap, ptr, bitmap_size);
 		ptr += bitmap_size;
+
+#ifdef HAVE_APPROXIMATED_ROLLBACK
+		memcpy(m_area->coredata_bitmap, ptr, bitmap_size);
+		ptr = (void *)((char *)ptr + bitmap_size);
+#endif
 
 		// Reset dirty bitmap
 		bzero(m_area->dirty_bitmap, bitmap_size);
@@ -298,8 +320,18 @@ void restore_full(struct lp_struct *lp, void *ckpt)
 		memcpy((void*)((char*)m_area->area + ((x) * chunk_size)), ptr, chunk_size);\
 		ptr += chunk_size;})
 
-			bitmap_foreach_set(m_area->use_bitmap, bitmap_size, copy_to_area);
+#ifdef HAVE_APPROXIMATED_ROLLBACK
 
+			if (m_state->is_approximated){
+				bitmap_foreach_set(m_area->coredata_bitmap, bitmap_size, copy_to_area);
+			} else {
+#endif
+				// Copy only the allocated chunks
+				bitmap_foreach_set(m_area->use_bitmap, bitmap_size, copy_to_area);
+
+#ifdef HAVE_APPROXIMATED_ROLLBACK
+			}
+#endif
 #undef copy_to_area
 		}
 
@@ -316,7 +348,7 @@ void restore_full(struct lp_struct *lp, void *ckpt)
 			m_area->state_changed = 0;
 			m_area->next_chunk = 0;
 			m_area->last_access = m_state->timestamp;
-			m_state->areas[m_area->prev].next = m_area->idx;
+			m_state->areas[m_area->prev].next = m_area - m_state->areas;
 
 			RESET_LOG_MODE_BIT(m_area);
 			RESET_AREA_LOCK_BIT(m_area);
@@ -326,6 +358,9 @@ void restore_full(struct lp_struct *lp, void *ckpt)
 
 				memset(m_area->use_bitmap, 0, bitmap_size);
 				memset(m_area->dirty_bitmap, 0, bitmap_size);
+#ifdef HAVE_APPROXIMATED_ROLLBACK
+				memset(m_area->coredata_bitmap, 0, bitmap_size);
+#endif
 			}
 		}
 		m_state->num_areas = original_num_areas;

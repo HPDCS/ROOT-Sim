@@ -70,6 +70,7 @@ librootsim_a_SOURCES =	src/main.c \
 			src/lib/abm_layer.c \
 			src/lib/jsmn_helper.c \
 			src/lib/jsmn.c \
+			src/mm/approximated_rollback.c \
 			src/mm/state.c \
 			src/mm/ecs.c \
 			src/queues/queues.c \

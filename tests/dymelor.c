@@ -351,7 +351,7 @@ static void *malloc_test(void *ptr)
 		writes += p.m[b].bytes_written;
 		bin_free(&p.m[b]);
 	}
-	printf("Written %d bytes \n", writes);
+	printf("Written %zu bytes \n", writes);
 	printf("Malloc time: %f usec \n", (double)alloc_time/allocs);
 	printf("Free time: %f usec \n", (double)free_time/frees);
 	printf("Checkpoint time: %f usec \n", (double)checkpoint_time/logs);

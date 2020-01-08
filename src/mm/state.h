@@ -75,6 +75,7 @@ typedef struct _state_t {
 
 struct lp_struct;
 
+extern void restore_approximated();
 extern bool LogState(struct lp_struct *);
 extern void RestoreState(struct lp_struct *, state_t * restore_state);
 extern void rollback(struct lp_struct *);

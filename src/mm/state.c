@@ -174,33 +174,49 @@ unsigned int silent_execution(struct lp_struct *lp, msg_t *evt, msg_t *final_evt
 {
 	unsigned int events = 0;
 	unsigned short int old_state;
-
+#ifdef HAVE_APPROXIMATED_ROLLBACK
+	bool last_approximated = evt->is_approximated;
+#endif
 	// current state can be either idle READY, BLOCKED or ROLLBACK, so we save it and then put it back in place
 	old_state = lp->state;
 	lp->state = LP_STATE_SILENT_EXEC;
 
-	// This is true if the restored state was taken exactly after the new bound
-	if (evt == final_evt)
-		goto out;
-
-	evt = list_next(evt);
-	final_evt = list_next(final_evt);
-
 	// Reprocess events. Outgoing messages are explicitly discarded, as this part of
 	// the simulation has been already executed at least once
-	while (evt != NULL && evt != final_evt) {
+	while(evt != final_evt){
+#ifdef HAVE_APPROXIMATED_ROLLBACK
+		if (!is_control_msg(evt->type)) {
+			last_approximated = evt->is_approximated;
+		}
+#endif
 
+		evt = list_next(evt);
 		if (unlikely(!reprocess_control_msg(evt))) {
-			evt = list_next(evt);
 			continue;
 		}
 
-		events++;
-		activate_LP(lp, evt);
-		evt = list_next(evt);
+#ifdef HAVE_APPROXIMATED_ROLLBACK
+		if (!evt->is_approximated) {
+			if(last_approximated){
+				restore_approximated();
+				last_approximated = false;
+			}
+#endif
+
+			activate_LP(lp, evt);
+
+#ifdef HAVE_APPROXIMATED_ROLLBACK
+		}
+#endif
+		++events;
 	}
 
- out:
+
+#ifdef HAVE_APPROXIMATED_ROLLBACK
+	if(last_approximated){
+		restore_approximated();
+	}
+#endif
 	lp->state = old_state;
 	return events;
 }

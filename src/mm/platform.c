@@ -41,7 +41,7 @@ extern void *__real_calloc(size_t, size_t);
 inline void *rsalloc(size_t size)
 {
 	void *mem_block = __real_malloc(size);
-	if (unlikely(mem_block == NULL)) {
+	if (unlikely(mem_block == NULL && size != 0)) {
 		rootsim_error(true, "Error in memory allocation, aborting...");
 	}
 	return mem_block;

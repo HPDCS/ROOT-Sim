@@ -231,6 +231,13 @@ AS_IF([test "x$enable_rebinding" != "xno"], [
         ac_have_lp_rebinding=yes
 ])
 
+# approximated rollback support
+AC_ARG_ENABLE(approximated-rollback,
+AS_HELP_STRING([--enable-approximated-rollback],[Enable approximated rollback support)]),
+[enable_approximated_rollback=$enableval],[enable_approximated_rollback=no])
+AS_IF([test "x$enable_approximated_rollback" = "xyes"], [
+	AC_DEFINE([HAVE_APPROXIMATED_ROLLBACK])
+])
 
 
 #------------------------------------------------------------
@@ -403,6 +410,15 @@ else
 fi
 
 
+# Compose the message regarding approximated rollback
+if test "x$enable_approximated_rollback" = "xyes"
+then
+	ac_approximated_rollback="Enabled"
+else
+	ac_approximated_rollback="Disabled (By default, use --enable-approximated-rollback if wanted)"
+fi
+
+
 # Compose the message regarding Preemptive Time Warp
 if test "x$ac_have_preemption" = "xyes"
 then
@@ -474,6 +490,7 @@ Debugging Support......... : ${enable_debug}
 MPI....................... : ${enable_mpi}
 LP Preemption Support..... : ${ac_preemption}
 LP Rebinding.............. : ${ac_lp_rebinding}
+Approximated Rollback..... : ${ac_approximated_rollback}
 
 
 EOF

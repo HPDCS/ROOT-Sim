@@ -45,23 +45,19 @@
  * DyMeLoR definitions and structures *
  **************************************/
 
-//ADDED BY MAT 0x00000200000000000
-#define LP_PREALLOCATION_INITIAL_ADDRESS	(void *)0x0000008000000000
-
 #define MIN_CHUNK_SIZE 128U	// Size (in bytes) of the smallest chunk provideable by DyMeLoR
-#define MAX_CHUNK_SIZE 4194304	// Size (in bytes) of the biggest one. Notice that if this number
+#define MAX_CHUNK_SIZE 4194304U	// Size (in bytes) of the biggest one. Notice that if this number
 				// is too large, performance (and memory usage) might be affected.
 				// If it is too small, large amount of memory requests by the
 				// application level software (i.e, larger than this number)
 				// will fail, as DyMeLoR will not be able to handle them!
 
-#define NUM_AREAS (log2(MAX_CHUNK_SIZE) - log2(MIN_CHUNK_SIZE) + 1)	// Number of initial malloc_areas available (will be increased at runtime if needed)
+#define NUM_AREAS (B_CTZ(MAX_CHUNK_SIZE) - B_CTZ(MIN_CHUNK_SIZE) + 1)	// Number of initial malloc_areas available (will be increased at runtime if needed)
 #define MAX_NUM_AREAS (NUM_AREAS * 32)	// Maximum number of allocatable malloc_areas. If MAX_NUM_AREAS
 				// malloc_areas are filled at runtime, subsequent malloc() requests
 				// by the application level software will fail.
 #define MAX_LIMIT_NUM_AREAS MAX_NUM_AREAS
 #define MIN_NUM_CHUNKS 512	// Minimum number of chunks per malloc_area
-#define MAX_NUM_CHUNKS 4096	// Maximum number of chunks per malloc_area
 
 #define MAX_LOG_THRESHOLD 1.7	// Threshold to check if a malloc_area is underused TODO: retest
 #define MIN_LOG_THRESHOLD 1.7	// Threshold to check if a malloc_area is overused TODO: retest
@@ -70,14 +66,7 @@
 #define INCREMENTAL_GRANULARITY 50	// Number of incremental logs before a full log is forced
 #endif
 
-// These macros are used to tune the statistical malloc_area diff
-#define LITTLE_SIZE		32
-#define CHECK_SIZE		0.25	// Must be <= 0.25!
-
-// This macro is used to retrieve a cache line in O(1)
-#define GET_CACHE_LINE_NUMBER(P) ((unsigned long)((P >> 4) & (CACHE_SIZE - 1)))
-
-// Macros uset to check, set and unset special purpose bits
+// Macros used to check, set and unset special purpose bits
 #define SET_LOG_MODE_BIT(m_area)	(((malloc_area*)(m_area))->chunk_size |=  (1UL << 0))
 #define RESET_LOG_MODE_BIT(m_area)	(((malloc_area*)(m_area))->chunk_size &= ~(1UL << 0))
 #define CHECK_LOG_MODE_BIT(m_area)	(((malloc_area*)(m_area))->chunk_size &   (1UL << 0))
@@ -106,9 +95,12 @@ struct _malloc_area {
 	int idx;
 	int state_changed;
 	simtime_t last_access;
-	struct _malloc_area *self_pointer;	// This pointer is used in a free operation. Each chunk points here. If malloc_area is moved, only this is updated.
+	struct _malloc_area **self_pointer;	// This pointer is used in a free operation. Each chunk points here. If malloc_area is moved, only this is updated.
 	rootsim_bitmap *use_bitmap;
 	rootsim_bitmap *dirty_bitmap;
+#ifdef HAVE_APPROXIMATED_ROLLBACK
+	rootsim_bitmap *coredata_bitmap;
+#endif
 	void *area;
 	int prev;
 	int next;
@@ -118,7 +110,11 @@ typedef struct _malloc_area malloc_area;
 
 /// Definition of the memory map
 struct _malloc_state {
-	bool is_incremental;	///< Tells if it is an incremental log or a full one (when used for logging)
+	bool is_incremental;			///< Tells if it is an incremental log or a full one (when used for logging)
+#ifdef HAVE_APPROXIMATED_ROLLBACK
+	bool is_approximated;			///< Tells if it is an approximate log or a precise one (when used for logging)
+	size_t approximated_log_size; 	///< The difference in size between a full log and an approximated one
+#endif
 	size_t total_log_size;
 	size_t total_inc_size;
 	int num_areas;
@@ -131,9 +127,7 @@ typedef struct _malloc_state malloc_state;
 
 #define is_incremental(ckpt) (((malloc_state *)ckpt)->is_incremental == true)
 
-#define get_top_pointer(ptr) ((unsigned long long *)((char *)ptr - sizeof(unsigned long long)))
-#define get_area_top_pointer(ptr) ( (malloc_area **)(*get_top_pointer(ptr)) )
-#define get_area(ptr) ( *(get_area_top_pointer(ptr)) )
+#define get_top_malloc_area(ptr) **((malloc_area ***)ptr - 1)
 
 #define PER_LP_PREALLOCATED_MEMORY (262144L * PAGE_SIZE)	// This should be power of 2 multiplied by a page size. This is 1GB per LP.
 #define BUDDY_GRANULARITY PAGE_SIZE	// This is the smallest chunk released by the buddy in bytes. PER_LP_PREALLOCATED_MEMORY/BUDDY_GRANULARITY must be integer and a power of 2
@@ -189,7 +183,7 @@ extern void *do_malloc(struct lp_struct *, size_t);
 extern void do_free(struct lp_struct *, void *ptr);
 extern void *allocate_lp_memory(struct lp_struct *, size_t);
 extern void free_lp_memory(struct lp_struct *, void *);
-
+extern malloc_area* malloc_area_get (void *address, int *chunk_ret);
 
 // Userspace API
 extern void *__wrap_malloc(size_t);

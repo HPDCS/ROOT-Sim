@@ -163,14 +163,18 @@ typedef unsigned char phase_colour;
 /// Message Type definition
 typedef struct _msg_t {
 
-	/* Place here all memebers of the struct which should not be transmitted over the network */
+	/* Place here all members of the struct which should not be transmitted over the network */
+
+#ifdef HAVE_APPROXIMATED_ROLLBACK
+	bool is_approximated;
+#endif
 
 	// Pointers to attach messages to chains
 	struct _msg_t *next;
 	struct _msg_t *prev;
 
 	/* Place here all members which must be transmitted over the network. It is convenient not to reorder the members
-	 * of the structure. If new members have to be addedd, place them right before the "Model data" part.*/
+	 * of the structure. If new members have to be added, place them right before the "Model data" part.*/
 
 	// Kernel's information
 	GID_t sender;
