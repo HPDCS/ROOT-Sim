@@ -80,13 +80,15 @@ void *log_full(struct lp_struct *lp)
 	int i;
 	size_t size, chunk_size, bitmap_size;
 	malloc_area *m_area;
+	malloc_state *m_state;
 
 	// Timers for self-tuning of the simulation platform
 	timer checkpoint_timer;
 	timer_start(checkpoint_timer);
 
-	lp->mm->m_state->is_incremental = false;
-	size = get_log_size(lp->mm->m_state);
+	m_state = lp->mm->m_state;
+	m_state->is_incremental = false;
+	size = get_log_size(m_state);
 
 	ckpt = rsalloc(size);
 
@@ -97,13 +99,13 @@ void *log_full(struct lp_struct *lp)
 	ptr = ckpt;
 
 	// Copy malloc_state in the ckpt
-	memcpy(ptr, lp->mm->m_state, sizeof(malloc_state));
+	memcpy(ptr, m_state, sizeof(malloc_state));
 	ptr = (void *)((char *)ptr + sizeof(malloc_state));
 	((malloc_state *) ckpt)->timestamp = lvt(lp);
 
-	for (i = 0; i < lp->mm->m_state->num_areas; i++) {
+	for (i = 0; i < m_state->num_areas; i++) {
 
-		m_area = &lp->mm->m_state->areas[i];
+		m_area = &m_state->areas[i];
 
 		// Copy the bitmap
 
@@ -153,7 +155,7 @@ void *log_full(struct lp_struct *lp)
 		// Reset Dirty Bitmap, as there is a full ckpt in the chain now
 		m_area->dirty_chunks = 0;
 		m_area->state_changed = 0;
-		bzero((void *)m_area->dirty_bitmap, bitmap_size);
+		bzero(m_area->dirty_bitmap, bitmap_size);
 
 	}			// For each malloc area
 
@@ -163,9 +165,7 @@ void *log_full(struct lp_struct *lp)
 			      (char *)ckpt + size - (char *)ptr, lp->lid.to_int,
 			      ckpt, size, size, ptr, (char *)ckpt + size);
 
-	lp->mm->m_state->dirty_areas = 0;
-	lp->mm->m_state->dirty_bitmap_size = 0;
-	lp->mm->m_state->total_inc_size = 0;
+	m_state->total_inc_size = sizeof(malloc_state);
 
 	statistics_post_data(lp, STAT_CKPT_TIME, (double)timer_value_micro(checkpoint_timer));
 	statistics_post_data(lp, STAT_CKPT_MEM, (double)size);
@@ -224,33 +224,34 @@ void *log_state(struct lp_struct *lp)
 */
 void restore_full(struct lp_struct *lp, void *ckpt)
 {
-	void *ptr;
-	int i, original_num_areas, restored_areas;
+	char *ptr, *target_ptr;
+	int i, original_num_areas;
 	size_t chunk_size, bitmap_size;
-	malloc_area *m_area, *new_area;
+	malloc_area *m_area;
+	malloc_state *m_state;
 
 	// Timers for simulation platform self-tuning
 	timer recovery_timer;
 	timer_start(recovery_timer);
-	restored_areas = 0;
 	ptr = ckpt;
-	original_num_areas = lp->mm->m_state->num_areas;
-	new_area = lp->mm->m_state->areas;
+	m_state = lp->mm->m_state;
+	target_ptr = ptr + ((malloc_state *) ptr)->total_log_size;
+	original_num_areas = m_state->num_areas;
 
-	// Restore malloc_state
-	memcpy(lp->mm->m_state, ptr, sizeof(malloc_state));
-	ptr = (void *)((char *)ptr + sizeof(malloc_state));
-
-	lp->mm->m_state->areas = new_area;
+	// restore the old malloc state except for the malloc areas array
+	m_area = m_state->areas;
+	memcpy(m_state, ptr, sizeof(malloc_state));
+	m_state->areas = m_area;
+	ptr += sizeof(malloc_state);
 
 	// Scan areas and chunk to restore them
-	for (i = 0; i < lp->mm->m_state->num_areas; i++) {
+	for (i = 0; i < m_state->num_areas; i++) {
 
-		m_area = &lp->mm->m_state->areas[i];
+		m_area = &m_state->areas[i];
 
 		bitmap_size = bitmap_required_size(m_area->num_chunks);
 
-		if (restored_areas == lp->mm->m_state->busy_areas || m_area->idx != ((malloc_area *) ptr)->idx) {
+		if (ptr >= target_ptr || m_area->idx != ((malloc_area *) ptr)->idx) {
 
 			m_area->dirty_chunks = 0;
 			m_area->state_changed = 0;
@@ -263,19 +264,17 @@ void restore_full(struct lp_struct *lp, void *ckpt)
 				memset(m_area->use_bitmap, 0, bitmap_size);
 				memset(m_area->dirty_bitmap, 0, bitmap_size);
 			}
-			m_area->last_access = lp->mm->m_state->timestamp;
+			m_area->last_access = m_state->timestamp;
 
 			continue;
 		}
 		// Restore the malloc_area
 		memcpy(m_area, ptr, sizeof(malloc_area));
-		ptr = (void *)((char *)ptr + sizeof(malloc_area));
-
-		restored_areas++;
+		ptr += sizeof(malloc_area);
 
 		// Restore use bitmap
 		memcpy(m_area->use_bitmap, ptr, bitmap_size);
-		ptr = (void *)((char *)ptr + bitmap_size);
+		ptr += bitmap_size;
 
 		// Reset dirty bitmap
 		bzero(m_area->dirty_bitmap, bitmap_size);
@@ -288,7 +287,7 @@ void restore_full(struct lp_struct *lp, void *ckpt)
 		if (CHECK_LOG_MODE_BIT(m_area)) {
 			// The area has been entirely logged
 			memcpy(m_area->area, ptr, m_area->num_chunks * chunk_size);
-			ptr = (void *)((char *)ptr + m_area->num_chunks * chunk_size);
+			ptr += m_area->num_chunks * chunk_size;
 
 		} else {
 			// The area was partially logged.
@@ -297,7 +296,7 @@ void restore_full(struct lp_struct *lp, void *ckpt)
 
 #define copy_to_area(x) ({\
 		memcpy((void*)((char*)m_area->area + ((x) * chunk_size)), ptr, chunk_size);\
-		ptr = (void*)((char*)ptr + chunk_size);})
+		ptr += chunk_size;})
 
 			bitmap_foreach_set(m_area->use_bitmap, bitmap_size, copy_to_area);
 
@@ -307,17 +306,17 @@ void restore_full(struct lp_struct *lp, void *ckpt)
 	}
 
 	// Check whether there are more allocated areas which are not present in the log
-	if (original_num_areas > lp->mm->m_state->num_areas) {
+	if (original_num_areas > m_state->num_areas) {
 
-		for (i = lp->mm->m_state->num_areas; i < original_num_areas; i++) {
+		for (i = m_state->num_areas; i < original_num_areas; i++) {
 
-			m_area = &lp->mm->m_state->areas[i];
+			m_area = &m_state->areas[i];
 			m_area->alloc_chunks = 0;
 			m_area->dirty_chunks = 0;
 			m_area->state_changed = 0;
 			m_area->next_chunk = 0;
-			m_area->last_access = lp->mm->m_state->timestamp;
-			lp->mm->m_state->areas[m_area->prev].next = m_area->idx;
+			m_area->last_access = m_state->timestamp;
+			m_state->areas[m_area->prev].next = m_area->idx;
 
 			RESET_LOG_MODE_BIT(m_area);
 			RESET_AREA_LOCK_BIT(m_area);
@@ -329,14 +328,12 @@ void restore_full(struct lp_struct *lp, void *ckpt)
 				memset(m_area->dirty_bitmap, 0, bitmap_size);
 			}
 		}
-		lp->mm->m_state->num_areas = original_num_areas;
+		m_state->num_areas = original_num_areas;
 	}
 
-	lp->mm->m_state->timestamp = -1;
-	lp->mm->m_state->is_incremental = false;
-	lp->mm->m_state->dirty_areas = 0;
-	lp->mm->m_state->dirty_bitmap_size = 0;
-	lp->mm->m_state->total_inc_size = 0;
+	m_state->timestamp = -1;
+	m_state->is_incremental = false;
+	m_state->total_inc_size = sizeof(malloc_state);
 
 	statistics_post_data(lp, STAT_RECOVERY_TIME, (double)timer_value_micro(recovery_timer));
 }
