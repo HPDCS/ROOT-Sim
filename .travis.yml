@@ -54,7 +54,7 @@ deploy:
  - provider: pages
    skip-cleanup: true
    github-token: $DOCS_SECRET
-   keep-history: true
+   keep-history: false
    local-dir: ROOT-Sim
    verbose: true
    on:
@@ -63,7 +63,7 @@ deploy:
  - provider: pages
    skip-cleanup: true
    github-token: $DOCS_SECRET
-   keep-history: true
+   keep-history: false
    local-dir: ROOT-Sim
    verbose: true
    on:
