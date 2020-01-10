@@ -249,7 +249,7 @@ void restore_full(struct lp_struct *lp, void *ckpt)
 	timer_start(recovery_timer);
 	ptr = ckpt;
 	m_state = lp->mm->m_state;
-	target_ptr = ptr + ((malloc_state *) ptr)->total_log_size;
+	target_ptr = ptr + get_log_size((malloc_state *)ptr);
 	original_num_areas = m_state->num_areas;
 
 	// restore the old malloc state except for the malloc areas array
