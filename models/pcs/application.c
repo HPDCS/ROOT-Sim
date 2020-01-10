@@ -1,7 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <strings.h>
-#include <ROOT-Sim.h>
 
 #include "application.h"
 
@@ -123,12 +122,16 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 			bzero(state, sizeof(lp_state_type));
 
 			state->channel_counter = channels_per_cell;
-			state->ta = ref_ta;
 
 			// Setup channel state
-			state->channel_state = malloc(sizeof(unsigned int) * 2 * (CHANNELS_PER_CELL / BITS + 1));
+			state->core_data = malloc(sizeof(struct core_data_t));
+			state->core_data->channel_state = malloc(sizeof(unsigned int) * 2 * (CHANNELS_PER_CELL / BITS + 1));
+                        state->core_data->ta = ref_ta;
+
+                        CoreMemoryMark(state->core_data);
+
 			for (w = 0; w < state->channel_counter / (sizeof(int) * 8) + 1; w++)
-				state->channel_state[w] = 0;
+				state->core_data->channel_state[w] = 0;
 
 			// Start the simulation
 			timestamp = (simtime_t) (20 * Random());
@@ -201,17 +204,17 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 
 
 			if (variable_ta)
-				state->ta = recompute_ta(ref_ta, now);
+				state->core_data->ta = recompute_ta(ref_ta, now);
 
 			// Determine the time at which a new call will be issued
 			switch (DISTRIBUTION) {
 
 				case UNIFORM:
-					timestamp= now + (simtime_t)(state->ta * Random());
+					timestamp= now + (simtime_t)(state->core_data->ta * Random());
 					break;
 
 				case EXPONENTIAL:
-					timestamp= now + (simtime_t)(Expent(state->ta));
+					timestamp= now + (simtime_t)(Expent(state->core_data->ta));
 					break;
 
 				default:
@@ -226,7 +229,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 		case END_CALL:
 
 			state->channel_counter++;
-			state->complete_calls++;
+			state->core_data->complete_calls++ ;
 			deallocation(me, state, event_content->channel, now);
 
 			break;
@@ -311,11 +314,26 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 	}
 }
 
+void restore_approximated(void *ptr) {
+	lp_state_type *state;
+	state = (lp_state_type*)ptr;
+
+	unsigned int i;
+	channel *current_channel = state->channels;
+
+	for(i = 0; i < channels_per_cell; i++){
+		if(CHECK_CHANNEL(state,i)){
+			RESET_CHANNEL(state, i); //accrocc needed to force allocation of node.
+			allocation(state);
+		}
+		current_channel = current_channel->next;
+	}
+}
 
 bool OnGVT(unsigned int me, lp_state_type *snapshot) {
 	(void)me;
 	
-	if (snapshot->complete_calls < complete_calls)
+	if (snapshot->core_data->ta < complete_calls)
 		return false;
 	return true;
 }
