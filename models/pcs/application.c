@@ -143,6 +143,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 				ScheduleNewEvent(me, timestamp, FADING_RECHECK, NULL, 0);
 		//	}
 
+		        RollbackModeSet(true);
 			break;
 
 
@@ -332,8 +333,8 @@ void restore_approximated(void *ptr) {
 
 bool OnGVT(unsigned int me, lp_state_type *snapshot) {
 	(void)me;
-	
-	if (snapshot->core_data->ta < complete_calls)
+
+    if (snapshot->core_data->complete_calls < complete_calls)
 		return false;
 	return true;
 }
