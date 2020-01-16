@@ -55,12 +55,11 @@
 
 // Message exchanged among LPs
 typedef struct _event_content_type {
-	int cell; // The destination cell of an event
+	unsigned int cell; // The destination cell of an event
 	unsigned int from; // The sender of the event (in case of HANDOFF_RECV)
 	simtime_t sent_at; // Simulation time at which the call was handed off
 	int channel; // Channel to be freed in case of END_CALL
 	simtime_t   call_term_time; // Termination time of the call (used mainly in HANDOFF_RECV)
-	int *dummy;
 } event_content_type;
 
 #define CROSS_PATH_GAIN		0.00000000000005
@@ -70,45 +69,27 @@ typedef struct _event_content_type {
 #define SIR_AIM			10
 
 // Taglia di 16 byte
-typedef struct _sir_data_per_cell{
-    double fading; // Fading of the call
-    double power; // Power allocated to the call
-} sir_data_per_cell;
-
-// Taglia di 16 byte
 typedef struct _channel{
-	int channel_id; // Number of the channel
-	sir_data_per_cell *sir_data; // Signal/Interference Ratio data
-	struct _channel *next;
-	struct _channel *prev;
+	double fading; // Fading of the call
+	double power; // Power allocated to the call
 } channel;
 
 struct core_data_t {
-    unsigned int complete_calls; // Number of calls which were completed within this cell
-    unsigned int *channel_state;
-    double ta; // Current call interarrival frequency for this cell
+	unsigned int complete_calls; // Number of calls which were completed within this cell
+	unsigned int *channel_state;
+	double ta; // Current call interarrival frequency for this cell
 };
 
 typedef struct _lp_state_type{
-	int ecs_count;
-
-	unsigned int channel_counter; // How many channels are currently free
+	unsigned int channel_counter; // How many free cells
 	unsigned int arriving_calls; // How many calls have been delivered within this cell
 	unsigned int blocked_on_setup; // Number of calls blocked due to lack of free channels
 	unsigned int blocked_on_handoff; // Number of calls blocked due to lack of free channels in HANDOFF_RECV
 	unsigned int leaving_handoffs; // How many calls were diverted to a different cell
 	unsigned int arriving_handoffs; // How many calls were received from other cells
-	unsigned int cont_no_sir_aim; // Used for fading recheck
-	unsigned int executed_events; // Total number of events
 
-	simtime_t lvt; // Last executed event was at this simulation time
-
-        struct core_data_t *core_data;
-
-
+	struct core_data_t *core_data;
 	struct _channel *channels;
-	int dummy;
-	bool dummy_flag;
 } lp_state_type;
 
 extern unsigned int channels_per_cell;
@@ -116,8 +97,9 @@ extern unsigned int channels_per_cell;
 double recompute_ta(double ref_ta, simtime_t now);
 double generate_cross_path_gain(void);
 double generate_path_gain(void);
-void deallocation(unsigned int lp, lp_state_type *state, int channel, simtime_t);
-int allocation(lp_state_type *state);
+void deallocation(lp_state_type *state, unsigned channel);
+unsigned allocation(lp_state_type *state);
 void fading_recheck(lp_state_type *pointer);
+unsigned reallocate_channels(lp_state_type *pointer);
 
 

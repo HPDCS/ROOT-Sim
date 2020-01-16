@@ -134,10 +134,10 @@ void ccgs_compute_snapshot(state_t * time_barrier_pointer[], simtime_t gvt)
 		temporary_log.base_pointer = lp->current_base_pointer;
 
 		// Restore the time barrier state
-		log_restore(lp, time_barrier_pointer[i]);
 		lp->state = time_barrier_pointer[i]->state;
 		lp->current_base_pointer =
 		    time_barrier_pointer[i]->base_pointer;
+		log_restore(lp, time_barrier_pointer[i]);
 
 /*
 		// If the LP is not blocked, we can reconstruct the state exactly to the GVT

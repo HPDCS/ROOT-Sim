@@ -82,6 +82,7 @@ extern void SetState(void *new_state);
 /**APPROXIMATED*ROLLBACK*LIBRARY**/
 /*********************************/
 extern void RollbackModeSet(bool want_approximated);
+extern bool RollbackModeCheck(void);
 extern void CoreMemoryUnmark(void *address);
 extern void CoreMemoryMark(void *address);
 extern bool CoreMemoryCheck(void *address);

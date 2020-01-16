@@ -226,6 +226,7 @@ extern void ProcessEvent_light(unsigned int me, simtime_t now, int event_type, v
 bool OnGVT_light(unsigned int me, void *snapshot);
 extern void ProcessEvent_inc(unsigned int me, simtime_t now, int event_type, void *event_content, unsigned int size, void *state);
 bool OnGVT_inc(unsigned int me, void *snapshot);
+extern void RestoreApproximated(void *lp_state);
 
 extern void base_init(void);
 extern void base_fini(void);

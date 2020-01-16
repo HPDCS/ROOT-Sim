@@ -160,6 +160,8 @@ void LP_main_loop(void *args)
 		timer event_timer;
 		timer_start(event_timer);
 
+		event_approximation_mark(current, current_evt);
+
 		// Process the event
 		if(&abm_settings){
 			ProcessEventABM();

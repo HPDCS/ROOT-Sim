@@ -113,6 +113,7 @@ struct _malloc_state {
 	bool is_incremental;			///< Tells if it is an incremental log or a full one (when used for logging)
 #ifdef HAVE_APPROXIMATED_ROLLBACK
 	bool is_approximated;			///< Tells if it is an approximate log or a precise one (when used for logging)
+	bool want_approximated;			///< Tells if we want the next logs to be approximated or not
 	size_t approximated_log_size; 	///< The difference in size between a full log and an approximated one
 #endif
 	size_t total_log_size;

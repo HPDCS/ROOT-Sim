@@ -66,15 +66,23 @@ bool CoreMemoryCheck(void *address)
 void RollbackModeSet(bool want_approximated)
 {
 	switch_to_platform_mode();
-	current->mm->m_state->is_approximated = want_approximated;
+	current->mm->m_state->want_approximated = want_approximated;
 	switch_to_application_mode();
 }
 
-
-
-void event_approximation_mark(struct lp_struct *lp, msg_t *event)
+bool RollbackModeCheck(void)
 {
-	event->is_approximated = lp->mm->m_state->is_approximated;
+	switch_to_platform_mode();
+	bool ret = current_evt->is_approximated;
+	switch_to_application_mode();
+	return ret;
+}
+
+void event_approximation_mark(const struct lp_struct *lp, msg_t *event)
+{
+	bool is_approximated = lp->mm->m_state->want_approximated;
+	lp->mm->m_state->is_approximated = is_approximated;
+	event->is_approximated = is_approximated;
 }
 
 #endif

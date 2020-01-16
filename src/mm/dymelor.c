@@ -95,9 +95,10 @@ malloc_state *malloc_state_init(void)
 	state->is_incremental = false;
 #ifdef HAVE_APPROXIMATED_ROLLBACK
 	state->is_approximated = false;
+	state->want_approximated = false;
 	state->approximated_log_size = sizeof(malloc_state);
 #endif
-	state->areas = (malloc_area *) rsalloc(state->max_num_areas * sizeof(malloc_area));
+	state->areas = rsalloc(state->max_num_areas * sizeof(malloc_area));
 	if (unlikely(state->areas == NULL)) {
 		rootsim_error(true, "Unable to allocate memory.\n");
 	}
