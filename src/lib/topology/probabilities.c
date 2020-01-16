@@ -71,7 +71,7 @@ topology_t *topology_probabilities_init(unsigned this_region_id, void *topology_
 	const unsigned exit_regions = topology_global.directions + 1;
 	unsigned i;
 	// instantiate the topology struct
-	topology_t *topology = rsalloc(topology_global.chkp_size);
+	topology_t *topology = __wrap_malloc(topology_global.chkp_size);
 
 	if(topology_data)
 		memcpy(topology->data, ((char *) topology_data) + this_region_id * exit_regions, sizeof(double) * exit_regions);

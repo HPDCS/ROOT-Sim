@@ -80,7 +80,7 @@ topology_t *topology_costs_init(unsigned this_region_id, void *topology_data){
 	const unsigned neighbours = topology_global.directions;
 
 	// instantiate the topology struct
-	topology_t *topology = rsalloc(topology_global.chkp_size);
+	topology_t *topology = __wrap_malloc(topology_global.chkp_size);
 
 	// from now on we expect a topology based on cost to reside in a unique memory block and to have this layout in memory:
 	// BASE_STRUCT | COST MATRIX | CACHE MINIMUM COSTS | CACHE PREVIOUS HOP | CACHE NEXT HOP

@@ -111,12 +111,6 @@ bool LogState(struct lp_struct *lp)
 		memcpy(&new_state->numerical, &lp->numerical,
 		       sizeof(numerical_state_t));
 
-		if(&topology_settings && topology_settings.write_enabled){
-			new_state->topology = rsalloc(topology_global.chkp_size);
-			memcpy(new_state->topology, lp->topology,
-					topology_global.chkp_size);
-		}
-
 		if(&abm_settings){
 			new_state->region_data = abm_do_checkpoint(lp->region);
 		}
@@ -141,11 +135,6 @@ void RestoreState(struct lp_struct *lp, state_t * restore_state)
 	// Restore library-related states
 	memcpy(&lp->numerical, &restore_state->numerical,
 	       sizeof(numerical_state_t));
-
-	if(&topology_settings && topology_settings.write_enabled){
-		memcpy(lp->topology, restore_state->topology,
-				topology_global.chkp_size);
-	}
 
 	if(&abm_settings)
 		abm_restore_checkpoint(restore_state->region_data, lp->region);
