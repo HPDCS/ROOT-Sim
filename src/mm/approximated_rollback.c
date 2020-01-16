@@ -70,10 +70,7 @@ void RollbackModeSet(bool want_approximated)
 	switch_to_application_mode();
 }
 
-void restore_approximated()
-{
-	// TODO call the user supplied function for restoring the stuff
-}
+
 
 void event_approximation_mark(struct lp_struct *lp, msg_t *event)
 {

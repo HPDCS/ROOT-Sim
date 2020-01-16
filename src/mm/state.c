@@ -198,8 +198,8 @@ unsigned int silent_execution(struct lp_struct *lp, msg_t *evt, msg_t *final_evt
 #ifdef HAVE_APPROXIMATED_ROLLBACK
 		if (!evt->is_approximated) {
 			if(last_approximated){
-				restore_approximated();
-				last_approximated = false;
+			    	RestoreApproximated(lp->current_base_pointer);
+			    	last_approximated = false;
 			}
 #endif
 
@@ -214,7 +214,7 @@ unsigned int silent_execution(struct lp_struct *lp, msg_t *evt, msg_t *final_evt
 
 #ifdef HAVE_APPROXIMATED_ROLLBACK
 	if(last_approximated){
-		restore_approximated();
+		RestoreApproximated(lp->current_base_pointer);
 	}
 #endif
 	lp->state = old_state;

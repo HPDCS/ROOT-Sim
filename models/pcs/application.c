@@ -315,7 +315,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 	}
 }
 
-void restore_approximated(void *ptr) {
+void RestoreApproximated(void *ptr) {
 	lp_state_type *state;
 	state = (lp_state_type*)ptr;
 
