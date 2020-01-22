@@ -39,6 +39,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdint.h>
 #include <string.h>
 #include <stdbool.h>
 #include <float.h>
@@ -220,3 +221,61 @@ void 			RemoveVisit		(agent_t agent, unsigned i);
 
 unsigned 		CountPastVisits		(const agent_t agent);
 void 			GetPastVisit		(const agent_t agent, unsigned *region_p, unsigned *event_type_p, simtime_t *time_p, unsigned i);
+
+
+/************* CAPABILITIES ************/
+
+enum capability_t
+{
+	/* Capabilities always enabled */
+	CAP_SCHEDULER,
+	CAP_CKTRM_MODE,
+	CAP_LPS_DISTRIBUTION,
+	CAP_STATS,
+	CAP_STATE_SAVING,
+	CAP_THREADS,
+	CAP_LPS,
+	CAP_OUTPUT_DIR,
+	CAP_P,
+	CAP_GVT,
+	CAP_GVT_SNAPSHOT_CYCLES,
+	CAP_SEED,
+	CAP_VERBOSE,
+
+	/* Optional capabilities */
+	CAP_NPWD,
+	CAP_FULL,
+	CAP_INC,
+	CAP_A,
+	CAP_SIMULATION_TIME,
+	CAP_DETERMINISTIC_SEED,
+	CAP_SERIAL,
+	CAP_CORE_BINDING,
+	CAP_PREEMPTION,
+	CAP_ECS,
+	CAP_LINUX_MODULES,
+	CAP_LP_REBINDING,
+	CAP_MPI
+};
+
+struct capability_info_t {
+	enum capability_t capability;
+	union {
+		char *output_dir;		///< Destination Directory of output files
+		int scheduler;			///< Which scheduler to be used
+		int gvt_time_period;		///< Wall-Clock time to wait before executiong GVT operations
+		int gvt_snapshot_cycles;	///< GVT operations to be executed before rebuilding the state
+		int simulation_time;		///< Wall-clock-time based termination predicate
+		int lps_distribution;		///< Policy for the LP to Kernel mapping
+		int state_saving;		///< Type of checkpointing mode (Synchronous, Semi-Asyncronous, ...)
+		int checkpointing;		///< Type of checkpointing scheme (e.g., PSS, CSS, ...)
+		int ckpt_period;		///< Number of events to execute before taking a snapshot in PSS (ignored otherwise)
+		int termination_mode;		///< Check termination strategy: standard or incremental
+		int verbose;			///< Kernel verbose
+		int stats;			///< Produce performance statistic file (default STATS_ALL)
+		int lps;			///< Number of active logical processes
+		uint64_t seed;			///< The master seed to be used in this run
+	};
+};
+
+bool CapabilityAvailable(enum capability_t which, struct capability_info_t *info);
