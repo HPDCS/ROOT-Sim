@@ -117,7 +117,7 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 		case INIT:
 
 			// Initialize LP's state
-			state_ptr = (lp_state_type *)malloc(sizeof(lp_state_type));
+			state_ptr = malloc(sizeof(lp_state_type));
                         if(state_ptr == NULL){
                                 exit(-1);
                         }

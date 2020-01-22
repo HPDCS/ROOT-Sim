@@ -111,10 +111,6 @@ bool LogState(struct lp_struct *lp)
 		memcpy(&new_state->numerical, &lp->numerical,
 		       sizeof(numerical_state_t));
 
-		if(&abm_settings){
-			new_state->region_data = abm_do_checkpoint(lp->region);
-		}
-
 		// Link the new checkpoint to the state chain
 		list_insert_tail(lp->queue_states, new_state);
 
@@ -135,9 +131,6 @@ void RestoreState(struct lp_struct *lp, state_t * restore_state)
 	// Restore library-related states
 	memcpy(&lp->numerical, &restore_state->numerical,
 	       sizeof(numerical_state_t));
-
-	if(&abm_settings)
-		abm_restore_checkpoint(restore_state->region_data, lp->region);
 
 #ifdef HAVE_CROSS_STATE
 	lp->ECS_index = 0;
