@@ -58,7 +58,8 @@ rootsim-cc: src/compiler/rootsim-cc.in
 	@chmod +x rootsim-cc
 
 
-librootsimcc_la_SOURCES = src/compiler/rootsim-cc.cpp 
+librootsimcc_la_SOURCES = src/compiler/rootsim-cc.cpp
+librootsimcc_la_CPPFLAGS = @LLVMFLAGS@
 librootsimcc_la_LDFLAGS = -version-info 0:0:0
 
 

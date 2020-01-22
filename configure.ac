@@ -72,6 +72,8 @@ AC_PROG_CC_C_O
 AC_PROG_CXXCPP
 AC_PROG_CXX_C_O
 
+AC_SUBST([LLVMFLAGS],[$(llvm-config --cppflags)])
+
 #----------------------------------------------------------------------------
 # Check for an MPI environment
 #----------------------------------------------------------------------------
@@ -332,7 +334,6 @@ AS_IF([test x"$with_mpi" = xyes],[
 # Generate Makefiles for all these subfolders
 AC_CONFIG_FILES([Makefile
 		 man/Makefile
-		 scripts/Makefile
 		 src/arch/x86/linux/Makefile])
 AC_OUTPUT
 
