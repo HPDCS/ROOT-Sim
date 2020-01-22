@@ -47,9 +47,8 @@
 
 //ADDED BY MAT 0x00000200000000000
 #define LP_PREALLOCATION_INITIAL_ADDRESS	(void *)0x0000008000000000
-#define MASK 0x00000001		// Mask used to check, set and unset bits
 
-#define MIN_CHUNK_SIZE 128	// Size (in bytes) of the smallest chunk provideable by DyMeLoR
+#define MIN_CHUNK_SIZE 128U	// Size (in bytes) of the smallest chunk provideable by DyMeLoR
 #define MAX_CHUNK_SIZE 4194304	// Size (in bytes) of the biggest one. Notice that if this number
 				// is too large, performance (and memory usage) might be affected.
 				// If it is too small, large amount of memory requests by the
@@ -79,18 +78,20 @@
 #define GET_CACHE_LINE_NUMBER(P) ((unsigned long)((P >> 4) & (CACHE_SIZE - 1)))
 
 // Macros uset to check, set and unset special purpose bits
-#define SET_LOG_MODE_BIT(m_area)	(((malloc_area*)(m_area))->chunk_size |=  (MASK << 0))
-#define RESET_LOG_MODE_BIT(m_area)	(((malloc_area*)(m_area))->chunk_size &= ~(MASK << 0))
-#define CHECK_LOG_MODE_BIT(m_area)	(((malloc_area*)(m_area))->chunk_size &   (MASK << 0))
+#define SET_LOG_MODE_BIT(m_area)	(((malloc_area*)(m_area))->chunk_size |=  (1UL << 0))
+#define RESET_LOG_MODE_BIT(m_area)	(((malloc_area*)(m_area))->chunk_size &= ~(1UL << 0))
+#define CHECK_LOG_MODE_BIT(m_area)	(((malloc_area*)(m_area))->chunk_size &   (1UL << 0))
 
-#define SET_AREA_LOCK_BIT(m_area)	(((malloc_area*)(m_area))->chunk_size |=  (MASK << 1))
-#define RESET_AREA_LOCK_BIT(m_area)	(((malloc_area*)(m_area))->chunk_size &= ~(MASK << 1))
-#define CHECK_AREA_LOCK_BIT(m_area)	(((malloc_area*)(m_area))->chunk_size &   (MASK << 1))
+#define SET_AREA_LOCK_BIT(m_area)	(((malloc_area*)(m_area))->chunk_size |=  (1UL << 1))
+#define RESET_AREA_LOCK_BIT(m_area)	(((malloc_area*)(m_area))->chunk_size &= ~(1UL << 1))
+#define CHECK_AREA_LOCK_BIT(m_area)	(((malloc_area*)(m_area))->chunk_size &   (1UL << 1))
 
-#define UNTAGGED_CHUNK_SIZE(m_area)	(((malloc_area*)(m_area))->chunk_size & ~((MASK << 0) | (MASK << 1)))
+#define UNTAGGED_CHUNK_SIZE(m_area)	(((malloc_area*)(m_area))->chunk_size & ~((1UL << 0) | (1UL << 1)))
 
 #define POWEROF2(x) (1UL << (1 + (63 - __builtin_clzl((x) - 1))))
 #define IS_POWEROF2(x) ((x) != 0 && ((x) & ((x) - 1)) == 0)
+
+#define PER_LP_PREALLOCATED_MEMORY (262144L * PAGE_SIZE)	// This should be power of 2 multiplied by a page size. This is 1GB per LP.
 
 /// This structure let DyMeLoR handle one malloc area (for serving given-size memory requests)
 struct _malloc_area {
@@ -120,12 +121,8 @@ struct _malloc_state {
 	bool is_incremental;	///< Tells if it is an incremental log or a full one (when used for logging)
 	size_t total_log_size;
 	size_t total_inc_size;
-	size_t bitmap_size;
-	size_t dirty_bitmap_size;
 	int num_areas;
 	int max_num_areas;
-	int busy_areas;
-	int dirty_areas;
 	simtime_t timestamp;
 	struct _malloc_area *areas;
 };
@@ -137,6 +134,43 @@ typedef struct _malloc_state malloc_state;
 #define get_top_pointer(ptr) ((unsigned long long *)((char *)ptr - sizeof(unsigned long long)))
 #define get_area_top_pointer(ptr) ( (malloc_area **)(*get_top_pointer(ptr)) )
 #define get_area(ptr) ( *(get_area_top_pointer(ptr)) )
+
+#define PER_LP_PREALLOCATED_MEMORY (262144L * PAGE_SIZE)	// This should be power of 2 multiplied by a page size. This is 1GB per LP.
+#define BUDDY_GRANULARITY PAGE_SIZE	// This is the smallest chunk released by the buddy in bytes. PER_LP_PREALLOCATED_MEMORY/BUDDY_GRANULARITY must be integer and a power of 2
+
+
+struct segment {
+	unsigned char *base;
+	unsigned char *brk;
+};
+
+extern size_t __page_size;
+#define PAGE_SIZE ({ \
+			if(unlikely(__page_size == 0))\
+				__page_size = getpagesize();\
+			__page_size;\
+		  })
+
+struct slab_header {
+#ifndef NDEBUG
+	atomic_t presence;
+#endif
+	struct slab_header *prev, *next;
+	uint64_t slots;
+	uintptr_t refcount;
+	struct slab_header *page;
+	uint8_t data[] __attribute__((aligned(sizeof(void *))));
+};
+
+struct slab_chain {
+	spinlock_t lock;
+	size_t itemsize, itemcount;
+	size_t slabsize, pages_per_alloc;
+	uint64_t initial_slotmask, empty_slotmask;
+	uintptr_t alignment_mask;
+	struct slab_header *partial, *empty, *full;
+};
+
 
 /***************
  * EXPOSED API *
@@ -151,32 +185,37 @@ extern size_t get_inc_log_size(void *);
 extern int get_granularity(void);
 extern size_t dirty_size(unsigned int, void *, double *);
 extern malloc_state *malloc_state_init(void);
-extern void malloc_state_wipe(malloc_state **);
 extern void *do_malloc(struct lp_struct *, size_t);
 extern void do_free(struct lp_struct *, void *ptr);
 extern void *allocate_lp_memory(struct lp_struct *, size_t);
 extern void free_lp_memory(struct lp_struct *, void *);
 
-// Checkpointing API
-extern void *log_full(struct lp_struct *);
-extern void *log_state(struct lp_struct *);
-extern void log_restore(struct lp_struct *, state_t *);
-extern void log_delete(void *);
 
 // Userspace API
 extern void *__wrap_malloc(size_t);
 extern void __wrap_free(void *);
 extern void *__wrap_realloc(void *, size_t);
 extern void *__wrap_calloc(size_t, size_t);
-extern void clean_buffers_on_gvt(struct lp_struct *, simtime_t);
 
-/* Simulation Platform Memory APIs */
-extern inline void *rsalloc(size_t);
-extern inline void rsfree(void *);
-extern inline void *rsrealloc(void *, size_t);
-extern inline void *rscalloc(size_t, size_t);
 
-extern void ecs_init(void);
+/***************************
+ * BUDDY SYSTEM
+ ***************************/
+
+// buddy block size expressed in 2^n, e.g.: BUDDY_BLOCK_SIZE_EXP = 4, block_size = 16 TODO make this the pagesize
+#define BUDDY_BLOCK_SIZE_EXP 12
+
+struct buddy {
+	spinlock_t lock;
+	size_t size;
+	size_t longest[] __attribute__((aligned(sizeof(size_t)))); // an array based binary tree
+};
+
+extern struct buddy *buddy_new(size_t requested_size);
+extern void buddy_destroy(struct buddy *self);
+extern void *allocate_buddy_memory(struct buddy *self, void *base_mem, size_t requested_size);
+extern void free_buddy_memory(struct buddy *self, void *base_mem, void *ptr);
+
 
 // This is used to help ensure that the platform is not using malloc.
 #pragma GCC poison malloc free realloc calloc

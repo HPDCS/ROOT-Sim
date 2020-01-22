@@ -258,7 +258,7 @@ cp APP.o original
 ###   4. Link to the remaining ROOT-Sim library: this will produce the final executable
 
 echo "Linking..."
-$LD -r -L $libdir --wrap strcpy --wrap strncpy --wrap strcat --wrap strncat --wrap memcpy --wrap memmove --wrap memset --wrap strdup --wrap strndup -o APP-lib-wrapped.o APP.o -lwrapperl
+$LD -r -L $libdir --wrap strcpy --wrap strncpy --wrap strcat --wrap strncat --wrap memcpy --wrap memmove --wrap memset --wrap bzero --wrap strdup --wrap strndup -o APP-lib-wrapped.o APP.o -lwrapperl
 $LD -r -L $libdir --wrap malloc --wrap free --wrap realloc --wrap calloc -o APP-dym-wrapped.o APP-lib-wrapped.o --whole-archive -ldymelor
 check_term
 #$CC -Xlinker --no-check-sections -Xlinker -T -Xlinker $$.ld-final -Xlinker --section-start -Xlinker .warp=$APPLICATION_START_POINT -Xlinker --section-start -Xlinker .warl=$APPLICATION_START_POINT_LIGHT  APP-dym-wrapped.o -lrootsim -lm -DGATHER_DATA -o $OUTNAME
