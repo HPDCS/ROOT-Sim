@@ -1,0 +1,149 @@
+OMPI_CC=clang
+MPICH_CC=clang
+CC="@COMPILER@"
+CFLAGS="@CFLAGS@"
+VERSION="@VERSION@"
+libdir="@libdir@"
+includedir="@includedir@"
+
+
+##############################################################################
+# usage(): print usage of this script
+##############################################################################
+usage()
+{
+cat << EOF
+usage: rootsim-cc [options] sources
+
+This is the ROOT-Sim compiler version $VERSION.
+It allows compiling C sources against the ROOT-Sim library.
+OPTIONS:
+   -h    Print this help screen
+   -c    Do not link against the ROOT-Sim library (multistage compilation)
+   -o N  Specify N as output name
+   
+Please note that any other option supported by the underlying compiler (clang)
+can be safely passed to rootsim-cc
+EOF
+}
+
+
+##############################################################################
+# Handle temporary files
+##############################################################################
+build_cleanup()
+{
+rm -f ${SOURCES//.c/.o}
+rm -f ${SOURCES//.c/.o.rs}
+rm -f APP*.o
+}
+
+
+##############################################################################
+# Check for termination of the intermediate steps, if failed cleanup the system
+##############################################################################
+check_term()
+{
+if [ $? -ne 0 ]; then
+	build_cleanup
+	exit 1
+fi
+}
+
+
+##############################################################################
+# The ROOT-Sim CC script begins here
+##############################################################################
+CC="$CC -L $libdir -I $includedir -Xclang -load -Xclang $libdir/librootsimcc.so"   # This is how we will call the compiler.
+LD=ld
+OUTNAME=a.out
+SOURCES=
+PARTIAL=0
+
+next_in_cflags="no"
+next_in_outname="no"
+for word in "$@"
+do
+	case "$word" in
+		-c)
+			if [[ $PARTIAL = 0 ]]; then
+				CFLAGS="$CFLAGS -c"
+				PARTIAL=1
+			fi
+			;;
+		-o)
+			next_in_outname="yes"
+			;;
+		-MT)
+			CFLAGS="$CFLAGS -MT"
+			next_in_cflags="yes"
+			;;
+		-L)
+			CFLAGS="$CFLAGS -L"
+			next_in_cflags="yes"
+			;;
+		-MF)
+			CFLAGS="$CFLAGS -MF"
+			next_in_cflags="yes"
+			;;
+		*)
+			if [ "$next_in_cflags" = "yes" ]; then
+				CFLAGS="$CFLAGS $word"
+				next_in_cflags="no"
+			elif [ "$next_in_outname" = "yes" ]; then
+				OUTNAME="$word"
+				next_in_outname="no"
+			elif [ "${word:0:1}" = "-" ]; then
+				CFLAGS="$CFLAGS $word"
+			else
+				SOURCES="$SOURCES $word"
+			fi
+			;;
+	esac
+done
+
+
+# Check if no source file was specified
+if [ ! -n "$SOURCES" ]; then
+	usage
+	exit 1
+fi
+
+###
+### Compile all the sources into a single object
+###
+OBJECTS=${SOURCES//.c/.o}
+echo "Compiling $SOURCES..."
+for f in $SOURCES; do
+	if [ "${f: -2:2}" = ".o" ]; then
+		mv $f $f.rs
+	else
+		$CC $CFLAGS -c $f -o ${f/.c/.o.rs}
+	fi
+	check_term
+done
+
+
+# Link together
+$LD -r ${OBJECTS//.o/.o.rs} -o APP.o
+check_term
+
+$LD -r -L $libdir --wrap strcpy\
+		  --wrap strncpy\
+		  --wrap strcat\
+		  --wrap strncat\
+		  --wrap memcpy\
+		  --wrap memmove\
+		  --wrap memset\
+		  --wrap bzero\
+		  --wrap strdup\
+		  --wrap strndup\
+		  --wrap malloc\
+		  --wrap free\
+		  --wrap realloc\
+		  --wrap calloc -o APP-dymelor.o APP.o --whole-archive -ldymelor
+check_term
+
+$CC APP-dymelor.o $CFLAGS -lrootsim -lm -o $OUTNAME
+check_term
+build_cleanup

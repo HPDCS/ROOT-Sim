@@ -20,8 +20,8 @@ AC_ARG_ENABLE([coverage],
 AM_CONDITIONAL([DEBUG], [test x$enable_debug = xyes])
 
 # Setup compilation flags
-CFLAGS_COMMON="-std=c11 -fvisibility=hidden -fno-omit-frame-pointer -ffloat-store -fno-common -fstrict-aliasing -fgnu89-inline -rdynamic -lm -U_FORTIFY_SOURCE"
-CFLAGS_WARNINGS="-Wall -Wextra -Wmisleading-indentation -Wcast-align -Wpointer-arith -Wstrict-overflow=5 -Wstrict-prototypes -Winline -Wundef -Wnested-externs -Wshadow -Wunreachable-code -Wfloat-equal -Wredundant-decls -Wold-style-definition -Wno-switch-enum"
+CFLAGS_COMMON="-std=c11 -fvisibility=hidden -fno-omit-frame-pointer -fno-common -fstrict-aliasing -fgnu89-inline -U_FORTIFY_SOURCE -D_GNU_SOURCE"
+CFLAGS_WARNINGS="-Wall -Wextra -Wcast-align -Wpointer-arith -Wstrict-overflow=5 -Wstrict-prototypes -Winline -Wundef -Wnested-externs -Wshadow -Wunreachable-code -Wfloat-equal -Wredundant-decls -Wold-style-definition -Wno-switch-enum"
 #CFLAGS_WARNINGS="$CFLAGS_WARNINGS -Wconversion"
 
 # Flag to enable debugging the platform
@@ -41,7 +41,6 @@ AS_HELP_STRING([--enable-extra-checks],[Enable extra checks on models (kills per
 AS_IF([test "x$enable_extra_checks" = "xyes"], [
 	AC_DEFINE([EXTRA_CHECKS])
 ])
-
 
 # Code profiling flag
 AC_ARG_ENABLE([profile],
@@ -63,18 +62,36 @@ AM_CONDITIONAL([HAVE_DOXYGEN], [test -n "$DOXYGEN"])
 AM_COND_IF([HAVE_DOXYGEN], [AC_CONFIG_FILES([docs/doxy.conf])])
 AM_COND_IF([HAVE_DOXYGEN], [AC_CONFIG_FILES([docs/Makefile])])
 
+#----------------------------------------------------------------------------
+# Check for languages and compilation support
+#----------------------------------------------------------------------------
+AC_LANG([C],[C++])
+AC_PROG_CC([clang])
+AC_PROG_CXX([clang++])
+AC_PROG_CC_C_O
+AC_PROG_CXXCPP
+AC_PROG_CXX_C_O
 
 #----------------------------------------------------------------------------
-# Check for the availability of a suitable MPI environment
+# Check for an MPI environment
 #----------------------------------------------------------------------------
-AC_ARG_ENABLE([mpi],
-            AS_HELP_STRING([--enable-mpi], [compile with MPI support. Default: no]))
-AX_PROG_CC_MPI([test x"$enable_mpi" = xyes],[with_mpi=yes],[with_mpi=no])
+AC_ARG_ENABLE([mpi], AS_HELP_STRING([--enable-mpi], [compile with MPI support. Default: no]))
 
-# We don't simply use MPI, rather a fresh version which supports
+
+# Look if we can find a suitable MPI compiler
+AS_IF([test x"$enable_mpi" = xyes],[
+	AC_CHECK_TOOLS([MPICC], [mpicc mpixlc_r mpixlc hcc mpxlc_r mpxlc sxmpicc mpifcc mpgcc mpcc cmpicc], [none])
+	
+	AS_IF([test x"$MPICC" = xnone],[with_mpi=no],[with_mpi=yes])
+])
+
+# We don't simply use MPI, rather a recent version which supports
 # newer asynchronous primitives, e.g. MPI_Ireduce_scatter_block.
 # We test here for the availability of such primitives
 AS_IF([test x"$with_mpi" = xyes],[
+	# Use our MPICC compiler
+	CC="$MPICC"
+
 	AC_MSG_CHECKING([if MPI version has asynchronous primitives])
 	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
 		#include <stdlib.h>
@@ -91,51 +108,9 @@ AS_IF([test x"$with_mpi" = xyes],[
 ])
 
 #----------------------------------------------------------------------------
-# Check for languages and compilation support
-#----------------------------------------------------------------------------
-AC_LANG([C],[C++])
-AC_PROG_CC([gcc])
-AX_CHECK_COMPILE_FLAG([-std=c11], [ac_c11=yes], [ac_c11=no])
-AS_IF([test x$ac_c11 != xyes],[
-	AC_MSG_FAILURE([No. ROOT-Sim requires a compiler speaking the C11 standard.])
-])
-AC_PROG_CXX([g++])
-
-
-#----------------------------------------------------------------------------
-# Check for GCC stuff
-#----------------------------------------------------------------------------
-AC_USE_SYSTEM_EXTENSIONS
-AX_COMPILER_VERSION
-GCC_VERSION=$ax_cv_c_compiler_version
-GCC_VERSION_MAJOR=$(echo $GCC_VERSION | cut -d'.' -f1)
-GCC_VERSION_MINOR=$(echo $GCC_VERSION | cut -d'.' -f2)
-GCC_VERSION_PATCH=$(echo $GCC_VERSION | cut -d'.' -f3)
-AS_IF([test $GCC_VERSION_MAJOR -lt 6],[
-	AC_MSG_FAILURE([At least version 6.0.0 is required.])
-])
-
-
-# GCC7 complains about switch cases fallthrough. We use this in some highly-
-# optimized portions of the code. The -Wimplicit-fallthrough=3 compile-time
-# flag can prevent the compiler from emitting warnings in all fallthrough
-# cases where a "fallthrough" comment has been places (in a way compliant with
-# the [[fallthrough]] C14 tag which we don't support here).
-# Yet, previous version of the compiler fail badly if we simply use that
-# flag. We check here for the compiler version, and if we're of GCC >= 7.0 we
-# set the flag, only in debug mode.
-AS_IF([test $GCC_VERSION_MAJOR -ge 7 -a "x$enable_debug" == "xyes"],[
-	CFLAGS="$CFLAGS -Wimplicit-fallthrough=3"
-])
-
-#----------------------------------------------------------------------------
 # Checks for programs.
 #----------------------------------------------------------------------------
-AC_PROG_MAKE_SET
 AC_PROG_MKDIR_P
-AC_PROG_CC_C_O
-AC_PROG_CXX_C_O
-AM_PROG_CC_C_O
 AM_PROG_AR
 # Silence warning: ar: 'u' modifier ignored since 'D' is the default
 AC_SUBST(AR_FLAGS, [cr])
@@ -143,6 +118,8 @@ AC_SUBST(ARFLAGS, [cr])
 AM_PROG_AS
 AC_PROG_AWK
 LT_INIT([dlopen shared])
+AC_ENABLE_SHARED
+AC_DISABLE_STATIC
 
 
 
@@ -174,6 +151,7 @@ esac
 # Checks for C header files and libraries
 #----------------------------------------------------------------------------
 
+
 # Check for POSIX thread support
 AX_PTHREAD([], [AC_MSG_ERROR([PTHREAD support not found])])
 
@@ -185,7 +163,6 @@ AC_SUBST([LIBS])
 AC_SUBST([CFLAGS])
 AC_SUBST([CC])
 AC_SUBST([CXX])
-
 
 
 #----------------------------------------------------------------------------
@@ -346,22 +323,11 @@ ac_system_map=no
 AM_CONDITIONAL([NO_KERNEL_MODULES], [test "x$ac_disable_modules" = "xyes"])
 
 
-#----------------------------------------------------------------------------
-# Configure rootsim-cc.
-# The compiler script is dynamically built in order to create ad compile
-# time linker scripts which will be used to produce the final version
-# of the executable. We compute here the sizes of those cat'd scripts
-# in order to make the compiler behave consistently with the last version
-# of the linker scripts provided in the installation.
-# Also, we must tell the compiler if ISS is available or not
-#----------------------------------------------------------------------------
-AC_MSG_CHECKING([compiler and linker scripts sizes])
-AC_SUBST([cc_script_lines], [$(wc -l scripts/rootsim-cc.in | sed 's,\ .*,,g')])
-AC_SUBST([cc_lddata1_lines], [$(wc -l scripts/ld-data1 | sed 's,\ .*,,g')])
-AC_SUBST([cc_lddata2_lines], [$(wc -l scripts/ld-data2 | sed 's,\ .*,,g')])
-AC_SUBST([cc_ldfinal_lines], [$(wc -l scripts/ld-final | sed 's,\ .*,,g')])
-AC_SUBST([iss_support], ["x$ac_gcc_headers"])
-AC_MSG_RESULT([ok])
+# Workaround to have MPI use clang for compilation
+AC_SUBST([COMPILER], [$CC])
+AS_IF([test x"$with_mpi" = xyes],[
+	CC="OMPI_CC=clang MPICH_CC=clang $CC"
+])
 
 # Generate Makefiles for all these subfolders
 AC_CONFIG_FILES([Makefile
@@ -391,7 +357,7 @@ if test x"$enable_mpi" == xyes
 then
 	if test x"$with_mpi" == xyes
 	then
-		enable_mpi="Enabled (compiler: $CC)"
+		enable_mpi="Enabled (compiler: $MPICC)"
 	else
 		enable_mpi="Disabled (no MPI compiler found)"
 	fi

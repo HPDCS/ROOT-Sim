@@ -3,7 +3,13 @@ AM_CFLAGS = -I $(top_srcdir)/src
 AM_CCASFLAGS = -I $(top_srcdir)/src
 AM_MAKEFLAGS = -s
 AUTOMAKE_OPTIONS = subdir-objects
-SUBDIRS = scripts man
+SUBDIRS = man
+
+.PHONY: rootsim-cc
+
+# Define what libraries we are building here
+lib_LIBRARIES = librootsim.a
+lib_LTLIBRARIES = libdymelor.la librootsimcc.la
 
 # The following rules tell whether we have to compile kernel modules or not
 if NO_KERNEL_MODULES
@@ -36,12 +42,30 @@ src/arch/asm_defines.h: src/arch/asm_defines.c
 	@$(COMPILE) -DASM_DEFINES -S $< -o - | $(AWK) '($$1 == "->") { print "#define " $$2 " " substr($$3, 2) }' > $(top_srcdir)/$@
 
 
-# From here on, there are main ROOT-Sim build rules
+# ROOT-Sim compiler-related stuff
+dist_bin_SCRIPTS = rootsim-cc
+CLEANFILES = $(dist_bin_SCRIPTS)
 
+do_subst = $(SED)	-e 's,[@]libdir[@],$(libdir),g' \
+			-e 's,[@]includedir[@],$(includedir),g' \
+			-e 's,[@]VERSION[@],$(VERSION),g' \
+			-e 's,[@]COMPILER[@],$(COMPILER),g' \
+			-e 's,[@]CFLAGS[@],$(CFLAGS),g'
+
+rootsim-cc: src/compiler/rootsim-cc.in
+	@echo -e "  GEN      rootsim-cc"
+	@$(do_subst) < src/compiler/rootsim-cc.in > rootsim-cc
+	@chmod +x rootsim-cc
+
+
+librootsimcc_la_SOURCES = src/compiler/rootsim-cc.cpp 
+librootsimcc_la_LDFLAGS = -version-info 0:0:0
+
+
+# From here on, there are main ROOT-Sim build rules
 librootsim_include_HEADERS = src/ROOT-Sim.h
 librootsim_includedir = $(includedir)
-lib_LIBRARIES = librootsim.a
-lib_LTLIBRARIES = libdymelor.la
+
 
 librootsim_a_SOURCES =	src/main.c \
 			src/arch/memusage.c \
