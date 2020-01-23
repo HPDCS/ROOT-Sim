@@ -35,6 +35,22 @@ function do_unit_test() {
 	fi
 }
 
+function do_rs_unit_test() {
+	unit_tests+=($1)
+	make -f tests/Makefile $1 > /dev/null
+	echo -n "Running unit test $1... "
+	./$1 --lp $2 --wt $3 > /dev/null
+	
+	if test $? -eq 0; then
+		unit_results+=('Y')
+		echo "passed."
+	else
+		unit_results+=('N')
+		retval=1
+		echo "failed."
+	fi
+}
+
 function do_test() {
 
 	# Compile and store the name of the test suite
@@ -123,6 +139,7 @@ function do_test_custom() {
 
 
 # Run available unit tests
+do_rs_unit_test capabilities 2 1
 do_unit_test dymelor
 do_unit_test numerical
 
