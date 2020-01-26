@@ -54,6 +54,8 @@ struct rootsim_hash_map_t {
 	} *nodes;
 };
 
+#define 	hash_map_count(h_map) ((h_map)->count)
+
 void		hash_map_init	(struct rootsim_hash_map_t *);
 void		hash_map_fini	(struct rootsim_hash_map_t *);
 void 		hash_map_add	(struct rootsim_hash_map_t *, key_elem_t *key_elem_p);

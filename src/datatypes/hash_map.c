@@ -42,14 +42,16 @@
 // Adapted from http://xorshift.di.unimi.it/splitmix64.c PRNG,
 // written by Sebastiano Vigna (vigna@acm.org)
 // TODO benchmark further and select a possibly better hash function
-static hash_t _get_hash(key_elem_t key){
+static hash_t _get_hash(key_elem_t key)
+{
 	uint64_t z = key + 0x9e3779b97f4a7c15;
 	z = (z ^ (z >> 30)) * 0xbf58476d1ce4e5b9;
 	z = (z ^ (z >> 27)) * 0x94d049bb133111eb;
 	return (hash_t)((z ^ (z >> 31)) >> 32);
 }
 
-void hash_map_init(struct rootsim_hash_map_t *hmap){
+void hash_map_init(struct rootsim_hash_map_t *hmap)
+{
 	// this is the effective capacity_minus_one
 	// this trick saves us some subtractions when we
 	// use the capacity as a bitmask to
@@ -60,11 +62,13 @@ void hash_map_init(struct rootsim_hash_map_t *hmap){
 	memset(hmap->nodes, 0, sizeof(struct _hash_map_node_t) * HM_INITIAL_CAPACITY);
 }
 
-void hash_map_fini(struct rootsim_hash_map_t *hmap){
+void hash_map_fini(struct rootsim_hash_map_t *hmap)
+{
 	__wrap_free(hmap->nodes);
 }
 
-static void _hash_map_insert_hashed(struct rootsim_hash_map_t *hmap, struct _hash_map_node_t node){
+static void _hash_map_insert_hashed(struct rootsim_hash_map_t *hmap, struct _hash_map_node_t node)
+{
 	struct _hash_map_node_t *nodes = hmap->nodes;
 	struct _hash_map_node_t cur_node = node;
 	map_size_t capacity_mo = hmap->capacity_mo;
@@ -93,12 +97,13 @@ static void _hash_map_insert_hashed(struct rootsim_hash_map_t *hmap, struct _has
 	}
 }
 
-static void _hash_map_realloc_rehash(struct rootsim_hash_map_t *hmap){
+static void _hash_map_realloc_rehash(struct rootsim_hash_map_t *hmap)
+{
 	// helper pointers to iterate over the old array
 	struct _hash_map_node_t *rmv = hmap->nodes;
 	// instantiates new array
 	hmap->nodes = __wrap_malloc(sizeof(struct _hash_map_node_t) * (hmap->capacity_mo + 1));
-	memset(hmap->nodes, UCHAR_MAX, sizeof(struct _hash_map_node_t) * (hmap->capacity_mo + 1));
+	memset(hmap->nodes, 0, sizeof(struct _hash_map_node_t) * (hmap->capacity_mo + 1));
 	// rehash the old array elements
 	map_size_t i = hmap->count, j = 0;
 	while(i--){
@@ -112,7 +117,8 @@ static void _hash_map_realloc_rehash(struct rootsim_hash_map_t *hmap){
 	__wrap_free(rmv);
 }
 
-static void _hash_map_expand(struct rootsim_hash_map_t *hmap){
+static void _hash_map_expand(struct rootsim_hash_map_t *hmap)
+{
 	// check if threshold has been reached
 	if((double)hmap->capacity_mo * MAX_LOAD_FACTOR >= hmap->count)
 		return;
@@ -122,7 +128,8 @@ static void _hash_map_expand(struct rootsim_hash_map_t *hmap){
 	_hash_map_realloc_rehash(hmap);
 }
 
-static void _hash_map_shrink(struct rootsim_hash_map_t *hmap){
+static void _hash_map_shrink(struct rootsim_hash_map_t *hmap)
+{
 	// check if threshold has been reached
 	if((double)hmap->capacity_mo * MIN_LOAD_FACTOR <= hmap->count ||
 			hmap->capacity_mo <= HM_INITIAL_CAPACITY)
@@ -133,7 +140,8 @@ static void _hash_map_shrink(struct rootsim_hash_map_t *hmap){
 	_hash_map_realloc_rehash(hmap);
 }
 
-void hash_map_add(struct rootsim_hash_map_t *hmap, key_elem_t *key_p){
+void hash_map_add(struct rootsim_hash_map_t *hmap, key_elem_t *key_p)
+{
 	// expand if needed
 	_hash_map_expand(hmap);
 
@@ -143,7 +151,8 @@ void hash_map_add(struct rootsim_hash_map_t *hmap, key_elem_t *key_p){
 	hmap->count++;
 }
 
-static map_size_t _hash_map_index_lookup(struct rootsim_hash_map_t *hmap, key_elem_t key){
+static map_size_t _hash_map_index_lookup(struct rootsim_hash_map_t *hmap, key_elem_t key)
+{
 	struct _hash_map_node_t *nodes = hmap->nodes;
 	map_size_t capacity_mo = hmap->capacity_mo;
 
@@ -168,14 +177,16 @@ static map_size_t _hash_map_index_lookup(struct rootsim_hash_map_t *hmap, key_el
 	return UINT_MAX;
 }
 
-key_elem_t* hash_map_lookup(struct rootsim_hash_map_t *hmap, key_elem_t key){
+key_elem_t* hash_map_lookup(struct rootsim_hash_map_t *hmap, key_elem_t key)
+{
 	// find the index of the wanted key
 	map_size_t i = _hash_map_index_lookup(hmap, key);
 	// return the pair if successful
 	return i == UINT_MAX ? NULL : hmap->nodes[i].key_elem_p;
 }
 
-void hash_map_remove(struct rootsim_hash_map_t *hmap, key_elem_t key){
+void hash_map_remove(struct rootsim_hash_map_t *hmap, key_elem_t key)
+{
 	// find the index of the wanted key
 	map_size_t i = _hash_map_index_lookup(hmap, key);
 	// if unsuccessful we're done, nothing to remove here!
@@ -217,16 +228,18 @@ void hash_map_remove(struct rootsim_hash_map_t *hmap, key_elem_t key){
 	_hash_map_shrink(hmap);
 }
 
-key_elem_t* hash_map_iter(struct rootsim_hash_map_t *hmap, map_size_t *closure){
+key_elem_t* hash_map_iter(struct rootsim_hash_map_t *hmap, map_size_t *closure)
+{
 	map_size_t i = *closure;
 	struct _hash_map_node_t *nodes = hmap->nodes;
-	while(nodes[i].key_elem_p == NULL) {
-		++i;
-		if(i > hmap->capacity_mo){
-			*closure = 0;
-			return NULL;
+	while(i <= hmap->capacity_mo) {
+		if(nodes[i].key_elem_p != NULL){
+			*closure = i + 1;
+			return nodes[i].key_elem_p;
 		}
+		++i;
 	}
-	*closure = i + 1;
-	return nodes[i].key_elem_p;
+
+	*closure = 0;
+	return NULL;
 }

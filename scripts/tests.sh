@@ -125,6 +125,7 @@ function do_test_custom() {
 # Run available unit tests
 do_unit_test dymelor
 do_unit_test numerical
+do_unit_test hash_map
 
 
 # Run models to make comprehensive tests
