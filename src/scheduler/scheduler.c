@@ -159,9 +159,9 @@ void LP_main_loop(void *args)
 
 		timer event_timer;
 		timer_start(event_timer);
-
+#ifdef HAVE_APPROXIMATED_ROLLBACK
 		event_approximation_mark(current, current_evt);
-
+#endif
 		// Process the event
 		if(&abm_settings){
 			ProcessEventABM();
