@@ -391,8 +391,10 @@ void log_restore(struct lp_struct *lp, state_t *state_queue_node)
 {
 	statistics_post_data(lp, STAT_RECOVERY, 1.0);
 	restore_full(lp, state_queue_node->log);
+#ifdef HAVE_APPROXIMATED_ROLLBACK
 	if(lp->mm->m_state->is_approximated)
 		RestoreApproximated(lp->current_base_pointer);
+#endif
 }
 
 /**
