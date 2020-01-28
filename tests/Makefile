@@ -8,3 +8,6 @@ dymelor:
 
 numerical:
 	$(CC) -DOS_LINUX $(CFLAGS_PRE) ./tests/numerical.c ./src/arch/x86.o ./src/lib/numerical.o ./tests/common.c -o numerical $(CFLAGS_POST)
+
+hash_map:
+	$(CC) -DOS_LINUX $(CFLAGS_PRE) ./tests/hash_map.c ./src/datatypes/hash_map.o ./tests/common.c -o hash_map $(CFLAGS_POST)

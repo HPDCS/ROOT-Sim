@@ -67,10 +67,6 @@ typedef struct _state_t {
 
 	/* Library state fields */
 	numerical_state_t numerical;
-	
-	topology_t *topology;
-
-	void *region_data;
 } state_t;
 
 struct lp_struct;

@@ -50,37 +50,37 @@
 #define array_shrink(self) ({ \
 		if (array_count(self) > INIT_SIZE_ARRAY && array_count(self) * 3 <= array_capacity(self)) { \
 			array_capacity(self) /= 2; \
-			array_items(self) = rsrealloc(array_items(self), array_capacity(self) * sizeof(*array_items(self))); \
+			array_items(self) = __wrap_realloc(array_items(self), array_capacity(self) * sizeof(*array_items(self))); \
 		} \
 	})
 
 #define array_expand(self) ({ \
 		if(array_count(self) >= array_capacity(self)){\
 			array_capacity(self) *= 2; \
-			array_items(self) = rsrealloc(array_items(self), array_capacity(self) * sizeof(*array_items(self))); \
+			array_items(self) = __wrap_realloc(array_items(self), array_capacity(self) * sizeof(*array_items(self))); \
 		} \
 	})
 
 #define array_new(type) ({ \
 		rootsim_array(type) *__newarr; \
-		__newarr = rsalloc(sizeof(*__newarr)); \
+		__newarr = __wrap_malloc(sizeof(*__newarr)); \
 		array_init(*__newarr);\
 		__newarr; \
 	})
 
 #define array_free(self) ({ \
-		rsfree(array_items(self)); \
-		rsfree(&(self)); \
+		__wrap_free(array_items(self)); \
+		__wrap_free(&(self)); \
 	})
 
 #define array_init(self) ({ \
 		array_capacity(self) = INIT_SIZE_ARRAY; \
-		array_items(self) = rsalloc(array_capacity(self) * sizeof(*array_items(self))); \
+		array_items(self) = __wrap_malloc(array_capacity(self) * sizeof(*array_items(self))); \
 		array_count(self) = 0; \
 	})
 
 #define array_fini(self) ({ \
-		rsfree(array_items(self)); \
+		__wrap_free(array_items(self)); \
 	})
 //fixme array_expand doesn't work when reserving with count high since it only doubles once
 #define array_reserve(self, count) ({ \
@@ -168,7 +168,7 @@
 		memcpy(&array_count(self), (mem_area), sizeof(array_count(self))); \
 		(mem_area) = ((unsigned char *)(mem_area)) + sizeof(array_count(self)); \
 		array_capacity(self) = max(array_count(self), INIT_SIZE_ARRAY); \
-		array_items(self) = rsalloc(array_capacity(self) * sizeof(*array_items(self))); \
+		array_items(self) = __wrap_malloc(array_capacity(self) * sizeof(*array_items(self))); \
 		memcpy(array_items(self), (mem_area), array_count(self) * sizeof(*array_items(self))); \
 		(mem_area) = ((unsigned char *)(mem_area)) + (array_count(self) * sizeof(*array_items(self))); \
 	})

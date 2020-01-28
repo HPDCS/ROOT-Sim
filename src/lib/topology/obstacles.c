@@ -9,7 +9,7 @@
 #include <lib/topology.h>
 
 #include <math.h>
-
+#include <mm/dymelor.h>
 #include <scheduler/scheduler.h>
 #include <lib/jsmn_helper.h>
 #include <lib/numerical.h>
@@ -61,7 +61,7 @@ topology_t *topology_obstacles_init(unsigned this_region_id, void *topology_data
 	const unsigned lp_cnt = topology_global.lp_cnt;
 
 	// allocate the topology struct, we use a single allocation for all the stuff we need
-	topology_t* topology = rsalloc(topology_global.chkp_size);
+	topology_t* topology = __wrap_malloc(topology_global.chkp_size);
 
 	topology->prev_next_cache = (unsigned *)(((char *)topology->data) + bitmap_required_size(lp_cnt));
 

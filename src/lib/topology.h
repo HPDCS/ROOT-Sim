@@ -24,6 +24,7 @@ extern struct _topology_global_t{
 
 // this initializes the topology environment
 void topology_init(void);
+void topology_per_lp_init(void);
 
 //used internally (also in abm_layer module) to schedule our reserved events TODO: move in a more system-like module
 void UncheckedScheduleNewEvent(unsigned int gid_receiver, simtime_t timestamp, unsigned int event_type, void *event_content, unsigned int event_size);

@@ -9,7 +9,7 @@
 #include <lib/topology.h>
 
 #include <math.h>
-
+#include <mm/dymelor.h>
 #include <scheduler/scheduler.h>
 #include <lib/jsmn_helper.h>
 #include <lib/numerical.h>
@@ -21,6 +21,7 @@
 #include <serial/serial.h>
 
 struct _topology_global_t topology_global;
+static void *t_data = NULL;
 
 //used internally (also in abm_layer module) to schedule our reserved events TODO: move in a more system-like module
 void UncheckedScheduleNewEvent(unsigned int gid_receiver, simtime_t timestamp, unsigned int event_type, void *event_content, unsigned int event_size){
@@ -210,8 +211,6 @@ void topology_init(void) {
 		// the weak symbol isn't defined: we aren't needed
 		return;
 
-	// this is the data extracted from the topology file
-	void *t_data = NULL;
 	// basic sanity check
 	if(topology_settings.out_of_topology >= n_prc_tot)
 		rootsim_error(true, "Not enough LPs to run even a default topology with %u control LPs", topology_settings.out_of_topology);
@@ -236,26 +235,25 @@ void topology_init(void) {
 			topology_global.chkp_size = size_checkpoint_obstacles();
 			break;
 	}
-	// initialize the topology struct
-	foreach_lp(lp){
-		if(lp->gid.to_int >= topology_global.lp_cnt){
+}
+
+void topology_per_lp_init(void){
+	struct lp_struct *lp = current;
+	if(lp->gid.to_int >= topology_global.lp_cnt){
 			// this LP isn't part of the underlying topology
-			lp->topology = NULL;
-		}
-		switch(topology_settings.type){
-			case TOPOLOGY_COSTS:
-				lp->topology = topology_costs_init(lp->gid.to_int, t_data);
-				break;
-			case TOPOLOGY_OBSTACLES:
-				lp->topology = topology_obstacles_init(lp->gid.to_int, t_data);
-				break;
-			case TOPOLOGY_PROBABILITIES:
-				lp->topology = topology_probabilities_init(lp->gid.to_int, t_data);
-				break;
-		}
+		lp->topology = NULL;
 	}
-	// free the topology data read from file
-	rsfree(t_data);
+       switch(topology_settings.type){
+	       case TOPOLOGY_COSTS:
+		       lp->topology = topology_costs_init(lp->gid.to_int, t_data);
+		       break;
+	       case TOPOLOGY_OBSTACLES:
+		       lp->topology = topology_obstacles_init(lp->gid.to_int, t_data);
+		       break;
+	       case TOPOLOGY_PROBABILITIES:
+		       lp->topology = topology_probabilities_init(lp->gid.to_int, t_data);
+		       break;
+       }
 }
 
 void SetValueTopology(unsigned from, unsigned to, double value) {
@@ -326,6 +324,9 @@ void ProcessEventTopology(void){
 					rootsim_error(true, "This shouldn't happen. Contact the maintainer");
 			}
 			break;
+		case INIT:
+			topology_per_lp_init();
+			/* fallthrough */
 		default:
 			switch_to_application_mode();
 			current->ProcessEvent(current->gid.to_int, current_evt->timestamp, current_evt->type, current_evt->event_content, current_evt->size, current->current_base_pointer);
