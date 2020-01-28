@@ -114,10 +114,12 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 
 			// Setup channel state
 			state->core_data = malloc(sizeof(struct core_data_t));
+			bzero(state->core_data, sizeof(struct core_data_t));
+			
 			state->core_data->channel_state = malloc(sizeof(unsigned int) * (CHANNELS_PER_CELL / BITS + 1));
+			bzero(state->core_data->channel_state, sizeof(unsigned int) * (CHANNELS_PER_CELL / BITS + 1));
                         state->core_data->ta = ref_ta;
-
-                        bzero(state->core_data->channel_state, sizeof(unsigned int) * (CHANNELS_PER_CELL / BITS + 1));
+                        
 
 			// Start the simulation
 			timestamp = (simtime_t) (20 * Random());

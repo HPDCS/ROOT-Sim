@@ -99,11 +99,11 @@ void adopt_new_gvt(simtime_t new_gvt)
 
 	state_t *time_barrier_pointer[n_prc_per_thread];
 	bool compute_snapshot;
+	memset(time_barrier_pointer, 0, sizeof(state_t *) * n_prc_per_thread);
 
 	// Snapshot should be recomputed only periodically
 	snapshot_cycles++;
-	compute_snapshot =
-	    ((snapshot_cycles % rootsim_config.gvt_snapshot_cycles) == 0);
+	compute_snapshot = ((snapshot_cycles % rootsim_config.gvt_snapshot_cycles) == 0);
 
 	// Precompute the time barrier for each process
 	i = 0;
