@@ -3,7 +3,7 @@
 
 CC = rootsim-cc
 CFLAGS = -g -Wall -Wextra
-TARGET = model
+TARGET = robot_explore
 
 SRCS = application.c agent.c compatibility.c functions.c region.c
 OBJS = $(SRCS:.c=.o)

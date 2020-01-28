@@ -3,7 +3,7 @@
 
 CC = rootsim-cc
 CFLAGS = -g -Wall -Wextra
-TARGET = model
+TARGET = traffic
 
 SRCS = application.c functions.c init.c normal_cdf.c
 OBJS = $(SRCS:.c=.o)

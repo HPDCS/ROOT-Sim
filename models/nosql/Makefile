@@ -3,7 +3,7 @@
 
 CC = rootsim-cc
 CFLAGS = -g -Wall -Wextra
-TARGET = model
+TARGET = nosql
 
 SRCS = application.c
 OBJS = $(SRCS:.c=.o)

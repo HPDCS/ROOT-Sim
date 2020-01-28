@@ -3,7 +3,7 @@
 
 CC = rootsim-cc
 CFLAGS = -g -Wall -Wextra
-TARGET = model
+TARGET = tcar
 
 SRCS = application.c neighbours.c
 OBJS = $(SRCS:.c=.o)

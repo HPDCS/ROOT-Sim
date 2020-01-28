@@ -3,9 +3,9 @@
 
 CC = rootsim-cc
 CFLAGS = -g -Wall -Wextra
-TARGET = model
+TARGET = phold
 
-SRCS = application.c functions_app.c
+SRCS = application.c functions.c
 OBJS = $(SRCS:.c=.o)
 
 .PHONY: clean

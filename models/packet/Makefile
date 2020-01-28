@@ -3,7 +3,7 @@
 
 CC = rootsim-cc
 CFLAGS = -g -Wall -Wextra
-TARGET = model
+TARGET = packet
 
 SRCS = application.c
 OBJS = $(SRCS:.c=.o)
