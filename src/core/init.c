@@ -90,10 +90,7 @@ enum _opt_codes{
 	OPT_SEED,
 	OPT_SERIAL,
 	OPT_NO_CORE_BINDING,
-
-#ifdef HAVE_PREEMPTION
 	OPT_PREEMPTION,
-#endif
 	OPT_LAST
 };
 
@@ -173,10 +170,7 @@ static const struct argp_option argp_options[] = {
 	{"serial",		OPT_SERIAL,		0,		0,		"Run a serial simulation (using Calendar Queues)", 0},
 	{"sequential",		OPT_SERIAL,		0,		OPTION_ALIAS,	NULL, 0},
 	{"no-core-binding",	OPT_NO_CORE_BINDING,	0,		0,		"Disable the binding of threads to specific physical processing cores", 0},
-
-#ifdef HAVE_PREEMPTION
 	{"no-preemption",	OPT_PREEMPTION,		0,		0,		"Disable Preemptive Time Warp", 0},
-#endif
 	{0}
 };
 
@@ -228,9 +222,9 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 
 	switch (key) {
 		case OPT_NP:
-			if(strcmp(arg, "auto") == 0){
+			if(strcmp(arg, "auto") == 0) {
 				n_cores = get_cores();
-			}else{
+			} else {
 				n_cores = parse_ullong_limits(1, UINT_MAX);
 			}
 			break;
@@ -306,11 +300,9 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 			rootsim_config.core_binding = false;
 			break;
 
-#ifdef HAVE_PREEMPTION
 		case OPT_PREEMPTION:
 			rootsim_config.disable_preemption = true;
 			break;
-#endif
 
 		case ARGP_KEY_INIT:
 
@@ -333,10 +325,7 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 			rootsim_config.set_seed = 0;
 			rootsim_config.serial = false;
 			rootsim_config.core_binding = true;
-
-#ifdef HAVE_PREEMPTION
 			rootsim_config.disable_preemption = false;
-#endif
 			break;
 
 		case ARGP_KEY_SUCCESS:
@@ -363,6 +352,7 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 			print_config();
 
 			break;
+			
 			/* these functionalities are not needed
 		case ARGP_KEY_ARGS:
 		case ARGP_KEY_NO_ARGS:
@@ -388,6 +378,7 @@ static struct argp_child argp_child[2] = {
 };
 
 static struct argp argp = { argp_options, parse_opt, args_doc, doc, argp_child, 0, 0 };
+
 
 /**
 * This function initializes the simulator
@@ -454,3 +445,122 @@ void SystemInit(int argc, char **argv)
 }
 
 
+/**
+* Expose to the simulation model the internal configuration of the simulator, to
+* allow fine-tuning of the model depending on the current runtime configuration
+* and/or command-line parameters.
+*
+* @author Alessandro Pellegrini
+*
+* @param which the capability which the model is querying for availability
+* @param info if this parameter is non-NULL, additional information is sent back
+* 		to the application in the appropriate corresponding field. If this
+* 		member is non-NULL, the @c capability member is set to @c which value,
+* 		to let the model know what member of the union is meaningful.
+*/
+bool CapabilityAvailable(enum capability_t which, struct capability_info_t *info)
+{
+
+	// Early evaluate things that don't have any information to provide
+	switch(which) {
+		case CAP_NPWD:
+			return rootsim_config.checkpointing == STATE_SAVING_COPY;
+		case CAP_FULL:
+			return true;
+		case CAP_INC:
+			return false; // not implemented
+		case CAP_A:
+			return false; // not implemented
+		case CAP_DETERMINISTIC_SEED:
+			return rootsim_config.deterministic_seed;
+		case CAP_SERIAL:
+			return rootsim_config.serial;
+		case CAP_CORE_BINDING:
+			return !rootsim_config.core_binding;
+		case CAP_PREEMPTION:
+			return !rootsim_config.disable_preemption;
+		case CAP_ECS:
+			return false; // not implemented
+		case CAP_LINUX_MODULES:
+			return false; // not implemented
+		case CAP_LP_REBINDING:
+			#ifdef HAVE_LP_REBINDING
+			return true;
+			#else
+			return false;
+			#endif
+		case CAP_MPI:
+			#ifdef HAVE_MPI
+			return true;
+			#else
+			return false;
+			#endif
+		default:
+			break; // Just to silence compiler's warnings [-Wswitch]: other values are evaluated later
+	}
+	
+
+	// With respect to the above, evaluate here in case no information is requested
+	if(info == NULL) {
+		switch(which) {
+			case CAP_SCHEDULER ... CAP_VERBOSE:
+				return true;
+			case CAP_SIMULATION_TIME:
+				return rootsim_config.simulation_time > 0;
+			default:
+				rootsim_error(false, "Requesting information for an unknown capability\n");
+				return false;
+		}
+	}
+
+	// Here we do the most work
+	info->capability = which;
+
+	switch(which) {
+		case CAP_SCHEDULER:
+			info->scheduler = rootsim_config.scheduler;
+			return true;
+		case CAP_CKTRM_MODE:
+			info->termination_mode = rootsim_config.check_termination_mode;
+			return true;
+		case CAP_LPS_DISTRIBUTION:
+			info->lps_distribution = rootsim_config.lps_distribution;
+			return true;
+		case CAP_STATS:
+			info->stats = rootsim_config.stats;
+			return true;
+		case CAP_STATE_SAVING:
+			info->state_saving = rootsim_config.ckpt_mode;
+			return true;
+		case CAP_THREADS:
+			info->lps = n_cores;
+			return true;
+		case CAP_LPS:
+			info->lps = n_prc_tot;
+			return true;
+		case CAP_OUTPUT_DIR:
+			info->output_dir = rootsim_config.output_dir;
+			return true;
+		case CAP_P:
+			info->ckpt_period = rootsim_config.ckpt_period;
+			return true;
+		case CAP_GVT:
+			info->gvt_time_period = rootsim_config.gvt_time_period;
+			return true;
+		case CAP_GVT_SNAPSHOT_CYCLES:
+			info->gvt_snapshot_cycles = rootsim_config.gvt_snapshot_cycles;
+			return true;
+		case CAP_SEED:
+			info->seed = rootsim_config.set_seed;
+			return true;
+		case CAP_VERBOSE:
+			info->verbose = rootsim_config.verbose;
+			return true;
+		case CAP_SIMULATION_TIME:
+			info->simulation_time = rootsim_config.simulation_time;
+			return rootsim_config.simulation_time > 0;
+		default:
+			rootsim_error(false, "Requesting information for an unknown capability\n");
+			return false;
+	}
+}
