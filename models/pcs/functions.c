@@ -77,7 +77,7 @@ double generate_path_gain(void)
 void deallocation(lp_state_type *pointer, unsigned ch)
 {
 	if(!CHECK_CHANNEL(pointer, ch)){
-		printf("Unable to deallocate channel is %d\n", ch);
+		printf("Unable to deallocate channel %d\n", ch);
 		abort();
 		return;
 	}
@@ -102,26 +102,32 @@ void fading_recheck(lp_state_type *pointer)
 
 unsigned allocation(lp_state_type *pointer)
 {
-	unsigned int i;
+	unsigned int i, j = UINT_MAX;
 	channel *c;
 	double summ = 0.0;
 
 	for(i = 0; i < channels_per_cell; ++i){
-		c = &pointer->channels[i];
-
-		if(!CHECK_CHANNEL(pointer, i)){
-			SET_CHANNEL(pointer, i);
-			initialize_channel(c, summ);
-			return i;
+		if(CHECK_CHANNEL(pointer, i)){
+			c = &pointer->channels[i];
+			c->fading = Expent(1.0);
+			summ += generate_cross_path_gain() * c->power * c->fading;
+		} else {
+			if(j == UINT_MAX){
+				SET_CHANNEL(pointer, i);
+				j = i;
+			}
 		}
-
-		summ += generate_cross_path_gain() * c->power * c->fading;
 	}
 
-	printf("Unable to allocate channel, but the counter says I have %d available channels\n", pointer->channel_counter);
-	fflush(stdout);
-	abort();
-	return UINT_MAX;
+	if(j == UINT_MAX){
+		printf("Unable to allocate channel, but the counter says I have %d available channels\n", pointer->channel_counter);
+		fflush(stdout);
+		abort();
+		return UINT_MAX;
+	}
+
+	initialize_channel(&pointer->channels[j], summ);
+	return j;
 }
 
 unsigned reallocate_channels(lp_state_type *pointer)
@@ -132,20 +138,22 @@ unsigned reallocate_channels(lp_state_type *pointer)
 	double summ = 0.0;
 
 	for(i = 0; i < channels_per_cell; ++i){
-		c = &pointer->channels[i];
-
 		if(CHECK_CHANNEL(pointer, i)){
+			c = &pointer->channels[i];
 			initialize_channel(c, summ);
+			c->fading = Expent(1.0);
+			summ += generate_cross_path_gain() * c->power * c->fading;
 			++count;
 		}
 
-		summ += generate_cross_path_gain() * c->power * c->fading;
+
 	}
 	return count;
 }
 
 static void initialize_channel(channel *c, double sum)
 {
+
 	if (fabsf(sum) < FLT_EPSILON) {
 		// The newly allocated channel receives the minimal power
 		c->power = MIN_POWER;

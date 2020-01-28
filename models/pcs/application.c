@@ -84,8 +84,6 @@ struct _topology_settings_t topology_settings = {.default_geometry = TOPOLOGY_HE
 void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_type *event_content, unsigned int size, void *ptr) {
 	(void)size;
 	
-	//printf("%d executing %d at %f\n", me, event_type, now);
-
 	event_content_type new_event_content;
 
 	new_event_content.cell = -1;
@@ -108,21 +106,19 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 				printf("Out of memory!\n");
 				exit(EXIT_FAILURE);
 			}
-
 			SetState(state);
-
 			bzero(state, sizeof(lp_state_type));
 
 			state->channel_counter = channels_per_cell;
-
 			state->channels = malloc(sizeof(channel) * channels_per_cell);
 
 			// Setup channel state
 			state->core_data = malloc(sizeof(struct core_data_t));
+			bzero(state->core_data, sizeof(struct core_data_t));
+			
 			state->core_data->channel_state = malloc(sizeof(unsigned int) * (CHANNELS_PER_CELL / BITS + 1));
+			bzero(state->core_data->channel_state, sizeof(unsigned int) * (CHANNELS_PER_CELL / BITS + 1));
                         state->core_data->ta = ref_ta;
-
-                        bzero(state->core_data->channel_state, sizeof(unsigned int) * (CHANNELS_PER_CELL / BITS + 1));
                         //CoreMemoryMark(state->core_data);
 
 			// Start the simulation
@@ -132,8 +128,8 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 			// fading recheck
 			timestamp = (simtime_t) (FADING_RECHECK_FREQUENCY * Random());
 			ScheduleNewEvent(me, timestamp, FADING_RECHECK, NULL, 0);
-
-		        //RollbackModeSet(true);
+			
+			//RollbackModeSet(true);
 			break;
 
 
@@ -172,8 +168,6 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 			new_event_content.channel = allocation(state);
 			new_event_content.from = me;
 			new_event_content.sent_at = now;
-
-//				printf("(%d) allocation %d at %f\n", me, new_event_content.channel, now);
 
 			// Determine call duration
 			switch (DURATION_DISTRIBUTION) {
@@ -289,9 +283,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 
 void RestoreApproximated(void *ptr) {
 	lp_state_type *state = (lp_state_type*)ptr;
-
 	unsigned occupied = reallocate_channels(state);
-
 	state->channel_counter = channels_per_cell - occupied;
 }
 

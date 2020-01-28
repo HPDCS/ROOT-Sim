@@ -27,7 +27,7 @@
 #define CHAN_BUSY	1
 #define CHAN_FREE	0
 
-/* EVENT TYPES - PCS */
+/* EVENT TYPES */
 #define START_CALL	20
 #define END_CALL	21
 #define HANDOFF_LEAVE	30
@@ -87,7 +87,6 @@ typedef struct _lp_state_type{
 	unsigned int blocked_on_handoff; // Number of calls blocked due to lack of free channels in HANDOFF_RECV
 	unsigned int leaving_handoffs; // How many calls were diverted to a different cell
 	unsigned int arriving_handoffs; // How many calls were received from other cells
-
 	struct core_data_t *core_data;
 	struct _channel *channels;
 } lp_state_type;

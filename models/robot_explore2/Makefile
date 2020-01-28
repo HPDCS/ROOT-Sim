@@ -3,9 +3,9 @@
 
 CC = rootsim-cc
 CFLAGS = -g -Wall -Wextra
-TARGET = pcs
+TARGET = robot_explore
 
-SRCS = application.c functions.c
+SRCS = application.c agent.c compatibility.c functions.c region.c
 OBJS = $(SRCS:.c=.o)
 
 .PHONY: clean
@@ -20,3 +20,4 @@ $(TARGET): $(OBJS)
 
 clean:
 	$(RM) *.o $(TARGET)
+

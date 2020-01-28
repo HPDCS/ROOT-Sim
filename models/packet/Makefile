@@ -1,5 +1,8 @@
+# This is a Makefile which allows to compile a simulation
+# model using the HPC ROOT-Sim runtime.
+
 CC = rootsim-cc
-CFLAGS = -Wall -Wextra
+CFLAGS = -g -Wall -Wextra
 TARGET = packet
 
 SRCS = application.c
