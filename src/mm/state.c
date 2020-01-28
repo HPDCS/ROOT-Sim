@@ -156,9 +156,6 @@ unsigned int silent_execution(struct lp_struct *lp, msg_t *evt, msg_t *final_evt
 {
 	unsigned int events = 0;
 	unsigned short int old_state;
-#ifdef HAVE_APPROXIMATED_ROLLBACK
-	bool will_approximate = false;
-#endif
 
 	// current state can be either idle READY, BLOCKED or ROLLBACK, so we save it and then put it back in place
 	old_state = lp->state;
@@ -166,27 +163,20 @@ unsigned int silent_execution(struct lp_struct *lp, msg_t *evt, msg_t *final_evt
 
 	// Reprocess events. Outgoing messages are explicitly discarded, as this part of
 	// the simulation has been already executed at least once
+	if(!evt){
+				rootsim_error(true, "DAFAKKK");
+
+			}
 	while(evt != final_evt){
 		evt = list_next(evt);
+		if(!evt){
+					rootsim_error(true, "DAFAKKK");
+					break;
+				}
 		if (unlikely(!reprocess_control_msg(evt))) {
 			continue;
 		}
-
-#ifdef HAVE_APPROXIMATED_ROLLBACK
-		if (!evt->is_approximated) {
-			if(will_approximate){
-				RestoreApproximated(lp->current_base_pointer);
-				will_approximate = false;
-			}
-#endif
-			activate_LP(lp, evt);
-
-
-#ifdef HAVE_APPROXIMATED_ROLLBACK
-		} else {
-			will_approximate = true;
-		}
-#endif
+		activate_LP(lp, evt);
 		++events;
 	}
 

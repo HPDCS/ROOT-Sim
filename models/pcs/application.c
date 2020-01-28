@@ -4,7 +4,10 @@
 
 #include "application.h"
 
+#define HAVE_APPROXIMATED_ROLLBACK 0
+
 bool 	pcs_statistics = false,
+	approximated = false,
 	fading_check = false,  // Is the model set up to periodically recompute the fading of all ongoing calls?
 	variable_ta = false; // Should the call interarrival frequency change depending on the current time?
 unsigned complete_calls = COMPLETE_CALLS,
@@ -22,6 +25,7 @@ enum {
 	OPT_CC,
 	OPT_FR,
 	OPT_VTA,
+	OPT_APX,
 };
 
 const struct argp_option model_options[] = {
@@ -33,6 +37,7 @@ const struct argp_option model_options[] = {
 		{"complete-calls", OPT_CC, "INT", 0, NULL, 0},
 		{"fading-recheck", OPT_FR, NULL, 0, NULL, 0},
 		{"variable-ta", OPT_VTA, NULL, 0, NULL, 0},
+		{"approximated", OPT_APX, NULL, 0, NULL, 0},
 		{0}
 };
 
@@ -63,10 +68,13 @@ static error_t model_parse (int key, char *arg, struct argp_state *state) {
 		case OPT_VTA:
 			variable_ta = true;
 			break;
+		case OPT_APX:
+			approximated = true;
+			break;
 
 		case ARGP_KEY_SUCCESS:
-			printf("CURRENT CONFIGURATION:\ncomplete calls: %d\nTA: %f\nta_duration: %f\nta_change: %f\nchannels_per_cell: %d\nfading_recheck: %d\nvariable_ta: %d\n",
-				complete_calls, ref_ta, ta_duration, ta_change, channels_per_cell, fading_check, variable_ta);
+			printf("CURRENT CONFIGURATION:\ncomplete calls: %d\nTA: %f\nta_duration: %f\nta_change: %f\nchannels_per_cell: %d\nfading_recheck: %d\nvariable_ta: %d\napproximated: %d\n",
+				complete_calls, ref_ta, ta_duration, ta_change, channels_per_cell, fading_check, variable_ta, approximated);
 			fflush(stdout);
 			break;
 		default:
@@ -119,8 +127,14 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 			state->core_data->channel_state = malloc(sizeof(unsigned int) * (CHANNELS_PER_CELL / BITS + 1));
 			bzero(state->core_data->channel_state, sizeof(unsigned int) * (CHANNELS_PER_CELL / BITS + 1));
                         state->core_data->ta = ref_ta;
-                        //CoreMemoryMark(state->core_data);
 
+#if HAVE_APPROXIMATED_ROLLBACK
+                        if(approximated){
+                        	CoreMemoryMark(state->core_data);
+                        	CoreMemoryMark(state->core_data->channel_state);
+                        	RollbackModeSet(true);
+                        }
+#endif
 			// Start the simulation
 			timestamp = (simtime_t) (20 * Random());
 			ScheduleNewEvent(me, timestamp, START_CALL, NULL, 0);
@@ -129,7 +143,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 			timestamp = (simtime_t) (FADING_RECHECK_FREQUENCY * Random());
 			ScheduleNewEvent(me, timestamp, FADING_RECHECK, NULL, 0);
 			
-			//RollbackModeSet(true);
+
 			break;
 
 
