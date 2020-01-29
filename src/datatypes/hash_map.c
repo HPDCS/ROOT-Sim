@@ -19,7 +19,7 @@
 *
 * @file hash_map.c
 * @date 9 Nov 2018
-* @brief This header implements a simple hash map data structure
+* @brief This module implements a simple hash map data structure
 * @author Andrea Piccione
 *
 * This a simple hash map implementation, currently used in the abm layer.
@@ -226,7 +226,7 @@ size_t _hash_map_dump_size(struct _inner_hash_map_t *_i_hmap){
 }
 
 inline unsigned char * _hash_map_dump(struct _inner_hash_map_t *_i_hmap, unsigned char *_destination){
-	*((map_size_t *)_destination) = _i_hmap->capacity_mo;
+	*((map_size_t *)(void *)_destination) = _i_hmap->capacity_mo;
 	_destination += sizeof(map_size_t);
 	size_t table_cpy_size = (_i_hmap->capacity_mo + 1) * sizeof(*(_i_hmap->nodes));
 	memcpy(_destination, _i_hmap->nodes, table_cpy_size);
@@ -235,7 +235,7 @@ inline unsigned char * _hash_map_dump(struct _inner_hash_map_t *_i_hmap, unsigne
 }
 
 inline unsigned char * _hash_map_load(struct _inner_hash_map_t *_i_hmap, unsigned char *_source){
-	_i_hmap->capacity_mo = *((map_size_t *)_source);
+	_i_hmap->capacity_mo = *((map_size_t *)(void *)_source);
 	_source += sizeof(map_size_t);
 	size_t table_cpy_size = (_i_hmap->capacity_mo + 1) * sizeof(*(_i_hmap->nodes));
 	_i_hmap->nodes = rsalloc(table_cpy_size);

@@ -43,7 +43,7 @@
 	__ret; \
 })
 
-struct _visit_abm_t{
+struct _visit_abm_t {
 	unsigned region;
 	unsigned action;
 	simtime_t time;
@@ -70,7 +70,7 @@ struct _region_abm_t {
 	} neighbours_info[];
 };
 
-struct _leave_evt{
+struct _leave_evt {
 	unsigned long long key;
 	unsigned leave_code;
 };
@@ -107,7 +107,7 @@ static struct _agent_abm_t *agent_from_buffer(const unsigned char *event_content
 	// keep track of original pointer
 	const unsigned char *buffer = event_content;
 	// allocate the memory for the visiting agent
-	struct _agent_abm_t *agent = hash_map_reserve_elem(current->region->agents_table, *((const unsigned long long *)event_content));
+	struct _agent_abm_t *agent = hash_map_reserve_elem(current->region->agents_table, *((const unsigned long long *)(void *)event_content));
 	agent->leave_time = -1.0;
 	// copy uuid and user data size
 	memcpy(agent, buffer, sizeof(agent->user_data_size) + sizeof(agent->key));
@@ -136,7 +136,8 @@ static struct _agent_abm_t *agent_from_buffer(const unsigned char *event_content
 * @param agent A pointer to the agent struct to be serialized
 * @param buffer A pointer to the buffer to fill with the serialized agent
 */
-static void agent_to_buffer(struct _agent_abm_t *agent, unsigned char* buffer){
+static void agent_to_buffer(struct _agent_abm_t *agent, unsigned char* buffer)
+{
 	// we use buffer as a mobile pointer so we need to save the original value
 	unsigned char *to_send = buffer;
 	// copy relevant fields
@@ -168,7 +169,7 @@ unsigned char *abm_do_checkpoint(region_abm_t *region)
 	chkp_size_tot += hash_map_dump_size(region->agents_table);
 	struct _agent_abm_t *agent;
 	unsigned i = hash_map_count(region->agents_table);
-	while(i--){
+	while(i--) {
 		agent = &hash_map_items(region->agents_table)[i];
 		chkp_size_tot += array_dump_size(agent->future);
 		if(abm_settings.keep_history)
@@ -181,7 +182,7 @@ unsigned char *abm_do_checkpoint(region_abm_t *region)
 	ret += region->chkp_size;
 	hash_map_dump(region->agents_table, ret);
 	i = hash_map_count(region->agents_table);
-	while(i--){
+	while(i--) {
 		agent = &hash_map_items(region->agents_table)[i];
 		array_dump(agent->future, ret);
 		if(abm_settings.keep_history)
@@ -203,10 +204,10 @@ void abm_restore_checkpoint(unsigned char *data, region_abm_t *region)
 {
 	struct _agent_abm_t *agent;
 
-	assert(((region_abm_t *)data)->chkp_size == region->chkp_size);
+	assert(((region_abm_t *)(void *)data)->chkp_size == region->chkp_size);
 	// free the region allocations
 	unsigned i = hash_map_count(region->agents_table);
-	while(i--){
+	while(i--) {
 		agent = &(hash_map_items(region->agents_table)[i]);
 		array_fini(agent->future);
 		if(abm_settings.keep_history)
@@ -220,7 +221,7 @@ void abm_restore_checkpoint(unsigned char *data, region_abm_t *region)
 	//load the other allocations
 	hash_map_load(region->agents_table, data);
 	i = hash_map_count(region->agents_table);
-	while(i--){
+	while(i--) {
 		agent = &(hash_map_items(region->agents_table)[i]);
 		array_load(agent->future, data);
 		if(abm_settings.keep_history)
@@ -244,18 +245,18 @@ void abm_layer_init(void)
 	region_abm_t *region;
 
 	// settings_abm is a weak symbol, we check for its existence
-	if(!&abm_settings){
+	if(!&abm_settings) {
 		return;
 	}
 
 	const unsigned directions = DirectionsCount();
 	// the ABM API needs an underlying topology for meaningful operations!!!
-	if(!directions){
+	if(!directions) {
 		rootsim_error(true, "Topology has not been initialized!");
 		return;
 	}
 
-	foreach_lp(lp){
+	foreach_lp(lp) {
 		// we count valid neighbours
 		// todo: for constant topologies we can do better than this, we can just select not crossable regions
 		actual_neighbours = NeighboursCount(lp->gid.to_int);
@@ -272,10 +273,10 @@ void abm_layer_init(void)
 		// the nearest block is used to keep track of published data
 		region->published_data_offset = data_offset;
 		// here we assign a memory region only to valid neighbours
-		for(i = 0; i < directions; ++i){
-			if((region->neighbours_info[i].src_lp = GetReceiver(lp->gid.to_int, i, false)) == DIRECTION_INVALID){
+		for(i = 0; i < directions; ++i) {
+			if((region->neighbours_info[i].src_lp = GetReceiver(lp->gid.to_int, i, false)) == DIRECTION_INVALID) {
 				region->neighbours_info[i].data_offset = UINT_MAX;
-			}else{
+			} else {
 				data_offset += abm_settings.neighbour_data_size;
 				region->neighbours_info[i].data_offset = data_offset;
 			}
@@ -305,14 +306,14 @@ static void on_abm_visit(void)
 	// parse the entering agent
 	struct _agent_abm_t *agent = agent_from_buffer(current_evt->event_content, current_evt->size);
 
-	if(array_empty(agent->future) || array_get_at(agent->future, 0).region != current->gid.to_int){
+	if(array_empty(agent->future) || array_get_at(agent->future, 0).region != current->gid.to_int) {
 		// this is an intermediate objective to reach the next destination
 		vis.action = abm_settings.traverse_handler;
 		vis.region = current->gid.to_int;
 	} else {
 		vis = array_remove_at(agent->future, 0);
 	}
-	if(abm_settings.keep_history){
+	if(abm_settings.keep_history) {
 		vis.time = current_evt->timestamp;
 		// move the visit into the past ones
 		array_push(agent->past, vis);
@@ -336,7 +337,7 @@ static void on_abm_leave(void)
 	unsigned buffer_size;
 	// we search for the agent who's leaving
 	assert(current_evt->size == sizeof(struct _leave_evt));
-	struct _agent_abm_t *agent = hash_map_lookup(current->region->agents_table, ((struct _leave_evt *)current_evt->event_content)->key);
+	struct _agent_abm_t *agent = hash_map_lookup(current->region->agents_table, ((struct _leave_evt *)(void *)current_evt->event_content)->key);
 	if(!agent || agent->leave_time > current_evt->timestamp) {
 		// the exiting agent has been killed or already left or the agent is trying to leave too early (can happen if user decides so)
 		return; // since this is spurious we can directly return
@@ -344,26 +345,26 @@ static void on_abm_leave(void)
 
 	// seems all ok: user, do whatever you want now
 	switch_to_application_mode();
-	current->ProcessEvent(current->gid.to_int, current_evt->timestamp, ((struct _leave_evt *)current_evt->event_content)->leave_code, current_evt->event_content, sizeof(agent->key), current->current_base_pointer);
+	current->ProcessEvent(current->gid.to_int, current_evt->timestamp, ((struct _leave_evt *)(void *)current_evt->event_content)->leave_code, current_evt->event_content, sizeof(agent->key), current->current_base_pointer);
 	switch_to_platform_mode();
 	// we search again for the agent who's leaving (the user could have possibly killed him)
-	agent = hash_map_lookup(current->region->agents_table, ((struct _leave_evt *)current_evt->event_content)->key);
-	if(!agent || agent->leave_time > current_evt->timestamp){
+	agent = hash_map_lookup(current->region->agents_table, ((struct _leave_evt *)(void *)current_evt->event_content)->key);
+	if(!agent || agent->leave_time > current_evt->timestamp) {
 		// the capricious user has decided against the agent departure
 		return;
 	}
 	// well, the agent is actually leaving after all...
 	unsigned next_hop = UINT_MAX;
-	switch(topology_settings.type){
+	switch(topology_settings.type) {
 		case TOPOLOGY_OBSTACLES:
 			// fixme: the user may want to use binary topologies with wandering agents
 		case TOPOLOGY_COSTS:
 			// if we have no set destination no point in selecting a next hop
 			if(!array_empty(agent->future)){
-				if(array_peek(agent->future).region == current->gid.to_int){
+				if(array_peek(agent->future).region == current->gid.to_int) {
 					// we don't need to move
 					next_hop = current->gid.to_int;
-				}else{
+				} else {
 					// we get one step closer to the next destination
 					next_hop = FindReceiverToward(array_peek(agent->future).region);
 				}
@@ -377,7 +378,7 @@ static void on_abm_leave(void)
 			rootsim_error(true, "unsupported");
 	}
 
-	if(next_hop == UINT_MAX){
+	if(next_hop == UINT_MAX) {
 		// TODO communicate the user about the failed leave, maybe call user's ProcessEvent()
 		// with a proper event type, this can happen legitimately (for example the agents is
 		// surrounded by obstacles regions)
@@ -387,14 +388,14 @@ static void on_abm_leave(void)
 	if(current->gid.to_int == next_hop) {
 		// if the next chosen destination is the very same region we are already in
 		// we simply call ProcessEvent() again
-		if(array_empty(agent->future) || array_peek(agent->future).region != current->gid.to_int){
+		if(array_empty(agent->future) || array_peek(agent->future).region != current->gid.to_int) {
 			vis.region = current->gid.to_int;
 			vis.action = abm_settings.traverse_handler;
-		}else{
+		} else {
 			// we remove the current visit
 			vis = array_remove_at(agent->future, 0);
 		}
-		if(abm_settings.keep_history){
+		if(abm_settings.keep_history) {
 			// set the visit time
 			vis.time = current_evt->timestamp;
 			// we move the visit into the past ones
@@ -430,7 +431,7 @@ static void receive_update(void)
 
 	region_abm_t *region = current->region;
 	unsigned i = DirectionsCount();
-	while(i--){// FIXME linear search, maybe sort them at init for log search or sort by direction for constant indexing
+	while(i--) { // FIXME linear search, maybe sort them at init for log search or sort by direction for constant indexing
 		if(region->neighbours_info[i].src_lp == current_evt->sender.to_int){
 			memcpy(((unsigned char *)region) + region->neighbours_info[i].data_offset, current_evt->event_content, abm_settings.neighbour_data_size);
 			return;
@@ -456,8 +457,8 @@ static void update_neighbours(void)
 
 	// let's propagate the changes to other regions too
 	unsigned i = DirectionsCount();
-	while(i--){
-		if(region->neighbours_info[i].src_lp != DIRECTION_INVALID){
+	while(i--) {
+		if(region->neighbours_info[i].src_lp != DIRECTION_INVALID) {
 			UncheckedScheduleNewEvent(region->neighbours_info[i].src_lp, current_evt->timestamp, ABM_UPDATE, published_data, abm_settings.neighbour_data_size);
 		}
 	}
@@ -467,7 +468,8 @@ static void update_neighbours(void)
 * The event handler which gets called instead of the user supplied ProcessEvent() function when the abm_layer is in use.
 * The unrecognized events get passed to ProcessEventTopology() since the abm layer is based on the topology APIs.
 */
-void ProcessEventABM(void) {
+void ProcessEventABM(void)
+{
 	switch (current_evt->type) {
 
 		case ABM_VISITING:
@@ -545,11 +547,11 @@ __visible agent_t SpawnAgent(unsigned user_data_size)
 	ret->key = new_key;
 
 	// we register the visit to THIS region
-	if(abm_settings.keep_history){
+	if(abm_settings.keep_history) {
 		array_init(ret->past);
 		struct _visit_abm_t start_visit = { current->gid.to_int, ACTION_START, current_evt->timestamp };
 		array_push(ret->past, start_visit);
-	}else{
+	} else {
 		memset(&ret->past, 0, sizeof(ret->past));
 	}
 	switch_to_application_mode();

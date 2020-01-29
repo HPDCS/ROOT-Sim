@@ -213,7 +213,7 @@ void set_value_topology_costs(unsigned from, unsigned to, double value){
 
 void update_topology_costs(void){
 	topology_t *topology = current->topology;
-	struct update_topology_t *upd_p = (struct update_topology_t *)current_evt->event_content;
+	struct update_topology_t *upd_p = (struct update_topology_t *)(void *)current_evt->event_content;
 	// same ol' trick as set_value_topology_costs()
 	union _double_bits_trick *old_p = (union _double_bits_trick *)&topology->data[upd_p->loc_i];
 	// update our value through the XOR

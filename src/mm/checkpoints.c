@@ -240,8 +240,8 @@ void *log_incremental(struct lp_struct *lp) {
 	__real_memcpy(ptr, m_state, sizeof(struct malloc_state));
 	ptr = (void*)((char*)ptr + sizeof(struct malloc_state));
 	printf("%d: current size = %d\n", __LINE__, ptr - log);
-	((struct malloc_state *)log)->timestamp = lvt(lp);
-	((struct malloc_state *)log)->is_incremental = true;
+	((struct malloc_state *)(void *)log)->timestamp = lvt(lp);
+	((struct malloc_state *)(void *)log)->is_incremental = true;
 
 	for(i = 0; i < m_state->num_areas; i++){
 

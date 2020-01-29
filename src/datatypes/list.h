@@ -95,8 +95,8 @@ typedef struct rootsim_list {
 
 /// This macro retrieves the key of a payload data structure given its offset, and casts the value to double.
 #define get_key(data) ({\
-			char *__key_ptr = ((char *)(data) + __key_position);\
-			double *__key_double_ptr = (double *)__key_ptr;\
+			void *__key_ptr = ((char *)(data) + __key_position);\
+			double *__key_double_ptr = (double *)(__key_ptr);\
 			*__key_double_ptr;\
 		      })
 

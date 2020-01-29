@@ -50,17 +50,16 @@
 * @param size The number of bytes being updated
 */
 __attribute__((used))
-void __write_mem(unsigned char *address, size_t size)
+void __write_mem(void *address, size_t size)
 {
-	register long long _rsp __asm__	("rsp");
-	unsigned char *rsp = (unsigned char *)_rsp;
+	void *stack = __builtin_frame_address(0);
 
 	struct malloc_area *m_area;
 	struct malloc_state *m_state;
 	size_t bitmap_size, chk_size;
 	int i, first_chunk, last_chunk;
 
-	if(address > rsp)
+	if(address > stack)
 		return;
 
 	assert(current != NULL);
@@ -80,7 +79,7 @@ void __write_mem(unsigned char *address, size_t size)
 			continue;
 
 		chk_size = UNTAGGED_CHUNK_SIZE(m_area);
-		if (address >= (unsigned char *)m_area->area && address < (unsigned char *)m_area->area + chk_size * m_area->num_chunks) {
+		if (address >= m_area->area && address < (void *)((unsigned char *)m_area->area + chk_size * m_area->num_chunks)) {
 			break;
 		}
 	}

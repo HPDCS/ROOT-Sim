@@ -599,7 +599,7 @@ void dump_msg_content(msg_t *msg)
 	printf("\tsend_time: %f\n", msg->send_time);
 	printf("\tmark: %llu\n", msg->mark);
 	printf("\trendezvous_mark: %llu\n", msg->rendezvous_mark);
-	printf("\tsize: %d\n", msg->size);
+	printf("\tsize: %zu\n", msg->size);
 }
 
 

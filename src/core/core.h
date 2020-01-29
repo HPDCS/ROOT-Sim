@@ -189,7 +189,7 @@ typedef struct _msg_t {
 	unsigned long long rendezvous_mark;	/// Unique identifier of the message, used for rendez-vous events
 
 	// Model data
-	unsigned int size;
+	size_t size;
 	unsigned char event_content[];
 } msg_t;
 

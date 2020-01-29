@@ -167,7 +167,7 @@ struct slab_chain {
 	struct slab_header *partial, *empty, *full;
 };
 
-#define get_top_pointer(ptr) ((unsigned long long *)((char *)ptr - sizeof(unsigned long long)))
+#define get_top_pointer(ptr) ((unsigned long long *)(void *)((char *)ptr - sizeof(unsigned long long)))
 #define get_area_top_pointer(ptr) ( (struct malloc_area **)(*get_top_pointer(ptr)) )
 #define get_area(ptr) ( *(get_area_top_pointer(ptr)) )
 
@@ -182,7 +182,7 @@ struct slab_chain {
  ***************/
 
 // DyMeLoR API
-__attribute__((used)) void __write_mem(unsigned char *address, size_t size);
+__attribute__((used)) void __write_mem(void *address, size_t size);
 extern size_t get_state_size(int);
 extern size_t get_log_size(struct malloc_state *);
 extern size_t get_inc_log_size(void *);

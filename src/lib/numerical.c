@@ -58,16 +58,14 @@ static double do_random(void)
 
 	seed1 = (uint32_t *) & (current->numerical.seed);
 	seed2 =
-	    (uint32_t *) ((char *)&(current->numerical.seed) +
-			  (sizeof(uint32_t)));
+	    (uint32_t *)(void *)((char *)&(current->numerical.seed) + (sizeof(uint32_t)));
 
 	*seed1 = 36969u * (*seed1 & 0xFFFFu) + (*seed1 >> 16u);
 	*seed2 = 18000u * (*seed2 & 0xFFFFu) + (*seed2 >> 16u);
 
 	// The magic number below is 1/(2^32 + 2).
 	// The result is strictly between 0 and 1.
-	return (((*seed1 << 16u) + (*seed1 >> 16u) + *seed2) +
-		1.0) * 2.328306435454494e-10;
+	return (((*seed1 << 16u) + (*seed1 >> 16u) + *seed2) + 1.0) * 2.328306435454494e-10;
 
 }
 
@@ -264,7 +262,7 @@ static seed_type sanitize_seed(seed_type cur_seed)
 {
 
 	uint32_t *seed1 = (uint32_t *) &(cur_seed);
-	uint32_t *seed2 = (uint32_t *) ((char *)&(cur_seed) + (sizeof(uint32_t)));
+	uint32_t *seed2 = (uint32_t *)(void *)((char *)&(cur_seed) + (sizeof(uint32_t)));
 
 	// Sanitize seed1
 	// Any integer multiple of 0x9068FFFF, including 0, is a bad state

@@ -82,7 +82,7 @@ __thread struct lp_struct *current;
  */
 __thread msg_t *current_evt;
 
-/*
+/**
 * This function initializes the scheduler. In particular, it relies on MPI to broadcast to every simulation kernel process
 * which is the actual scheduling algorithm selected.
 *
@@ -320,7 +320,7 @@ bool check_rendevouz_request(struct lp_struct *lp)
 */
 void schedule(void)
 {
-	struct lp_struct *next;
+	struct lp_struct *next = NULL;
 	msg_t *event;
 
 #ifdef HAVE_CROSS_STATE
@@ -330,12 +330,12 @@ void schedule(void)
 	// Find the next LP to be scheduled
 	switch (rootsim_config.scheduler) {
 
-	case SCHEDULER_STF:
-		next = smallest_timestamp_first();
-		break;
+		case SCHEDULER_STF:
+			next = smallest_timestamp_first();
+			break;
 
-	default:
-		rootsim_error(true, "unrecognized scheduler!");
+		default:
+			rootsim_error(true, "unrecognized scheduler!");
 	}
 
 	// No logical process found with events to be processed
