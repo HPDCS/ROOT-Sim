@@ -441,7 +441,7 @@ cat<<EOF
 
    * ROOT-Sim Configuration on Current Machine *
 
-CPU Architecture.......... : ${host_cpu}
+CPU Architecture.......... : ${host_cpu} (C: ${CC}, C++: ${CXX})
 Operating System.......... : ${host_os}
 Debugging Support......... : ${enable_debug}
 MPI....................... : ${enable_mpi}
