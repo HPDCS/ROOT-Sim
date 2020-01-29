@@ -99,7 +99,7 @@ namespace {
                             DataLayout *dataLayout = new DataLayout(&M);
                             uint64_t storeSize = dataLayout->getTypeStoreSize(pointerType->getPointerElementType());
 
-                            insertCallBefore(inst, &M, address_of_store, cast<PointerType>(address_of_store->getType()), storeSize);
+                            //insertCallBefore(inst, &M, address_of_store, cast<PointerType>(address_of_store->getType()), storeSize);
 
                             errs() << " [STORE]";
                         } else if (isa<MemSetInst>(&(*BI))) {
@@ -129,7 +129,7 @@ namespace {
             ValueToValueMapTy VMap;
             Function *NewF = Function::Create(toClone->getFunctionType(),
                                               toClone->getLinkage(),
-                                              "cloned_" + toClone->getName(),
+                                              toClone->getName() + "_instr",
                                               M);
             ClonedCodeInfo info;
             Function::arg_iterator DestI = NewF->arg_begin();
