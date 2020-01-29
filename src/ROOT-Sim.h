@@ -272,7 +272,8 @@ enum capability_t
 	CAP_ECS,
 	CAP_LINUX_MODULES,
 	CAP_LP_REBINDING,
-	CAP_MPI
+	CAP_MPI,
+	CAP_SILENT
 };
 
 struct capability_info_t {

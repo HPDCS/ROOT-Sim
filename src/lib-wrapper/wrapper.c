@@ -29,7 +29,11 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
+#include <stdarg.h>
+
 #include <core/timer.h>
+#include <core/init.h>
 #include <scheduler/scheduler.h>
 #include <mm/dymelor.h>
 
@@ -41,8 +45,14 @@ char *__real_strncat(char *, const char *, size_t);
 void *__real_memcpy(void *, const void *, size_t);
 void *__real_memmove(void *, const void *, size_t);
 void *__real_memset(void *, int, size_t);
+size_t __real_fwrite(const void *ptr, size_t size, size_t nmemb, FILE *stream);
+int __real_fputc(int c, FILE *stream);
+int __real_fputs(const char *s, FILE *stream);
+int __real_vfprintf(FILE *stream, const char *format, va_list ap);
 
-// Actual wrappers
+
+/* memory-related wrappers */
+
 char *__wrap_strcpy(char *s, const char *ct)
 {
 	dirty_mem(s, -1);
@@ -103,4 +113,92 @@ char *__wrap_strndup(const char *s, size_t n)
 	__real_strncpy(ret, s, n);
 	dirty_mem(ret, n);
 	return ret;
+}
+
+/* stdio.h wrappers */
+
+inline int __wrap_vfprintf(FILE *stream, const char *format, va_list ap)
+{
+	int ret = 0;
+	
+	if(!rootsim_config.silent_output || stream != stdout)
+		ret = __real_vfprintf(stream, format, ap);
+
+	return ret;	
+}
+
+int __wrap_vprintf(const char *format, va_list ap)
+{
+	return __wrap_vfprintf(stdout, format, ap);;
+}
+
+int __wrap_printf(const char *format, ...)
+{
+	int ret = 0;
+	va_list args;
+	va_start(args, format);
+
+	ret = __wrap_vfprintf(stdout, format, args);
+
+	va_end(args);
+	return ret;
+}
+
+int __wrap_fprintf(FILE *stream, const char *format, ...)
+{
+	int ret = 0;
+	va_list args;
+	va_start(args, format);
+
+	ret = __wrap_vfprintf(stream, format, args);
+
+	va_end(args);
+	return ret;
+}
+
+inline int __wrap_fputs(const char *s, FILE *stream)
+{
+	int ret = 0;
+
+	if(!rootsim_config.silent_output || stream != stdout)
+		ret = __real_fputs(s, stream);
+
+	return ret;
+}
+
+int __wrap_puts(const char *s)
+{
+	int ret = 0;
+	
+	ret += __wrap_fputs(s, stdout);
+	ret += __wrap_fputs("\n", stdout); // puts() writes the string s and a trailing newline to stdout.
+	
+	return ret;
+}
+
+size_t __wrap_fwrite(const void *ptr, size_t size, size_t nmemb, FILE *stream)
+{
+	if(stream == stdout && rootsim_config.silent_output)
+		return 0;
+	return __real_fwrite(ptr, size, nmemb, stream);
+}
+
+inline int __wrap_fputc(int c, FILE *stream)
+{
+	int ret = 0;
+	
+	if(!rootsim_config.silent_output || stream != stdout)
+		ret = __real_fputc(c, stream);
+
+	return ret;
+}
+
+int __wrap_putc(int c, FILE *stream)
+{
+	return __wrap_fputc(c, stream);
+}
+
+int __wrap_putchar(int c)
+{
+	return __wrap_fputc(c, stdout);
 }
