@@ -39,12 +39,12 @@ BUILT_SOURCES = src/arch/asm_defines.h
 CLEANFILES = src/arch/asm_defines.h
 src/arch/asm_defines.h: src/arch/asm_defines.c
 	echo "Generating defines for assembly modules..."
-	@$(COMPILE) -DASM_DEFINES -S $< -o - | $(AWK) '($$1 == "->") { print "#define " $$2 " " substr($$3, 2) }' > $(top_srcdir)/$@
+	@$(COMPILE) -DASM_DEFINES -S $< -o - | $(AWK) '($$1 == "#####") { print "#define " $$2 " " substr($$3, 2) }' > $(top_srcdir)/$@
 
 
 # ROOT-Sim compiler-related stuff
 dist_bin_SCRIPTS = rootsim-cc
-CLEANFILES = $(dist_bin_SCRIPTS)
+CLEANFILES += $(dist_bin_SCRIPTS)
 
 do_subst = $(SED)	-e 's,[@]libdir[@],$(libdir),g' \
 			-e 's,[@]includedir[@],$(includedir),g' \

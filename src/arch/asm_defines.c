@@ -49,7 +49,7 @@
  * We then emit a constant, which corresponds to the value of interest to be
  * retrieved using OFFSETOF() of SIZEOF().
  */
-#define DEFINE(sym, val) __asm__ __volatile__("\n-> " #sym " %0 \n" : : "i" (val))
+#define DEFINE(sym, val) __asm__ __volatile__("\n##### " #sym " %0 \n" : : "i" (val))
 
 /**
  * This macro relies no the DEFINE() macro to generate a line in which the offset
