@@ -173,6 +173,8 @@ void send_remote_msg(msg_t *msg)
 	out_msg->msg->colour = threads_phase_colour[local_tid];
 	unsigned int dest = find_kernel_by_gid(msg->receiver);
 
+	validate_msg(msg);
+
 	register_outgoing_msg(out_msg->msg);
 
 	lock_mpi();
