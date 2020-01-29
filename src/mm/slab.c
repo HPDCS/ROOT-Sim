@@ -34,6 +34,7 @@
 #include <sys/mman.h>
 #include <math.h>
 #include <assert.h>
+#include <string.h>
 
 #include <core/core.h>
 #include <mm/dymelor.h>
@@ -211,9 +212,11 @@ void *slab_alloc(struct slab_chain *const sch)
 			}
 		} else {
 			const int err = posix_memalign((void **)&sch->partial, sch->slabsize, sch->pages_per_alloc);
+			char err_str[512];
 
 			if (unlikely(err != 0)) {
-				fprintf(stderr, "posix_memalign(align=%zu, size=%zu): %d\n", sch->slabsize, sch->pages_per_alloc, err);
+				strerror_r(err, err_str, 512);
+				fprintf(stderr, "posix_memalign(align=%zu, size=%zu): %s\n", sch->slabsize, sch->pages_per_alloc, err_str);
 
 				ret = sch->partial = NULL;
 				goto out;
