@@ -129,7 +129,7 @@ inline int __wrap_vfprintf(FILE *stream, const char *format, va_list ap)
 
 int __wrap_vprintf(const char *format, va_list ap)
 {
-	return __wrap_vfprintf(stdout, format, ap);;
+	return __wrap_vfprintf(stdout, format, ap);
 }
 
 int __wrap_printf(const char *format, ...)
