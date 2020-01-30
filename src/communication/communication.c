@@ -366,8 +366,6 @@ void send_antimessages(struct lp_struct *lp, simtime_t after_simtime)
  */
 void Send(msg_t *msg)
 {
-	validate_msg(msg);
-
 #ifdef HAVE_MPI
 	// Check whether the message recepient kernel is remote
 	if (find_kernel_by_gid(msg->receiver) != kid) {
