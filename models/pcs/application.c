@@ -4,8 +4,6 @@
 
 #include "application.h"
 
-#define HAVE_APPROXIMATED_ROLLBACK 0
-
 bool 	pcs_statistics = false,
 	approximated = false,
 	fading_check = false,  // Is the model set up to periodically recompute the fading of all ongoing calls?
@@ -128,13 +126,12 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 			bzero(state->core_data->channel_state, sizeof(unsigned int) * (CHANNELS_PER_CELL / BITS + 1));
                         state->core_data->ta = ref_ta;
 
-#if HAVE_APPROXIMATED_ROLLBACK
                         if(approximated){
                         	CoreMemoryMark(state->core_data);
                         	CoreMemoryMark(state->core_data->channel_state);
                         	RollbackModeSet(true);
                         }
-#endif
+
 			// Start the simulation
 			timestamp = (simtime_t) (20 * Random());
 			ScheduleNewEvent(me, timestamp, START_CALL, NULL, 0);

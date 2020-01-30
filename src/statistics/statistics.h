@@ -98,7 +98,7 @@ enum stat_msg_t {
 	STAT_IDLE_CYCLES,
 	STAT_SILENT,
 	STAT_GVT_ROUND_TIME,
-	STAT_GET_SIMTIME_ADVANCEMENT,	//xxx totally unused
+    	STAT_EVENT_TIME_APPROXIMATED,
 	STAT_GET_EVENT_TIME_LP
 };
 
@@ -128,6 +128,9 @@ struct stat_t {
 			    tot_recoveries,
 			    recovery_time,
 			    event_time,
+#ifdef HAVE_APPROXIMATED_ROLLBACK
+			    event_time_approximated,
+#endif
 			    idle_cycles,
 			    memory_usage,
 			    simtime_advancement,
