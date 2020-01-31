@@ -2,9 +2,12 @@
 
 [![Build Status](https://travis-ci.org/HPDCS/ROOT-Sim.svg?branch=master)](https://travis-ci.org/HPDCS/ROOT-Sim)
 [![codecov.io](https://codecov.io/gh/HPDCS/ROOT-Sim/branch/master/graphs/badge.svg)](http://codecov.io/github/HPDCS/ROOT-Sim)
+[![coverage](https://img.shields.io/endpoint?url=https%3A%2F%2Fhpdcs.github.io%2FROOT-Sim%2Fdocs%2Fcoverage%2Fmaster.json)](https://hpdcs.github.io/ROOT-Sim//documentation.html)
+[![GitHub issues](https://img.shields.io/github/issues/HPDCS/ROOT-Sim)](https://github.com/HPDCS/ROOT-Sim/issues)
+[![GitHub](https://img.shields.io/github/license/HPDCS/ROOT-Sim)](https://github.com/HPDCS/ROOT-Sim/blob/master/COPYING)
 
-*Brought to you by the High Performance and Dependable Computing Systems (HPDCS)
-at Sapienza, University of Rome*
+
+*Brought to you by the [High Performance and Dependable Computing Systems (HPDCS)](https://hpdcs.github.io/) Research Group*
 
 ----------------------------------------------------------------------------------------
 

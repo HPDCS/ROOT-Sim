@@ -22,6 +22,10 @@ matrix:
         - libmpich-dev
         - doxygen
         - graphviz
+        - lcov
+        - python3-setuptools
+        - python3-pip
+        - jq
 
 env:
   matrix:
@@ -30,6 +34,8 @@ env:
 before_install:
   - export CC=mpicc
   - export MPICH_CC=gcc-7
+  - pip3 install --upgrade pip
+  - pip3 install --user $(whoami) coverxygen
 
 before_script:
   - mpiexec --version
@@ -44,7 +50,7 @@ before_script:
 script:
   - ./scripts/travis-build.sh
   - ./scripts/tests.sh
-  - ./scripts/travis-docs.sh
+  - ./scripts/travis-build-doc.sh
 
 after_success:
   - bash <(curl -s https://codecov.io/bash) -x gcov-7
