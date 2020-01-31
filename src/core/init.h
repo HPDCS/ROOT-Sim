@@ -73,11 +73,7 @@ typedef struct _simulation_configuration {
 	bool serial;			///< If the simulation must be run serially
 	seed_type set_seed;		///< The master seed to be used in this run
 	bool core_binding;		///< Bind threads to specific core (reduce context switches and cache misses)
-
-#ifdef HAVE_PREEMPTION
 	bool disable_preemption;	///< If compiled for preemptive Time Warp, it can be disabled at runtime
-#endif
-
 } simulation_configuration;
 
 extern simulation_configuration rootsim_config;

@@ -38,6 +38,7 @@
 #pragma once
 
 #include <stdio.h>
+#include <stdint.h>
 #include <string.h>
 #include <stdbool.h>
 #include <float.h>
@@ -82,7 +83,7 @@ extern void SetState(void *new_state);
 /*********************************/
 
 /**
- * This are the supported topology geometries
+ * These are the supported topology geometries
  */
 enum _topology_geometry_t {
 	TOPOLOGY_GEOMETRY_OFFSET = 1000,            //!< arbitrary offset used to distinguish during debug different enums
@@ -91,18 +92,20 @@ enum _topology_geometry_t {
 	TOPOLOGY_RING,                              //!< a ring shaped topology walkable in a single direction
 	TOPOLOGY_BIDRING,                           //!< a ring shaped topology direction
 	TOPOLOGY_TORUS,                             //!< a torus shaped grid topology (a wrapping around square topology)
-	TOPOLOGY_STAR, // this still needs to be properly implemented FIXME
+	TOPOLOGY_STAR, 				    //!< FIXME @warning this still needs to be properly implemented FIXME
 	TOPOLOGY_GRAPH,                             //!< an arbitrary shaped topology
 };
 
 /**
  * These are the supported basic directions:
- * TOPOLOGY_HEXAGON recognizes E, W, NE, SW, NW, SE
- * TOPOLOGY_SQUARE and TOPOLOGY_TORUS recognize E, W, N, S
- * TOPOLOGY_RING recognizes E
- * TOPOLOGY_BIDRING recognizes E, W
- * TOPOLOGY_STAR xxx to implement
- * TOPOLOGY_GRAPH directions are actually directly mapped to the LPs IDs
+ *
+ * - @c TOPOLOGY_HEXAGON recognizes E, W, NE, SW, NW, SE
+ * - @c TOPOLOGY_SQUARE and TOPOLOGY_TORUS recognize E, W, N, S
+ * - @c TOPOLOGY_RING recognizes E
+ * - @c TOPOLOGY_BIDRING recognizes E, W
+ * - @c TOPOLOGY_STAR xxx to implement
+ * - @c TOPOLOGY_GRAPH directions are actually directly mapped to the LPs IDs
+ *
  * The enum layout is intentional:
  * do not modify it if you don't know what you're doing!
  */
@@ -132,10 +135,10 @@ enum _topology_type_t{
  */
 __attribute((weak)) extern struct _topology_settings_t{
 	const char * const topology_path;
-	const enum _topology_type_t type;			/// The topology type the model wants to use
-	const enum _topology_geometry_t default_geometry;	/// The default geometry to use when nothing else is specified
-	const unsigned out_of_topology;				/// The minimum number of LPs needed out of the topology
-	const bool write_enabled;					/// This is set if the model needs to use SetTopology()
+	const enum _topology_type_t type;			//!< The topology type the model wants to use
+	const enum _topology_geometry_t default_geometry;	//!< The default geometry to use when nothing else is specified
+	const unsigned out_of_topology;				//!< The minimum number of LPs needed out of the topology
+	const bool write_enabled;				//!< This is set if the model needs to use SetTopology()
 }topology_settings;
 
 /**
@@ -150,16 +153,19 @@ double 		GetValueTopology(unsigned from, unsigned to);
  * Change the weight assigned to the link between region from to region to.
  * A link is intended as a crossable edge on the topology graph.
  * A weight has different meanings depending on the _topology_type_t of the topology.
- * For TOPOLOGY_COSTS it's the cost to pay to cross the link
- * For TOPOLOGY_PROBABILITIES it's the weight of the probability to choose that link during movement.
+ * For @c TOPOLOGY_COSTS it's the cost to pay to cross the link
+ * For @c TOPOLOGY_PROBABILITIES it's the weight of the probability to choose that link during movement.
  * In other words given a region n0 having self weight w0 having links to regions n1 n2 n3 n4... with weights w1 w2 w3 w4
  * the probability of choosing region nk as next hop is wk/(w0+w1+w2+w3...)
+ * 
  * @param from the LP id of the source region of the link
  * @param to the LP id of the sink region of the link
  * @param value the new weight to be assigned to the link
+ * 
  * @return 0 on success, -1 otherwise.
- * Failure can happen if non existent links are specified or if value is an illegal argument
- * (For TOPOLOGY_PROBABILITIES can't be negative for example)
+ * 
+ * @warning Failure can happen if non existent links are specified or if value is an illegal argument
+ * (For @c TOPOLOGY_PROBABILITIES can't be negative for example)
  */
 void 		SetValueTopology(unsigned from, unsigned to, double value);
 
@@ -219,3 +225,96 @@ void 			RemoveVisit		(agent_t agent, unsigned i);
 
 unsigned 		CountPastVisits		(const agent_t agent);
 void 			GetPastVisit		(const agent_t agent, unsigned *region_p, unsigned *event_type_p, simtime_t *time_p, unsigned i);
+
+
+/************* CAPABILITIES ************/
+
+/**
+ * @brief Capability enumeration
+ *
+ * This enum allows to query from the model, using the CapabilityAvailable() API,
+ * what capabilities are current enabled in the runtime environment. Refer to the
+ * documentation of the CapabilityAvailable() API for further information on
+ * the Capability subsystem.
+ *
+ * @warning The order of the enum members is important, as it is used by
+ * the CapabilityAvailable() API to reduce the number of execution steps
+ * it takes to deliver the required information.
+ */
+enum capability_t
+{
+	/* Capabilities always enabled */
+	CAP_SCHEDULER,
+	CAP_CKTRM_MODE,
+	CAP_LPS_DISTRIBUTION,
+	CAP_STATS,
+	CAP_STATE_SAVING,
+	CAP_THREADS,
+	CAP_LPS,
+	CAP_OUTPUT_DIR,
+	CAP_P,
+	CAP_GVT,
+	CAP_GVT_SNAPSHOT_CYCLES,
+	CAP_SEED,
+	CAP_VERBOSE,
+
+	/* Optional capabilities */
+	CAP_NPWD,
+	CAP_FULL,
+	CAP_INC,
+	CAP_A,
+	CAP_SIMULATION_TIME,
+	CAP_DETERMINISTIC_SEED,
+	CAP_SERIAL,
+	CAP_CORE_BINDING,
+	CAP_PREEMPTION,
+	CAP_ECS,
+	CAP_LINUX_MODULES,
+	CAP_LP_REBINDING,
+	CAP_MPI
+};
+
+struct capability_info_t {
+	enum capability_t capability;
+	union {
+		const char *output_dir;	 //!< Destination Directory of output files
+		int scheduler;		 //!< Which scheduler to be used
+		int gvt_time_period;	 //!< Wall-Clock time to wait before executiong GVT operations
+		int gvt_snapshot_cycles; //!< GVT operations to be executed before rebuilding the state
+		int simulation_time;	 //!< Wall-clock-time based termination predicate
+		int lps_distribution;	 //!< Policy for the LP to Kernel mapping
+		int state_saving;	 //!< Type of checkpointing mode (Synchronous, Semi-Asyncronous, ...)
+		int checkpointing;	 //!< Type of checkpointing scheme (e.g., PSS, CSS, ...)
+		int ckpt_period;	 //!< Number of events to execute before taking a snapshot in PSS (ignored otherwise)
+		int termination_mode;	 //!< Check termination strategy: standard or incremental
+		int verbose;		 //!< Kernel verbose
+		int stats;		 //!< Produce performance statistic file (default STATS_ALL)
+		int lps;		 //!< Number of active logical processes
+		uint64_t seed;		 //!< The master seed to be used in this run
+	};
+};
+
+/**
+ * @brief Query runtime capabilities while executing the model
+ * 
+ * Several capabilities might be compiled out while building the runtime,
+ * or there are command line flags which enable/disable some of them. Other
+ * capabilities are parameterizable, e.g. the GVT computation interval.
+ *
+ * This function allows to retrieve information from the runtime environment,
+ * e.g. to fine tune the execution of the model. Additional information could
+ * be returned in the @c info structure. For example, in case of the GVT, the
+ * current GVT computation time interval will be returned. Please note that
+ * the different members in the @c info parameter are included in an anonymous
+ * union, therefore you should only access the member corresponding to the
+ * queried capability. In any other case, you will possibly read garbage.
+ *
+ * @param which	The capability you are querying the runtime for availability
+ * @param info	A pointer to a model buffer where to store additional information,
+ * 		if available for the capability specified by @c which. If @c info
+ * 		is set to @c NULL, then no additional information will be provided.
+ *
+ * @return true if the capability (as specified by the @c capability_t enum)
+ * 		is available in the current run, or not
+ */
+bool CapabilityAvailable(enum capability_t which, struct capability_info_t *info);

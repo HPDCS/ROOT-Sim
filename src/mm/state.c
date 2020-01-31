@@ -44,6 +44,7 @@
 #include <mm/state.h>
 #include <communication/communication.h>
 #include <mm/mm.h>
+#include <mm/dymelor.h>
 #include <statistics/statistics.h>
 
 /**
@@ -101,7 +102,7 @@ bool LogState(struct lp_struct *lp)
 		}
 
 		// Allocate the state buffer
-		new_state = malloc(sizeof(*new_state));
+		new_state = __real_malloc(sizeof(*new_state));
 
 		// Associate the checkpoint with current LVT and last-executed event
 		new_state->lvt = lvt(lp);
@@ -119,7 +120,7 @@ bool LogState(struct lp_struct *lp)
 		       sizeof(numerical_state_t));
 
 		if(&topology_settings && topology_settings.write_enabled){
-			new_state->topology = malloc(topology_global.chkp_size);
+			new_state->topology = __real_malloc(topology_global.chkp_size);
 			memcpy(new_state->topology, lp->topology,
 					topology_global.chkp_size);
 		}

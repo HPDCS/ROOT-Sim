@@ -54,8 +54,8 @@ void __write_mem(void *address, size_t size)
 {
 	void *stack = __builtin_frame_address(0);
 
-	struct malloc_area *m_area;
-	struct malloc_state *m_state;
+	malloc_area *m_area;
+	malloc_state *m_state;
 	size_t bitmap_size, chk_size;
 	int i, first_chunk, last_chunk;
 
@@ -103,10 +103,9 @@ void __write_mem(void *address, size_t size)
 
 	if (m_area->state_changed == 1) {
 		if (m_area->dirty_chunks == 0)
-			current->mm->m_state->dirty_bitmap_size += bitmap_size;
+			current->mm->m_state->total_inc_size += bitmap_size;
 	} else {
-		current->mm->m_state->dirty_areas++;
-		current->mm->m_state->dirty_bitmap_size += bitmap_size * 2;
+		current->mm->m_state->total_inc_size += sizeof(malloc_area) + bitmap_size * 2;
 		m_area->state_changed = 1;
 	}
 

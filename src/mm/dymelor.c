@@ -31,8 +31,6 @@
 * @date April 02, 2008
 */
 
-#include <stdlib.h>
-
 #include <core/init.h>
 #include <mm/mm.h>
 #include <mm/dymelor.h>
@@ -49,7 +47,7 @@
 * @param size The chunks' size of the malloc_area
 * @param num_chunks The number of chunk of the new malloc_area
 */
-static void malloc_area_init(struct malloc_area * m_area, size_t size, int num_chunks)
+static void malloc_area_init(malloc_area * m_area, size_t size, int num_chunks)
 {
 	m_area->chunk_size = size;
 	m_area->alloc_chunks = 0;
@@ -77,26 +75,22 @@ static void malloc_area_init(struct malloc_area * m_area, size_t size, int num_c
 /**
 * This function inizializes a malloc_state.
 */
-struct malloc_state *malloc_state_init(void)
+malloc_state *malloc_state_init(void)
 {
 	int i, num_chunks;
 	size_t chunk_size;
-	struct malloc_state *state;
+	malloc_state *state;
 
-	state = __real_malloc(sizeof(struct malloc_state));
+	state = __real_malloc(sizeof(malloc_state));
 
-	state->total_log_size = 0;
-	state->total_inc_size = 0;
-	state->busy_areas = 0;
-	state->dirty_areas = 0;
+	state->total_log_size = sizeof(malloc_state);
+	state->total_inc_size = sizeof(malloc_state);
 	state->num_areas = NUM_AREAS;
 	state->max_num_areas = MAX_NUM_AREAS;
-	state->bitmap_size = 0;
-	state->dirty_bitmap_size = 0;
 	state->timestamp = -1;
 	state->is_incremental = false;
 
-	state->areas = (struct malloc_area *) __real_malloc(state->max_num_areas * sizeof(struct malloc_area));
+	state->areas = (malloc_area *) __real_malloc(state->max_num_areas * sizeof(malloc_area));
 	if (unlikely(state->areas == NULL)) {
 		rootsim_error(true, "Unable to allocate memory.\n");
 	}
@@ -157,7 +151,7 @@ static size_t compute_size(size_t size)
 *
 * @param m_area The malloc_area to scan in order to find the next available chunk
 */
-static void find_next_free(struct malloc_area * m_area)
+static void find_next_free(malloc_area * m_area)
 {
 	m_area->next_chunk++;
 
@@ -171,9 +165,17 @@ static void find_next_free(struct malloc_area * m_area)
 
 void *do_malloc(struct lp_struct *lp, size_t size)
 {
-	struct malloc_area *m_area, *prev_area = NULL;
+	malloc_area *m_area, *prev_area = NULL;
 	void *ptr;
 	size_t area_size, bitmap_size;
+	malloc_state *m_state;
+
+	if(unlikely(size == 0)){
+#ifndef NDEBUG
+		rootsim_error(false, "Requested a 0 sized malloc\n");
+#endif
+		return NULL;
+	}
 
 	size = compute_size(size);
 
@@ -183,8 +185,8 @@ void *do_malloc(struct lp_struct *lp, size_t size)
 		return NULL;
 	}
 
-	m_area = &lp->mm->m_state->areas[(int)log2(size) -
-					 (int)log2(MIN_CHUNK_SIZE)];
+	m_state = lp->mm->m_state;
+	m_area = &m_state->areas[B_CTZ(size) - B_CTZ(MIN_CHUNK_SIZE)]; // both size and MIN_CHUNK_SIZE are power of 2
 
 #ifndef NDEBUG
 	atomic_inc(&m_area->presence);
@@ -196,7 +198,7 @@ void *do_malloc(struct lp_struct *lp, size_t size)
 		if (m_area->next == -1) {
 			m_area = NULL;
 		} else {
-			m_area = &(lp->mm->m_state->areas[m_area->next]);
+			m_area = &(m_state->areas[m_area->next]);
 #ifndef NDEBUG
 			atomic_inc(&m_area->presence);
 			assert(atomic_read(&m_area->presence) == 1);
@@ -212,23 +214,21 @@ void *do_malloc(struct lp_struct *lp, size_t size)
 
 	if (m_area == NULL) {
 
-		fflush(stdout);
+		if (m_state->num_areas == m_state->max_num_areas) {
 
-		if (lp->mm->m_state->num_areas == lp->mm->m_state->max_num_areas) {
+			malloc_area *tmp = NULL;
 
-			struct malloc_area *tmp = NULL;
-
-			if ((lp->mm->m_state->max_num_areas << 1) > MAX_LIMIT_NUM_AREAS) {
+			if ((m_state->max_num_areas << 1) > MAX_LIMIT_NUM_AREAS) {
 #ifndef NDEBUG
 				atomic_dec(&m_area->presence);
 #endif
 				return NULL;
 			}
 
-			lp->mm->m_state->max_num_areas <<= 1;
+			m_state->max_num_areas <<= 1;
 
 			rootsim_error(true, "To reimplement\n");
-//                      tmp = (struct malloc_area *)pool_realloc_memory(lp->mm->m_state->areas, lp->mm->m_state->max_num_areas * sizeof(struct malloc_area));
+//                      tmp = (malloc_area *)pool_realloc_memory(lp->mm->m_state->areas, lp->mm->m_state->max_num_areas * sizeof(malloc_area));
 			if (tmp == NULL) {
 
 				/**
@@ -236,7 +236,7 @@ void *do_malloc(struct lp_struct *lp, size_t size)
 				*/
 				rootsim_error(false,
 					      "DyMeLoR: cannot reallocate the block of malloc_area.\n");
-				lp->mm->m_state->max_num_areas >>= 1;
+				m_state->max_num_areas >>= 1;
 
 #ifndef NDEBUG
 				atomic_dec(&m_area->presence);
@@ -244,10 +244,10 @@ void *do_malloc(struct lp_struct *lp, size_t size)
 				return NULL;
 			}
 
-			lp->mm->m_state->areas = tmp;
+			m_state->areas = tmp;
 		}
 		// Allocate a new malloc area
-		m_area = &lp->mm->m_state->areas[lp->mm->m_state->num_areas];
+		m_area = &m_state->areas[m_state->num_areas];
 
 		// The malloc area to be instantiated has twice the number of chunks wrt the last full malloc area for the same chunks size
 		malloc_area_init(m_area, size, prev_area->num_chunks << 1);
@@ -257,8 +257,8 @@ void *do_malloc(struct lp_struct *lp, size_t size)
 		assert(atomic_read(&m_area->presence) == 1);
 #endif
 
-		m_area->idx = lp->mm->m_state->num_areas;
-		lp->mm->m_state->num_areas++;
+		m_area->idx = m_state->num_areas;
+		m_state->num_areas++;
 		prev_area->next = m_area->idx;
 		m_area->prev = prev_area->idx;
 
@@ -268,9 +268,9 @@ void *do_malloc(struct lp_struct *lp, size_t size)
 
 		bitmap_size = bitmap_required_size(m_area->num_chunks);
 
-		area_size = sizeof(struct malloc_area *) + bitmap_size * 2 + m_area->num_chunks * size;
+		area_size = sizeof(malloc_area *) + bitmap_size * 2 + m_area->num_chunks * size;
 
-		m_area->self_pointer = (struct malloc_area *)allocate_buddy_memory(lp->mm->buddy, lp->mm->segment->base, area_size);
+		m_area->self_pointer = (malloc_area *)allocate_buddy_memory(lp->mm->buddy, lp->mm->segment->base, area_size);
 		memset(m_area->self_pointer, 0, area_size);
 
 		if (unlikely(m_area->self_pointer == NULL)) {
@@ -283,7 +283,7 @@ void *do_malloc(struct lp_struct *lp, size_t size)
 
 		m_area->use_bitmap =
 		    ((unsigned char *)m_area->self_pointer +
-		     sizeof(struct malloc_area *));
+		     sizeof(malloc_area *));
 
 		m_area->dirty_bitmap =
 		    ((unsigned char *)m_area->use_bitmap + bitmap_size);
@@ -309,13 +309,11 @@ void *do_malloc(struct lp_struct *lp, size_t size)
 	bitmap_size = bitmap_required_size(m_area->num_chunks);
 
 	if (m_area->alloc_chunks == 0) {
-		lp->mm->m_state->bitmap_size += bitmap_size;
-		lp->mm->m_state->busy_areas++;
+		m_state->total_log_size += bitmap_size + sizeof(malloc_area);
 	}
 
 	if (m_area->state_changed == 0) {
-		lp->mm->m_state->dirty_bitmap_size += bitmap_size;
-		lp->mm->m_state->dirty_areas++;
+		m_state->total_inc_size += bitmap_size + sizeof(malloc_area);
 	}
 
 	m_area->state_changed = 1;
@@ -324,9 +322,9 @@ void *do_malloc(struct lp_struct *lp, size_t size)
 	if (!CHECK_LOG_MODE_BIT(m_area)) {
 		if ((double)m_area->alloc_chunks / (double)m_area->num_chunks > MAX_LOG_THRESHOLD) {
 			SET_LOG_MODE_BIT(m_area);
-			lp->mm->m_state->total_log_size += (m_area->num_chunks - (m_area->alloc_chunks - 1)) * size;
+			m_state->total_log_size += (m_area->num_chunks - m_area->alloc_chunks) * size;
 		} else
-			lp->mm->m_state->total_log_size += size;
+			m_state->total_log_size += size;
 	}
 
 	m_area->alloc_chunks++;
@@ -354,20 +352,19 @@ void do_free(struct lp_struct *lp, void *ptr)
 {
 	(void)lp;
 
-	struct malloc_area *m_area = NULL;
+	malloc_area *m_area = NULL;
 	int idx;
 	size_t chunk_size, bitmap_size;
-
-	if (unlikely(rootsim_config.serial)) {
-		__real_free(ptr);
-		return;
-	}
+	malloc_state *m_state;
 
 	if (unlikely(ptr == NULL)) {
-		rootsim_error(false, "Invalid pointer during free\n");
+#ifndef NDEBUG
+		rootsim_error(false, "Requested a free on the NULL pointer\n");
+#endif
 		return;
 	}
 
+	m_state = lp->mm->m_state;
 	m_area = get_area(ptr);
 	if (unlikely(m_area == NULL)) {
 		rootsim_error(false,
@@ -384,8 +381,7 @@ void do_free(struct lp_struct *lp, void *ptr)
 	idx = (int)((char *)ptr - (char *)m_area->area) / chunk_size;
 
 	if (!bitmap_check(m_area->use_bitmap, idx)) {
-		rootsim_error(false, "double free() corruption or address not malloc'd\n");
-		abort();
+		rootsim_error(true, "double free() corruption or address not malloc'd\n");
 	}
 	bitmap_reset(m_area->use_bitmap, idx);
 
@@ -394,13 +390,11 @@ void do_free(struct lp_struct *lp, void *ptr)
 	m_area->alloc_chunks--;
 
 	if (m_area->alloc_chunks == 0) {
-		lp->mm->m_state->bitmap_size -= bitmap_size;
-		lp->mm->m_state->busy_areas--;
+		m_state->total_log_size -= bitmap_size + sizeof(malloc_area);
 	}
 
 	if (m_area->state_changed == 0) {
-		lp->mm->m_state->dirty_bitmap_size += bitmap_size;
-		lp->mm->m_state->dirty_areas++;
+		m_state->total_inc_size += bitmap_size + sizeof(malloc_area);
 	}
 
 	if (bitmap_check(m_area->dirty_bitmap, idx)) {
@@ -408,9 +402,9 @@ void do_free(struct lp_struct *lp, void *ptr)
 		m_area->dirty_chunks--;
 
 		if (m_area->state_changed == 1 && m_area->dirty_chunks == 0)
-			lp->mm->m_state->dirty_bitmap_size -= bitmap_size;
+			m_state->total_inc_size -= bitmap_size;
 
-		lp->mm->m_state->total_inc_size -= chunk_size;
+		m_state->total_inc_size -= chunk_size;
 
 		if (unlikely(m_area->dirty_chunks < 0)) {
 			rootsim_error(true, "negative number of chunks\n");
@@ -424,10 +418,10 @@ void do_free(struct lp_struct *lp, void *ptr)
 	if (CHECK_LOG_MODE_BIT(m_area)) {
 		if ((double)m_area->alloc_chunks / (double)m_area->num_chunks < MIN_LOG_THRESHOLD) {
 			RESET_LOG_MODE_BIT(m_area);
-			lp->mm->m_state->total_log_size -= (m_area->num_chunks - m_area->alloc_chunks) * chunk_size;
+			m_state->total_log_size -= (m_area->num_chunks - m_area->alloc_chunks) * chunk_size;
 		}
 	} else {
-		lp->mm->m_state->total_log_size -= chunk_size;
+		m_state->total_log_size -= chunk_size;
 	}
 
 	if (idx < m_area->next_chunk)
@@ -449,20 +443,15 @@ void do_free(struct lp_struct *lp, void *ptr)
 * @return The whole size of the state (metadata included)
 *
 */
-size_t get_log_size(struct malloc_state * logged_state)
+size_t get_log_size(malloc_state * logged_state)
 {
 	if (unlikely(logged_state == NULL))
 		return 0;
 
 	if (is_incremental(logged_state)) {
-		return sizeof(struct malloc_state) +
-		    logged_state->dirty_areas * sizeof(struct malloc_area) +
-		    logged_state->dirty_bitmap_size +
-		    logged_state->total_inc_size;
+		return logged_state->total_inc_size;
 	} else {
-		return sizeof(struct malloc_state) +
-		    logged_state->busy_areas * sizeof(struct malloc_area) +
-		    logged_state->bitmap_size + logged_state->total_log_size;
+		return logged_state->total_log_size;
 	}
 }
 
@@ -548,7 +537,7 @@ __visible void *__wrap_realloc(void *ptr, size_t size)
 	void *new_buffer;
 	size_t old_size;
 	size_t copy_size;
-	struct malloc_area *m_area;
+	malloc_area *m_area;
 
 	if (unlikely(rootsim_config.serial)) {
 		return rsrealloc(ptr, size);
@@ -615,8 +604,8 @@ __visible void *__wrap_calloc(size_t nmemb, size_t size)
 void clean_buffers_on_gvt(struct lp_struct *lp, simtime_t time_barrier)
 {
 	int i;
-	struct malloc_area *m_area;
-	struct malloc_state *state = lp->mm->m_state;
+	malloc_area *m_area;
+	malloc_state *state = lp->mm->m_state;
 
 	// The first NUM_AREAS malloc_areas are placed according to their chunks' sizes. The exceeding malloc_areas can be compacted
 	for (i = NUM_AREAS; i < state->num_areas; i++) {
@@ -645,7 +634,7 @@ void clean_buffers_on_gvt(struct lp_struct *lp, simtime_t time_barrier)
 
 				// Swap, if possible
 				if (i < state->num_areas - 1) {
-					__real_memcpy(m_area, &state->areas[state->num_areas - 1], sizeof(struct malloc_area));
+					__real_memcpy(m_area, &state->areas[state->num_areas - 1], sizeof(malloc_area));
 					m_area->idx = i;
 					if (m_area->prev != -1)
 						state->areas[m_area->prev].next = m_area->idx;
