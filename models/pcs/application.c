@@ -247,10 +247,6 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 			state->arriving_handoffs++;
 			state->arriving_calls++;
 
-			if(Random() < 0.3 && me == 1 && event_content->from == 2){//&& state->dummy_flag == false) {
-				*(event_content->dummy) = 1;
-				state->dummy_flag = true;
-			}
 
 			if (state->channel_counter == 0)
 				state->blocked_on_handoff++;
