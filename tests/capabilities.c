@@ -21,7 +21,6 @@ void ProcessEvent(unsigned int me, simtime_t now, int type, void *payload, unsig
 	CapabilityAvailable(CAP_OUTPUT_DIR, NULL);
 	CapabilityAvailable(CAP_P, NULL);
 	CapabilityAvailable(CAP_GVT, NULL);
-	CapabilityAvailable(CAP_GVT_SNAPSHOT_CYCLES, NULL);
 	CapabilityAvailable(CAP_SEED, NULL);
 	CapabilityAvailable(CAP_VERBOSE, NULL);
 	CapabilityAvailable(CAP_NPWD, NULL);
@@ -48,7 +47,6 @@ void ProcessEvent(unsigned int me, simtime_t now, int type, void *payload, unsig
 	CapabilityAvailable(CAP_OUTPUT_DIR, &info);
 	CapabilityAvailable(CAP_P, &info);
 	CapabilityAvailable(CAP_GVT, &info);
-	CapabilityAvailable(CAP_GVT_SNAPSHOT_CYCLES, &info);
 	CapabilityAvailable(CAP_SEED, &info);
 	CapabilityAvailable(CAP_VERBOSE, &info);
 	CapabilityAvailable(CAP_NPWD, &info);

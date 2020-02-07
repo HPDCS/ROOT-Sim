@@ -84,7 +84,6 @@ enum _opt_codes{
 	OPT_INC,
 	OPT_A,
 	OPT_GVT,
-	OPT_GVT_SNAPSHOT_CYCLES,
 	OPT_SIMULATION_TIME,
 	OPT_DETERMINISTIC_SEED,
 	OPT_SEED,
@@ -161,7 +160,6 @@ static const struct argp_option argp_options[] = {
 	{"A",			OPT_A,			0,		0,		"Autonomic subsystem: set checkpointing interval and log mode automatically at runtime (still to be released)", 0},
 	{"gvt",			OPT_GVT,		"VALUE",	0,		"Time between two GVT reductions (in milliseconds)", 0},
 	{"cktrm-mode",		OPT_CKTRM_MODE,		"TYPE",		0,		"Termination Detection mode. Supported values: normal, incremental, accurate", 0},
-	{"gvt-snapshot-cycles",	OPT_GVT_SNAPSHOT_CYCLES, "VALUE",	0,		"Termination detection is invoked after this number of GVT reductions", 0},
 	{"simulation-time",	OPT_SIMULATION_TIME, 	"VALUE",	0,		"Halt the simulation when all LPs reach this logical time. 0 means infinite", 0},
 	{"lps-distribution",	OPT_LPS_DISTRIBUTION, 	"TYPE",		0,		"LPs distributions over simulation kernels policies. Supported values: block, circular", 0},
 	{"deterministic-seed",	OPT_DETERMINISTIC_SEED,	0,		0, 		"Do not change the initial random seed for LPs. Enforces different deterministic simulation runs", 0},
@@ -278,10 +276,6 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 			rootsim_config.gvt_time_period = parse_ullong_limits(1, 10000);
 			break;
 
-		case OPT_GVT_SNAPSHOT_CYCLES:
-			rootsim_config.gvt_snapshot_cycles = parse_ullong_limits(1, INT_MAX);
-			break;
-
 		case OPT_SIMULATION_TIME:
 			rootsim_config.simulation_time = parse_ullong_limits(0, INT_MAX);
 			break;
@@ -324,7 +318,6 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 			rootsim_config.snapshot = SNAPSHOT_FULL; // TODO: in the future, default to AUTONOMIC_
 			rootsim_config.checkpointing = STATE_SAVING_PERIODIC;
 			rootsim_config.gvt_time_period = 1000;
-			rootsim_config.gvt_snapshot_cycles = 2;
 			rootsim_config.ckpt_period = 10;
 			rootsim_config.simulation_time = 0;
 			rootsim_config.deterministic_seed = false;
@@ -555,9 +548,6 @@ bool CapabilityAvailable(enum capability_t which, struct capability_info_t *info
 			return true;
 		case CAP_GVT:
 			info->gvt_time_period = rootsim_config.gvt_time_period;
-			return true;
-		case CAP_GVT_SNAPSHOT_CYCLES:
-			info->gvt_snapshot_cycles = rootsim_config.gvt_snapshot_cycles;
 			return true;
 		case CAP_SEED:
 			info->seed = rootsim_config.set_seed;

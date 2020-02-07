@@ -38,9 +38,6 @@
 #include <scheduler/scheduler.h>
 #include <statistics/statistics.h>
 
-/// Counter for the invocations of adopt_new_gvt. This is used to determine whether a consistent state must be reconstructed
-static unsigned long long snapshot_cycles;
-
 /**
 * Determine which snapshots in the state queue can be free'd because are placed before the current time barrier.
 *
@@ -98,12 +95,6 @@ void adopt_new_gvt(simtime_t new_gvt)
 	unsigned int i;
 
 	state_t *time_barrier_pointer[n_prc_per_thread];
-	bool compute_snapshot;
-
-	// Snapshot should be recomputed only periodically
-	snapshot_cycles++;
-	compute_snapshot =
-	    ((snapshot_cycles % rootsim_config.gvt_snapshot_cycles) == 0);
 
 	// Precompute the time barrier for each process
 	i = 0;
@@ -112,8 +103,7 @@ void adopt_new_gvt(simtime_t new_gvt)
 	}
 
 	// If needed, call the CCGS subsystem
-	if (compute_snapshot)
-		ccgs_compute_snapshot(time_barrier_pointer, new_gvt);
+	ccgs_compute_snapshot(time_barrier_pointer);
 
 	i = 0;
 	foreach_bound_lp(lp) {
