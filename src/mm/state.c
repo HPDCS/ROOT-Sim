@@ -300,6 +300,10 @@ state_t *find_time_barrier(struct lp_struct *lp, simtime_t simtime)
 void SetState(void *new_state)
 {
 	current->current_base_pointer = new_state;
+#ifdef HAVE_APPROXIMATED_ROLLBACK
+	if(likely(!rootsim_config.serial))
+		CoreMemoryMark(new_state);
+#endif
 }
 
 /**
