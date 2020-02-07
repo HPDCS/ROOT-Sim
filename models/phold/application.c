@@ -7,7 +7,8 @@
 static unsigned max_buffers = MAX_BUFFERS;
 static unsigned max_buffer_size = MAX_BUFFER_SIZE;
 static unsigned complete_events = COMPLETE_EVENTS;
-static bool 	new_mode = false;
+static bool 	new_mode = false,
+		approximated = true;
 static double 	tau = TAU,
 		send_probability = SEND_PROBABILITY,
 		alloc_probability = ALLOC_PROBABILITY,
@@ -21,7 +22,8 @@ enum{
 	OPT_ALLOCP,
 	OPT_DEALLOCP,
 	OPT_EVT,
-	OPT_MODE
+	OPT_MODE,
+	OPT_PREC
 };
 
 const struct argp_option model_options[] = {
@@ -33,6 +35,7 @@ const struct argp_option model_options[] = {
 		{"dealloc-probability", OPT_DEALLOCP, "DOUBLE", 0, NULL, 0},
 		{"complete-events", 	OPT_EVT, "INT", 0, NULL, 0},
 		{"new-mode", 		OPT_MODE, NULL, 0, NULL, 0},
+		{"precise-mode", OPT_PREC, NULL, 0, NULL, 0},
 		{0}
 };
 
@@ -60,6 +63,10 @@ static error_t model_parse(int key, char *arg, struct argp_state *state) {
 			new_mode = true;
 			break;
 
+		case OPT_PREC:
+			approximated = false;
+		break;
+
 		case ARGP_KEY_SUCCESS:
 			printf("\t* ROOT-Sim's PHOLD Benchmark - Current Configuration *\n");
 			printf("new-mode: %s\n"
@@ -68,10 +75,11 @@ static error_t model_parse(int key, char *arg, struct argp_state *state) {
 				"tau: %lf\n"
 				"send-probability: %lf\n"
 				"alloc-probability: %lf\n"
-				"dealloc-probability: %lf\n",
+				"dealloc-probability: %lf\n"
+				"approximated: %d\n",
 				new_mode ? "true" : "false",
 				max_buffers, max_buffer_size, tau,
-				send_probability, alloc_probability, dealloc_probability);
+				send_probability, alloc_probability, dealloc_probability, approximated);
 			break;
 
 		default:
@@ -86,7 +94,7 @@ struct _topology_settings_t topology_settings = {.type = TOPOLOGY_OBSTACLES, .de
 struct argp model_argp = {model_options, model_parse, NULL, NULL, NULL, NULL, NULL};
 
 
-void ProcessEvent(int me, simtime_t now, int event_type, unsigned *event_content, unsigned int event_size, void *state) {
+void ProcessEvent(unsigned me, simtime_t now, int event_type, unsigned *event_content, unsigned int event_size, void *state) {
 	lp_state_type *state_ptr = (lp_state_type *)state;
 
 	switch (event_type) {
@@ -101,13 +109,15 @@ void ProcessEvent(int me, simtime_t now, int event_type, unsigned *event_content
                         SetState(state_ptr);
 
 			if(new_mode) {
-				unsigned buffers_to_allocate = Random() * max_buffers;
+				unsigned buffers_to_allocate = (unsigned)(Random() * max_buffers);
 
 				for (unsigned i = 0; i < buffers_to_allocate; i++) {
-					state_ptr->head = allocate_buffer(state_ptr->head, NULL, Random() * max_buffer_size / sizeof(unsigned));
+					state_ptr->head = allocate_buffer(state_ptr->head, NULL, (unsigned)(Random() * max_buffer_size) / sizeof(unsigned));
 					state_ptr->buffer_count++;
 				}
 			}
+
+			RollbackModeSet(approximated);
 
 			ScheduleNewEvent(me, 20 * Random(), LOOP, NULL, 0);
 			break;
@@ -129,20 +139,20 @@ void ProcessEvent(int me, simtime_t now, int event_type, unsigned *event_content
 			}
 
 			if(state_ptr->buffer_count)
-				state_ptr->total_checksum ^= read_buffer(state_ptr->head, Random() * state_ptr->buffer_count);
+				state_ptr->total_checksum ^= read_buffer(state_ptr->head, (unsigned)(Random() * state_ptr->buffer_count));
 
 			if(state_ptr->buffer_count < max_buffers && Random() < alloc_probability) {
-				state_ptr->head = allocate_buffer(state_ptr->head, NULL, Random() * max_buffer_size / sizeof(unsigned));
+				state_ptr->head = allocate_buffer(state_ptr->head, NULL, (unsigned)(Random() * max_buffer_size) / sizeof(unsigned));
 				state_ptr->buffer_count++;
 			}
 
 			if(state_ptr->buffer_count && Random() < dealloc_probability) {
-				state_ptr->head = deallocate_buffer(state_ptr->head, Random() * state_ptr->buffer_count);
+				state_ptr->head = deallocate_buffer(state_ptr->head, (unsigned)(Random() * state_ptr->buffer_count));
 				state_ptr->buffer_count--;
 			}
 
 			if(state_ptr->buffer_count && Random() < send_probability) {
-				unsigned i = Random() * state_ptr->buffer_count;
+				unsigned i = (unsigned)(Random() * state_ptr->buffer_count);
 				buffer *to_send = get_buffer(state_ptr->head, i);
 				timestamp = now + (Expent(tau));
 
@@ -166,6 +176,26 @@ void ProcessEvent(int me, simtime_t now, int event_type, unsigned *event_content
 	}
 }
 
+void RestoreApproximated(void *ptr) {
+	lp_state_type *state = (lp_state_type*)ptr;
+
+	unsigned i = state->buffer_count;
+
+	if (i == 0){
+	    return;
+	}
+
+	buffer* tmp = state->head;
+	while(i--) {
+		tmp = tmp->next;
+	}
+
+	if (tmp->next != NULL) {
+		printf("We found a buffer count of %u but we have more elements in the list!", state->buffer_count);
+		abort();
+		return;
+	}
+}
 
 bool OnGVT(unsigned me, lp_state_type *snapshot) {
 	if(snapshot->events >= complete_events){

@@ -36,7 +36,7 @@ typedef struct _lp_state_type {
 buffer* get_buffer(buffer *head, unsigned i);
 unsigned read_buffer(buffer *head, unsigned i); //reads synthetic data and performs stupid hash
 buffer* allocate_buffer(buffer *head, unsigned *data, unsigned count); //allocates a buffer with @count of elements, initialized with content of @data.
-buffer* deallocate_buffer(buffer *head, unsigned i); //deallocates buffer at pos i
+buffer* deallocate_buffer(buffer *head, unsigned i); //deallocate buffer at pos i
 
 
 
