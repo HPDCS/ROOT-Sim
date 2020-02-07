@@ -44,13 +44,13 @@
 #define BITS (sizeof(int) * 8)
 
 #define CHECK_CHANNEL(P,I) ( CHECK_CHANNEL_BIT(						\
-	((unsigned int*)(((lp_state_type*)P)->core_data->channel_state))[(int)((int)I / BITS)],	\
+	((unsigned int*)(((lp_state_type*)P)->channel_state))[(int)((int)I / BITS)],	\
 	((int)I % BITS)) )
 #define SET_CHANNEL(P,I) ( SET_CHANNEL_BIT(						\
-	((unsigned int*)(((lp_state_type*)P)->core_data->channel_state))[(int)((int)I / BITS)],	\
+	((unsigned int*)(((lp_state_type*)P)->channel_state))[(int)((int)I / BITS)],	\
 	((int)I % BITS)) )
 #define RESET_CHANNEL(P,I) ( RESET_CHANNEL_BIT(						\
-	((unsigned int*)(((lp_state_type*)P)->core_data->channel_state))[(int)((int)I / BITS)],	\
+	((unsigned int*)(((lp_state_type*)P)->channel_state))[(int)((int)I / BITS)],	\
 	((int)I % BITS)) )
 
 // Message exchanged among LPs
@@ -74,21 +74,21 @@ typedef struct _channel{
 	double power; // Power allocated to the call
 } channel;
 
-struct core_data_t {
-	unsigned int complete_calls; // Number of calls which were completed within this cell
-	unsigned int *channel_state;
-	double ta; // Current call interarrival frequency for this cell
+struct approximated_data_t {
+    unsigned int channel_counter; // How many free cells
+    unsigned int arriving_calls; // How many calls have been delivered within this cell
+    unsigned int blocked_on_setup; // Number of calls blocked due to lack of free channels
+    unsigned int blocked_on_handoff; // Number of calls blocked due to lack of free channels in HANDOFF_RECV
+    unsigned int leaving_handoffs; // How many calls were diverted to a different cell
+    unsigned int arriving_handoffs; // How many calls were received from other cells
+    struct _channel *channels;
 };
 
 typedef struct _lp_state_type{
-	unsigned int channel_counter; // How many free cells
-	unsigned int arriving_calls; // How many calls have been delivered within this cell
-	unsigned int blocked_on_setup; // Number of calls blocked due to lack of free channels
-	unsigned int blocked_on_handoff; // Number of calls blocked due to lack of free channels in HANDOFF_RECV
-	unsigned int leaving_handoffs; // How many calls were diverted to a different cell
-	unsigned int arriving_handoffs; // How many calls were received from other cells
-	struct core_data_t *core_data;
-	struct _channel *channels;
+	unsigned int complete_calls; // Number of calls which were completed within this cell
+	double ta; // Current call interarrival frequency for this cell
+	struct approximated_data_t *approximated_data;
+	unsigned int channel_state[];
 } lp_state_type;
 
 extern unsigned int channels_per_cell;

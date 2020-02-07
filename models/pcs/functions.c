@@ -89,13 +89,13 @@ void fading_recheck(lp_state_type *pointer)
 	unsigned i;
 
 	for(i = 0; i < channels_per_cell; i++){
-		if(!pointer->core_data->channel_state[i/(sizeof(unsigned) * CHAR_BIT)]){
+		if(!pointer->channel_state[i/(sizeof(unsigned) * CHAR_BIT)]){
 			i += (sizeof(unsigned) * CHAR_BIT) - 1;
 			continue;
 		}
 
 		if(CHECK_CHANNEL(pointer, i)){
-			pointer->channels[i].fading = Expent(1.0);
+			pointer->approximated_data->channels[i].fading = Expent(1.0);
 		}
 	}
 }
@@ -108,7 +108,7 @@ unsigned allocation(lp_state_type *pointer)
 
 	for(i = 0; i < channels_per_cell; ++i){
 		if(CHECK_CHANNEL(pointer, i)){
-			c = &pointer->channels[i];
+			c = &pointer->approximated_data->channels[i];
 			c->fading = Expent(1.0);
 			summ += generate_cross_path_gain() * c->power * c->fading;
 		} else {
@@ -120,13 +120,13 @@ unsigned allocation(lp_state_type *pointer)
 	}
 
 	if(j == UINT_MAX){
-		printf("Unable to allocate channel, but the counter says I have %d available channels\n", pointer->channel_counter);
+		printf("Unable to allocate channel, but the counter says I have %d available channels\n", pointer->approximated_data->channel_counter);
 		fflush(stdout);
 		abort();
 		return UINT_MAX;
 	}
 
-	initialize_channel(&pointer->channels[j], summ);
+	initialize_channel(&pointer->approximated_data->channels[j], summ);
 	return j;
 }
 
@@ -139,7 +139,7 @@ unsigned reallocate_channels(lp_state_type *pointer)
 
 	for(i = 0; i < channels_per_cell; ++i){
 		if(CHECK_CHANNEL(pointer, i)){
-			c = &pointer->channels[i];
+			c = &pointer->approximated_data->channels[i];
 			initialize_channel(c, summ);
 			c->fading = Expent(1.0);
 			summ += generate_cross_path_gain() * c->power * c->fading;
@@ -154,7 +154,7 @@ unsigned reallocate_channels(lp_state_type *pointer)
 static void initialize_channel(channel *c, double sum)
 {
 
-	if (fabsf(sum) < FLT_EPSILON) {
+	if (fabs(sum) < FLT_EPSILON) {
 		// The newly allocated channel receives the minimal power
 		c->power = MIN_POWER;
 	} else {

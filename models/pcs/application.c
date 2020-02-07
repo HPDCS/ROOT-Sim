@@ -4,8 +4,7 @@
 
 #include "application.h"
 
-bool 	pcs_statistics = false,
-	approximated = false,
+bool	approximated = true,
 	fading_check = false,  // Is the model set up to periodically recompute the fading of all ongoing calls?
 	variable_ta = false; // Should the call interarrival frequency change depending on the current time?
 unsigned complete_calls = COMPLETE_CALLS,
@@ -15,19 +14,17 @@ double 	ref_ta = TA,   // Initial call interarrival frequency (same for all cell
 	ta_change = TA_CHANGE; // Average time after which a call is diverted to another cell
 
 enum {
-	OPT_STAT = 128, /// this tells argp to not assign short options
-	OPT_TA,
+        OPT_TA = 128, /// this tells argp to not assign short options
 	OPT_TAD,
 	OPT_TAC,
 	OPT_CPC,
 	OPT_CC,
 	OPT_FR,
 	OPT_VTA,
-	OPT_APX,
+	OPT_PREC,
 };
 
 const struct argp_option model_options[] = {
-		{"pcs-statistics", OPT_STAT, NULL, 0, NULL, 0},
 		{"ta", OPT_TA, "FLOAT", 0, NULL, 0},
 		{"ta-duration", OPT_TAD, "FLOAT", 0, NULL, 0},
 		{"ta-change", OPT_TAC, "FLOAT", 0, NULL, 0},
@@ -35,7 +32,7 @@ const struct argp_option model_options[] = {
 		{"complete-calls", OPT_CC, "INT", 0, NULL, 0},
 		{"fading-recheck", OPT_FR, NULL, 0, NULL, 0},
 		{"variable-ta", OPT_VTA, NULL, 0, NULL, 0},
-		{"approximated", OPT_APX, NULL, 0, NULL, 0},
+		{"precise-mode", OPT_PREC, NULL, 0, NULL, 0},
 		{0}
 };
 
@@ -57,17 +54,14 @@ static error_t model_parse (int key, char *arg, struct argp_state *state) {
 		HANDLE_CASE(OPT_CPC, "%u", channels_per_cell);
 		HANDLE_CASE(OPT_CC, "%u", complete_calls);
 
-		case OPT_STAT:
-			pcs_statistics = true;
-			break;
 		case OPT_FR:
 			fading_check = true;
 			break;;
 		case OPT_VTA:
 			variable_ta = true;
 			break;
-		case OPT_APX:
-			approximated = true;
+	        case OPT_PREC:
+			approximated = false;
 			break;
 
 		case ARGP_KEY_SUCCESS:
@@ -107,30 +101,25 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 		case INIT:
 
 			// Initialize the LP's state
-			state = (lp_state_type *)malloc(sizeof(lp_state_type));
+			state = (lp_state_type *)malloc(sizeof(lp_state_type) + sizeof(unsigned int) * (CHANNELS_PER_CELL / BITS + 1));
 			if (state == NULL){
 				printf("Out of memory!\n");
 				exit(EXIT_FAILURE);
 			}
-			SetState(state);
-			bzero(state, sizeof(lp_state_type));
 
-			state->channel_counter = channels_per_cell;
-			state->channels = malloc(sizeof(channel) * channels_per_cell);
+			SetState(state);
+			bzero(state, sizeof(lp_state_type) + sizeof(unsigned int) * (CHANNELS_PER_CELL / BITS + 1));
 
 			// Setup channel state
-			state->core_data = malloc(sizeof(struct core_data_t));
-			bzero(state->core_data, sizeof(struct core_data_t));
-			
-			state->core_data->channel_state = malloc(sizeof(unsigned int) * (CHANNELS_PER_CELL / BITS + 1));
-			bzero(state->core_data->channel_state, sizeof(unsigned int) * (CHANNELS_PER_CELL / BITS + 1));
-                        state->core_data->ta = ref_ta;
+			state->approximated_data = malloc(sizeof(struct approximated_data_t));
+			bzero(state->approximated_data, sizeof(struct approximated_data_t));
 
-                        if(approximated){
-                        	CoreMemoryMark(state->core_data);
-                        	CoreMemoryMark(state->core_data->channel_state);
-                        	RollbackModeSet(true);
-                        }
+                        state->approximated_data->channel_counter = channels_per_cell;
+                        state->approximated_data->channels = malloc(sizeof(channel) * channels_per_cell);
+
+			state->ta = ref_ta;
+
+                        RollbackModeSet(approximated);
 
 			// Start the simulation
 			timestamp = (simtime_t) (20 * Random());
@@ -146,20 +135,20 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 
 		case START_CALL:
 
-			state->arriving_calls++;
+			state->approximated_data->arriving_calls++;
 
 			if (variable_ta)
-				state->core_data->ta = recompute_ta(ref_ta, now);
+				state->ta = recompute_ta(ref_ta, now);
 
 			// Determine the time at which a new call will be issued
 			switch (DISTRIBUTION) {
 
 				case UNIFORM:
-					timestamp = now + (simtime_t)(state->core_data->ta * Random());
+					timestamp = now + (simtime_t)(state->ta * Random());
 					break;
 
 				case EXPONENTIAL:
-					timestamp = now + (simtime_t)(Expent(state->core_data->ta));
+					timestamp = now + (simtime_t)(Expent(state->ta));
 					break;
 
 				default:
@@ -169,12 +158,12 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 
 			ScheduleNewEvent(me, timestamp, START_CALL, NULL, 0);
 
-			if (state->channel_counter == 0) {
-				state->blocked_on_setup++;
+			if (state->approximated_data->channel_counter == 0) {
+				state->approximated_data->blocked_on_setup++;
 				break;
 			}
 
-			state->channel_counter--;
+			state->approximated_data->channel_counter--;
 
 			new_event_content.channel = allocation(state);
 			new_event_content.from = me;
@@ -224,16 +213,16 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 
 		case END_CALL:
 
-			state->channel_counter++;
-			state->core_data->complete_calls++ ;
+			state->approximated_data->channel_counter++;
+			state->complete_calls++ ;
 			deallocation(state, event_content->channel);
 
 			break;
 
 		case HANDOFF_LEAVE:
 
-			state->channel_counter++;
-			state->leaving_handoffs++;
+			state->approximated_data->channel_counter++;
+			state->approximated_data->leaving_handoffs++;
 			deallocation(state, event_content->channel);
 
 			new_event_content.call_term_time =  event_content->call_term_time;
@@ -242,13 +231,13 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 			break;
 
 		case HANDOFF_RECV:
-			state->arriving_handoffs++;
-			state->arriving_calls++;
+			state->approximated_data->arriving_handoffs++;
+			state->approximated_data->arriving_calls++;
 
-			if (state->channel_counter == 0)
-				state->blocked_on_handoff++;
+			if (state->approximated_data->channel_counter == 0)
+				state->approximated_data->blocked_on_handoff++;
 			else {
-				state->channel_counter--;
+				state->approximated_data->channel_counter--;
 
 				new_event_content.channel = allocation(state);
 				new_event_content.call_term_time = event_content->call_term_time;
@@ -295,13 +284,13 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 void RestoreApproximated(void *ptr) {
 	lp_state_type *state = (lp_state_type*)ptr;
 	unsigned occupied = reallocate_channels(state);
-	state->channel_counter = channels_per_cell - occupied;
+	state->approximated_data->channel_counter = channels_per_cell - occupied;
 }
 
 bool OnGVT(unsigned int me, lp_state_type *snapshot) {
 	(void)me;
 
-	if (snapshot->core_data->complete_calls < complete_calls)
+	if (snapshot->complete_calls < complete_calls)
 		return false;
 	return true;
 }
