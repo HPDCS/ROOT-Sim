@@ -104,13 +104,13 @@ void ccgs_reduce_termination(void)
 * @param gvt The Global Virtual Time value at which simulation states should be realigned
 *               to generate a snapshot inspection which is also consistent
 */
-void ccgs_compute_snapshot(state_t * time_barrier_pointer[], simtime_t gvt)
+void ccgs_compute_snapshot(state_t *time_barrier_pointer[], simtime_t gvt)
 {
 	int i;
 	bool check_res = true;
-	state_t temporary_log;
 
-	(void)gvt;		// This is used for state reconstruction which is currently commented out
+	(void)gvt;
+	// This is used for state reconstruction which is currently commented out
 	//msg_t *realignment_evt;
 
 	i = -1;
@@ -125,46 +125,9 @@ void ccgs_compute_snapshot(state_t * time_barrier_pointer[], simtime_t gvt)
 		if (time_barrier_pointer[i] == NULL)
 			continue;
 
-		// TODO: realign LogState and RestoreState to be compliant with the execution in the committed portion
-
-		// Log the current state so that after we can restore it.
-		current = lp;
-		temporary_log.log = log_state(lp);
-		temporary_log.state = lp->state;
-		temporary_log.base_pointer = lp->current_base_pointer;
-
-		// Restore the time barrier state
-		log_restore(lp, time_barrier_pointer[i]);
-		lp->state = time_barrier_pointer[i]->state;
-		lp->current_base_pointer =
-		    time_barrier_pointer[i]->base_pointer;
-
-/*
-		// If the LP is not blocked, we can reconstruct the state exactly to the GVT
-		if(!is_blocked_state(lp->state))  {
-			// Realign the state to the current GVT value
-			if(list_next(time_barrier_pointer[i]->last_event) != NULL) {
-				realignment_evt = list_next(time_barrier_pointer[i]->last_event);
-				while(realignment_evt != NULL && realignment_evt->timestamp < gvt) {
-					realignment_evt = list_next(realignment_evt);
-				}
-				realignment_evt = list_prev(realignment_evt);
-
-				// TODO: LPS[lid]->current_base_pointer can be removed as a parameter
-				silent_execution(lid, LPS(lid)->current_base_pointer, list_next(time_barrier_pointer[i]->last_event), realignment_evt);
-			}
-		}
-
-*/
 		// Call the application to check termination
-		lps_termination[lp->lid.to_int] = lp->OnGVT(lp->gid.to_int, lp->current_base_pointer);
+		lps_termination[lp->lid.to_int] = time_barrier_pointer[i]->simulation_completed;
 		check_res &= lps_termination[lp->lid.to_int];
-
-		// Restore the current state
-		lp->state = temporary_log.state;
-		lp->current_base_pointer = temporary_log.base_pointer;
-		log_restore(lp, &temporary_log);
-		log_delete(temporary_log.log);
 
 		// Early stop
 		if (rootsim_config.check_termination_mode == CKTRM_INCREMENTAL && !check_res) {
@@ -175,6 +138,29 @@ void ccgs_compute_snapshot(state_t * time_barrier_pointer[], simtime_t gvt)
 
 	// No real LP is running now!
 	current = NULL;
+}
+
+
+/**
+ * @brief Evaluate if the simulation can be halted according to some LP.
+ *
+ * This function checks the current configuration for termination detection.
+ * Depending on it, it will decide whether to call OnGVT() in the model, for a
+ * certain LP.
+ *
+ * In particular, if the termination detection is incremental, the LP's OnGVT()
+ * will be only called if the LP has not decided to terminate the simulation already.
+ *
+ * @param lp	The LP for which to call termination detection
+ * @return 	@c true if the simulation should terminate according to the LP,
+ * 		@c false otherwise.
+ */
+bool ccgs_lp_can_halt(struct lp_struct *lp)
+{
+	if (rootsim_config.check_termination_mode == CKTRM_INCREMENTAL && lps_termination[lp->lid.to_int]) {
+		return true;
+	}
+	return lp->OnGVT(lp->gid.to_int, lp->current_base_pointer);
 }
 
 void ccgs_init(void)

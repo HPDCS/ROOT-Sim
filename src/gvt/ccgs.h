@@ -47,4 +47,5 @@ enum {
 
 extern inline bool ccgs_can_halt_simulation(void);
 extern void ccgs_reduce_termination(void);
-extern void ccgs_compute_snapshot(state_t * time_barrier_pointer[], simtime_t gvt);
+extern void ccgs_compute_snapshot(state_t *time_barrier_pointer[], simtime_t gvt);
+extern bool ccgs_lp_can_halt(struct lp_struct *lp);
