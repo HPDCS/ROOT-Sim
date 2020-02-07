@@ -103,7 +103,7 @@ void adopt_new_gvt(simtime_t new_gvt)
 	}
 
 	// If needed, call the CCGS subsystem
-	ccgs_compute_snapshot(time_barrier_pointer, new_gvt);
+	ccgs_compute_snapshot(time_barrier_pointer);
 
 	i = 0;
 	foreach_bound_lp(lp) {

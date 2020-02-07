@@ -104,16 +104,11 @@ void ccgs_reduce_termination(void)
 * @param gvt The Global Virtual Time value at which simulation states should be realigned
 *               to generate a snapshot inspection which is also consistent
 */
-void ccgs_compute_snapshot(state_t *time_barrier_pointer[], simtime_t gvt)
+void ccgs_compute_snapshot(state_t *time_barrier_pointer[])
 {
-	int i;
+	int i = -1;
 	bool check_res = true;
 
-	(void)gvt;
-	// This is used for state reconstruction which is currently commented out
-	//msg_t *realignment_evt;
-
-	i = -1;
 	foreach_bound_lp(lp) {
 		i++;
 
