@@ -23,19 +23,22 @@ void new_agent(unsigned me){
 }
 
 
-void ProcessEvent(int me, simtime_t now, int event_type, agent_t *agent_p, int event_size, cell_state_t *state) {
-	(void)event_size;
+void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, const void *payload, size_t size, void *st)
+{
+	(void)size;
 
+	cell_state_t *state = (cell_state_t *)st;
 	agent_t robot;
+	agent_t *agent_p = (agent_t *)payload;
 	agent_state_type *agent_state, *robot_state;
 	unsigned int i;
 	unsigned int j;
 	simtime_t timestamp;
 
-	if(event_type != INIT)
+	if(event != INIT)
 		state->started = true;
 
-	switch(event_type) {
+	switch(event) {
 
 		case INIT:
 			state = malloc(sizeof(cell_state_t));
@@ -171,15 +174,27 @@ void ProcessEvent(int me, simtime_t now, int event_type, agent_t *agent_p, int e
 	}
 }
 
-int OnGVT(unsigned int me, cell_state_t *state) {
+bool CanTerminate(unsigned int me, const void *snapshot, simtime_t now) {
 	(void)me;
+	(void)now;
+
+	cell_state_t *state = (cell_state_t *)snapshot;
 
 	if(state->present_agents) {
-		if(state->max_ratio < 1.0)
-			printf("Last Robot : %lf percent\n", state->max_ratio*100);
 		return state->max_ratio >= 1.0;
 
 	} else {
 		return state->started;
 	}
+}
+
+void OnCommittedState(unsigned int me, const void *snapshot, simtime_t now)
+{
+	(void)me;
+	(void)now;
+
+	cell_state_t *state = (cell_state_t *)snapshot;
+
+	if(state->max_ratio < 1.0)
+			printf("Last Robot : %lf percent\n", state->max_ratio*100);
 }

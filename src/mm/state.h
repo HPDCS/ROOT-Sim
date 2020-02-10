@@ -66,9 +66,6 @@ typedef struct _state_t {
 	/// This is a pointer used to keep track of changes to simulation states via SetState()
 	void *base_pointer;
 
-	/// Termination predicate for this LP
-	bool simulation_completed;
-
 	/* Library state fields */
 
 	numerical_state_t numerical;

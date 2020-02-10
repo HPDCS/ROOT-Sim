@@ -98,7 +98,8 @@ double	write_distribution = WRITE_DISTRIBUTION,
 	tau = TAU;
 
 
-void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *event_content, unsigned int size, void *state) {
+void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, const void *payload, size_t size, void *state)
+{
 	(void)size;
 
 	simtime_t timestamp;
@@ -108,16 +109,17 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 		remaining_size,
 		step;
 	event_content_type new_event;
+	event_content_type *event_content = (event_content_type *)payload;
 
-	lp_state_type *state_ptr = (lp_state_type*)state;
+	lp_state_type *state_ptr = (lp_state_type *)state;
 
 
-	switch (event_type) {
+	switch (event) {
 
 		case INIT:
 
 			// Initialize LP's state
-			state_ptr = (lp_state_type *)malloc(sizeof(lp_state_type));
+			state_ptr = malloc(sizeof(lp_state_type));
                         if(state_ptr == NULL){
                                 exit(-1);
                         }
@@ -125,7 +127,7 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 			// Explicitly tell ROOT-Sim this is our LP's state
                         SetState(state_ptr);
 
-			timestamp = (simtime_t) (20 * Random());
+			timestamp = (simtime_t)(20 * Random());
 
 
 			if(1 /*|| IsParameterPresent(event_content, "traditional")*/) {
@@ -264,7 +266,7 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 			}
 
 			// Is there a buffer to be deallocated?
-			if(fabsf(current_size + 1) < FLT_EPSILON) {
+			if(fabs(current_size + 1) < FLT_EPSILON) {
 				ScheduleNewEvent(me, timestamp, DEALLOC, NULL, 0);
 				break;
 			} else {
@@ -289,20 +291,28 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 }
 
 
-bool OnGVT(unsigned int me, lp_state_type *snapshot) {
+bool CanTerminate(unsigned int me, const void *snapshot, simtime_t now) {
 	(void)me;
+	(void)now;
 
-	if(snapshot->traditional) {
-		if(snapshot->events < COMPLETE_EVENTS)
+	if(((lp_state_type *)snapshot)->traditional) {
+		if(((lp_state_type *)snapshot)->events < COMPLETE_EVENTS)
 			return false;
 		return true;
 	}
 
 
 	// Did we perform enough allocations?
-        if (snapshot->cont_allocation < complete_alloc)
+        if (((lp_state_type *)snapshot)->cont_allocation < complete_alloc)
                 return false;
 
         return true;
+}
+
+void OnCommittedState(unsigned int me, const void *snapshot, simtime_t now)
+{
+	(void)me;
+	(void)snapshot;
+	(void)now;
 }
 

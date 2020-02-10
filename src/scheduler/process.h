@@ -124,17 +124,11 @@ struct lp_struct {
 	outgoing_t outgoing_buffer;
 
 	/**
-	 * Implementation of OnGVT used for this LP. This can be changed
-	 * at runtime by the autonomic subsystem, when dealing with ISS and SSS
-	 */
-	bool (*OnGVT)(unsigned int me, void *snapshot);
-
-	/**
 	 * Implementation of ProcessEvent used for this LP. This can be changed
 	 * at runtime by the autonomic subsystem, when dealing with ISS and SSS
 	 */
-	void (*ProcessEvent)(unsigned int me, simtime_t now, int event_type,
-			     void *event_content, unsigned int size,
+	void (*ProcessEvent)(unsigned int me, simtime_t now, unsigned int event_type,
+			     const void *event_content, size_t size,
 			     void *state);
 
 #ifdef HAVE_CROSS_STATE

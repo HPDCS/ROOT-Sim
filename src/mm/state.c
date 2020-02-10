@@ -97,6 +97,9 @@ bool LogState(struct lp_struct *lp)
 		// Allocate the state buffer
 		new_state = rsalloc(sizeof(*new_state));
 
+		// Early evaluation of simulation termination.
+		ccgs_lp_can_halt(lp, true);
+
 		// Associate the checkpoint with current LVT and last-executed event
 		new_state->lvt = lvt(lp);
 		new_state->last_event = lp->bound;
@@ -107,9 +110,6 @@ bool LogState(struct lp_struct *lp)
 		// Log members of lp_struct which must be restored
 		new_state->state = lp->state;
 		new_state->base_pointer = lp->current_base_pointer;
-
-		// Early evaluation of simulation termination.
-		new_state->simulation_completed = ccgs_lp_can_halt(lp);
 
 		// Log library-related states
 		memcpy(&new_state->numerical, &lp->numerical, sizeof(numerical_state_t));

@@ -18,34 +18,41 @@ typedef struct _guy_t {
 	bool engineer;
 } guy_t;
 
-void ProcessEvent(unsigned int me, simtime_t now, int event_type, agent_t *agent_p, unsigned int event_size, region_t *state) {
-
+void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, const void *payload, size_t size, void *st)
+{
+	(void)size;
+	
 	unsigned i, j, directions, dest;
 	float unlike;
 	agent_t this_agent;
 	guy_t *guy;
 	region_t *neighbour_data;
 	bool can_exit;
-	if(event_type != INIT)
+	region_t *state = (region_t *)st;
+	agent_t *agent_p = (agent_t *)payload;
+	
+	if(event != INIT)
 		state->started = true;
-	switch (event_type) {
+		
+	switch (event) {
 		case INIT:
-			(void)event_size;
 			// standard stuff
-			region_t *region = malloc(sizeof(region_t));
+			state = malloc(sizeof(region_t));
 
-			SetState(region);
+			SetState(state);
 
-			region->n.agents = 0;
-			region->n.has_engineer = false;
-			region->violation = 0;
-			region->happy = false;
-			region->started = false;
+			state->n.agents = 0;
+			state->n.has_engineer = false;
+			state->violation = 0;
+			state->happy = false;
+			state->started = false;
+			
 			// here we do what I explained earlier
-			TrackNeighbourInfo(region);
+			TrackNeighbourInfo(state);
+			
 			// for simplicity we spawn a single bug at region 0
-			if(Random() < AGENT_SPAWN_PROBABILITY){
-				region->n.agents++;
+			if(Random() < AGENT_SPAWN_PROBABILITY) {
+				state->n.agents++;
 				this_agent = SpawnAgent(sizeof(guy_t));
 				guy = DataAgent(this_agent, NULL);
 				guy->engineer = Random() < AGENT_IS_ENGINEER_PROBABILITY;
@@ -82,8 +89,8 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, agent_t *agent
 			unlike = 0.0;
 			directions = DirectionsCount();
 			can_exit = false;
+			
 			for(i = 0; i < directions; ++i) {
-
 				if(GetNeighbourInfo(i, &dest, (void**)&neighbour_data) < 0)
 					continue;
 
@@ -97,14 +104,15 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, agent_t *agent
 
 			state->happy = unlike/DirectionsCount() < AGENT_THRESHOLD;
 
-			if(!state->happy && can_exit){
-				do{
+			if(!state->happy && can_exit) {
+				do {
 					j = RandomRange(0, directions - 1);
-				}while(GetNeighbourInfo(j, &dest, (void**)&neighbour_data) < 0 || neighbour_data->n.agents >= 1);
+				} while(GetNeighbourInfo(j, &dest, (void**)&neighbour_data) < 0 || neighbour_data->n.agents >= 1);
+				
 				// this is our planned visit
 				state->n.agents--;
 				EnqueueVisit(*agent_p, dest, GUY_DELAYED_VISIT);
-			}else{
+			} else {
 				ScheduleNewLeaveEvent(now + Random()*TIME_STEP + 0.0001, GUY_LEAVE, *agent_p);
 			}
 			break;
@@ -112,13 +120,24 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, agent_t *agent
 		case _TRAVERSE: // we only schedule visits to neighbours, we shouldn't cross any "intermediate" region
 			/* no break */
 		default:
-			printf("%s:%d: Unsupported event: %d\n", __FILE__, __LINE__, event_type);
+			printf("%s:%d: Unsupported event: %d\n", __FILE__, __LINE__, event);
 			exit(EXIT_FAILURE);
 	}
 
 }
 
-int OnGVT(unsigned int me, region_t *snapshot) {
+bool CanTerminate(unsigned int me, const void *snapshot, simtime_t now) {
 	(void)me;
-	return snapshot->started && (snapshot->happy || snapshot->n.agents == 0);
+	(void)now;
+	
+	region_t *state = (region_t *)snapshot;
+	
+	return state->started && (state->happy || state->n.agents == 0);
+}
+
+void OnCommittedState(unsigned int me, const void *snapshot, simtime_t now)
+{
+	(void)me;
+	(void)snapshot;
+	(void)now;
 }

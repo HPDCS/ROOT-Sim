@@ -1,57 +1,44 @@
-#include "../stupid_model/application.h"
-
 #include <stdio.h>
+#include "application.h"
 
 struct _topology_settings_t topology_settings = {.type = TOPOLOGY_OBSTACLES, .default_geometry = TOPOLOGY_HEXAGON, .write_enabled = false};
 struct _abm_settings_t abm_settings = {.neighbour_data_size = sizeof(size_t), .traverse_handler = BUG_TRAVERSE, .keep_history = false};
 
-typedef struct _region_t {
-	simtime_t lvt;
-	double food_available; 	// cell's amount of food
-	double last_bug_size;	// last bug size
-	size_t bugs;		// XXX here we count bugs in the cell. Notice that CountAgentsABM() already provides us this information
-	 	 	 	// but since we need to track it we have to replicate it here: if basic values of regions are frequently requested
-	 	 	 	// for event modeling we can render them available by default without the need of these tricks
-	unsigned is_explored;
-	unsigned violation;
-} region_t;
-
-typedef struct _bug_t {
-	double size;
-	bool first; // to render the runs consistent in time we render the first spawned bug immortal
-} bug_t;
-
-void ProcessEvent(unsigned int me, simtime_t now, int event_type, agent_t *agent_p, unsigned int event_size, region_t *state) {
-
+void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, const void *payload, size_t size, void *st)
+{
+	(void)size;
+	
 	unsigned i, j, dest, tries, directions;
 	bug_t *this_bug;
 	double consumption;
 	size_t *bugs_count;
 	agent_t this_agent;
+	region_t *state = (region_t *)st;
+	agent_t *agent_p = (agent_t *)payload;
 
 	if(state != NULL)
 		state->lvt = now;
 
-	switch (event_type) {
+	switch (event) {
 		case INIT:
-			(void)event_size;
-			// standard stuff
-			region_t *region = malloc(sizeof(region_t));
+			state = malloc(sizeof(region_t));
 
-			SetState(region);
+			SetState(state);
 
-			region->is_explored = 0;
-			region->last_bug_size = 0;
-			region->food_available = RandomRange(0, MAX_FOOD_PRODUCTION_RATE);
-			region->bugs = 0;
-			region->violation = 0;
-			region->lvt = 0;
+			state->is_explored = 0;
+			state->last_bug_size = 0;
+			state->food_available = RandomRange(0, MAX_FOOD_PRODUCTION_RATE);
+			state->bugs = 0;
+			state->violation = 0;
+			state->lvt = 0;
+			
 			// here we do what I explained earlier
-			TrackNeighbourInfo(&region->bugs);
+			TrackNeighbourInfo(&state->bugs);
+			
 			// for simplicity we spawn a single bug at region 0
 			if(me < NUM_OCCUPIED_CELLS){
 				// here we call ourselves
-				ProcessEvent(me, 0, SPAWN_BUG, NULL, 0, region);
+				ProcessEvent(me, 0, SPAWN_BUG, NULL, 0, state);
 			}
 
 			ScheduleNewEvent(me, now + TIME_STEP, PRODUCE_FOOD, NULL, 0);
@@ -175,14 +162,22 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, agent_t *agent
 		case BUG_TRAVERSE: // we only schedule visits to neighbours, we shouldn't cross any "intermediate" region
 			/* no break */
 		default:
-			printf("%s:%d: Unsupported event: %d\n", __FILE__, __LINE__, event_type);
+			printf("%s:%d: Unsupported event: %d\n", __FILE__, __LINE__, event);
 			exit(EXIT_FAILURE);
 	}
 
 }
 
-int OnGVT(unsigned int me, region_t *snapshot) {
+bool CanTerminate(unsigned int me, const void *snapshot, simtime_t now) {
 	(void)me;
+	(void)now;
 
-	return snapshot->is_explored;
+	return ((region_t *)snapshot)->is_explored;
+}
+
+void OnCommittedState(unsigned int me, const void *snapshot, simtime_t now)
+{
+	(void)me;
+	(void)snapshot;
+	(void)now;
 }

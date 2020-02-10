@@ -34,8 +34,8 @@ extern noise_entry* noise_list;
  * Application-level callback: this is the interface between the simulator and the model being simulated
  */
 
-void ProcessEvent(unsigned int me, simtime_t now, int event_type, void *event_content, unsigned int size, void *ptr) {
-
+void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, const void *payload, size_t size, void *st)
+{
         /*
          * Pointer to the object representing the state of this logical process (node)
          */
@@ -52,7 +52,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, void *event_co
          * Initialize the local pointer to the pointer provided by the simulator
          */
 
-        state = (node_state*)ptr;
+        state = (node_state*)st;
 
         /*
          * Check whether the state object has already been set: if so, update the the local virtual time
@@ -96,7 +96,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, void *event_co
          * Depending on the event type, perform different tasks
          */
 
-        switch(event_type) {
+        switch(event) {
 
                 case INIT:
 
@@ -528,9 +528,9 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, void *event_co
                          * it may interfere with other the transmission of other frames.
                          */
 
-                        new_pending_transmission(state,((ctp_routing_packet*)event_content)->link_frame.gain,
-                                                         CTP_BEACON,event_content,
-                                                         ((ctp_routing_packet*)event_content)->link_frame.duration);
+                        new_pending_transmission(state,((ctp_routing_packet*)payload)->link_frame.gain,
+                                                         CTP_BEACON,payload,
+                                                         ((ctp_routing_packet*)payload)->link_frame.duration);
                         break;
 
                 case TRANSMISSION_DATA_PACKET_STARTED:
@@ -542,9 +542,9 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, void *event_co
                          * node and it may interfere with other the transmission of other frames.
                          */
 
-                        new_pending_transmission(state,((ctp_data_packet*)event_content)->link_frame.gain,
-                                                 CTP_DATA_PACKET,event_content,
-                                                 ((ctp_data_packet*)event_content)->link_frame.duration);
+                        new_pending_transmission(state,((ctp_data_packet*)payload)->link_frame.gain,
+                                                 CTP_DATA_PACKET,payload,
+                                                 ((ctp_data_packet*)payload)->link_frame.duration);
                         break;
 
                 case TRANSMISSION_FINISHED:
@@ -555,7 +555,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, void *event_co
                          * starts processing it.
                          */
 
-                        transmission_finished(state,(pending_transmission*)event_content);
+                        transmission_finished(state,(pending_transmission*)payload);
                         break;
 
                 case ACK_RECEIVED:
@@ -573,16 +573,16 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, void *event_co
                                  */
 
                                 //state->last_packet_acked=(ctp_data_packet*)event_content;
-                                state->last_packet_acked.link_frame.sink=((ctp_data_packet*)event_content)->link_frame.sink;
-                                state->last_packet_acked.link_frame.src=((ctp_data_packet*)event_content)->link_frame.src;
-                                state->last_packet_acked.link_frame.duration=((ctp_data_packet*)event_content)->link_frame.duration;
-                                state->last_packet_acked.link_frame.gain=((ctp_data_packet*)event_content)->link_frame.gain;
-                                state->last_packet_acked.payload=((ctp_data_packet*)event_content)->payload;
-                                state->last_packet_acked.data_packet_frame.ETX=((ctp_data_packet*)event_content)->data_packet_frame.ETX;
-                                state->last_packet_acked.data_packet_frame.options=((ctp_data_packet*)event_content)->data_packet_frame.options;
-                                state->last_packet_acked.data_packet_frame.origin=((ctp_data_packet*)event_content)->data_packet_frame.origin;
-                                state->last_packet_acked.data_packet_frame.seqNo=((ctp_data_packet*)event_content)->data_packet_frame.seqNo;
-                                state->last_packet_acked.data_packet_frame.THL=((ctp_data_packet*)event_content)->data_packet_frame.THL;
+                                state->last_packet_acked.link_frame.sink=((ctp_data_packet*)payload)->link_frame.sink;
+                                state->last_packet_acked.link_frame.src=((ctp_data_packet*)payload)->link_frame.src;
+                                state->last_packet_acked.link_frame.duration=((ctp_data_packet*)payload)->link_frame.duration;
+                                state->last_packet_acked.link_frame.gain=((ctp_data_packet*)payload)->link_frame.gain;
+                                state->last_packet_acked.payload=((ctp_data_packet*)payload)->payload;
+                                state->last_packet_acked.data_packet_frame.ETX=((ctp_data_packet*)payload)->data_packet_frame.ETX;
+                                state->last_packet_acked.data_packet_frame.options=((ctp_data_packet*)payload)->data_packet_frame.options;
+                                state->last_packet_acked.data_packet_frame.origin=((ctp_data_packet*)payload)->data_packet_frame.origin;
+                                state->last_packet_acked.data_packet_frame.seqNo=((ctp_data_packet*)payload)->data_packet_frame.seqNo;
+                                state->last_packet_acked.data_packet_frame.THL=((ctp_data_packet*)payload)->data_packet_frame.THL;
                         }
                         break;
 
@@ -620,7 +620,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, void *event_co
  */
 
 
-bool OnGVT(unsigned int me, void*snapshot) {
+bool CanTerminate(unsigned int me, const void *snapshot, simtime_t now) {
 
         /*
          * Counter of nodes failed so far
@@ -658,7 +658,7 @@ bool OnGVT(unsigned int me, void*snapshot) {
          */
 
         for(i=0;i<n_prc_tot;i++){
-                if(node_statistics_list[i].failed)
+                if(node_statistics_list != NULL && node_statistics_list[i].failed)
                         failed_nodes+=1;
         }
 
@@ -761,6 +761,13 @@ bool OnGVT(unsigned int me, void*snapshot) {
 
         return true;
 
+}
+
+void OnCommittedState(unsigned int me, const void *snapshot, simtime_t now)
+{
+	(void)me;
+	(void)snapshot;
+	(void)now;
 }
 
 

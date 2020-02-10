@@ -107,9 +107,8 @@ void initialize_lps(void)
 
 		// Which version of OnGVT and ProcessEvent should we use?
 		if (rootsim_config.snapshot == SNAPSHOT_FULL) {
-			lp->OnGVT = &OnGVT_light;
 			lp->ProcessEvent = &ProcessEvent_light;
-		}		// TODO: add here an else for ISS
+		} // TODO: add here an else for ISS
 
 		// Allocate LP stack
 		lp->stack = get_ult_stack(LP_STACK_SIZE);

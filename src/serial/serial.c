@@ -175,7 +175,7 @@ void serial_simulation(void)
 				// In incremental termination detection we are dealing with stable termination
 				// predicates. We can suppose that after that an LP decided to terminate the
 				// simulation, it will never change its mind.
-				if (!serial_completed_simulation[event->receiver.to_int] && current->OnGVT(event->receiver.to_int, current->current_base_pointer)) {
+				if (!serial_completed_simulation[event->receiver.to_int] && CanTerminate(event->receiver.to_int, current->current_base_pointer, event->timestamp)) {
 					completed++;
 					serial_completed_simulation[event->receiver.to_int] = true;
 					if (unlikely(completed == n_prc_tot)) {
@@ -187,7 +187,7 @@ void serial_simulation(void)
 				// We have to be sure that, at the current time, all the LPs are agreeing on termination.
 				// We therefore keep track of past per-LP decisions and increment/decrement the termination counter depending
 				// on changed decision.
-				new_termination_decision = current->OnGVT(event->receiver.to_int, current->current_base_pointer);
+				new_termination_decision = CanTerminate(event->receiver.to_int, current->current_base_pointer, event->timestamp);
 
 				if(serial_completed_simulation[event->receiver.to_int] != new_termination_decision) {
 					if(new_termination_decision) {

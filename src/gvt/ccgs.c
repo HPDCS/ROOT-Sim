@@ -121,7 +121,7 @@ void ccgs_compute_snapshot(state_t *time_barrier_pointer[])
 			continue;
 
 		// Call the application to check termination
-		lps_termination[lp->lid.to_int] = time_barrier_pointer[i]->simulation_completed;
+		lps_termination[lp->lid.to_int] = time_barrier_pointer[i]->last_event->simulation_completed;
 		check_res &= lps_termination[lp->lid.to_int];
 
 		// Early stop
@@ -146,16 +146,20 @@ void ccgs_compute_snapshot(state_t *time_barrier_pointer[])
  * In particular, if the termination detection is incremental, the LP's OnGVT()
  * will be only called if the LP has not decided to terminate the simulation already.
  *
+ * The information about the termination is stored in the `simulation_completed` member
+ * of the event pointed by `bound`. This is consistent also with executions using
+ * accurate termination detection.
+ *
  * @param lp	The LP for which to call termination detection
- * @return 	@c true if the simulation should terminate according to the LP,
- * 		@c false otherwise.
  */
-bool ccgs_lp_can_halt(struct lp_struct *lp)
+void ccgs_lp_can_halt(struct lp_struct *lp, bool for_checkpoint)
 {
 	if (rootsim_config.check_termination_mode == CKTRM_INCREMENTAL && lps_termination[lp->lid.to_int]) {
-		return true;
+		lp->bound->simulation_completed = true;
 	}
-	return lp->OnGVT(lp->gid.to_int, lp->current_base_pointer);
+
+	if(for_checkpoint || rootsim_config.check_termination_mode == CKTRM_ACCURATE)
+		lp->bound->simulation_completed = CanTerminate(lp->gid.to_int, lp->current_base_pointer, lp->bound->timestamp);
 }
 
 void ccgs_init(void)

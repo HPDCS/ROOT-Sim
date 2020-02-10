@@ -170,7 +170,7 @@ int allocation(lp_state_type *pointer) {
 			}
 		}
 
-		if (fabsf(summ) < FLT_EPSILON) {
+		if (fabs(summ) < FLT_EPSILON) {
 			// The newly allocated channel receives the minimal power
 			c->sir_data->power = MIN_POWER;
 		} else {

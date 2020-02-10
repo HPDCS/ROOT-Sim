@@ -45,6 +45,7 @@
 #include <arch/ult.h>
 #include <arch/thread.h>
 #include <core/init.h>
+#include <gvt/ccgs.h>
 #include <scheduler/binding.h>
 #include <scheduler/process.h>
 #include <scheduler/scheduler.h>
@@ -401,6 +402,9 @@ void schedule(void)
 		force_LP_checkpoint(next);
 	}
 #endif
+
+	// Accurate termination detection
+	ccgs_lp_can_halt(next, false);
 
 	// Log the state, if needed
 	LogState(next);

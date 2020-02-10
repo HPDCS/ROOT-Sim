@@ -1,13 +1,10 @@
 #pragma once
-#ifndef _TCAR_H
-#define _TCAR_H
-
 
 #include <ROOT-Sim.h>
 
 #define TIME_STEP 5.0
 
-enum _event_type{
+enum _event_type {
 	SUGAR_VISIT = INIT + 1,
 	SUGAR_INIT,
 	SUGAR_LEAVE,
@@ -42,5 +39,3 @@ typedef struct _region_t{
 	}n;
 } region_t;
 
-
-#endif /* _ANT_ROBOT_H */

@@ -48,7 +48,7 @@ void read_op(lp_state_type *state_ptr) {
 	i = start_idx;
 	while (already_read < read_size){
 		if (pointers[i] != NULL){
-			memcmp(pointers[i]->buffer, pointers[i]->buffer, state_ptr->taglie[i]);
+			(void)memcmp(pointers[i]->buffer, pointers[i]->buffer, state_ptr->taglie[i]);
 			already_read += state_ptr->taglie[i];
 			pointers[i] = pointers[i]->next;
 		}

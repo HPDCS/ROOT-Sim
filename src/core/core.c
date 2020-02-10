@@ -99,7 +99,7 @@ void exit_from_simulation_model(void)
 
 		printf("Warning: exit() has been called from the model.\n"
 		       "The simulation will now halt, but its unlikely what you really wanted...\n"
-		       "You should use OnGVT() instead. See the manpages for an explanation.\n");
+		       "You should use CanTerminate() instead. See the manpages for an explanation.\n");
 
 		simulation_shutdown(EXIT_FAILURE);
 	}

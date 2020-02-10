@@ -7,19 +7,20 @@
 struct _topology_settings_t topology_settings = {.type = TOPOLOGY_OBSTACLES, .write_enabled = false, .default_geometry = TOPOLOGY_SQUARE};
 struct _abm_settings_t abm_settings = {sizeof(unsigned), _TRAVERSE, false};
 
-void ProcessEvent(unsigned me, simtime_t now, int event_type, void *unused, unsigned event_size, lp_state_type *pointer) {
-
+void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, const void *payload, size_t size, void *state)
+{
 	(void) me;
-	(void) unused;
-	(void) event_size;
+	(void) payload;
+	(void) size;
 
 	unsigned i, j;
 	unsigned receiver;
 	unsigned *trails_p;
 	unsigned min_trails;
 	simtime_t timestamp = 0;
+	lp_state_type *pointer = (lp_state_type *)state;
 
-	switch(event_type) {
+	switch(event) {
 
 		case INIT:
 
@@ -75,16 +76,13 @@ void ProcessEvent(unsigned me, simtime_t now, int event_type, void *unused, unsi
 
 			switch (DISTRIBUTION) {
 
-				case UNIFORM:
-					timestamp= now + (simtime_t) (TIME_STEP * Random());
-					break;
-
 				case EXPONENTIAL:
-					timestamp= now + (simtime_t)(Expent(TIME_STEP));
+					timestamp = now + (simtime_t)(Expent(TIME_STEP));
 					break;
 
+				case UNIFORM:
 				default:
-					timestamp= now + (simtime_t)(TIME_STEP * Random());
+					timestamp = now + (simtime_t)(TIME_STEP * Random());
 		   			break;
 
 			}
@@ -95,6 +93,7 @@ void ProcessEvent(unsigned me, simtime_t now, int event_type, void *unused, unsi
 		case PING:
 			ScheduleNewEvent(me, now + 10, PING, NULL, 0);
 			break;
+
 		case _TRAVERSE:
       		default:
       			printf("Unsupported event!\n");
@@ -104,11 +103,19 @@ void ProcessEvent(unsigned me, simtime_t now, int event_type, void *unused, unsi
 }
 
 
-int OnGVT(unsigned int me, lp_state_type *snapshot) {
+bool CanTerminate(unsigned int me, const void *snapshot, simtime_t now) {
 	(void) me;
+	(void) now;
 
- 	if(snapshot->trails > MINIMUM_VISITS)
-		return true;
+	lp_state_type *state = (lp_state_type *)snapshot;
 
-	return false;
+ 	return state->trails > MINIMUM_VISITS;
 }
+
+void OnCommittedState(unsigned int me, const void *snapshot, simtime_t now)
+{
+	(void)me;
+	(void)snapshot;
+	(void)now;
+}
+

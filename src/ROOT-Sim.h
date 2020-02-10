@@ -78,6 +78,9 @@ int Zipf(double skew, int limit);
 // ROOT-Sim core API
 extern void (*ScheduleNewEvent)(unsigned int receiver, simtime_t timestamp, unsigned int event_type, void *event_content, unsigned int event_size);
 extern void SetState(void *new_state);
+extern void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, const void *payload, size_t size, void *state);
+extern void OnCommittedState(unsigned int me, const void *snapshot, simtime_t now);
+extern bool CanTerminate(unsigned int me, const void *snapshot, simtime_t now);
 
 /*********************************/
 /********TOPOLOGY*LIBRARY*********/

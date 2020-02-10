@@ -11,18 +11,19 @@
 
 struct _topology_settings_t topology_settings = {.type = TOPOLOGY_OBSTACLES, .default_geometry = TOPOLOGY_GRAPH, .write_enabled = false};
 
-void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_type *event_content, unsigned int size, void *ptr) {
+void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, const void *payload, size_t size, void *st)
+{
 	(void)size;
 	int i;
 	int target;
 
 	event_content_type new_event_content;
+	event_content_type *event_content = (event_content_type *)payload;
 	simtime_t timestamp;
 
 	bzero(&new_event_content, sizeof(new_event_content));
 
-	lp_state_type *state;
-	state = (lp_state_type*)ptr;
+	lp_state_type *state = (lp_state_type *)st;
 
 	if(state != NULL) {
 		state->lvt = now;
@@ -31,12 +32,12 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 
 	for(i = 0; i < LOOP; i++);
 
-	switch(event_type) {
+	switch(event) {
 
 		case INIT:
 
 			// Initialize the LP's state
-			state = (lp_state_type *)malloc(sizeof(lp_state_type));
+			state = malloc(sizeof(lp_state_type));
 			if (state == NULL){
 				printf("Out of memory!\n");
 				exit(EXIT_FAILURE);
@@ -193,19 +194,27 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 			break;
 
 		default:
-			fprintf(stdout, "PCS: Unknown event type! (me = %d - event type = %d)\n", me, event_type);
+			fprintf(stdout, "PCS: Unknown event type! (me = %d - event type = %d)\n", me, event);
 			abort();
 
 	}
 }
 
 
-bool OnGVT(unsigned int me, lp_state_type *state) {
+bool CanTerminate(unsigned int me, const void *snapshot, simtime_t now) {
 	(void)me;
-	//printf("%d: %f\% (%d/%d)\n", me, 100 * state->committed_tx / (double)TOTAL_COMMITTED_TX, state->committed_tx, TOTAL_COMMITTED_TX);
+	(void)now;
 
-	if(state->committed_tx < TOTAL_COMMITTED_TX)
+	if(((lp_state_type *)snapshot)->committed_tx < TOTAL_COMMITTED_TX)
 		return false;
 	return true;
 }
 
+void OnCommittedState(unsigned int me, const void *snapshot, simtime_t now)
+{
+	(void)now;
+
+	printf("%d: %f\% (%d/%d)\n", me,
+		100 * ((lp_state_type *)snapshot)->committed_tx / (double)TOTAL_COMMITTED_TX,
+		((lp_state_type *)snapshot)->committed_tx, TOTAL_COMMITTED_TX);
+}

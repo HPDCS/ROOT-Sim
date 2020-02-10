@@ -82,14 +82,16 @@ struct argp model_argp = {model_options, model_parse, NULL, NULL, NULL, NULL, NU
 
 struct _topology_settings_t topology_settings = {.default_geometry = TOPOLOGY_HEXAGON};
 
-void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_type *event_content, unsigned int size, void *ptr) {
+void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, const void *payload, size_t size, void *st)
+{
 	(void)size;
 	
 	unsigned int w;
 
 	//printf("%d executing %d at %f\n", me, event_type, now);
 
-	event_content_type new_event_content;
+	event_t new_event_content;
+	event_t *event_content = (event_t *)payload;
 
 	new_event_content.cell = -1;
 	new_event_content.channel = -1;
@@ -98,8 +100,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 	simtime_t handoff_time;
 	simtime_t timestamp = 0;
 
-	lp_state_type *state;
-	state = (lp_state_type*)ptr;
+	lp_state_type *state = (lp_state_type*)st;
 
 	if(state != NULL) {
 		state->lvt = now;
@@ -107,7 +108,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 	}
 
 
-	switch(event_type) {
+	switch(event) {
 
 		case INIT:
 
@@ -301,17 +302,27 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 
 
 		default:
-			fprintf(stdout, "PCS: Unknown event type! (me = %d - event type = %d)\n", me, event_type);
+			fprintf(stdout, "PCS: Unknown event type! (me = %d - event type = %d)\n", me, event);
 			abort();
 
 	}
 }
 
 
-bool OnGVT(unsigned int me, lp_state_type *snapshot) {
+bool CanTerminate(unsigned int me, const void *s, simtime_t now) {
 	(void)me;
+	(void)now;
+	
+	lp_state_type *snapshot = (lp_state_type *)s;
 	
 	if (snapshot->complete_calls < complete_calls)
 		return false;
 	return true;
+}
+
+void OnCommittedState(unsigned int me, const void *snapshot, simtime_t now)
+{
+	(void)me;
+	(void)snapshot;
+	(void)now;
 }

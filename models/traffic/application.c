@@ -26,23 +26,24 @@
 #include "application.h"
 #include "init.h"
 
-void ProcessEvent(unsigned int me, simtime_t now, int event_type, void *event, size_t size, lp_state_type *state) {
+void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, const void *payload, size_t size, void *st)
+{
 	(void)now;
+	(void)size;
 
 	simtime_t timestamp = 0;
 	event_content_type new_event;
 	int receiver;
 	car_t *car;
 
-	event_content_type *event_content = (event_content_type *)event;
-
-	(void)size;
+	event_content_type *event_content = (event_content_type *)payload;
+	lp_state_type *state = (lp_state_type *)st;
 
 	if(state != NULL) {
 		state->lvt = now;
 	}
 
-	switch(event_type) {
+	switch(event) {
 
 		// This event initializes the simulation state for each LP and inject first events
 		case INIT:
@@ -110,7 +111,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, void *event, s
 
 		case LEAVE:
 
-			car = car_dequeue(me, state, (unsigned long long *)event);
+			car = car_dequeue(me, state, (unsigned long long *)payload);
 			if(car != NULL) {
 				new_event.from = me;
 				new_event.injection = false;
@@ -148,20 +149,24 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, void *event, s
 			break;
 
       		default:
-			printf(" state simulation: error - inconsistent event (me = %d - event type = %d)\n",me,event_type);
+			printf(" state simulation: error - inconsistent event (me = %d - event type = %d)\n", me, event);
 			break;
 	}
 }
 
+bool CanTerminate(unsigned int me, const void *snapshot, simtime_t now) {
+	(void) me;
+	(void) now;
 
+	lp_state_type *state = (lp_state_type *)snapshot;
 
-bool OnGVT(unsigned int me, lp_state_type *snapshot) {
-	(void)me;
-
-	//~if(snapshot->accident)
-		//~printf("Node %s is in accident state\n", snapshot->name);
-
-	if (snapshot->lvt < EXECUTION_TIME)
-		return false;
-	return true;
+	return state->lvt >= EXECUTION_TIME;
 }
+
+void OnCommittedState(unsigned int me, const void *snapshot, simtime_t now)
+{
+	(void)me;
+	(void)snapshot;
+	(void)now;
+}
+

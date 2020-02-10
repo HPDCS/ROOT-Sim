@@ -122,7 +122,7 @@ static simtime_t compute_traverse_time(lp_state_type *state, double mean_speed) 
 
 	do {
 		// Compute traverse time according to a Normal distribution
-		real_speed = abs(Gaussian(speed, SPEED_SIGMA));
+		real_speed = fabs(Gaussian(speed, SPEED_SIGMA));
 		traverse_time = (simtime_t)(state->segment_length / real_speed);
 	} while(isinf(traverse_time));
 

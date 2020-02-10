@@ -99,16 +99,18 @@ static void sugar_eater_on_leave(agent_t agent, unsigned me, region_t *region){
 }
 
 
-void ProcessEvent(unsigned me, simtime_t now, int event_type, agent_t *agent_p, unsigned event_size, region_t *region) {
+void ProcessEvent(unsigned int me, simtime_t now, unsigned int event, const void *payload, size_t size, void *state)
+{
+	(void)size;
+	region_t *region = (region_t *)state;
+	agent_t *agent_p = (agent_t *)payload;
 
-	(void) event_size;
-
-	switch(event_type) {
+	switch(event) {
 
 		case INIT:
 
 			region = malloc(sizeof(region_t));
-			if(region == NULL){
+			if(region == NULL) {
 				printf("Out of memory!\n");
 				exit(EXIT_FAILURE);
 			}
@@ -156,9 +158,18 @@ void ProcessEvent(unsigned me, simtime_t now, int event_type, agent_t *agent_p, 
 	}
 }
 
-int OnGVT(unsigned int me, region_t *snapshot) {
-	if(snapshot->n.eaters != 0)
-		printf("%u: cap %u eaters %u sugar %u\n", me, snapshot->capacity, snapshot->n.eaters, snapshot->n.sugar);
+bool CanTerminate(unsigned int me, const void *snapshot, simtime_t now) {
+	(void)now;
+	return (((region_t *)snapshot)->n.eaters == 0);
+}
 
-	return (snapshot->n.eaters == 0);
+void OnCommittedState(unsigned int me, const void *snapshot, simtime_t now)
+{
+	(void)me;
+	(void)now;
+
+	region_t *state = (region_t *)snapshot;
+	
+	if(state->n.eaters != 0)
+		printf("%u: cap %u eaters %u sugar %u\n", me, state->capacity, state->n.eaters, state->n.sugar);
 }

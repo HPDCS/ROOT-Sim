@@ -1,6 +1,6 @@
 #include <ROOT-Sim.h>
 
-void ProcessEvent(unsigned int me, simtime_t now, int type, void *payload, unsigned int size, void *state) {
+void ProcessEvent(unsigned int me, simtime_t now, unsigned int type, const void *payload, size_t size, void *state) {
 	(void)me;
 	(void)now;
 	(void)type;
@@ -65,9 +65,17 @@ void ProcessEvent(unsigned int me, simtime_t now, int type, void *payload, unsig
 }
 
 
-bool OnGVT(unsigned int me, void *snapshot) {
+bool CanTerminate(unsigned int me, const void *snapshot, simtime_t now) {
 	(void)me;
 	(void)snapshot;
-
+	(void)now;
 	return true;
 }
+
+void OnCommittedState(unsigned int me, const void *snapshot, simtime_t now)
+{
+	(void)me;
+	(void)snapshot;
+	(void)now;
+}
+

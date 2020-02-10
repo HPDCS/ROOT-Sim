@@ -26,6 +26,18 @@ enum _event_t{
 	GUY_INIT,
 	_TRAVERSE
 };
+
+typedef struct _infection_t infection_t;
+typedef struct _init_t init_t;
+
+union _payload {
+	agent_t *agent;
+	unsigned *n;
+	infection_t *i_m;
+	init_t *in_m;
+	const void *payload;
+};
+
 // this samples a random number with binomial distribution TODO could be useful in the numeric library
 unsigned random_binomial(unsigned trials, double p);
 
