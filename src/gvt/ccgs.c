@@ -37,6 +37,7 @@
 #include <stdbool.h>
 #include <core/core.h>
 #include <core/init.h>
+#include <datatypes/bitmap.h>
 #include <mm/mm.h>
 #include <mm/state.h>
 #include <communication/communication.h>
@@ -48,8 +49,8 @@
 /// This variable is an aggregate result for the distributed termination detection
 static bool ccgs_completed_simulation = false;
 
-/// In case termination detection is incremental, this array keeps track of LPs that think the simulation can be halted already
-static bool *lps_termination;
+/// In case termination detection is incremental, this bitmap keeps track of LPs that agreed upon simulation termination
+static rootsim_bitmap *lps_termination;
 
 inline bool ccgs_can_halt_simulation(void)
 {
@@ -63,13 +64,12 @@ inline bool ccgs_can_halt_simulation(void)
 // Deve essere chiamata da un solo thread al GVT
 void ccgs_reduce_termination(void)
 {
-	register unsigned int i;
 	bool termination = true;
 
-	/* Local termination:  all LPs need to be terminated */
-	for (i = 0; i < n_prc; i++) {
-		termination &= lps_termination[i];
-	}
+	/* Local termination:  all LPs need to agree */
+#define reduce_local_termination(x) termination &= x
+	bitmap_foreach_set(lps_termination, bitmap_required_size(n_prc), reduce_local_termination);
+#undef reduce_local_termination
 
 #ifdef HAVE_MPI
 	/* If terminated locally check for global termination
@@ -112,27 +112,24 @@ void ccgs_compute_snapshot(state_t *time_barrier_pointer[])
 	foreach_bound_lp(lp) {
 		i++;
 
-		// If termination detection is incremental, we skip the current LP
-		if (rootsim_config.check_termination_mode == CKTRM_INCREMENTAL && lps_termination[lp->lid.to_int]) {
+		// If termination detection is incremental, we could skip the current LP if already agreed for termination
+		if (rootsim_config.check_termination_mode == CKTRM_INCREMENTAL && bitmap_check(lps_termination, lp->lid.to_int)) {
 			continue;
 		}
 
 		if (time_barrier_pointer[i] == NULL)
 			continue;
 
-		// Call the application to check termination
-		lps_termination[lp->lid.to_int] = time_barrier_pointer[i]->last_event->simulation_completed;
-		check_res &= lps_termination[lp->lid.to_int];
+		// Check if after this event the LP agreed upon termination
+		if(time_barrier_pointer[i]->last_event->simulation_completed)
+			bitmap_set(lps_termination, lp->lid.to_int);
+		check_res &= time_barrier_pointer[i]->last_event->simulation_completed;
 
 		// Early stop
 		if (rootsim_config.check_termination_mode == CKTRM_INCREMENTAL && !check_res) {
 			break;
 		}
-
 	}
-
-	// No real LP is running now!
-	current = NULL;
 }
 
 
@@ -154,7 +151,7 @@ void ccgs_compute_snapshot(state_t *time_barrier_pointer[])
  */
 void ccgs_lp_can_halt(struct lp_struct *lp, bool for_checkpoint)
 {
-	if (rootsim_config.check_termination_mode == CKTRM_INCREMENTAL && lps_termination[lp->lid.to_int]) {
+	if (rootsim_config.check_termination_mode == CKTRM_INCREMENTAL && bitmap_check(lps_termination, lp->lid.to_int)) {
 		lp->bound->simulation_completed = true;
 	}
 
@@ -164,8 +161,8 @@ void ccgs_lp_can_halt(struct lp_struct *lp, bool for_checkpoint)
 
 void ccgs_init(void)
 {
-	lps_termination = rsalloc(sizeof(bool) * n_prc);
-	memset(lps_termination, 0, sizeof(bool) * n_prc);
+	lps_termination = malloc(bitmap_required_size(n_prc));
+	bitmap_initialize(lps_termination, n_prc);
 }
 
 void ccgs_fini(void)
