@@ -38,7 +38,7 @@
 struct malloc_state;
 
 struct memory_map {
-	struct malloc_state *m_state;
+	struct _malloc_state *m_state;
 	struct buddy *buddy;
 	struct slab_chain *slab;
 	struct segment *segment;
@@ -65,8 +65,6 @@ extern void log_delete(void *);
 extern void clean_buffers_on_gvt(struct lp_struct *, simtime_t);
 
 extern void set_force_full(struct lp_struct *);
-
-extern bool is_incremental(void *ckpt);
 
 /* Simulation Platform Memory APIs */
 extern inline void *rsalloc(size_t);

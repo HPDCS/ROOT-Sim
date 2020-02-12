@@ -65,7 +65,7 @@ AM_COND_IF([HAVE_DOXYGEN], [AC_CONFIG_FILES([docs/Makefile])])
 #----------------------------------------------------------------------------
 # Check for languages and compilation support
 #----------------------------------------------------------------------------
-AC_LANG([C],[C++])
+AC_LANG([C])
 AC_PROG_CC([clang])
 AC_PROG_CXX([clang++])
 AC_PROG_CC_C_O
@@ -73,6 +73,17 @@ AC_PROG_CXXCPP
 AC_PROG_CXX_C_O
 
 AC_SUBST([LLVMFLAGS],[$(llvm-config --cppflags)])
+
+#----------------------------------------------------------------------------
+# Check for LLVM development headers
+#----------------------------------------------------------------------------
+AC_LANG_PUSH([C++])
+AC_CHECK_HEADER([llvm/Pass.h], [ac_llvm_headers=yes], [ac_llvm_headers=no])
+if test "x$ac_llvm_headers" = "xno"
+then
+	AC_MSG_ERROR([Cannot find LLVM development headers. Please install them.])
+fi
+AC_LANG_POP()
 
 #----------------------------------------------------------------------------
 # Check for an MPI environment

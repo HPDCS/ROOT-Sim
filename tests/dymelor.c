@@ -192,7 +192,7 @@ static void bin_alloc(struct bin *m, size_t size, unsigned r)
 
 	r %= 1024;
 
-	if (r < 1) {
+	if (r < 200) {
 		// calloc
 		if (m->size > 0)
 			free_it(m);
@@ -209,7 +209,7 @@ static void bin_alloc(struct bin *m, size_t size, unsigned r)
 			exit(1);
 		}
 
-	} else if ((r < 2) && (m->size < REALLOC_MAX)) {
+	} else if ((r < 400) && (m->size < REALLOC_MAX)) {
 		// realloc
 		if (!m->size)
 			m->ptr = NULL;
@@ -219,13 +219,13 @@ static void bin_alloc(struct bin *m, size_t size, unsigned r)
 		}
 		m->ptr = __wrap_realloc(m->ptr, size);
 		m->subs = DYMELOR;
-	} else if(r < 1020) {
+	} else if(r < 600) {
 		// buddy
 		if (m->size > 0)
 			free_it(m);
 		m->ptr = allocate_buddy_memory(current->mm->buddy, current->mm->segment->base, size);
 		m->subs = BUDDY;
-	} else if(r < 1021 && size <= SLAB_MSG_SIZE) {
+	} else if(r < 800 && size <= SLAB_MSG_SIZE) {
 		// slab
 		if (m->size > 0)
 			free_it(m);
