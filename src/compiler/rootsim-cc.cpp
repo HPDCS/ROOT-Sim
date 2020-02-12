@@ -20,11 +20,10 @@ namespace {
 
     struct ROOTSimCC : public ModulePass {
         static char ID;
-
         ROOTSimCC() : ModulePass(ID) {}
 
-
         bool runOnModule(Module &M) {
+            errs() << "\n ======================  Entered Module " << "[ " << M.getName() << " ]" << "====================== \n";
 
             std::vector < Function * > functions;
             std::map<const StringRef, Function *> clonedFunctions;
@@ -67,19 +66,14 @@ namespace {
                     }
                 }
             }
-
-
-            errs() << "\n ======================  Entered Module " << "[ " << M.getName() << " ]" << "====================== \n";
             
-            //run over every file in folder
             for (Module::iterator F = M.begin(), E = M.end(); F != E; ++F) {
 
-                if(F->getName().find("cloned") == std::string::npos) {
+                if(F->getName().find("_instr") == std::string::npos || F->getName().find("__write_memm") != std::string::npos) {
                     continue;
                 }
 
                 errs() << " \n\t******************* Function name:  " << "[ " << F->getName() << " ]" << " ********************\n\n";
-
 
                 //loop over each function within the file
                 for (Function::iterator BB = F->begin(), E = F->end(); BB != E; ++BB) {
@@ -99,19 +93,40 @@ namespace {
                             DataLayout *dataLayout = new DataLayout(&M);
                             uint64_t storeSize = dataLayout->getTypeStoreSize(pointerType->getPointerElementType());
 
-                            //insertCallBefore(inst, &M, address_of_store, cast<PointerType>(address_of_store->getType()), storeSize);
+                            IRBuilder<> builder(M.getContext());
+
+                            Value* args[] = {
+                            	builder.CreatePointerCast(address_of_store, address_of_store->getType()),
+                                builder.getInt64(storeSize)
+                            };
+
+							Type* memtraceArgs[] = {
+                				PointerType::getUnqual(Type::getVoidTy(M.getContext())),
+                				IntegerType::get(M.getContext(), 64) //TODO: number of bits depends on architecture
+                			};
+
+                            /*if (M.getFunction("__write_mem") == NULL) {
+                                  FunctionType *FT = FunctionType::get(Type::getVoidTy(M.getContext()), memtraceArgs, false); 
+                                  Function* func_ins = Function::Create(FT, Function::ExternalLinkage, "__write_memm", M);
+                                  (builder.CreateCall(func_ins, args))->insertBefore(inst);
+                            } else {*/
+                            	FunctionCallee memtraceFunction = M.getOrInsertFunction("__write_memm",
+                                                                    FunctionType::get(Type::getVoidTy(M.getContext()), memtraceArgs, false));
+
+                            	(builder.CreateCall(memtraceFunction.getCallee(), args))->insertBefore(inst);
+                            //}
 
                             errs() << " [STORE]";
                         } else if (isa<MemSetInst>(&(*BI))) {
                             MemSetInst *inst = dyn_cast<MemSetInst>(&(*BI));
 
-                            insertCallBefore(inst, &M, inst->getRawDest(), cast<PointerType>(inst->getRawDest()->getType()), (uint64_t) inst->getLength());
+                            //insertCallBefore(inst, &M, inst->getRawDest(), (uint64_t) inst->getLength());
 
                             errs() << "[MEMSET]";
                         } else if (isa<MemCpyInst>(&(*BI))) {
                             MemCpyInst *inst = dyn_cast<MemCpyInst>(&(*BI));
 
-                            insertCallBefore(inst, &M, inst->getRawDest(), cast<PointerType>(inst->getRawDest()->getType()), (uint64_t) inst->getLength());
+                            //insertCallBefore(inst, &M, inst->getRawDest(), (uint64_t) inst->getLength());
 
                             errs() << "[MEMCOPY]";
                         } else {
@@ -147,18 +162,6 @@ namespace {
             return NewF;
         }
 
-        void insertCallBefore(Instruction *theInstruction, Module *M, Value *arg1, PointerType *arg2, uint64_t arg3) {
-            IRBuilder<> builder(M->getContext());
-            FunctionCallee memtraceFunction = M->getOrInsertFunction("memtrace",
-                                                      Type::getVoidTy(M->getContext()));
-
-            ArrayRef<Value*> args = {
-                    builder.CreatePointerCast(arg1, arg2),
-                    builder.getInt64(arg3)
-                            };
-
-            (builder.CreateCall(memtraceFunction.getCallee(), args))->insertBefore(theInstruction);
-        }
     };
 }
 
@@ -178,3 +181,4 @@ static void loadPass(const PassManagerBuilder &Builder, llvm::legacy::PassManage
 // These constructors add our pass to a list of global extensions.
 static RegisterStandardPasses clangtoolLoader_Ox(PassManagerBuilder::EP_OptimizerLast, loadPass);
 static RegisterStandardPasses clangtoolLoader_O0(PassManagerBuilder::EP_EnabledOnOptLevel0, loadPass);
+
