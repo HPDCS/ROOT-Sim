@@ -20,6 +20,7 @@ namespace {
 
     struct ROOTSimCC : public ModulePass {
         static char ID;
+        FunctionCallee memtraceFunction;
         ROOTSimCC() : ModulePass(ID) {}
 
         bool runOnModule(Module &M) {
@@ -67,6 +68,8 @@ namespace {
                 }
             }
             
+            memtraceFunction = initMemtraceCall(&M);
+
             for (Module::iterator F = M.begin(), E = M.end(); F != E; ++F) {
 
                 if(F->getName().find("_instr") == std::string::npos || F->getName().find("__write_memm") != std::string::npos) {
@@ -93,42 +96,18 @@ namespace {
                             DataLayout *dataLayout = new DataLayout(&M);
                             uint64_t storeSize = dataLayout->getTypeStoreSize(pointerType->getPointerElementType());
 
-                            IRBuilder<> builder(M.getContext());
+                            insertCallBefore(inst, &M, address_of_store, storeSize);
 
-                            Value* args[] = {
-                            	builder.CreatePointerCast(address_of_store, address_of_store->getType()),
-                                builder.getInt64(storeSize)
-                            };
-
-							Type* memtraceArgs[] = {
-                				PointerType::getUnqual(Type::getVoidTy(M.getContext())),
-                				IntegerType::get(M.getContext(), 64) //TODO: number of bits depends on architecture
-                			};
-
-                            /*if (M.getFunction("__write_mem") == NULL) {
-                                  FunctionType *FT = FunctionType::get(Type::getVoidTy(M.getContext()), memtraceArgs, false); 
-                                  Function* func_ins = Function::Create(FT, Function::ExternalLinkage, "__write_memm", M);
-                                  (builder.CreateCall(func_ins, args))->insertBefore(inst);
-                            } else {*/
-                            	FunctionCallee memtraceFunction = M.getOrInsertFunction("__write_mem",
-                                                                    FunctionType::get(Type::getVoidTy(M.getContext()), memtraceArgs, false));
-
-                            	(builder.CreateCall(memtraceFunction.getCallee(), args))->insertBefore(inst);
-                            //}
-
-                            errs() << " [STORE]";
                         } else if (isa<MemSetInst>(&(*BI))) {
                             MemSetInst *inst = dyn_cast<MemSetInst>(&(*BI));
 
-                            //insertCallBefore(inst, &M, inst->getRawDest(), (uint64_t) inst->getLength());
+                            insertCallBefore(inst, &M, inst->getRawDest(), (uint64_t) inst->getLength());
 
-                            errs() << "[MEMSET]";
                         } else if (isa<MemCpyInst>(&(*BI))) {
                             MemCpyInst *inst = dyn_cast<MemCpyInst>(&(*BI));
 
-                            //insertCallBefore(inst, &M, inst->getRawDest(), (uint64_t) inst->getLength());
+                            insertCallBefore(inst, &M, inst->getRawDest(), (uint64_t) inst->getLength());
 
-                            errs() << "[MEMCOPY]";
                         } else {
                             if (isa<CallInst>(&(*BI))) continue;
                             errs() << "[UNRECOGNIZED!1!]";
@@ -160,6 +139,28 @@ namespace {
             llvm::CloneFunctionInto(NewF, toClone, VMap, true, Returns, "", NULL, NULL, NULL);
 
             return NewF;
+        }
+
+        void insertCallBefore(Instruction *theInstruction, Module *M, Value *arg1, uint64_t arg2) {
+            IRBuilder<> builder(M->getContext());
+            
+            Value *args[] = {
+            	builder.CreatePointerCast(arg1, arg1->getType()),
+                builder.getInt64(arg2)
+            };
+
+            (builder.CreateCall(memtraceFunction, args))->insertBefore(theInstruction);
+        }
+
+        //This needs to be called before insertCallBefore 
+        FunctionCallee initMemtraceCall(Module *M) {
+        	Type *memtraceArgs[] = {
+				PointerType::getUnqual(Type::getVoidTy(M->getContext())),
+				IntegerType::get(M->getContext(), 64) //TODO: number of bits depends on architecture
+			};
+
+            return M->getOrInsertFunction("__write_mem",
+                                                    FunctionType::get(Type::getVoidTy(M->getContext()), memtraceArgs, false));
         }
 
     };
