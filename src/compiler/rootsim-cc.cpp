@@ -110,7 +110,7 @@ namespace {
                                   Function* func_ins = Function::Create(FT, Function::ExternalLinkage, "__write_memm", M);
                                   (builder.CreateCall(func_ins, args))->insertBefore(inst);
                             } else {*/
-                            	FunctionCallee memtraceFunction = M.getOrInsertFunction("__write_memm",
+                            	FunctionCallee memtraceFunction = M.getOrInsertFunction("__write_mem",
                                                                     FunctionType::get(Type::getVoidTy(M.getContext()), memtraceArgs, false));
 
                             	(builder.CreateCall(memtraceFunction.getCallee(), args))->insertBefore(inst);
