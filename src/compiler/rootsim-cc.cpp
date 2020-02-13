@@ -24,14 +24,12 @@ namespace {
         ROOTSimCC() : ModulePass(ID) {}
 
         bool runOnModule(Module &M) {
-            errs() << "\n ======================  Entered Module " << "[ " << M.getName() << " ]" << "====================== \n";
 
             std::vector < Function * > functions;
             std::map<const StringRef, Function *> clonedFunctions;
 
             for (Module::iterator F = M.begin(), E = M.end(); F != E; ++F) {
                 if (!F->isDeclaration()) {
-                    //errs() << " ********** " << F->getName() << " ********** " << "\n";
                     functions.push_back(&*F);
                 }
             }
@@ -43,7 +41,6 @@ namespace {
             }
 
             for (std::pair<const StringRef, Function *> theGuy : clonedFunctions) {
-                errs() << " ********** " << theGuy.second->getName() << " ********** " << "\n";
                 for (Function::iterator BI = theGuy.second->begin(), BE = theGuy.second->end(); BI != BE; ++BI) {
                     for (BasicBlock::iterator BB = BI->begin(), BBE = BI->end(); BB != BBE; ++BB) {
                         if (CallInst * inst = dyn_cast<CallInst>(&(*BB))) {
@@ -61,7 +58,6 @@ namespace {
 
                             Function *fun = funIterator->second;
 
-                            //errs() << "\t" <<" ********** " << fun->getName() << " ********** " << "\n";
                             inst->setCalledFunction(fun);
                         }
                     }
@@ -72,11 +68,9 @@ namespace {
 
             for (Module::iterator F = M.begin(), E = M.end(); F != E; ++F) {
 
-                if(F->getName().find("_instr") == std::string::npos || F->getName().find("__write_memm") != std::string::npos) {
+                if(F->getName().find("_instr") == std::string::npos) {
                     continue;
                 }
-
-                errs() << " \n\t******************* Function name:  " << "[ " << F->getName() << " ]" << " ********************\n\n";
 
                 //loop over each function within the file
                 for (Function::iterator BB = F->begin(), E = F->end(); BB != E; ++BB) {
@@ -112,7 +106,6 @@ namespace {
                             if (isa<CallInst>(&(*BI))) continue;
                             errs() << "[UNRECOGNIZED!1!]";
                         }
-                        errs() << "\n";
                     }
                 }
             }
@@ -169,7 +162,6 @@ namespace {
 
 // Pass info
 char ROOTSimCC::ID = 0; // LLVM ignores the actual value: it referes to the pointer.
-//static RegisterPass<ROOTSimCC> X("rootsim-cc", "ROOT-Sim CC pass", false, false);
 
 // Pass loading stuff
 // To use, run: clang -Xclang -load -Xclang <your-pass>.so <other-args> ...
