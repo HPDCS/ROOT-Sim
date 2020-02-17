@@ -271,7 +271,7 @@ void *do_malloc(struct lp_struct *lp, size_t size)
 		area_size = sizeof(malloc_area *) + bitmap_size * 2 + m_area->num_chunks * size;
 
 		m_area->self_pointer = (malloc_area *)allocate_buddy_memory(lp->mm->buddy, lp->mm->segment->base, area_size);
-		memset(m_area->self_pointer, 0, area_size);
+		__real_memset(m_area->self_pointer, 0, area_size);
 
 		if (unlikely(m_area->self_pointer == NULL)) {
 			rootsim_error(true, "Error while allocating memory.\n");

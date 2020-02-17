@@ -46,7 +46,6 @@ void set_force_full(struct lp_struct *lp)
 	lp->state_log_full_forced = true;
 }
 
-#define printf(...) {}
 #undef spin_lock
 #undef spin_unlock
 #define spin_lock(...) {}
@@ -225,17 +224,10 @@ void *log_incremental(struct lp_struct *lp) {
 	timer_start(checkpoint_timer);
 
 	printf("(%d) Computing the expected incremental log size (LVT %f):\n"
-		"\tm_state->dirty_areas: %ld\n"
-		"\tm_state->dirty_areas * sizeof(struct malloc_area): %ld\n"
-		"\tm_state->dirty_bitmap_size: %ld\n"
 		"\tm_state->total_inc_size: %ld\n",
 		lp->gid.to_int,
 		lvt(lp),
-		m_state->dirty_areas,
-		m_state->dirty_areas * sizeof(malloc_area),
-		m_state->dirty_bitmap_size,
 		m_state->total_inc_size);
-
 
 	size = m_state->total_inc_size;
 	log = __real_malloc(size);
@@ -317,7 +309,7 @@ void *log_incremental(struct lp_struct *lp) {
 	printf("COMPLETED\n");
 	fflush(stdout);
 
-	m_state->total_inc_size = sizeof(malloc_area);
+	m_state->total_inc_size = sizeof(malloc_state);
 
 	statistics_post_data(lp, STAT_CKPT_TIME, (double)timer_value_micro(checkpoint_timer));
 	statistics_post_data(lp, STAT_CKPT_MEM, (double)size);
