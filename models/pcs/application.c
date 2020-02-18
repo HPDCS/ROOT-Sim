@@ -332,7 +332,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 bool OnGVT(unsigned int me, lp_state_type *snapshot) {
 	(void)me;
 
-	printf("\t\t[%d] OnGVT: complete calls is %d (%f%%)\n", me, snapshot->complete_calls, (double)snapshot->complete_calls / complete_calls);
+	//printf("\t\t[%d] OnGVT: complete calls is %d (%f%%)\n", me, snapshot->complete_calls, (double)snapshot->complete_calls / complete_calls);
 
 	if (snapshot->complete_calls < complete_calls)
 		return false;

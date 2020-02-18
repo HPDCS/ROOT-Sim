@@ -313,14 +313,11 @@ state_t *find_time_barrier(struct lp_struct *lp, simtime_t simtime)
 
 
 	// Search for the first full log before the gvt
-	printf("Find barrier: ");
 	while(true) {
-		printf("%d", is_incremental(barrier_state->log));
 		if(is_incremental(barrier_state->log) == false)
 			break;
 		barrier_state = list_prev(barrier_state);
 	}
-	printf("\n");
 
 	return barrier_state;
 }

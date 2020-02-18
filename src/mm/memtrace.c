@@ -54,9 +54,9 @@ void __write_mem(void *address, size_t size)
 {
 	void *stack = __builtin_frame_address(0);
 
-	malloc_area *m_area;
+	malloc_area *m_area = NULL;
 	malloc_state *m_state;
-	size_t bitmap_size, chk_size;
+	size_t bitmap_size, chk_size = 0;
 	int i, first_chunk, last_chunk;
 
 	if(address > stack)
