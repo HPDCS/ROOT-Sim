@@ -137,7 +137,7 @@ void malloc_state_wipe(struct memory_map *mm)
 static size_t compute_size(size_t size)
 {
 	// Account for the space needed to keep the pointer to the malloc area
-	size += sizeof(long long);
+	size += sizeof(long long) - 1;
 	size_t size_new;
 
 	size_new = POWEROF2(size);
@@ -201,6 +201,11 @@ void *do_malloc(struct lp_struct *lp, size_t size)
 
 	while (m_area != NULL && m_area->alloc_chunks == m_area->num_chunks) {
 		prev_area = m_area;
+#ifndef NDEBUG
+	if (prev_area != NULL) {
+		atomic_dec(&prev_area->presence);
+	}
+#endif
 		if (m_area->next == -1) {
 			m_area = NULL;
 		} else {
@@ -211,12 +216,6 @@ void *do_malloc(struct lp_struct *lp, size_t size)
 #endif
 		}
 	}
-
-#ifndef NDEBUG
-	if (prev_area != NULL) {
-		atomic_dec(&prev_area->presence);
-	}
-#endif
 
 	if (m_area == NULL) {
 
@@ -264,6 +263,7 @@ void *do_malloc(struct lp_struct *lp, size_t size)
 #endif
 
 		prev_area->next = m_state->num_areas;
+		m_area->idx = m_state->num_areas;
 		m_state->num_areas++;
 		m_area->prev = prev_area - m_state->areas;
 

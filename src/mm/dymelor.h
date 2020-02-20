@@ -77,7 +77,7 @@
 
 #define UNTAGGED_CHUNK_SIZE(m_area)	(((malloc_area*)(m_area))->chunk_size & ~((1UL << 0) | (1UL << 1)))
 
-#define POWEROF2(x) (1UL << (1 + (63 - __builtin_clzl((x) - 1))))
+#define POWEROF2(x) (1UL << (sizeof(x) * 8 - __builtin_clzl(x)))
 #define IS_POWEROF2(x) ((x) != 0 && ((x) & ((x) - 1)) == 0)
 
 #define PER_LP_PREALLOCATED_MEMORY (262144L * PAGE_SIZE)	// This should be power of 2 multiplied by a page size. This is 1GB per LP.

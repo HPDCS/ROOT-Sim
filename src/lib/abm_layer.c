@@ -56,7 +56,7 @@ struct _agent_abm_t {
 	simtime_t leave_time;
 	rootsim_array(struct _visit_abm_t) future;
 	rootsim_array(struct _visit_abm_t) past;
-	unsigned char user_data[];
+	unsigned char *user_data;
 };
 
 struct _region_abm_t {
@@ -96,7 +96,7 @@ static unsigned agent_dump_size(const struct _agent_abm_t *agent) {
 /**
 * Deserialize an agent from a buffer.
 *
-* @param event_content A pointer to the buffer containing the serialzied agent
+* @param event_content A pointer to the buffer containing the serialized agent
 * @param event_size The size in bytes of the buffer
 * @return a newly instantiated agent struct, the deserialized agent
 */
@@ -104,7 +104,8 @@ static struct _agent_abm_t* agent_from_buffer(const unsigned char* event_content
 	// keep track of original pointer
 	const unsigned char *buffer = event_content;
 	// allocate the memory for the visiting agent
-	struct _agent_abm_t *agent = __wrap_malloc(offsetof(struct _agent_abm_t, user_data) + *((unsigned *)(event_content + sizeof(unsigned long long))));
+	struct _agent_abm_t *agent = __wrap_malloc(sizeof(struct _agent_abm_t));
+	agent->user_data = __wrap_malloc(*((unsigned *)(event_content + sizeof(unsigned long long))));
 	agent->leave_time = -1.0;
 	// copy uuid and user data size
 	memcpy(agent, buffer, sizeof(agent->user_data_size) + sizeof(agent->key));
@@ -114,6 +115,12 @@ static struct _agent_abm_t* agent_from_buffer(const unsigned char* event_content
 	buffer += agent->user_data_size;
 	// load the arrays
 	array_load(agent->future, buffer);
+
+#ifdef HAVE_APPROXIMATED_ROLLBACK
+	CoreMemoryMark(agent);
+	CoreMemoryMark(agent->future.items);
+#endif
+
 	if(abm_settings.keep_history)
 		array_load(agent->past, buffer);
 	else
@@ -199,6 +206,11 @@ static void abm_layer_init(void) {
 
 	// initialize the hash_map for agents
 	hash_map_init(&region->agents_table);
+
+#ifdef HAVE_APPROXIMATED_ROLLBACK
+	CoreMemoryMark(region);
+#endif
+
 	// initialize mark
 	region->next_mark = current->gid.to_int;
 	// Save pointer in LP state
@@ -320,7 +332,7 @@ static void on_abm_leave(void){
 	} else {
 		buffer_size = agent_dump_size(agent);
 
-		to_send = __wrap_malloc(buffer_size);
+		to_send = rsalloc(buffer_size);
 
 		agent_to_buffer(agent, to_send);
 		// finally we schedule the agent
@@ -328,7 +340,7 @@ static void on_abm_leave(void){
 		// now we can get rid of it
 		KillAgent(agent->key);
 		// remember to free that stuff if we mallocated it!
-		__wrap_free(to_send);
+		rsfree(to_send);
 	}
 }
 
@@ -446,11 +458,17 @@ agent_t SpawnAgent(unsigned user_data_size) {
 
 	unsigned long long new_key = get_agent_mark(current->region);
 	// new agent
-	struct _agent_abm_t *ret = __wrap_malloc(offsetof(struct _agent_abm_t, user_data) + user_data_size);
+	struct _agent_abm_t *ret = __wrap_malloc(sizeof(struct _agent_abm_t));
 
+	ret->user_data = __wrap_malloc(user_data_size);
 	ret->user_data_size = user_data_size;
 	ret->key = new_key;
 	array_init(ret->future);
+
+#ifdef HAVE_APPROXIMATED_ROLLBACK
+	CoreMemoryMark(ret);
+	CoreMemoryMark(ret->future.items);
+#endif
 
 	// we register the visit to THIS region
 	if(abm_settings.keep_history){
@@ -474,6 +492,7 @@ void KillAgent(agent_t agent_id) {
 		array_fini(agent->past);
 
 	hash_map_remove(&current->region->agents_table, agent_id);
+	__wrap_free(agent->user_data);
 	__wrap_free(agent);
 	switch_to_application_mode();
 }

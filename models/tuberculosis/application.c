@@ -11,8 +11,48 @@
 
 #include <math.h>
 
+static bool approximated = true;
+
+enum{
+	OPT_PREC = 128 /// this tells argp to not assign short options
+};
+
+const struct argp_option model_options[] = {
+		{"precise-mode", OPT_PREC, NULL, 0, NULL, 0},
+		{0}
+};
+
+#define HANDLE_ARGP_CASE(label, fmt, var)	\
+	case label: \
+		if(sscanf(arg, fmt, &var) != 1){ \
+			return ARGP_ERR_UNKNOWN; \
+		} \
+	break
+
+static error_t model_parse(int key, char *arg, struct argp_state *state) {
+	(void)state;
+
+	switch (key) {
+		case OPT_PREC:
+			approximated = false;
+		break;
+
+		case ARGP_KEY_SUCCESS:
+			printf("\t* ROOT-Sim's TBC model - Current Configuration *\n");
+			printf("approximated: %d\n", approximated);
+			break;
+
+		default:
+			return ARGP_ERR_UNKNOWN;
+	}
+	return 0;
+}
+
+#undef HANDLE_ARGP_CASE
+
 struct _topology_settings_t topology_settings = {.type = TOPOLOGY_OBSTACLES, .write_enabled = false, .default_geometry = TOPOLOGY_SQUARE};
 struct _abm_settings_t abm_settings = {0, _TRAVERSE, false};
+struct argp model_argp = {model_options, model_parse, NULL, NULL, NULL, NULL, NULL};
 
 // From Luc Devroye's book "Non-Uniform Random Variate Generation." p. 522
 unsigned random_binomial(unsigned trials, double p) { // this is exposed since it is used also in guy.c
@@ -87,6 +127,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type,
 				printf("INIT 0 complete\n");
 			}
 			ScheduleNewEvent(me, now + 1.25 + Random()/2, MIDNIGHT, NULL, 0);
+			RollbackModeSet(approximated);
 			break;
 
 		case MIDNIGHT:
@@ -129,3 +170,8 @@ int OnGVT(unsigned int me, region_t *snapshot) {
 	}
 	return true;
 }
+
+void RestoreApproximated(void *ptr)
+{
+}
+

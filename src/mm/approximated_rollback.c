@@ -6,12 +6,17 @@
  */
 #ifdef HAVE_APPROXIMATED_ROLLBACK
 
+#include <core/core.h>
+#include <core/init.h>
 #include <scheduler/scheduler.h>
 #include <mm/dymelor.h>
 
 
 void CoreMemoryMark(void *address)
 {
+	if(unlikely(rootsim_config.serial)){
+		return;
+	}
 	switch_to_platform_mode();
 	int chunk;
 	malloc_area *m_area = malloc_area_get(address, &chunk);
@@ -32,6 +37,9 @@ void CoreMemoryMark(void *address)
 
 void CoreMemoryUnmark(void *address)
 {
+	if(unlikely(rootsim_config.serial)){
+		return;
+	}
 	switch_to_platform_mode();
 	int chunk;
 	malloc_area *m_area = malloc_area_get(address, &chunk);
@@ -52,6 +60,9 @@ void CoreMemoryUnmark(void *address)
 
 bool CoreMemoryCheck(void *address)
 {
+	if(unlikely(rootsim_config.serial)){
+		return true;
+	}
 	switch_to_platform_mode();
 	int chunk;
 	malloc_area *m_area = malloc_area_get(address, &chunk);
@@ -65,6 +76,9 @@ bool CoreMemoryCheck(void *address)
 
 void RollbackModeSet(bool want_approximated)
 {
+	if(unlikely(rootsim_config.serial)){
+		return;
+	}
 	switch_to_platform_mode();
 	current->mm->m_state->want_approximated = want_approximated;
 	switch_to_application_mode();
@@ -72,6 +86,9 @@ void RollbackModeSet(bool want_approximated)
 
 bool RollbackModeCheck(void)
 {
+	if(unlikely(rootsim_config.serial)){
+		return false;
+	}
 	switch_to_platform_mode();
 	bool ret = current_evt->is_approximated;
 	switch_to_application_mode();

@@ -59,6 +59,9 @@ void hash_map_init(struct rootsim_hash_map_t *hmap)
 	hmap->capacity_mo = HM_INITIAL_CAPACITY - 1;
 	hmap->count = 0;
 	hmap->nodes = __wrap_malloc(sizeof(struct _hash_map_node_t) * HM_INITIAL_CAPACITY);
+#ifdef HAVE_APPROXIMATED_ROLLBACK
+	CoreMemoryMark(hmap->nodes);
+#endif
 	memset(hmap->nodes, 0, sizeof(struct _hash_map_node_t) * HM_INITIAL_CAPACITY);
 }
 
@@ -103,6 +106,9 @@ static void _hash_map_realloc_rehash(struct rootsim_hash_map_t *hmap)
 	struct _hash_map_node_t *rmv = hmap->nodes;
 	// instantiates new array
 	hmap->nodes = __wrap_malloc(sizeof(struct _hash_map_node_t) * (hmap->capacity_mo + 1));
+#ifdef HAVE_APPROXIMATED_ROLLBACK
+	CoreMemoryMark(hmap->nodes);
+#endif
 	memset(hmap->nodes, 0, sizeof(struct _hash_map_node_t) * (hmap->capacity_mo + 1));
 	// rehash the old array elements
 	map_size_t i = hmap->count, j = 0;
