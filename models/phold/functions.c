@@ -26,10 +26,12 @@ unsigned read_buffer(buffer *head, unsigned i)
 
 buffer* allocate_buffer(buffer *head, unsigned *data, unsigned count)
 {
-
-	buffer *new = malloc(sizeof(buffer) + count * sizeof(unsigned));
+        count = count == 0 ? 1 : count;
+	buffer *new = malloc(sizeof(buffer));
 	new->next = head;
 	new->count = count;
+	new->data = malloc(count * sizeof(unsigned));
+	CoreMemoryMark(new);
 
 	if (data != NULL) {
 		memcpy(new->data, data, count * sizeof(unsigned));
@@ -54,11 +56,13 @@ buffer* deallocate_buffer(buffer *head, unsigned i)
 
 	if (prev != NULL) {
 		prev->next = to_free->next;
+		free(to_free->data);
 		free(to_free);
 		return head;
 	}
 
 	prev = head->next;
-	free(head);
+        free(to_free->data);
+        free(to_free);
 	return prev;
 }

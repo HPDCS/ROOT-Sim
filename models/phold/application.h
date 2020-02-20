@@ -22,7 +22,7 @@ enum {
 typedef struct _buffer {
 	unsigned count; // the number of elements of data
 	struct _buffer *next;
-	unsigned data[]; //synthetic data array
+	unsigned *data; //synthetic data array
 } buffer;
 
 // LP simulation state

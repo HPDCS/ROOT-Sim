@@ -178,23 +178,16 @@ void ProcessEvent(unsigned me, simtime_t now, int event_type, unsigned *event_co
 
 void RestoreApproximated(void *ptr) {
 	lp_state_type *state = (lp_state_type*)ptr;
-
 	unsigned i = state->buffer_count;
+	buffer *tmp = state->head;
 
-	if (i == 0){
-	    return;
-	}
-
-	buffer* tmp = state->head;
 	while(i--) {
-		tmp = tmp->next;
+            for(unsigned j = 0; j < tmp->count; j++) {
+                tmp->data[j] = RandomRange(0, INT_MAX);
+            }
+            tmp = tmp->next;
 	}
 
-	if (tmp->next != NULL) {
-		printf("We found a buffer count of %u but we have more elements in the list!", state->buffer_count);
-		abort();
-		return;
-	}
 }
 
 bool OnGVT(unsigned me, lp_state_type *snapshot) {
