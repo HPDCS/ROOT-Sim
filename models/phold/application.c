@@ -7,7 +7,7 @@
 static unsigned max_buffers = MAX_BUFFERS;
 static unsigned max_buffer_size = MAX_BUFFER_SIZE;
 static unsigned complete_events = COMPLETE_EVENTS;
-static bool 	new_mode = false,
+static bool 	new_mode = true,
 		approximated = true;
 static double 	tau = TAU,
 		send_probability = SEND_PROBABILITY,
@@ -34,7 +34,7 @@ const struct argp_option model_options[] = {
 		{"alloc-probability", 	OPT_ALLOCP, "DOUBLE", 0, NULL, 0},
 		{"dealloc-probability", OPT_DEALLOCP, "DOUBLE", 0, NULL, 0},
 		{"complete-events", 	OPT_EVT, "INT", 0, NULL, 0},
-		{"new-mode", 		OPT_MODE, NULL, 0, NULL, 0},
+		{"old-mode", 		OPT_MODE, NULL, 0, NULL, 0},
 		{"precise-mode", OPT_PREC, NULL, 0, NULL, 0},
 		{0}
 };
@@ -60,7 +60,7 @@ static error_t model_parse(int key, char *arg, struct argp_state *state) {
 		HANDLE_ARGP_CASE(OPT_EVT, 		"%u", 	complete_events);
 
 		case OPT_MODE:
-			new_mode = true;
+			new_mode = false;
 			break;
 
 		case OPT_PREC:
@@ -69,7 +69,7 @@ static error_t model_parse(int key, char *arg, struct argp_state *state) {
 
 		case ARGP_KEY_SUCCESS:
 			printf("\t* ROOT-Sim's PHOLD Benchmark - Current Configuration *\n");
-			printf("new-mode: %s\n"
+			printf("old-mode: %s\n"
 				"max-buffers: %u\n"
 				"max-buffer-size: %u\n"
 				"tau: %lf\n"
@@ -77,7 +77,7 @@ static error_t model_parse(int key, char *arg, struct argp_state *state) {
 				"alloc-probability: %lf\n"
 				"dealloc-probability: %lf\n"
 				"approximated: %d\n",
-				new_mode ? "true" : "false",
+				new_mode ? "false" : "true",
 				max_buffers, max_buffer_size, tau,
 				send_probability, alloc_probability, dealloc_probability, approximated);
 			break;
