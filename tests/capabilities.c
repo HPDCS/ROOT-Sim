@@ -34,7 +34,6 @@ void ProcessEvent(unsigned int me, simtime_t now, int type, void *payload, unsig
 	CapabilityAvailable(CAP_PREEMPTION, NULL);
 	CapabilityAvailable(CAP_ECS, NULL);
 	CapabilityAvailable(CAP_LINUX_MODULES, NULL);
-	CapabilityAvailable(CAP_LP_REBINDING, NULL);
 	CapabilityAvailable(CAP_MPI, NULL);
 
 	CapabilityAvailable(CAP_SCHEDULER, &info);
@@ -60,7 +59,6 @@ void ProcessEvent(unsigned int me, simtime_t now, int type, void *payload, unsig
 	CapabilityAvailable(CAP_PREEMPTION, &info);
 	CapabilityAvailable(CAP_ECS, &info);
 	CapabilityAvailable(CAP_LINUX_MODULES, &info);
-	CapabilityAvailable(CAP_LP_REBINDING, &info);
 	CapabilityAvailable(CAP_MPI, &info);
 }
 

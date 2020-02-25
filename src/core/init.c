@@ -483,12 +483,6 @@ bool CapabilityAvailable(enum capability_t which, struct capability_info_t *info
 			return false; // not implemented
 		case CAP_LINUX_MODULES:
 			return false; // not implemented
-		case CAP_LP_REBINDING:
-			#ifdef HAVE_LP_REBINDING
-			return true;
-			#else
-			return false;
-			#endif
 		case CAP_MPI:
 			#ifdef HAVE_MPI
 			return true;

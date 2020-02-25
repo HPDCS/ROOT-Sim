@@ -51,19 +51,14 @@ struct lp_cost_id {
 
 struct lp_cost_id *lp_cost;
 
-/// A guard to know whether this is the first invocation or not
-static __thread bool first_lp_binding = true;
-
 static unsigned int *new_LPS_binding;
 static timer rebinding_timer;
 
-#ifdef HAVE_LP_REBINDING
 static int binding_acquire_phase = 0;
 static __thread int local_binding_acquire_phase = 0;
 
 static int binding_phase = 0;
 static __thread int local_binding_phase = 0;
-#endif
 
 static atomic_t worker_thread_reduction;
 
@@ -197,8 +192,6 @@ static inline void LP_knapsack(void)
 	}
 }
 
-#ifdef HAVE_LP_REBINDING
-
 static void post_local_reduction(void)
 {
 	unsigned int i = 0;
@@ -237,7 +230,6 @@ static void install_binding(void)
 	}
 }
 
-#endif
 
 /**
 * This function is used to create a temporary binding between LPs and KLT.
@@ -251,28 +243,6 @@ static void install_binding(void)
 */
 void rebind_LPs(void)
 {
-
-	if (unlikely(first_lp_binding)) {
-		first_lp_binding = false;
-
-		initialize_binding_blocks();
-
-		LPs_block_binding();
-
-		timer_start(rebinding_timer);
-
-		if (master_thread()) {
-			new_LPS_binding = rsalloc(sizeof(int) * n_prc);
-
-			lp_cost = rsalloc(sizeof(struct lp_cost_id) * n_prc);
-			memset(lp_cost, 0, sizeof(struct lp_cost_id) * n_prc);
-
-			atomic_set(&worker_thread_reduction, n_cores);
-		}
-
-		return;
-	}
-#ifdef HAVE_LP_REBINDING
 	if (master_thread()) {
 		if (unlikely
 		    (timer_value_seconds(rebinding_timer) >= REBIND_INTERVAL)) {
@@ -308,5 +278,32 @@ void rebind_LPs(void)
 		}
 
 	}
-#endif
+}
+
+
+/**
+* This function _must_ be called before entering the actual main loop.
+* Each worker thread sets up its data structures, and the performs a
+* (deterministic) block allocation. This is because no runtime data
+* is available at the time, so we "share" the load as the number of LPs.
+* Then, successive invocations, will use the knapsack load sharing policy
+
+* @author Alessandro Pellegrini
+*/
+void initial_binding(void)
+{
+	initialize_binding_blocks();
+
+	LPs_block_binding();
+
+	timer_start(rebinding_timer);
+
+	if (master_thread()) {
+		new_LPS_binding = rsalloc(sizeof(int) * n_prc);
+
+		lp_cost = rsalloc(sizeof(struct lp_cost_id) * n_prc);
+		memset(lp_cost, 0, sizeof(struct lp_cost_id) * n_prc);
+
+		atomic_set(&worker_thread_reduction, n_cores);
+	}
 }

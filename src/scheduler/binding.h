@@ -29,4 +29,4 @@
 #pragma once
 
 extern void rebind_LPs(void);
-extern void force_rebind_GLP(void);
+extern void initial_binding(void);

@@ -130,6 +130,8 @@ static void *main_simulation_loop(void *arg)
 		goto leave_for_error;
 	}
 
+	initial_binding();
+
 	while (!end_computing()) {
 		// Recompute the LPs-thread binding
 		rebind_LPs();
