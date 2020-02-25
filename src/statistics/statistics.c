@@ -67,6 +67,7 @@
 #include <scheduler/process.h>
 #include <scheduler/scheduler.h>
 #include <gvt/gvt.h>
+#include <gvt/ccgs.h>
 #include <statistics/statistics.h>
 #include <queues/queues.h>
 #include <mm/state.h>
@@ -252,7 +253,7 @@ static void print_config_to_file(FILE *f)
 		"Snapshot Reconstruction Type: %s\n"
 		"Halt Simulation After: %d\n"
 		"LPs Distribution Mode across Kernels: %s\n"
-		"Check Termination Mode: %s\n"
+		"Check Termination Mode: %s%s\n"
 		"Set Seed: %ld\n",
 		n_ker,
 		get_cores(),
@@ -269,7 +270,8 @@ static void print_config_to_file(FILE *f)
 		param_to_text[PARAM_SNAPSHOT][rootsim_config.snapshot],
 		rootsim_config.simulation_time,
 		param_to_text[PARAM_LPS_DISTRIBUTION][rootsim_config.lps_distribution],
-		param_to_text[PARAM_CKTRM_MODE][rootsim_config.check_termination_mode],
+		param_to_text[PARAM_CKTRM_MODE][rootsim_config.check_termination_mode & ~CKTRM_INCREMENTAL],
+		(rootsim_config.check_termination_mode & CKTRM_INCREMENTAL ? "" : ", with unstable termination predicates"),
 		rootsim_config.set_seed);
 }
 

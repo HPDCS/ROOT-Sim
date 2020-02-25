@@ -404,7 +404,7 @@ void schedule(void)
 #endif
 
 	// Accurate termination detection
-	ccgs_lp_can_halt(next, false);
+	ccgs_lp_can_halt(next);
 
 	// Log the state, if needed
 	LogState(next);

@@ -79,6 +79,7 @@ enum _opt_codes{
 	OPT_NPRC,
 	OPT_OUTPUT_DIR,
 	OPT_NPWD,
+	OPT_CKTRM_MODE_NONINC,
 	OPT_P,
 	OPT_FULL,
 	OPT_INC,
@@ -101,9 +102,8 @@ const char * const param_to_text[][5] = {
 			[SCHEDULER_STF] = "stf",
 	},
 	[OPT_CKTRM_MODE - OPT_FIRST] = {
-			[CKTRM_INVALID] = "invalid termination checking",
-			[CKTRM_NORMAL] = "normal",
-			[CKTRM_INCREMENTAL] = "incremental",
+			[CKTRM_INVALID] = "invalid termination detection",
+			[CKTRM_APPROXIMATED] = "approximated",
 			[CKTRM_ACCURATE] = "accurate"
 	},
 	[OPT_LPS_DISTRIBUTION - OPT_FIRST] = {
@@ -147,6 +147,7 @@ static char doc[] = "ROOT-Sim - a fast distributed multithreaded Parallel Discre
 
 // this isn't needed (we haven't got non option arguments to document)
 static char args_doc[] = "";
+
 // the options recognized by argp
 static const struct argp_option argp_options[] = {
 	{"wt",			OPT_NP,			"VALUE",	0,		"Number of total cores being used by the simulation", 0},
@@ -159,7 +160,8 @@ static const struct argp_option argp_options[] = {
 	{"inc",			OPT_INC,		0,		0,		"Take only incremental logs (still to be released)", 0},
 	{"A",			OPT_A,			0,		0,		"Autonomic subsystem: set checkpointing interval and log mode automatically at runtime (still to be released)", 0},
 	{"gvt",			OPT_GVT,		"VALUE",	0,		"Time between two GVT reductions (in milliseconds)", 0},
-	{"cktrm-mode",		OPT_CKTRM_MODE,		"TYPE",		0,		"Termination Detection mode. Supported values: normal, incremental, accurate", 0},
+	{"termination",		OPT_CKTRM_MODE,		"TYPE",		0,		"Termination Detection mode. Supported values: approximated, accurate", 0},
+	{"unstable",		OPT_CKTRM_MODE_NONINC,	0,		0,		"Unstable termination predicates. Once a LP decides to terminate, it will never retract", 0},
 	{"simulation-time",	OPT_SIMULATION_TIME, 	"VALUE",	0,		"Halt the simulation when all LPs reach this logical time. 0 means infinite", 0},
 	{"lps-distribution",	OPT_LPS_DISTRIBUTION, 	"TYPE",		0,		"LPs distributions over simulation kernels policies. Supported values: block, circular", 0},
 	{"deterministic-seed",	OPT_DETERMINISTIC_SEED,	0,		0, 		"Do not change the initial random seed for LPs. Enforces different deterministic simulation runs", 0},
@@ -252,6 +254,10 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 			}
 			break;
 
+		case OPT_CKTRM_MODE_NONINC:
+			rootsim_config.check_termination_mode &= ~CKTRM_INCREMENTAL;
+			break;
+
 		case OPT_P:
 			if(bitmap_check(scanned, OPT_NPWD-OPT_FIRST)) {
 				conflicting_option_failure("Copy State Saving is selected, but I'm requested to set a checkpointing interval.");
@@ -312,7 +318,7 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 			rootsim_config.output_dir = DEFAULT_OUTPUT_DIR;
 			rootsim_config.scheduler = SCHEDULER_STF;
 			rootsim_config.lps_distribution = LP_DISTRIBUTION_BLOCK;
-			rootsim_config.check_termination_mode = CKTRM_NORMAL;
+			rootsim_config.check_termination_mode = CKTRM_APPROXIMATED | CKTRM_INCREMENTAL;
 			rootsim_config.stats = STATS_ALL;
 			rootsim_config.verbose = VERBOSE_INFO;
 			rootsim_config.snapshot = SNAPSHOT_FULL; // TODO: in the future, default to AUTONOMIC_

@@ -98,7 +98,7 @@ bool LogState(struct lp_struct *lp)
 		new_state = rsalloc(sizeof(*new_state));
 
 		// Early evaluation of simulation termination.
-		ccgs_lp_can_halt(lp, true);
+		ccgs_lp_can_halt_on_checkpoint(lp);
 
 		// Associate the checkpoint with current LVT and last-executed event
 		new_state->lvt = lvt(lp);

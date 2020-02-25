@@ -38,9 +38,9 @@
 
 enum {
 	CKTRM_INVALID = 0,	/**< By convention 0 is the invalid field */
-	CKTRM_NORMAL,		/**< Normal CheckTermination */
-	CKTRM_INCREMENTAL,	/**< Incremental CheckTermination */
-	CKTRM_ACCURATE		/**< Accurate CheckTermination */
+	CKTRM_APPROXIMATED,	/**< Approximate Termination Detection */
+	CKTRM_ACCURATE,		/**< Accurate Termination Detection */
+	CKTRM_INCREMENTAL = 16	/**< Incremental Termination Detection */
 };
 
 #include <mm/state.h>
@@ -48,4 +48,5 @@ enum {
 extern inline bool ccgs_can_halt_simulation(void);
 extern void ccgs_reduce_termination(void);
 extern void ccgs_compute_snapshot(state_t *time_barrier_pointer[]);
-extern void ccgs_lp_can_halt(struct lp_struct *lp, bool for_checkpoint);
+extern void ccgs_lp_can_halt_on_checkpoint(struct lp_struct *lp);
+extern void ccgs_lp_can_halt(struct lp_struct *lp);
