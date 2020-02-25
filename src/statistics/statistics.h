@@ -158,4 +158,4 @@ extern inline void statistics_post_data(struct lp_struct *, enum stat_msg_t type
 extern inline void statistics_post_data_serial(enum stat_msg_t type, double data);
 
 extern double statistics_get_lp_data(struct lp_struct *, unsigned int type);
-
+extern double statistics_get_current_throughput(void);

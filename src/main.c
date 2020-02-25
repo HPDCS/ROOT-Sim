@@ -36,6 +36,7 @@
 #include <arch/thread.h>
 #include <statistics/statistics.h>
 #include <gvt/ccgs.h>
+#include <powercap/powercap.h>
 #include <scheduler/binding.h>
 #include <scheduler/scheduler.h>
 #include <scheduler/process.h>
@@ -104,8 +105,10 @@ static void *main_simulation_loop(void *arg)
 {
 
 	(void)arg;
-
 	simtime_t my_time_barrier = -1.0;
+
+	if(rootsim_config.powercap > 0)
+		init_powercap_thread(tid);
 
 #ifdef HAVE_CROSS_STATE
 	lp_alloc_thread_init();
@@ -131,7 +134,6 @@ static void *main_simulation_loop(void *arg)
 	}
 
 	while (!end_computing()) {
-		// Recompute the LPs-thread binding
 		rebind_LPs();
 
 #ifdef HAVE_MPI

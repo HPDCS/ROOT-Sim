@@ -43,10 +43,13 @@
 #include <pthread.h>
 #include <stdbool.h>
 
+#include <arch/thread.h>
+#include <scheduler/scheduler.h>
+
 extern int* running_array;				// Array of integers that defines if a thread should be running
 extern pthread_t* pthread_ids;			// Array of pthread id's to be used with signals
 extern int total_threads;				// Total number of threads that could be used by the transcational operation
-extern volatile int active_threads;	// Number of currently active threads, reflects the number of 1's in running_array
+extern volatile int powercap_active_threads;	// Number of currently active threads, reflects the number of 1's in running_array
 extern int nb_cores; 					// Number of cores. Detected at startup and used to set DVFS parameters for all cores
 extern int nb_packages;				// Number of system package. Necessary to monitor energy consumption of all packages in th system
 extern int cache_line_size;			// Size in byte of the cache line. Detected at startup and used to alloc memory cache aligned
@@ -198,18 +201,30 @@ extern long heuristic_start_time_slot, heuristic_start_energy_slot;
 
 static inline void check_running_array(int threadId) {
     while(running_array[threadId] == 0){
+	n_prc_per_thread = 0;
+	printf("thread %d going to sleep\n", tid);
         pause();
     }
 }
 
 extern void init_powercap_mainthread(unsigned int threads);
 extern void end_powercap_mainthread(void);
+
 extern void init_powercap_thread(unsigned int id);
 extern void sample_average_powercap_violation(void);
-extern void start_heuristic(double throughput, bool good_sample);
+extern int start_heuristic(double throughput);
 extern int set_pstate(int input_pstate);
 extern void set_threads(int to_threads);
 extern void heuristic(double throughput, double power, long time);
 extern void set_boost(int value);
 extern int pause_thread(int thread_id);
 extern int wake_up_thread(int thread_id);
+
+enum power_stats_t {
+	POWER_CONSUMPTION,
+	OBSERVATION_TIME,
+	EXCEEDING_CAP
+};
+
+extern double get_power_stats(enum power_stats_t stat);
+extern void wake_up_sleeping_threads(void);

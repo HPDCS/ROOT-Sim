@@ -49,7 +49,7 @@
 int* running_array;				// Array of integers that defines if a thread should be running
 pthread_t* pthread_ids;			// Array of pthread id's to be used with signals
 int total_threads;				// Total number of threads that could be used by the transcational operation
-volatile int active_threads;	// Number of currently active threads, reflects the number of 1's in running_array
+volatile int powercap_active_threads;	// Number of currently active threads, reflects the number of 1's in running_array
 int nb_cores; 					// Number of cores. Detected at startup and used to set DVFS parameters for all cores
 int nb_packages;				// Number of system package. Necessary to monitor energy consumption of all packages in th system
 int cache_line_size;			// Size in byte of the cache line. Detected at startup and used to alloc memory cache aligned
@@ -324,7 +324,7 @@ void init_thread_management(int threads){
 		printf("Set total_threads to %d\n", threads);
 	#endif
 
-	active_threads = total_threads;
+	powercap_active_threads = total_threads;
 
 	// Init running array with all threads running 	
 	running_array = malloc(sizeof(int)*total_threads);
@@ -355,17 +355,28 @@ void init_thread_management(int threads){
 
 // Used by the heuristics to tune the number of active threads 
 int wake_up_thread(int thread_id)
-{
-	
+{	
 	if( running_array[thread_id] == 1){
 		printf("Waking up a thread already running\n");
 		return -1;
 	}
 
-	running_array[thread_id] = 1;
-	pthread_kill(pthread_ids[thread_id], SIGUSR1);
-	active_threads++;
+	running_array[thread_id] = 2; // 2 = to be woken up
+	powercap_active_threads++;
 	return 0;
+}
+
+void wake_up_sleeping_threads(void)
+{
+	unsigned int i;
+
+	for(i = 0; i < n_cores; i++) {
+		if(running_array[i] == 2) { // 2 = to be woken up
+			running_array[i] = 1;
+			pthread_kill(pthread_ids[i], SIGUSR1);
+			printf("woken up thread %d\n", i);
+		}
+	}
 }
 
 // Used by the heuristics to tune the number of active threads 
@@ -381,8 +392,8 @@ int pause_thread(int thread_id)
 	}
 
 	running_array[thread_id] = 0;
-	active_threads--;
-	return active_threads;
+	powercap_active_threads--;
+	return powercap_active_threads;
 }
 
 // Executed inside stm_init
@@ -408,7 +419,7 @@ stats_t* alloc_stats_buffer(int thread_number){
 		exit(0);
 	}
 
-	stats_ptr->total_commits = total_commits_round/active_threads;
+	stats_ptr->total_commits = total_commits_round/powercap_active_threads;
 	stats_ptr->commits = 0;
 	stats_ptr->aborts = 0;
 	stats_ptr->nb_tx = 0;
@@ -511,7 +522,7 @@ void load_config_file(void) {
 	
 	// Load config file 
 	FILE* config_file;
-	if ((config_file = fopen("powercap/config.txt", "r")) == NULL) {
+	if ((config_file = fopen("config.txt", "r")) == NULL) {
 		printf("Error opening POWERCAP configuration file.\n");
 		exit(1);
 	}
@@ -619,7 +630,7 @@ time += ts.tv_nsec;
 	return time;
 }
 
-// Function used to set the number of running threads. Based on active_threads and threads might wake up or pause some threads 
+// Function used to set the number of running threads. Based on powercap_active_threads and threads might wake up or pause some threads 
 void set_threads(int to_threads)
 {
 	int i;
@@ -632,7 +643,7 @@ void set_threads(int to_threads)
 		time_heuristic_start = get_time();
 	#endif
 	
-	starting_threads = active_threads;
+	starting_threads = powercap_active_threads;
 
 	if(starting_threads != to_threads){
 		if(starting_threads > to_threads){
@@ -724,7 +735,7 @@ void setup_before_barrier(void) {
 
 	//TX_GET;
 
-	if(tid == 0 && !barrier_detected && active_threads!=total_threads) {
+	if(tid == 0 && !barrier_detected && powercap_active_threads!=total_threads) {
 	
 		#ifdef DEBUG_HEURISTICS
 			printf("Thread 0 detected a barrier\n");
@@ -737,10 +748,10 @@ void setup_before_barrier(void) {
 		net_discard_barrier = 1;
 
 		// Save number of threads that should be restored after the barrier
-		pre_barrier_threads = active_threads;
+		pre_barrier_threads = powercap_active_threads;
 
 		// Wake up all threads
-		for(i=active_threads; i< total_threads; i++){
+		for(i=powercap_active_threads; i< total_threads; i++){
 			wake_up_thread(i);
 		}
 	}
@@ -828,7 +839,7 @@ void init_powercap_mainthread(unsigned int threads)
 	    exit(1);
 	}
 
-	// Set active_threads to starting_threads
+	// Set powercap_active_threads to starting_threads
 	for(i = starting_threads; i<total_threads;i++){
 	    pause_thread(i);
 	}
@@ -849,7 +860,7 @@ void init_powercap_thread(unsigned int id)
 
 	pthread_ids[id]=pthread_self();
 
-	if(tid == 0){
+	if(id == 0){
 	    start_time_slot = heuristic_start_time_slot = get_time();
 		start_energy_slot = heuristic_start_energy_slot = get_energy();
 	}
@@ -864,7 +875,7 @@ void end_powercap_mainthread(void) {
 
     shutdown = 1;
 
-    for(i=active_threads; i< total_threads; i++){
+    for(i=powercap_active_threads; i< total_threads; i++){
 		wake_up_thread(i);
 	}
 }
@@ -872,58 +883,69 @@ void end_powercap_mainthread(void) {
 
 //Used to comput the power consumption on a long time period
 void sample_average_powercap_violation(void) {
-    long end_time_slot, end_energy_slot, time_interval, energy_interval;
-double power, error_signed, error;
+        long end_time_slot, end_energy_slot, time_interval, energy_interval;
+        double power, error_signed, error;
 
-	end_time_slot = get_time();
-	end_energy_slot = get_energy();
+        end_time_slot = get_time();
+
+        time_interval = end_time_slot - start_time_slot; //Expressed in nano seconds
+
+        if (time_interval > 1000000000) { //If higher than 1 second update the accumulator with the value of error compared to power_limit
+                end_energy_slot = get_energy();
+                energy_interval = end_energy_slot - start_energy_slot; // Expressed in micro Joule
+                power = ((double) energy_interval) / (((double) time_interval) / 1000);
+
+                error_signed = power - power_limit;
+                error = 0;
+                if (error_signed > 0)
+                        error = error_signed / power_limit * 100;
+
+		// TODO: STATS
+                net_error_accumulator = (net_error_accumulator * ((double) net_time_accumulator) + error * ((double) time_interval)) / (((double) net_time_accumulator) + ((double) time_interval));
+                net_time_accumulator += time_interval;
+
+                //Reset start counters
+                start_time_slot = end_time_slot;
+                start_energy_slot = end_energy_slot;
+        }
+}
+
+//returns the number of threads which should be considered as active for the current configuration
+int start_heuristic(double throughput) {
+        long end_time_slot, end_energy_slot, time_interval, energy_interval;
+        double power;
+
+        end_time_slot = get_time();
+        end_energy_slot = get_energy();
+        time_interval = end_time_slot - heuristic_start_time_slot; //Expressed in nano seconds
+        energy_interval = end_energy_slot - heuristic_start_energy_slot; // Expressed in micro Joule
+        power = ((double) energy_interval) / (((double) time_interval) / 1000);
+
+        // We don't call the heuristic if the energy results are out or range due to an overflow
+        if (power >= 0) {
+                net_time_sum += time_interval; // TODO: STATS
+                net_energy_sum += energy_interval;  // TODO: STATS
+                heuristic(throughput, power, time_interval);
+        }
+
+        heuristic_start_time_slot = end_time_slot;
+        heuristic_start_energy_slot = end_energy_slot;
+
+        return powercap_active_threads;
+}
 
 
-	time_interval = end_time_slot - start_time_slot; //Expressed in nano seconds
-
-	if(time_interval > 1000000000){ //If higher than 1 second update the accumulator with the value of error compared to power_limit
-	energy_interval = end_energy_slot - start_energy_slot; // Expressed in micro Joule
-	power = ((double) energy_interval) / (((double) time_interval)/ 1000);
-
-    error_signed = power - power_limit;
-    error = 0;
-    if(error_signed > 0)
-	error = error_signed/power_limit*100;
-
-    net_error_accumulator = (net_error_accumulator*((double)net_time_accumulator)+error*((double)time_interval))/( ((double)net_time_accumulator)+( (double) time_interval));
-    net_time_accumulator += time_interval;
-
-		//Reset start counters
-		start_time_slot = end_time_slot;
-		start_energy_slot = end_energy_slot;
+double get_power_stats(enum power_stats_t stat)
+{
+	switch(stat) {
+		case POWER_CONSUMPTION:
+			return (double)net_energy_sum / ((double)net_time_sum / 1000);
+		case OBSERVATION_TIME:
+			return (double)net_time_sum / 1000000000;
+		case EXCEEDING_CAP:
+			return net_error_accumulator;
+		default:
+			rootsim_error(false, "Unknown statistic requested");
+			return -1.0;
 	}
 }
-
-void start_heuristic(double throughput, bool good_sample){
-    long end_time_slot, end_energy_slot, time_interval, energy_interval;
-double power;
-
-	end_time_slot = get_time();
-	end_energy_slot = get_energy();
-time_interval = end_time_slot - heuristic_start_time_slot; //Expressed in nano seconds
-energy_interval = end_energy_slot - heuristic_start_energy_slot; // Expressed in micro Joule
-power = ((double) energy_interval) / (((double) time_interval)/ 1000);
-
-// We don't call the heuristic if the energy results are out or range due to an overflow
-	if(power >= 0){
-	    net_time_sum += time_interval;
-	    net_energy_sum += energy_interval;
-    if(good_sample)
-		heuristic(throughput, power, time_interval);
-	}
-
-heuristic_start_time_slot = end_time_slot;
-heuristic_start_energy_slot = end_energy_slot;
-}
-/*
-//Used to skip observation periods at the scope of the power management heuristic
-void reset_euristic(void) {
-    heuristic_start_time_slot = get_time();
-heuristic_start_energy_slot = get_energy();
-}
-*/

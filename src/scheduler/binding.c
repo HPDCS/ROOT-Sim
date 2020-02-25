@@ -31,9 +31,11 @@
 #include <stdlib.h>
 
 #include <arch/atomic.h>
+#include <arch/thread.h>
 #include <core/core.h>
-#include <core/timer.h>
+#include <core/init.h>
 #include <datatypes/list.h>
+#include <powercap/powercap.h>
 #include <scheduler/binding.h>
 #include <scheduler/process.h>
 #include <scheduler/scheduler.h>
@@ -51,21 +53,19 @@ struct lp_cost_id {
 
 struct lp_cost_id *lp_cost;
 
-/// A guard to know whether this is the first invocation or not
-static __thread bool first_lp_binding = true;
-
 static unsigned int *new_LPS_binding;
-static timer rebinding_timer;
 
-#ifdef HAVE_LP_REBINDING
-static int binding_acquire_phase = 0;
+static volatile int binding_acquire_phase = 0;
 static __thread int local_binding_acquire_phase = 0;
 
-static int binding_phase = 0;
+static volatile int binding_phase = 0;
 static __thread int local_binding_phase = 0;
-#endif
 
 static atomic_t worker_thread_reduction;
+static atomic_t worker_thread_installation;
+
+static bool rebinding_triggered = false;
+static bool rebinding_completed = true;
 
 /**
 * Performs a (deterministic) block allocation between LPs and WTs
@@ -145,7 +145,7 @@ static inline void LP_knapsack(void)
 	register unsigned int i, j;
 	double reference_knapsack = 0;
 	bool assigned;
-	double assignments[n_cores];
+	double assignments[active_threads];
 
 	if (!master_thread())
 		return;
@@ -154,7 +154,7 @@ static inline void LP_knapsack(void)
 	for (i = 0; i < n_prc; i++) {
 		reference_knapsack += lp_cost[i].workload_factor;
 	}
-	reference_knapsack /= n_cores;
+	reference_knapsack /= active_threads;
 
 	// Sort the expected times
 	qsort(lp_cost, n_prc, sizeof(struct lp_cost_id), compare_lp_cost);
@@ -162,20 +162,19 @@ static inline void LP_knapsack(void)
 	// At least one LP per thread
 	bzero(assignments, sizeof(double) * n_cores);
 	j = 0;
-	for (i = 0; i < n_cores; i++) {
+	for (i = 0; i < active_threads; i++) {
 		assignments[j] += lp_cost[i].workload_factor;
 		new_LPS_binding[i] = j;
 		j++;
 	}
 
-	// Very suboptimal approximation of knapsack
+	// Suboptimal approximation of knapsack
 	for (; i < n_prc; i++) {
 		assigned = false;
 
-		for (j = 0; j < n_cores; j++) {
+		for (j = 0; j < active_threads; j++) {
 			// Simulate assignment
-			if (assignments[j] + lp_cost[i].workload_factor <=
-			    reference_knapsack) {
+			if (assignments[j] + lp_cost[i].workload_factor <= reference_knapsack) {
 				assignments[j] += lp_cost[i].workload_factor;
 				new_LPS_binding[i] = j;
 				assigned = true;
@@ -192,12 +191,10 @@ static inline void LP_knapsack(void)
 		j = 0;
 		for (; i < n_prc; i++) {
 			new_LPS_binding[i] = j;
-			j = (j + 1) % n_cores;
+			j = (j + 1) % active_threads;
 		}
 	}
 }
-
-#ifdef HAVE_LP_REBINDING
 
 static void post_local_reduction(void)
 {
@@ -208,15 +205,10 @@ static void post_local_reduction(void)
 		first_evt = list_head(lp->queue_in);
 		last_evt = list_tail(lp->queue_in);
 
-		lp_cost[lp->lid.to_int].id = i++;	// TODO: do we really need this?
-		lp_cost[lp->lid.to_int].workload_factor =
-		    list_sizeof(lp->queue_in);
-		lp_cost[lp->lid.to_int].workload_factor *=
-		    statistics_get_lp_data(lp, STAT_GET_EVENT_TIME_LP);
-		lp_cost[lp->lid.to_int].workload_factor /= (last_evt->
-							    timestamp -
-							    first_evt->
-							    timestamp);
+		lp_cost[lp->lid.to_int].id = i++; // TODO: do we really need this?
+		lp_cost[lp->lid.to_int].workload_factor = list_sizeof(lp->queue_in);
+		lp_cost[lp->lid.to_int].workload_factor *= statistics_get_lp_data(lp, STAT_GET_EVENT_TIME_LP);
+		lp_cost[lp->lid.to_int].workload_factor /= (last_evt->timestamp - first_evt->timestamp);
 	}
 }
 
@@ -225,6 +217,12 @@ static void install_binding(void)
 	unsigned int i = 0;
 
 	n_prc_per_thread = 0;
+
+	//~ if(master_thread()) {
+		//~ foreach_lp(lp) {
+			//~ printf("Lp %d installed on thread %d\n", lp->lid.to_int, new_LPS_binding[i]);
+		//~ }
+	//~ }
 
 	foreach_lp(lp) {
 		if (new_LPS_binding[i++] == local_tid) {
@@ -235,9 +233,12 @@ static void install_binding(void)
 			}
 		}
 	}
+
+	//~ for(i = 0; i < n_prc; i++)
+		//~ if(lps_bound_blocks[i])
+			//~ printf("%d: LP %d is %sbound\n", tid, lps_bound_blocks[i]->lid.to_int, i < n_prc_per_thread ? "" : "not ");
 }
 
-#endif
 
 /**
 * This function is used to create a temporary binding between LPs and KLT.
@@ -251,39 +252,38 @@ static void install_binding(void)
 */
 void rebind_LPs(void)
 {
+	double committed_per_second;
 
-	if (unlikely(first_lp_binding)) {
-		first_lp_binding = false;
-
-		initialize_binding_blocks();
-
-		LPs_block_binding();
-
-		timer_start(rebinding_timer);
-
-		if (master_thread()) {
-			new_LPS_binding = rsalloc(sizeof(int) * n_prc);
-
-			lp_cost = rsalloc(sizeof(struct lp_cost_id) * n_prc);
-			memset(lp_cost, 0, sizeof(struct lp_cost_id) * n_prc);
-
-			atomic_set(&worker_thread_reduction, n_cores);
-		}
-
-		return;
-	}
-#ifdef HAVE_LP_REBINDING
+	if(rootsim_config.powercap > 0)
+		sample_average_powercap_violation();
+	
 	if (master_thread()) {
-		if (unlikely
-		    (timer_value_seconds(rebinding_timer) >= REBIND_INTERVAL)) {
-			timer_restart(rebinding_timer);
+		if (unlikely(rebinding_triggered && rebinding_completed)) {
+			rebinding_triggered = false;
+			rebinding_completed = false;
+
+			// The old number of active threads must participate in the reduction
+			atomic_set(&worker_thread_reduction, active_threads);
+
+			if(rootsim_config.powercap > 0) {
+				// Retrieve the current throughput value and decide
+				// upon a new configuration of threads.
+				committed_per_second = statistics_get_current_throughput();
+				active_threads = start_heuristic(committed_per_second); // threads could go to sleep here
+				printf("Active threads set to %d\n", active_threads);
+			}
+
 			binding_phase++;
 		}
 
 		if (atomic_read(&worker_thread_reduction) == 0) {
-
 			LP_knapsack();
+	
+			// Possibly wake up some threads
+			if(rootsim_config.powercap > 0)
+				wake_up_sleeping_threads();
 
+			atomic_set(&worker_thread_installation, active_threads);
 			binding_acquire_phase++;
 		}
 	}
@@ -292,21 +292,70 @@ void rebind_LPs(void)
 		local_binding_phase = binding_phase;
 		post_local_reduction();
 		atomic_dec(&worker_thread_reduction);
+
+		// Go to sleep if the heuristic decided to do so
+		if(rootsim_config.powercap > 0)
+			check_running_array(tid);
 	}
 
 	if (local_binding_acquire_phase < binding_acquire_phase) {
 		local_binding_acquire_phase = binding_acquire_phase;
-
 		install_binding();
 
 #ifdef HAVE_PREEMPTION
 		reset_min_in_transit(local_tid);
 #endif
-
-		if (thread_barrier(&all_thread_barrier)) {
-			atomic_set(&worker_thread_reduction, n_cores);
+		atomic_dec(&worker_thread_installation);
+		while(atomic_read(&worker_thread_installation) > 0);
+		if(master_thread()) {
+			atomic_set(&worker_thread_reduction, active_threads);
+			rebinding_completed = true;
 		}
 
+		//~ if (thread_barrier(&all_thread_barrier)) {
+                       //~ atomic_set(&worker_thread_reduction, active_threads);
+                       //~ rebinding_completed = true;
+                //~ }
 	}
-#endif
+}
+
+/**
+* Other subsystems might request to rebind LPs and threads by relying on
+* this internal API. It allows to specify the number of threads that should
+* participate in the rebinding phase.
+* 
+* @author Alessandro Pellegrini
+*/
+void trigger_rebinding(void)
+{
+	if(!rebinding_triggered) {
+		rebinding_triggered = true;
+	}
+}
+
+
+/**
+* This function _must_ be called before entering the actual main loop.
+* Each worker thread sets up its data structures, and the performs a
+* (deterministic) block allocation. This is because no runtime data
+* is available at the time, so we "share" the load as the number of LPs.
+* Then, successive invocations, will use the knapsack load sharing policy
+
+* @author Alessandro Pellegrini
+*/
+void initial_binding(void)
+{
+	active_threads = n_cores;
+	initialize_binding_blocks();
+
+	LPs_block_binding();
+
+	if (master_thread()) {
+		new_LPS_binding = rsalloc(sizeof(int) * n_prc);
+
+		lp_cost = rsalloc(sizeof(struct lp_cost_id) * n_prc);
+		memset(lp_cost, 0, sizeof(struct lp_cost_id) * n_prc);
+
+		atomic_set(&worker_thread_reduction, active_threads);
+	}
 }

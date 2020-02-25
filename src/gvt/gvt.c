@@ -38,6 +38,7 @@
 #include <core/core.h>
 #include <core/init.h>
 #include <core/timer.h>
+#include <scheduler/binding.h>
 #include <scheduler/process.h>
 #include <scheduler/scheduler.h>
 #include <statistics/statistics.h>
@@ -256,7 +257,7 @@ simtime_t GVT_phases(void)
 
 		if (atomic_read(&counter_B) == 0) {
 			simtime_t agreed_vt = INFTY;
-			for (i = 0; i < n_cores; i++) {
+			for (i = 0; i < active_threads; i++) {
 				agreed_vt = min(local_min[i], agreed_vt);
 			}
 			return agreed_vt;
@@ -335,13 +336,13 @@ simtime_t gvt_operations(void)
 			commit_kvt_tkn = 1;
 			idle_tkn = 1;
 
-			atomic_set(&counter_initialized, n_cores);
-			atomic_set(&counter_kvt, n_cores);
-			atomic_set(&counter_finalized, n_cores);
+			atomic_set(&counter_initialized, active_threads);
+			atomic_set(&counter_kvt, active_threads);
+			atomic_set(&counter_finalized, active_threads);
 
-			atomic_set(&counter_A, n_cores);
-			atomic_set(&counter_send, n_cores);
-			atomic_set(&counter_B, n_cores);
+			atomic_set(&counter_A, active_threads);
+			atomic_set(&counter_send, active_threads);
+			atomic_set(&counter_B, active_threads);
 
 			kernel_phase = kphase_start;
 
@@ -447,6 +448,7 @@ simtime_t gvt_operations(void)
 		if (atomic_read(&counter_finalized) == 0) {
 			if (iCAS(&idle_tkn, 1, 0)) {
 				kernel_phase = kphase_idle;
+				trigger_rebinding();
 			}
 		}
 		return last_gvt;

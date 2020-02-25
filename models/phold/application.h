@@ -23,8 +23,8 @@
 #define DEALLOC 	2
 #define LOOP		3
 
-#define COMPLETE_EVENTS 100000000	// for the LOOP traditional case
-#define LOOP_COUNT	1000
+#define COMPLETE_EVENTS 100000	// for the LOOP traditional case
+#define LOOP_COUNT	500
 
 
 // This is the events' payload which is exchanged across LPs

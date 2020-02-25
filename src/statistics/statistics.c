@@ -74,6 +74,7 @@
 #include <core/core.h>
 #include <core/init.h>
 #include <core/timer.h>
+#include <powercap/powercap.h>
 #ifdef HAVE_MPI
 #include <communication/mpi.h>
 #endif
@@ -115,6 +116,9 @@ static struct stat_t *thread_stats;
 /// Keeps global statistics
 static struct stat_t system_wide_stats = {.gvt_round_time_min = INFTY};
 
+/// This variable is used as an array to keep track of each thread current (per-GVT) throughput
+static double *current_thread_throughput;
+
 #ifdef HAVE_MPI
 /// Keep statistics reduced globally across MPI ranks
 struct stat_t global_stats = {.gvt_round_time_min = INFTY};
@@ -147,7 +151,7 @@ struct stat_t global_stats = {.gvt_round_time_min = INFTY};
 
 
 /**
-* This is an helper-function to recursively delete the whole content of a folder
+* This is a helper-function to recursively delete the whole content of a folder
 *
 * @param path The path of the directory to purge
 */
@@ -189,7 +193,7 @@ static void _rmdir(const char *path)
 
 
 /**
-* This is an helper-function to allow the statistics subsystem create a new directory
+* This is a helper-function to allow the statistics subsystem create a new directory
 *
 * @author Alessandro Pellegrini
 *
@@ -378,6 +382,11 @@ static void print_common_stats(FILE *f, struct stat_t *stats_p, bool want_thread
 	fprintf(f, "AVERAGE RECOVERY COST...... : %.2f us\n",		(stats_p->tot_recoveries > 0 ? stats_p->recovery_time / stats_p->tot_recoveries : 0));
 	fprintf(f, "AVERAGE LOG SIZE........... : %s\n",		format_size(stats_p->ckpt_mem / stats_p->tot_ckpts));
 	fprintf(f, "\n");
+	if(!want_thread_stats && rootsim_config.powercap > 0) {
+		fprintf(f, "POWER CONSUMPTION (NET) ... : %f\n",	get_power_stats(POWER_CONSUMPTION));
+		fprintf(f, "POWER OBSERVATION TIME .... : %f\n",	get_power_stats(OBSERVATION_TIME));
+		fprintf(f, "POWER EXCEEDING CAP ....... : %f\n",	get_power_stats(EXCEEDING_CAP));
+	}
 	fprintf(f, "IDLE CYCLES................ : %.0f\n",		stats_p->idle_cycles);
 	if(!want_thread_stats){
 		fprintf(f, "LAST COMMITTED GVT ........ : %f\n",	get_last_gvt());
@@ -576,9 +585,13 @@ inline void statistics_on_gvt(double gvt)
 {
 	unsigned int lid;
 	unsigned int committed = 0;
-	static __thread unsigned int cumulated = 0;
 	double exec_time, simtime_advancement, keep_exponential_event_time;
+	static __thread unsigned int cumulated_committed_events = 0;
+	static __thread double last_cumulated_committed_events_time = 0;
+	double current_cumulated_committed_events_time;
 
+	cumulated_committed_events = 0;
+	
 	// Dump on file only if required
 	if(rootsim_config.stats == STATS_ALL || rootsim_config.stats == STATS_PERF) {
 		exec_time = timer_value_seconds(simulation_timer);
@@ -587,12 +600,12 @@ inline void statistics_on_gvt(double gvt)
 		foreach_bound_lp(lp) {
 			committed += lp_stats_gvt[lp->lid.to_int].committed_events;
 		}
-		cumulated += committed;
+		cumulated_committed_events += committed;
 
 		// fill the row
-		gvt_buf.rows[gvt_buf.pos++] = (struct _gvt_buffer_row_t){exec_time, gvt, committed, cumulated};
+		gvt_buf.rows[gvt_buf.pos++] = (struct _gvt_buffer_row_t){exec_time, gvt, committed, cumulated_committed_events};
 		// check if buffer is full
-		if(gvt_buf.pos >= GVT_BUFF_ROWS){
+		if(gvt_buf.pos >= GVT_BUFF_ROWS) {
 			// flush our buffer in the blob file
 			fwrite(gvt_buf.rows, sizeof(struct _gvt_buffer_row_t), gvt_buf.pos, thread_blob_files[local_tid]);
 			gvt_buf.pos = 0;
@@ -624,6 +637,12 @@ inline void statistics_on_gvt(double gvt)
 		bzero(&lp_stats_gvt[lid], sizeof(struct stat_t));
 		lp_stats_gvt[lid].exponential_event_time = keep_exponential_event_time;
 	}
+
+	// Keep track of this phase throughput
+	current_cumulated_committed_events_time = timer_value_seconds(simulation_timer);
+	current_thread_throughput[tid] = cumulated_committed_events / (current_cumulated_committed_events_time - last_cumulated_committed_events_time);
+	last_cumulated_committed_events_time = current_cumulated_committed_events_time;
+	
 }
 
 
@@ -725,6 +744,8 @@ void statistics_init(void)
 	bzero(lp_stats_gvt, n_prc * sizeof(struct stat_t));
 	thread_stats = rsalloc(n_cores * sizeof(struct stat_t));
 	bzero(thread_stats, n_cores * sizeof(struct stat_t));
+	current_thread_throughput = rsalloc(n_cores * sizeof(double));
+	bzero(current_thread_throughput, n_cores * sizeof(double));
 }
 
 #undef assign_new_file
@@ -756,6 +777,7 @@ void statistics_fini(void)
 	rsfree(thread_stats);
 	rsfree(lp_stats);
 	rsfree(lp_stats_gvt);
+	rsfree(current_thread_throughput);
 }
 
 
@@ -859,4 +881,15 @@ double statistics_get_lp_data(struct lp_struct *lp, unsigned int type)
 			rootsim_error(true, "Wrong statistics get type: %d. Aborting...\n", type);
 	}
 	return 0.0;
+}
+
+double statistics_get_current_throughput(void)
+{
+	unsigned int i;
+	double throughput = 0;
+	
+	for(i = 0; i < active_threads; i++)
+		throughput += current_thread_throughput[i];
+
+	return throughput / active_threads;
 }

@@ -218,6 +218,9 @@ extern unsigned int kid,	/* Kernel ID for the local kernel */
  n_prc,				/* Number of LPs hosted by the current kernel instance */
 *kernel;
 
+/// Current number of active threads. This is always <= n_cores
+extern volatile unsigned int active_threads;
+
 extern void ProcessEvent_light(unsigned int me, simtime_t now, int event_type, void *event_content, unsigned int size, void *state);
 bool OnGVT_light(unsigned int me, void *snapshot);
 extern void ProcessEvent_inc(unsigned int me, simtime_t now, int event_type, void *event_content, unsigned int size, void *state);

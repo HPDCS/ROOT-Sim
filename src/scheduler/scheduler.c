@@ -204,7 +204,7 @@ void initialize_worker_thread(void)
 	msg_t *init_event;
 
 	// Divide LPs among worker threads, for the first time here
-	rebind_LPs();
+	initial_binding();
 	if (master_thread() && master_kernel()) {
 		printf("Initializing LPs... ");
 		fflush(stdout);

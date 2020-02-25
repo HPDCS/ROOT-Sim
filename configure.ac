@@ -20,7 +20,7 @@ AC_ARG_ENABLE([coverage],
 AM_CONDITIONAL([DEBUG], [test x$enable_debug = xyes])
 
 # Setup compilation flags
-CFLAGS_COMMON="-std=c11 -fno-omit-frame-pointer -ffloat-store -fno-common -fstrict-aliasing -fgnu89-inline -rdynamic -lm -U_FORTIFY_SOURCE"
+CFLAGS_COMMON="-std=c11 -fno-omit-frame-pointer -ftree-vectorize -ffloat-store -fno-common -fstrict-aliasing -fgnu89-inline -rdynamic -lm -U_FORTIFY_SOURCE"
 CFLAGS_WARNINGS="-Wall -Wextra -Wmisleading-indentation -Wcast-align -Wpointer-arith -Wstrict-overflow=5 -Wstrict-prototypes -Winline -Wundef -Wnested-externs -Wshadow -Wunreachable-code -Wfloat-equal -Wredundant-decls -Wold-style-definition -Wno-switch-enum"
 #CFLAGS_WARNINGS="$CFLAGS_WARNINGS -Wconversion"
 
@@ -215,23 +215,6 @@ case $host_os in
         ;;
 esac
 
-#----------------------------------------------------------------------------
-# COMPILE TIME OPTIONS
-#
-# From here on, we enable/disable compile time switches for the simulator
-#----------------------------------------------------------------------------
-
-
-# LP binding support
-AC_ARG_ENABLE([rebinding],
-AS_HELP_STRING([--disable-rebinding], [Disable LPs Rebinding (Enabled by default)]))
-
-AS_IF([test "x$enable_rebinding" != "xno"], [
-        AC_DEFINE([HAVE_LP_REBINDING])
-        ac_have_lp_rebinding=yes
-])
-
-
 #------------------------------------------------------------
 # Power management support
 #------------------------------------------------------------
@@ -249,7 +232,6 @@ then
 		ac_have_power_management=yes
 	])
 fi
-
 
 #------------------------------------------------------------
 # Linux specific subsystems.
@@ -412,15 +394,6 @@ else
 fi
 
 
-# Compose the message regarding LP rebinding
-if test "x$ac_have_lp_rebinding" = "xyes"
-then
-	ac_lp_rebinding="Enabled (By default, use --disable-rebinding if not wanted)"
-else
-	ac_lp_rebinding="Disabled (manually excluded)"
-fi
-
-
 # Compose the message regarding Preemptive Time Warp
 if test "x$ac_have_preemption" = "xyes"
 then
@@ -501,7 +474,6 @@ Debugging Support......... : ${enable_debug}
 MPI....................... : ${enable_mpi}
 Power Management.......... : ${ac_power}
 LP Preemption Support..... : ${ac_preemption}
-LP Rebinding.............. : ${ac_lp_rebinding}
 
 
 EOF

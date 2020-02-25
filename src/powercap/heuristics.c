@@ -28,6 +28,7 @@
 #include <string.h>
 
 #include <powercap/powercap.h>
+#include <powercap/macros.h>
 
 ///////////////////////////////////////////////////////////////
 // Utility functions
@@ -36,10 +37,10 @@
 // Checks if the current config is better than the currently best config and if that's the case update it 
 void update_best_config(double throughput, double power){
 	
-	if(throughput > best_throughput || (best_threads == active_threads && current_pstate <= best_pstate)){
+	if(throughput > best_throughput || (best_threads == powercap_active_threads && current_pstate <= best_pstate)){
 		best_throughput = throughput;
 		best_pstate = current_pstate;
-		best_threads = active_threads;
+		best_threads = powercap_active_threads;
 		best_power = power;
 	}
 }
@@ -47,7 +48,7 @@ void update_best_config(double throughput, double power){
 int update_level_best_config(double throughput){
 	if(throughput > level_best_throughput){
 		level_best_throughput = throughput;
-		level_best_threads = active_threads;
+		level_best_threads = powercap_active_threads;
 		level_best_pstate = current_pstate;
 		return 1;
 	}
@@ -140,19 +141,19 @@ void heuristic_power(double throughput, double power){
 		new_pstate = 0;
 		if( power > power_limit ){
 			decreasing = 1;
-			if(active_threads > 1)
-				pause_thread(active_threads-1);
+			if(powercap_active_threads > 1)
+				pause_thread(powercap_active_threads-1);
 			else stop_searching();
 		}
 		else{
 			update_level_best_config(throughput);
-			if(active_threads < total_threads){
-				wake_up_thread(active_threads);
+			if(powercap_active_threads < total_threads){
+				wake_up_thread(powercap_active_threads);
 			}
 			else{
 				decreasing = 1;
-				if(active_threads > 1)
-					pause_thread(active_threads-1);
+				if(powercap_active_threads > 1)
+					pause_thread(powercap_active_threads-1);
 				else stop_searching();
 			}
 		}
@@ -162,12 +163,12 @@ void heuristic_power(double throughput, double power){
 		
 		// Increasing number of threads 
 		if(!decreasing){
-			if( throughput < old_throughput || power > power_limit || active_threads >= total_threads){	// Increasing should stop 
+			if( throughput < old_throughput || power > power_limit || powercap_active_threads >= total_threads){	// Increasing should stop 
 				if(power<power_limit)
 					update_level_best_config(throughput);
 
 				// If already increased once or cannot reduce wrt to starting threads there is no reason to explore descreasing threads 
-				if( (active_threads - level_starting_threads) > 1 || (level_starting_threads - 1) < 1){
+				if( (powercap_active_threads - level_starting_threads) > 1 || (level_starting_threads - 1) < 1){
 					new_pstate = 1;
 					compare_best_level_config();
 					if( current_pstate - 1 < 0)
@@ -189,7 +190,7 @@ void heuristic_power(double throughput, double power){
 			}
 			else{	// Should continue increasing 
 				update_level_best_config(throughput);
-				wake_up_thread(active_threads);
+				wake_up_thread(powercap_active_threads);
 			}
 
 		}
@@ -199,7 +200,7 @@ void heuristic_power(double throughput, double power){
 			if(power < power_limit)
 					update_level_best_config(throughput);
 
-			if(throughput < level_best_throughput || active_threads == 1){
+			if(throughput < level_best_throughput || powercap_active_threads == 1){
 				new_pstate = 1;
 				compare_best_level_config();
 				if( current_pstate - 1 < 0 )
@@ -214,7 +215,7 @@ void heuristic_power(double throughput, double power){
 					level_best_pstate = 0;
 				}
 			}
-			else pause_thread(active_threads - 1);
+			else pause_thread(powercap_active_threads - 1);
 		
 		}
 	}
@@ -309,12 +310,12 @@ void dynamic_heuristic0(double throughput, double power){
 		}
 
 		if(steps == 0){ // First exploration step
-			if(active_threads != total_threads && power < power_limit){
-				set_threads(active_threads+1);
+			if(powercap_active_threads != total_threads && power < power_limit){
+				set_threads(powercap_active_threads+1);
 			}
-			else if(active_threads > 1){
+			else if(powercap_active_threads > 1){
 				decreasing = 1;
-				set_threads(active_threads-1);
+				set_threads(powercap_active_threads-1);
 				
 				#ifdef DEBUG_HEURISTICS
 					printf("PHASE 0 - DECREASING\n");
@@ -325,8 +326,8 @@ void dynamic_heuristic0(double throughput, double power){
 			}
 		}
 		else if(steps == 1 && !decreasing){ //Second exploration step, define if should set decreasing 
-			if(throughput >= best_throughput*0.9 && power < power_limit && active_threads != total_threads){
-				set_threads(active_threads+1);
+			if(throughput >= best_throughput*0.9 && power < power_limit && powercap_active_threads != total_threads){
+				set_threads(powercap_active_threads+1);
 			} else{ // Should set decreasing to 0 
 				if(starting_threads > 1){
 					decreasing = 1; 
@@ -342,13 +343,13 @@ void dynamic_heuristic0(double throughput, double power){
 			}
 		} 
 		else if(decreasing){ // Decreasing threads
-			if(throughput < best_throughput*0.9 || active_threads == 1)
+			if(throughput < best_throughput*0.9 || powercap_active_threads == 1)
 				from_phase0_to_next();
 			else
-				set_threads(active_threads-1);
+				set_threads(powercap_active_threads-1);
 			
 		} else{ // Increasing threads
-			if( power > power_limit || active_threads == total_threads || throughput < best_throughput*0.9){
+			if( power > power_limit || powercap_active_threads == total_threads || throughput < best_throughput*0.9){
 				if(starting_threads > 1){
 					decreasing = 1; 
 					set_threads(starting_threads-1);	
@@ -361,7 +362,7 @@ void dynamic_heuristic0(double throughput, double power){
 					from_phase0_to_next();
 				}
 			}
-			else set_threads(active_threads+1);
+			else set_threads(powercap_active_threads+1);
 		}
 	}
 	else if(phase == 1){ //Increase in performance states while being within the power cap
@@ -370,14 +371,14 @@ void dynamic_heuristic0(double throughput, double power){
 			update_best_config(throughput, power);
 		}
 
-		if( (power < power_limit && current_pstate == 0) || (power > power_limit && active_threads == 1) )
+		if( (power < power_limit && current_pstate == 0) || (power > power_limit && powercap_active_threads == 1) )
 			from_phase1_to_next();
 		
 		else{ // Not yet completed to explore in phase 1 
 			if(power < power_limit) //Should decrease number of active threads
 				set_pstate(current_pstate-1);
 			else // Power beyond power limit
-				set_threads(active_threads-1);
+				set_threads(powercap_active_threads-1);
 		}	
 	}
 	else{ // Phase == 2. Decreasing the CPU frequency and increasing the number of threads. Not called in the first exploration phase 
@@ -386,12 +387,12 @@ void dynamic_heuristic0(double throughput, double power){
 			update_best_config(throughput, power);
 		}
 
-		if( (current_pstate == max_pstate && power>power_limit) || (current_pstate == max_pstate && active_threads == total_threads) || throughput < level_best_throughput || (active_threads == total_threads && power<power_limit ))
+		if( (current_pstate == max_pstate && power>power_limit) || (current_pstate == max_pstate && powercap_active_threads == total_threads) || throughput < level_best_throughput || (powercap_active_threads == total_threads && power<power_limit ))
 			stop_searching();
 		else{ // Should still explore in phase 2 
 			if(power < power_limit){
 				update_level_best_config(throughput);
-				set_threads(active_threads+1);
+				set_threads(powercap_active_threads+1);
 			}
 			else{ // Outside power_limit, should decrease P-state and reset level related data
 				set_pstate(current_pstate+1);
@@ -409,7 +410,7 @@ void update_high(double throughput, double power){
 	if(power < power_limit*(1+(extra_range_percentage/100)) && throughput > high_throughput){
 		high_throughput = throughput; 
 		high_pstate = current_pstate;
-		high_threads = active_threads;
+		high_threads = powercap_active_threads;
 		high_power = power;
 	} 
 }
@@ -420,7 +421,7 @@ void update_low(double throughput, double power){
 	if( power < power_limit*(1-(extra_range_percentage/100/2)) && throughput > low_throughput){
 		low_throughput = throughput; 
 		low_pstate = current_pstate;
-		low_threads = active_threads; 
+		low_threads = powercap_active_threads; 
 		low_power = power;
 	}
 }
@@ -440,16 +441,16 @@ void dynamic_heuristic1(double throughput, double power){
 void update_highest_threads(double throughput, double power){
 	
 	if( power < power_limit){
-		if(active_threads == best_threads){
+		if(powercap_active_threads == best_threads){
 			if(best_pstate == -1 || current_pstate < best_pstate){
 				best_throughput = throughput;
-				best_threads = active_threads;
+				best_threads = powercap_active_threads;
 				best_pstate = current_pstate;
 			}
 		}
-		else if( active_threads > best_threads){
+		else if( powercap_active_threads > best_threads){
 			best_throughput = throughput;
-			best_threads = active_threads;
+			best_threads = powercap_active_threads;
 			best_pstate = current_pstate;
 		}					
 	}
@@ -462,12 +463,12 @@ void heuristic_highest_threads(double throughput, double power){
 
 	if(phase == 0){	// Find the highest number of threads at the lowest P-state
 		if(steps == 0){
-			if(active_threads == total_threads || power > power_limit){
+			if(powercap_active_threads == total_threads || power > power_limit){
 				decreasing = 1; 
-				set_threads(active_threads-1);
+				set_threads(powercap_active_threads-1);
 			}
 			else 
-				set_threads(active_threads+1);
+				set_threads(powercap_active_threads+1);
 		}else{
 			if(decreasing){
 				if(power < power_limit){
@@ -476,13 +477,13 @@ void heuristic_highest_threads(double throughput, double power){
 						set_threads(best_threads);
 						set_pstate(best_pstate-1);
 					}else stop_searching();
-				} else set_threads(active_threads-1);
+				} else set_threads(powercap_active_threads-1);
 			}else{	//Increasing
-				if( power > power_limit || active_threads == total_threads){
+				if( power > power_limit || powercap_active_threads == total_threads){
 					phase = 1;
 					set_threads(best_threads);
 					set_pstate(best_pstate-1);
-				} else set_threads(active_threads+1);
+				} else set_threads(powercap_active_threads+1);
 			}
 		}
 	}
@@ -528,10 +529,10 @@ void heuristic_binary_search(double throughput, double power){
 
 			}else{ // Keep searching
 				if(power > power_limit || throughput > max_thread_search_throughput){ // Should set current to high
-					max_thread_search = active_threads;
+					max_thread_search = powercap_active_threads;
 					max_thread_search_throughput = throughput; 
 				}else{ // Should set current to low 
-					min_thread_search = active_threads;
+					min_thread_search = powercap_active_threads;
 					min_thread_search_throughput = throughput; 
 				}
 				set_threads(min_thread_search+((int) (max_thread_search - min_thread_search) /2));
@@ -576,8 +577,8 @@ void heuristic_two_step_search(double throughput, double power){
 	}
 
 	if(phase == 0){ // Searching threads
-		if(power<power_limit && active_threads < total_threads && throughput > best_throughput*0.9){
-			set_threads(active_threads+1);
+		if(power<power_limit && powercap_active_threads < total_threads && throughput > best_throughput*0.9){
+			set_threads(powercap_active_threads+1);
 		}else{
 			if(best_throughput != -1){
 				set_threads(best_threads);
@@ -624,12 +625,12 @@ void heuristic_two_step_stateful(double throughput, double power){
 		}
 
 		if(steps == 0){ // First exploration step
-			if(active_threads != total_threads && power < power_limit){
-				set_threads(active_threads+1);
+			if(powercap_active_threads != total_threads && power < power_limit){
+				set_threads(powercap_active_threads+1);
 			}
-			else if(active_threads > 1){
+			else if(powercap_active_threads > 1){
 				decreasing = 1;
-				set_threads(active_threads-1);
+				set_threads(powercap_active_threads-1);
 				
 				#ifdef DEBUG_HEURISTICS
 					printf("PHASE 0 - DECREASING\n");
@@ -640,8 +641,8 @@ void heuristic_two_step_stateful(double throughput, double power){
 			}
 		}
 		else if(steps == 1 && !decreasing){ //Second exploration step, define if should set decreasing 
-			if(throughput >= best_throughput*0.9 && power < power_limit && active_threads != total_threads){
-				set_threads(active_threads+1);
+			if(throughput >= best_throughput*0.9 && power < power_limit && powercap_active_threads != total_threads){
+				set_threads(powercap_active_threads+1);
 			} else{ // Should set decreasing to 0 
 				if(starting_threads > 1){
 					decreasing = 1; 
@@ -657,13 +658,13 @@ void heuristic_two_step_stateful(double throughput, double power){
 			}
 		} 
 		else if(decreasing){ // Decreasing threads
-			if(throughput < best_throughput*0.9 || active_threads == 1)
+			if(throughput < best_throughput*0.9 || powercap_active_threads == 1)
 				from_phase0_to_next_stateful();
 			else
-				set_threads(active_threads-1);
+				set_threads(powercap_active_threads-1);
 			
 		} else{ // Increasing threads
-			if( power > power_limit || active_threads == total_threads || throughput < best_throughput*0.9){
+			if( power > power_limit || powercap_active_threads == total_threads || throughput < best_throughput*0.9){
 				if(starting_threads > 1){
 					decreasing = 1; 
 					set_threads(starting_threads-1);	
@@ -676,7 +677,7 @@ void heuristic_two_step_stateful(double throughput, double power){
 					from_phase0_to_next_stateful();
 				}
 			}
-			else set_threads(active_threads+1);
+			else set_threads(powercap_active_threads+1);
 		}
 	}
 	else{ // Phase == 1 -> Increase DVFS until reaching the powercap
@@ -685,7 +686,7 @@ void heuristic_two_step_stateful(double throughput, double power){
 			update_best_config(throughput, power);
 		}
 
-		if( (power < power_limit && current_pstate == 0) || (power > power_limit && active_threads == 1) ){
+		if( (power < power_limit && current_pstate == 0) || (power > power_limit && powercap_active_threads == 1) ){
 		
 			#ifdef DEBUG_HEURISTICS
 				printf("PHASE 1 - END\n");
@@ -800,17 +801,17 @@ void model_power_throughput(double throughput, double power){
 
  int i, j;
 
-	power_model[current_pstate][active_threads] = power;
-	throughput_model[current_pstate][active_threads] = throughput;
+	power_model[current_pstate][powercap_active_threads] = power;
+	throughput_model[current_pstate][powercap_active_threads] = throughput;
 
 	if(current_pstate == max_pstate){
-		power_real[current_pstate][active_threads] = power;
-		throughput_real[current_pstate][active_threads] = throughput;
-		power_validation[current_pstate][active_threads] = power_model[current_pstate][active_threads];
-		throughput_validation[current_pstate][active_threads] = throughput_model[current_pstate][active_threads];
+		power_real[current_pstate][powercap_active_threads] = power;
+		throughput_real[current_pstate][powercap_active_threads] = throughput;
+		power_validation[current_pstate][powercap_active_threads] = power_model[current_pstate][powercap_active_threads];
+		throughput_validation[current_pstate][powercap_active_threads] = throughput_model[current_pstate][powercap_active_threads];
 	}
 
-	if(active_threads == total_threads && current_pstate == lower_sampled_model_pstate){
+	if(powercap_active_threads == total_threads && current_pstate == lower_sampled_model_pstate){
 		
 		compute_power_model();
 		compute_throughput_model();
@@ -834,8 +835,8 @@ void model_power_throughput(double throughput, double power){
 
 	}else{ 
 
-		if(active_threads < total_threads)
-			set_threads(active_threads+1);
+		if(powercap_active_threads < total_threads)
+			set_threads(powercap_active_threads+1);
 		else{
 			set_pstate(lower_sampled_model_pstate);
 			set_threads(1);
@@ -874,7 +875,7 @@ void heuristic(double throughput, double power, long time){
 		double current_execution_time_ms = ( (double) (get_time() - time_application_startup))/1000000;
 
 		// Line Semantics -> Time(milliseconds), Power (Watt), Powercap (Watt), Throughput, P-state, threads 
-		fprintf(timeline_plot_file, "%lf,%lf,%lf,%lf,%d,%d\n", current_execution_time_ms, power, power_limit, throughput, current_pstate, active_threads);
+		fprintf(timeline_plot_file, "%lf,%lf,%lf,%lf,%d,%d\n", current_execution_time_ms, power, power_limit, throughput, current_pstate, powercap_active_threads);
 	#endif
 
 	#ifdef DEBUG_OVERHEAD
@@ -925,7 +926,7 @@ void heuristic(double throughput, double power, long time){
 			steps++;
 
 		#ifdef DEBUG_HEURISTICS
-			printf("Switched to: #threads %d - pstate %d\n", active_threads, current_pstate);
+			printf("Switched to: #threads %d - pstate %d\n", powercap_active_threads, current_pstate);
 		#endif 
 	}
 	else{	// Workload change detection
@@ -944,15 +945,15 @@ void heuristic(double throughput, double power, long time){
 			if(heuristic_mode == 15){
 			
 			// Copy sample data to compare models with real data
-			power_real[current_pstate][active_threads] = power;
-			throughput_real[current_pstate][active_threads] = throughput;
+			power_real[current_pstate][powercap_active_threads] = power;
+			throughput_real[current_pstate][powercap_active_threads] = throughput;
 
 			// Copy to the validation array predictions from the model. Necessary as we perform multiple runs of the model
 			// to account for workload variability
-			power_validation[current_pstate][active_threads] = power_model[current_pstate][active_threads];
-			throughput_validation[current_pstate][active_threads] = throughput_model[current_pstate][active_threads];
+			power_validation[current_pstate][powercap_active_threads] = power_model[current_pstate][powercap_active_threads];
+			throughput_validation[current_pstate][powercap_active_threads] = throughput_model[current_pstate][powercap_active_threads];
 			
-			if(current_pstate == 1 && active_threads == total_threads){
+			if(current_pstate == 1 && powercap_active_threads == total_threads){
 
 				// Set validation for p-state equal to lower_sampled_model_pstate
 				for(int l = 1; l<total_threads; l++){
@@ -1063,7 +1064,7 @@ void heuristic(double throughput, double power, long time){
 				printf("\nModel validation completed\n");
 				exit(0);
 			}
-			else if(active_threads == total_threads){ // Should restart the model 
+			else if(powercap_active_threads == total_threads){ // Should restart the model 
 				validation_pstate--;
 				if(validation_pstate == lower_sampled_model_pstate)
 					validation_pstate--;
@@ -1075,14 +1076,14 @@ void heuristic(double throughput, double power, long time){
 				best_pstate = max_pstate;
 
 				#ifdef DEBUG_HEURISTICS
-					printf("Switched to: #threads %d - pstate %d\n", active_threads, current_pstate);
+					printf("Switched to: #threads %d - pstate %d\n", powercap_active_threads, current_pstate);
 				#endif 
 			}
 			else{ // Not yet finished current P-state, should increase threads
-				set_threads(active_threads+1);
+				set_threads(powercap_active_threads+1);
 
 				#ifdef DEBUG_HEURISTICS
-					printf("Switched to: #threads %d - pstate %d\n", active_threads, current_pstate);
+					printf("Switched to: #threads %d - pstate %d\n", powercap_active_threads, current_pstate);
 				#endif 
 			}
 		}
