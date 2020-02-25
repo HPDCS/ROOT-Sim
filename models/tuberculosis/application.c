@@ -120,7 +120,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type,
 			region_t *region = malloc(sizeof(region_t));
 			SetState(region);
 			region->healthy = 0;
-
+			region->now = 0.0;
 			if(!me){
 				// this function let LP0 coordinate the init phase
 				guy_init();

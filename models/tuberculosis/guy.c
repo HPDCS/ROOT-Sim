@@ -73,6 +73,7 @@ static void guy_sick_update(agent_t agent, unsigned me, simtime_t now){
 		guy->treatment_day = now;
 		// set the guy to an under treatment state
 		bitmap_set(guy->flags, f_treatment);
+		CoreMemoryUnmark(guy);
 		return;
 	}
 
@@ -166,6 +167,7 @@ static bool guy_infected_update(agent_t agent, region_t *region, simtime_t now){
 		define_diagnose(guy, now);
 		// set this guy to a sick state
 		bitmap_set(guy->flags, f_sick);
+		CoreMemoryMark(guy);
 	}
 	return false;
 }
