@@ -38,6 +38,7 @@
 #include <core/core.h>
 #include <core/init.h>
 #include <core/timer.h>
+#include <scheduler/binding.h>
 #include <scheduler/process.h>
 #include <scheduler/scheduler.h>
 #include <statistics/statistics.h>
@@ -447,6 +448,7 @@ simtime_t gvt_operations(void)
 		if (atomic_read(&counter_finalized) == 0) {
 			if (iCAS(&idle_tkn, 1, 0)) {
 				kernel_phase = kphase_idle;
+				trigger_rebinding();
 			}
 		}
 		return last_gvt;

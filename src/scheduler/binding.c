@@ -32,7 +32,6 @@
 
 #include <arch/atomic.h>
 #include <core/core.h>
-#include <core/timer.h>
 #include <datatypes/list.h>
 #include <scheduler/binding.h>
 #include <scheduler/process.h>
@@ -52,7 +51,6 @@ struct lp_cost_id {
 struct lp_cost_id *lp_cost;
 
 static unsigned int *new_LPS_binding;
-static timer rebinding_timer;
 
 static int binding_acquire_phase = 0;
 static __thread int local_binding_acquire_phase = 0;
@@ -61,6 +59,8 @@ static int binding_phase = 0;
 static __thread int local_binding_phase = 0;
 
 static atomic_t worker_thread_reduction;
+
+static bool rebinding_triggered = false;
 
 /**
 * Performs a (deterministic) block allocation between LPs and WTs
@@ -244,16 +244,13 @@ static void install_binding(void)
 void rebind_LPs(void)
 {
 	if (master_thread()) {
-		if (unlikely
-		    (timer_value_seconds(rebinding_timer) >= REBIND_INTERVAL)) {
-			timer_restart(rebinding_timer);
+		if (unlikely(rebinding_triggered)) {
+			rebinding_triggered = false;
 			binding_phase++;
 		}
 
 		if (atomic_read(&worker_thread_reduction) == 0) {
-
 			LP_knapsack();
-
 			binding_acquire_phase++;
 		}
 	}
@@ -280,6 +277,17 @@ void rebind_LPs(void)
 	}
 }
 
+/**
+* Other subsystems might request to rebind LPs and threads by relying on
+* this internal API.
+* 
+* @author Alessandro Pellegrini
+*/
+void trigger_rebinding(void)
+{
+	rebinding_triggered = true;
+}
+
 
 /**
 * This function _must_ be called before entering the actual main loop.
@@ -295,8 +303,6 @@ void initial_binding(void)
 	initialize_binding_blocks();
 
 	LPs_block_binding();
-
-	timer_start(rebinding_timer);
 
 	if (master_thread()) {
 		new_LPS_binding = rsalloc(sizeof(int) * n_prc);

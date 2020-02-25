@@ -30,3 +30,4 @@
 
 extern void rebind_LPs(void);
 extern void initial_binding(void);
+extern void trigger_rebinding(void);

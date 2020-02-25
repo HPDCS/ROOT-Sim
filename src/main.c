@@ -130,11 +130,7 @@ static void *main_simulation_loop(void *arg)
 		goto leave_for_error;
 	}
 
-	initial_binding();
-
 	while (!end_computing()) {
-		// Recompute the LPs-thread binding
-		rebind_LPs();
 
 #ifdef HAVE_MPI
 		// Check whether we have new ingoing messages sent by remote instances
@@ -148,6 +144,8 @@ static void *main_simulation_loop(void *arg)
 		schedule();
 
 		my_time_barrier = gvt_operations();
+
+		rebind_LPs();
 
 		// Only a master thread on master kernel prints the time barrier
 		if (master_kernel() && master_thread() && D_DIFFER(my_time_barrier, -1.0)) {
