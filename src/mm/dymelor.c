@@ -397,11 +397,13 @@ void do_free(struct lp_struct *lp, void *ptr)
 		m_state->total_inc_size += bitmap_size + sizeof(malloc_area);
 	}
 
+	m_area->state_changed = 1;
+
 	if (bitmap_check(m_area->dirty_bitmap, idx)) {
 		bitmap_reset(m_area->dirty_bitmap, idx);
 		m_area->dirty_chunks--;
 
-		if (m_area->state_changed == 1 && m_area->dirty_chunks == 0)
+		if (m_area->dirty_chunks == 0)
 			m_state->total_inc_size -= bitmap_size;
 
 		m_state->total_inc_size -= chunk_size;
@@ -410,8 +412,6 @@ void do_free(struct lp_struct *lp, void *ptr)
 			rootsim_error(true, "negative number of chunks\n");
 		}
 	}
-
-	m_area->state_changed = 1;
 
 	m_area->last_access = lvt(current);
 
@@ -652,4 +652,34 @@ void clean_buffers_on_gvt(struct lp_struct *lp, simtime_t time_barrier)
 			}
 		}
 	}
+}
+
+// address and size must identify a block effectively allocated by DyMeLoR
+malloc_area* malloc_area_get (void *address, int *chunk_ret)
+{
+	assert(current != NULL);
+
+	malloc_area *m_area;
+	malloc_state *m_state = current->mm->m_state;
+
+	int i, chunk;
+	for (i = 0; i < m_state->num_areas; i++) {
+		m_area = &m_state->areas[i];
+		if (m_area->area == NULL)
+			continue;
+
+		size_t chk_size = UNTAGGED_CHUNK_SIZE(m_area);
+
+		if ((char *)address >= (char *)m_area->area && (char *)address < (char*)m_area->area + chk_size * m_area->num_chunks) {
+			chunk = (int) (((char*) address - (char*) m_area->area) / chk_size);
+#ifndef NDEBUG // more costly but complete sanity check
+			if (!bitmap_check(m_area->use_bitmap, chunk))
+				return NULL;
+#endif
+			*chunk_ret = chunk;
+			return m_area;
+		}
+	}
+
+	return NULL;
 }

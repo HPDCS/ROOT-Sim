@@ -723,16 +723,13 @@ void restore_incremental(struct lp_struct *lp, state_t *queue_node) {
             bitmap_size = bitmap_required_size(m_state->areas[i].num_chunks);
 
 #define check_restored_use_bitmap(x) ({\
-			if(bitmap_check(to_be_restored[i], x)){\
-				rootsim_error(true, "We didn't restore an entry in the restore bitmap");\
-			}\
+			rootsim_error(true, "We didn't restore an entry in the restore bitmap");\
 		})
 
             bitmap_foreach_set(to_be_restored[i], bitmap_size, check_restored_use_bitmap);
 #undef check_restored_use_bitmap
 
         }
-
 
 	// Release data structures
 	for(i = 0; i < m_state->max_num_areas ; i++) {
