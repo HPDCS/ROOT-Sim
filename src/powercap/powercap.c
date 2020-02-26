@@ -28,6 +28,7 @@
  * POWERCAP FUNCTIONS
  * ################################################################### */
 
+
 #include <signal.h>
 #include <pthread.h>
 #include <sched.h>
@@ -40,6 +41,22 @@
 #include <powercap/powercap.h>
 #include <powercap/stats_t.h>
 #include <powercap/macros.h>
+
+double commits_when_exploiting = 0;
+double energy_when_exploiting = 0;
+double time_when_exploiting = 0;
+
+
+
+#define rsalloc(size)  \
+({ \
+	void *__ptr = rsalloc(5 * size);\
+	if(!__ptr) {\
+		printf("FUUUUUU\n");\
+		abort();\
+	}\
+	__ptr;\
+})
 
 /////////////////////////////////////////////////////////////////
 //	Global variables
@@ -274,10 +291,10 @@ int init_DVFS_management(void) {
 		printf("Cannot open scaling_available_frequencies file\n");
 		exit(0);
 	}
-	freq_available = malloc(sizeof(char)*256);
+	freq_available = rsalloc(sizeof(char)*256);
 	fgets(freq_available, 256, available_freq_file);
 	
-	pstate = malloc(sizeof(int)*32);
+	pstate = rsalloc(sizeof(int)*32);
 	i = 0; 
 	char * end;
 
@@ -327,18 +344,18 @@ void init_thread_management(int threads){
 	powercap_active_threads = total_threads;
 
 	// Init running array with all threads running 	
-	running_array = malloc(sizeof(int)*total_threads);
+	running_array = rsalloc(sizeof(int)*n_cores);
 	for(i=0; i<total_threads; i++)
 		running_array[i] = 1;	
 
 	// Allocate memory for pthread_ids
-	pthread_ids = malloc(sizeof(pthread_t)*total_threads);//TODO: usa un'array inzializzato con MACRO CPU_COUNT
+	pthread_ids = rsalloc(sizeof(pthread_t)*n_cores);//TODO: usa un'array inzializzato con MACRO CPU_COUNT
 
 	//Registering SIGUSR1 handler
 	signal(SIGUSR1, sig_func);
 
 	//init number of packages
-	filename = malloc(sizeof(char)*64);
+	filename = rsalloc(sizeof(char)*64);
 	sprintf(filename,"/sys/devices/system/cpu/cpu%d/topology/physical_package_id", nb_cores-1);
 	numafile = fopen(filename,"r");
 	if (numafile == NULL){
@@ -356,7 +373,7 @@ void init_thread_management(int threads){
 // Used by the heuristics to tune the number of active threads 
 int wake_up_thread(int thread_id)
 {	
-	if( running_array[thread_id] == 1){
+	if( running_array[thread_id] != 0){
 		printf("Waking up a thread already running\n");
 		return -1;
 	}
@@ -400,7 +417,7 @@ int pause_thread(int thread_id)
 void init_stats_array_pointer(int threads){
 
 	// Allocate memory for the pointers of stats_t
-	stats_array = malloc(sizeof(stats_t*)*threads); 
+	stats_array = rsalloc(sizeof(stats_t*)*n_cores); 
 
 	cache_line_size = sysconf(_SC_LEVEL1_DCACHE_LINESIZE);
 
@@ -414,12 +431,12 @@ stats_t* alloc_stats_buffer(int thread_number){
 	
 	stats_t* stats_ptr = stats_array[thread_number];
 
-	int ret = posix_memalign(((void**) &stats_ptr), cache_line_size, sizeof(stats_t));
+	int ret = posix_memalign(((void**) &stats_ptr), cache_line_size, sizeof(stats_t) * 2);
 	if ( ret != 0 ){ printf("Error allocating stats_t for thread %d\n", thread_number);
 		exit(0);
 	}
 
-	stats_ptr->total_commits = total_commits_round/powercap_active_threads;
+	stats_ptr->total_commits = total_commits_round/n_cores;
 	stats_ptr->commits = 0;
 	stats_ptr->aborts = 0;
 	stats_ptr->nb_tx = 0;
@@ -441,9 +458,9 @@ void load_profile_file(void) {
 	int i;
 
 	// Allocate the matrix 
-	power_profile = (double**) malloc(sizeof(double*) * (total_threads+1)); 
+	power_profile = (double**) rsalloc(sizeof(double*) * (n_cores+1)); 
 	for (i = 0; i < (total_threads+1); i++)
-		power_profile[i] = (double *) malloc(sizeof(double) * (max_pstate+1));
+		power_profile[i] = (double *) rsalloc(sizeof(double) * (max_pstate+1));
 
 	// Init first row with all zeros 
 	for(i =0; i<=max_pstate; i++){
@@ -456,7 +473,7 @@ void load_profile_file(void) {
 		printf("Cannot open profile_file. Execute the profiler in root folder to profile the machine power consumption\n");
 		exit(0);
 	}
-	char* profile_string = malloc(sizeof(char)*8192);
+	char* profile_string = rsalloc(sizeof(char)*8192);
 	fgets(profile_string, 8192, profile_file);
 	
 	char * end;
@@ -483,26 +500,26 @@ void init_model_matrices(void) {
 	int i;
 
 	// Allocate the matrices
-	power_model = (double**) malloc(sizeof(double*) * (max_pstate+1));
-	throughput_model = (double**) malloc(sizeof(double*) * (max_pstate+1)); 
+	power_model = (double**) rsalloc(sizeof(double*) * (max_pstate+1));
+	throughput_model = (double**) rsalloc(sizeof(double*) * (max_pstate+1)); 
 
 	// Allocate the validation matrices
-	power_validation = (double**) malloc(sizeof(double*) * (max_pstate+1));
-	throughput_validation = (double**) malloc(sizeof(double*) * (max_pstate+1)); 
+	power_validation = (double**) rsalloc(sizeof(double*) * (max_pstate+1));
+	throughput_validation = (double**) rsalloc(sizeof(double*) * (max_pstate+1)); 
 
 	// Allocate matrices to store real values during validation
-	power_real = (double**) malloc(sizeof(double*) * (max_pstate+1));
-	throughput_real = (double**) malloc(sizeof(double*) * (max_pstate+1)); 
+	power_real = (double**) rsalloc(sizeof(double*) * (max_pstate+1));
+	throughput_real = (double**) rsalloc(sizeof(double*) * (max_pstate+1)); 
 
 	for (i = 0; i <= max_pstate; i++){
-		power_model[i] = (double *) malloc(sizeof(double) * (total_threads));
-		throughput_model[i] = (double *) malloc(sizeof(double) * (total_threads));
+		power_model[i] = (double *) rsalloc(sizeof(double) * (n_cores));
+		throughput_model[i] = (double *) rsalloc(sizeof(double) * (n_cores));
 
-		power_validation[i] = (double *) malloc(sizeof(double) * (total_threads));
-		throughput_validation[i] = (double *) malloc(sizeof(double) * (total_threads));
+		power_validation[i] = (double *) rsalloc(sizeof(double) * (n_cores));
+		throughput_validation[i] = (double *) rsalloc(sizeof(double) * (n_cores));
 
-		power_real[i] = (double *) malloc(sizeof(double) * (total_threads));
-		throughput_real[i] = (double *) malloc(sizeof(double) * (total_threads));
+		power_real[i] = (double *) rsalloc(sizeof(double) * (n_cores));
+		throughput_real[i] = (double *) rsalloc(sizeof(double) * (n_cores));
 	}
 
 	// Init first row with all zeros 
@@ -799,7 +816,7 @@ void set_boost(int value)
 //INCLUDED IN main.c
 //inits structures and variable used by powercap subsystem.
 //It has to be called before spawning threads
-void init_powercap_mainthread(unsigned int threads)
+int init_powercap_mainthread(unsigned int threads)
 {
     int i;
 
@@ -843,6 +860,8 @@ void init_powercap_mainthread(unsigned int threads)
 	for(i = starting_threads; i<total_threads;i++){
 	    pause_thread(i);
 	}
+
+	return starting_threads;
 }
 
 //INCLUDED IN main.c
@@ -875,9 +894,10 @@ void end_powercap_mainthread(void) {
 
     shutdown = 1;
 
-    for(i=powercap_active_threads; i< total_threads; i++){
+    for(i=0; i< total_threads; i++){
 		wake_up_thread(i);
 	}
+    wake_up_sleeping_threads();
 }
 
 
@@ -931,7 +951,19 @@ int start_heuristic(double throughput) {
         heuristic_start_time_slot = end_time_slot;
         heuristic_start_energy_slot = end_energy_slot;
 
+	if(current_exploit_steps > 0) {
+		commits_when_exploiting += throughput * (time_interval / 1000000000.0);
+		energy_when_exploiting += energy_interval / 1000000.0;
+		time_when_exploiting += (time_interval / 1000000000.0);
+	}
+
         return powercap_active_threads;
+}
+
+
+void reset_measures_for_filtering(void) {
+        heuristic_start_time_slot = get_time();
+        heuristic_start_energy_slot = get_energy();
 }
 
 

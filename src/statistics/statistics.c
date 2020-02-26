@@ -117,12 +117,14 @@ static struct stat_t *thread_stats;
 static struct stat_t system_wide_stats = {.gvt_round_time_min = INFTY};
 
 /// This variable is used as an array to keep track of each thread current (per-GVT) throughput
-static double *current_thread_throughput;
+static double *current_thread_committed_delta;
 
 #ifdef HAVE_MPI
 /// Keep statistics reduced globally across MPI ranks
 struct stat_t global_stats = {.gvt_round_time_min = INFTY};
 #endif
+
+static __thread unsigned int last_cumulated_committed_events = 0;
 
 /**
  * This is a pseudo asprintf() implementation needed in order to stop GCC 8 from complaining
@@ -348,7 +350,7 @@ static void print_timer_stats(FILE *f, timer *start_timer, timer *stop_timer, do
 }
 
 
-static void print_common_stats(FILE *f, struct stat_t *stats_p, bool want_thread_stats, bool want_local_stats)
+static void print_common_stats(FILE *f, struct stat_t *stats_p, double total_time, bool want_thread_stats, bool want_local_stats)
 {
 	double rollback_frequency = (stats_p->tot_rollbacks / stats_p->tot_events);
 	double rollback_length = (stats_p->tot_rollbacks > 0 ? (stats_p->tot_events - stats_p->committed_events) / stats_p->tot_rollbacks : 0);
@@ -375,12 +377,17 @@ static void print_common_stats(FILE *f, struct stat_t *stats_p, bool want_thread
 	fprintf(f, "TOTAL ANTIMESSAGES......... : %.0f \n",		stats_p->tot_antimessages);
 	fprintf(f, "ROLLBACK FREQUENCY......... : %.2f %%\n",		rollback_frequency * 100);
 	fprintf(f, "ROLLBACK LENGTH............ : %.2f events\n",	rollback_length);
+	fprintf(f, "THROUGHPUT................. : %.2f events/sec\n",	stats_p->committed_events / total_time);
 	fprintf(f, "EFFICIENCY................. : %.2f %%\n",		efficiency);
 	fprintf(f, "AVERAGE EVENT COST......... : %.2f us\n",		stats_p->event_time / stats_p->tot_events);
 	fprintf(f, "AVERAGE EVENT COST (EMA)... : %.2f us\n",		stats_p->exponential_event_time);
 	fprintf(f, "AVERAGE CHECKPOINT COST.... : %.2f us\n",		stats_p->ckpt_time / stats_p->tot_ckpts);
 	fprintf(f, "AVERAGE RECOVERY COST...... : %.2f us\n",		(stats_p->tot_recoveries > 0 ? stats_p->recovery_time / stats_p->tot_recoveries : 0));
 	fprintf(f, "AVERAGE LOG SIZE........... : %s\n",		format_size(stats_p->ckpt_mem / stats_p->tot_ckpts));
+	fprintf(f, "\n");
+	fprintf(f, "EXPLOITING THROUGHPUT...... : %.2f events/sec\n",	commits_when_exploiting / time_when_exploiting);
+	fprintf(f, "EXPLOITING ENERGY.......... : %.2f W\n",		energy_when_exploiting / time_when_exploiting);
+	fprintf(f, "EXPLOITING TIME............ : %.2f sec\n",		time_when_exploiting);
 	fprintf(f, "\n");
 	if(!want_thread_stats && rootsim_config.powercap > 0) {
 		fprintf(f, "POWER CONSUMPTION (NET) ... : %f\n",	get_power_stats(POWER_CONSUMPTION));
@@ -528,7 +535,7 @@ void statistics_stop(int exit_code)
 		// Compute derived statistics and dump everything
 		f = thread_files[STAT_FILE_T_THREAD][local_tid];
 		print_header(f, "THREAD STATISTICS");
-		print_common_stats(f, &thread_stats[local_tid], true, true);
+		print_common_stats(f, &thread_stats[local_tid], total_time, true, true);
 		print_termination_status(f, exit_code);
 		fflush(f);
 
@@ -550,7 +557,7 @@ void statistics_stop(int exit_code)
 			fprintf(f, "\n");
 			print_header(f, "NODE STATISTICS");
 			print_timer_stats(f, &simulation_timer, &simulation_finished, total_time);
-			print_common_stats(f, &system_wide_stats, false, true);
+			print_common_stats(f, &system_wide_stats, total_time, false, true);
 			print_termination_status(f, exit_code);
 			fflush(f);
 
@@ -567,7 +574,7 @@ void statistics_stop(int exit_code)
 				fprintf(f, "\n");
 				print_header(f, "GLOBAL STATISTICS");
 				print_timer_stats(f, &simulation_timer, &simulation_finished, total_time);
-				print_common_stats(f, &global_stats, false, false);
+				print_common_stats(f, &global_stats, total_time, false, false);
 				print_termination_status(f, exit_code);
 				fflush(f);
 			}
@@ -587,17 +594,14 @@ inline void statistics_on_gvt(double gvt)
 	unsigned int committed = 0;
 	double exec_time, simtime_advancement, keep_exponential_event_time;
 	static __thread unsigned int cumulated_committed_events = 0;
-	static __thread double last_cumulated_committed_events_time = 0;
-	double current_cumulated_committed_events_time;
 
-	cumulated_committed_events = 0;
-	
 	// Dump on file only if required
 	if(rootsim_config.stats == STATS_ALL || rootsim_config.stats == STATS_PERF) {
 		exec_time = timer_value_seconds(simulation_timer);
 
 		// Reduce the committed events from all LPs
 		foreach_bound_lp(lp) {
+		//	printf("LP %d committed %f\n", lp->lid.to_int, lp_stats_gvt[lp->lid.to_int].committed_events);
 			committed += lp_stats_gvt[lp->lid.to_int].committed_events;
 		}
 		cumulated_committed_events += committed;
@@ -639,10 +643,9 @@ inline void statistics_on_gvt(double gvt)
 	}
 
 	// Keep track of this phase throughput
-	current_cumulated_committed_events_time = timer_value_seconds(simulation_timer);
-	current_thread_throughput[tid] = cumulated_committed_events / (current_cumulated_committed_events_time - last_cumulated_committed_events_time);
-	last_cumulated_committed_events_time = current_cumulated_committed_events_time;
-	
+	current_thread_committed_delta[tid] = (double)(cumulated_committed_events - last_cumulated_committed_events);
+	//printf("Current: %d - last: %d - delta: %f\n", cumulated_committed_events, last_cumulated_committed_events, current_thread_committed_delta[tid]);
+	last_cumulated_committed_events = cumulated_committed_events;
 }
 
 
@@ -744,8 +747,8 @@ void statistics_init(void)
 	bzero(lp_stats_gvt, n_prc * sizeof(struct stat_t));
 	thread_stats = rsalloc(n_cores * sizeof(struct stat_t));
 	bzero(thread_stats, n_cores * sizeof(struct stat_t));
-	current_thread_throughput = rsalloc(n_cores * sizeof(double));
-	bzero(current_thread_throughput, n_cores * sizeof(double));
+	current_thread_committed_delta = rsalloc(n_cores * sizeof(double));
+	bzero(current_thread_committed_delta, n_cores * sizeof(double));
 }
 
 #undef assign_new_file
@@ -777,7 +780,7 @@ void statistics_fini(void)
 	rsfree(thread_stats);
 	rsfree(lp_stats);
 	rsfree(lp_stats_gvt);
-	rsfree(current_thread_throughput);
+	rsfree(current_thread_committed_delta);
 }
 
 
@@ -883,13 +886,36 @@ double statistics_get_lp_data(struct lp_struct *lp, unsigned int type)
 	return 0.0;
 }
 
+// Only master thread
 double statistics_get_current_throughput(void)
 {
 	unsigned int i;
 	double throughput = 0;
+	static double last_throughput_time = 0;
+	double throughput_time;
+
+	if(!master_thread())
+		return -1.0;
 	
 	for(i = 0; i < active_threads; i++)
-		throughput += current_thread_throughput[i];
+		throughput += current_thread_committed_delta[i];
+//	printf("Cumulated events in phase: %f\n", throughput);
 
-	return throughput / active_threads;
+	throughput_time = timer_value_seconds(simulation_timer);
+	throughput /= (throughput_time - last_throughput_time);
+//	printf("Throughput: %f - time: %f - last time %f\n", throughput, throughput_time, last_throughput_time);
+	last_throughput_time = throughput_time;
+
+	return throughput;
 }
+
+int statistics_get_current_gvt_round(void)
+{
+	return thread_stats[local_tid].gvt_computations;
+}
+
+int statistics_get_execution_time(void)
+{
+	return (int)timer_value_seconds(simulation_timer);
+}
+

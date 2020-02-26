@@ -159,3 +159,5 @@ extern inline void statistics_post_data_serial(enum stat_msg_t type, double data
 
 extern double statistics_get_lp_data(struct lp_struct *, unsigned int type);
 extern double statistics_get_current_throughput(void);
+extern int statistics_get_current_gvt_round(void);
+extern int statistics_get_execution_time(void);

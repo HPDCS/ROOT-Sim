@@ -61,29 +61,43 @@
  * a NULL pointer.
  */
 
-jmp_buf exit_jmp;
+__thread jmp_buf exit_jmp;
 
 /**
 * This function checks the different possibilities for termination detection termination.
 */
-static bool end_computing(void)
+/*static*/ bool end_computing(void)
 {
 
 	// Did CCGS decide to terminate the simulation?
 	if (ccgs_can_halt_simulation()) {
+		printf("ccgs\n");
 		return true;
 	}
 	// Termination detection based on passed (committed) simulation time
 	if (rootsim_config.simulation_time != 0 && (int)get_last_gvt() >= rootsim_config.simulation_time) {
+		printf("simtime\n");
+		return true;
+	}
+	// Termination detection based on passed (committed) wallclock time
+	if (rootsim_config.wallclock_time != 0 && (int)statistics_get_execution_time() >= rootsim_config.wallclock_time) {
+		printf("simtime\n");
 		return true;
 	}
 	// If some KLT has encountered an error condition, we neatly shut down the simulation
 	if (simulation_error()) {
+		printf("error\n");
 		return true;
 	}
 
-	if (user_requested_exit())
+	if (user_requested_exit()) {
+		printf("user exit\n");
 		return true;
+	}
+
+	//if(rootsim_config.powercap > 0.0) {
+	//	return current_exploit_steps > 10;
+	//}
 
 	return false;
 }
@@ -130,8 +144,12 @@ static void *main_simulation_loop(void *arg)
 	}
 
 	if (setjmp(exit_jmp) != 0) {
+		printf("LEAVING!\n");
 		goto leave_for_error;
 	}
+
+	if(rootsim_config.powercap > 0)
+		check_running_array(tid);
 
 	while (!end_computing()) {
 		rebind_LPs();
@@ -183,6 +201,9 @@ static void *main_simulation_loop(void *arg)
 		simulation_shutdown(EXIT_FAILURE);
 	}
 	simulation_shutdown(EXIT_SUCCESS);
+
+	if(!master_thread())
+		while(1);
 }
 
 /**
@@ -221,8 +242,9 @@ int main(int argc, char **argv)
 		// The number of locally required threads is now set. Detach them and then join the main simulation loop
 		if (!simulation_error()) {
 
-			if(rootsim_config.powercap > 0)
-				init_powercap_mainthread(n_cores);
+			if(rootsim_config.powercap > 0) {
+				active_threads = init_powercap_mainthread(n_cores);
+			}
 			
 			if (n_cores > 1) {
 				create_threads(n_cores - 1, main_simulation_loop, NULL);

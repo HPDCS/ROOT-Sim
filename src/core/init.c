@@ -86,6 +86,7 @@ enum _opt_codes{
 	OPT_A,
 	OPT_GVT,
 	OPT_SIMULATION_TIME,
+	OPT_WALLCLOCK_TIME,
 	OPT_DETERMINISTIC_SEED,
 	OPT_SEED,
 	OPT_SERIAL,
@@ -164,6 +165,7 @@ static const struct argp_option argp_options[] = {
 	{"gvt",			OPT_GVT,		"VALUE",	0,		"Time between two GVT reductions (in milliseconds)", 0},
 	{"cktrm-mode",		OPT_CKTRM_MODE,		"TYPE",		0,		"Termination Detection mode. Supported values: normal, incremental, accurate", 0},
 	{"simulation-time",	OPT_SIMULATION_TIME, 	"VALUE",	0,		"Halt the simulation when all LPs reach this logical time. 0 means infinite", 0},
+	{"wallclock-time",	OPT_WALLCLOCK_TIME, 	"VALUE",	0,		"Halt the simulation when the wall clock time reaches this value. 0 means infinite", 0},
 	{"lps-distribution",	OPT_LPS_DISTRIBUTION, 	"TYPE",		0,		"LPs distributions over simulation kernels policies. Supported values: block, circular", 0},
 	{"deterministic-seed",	OPT_DETERMINISTIC_SEED,	0,		0, 		"Do not change the initial random seed for LPs. Enforces different deterministic simulation runs", 0},
 	{"verbose",		OPT_VERBOSE,		"TYPE",		0,		"Verbose execution", 0},
@@ -241,7 +243,7 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 			if(strcmp(arg, "auto") == 0) {
 				n_cores = get_cores();
 			} else {
-				n_cores = parse_ullong_limits(1, UINT_MAX);
+				active_threads = n_cores = parse_ullong_limits(1, UINT_MAX);
 			}
 			break;
 
@@ -294,6 +296,10 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 
 		case OPT_SIMULATION_TIME:
 			rootsim_config.simulation_time = parse_ullong_limits(0, INT_MAX);
+			break;
+
+		case OPT_WALLCLOCK_TIME:
+			rootsim_config.wallclock_time = parse_ullong_limits(0, INT_MAX);
 			break;
 
 		case OPT_DETERMINISTIC_SEED:

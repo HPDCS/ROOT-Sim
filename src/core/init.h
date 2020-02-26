@@ -58,7 +58,8 @@ typedef struct _simulation_configuration {
 	char *output_dir;		///< Destination Directory of output files
 	int scheduler;			///< Which scheduler to be used
 	int gvt_time_period;		///< Wall-Clock time to wait before executiong GVT operations
-	int simulation_time;		///< Wall-clock-time based termination predicate
+	int simulation_time;		///< Simulation time-based termination predicate
+	int wallclock_time;		///< Wall-Clock time-based termination predicate
 	int lps_distribution;		///< Policy for the LP to Kernel mapping
 	int ckpt_mode;			///< Type of checkpointing mode (Synchronous, Semi-Asyncronous, ...)
 	int checkpointing;		///< Type of checkpointing scheme (e.g., PSS, CSS, ...)

@@ -53,6 +53,7 @@ struct lp_cost_id {
 
 struct lp_cost_id *lp_cost;
 
+static double *assignments;
 static unsigned int *new_LPS_binding;
 
 static volatile int binding_acquire_phase = 0;
@@ -80,8 +81,8 @@ static inline void LPs_block_binding(void)
 	unsigned int block_leftover;
 	struct lp_struct *lp;
 
-	buf1 = (n_prc / n_cores);
-	block_leftover = n_prc - buf1 * n_cores;
+	buf1 = (n_prc / active_threads);
+	block_leftover = n_prc - buf1 * active_threads;
 
 	if (block_leftover > 0) {
 		buf1++;
@@ -145,7 +146,6 @@ static inline void LP_knapsack(void)
 	register unsigned int i, j;
 	double reference_knapsack = 0;
 	bool assigned;
-	double assignments[active_threads];
 
 	if (!master_thread())
 		return;
@@ -250,11 +250,12 @@ static void install_binding(void)
 
 * @author Alessandro Pellegrini
 */
+extern bool end_computing(void);
 void rebind_LPs(void)
 {
 	double committed_per_second;
 
-	if(rootsim_config.powercap > 0)
+	if(rootsim_config.powercap > 0 && master_thread())
 		sample_average_powercap_violation();
 	
 	if (master_thread()) {
@@ -265,12 +266,14 @@ void rebind_LPs(void)
 			// The old number of active threads must participate in the reduction
 			atomic_set(&worker_thread_reduction, active_threads);
 
-			if(rootsim_config.powercap > 0) {
+			committed_per_second = statistics_get_current_throughput();
+			if(rootsim_config.powercap > 0 && statistics_get_current_gvt_round() > 1) {
 				// Retrieve the current throughput value and decide
 				// upon a new configuration of threads.
-				committed_per_second = statistics_get_current_throughput();
-				active_threads = start_heuristic(committed_per_second); // threads could go to sleep here
-				printf("Active threads set to %d\n", active_threads);
+				if(committed_per_second > 0.0) {
+					active_threads = start_heuristic(committed_per_second); // threads could go to sleep here
+					printf("Active threads set to %d\n", active_threads);
+				}
 			}
 
 			binding_phase++;
@@ -296,6 +299,14 @@ void rebind_LPs(void)
 		// Go to sleep if the heuristic decided to do so
 		if(rootsim_config.powercap > 0)
 			check_running_array(tid);
+
+		if(master_thread())
+			reset_measures_for_filtering();
+
+		if(end_computing()) {
+			// Bye bye main loop!
+			longjmp(exit_jmp, 1);
+		}
 	}
 
 	if (local_binding_acquire_phase < binding_acquire_phase) {
@@ -306,7 +317,12 @@ void rebind_LPs(void)
 		reset_min_in_transit(local_tid);
 #endif
 		atomic_dec(&worker_thread_installation);
-		while(atomic_read(&worker_thread_installation) > 0);
+		while(atomic_read(&worker_thread_installation) > 0) {
+			if(end_computing()) {
+				// Bye bye main loop!
+				longjmp(exit_jmp, 1);
+			}
+		}
 		if(master_thread()) {
 			atomic_set(&worker_thread_reduction, active_threads);
 			rebinding_completed = true;
@@ -345,7 +361,6 @@ void trigger_rebinding(void)
 */
 void initial_binding(void)
 {
-	active_threads = n_cores;
 	initialize_binding_blocks();
 
 	LPs_block_binding();
@@ -354,6 +369,7 @@ void initial_binding(void)
 		new_LPS_binding = rsalloc(sizeof(int) * n_prc);
 
 		lp_cost = rsalloc(sizeof(struct lp_cost_id) * n_prc);
+		assignments = rsalloc(sizeof(double) * n_prc);
 		memset(lp_cost, 0, sizeof(struct lp_cost_id) * n_prc);
 
 		atomic_set(&worker_thread_reduction, active_threads);

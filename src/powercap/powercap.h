@@ -193,6 +193,9 @@ extern long heuristic_start_time_slot, heuristic_start_energy_slot;
 
 
 
+extern double commits_when_exploiting;
+extern double energy_when_exploiting;
+extern double time_when_exploiting;
 
 /////////////////////////////////////////////////////////////////
 //	Function declerations
@@ -207,7 +210,7 @@ static inline void check_running_array(int threadId) {
     }
 }
 
-extern void init_powercap_mainthread(unsigned int threads);
+extern int  init_powercap_mainthread(unsigned int threads);
 extern void end_powercap_mainthread(void);
 
 extern void init_powercap_thread(unsigned int id);
@@ -228,3 +231,4 @@ enum power_stats_t {
 
 extern double get_power_stats(enum power_stats_t stat);
 extern void wake_up_sleeping_threads(void);
+extern void reset_measures_for_filtering(void);

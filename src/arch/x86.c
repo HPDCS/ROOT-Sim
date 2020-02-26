@@ -37,6 +37,8 @@
 #include <arch/atomic.h>
 #include <mm/dymelor.h>
 
+#include <stdatomic.h>
+
 /**
 * This function implements a compare-and-swap atomic operation on x86-64 for integers
 *
@@ -102,9 +104,11 @@ inline void atomic_inc(atomic_t * v)
 */
 inline void atomic_dec(atomic_t * v)
 {
-	__asm__ __volatile__("lock decl %0"
-			     :"=m"(v->count)
-			     :"m"(v->count));
+//	__asm__ __volatile__("lock decl %0"
+//			     :"=m"(v->count)
+//			     :"m"(v->count));
+
+	atomic_fetch_add(&v->count, -1);
 }
 
 /**
