@@ -10,8 +10,10 @@
 #include "guy_init.h"
 
 #include <math.h>
+#include <stdio.h>
 
 static bool approximated = true;
+static FILE *stats_file;
 
 enum{
 	OPT_PREC = 128 /// this tells argp to not assign short options
@@ -40,6 +42,11 @@ static error_t model_parse(int key, char *arg, struct argp_state *state) {
 		case ARGP_KEY_SUCCESS:
 			printf("\t* ROOT-Sim's TBC model - Current Configuration *\n");
 			printf("approximated: %d\n", approximated);
+			stats_file = fopen("tbc_stats.txt", "w");
+			if(!stats_file){
+				printf("Unable to open tbc stats file");
+				exit(EXIT_FAILURE);
+			}
 			break;
 
 		default:
@@ -110,7 +117,7 @@ static void move_healthy_people(unsigned me, region_t *region, simtime_t now){
 void ProcessEvent(unsigned int me, simtime_t now, int event_type,
 		union {agent_t *agent; unsigned *n; infection_t *i_m; init_t *in_m;} payload, unsigned int event_size, region_t *state) {
 
-	if(!me && event_type != INIT)
+	if(event_type != INIT)
 		state->now = now;
 
 	switch (event_type) {
@@ -164,11 +171,13 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type,
 }
 
 int OnGVT(unsigned int me, region_t *snapshot) {
-	if(!me){
-		printf("healthy %u, infected %u\n", snapshot->healthy, CountAgents());
-		return snapshot->now > END_TIME;
-	}
-	return true;
+	unsigned g_counts[4];
+	guy_stats(g_counts);
+	fprintf(stats_file, "%lf %u %u %u %u %u %u\n",
+		snapshot->now, me, snapshot->healthy,
+		g_counts[0], g_counts[1], g_counts[2], g_counts[3]);
+
+	return snapshot->now > END_TIME;
 }
 
 void RestoreApproximated(void *ptr)

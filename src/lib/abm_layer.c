@@ -444,7 +444,13 @@ bool IterAgents(agent_t *agent_p) {
 	switch_to_platform_mode();
 	// fixme preemption breaks this
 	static __thread map_size_t closure = 0;
-	*agent_p = *(hash_map_iter(&current->region->agents_table, &closure));
+	agent_t *ret = hash_map_iter(&current->region->agents_table, &closure);
+	if(!ret){
+		closure = 0;
+		switch_to_application_mode();
+		return false;
+	}
+	*agent_p = *ret;
 	switch_to_application_mode();
 	return true;
 }

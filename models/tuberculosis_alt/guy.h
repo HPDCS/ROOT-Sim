@@ -42,6 +42,7 @@ void guy_on_visit(agent_t agent, unsigned me, region_t *region, simtime_t now);
 void guy_on_leave(agent_t agent, simtime_t now);
 void guy_on_infection(infection_t *inf, region_t *region, simtime_t now);
 
+void guy_stats(unsigned guy_counts[4]);
 
 void define_diagnose(guy_t *guy, simtime_t now);
 void set_risk_factors(guy_t *guy);

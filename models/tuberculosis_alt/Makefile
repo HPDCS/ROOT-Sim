@@ -1,4 +1,4 @@
-CC = rootsim-cc
+CC = ~/rootsim-cc/bin/rootsim-cc
 CFLAGS = -Wall -Wextra
 TARGET = tuberculosis
 

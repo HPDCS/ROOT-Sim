@@ -347,3 +347,20 @@ void guy_on_infection(infection_t *inf, region_t *region, simtime_t now){
 		ScheduleNewLeaveEvent(now + 0.001, GUY_LEAVE, agent);
 	}
 }
+
+void guy_stats(unsigned guy_counts[4])
+{
+	guy_counts[0] = 0;
+	guy_counts[1] = 0;
+	guy_counts[2] = 0;
+	guy_counts[3] = 0;
+	agent_t agent = 0;
+	unsigned tot = CountAgents();
+	while(IterAgents(&agent)){
+		guy_t *guy = DataAgent(agent, NULL);
+		guy_counts[2 * bitmap_check(guy->flags, f_sick) + bitmap_check(guy->flags, f_treatment)]++;
+		tot--;
+	}
+	if(tot)
+		printf("wrong iteration!");
+}
