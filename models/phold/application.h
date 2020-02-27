@@ -2,7 +2,7 @@
 #include <math.h>
 #include <stdlib.h>
 
-#define MAX_BUFFERS 256
+#define MAX_BUFFERS 4000
 #define MAX_BUFFER_SIZE 512
 #define TAU 1.5
 #define SEND_PROBABILITY 0.05

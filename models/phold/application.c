@@ -111,9 +111,17 @@ void ProcessEvent(unsigned me, simtime_t now, int event_type, unsigned *event_co
 			if(new_mode) {
 				unsigned buffers_to_allocate = (unsigned)(Random() * max_buffers);
 
+				unsigned robba_allocata = 0;
 				for (unsigned i = 0; i < buffers_to_allocate; i++) {
 					state_ptr->head = allocate_buffer(state_ptr->head, NULL, (unsigned)(Random() * max_buffer_size) / sizeof(unsigned));
 					state_ptr->buffer_count++;
+					robba_allocata += state_ptr->head->count;
+				}
+
+				while (robba_allocata < buffers_to_allocate * max_buffer_size) {
+                                        state_ptr->head = allocate_buffer(state_ptr->head, NULL, (unsigned)(Random() * max_buffer_size) / sizeof(unsigned));
+                                        state_ptr->buffer_count++;
+                                        robba_allocata += state_ptr->head->count;
 				}
 			}
 
@@ -183,7 +191,7 @@ void RestoreApproximated(void *ptr) {
 
 	while(i--) {
             for(unsigned j = 0; j < tmp->count; j++) {
-                tmp->data[j] = RandomRange(0, INT_MAX);
+                tmp->data[j] = state->buffer_count * 10;//RandomRange(0, INT_MAX);
             }
             tmp = tmp->next;
 	}

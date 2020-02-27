@@ -9,7 +9,7 @@
 #include "guy.h"
 #include "parameters.h"
 
-const unsigned int scale_factor = 100;
+const unsigned int scale_factor = 50;
 
 struct _init_t{
 	unsigned healthy;
