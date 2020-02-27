@@ -59,8 +59,7 @@
  * all threads synchronize. This avoids side effects like, e.g., accessing
  * a NULL pointer.
  */
-
-jmp_buf exit_jmp;
+__thread jmp_buf exit_jmp;
 
 /**
 * This function checks the different possibilities for termination detection termination.
