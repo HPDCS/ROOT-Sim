@@ -121,7 +121,7 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
 
 bool OnGVT(unsigned int me, lp_state_type *snapshot) {
     (void) me;
-//    printf("TOTALE: %u\n", snapshot->events);//da_cancellare
+    //printf("TOTALE: %u\n", snapshot->events);//da_cancellare
 
     if(snapshot->events < COMPLETE_EVENTS) {
 //	if(snapshot->lvt < COMPLETE_TIME) {
