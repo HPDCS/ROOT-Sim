@@ -145,10 +145,10 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type,
 			if(now < END_TIME)
 				ScheduleNewEvent(me, now + 1.0, STATS_COMPUTE, NULL, 0);
 
-			class_stats[me][now][0] = region->healthy;
+			class_stats[me][(unsigned)now][0] = state->healthy;
 
 
-			guy_stats(&class_stats[me][now][1]);
+			guy_stats(&class_stats[me][(unsigned)now][1]);
 			break;
 
 		case MIDNIGHT:

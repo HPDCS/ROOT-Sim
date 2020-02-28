@@ -216,7 +216,7 @@ __attribute((weak)) extern struct _abm_settings_t{
 int			GetNeighbourInfo	(direction_t i, unsigned int *region_id, void **data_p);
 void			TrackNeighbourInfo	(void *neighbour_data);
 
-bool 			IterAgents		(agent_t *agent_p);
+bool 			IterAgents		(agent_t *agent_p, uint32_t *closure);
 unsigned		CountAgents		(void);
 
 agent_t 		SpawnAgent		(unsigned user_data_size);

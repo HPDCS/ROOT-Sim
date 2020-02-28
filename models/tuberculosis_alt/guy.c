@@ -356,7 +356,8 @@ void guy_stats(unsigned guy_counts[4])
 	guy_counts[3] = 0;
 	agent_t agent = 0;
 	unsigned tot = CountAgents();
-	while(IterAgents(&agent)){
+	uint32_t closure = 0;
+	while(IterAgents(&agent, &closure)){
 		guy_t *guy = DataAgent(agent, NULL);
 		guy_counts[2 * bitmap_check(guy->flags, f_sick) + bitmap_check(guy->flags, f_treatment)]++;
 		tot--;

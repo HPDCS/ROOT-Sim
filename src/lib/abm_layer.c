@@ -438,15 +438,13 @@ void TrackNeighbourInfo(void *neighbour_data) {
 	current->region->tracked_data = neighbour_data;
 }
 
-bool IterAgents(agent_t *agent_p) {
+bool IterAgents(agent_t *agent_p, uint32_t* closure) {
 	if(agent_p == NULL)
 		return false;
 	switch_to_platform_mode();
-	// fixme preemption breaks this
-	static __thread map_size_t closure = 0;
-	agent_t *ret = hash_map_iter(&current->region->agents_table, &closure);
+	agent_t *ret = hash_map_iter(&current->region->agents_table, closure);
 	if(!ret){
-		closure = 0;
+		*closure = 0;
 		switch_to_application_mode();
 		return false;
 	}
