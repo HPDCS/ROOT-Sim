@@ -15,6 +15,8 @@
 static bool approximated = true;
 static FILE *stats_file;
 
+static unsigned class_stats[1600][END_TIME][5];
+
 enum{
 	OPT_PREC = 128 /// this tells argp to not assign short options
 };
@@ -42,11 +44,12 @@ static error_t model_parse(int key, char *arg, struct argp_state *state) {
 		case ARGP_KEY_SUCCESS:
 			printf("\t* ROOT-Sim's TBC model - Current Configuration *\n");
 			printf("approximated: %d\n", approximated);
-			stats_file = fopen("tbc_stats.txt", "w");
+			stats_file = fopen("tbc_stats.txt", "a");
 			if(!stats_file){
 				printf("Unable to open tbc stats file");
 				exit(EXIT_FAILURE);
 			}
+			fprintf(stats_file, "***");
 			break;
 
 		default:
@@ -134,7 +137,18 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type,
 				printf("INIT 0 complete\n");
 			}
 			ScheduleNewEvent(me, now + 1.25 + Random()/2, MIDNIGHT, NULL, 0);
+			ScheduleNewEvent(me, 1.0, STATS_COMPUTE, NULL, 0);
 			RollbackModeSet(approximated);
+			break;
+
+		case STATS_COMPUTE:
+			if(now < END_TIME)
+				ScheduleNewEvent(me, now + 1.0, STATS_COMPUTE, NULL, 0);
+
+			class_stats[me][now][0] = region->healthy;
+
+
+			guy_stats(&class_stats[me][now][1]);
 			break;
 
 		case MIDNIGHT:
@@ -171,11 +185,16 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type,
 }
 
 int OnGVT(unsigned int me, region_t *snapshot) {
-	unsigned g_counts[4];
-	guy_stats(g_counts);
-	fprintf(stats_file, "%lf %u %u %u %u %u %u\n",
-		snapshot->now, me, snapshot->healthy,
-		g_counts[0], g_counts[1], g_counts[2], g_counts[3]);
+	if(snapshot->now > END_TIME){
+		for(unsigned i = 0; i < END_TIME; ++i){
+			fprintf(stats_file, "%u %u %u %u %u %u %u\n", i, me,
+					class_stats[me][i][0],
+					class_stats[me][i][1],
+					class_stats[me][i][2],
+					class_stats[me][i][3],
+					class_stats[me][i][4]);
+		}
+	}
 
 	return snapshot->now > END_TIME;
 }
