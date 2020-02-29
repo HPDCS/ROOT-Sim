@@ -193,12 +193,6 @@ void LP_main_loop(void *args)
 #endif
 
 		statistics_post_data(current, STAT_EVENT, 1.0);
-#ifdef HAVE_APPROXIMATED_ROLLBACK
-		if(current_evt->is_approximated) {
-			statistics_post_data(current, STAT_EVENT_TIME_APPROXIMATED,
-					     delta_event_timer);
-		}
-#endif
 		statistics_post_data(current, STAT_EVENT_TIME,
 				     delta_event_timer);
 

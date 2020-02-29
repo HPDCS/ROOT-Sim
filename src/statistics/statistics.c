@@ -375,9 +375,6 @@ static void print_common_stats(FILE *f, struct stat_t *stats_p, bool want_thread
 	fprintf(f, "AVERAGE CHECKPOINT COST.... : %.2f us\n",		stats_p->ckpt_time / stats_p->tot_ckpts);
 	fprintf(f, "AVERAGE RECOVERY COST...... : %.2f us\n",		(stats_p->tot_recoveries > 0 ? stats_p->recovery_time / stats_p->tot_recoveries : 0));
 	fprintf(f, "AVERAGE LOG SIZE........... : %s\n",		format_size(stats_p->ckpt_mem / stats_p->tot_ckpts));
-#ifdef HAVE_APPROXIMATED_ROLLBACK
-	fprintf(f, "APPROXIMATED RESIDENCE TIME : %.2f seconds\n",	stats_p->event_time_approximated/1000000);
-#endif
 	fprintf(f, "\n");
 	fprintf(f, "IDLE CYCLES................ : %.0f\n",		stats_p->idle_cycles);
 	if(!want_thread_stats){
@@ -800,11 +797,7 @@ void statistics_post_data(struct lp_struct *lp, enum stat_msg_t type, double dat
 			lp_stats_gvt[lid].event_time += data;
 			lp_stats_gvt[lid].exponential_event_time = 0.1 * data + 0.9 * lp_stats_gvt[lid].exponential_event_time;
 			break;
-#ifdef HAVE_APPROXIMATED_ROLLBACK
-		case STAT_EVENT_TIME_APPROXIMATED:
-			lp_stats_gvt[lid].event_time_approximated += data;
-		break;
-#endif
+
 		case STAT_COMMITTED:
 			lp_stats_gvt[lid].committed_events += data;
 			break;

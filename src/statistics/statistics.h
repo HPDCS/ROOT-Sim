@@ -98,7 +98,6 @@ enum stat_msg_t {
 	STAT_IDLE_CYCLES,
 	STAT_SILENT,
 	STAT_GVT_ROUND_TIME,
-    	STAT_EVENT_TIME_APPROXIMATED,
 	STAT_GET_EVENT_TIME_LP
 };
 
@@ -111,11 +110,7 @@ enum stats_levels {
 };
 
 // this is used in order to have more efficient stats additions during gvt reductions
-#ifdef HAVE_APPROXIMATED_ROLLBACK
-typedef double vec_double __attribute__((vector_size(32 * sizeof(double))));
-#else
 typedef double vec_double __attribute__((vector_size(16 * sizeof(double))));
-#endif
 
 // Structure to keep track of (incremental) statistics
 struct stat_t {
@@ -132,14 +127,10 @@ struct stat_t {
 			    tot_recoveries,
 			    recovery_time,
 			    event_time,
-#ifdef HAVE_APPROXIMATED_ROLLBACK
-			    event_time_approximated,
-#endif
 			    idle_cycles,
 			    memory_usage,
 			    simtime_advancement,
-			    gvt_computations,
-			    exponential_event_time;
+			    gvt_computations, exponential_event_time;
 		};
 		vec_double vec;
 	};
