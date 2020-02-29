@@ -30,6 +30,7 @@
 *
 * @author Tommaso Tocci
 */
+
 #ifdef HAVE_MPI
 
 #include <stdbool.h>
@@ -42,7 +43,6 @@
 #include <core/core.h>
 #include <arch/atomic.h>
 #include <statistics/statistics.h>
-#include <mpi.h>
 
 /// Flag telling whether the MPI runtime supports multithreading
 bool mpi_support_multithread;
@@ -172,6 +172,8 @@ void send_remote_msg(msg_t *msg)
 	out_msg->msg = msg;
 	out_msg->msg->colour = threads_phase_colour[local_tid];
 	unsigned int dest = find_kernel_by_gid(msg->receiver);
+
+	validate_msg(msg);
 
 	register_outgoing_msg(out_msg->msg);
 
@@ -381,11 +383,8 @@ static void reduce_stat_vector(struct stat_t *in, struct stat_t *inout, int *len
 static void stats_reduction_init(void)
 {
 	// This is a compilation time fail-safe
-#ifdef HAVE_APPROXIMATED_ROLLBACK
-	static_assert(offsetof(struct stat_t, gvt_round_time_max) == (sizeof(double) * 35), "The packing assumptions on struct stat_t are wrong or its definition has been modified");
-#else
 	static_assert(offsetof(struct stat_t, gvt_round_time_max) == (sizeof(double) * 19), "The packing assumptions on struct stat_t are wrong or its definition has been modified");
-#endif
+
 	unsigned i;
 
 	// Boilerplate to create a new MPI data type
