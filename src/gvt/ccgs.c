@@ -152,10 +152,15 @@ void ccgs_compute_snapshot(state_t *time_barrier_pointer[])
  */
 bool ccgs_lp_can_halt(struct lp_struct *lp)
 {
+	bool ret;
 	if (rootsim_config.check_termination_mode == CKTRM_INCREMENTAL && lps_termination[lp->lid.to_int]) {
 		return true;
 	}
-	return lp->OnGVT(lp->gid.to_int, lp->current_base_pointer);
+	current = lp;
+	ret = lp->OnGVT(lp->gid.to_int, lp->current_base_pointer);
+	current = NULL;
+	
+	return ret;
 }
 
 void ccgs_init(void)
