@@ -1,0 +1,6 @@
+<map id="collect_termination" name="collect_termination">
+<area shape="rect" id="node2" href="$atomic_8h.html#afd2c05472274bd1c73d5408a213cf429" title="spin_trylock" alt="" coords="206,5,303,32"/>
+<area shape="rect" id="node4" href="$mpi_8c.html#a621b43e2d97c134914cb2737e13e97e2" title="Check if there are pending messages. " alt="" coords="197,56,312,83"/>
+<area shape="rect" id="node5" href="$atomic_8h.html#a4e8c9d1c6101995f1ecd2141d77e4824" title="spin_unlock" alt="" coords="207,107,303,133"/>
+<area shape="rect" id="node3" href="$x86_8c.html#af8f8b0714bc5f4f7238feae5ca425117" title="atomic_test_and_set" alt="" coords="360,5,516,32"/>
+</map>

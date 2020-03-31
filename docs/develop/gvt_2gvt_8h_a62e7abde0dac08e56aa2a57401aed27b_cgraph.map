@@ -1,0 +1,10 @@
+<map id="adopt_new_gvt" name="adopt_new_gvt">
+<area shape="rect" id="node2" href="$state_8c.html#a01b40733b2ea3eb233439b9b7ffe5bcd" title="find_time_barrier" alt="" coords="197,5,328,32"/>
+<area shape="rect" id="node3" href="$ccgs_8c.html#ae31589069bdc6eec53fc62b0a0a49254" title="ccgs_compute_snapshot" alt="" coords="172,56,353,83"/>
+<area shape="rect" id="node4" href="$fossil_8c.html#af4d5d546129fe91cedfc16ddedf76464" title="fossil_collection" alt="" coords="202,107,323,133"/>
+<area shape="rect" id="node5" href="$checkpoints_8c.html#a727e4cd3fa1d7b332b9f212733eec8d3" title="log_delete" alt="" coords="423,56,511,83"/>
+<area shape="rect" id="node6" href="$communication_8c.html#a323ad017762155352c38983e67e8adeb" title="Release a message buffer. " alt="" coords="415,107,519,133"/>
+<area shape="rect" id="node9" href="$communication_8c.html#a762b3dacaa82c4590e0572ac08117153" title="Release a message header. " alt="" coords="401,157,533,184"/>
+<area shape="rect" id="node7" href="$communication_8c.html#ae6b96249d35969d688d0d84209919c8f" title="Find a slab to allocate a message buffer. " alt="" coords="581,107,721,133"/>
+<area shape="rect" id="node8" href="$core_8c.html#a6793e4c70d69277f24ff0e494ed8ed10" title="find_kernel_by_gid" alt="" coords="769,107,908,133"/>
+</map>

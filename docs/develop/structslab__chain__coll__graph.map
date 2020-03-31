@@ -1,0 +1,5 @@
+<map id="slab_chain" name="slab_chain">
+<area shape="rect" id="node2" href="$structslab__header.html" title="slab_header" alt="" coords="5,103,105,130"/>
+<area shape="rect" id="node3" href="$structatomic__t.html" title="atomic_t" alt="" coords="16,5,95,32"/>
+<area shape="rect" id="node4" href="$structspinlock__t.html" title="spinlock_t" alt="" coords="191,103,277,130"/>
+</map>

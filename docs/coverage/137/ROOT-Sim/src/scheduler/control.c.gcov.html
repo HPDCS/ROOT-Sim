@@ -1,0 +1,328 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - doc-coverage.info - ROOT-Sim/src/scheduler/control.c</title>
+  <link rel="stylesheet" type="text/css" href="../../../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../../../index.html">top level</a> - <a href="index.html">ROOT-Sim/src/scheduler</a> - control.c</td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">doc-coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">1</td>
+            <td class="headerCovTableEntry">6</td>
+            <td class="headerCovTableEntryLo">16.7 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2020-02-07 15:01:24</td>
+            <td></td>
+          </tr>
+          <tr><td><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<span class="lineNum">       1 </span><span class="lineCov">          1 : /**</span>
+<span class="lineNum">       2 </span>            :  * @file scheduler/control.c
+<span class="lineNum">       3 </span>            :  *
+<span class="lineNum">       4 </span>            :  * @brief Processing points for control messages
+<span class="lineNum">       5 </span>            :  *
+<span class="lineNum">       6 </span>            :  * Processing points for control messages
+<span class="lineNum">       7 </span>            :  *
+<span class="lineNum">       8 </span>            :  * @copyright
+<span class="lineNum">       9 </span>            :  * Copyright (C) 2008-2019 HPDCS Group
+<span class="lineNum">      10 </span>            :  * https://hpdcs.github.io
+<span class="lineNum">      11 </span>            :  *
+<span class="lineNum">      12 </span>            :  * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
+<span class="lineNum">      13 </span>            :  *
+<span class="lineNum">      14 </span>            :  * ROOT-Sim is free software; you can redistribute it and/or modify it under the
+<span class="lineNum">      15 </span>            :  * terms of the GNU General Public License as published by the Free Software
+<span class="lineNum">      16 </span>            :  * Foundation; only version 3 of the License applies.
+<span class="lineNum">      17 </span>            :  *
+<span class="lineNum">      18 </span>            :  * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
+<span class="lineNum">      19 </span>            :  * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+<span class="lineNum">      20 </span>            :  * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+<span class="lineNum">      21 </span>            :  *
+<span class="lineNum">      22 </span>            :  * You should have received a copy of the GNU General Public License along with
+<span class="lineNum">      23 </span>            :  * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
+<span class="lineNum">      24 </span>            :  * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+<span class="lineNum">      25 </span>            :  *
+<span class="lineNum">      26 </span>            :  * @author Alessandro Pellegrini
+<span class="lineNum">      27 </span>            :  */
+<span class="lineNum">      28 </span>            : 
+<span class="lineNum">      29 </span>            : #include &lt;stdbool.h&gt;
+<span class="lineNum">      30 </span>            : 
+<span class="lineNum">      31 </span>            : #include &lt;scheduler/scheduler.h&gt;
+<span class="lineNum">      32 </span>            : #include &lt;scheduler/process.h&gt;
+<span class="lineNum">      33 </span>            : #include &lt;core/core.h&gt;
+<span class="lineNum">      34 </span>            : #include &lt;communication/communication.h&gt;
+<span class="lineNum">      35 </span>            : #include &lt;mm/mm.h&gt;
+<span class="lineNum">      36 </span>            : #include &lt;mm/ecs.h&gt;
+<span class="lineNum">      37 </span>            : #include &lt;datatypes/list.h&gt;
+<span class="lineNum">      38 </span>            : #include &lt;gvt/gvt.h&gt;
+<span class="lineNum">      39 </span>            : 
+<span class="lineNum">      40 </span>            : // Questa funzione serve a mandare in rollback qualcuno che mi
+<span class="lineNum">      41 </span>            : // aveva mandato un RENDEZVOUS_START. Viene invocata da rollback()
+<span class="lineNum">      42 </span>            : // e simtime è il tempo del bound, quindi il tempo dell'ultimo evento
+<span class="lineNum">      43 </span>            : // correttamente processato nella traiettoria speculativa.
+<span class="lineNum">      44 </span>            : // Ogni volta che ricevo un RENDEZVOUS_START da un altro processo
+<span class="lineNum">      45 </span>            : // copio il messaggio nella rendezvous_queue.
+<span class="lineNum">      46 </span><span class="lineNoCov">          0 : void rollback_control_message(struct lp_struct *lp, simtime_t simtime)</span>
+<span class="lineNum">      47 </span>            : {
+<span class="lineNum">      48 </span>            :         msg_t *control_antimessage;
+<span class="lineNum">      49 </span>            :         msg_t *msg, *msg_prev;
+<span class="lineNum">      50 </span>            : 
+<span class="lineNum">      51 </span>            :         if (list_empty(lp-&gt;rendezvous_queue)) {
+<span class="lineNum">      52 </span>            :                 return;
+<span class="lineNum">      53 </span>            :         }
+<span class="lineNum">      54 </span>            : 
+<span class="lineNum">      55 </span>            :         msg = list_tail(lp-&gt;rendezvous_queue);
+<span class="lineNum">      56 </span>            :         while (msg != NULL &amp;&amp; msg-&gt;timestamp &gt; simtime) {
+<span class="lineNum">      57 </span>            : 
+<span class="lineNum">      58 </span>            :                 // Control antimessage
+<span class="lineNum">      59 </span>            :                 pack_msg(&amp;control_antimessage, msg-&gt;receiver, msg-&gt;sender,
+<span class="lineNum">      60 </span>            :                          RENDEZVOUS_ROLLBACK, msg-&gt;timestamp, msg-&gt;send_time, 0,
+<span class="lineNum">      61 </span>            :                          NULL);
+<span class="lineNum">      62 </span>            :                 control_antimessage-&gt;rendezvous_mark = msg-&gt;rendezvous_mark;
+<span class="lineNum">      63 </span>            :                 control_antimessage-&gt;message_kind = control;
+<span class="lineNum">      64 </span>            :                 Send(control_antimessage);
+<span class="lineNum">      65 </span>            :                 msg_prev = list_prev(msg);
+<span class="lineNum">      66 </span>            :                 list_delete_by_content(lp-&gt;rendezvous_queue, msg);
+<span class="lineNum">      67 </span>            :                 msg = msg_prev;
+<span class="lineNum">      68 </span>            :         }
+<span class="lineNum">      69 </span>            : }
+<span class="lineNum">      70 </span>            : 
+<span class="lineNum">      71 </span>            : // return false if the antimessage is recognized (and processed) as a control antimessage
+<span class="lineNum">      72 </span><span class="lineNoCov">          0 : bool anti_control_message(msg_t * msg)</span>
+<span class="lineNum">      73 </span>            : {
+<span class="lineNum">      74 </span>            : #ifndef HAVE_CROSS_STATE
+<span class="lineNum">      75 </span>            :         (void)msg;
+<span class="lineNum">      76 </span>            : #else
+<span class="lineNum">      77 </span>            :         msg_t *old_rendezvous;
+<span class="lineNum">      78 </span>            : 
+<span class="lineNum">      79 </span>            :         if (msg-&gt;type == RENDEZVOUS_ROLLBACK) {
+<span class="lineNum">      80 </span>            : 
+<span class="lineNum">      81 </span>            :                 struct lp_struct *receiver = find_lp_by_gid(msg-&gt;receiver);
+<span class="lineNum">      82 </span>            :                 //Check if a relative message exists
+<span class="lineNum">      83 </span>            :                 //TODO non serve andare indietro più del tempo di rendezvous_rollback (VERO!!! Ma in quel caso devo uscire dal ciclo con old_rendezvous == NULL per cadere nell'if successivo)
+<span class="lineNum">      84 </span>            :                 old_rendezvous = list_tail(receiver-&gt;queue_in);
+<span class="lineNum">      85 </span>            :                 while (old_rendezvous != NULL
+<span class="lineNum">      86 </span>            :                        &amp;&amp; old_rendezvous-&gt;rendezvous_mark !=
+<span class="lineNum">      87 </span>            :                        msg-&gt;rendezvous_mark) {
+<span class="lineNum">      88 </span>            :                         old_rendezvous = list_prev(old_rendezvous);
+<span class="lineNum">      89 </span>            :                 }
+<span class="lineNum">      90 </span>            : 
+<span class="lineNum">      91 </span>            :                 if (old_rendezvous == NULL) {
+<span class="lineNum">      92 </span>            :                         return false;
+<span class="lineNum">      93 </span>            :                 }
+<span class="lineNum">      94 </span>            :                 //If this event is in the past
+<span class="lineNum">      95 </span>            :                 if (old_rendezvous-&gt;timestamp &lt;= lvt(lid_receiver)) {
+<span class="lineNum">      96 </span>            : 
+<span class="lineNum">      97 </span>            :                         // Set LP-&gt;bound to the message that caused ECS
+<span class="lineNum">      98 </span>            :                         receiver-&gt;bound = list_prev(old_rendezvous);
+<span class="lineNum">      99 </span>            :                         while (receiver-&gt;bound != NULL
+<span class="lineNum">     100 </span>            :                                &amp;&amp; receiver-&gt;bound-&gt;timestamp &gt;=
+<span class="lineNum">     101 </span>            :                                old_rendezvous-&gt;timestamp) {
+<span class="lineNum">     102 </span>            :                                 //        if(list_prev(receiver-&gt;bound) == NULL) {
+<span class="lineNum">     103 </span>            :                                 //          break;
+<span class="lineNum">     104 </span>            :                                 //        }
+<span class="lineNum">     105 </span>            :                                 receiver-&gt;bound = list_prev(receiver-&gt;bound);
+<span class="lineNum">     106 </span>            :                         }
+<span class="lineNum">     107 </span>            : 
+<span class="lineNum">     108 </span>            :                         receiver-&gt;state = LP_STATE_ROLLBACK;
+<span class="lineNum">     109 </span>            :                 }
+<span class="lineNum">     110 </span>            : 
+<span class="lineNum">     111 </span>            :                 old_rendezvous-&gt;rendezvous_mark = 0;
+<span class="lineNum">     112 </span>            : 
+<span class="lineNum">     113 </span>            :                 //Reset ECS information
+<span class="lineNum">     114 </span>            :                 if (receiver-&gt;wait_on_rendezvous == msg-&gt;rendezvous_mark) {
+<span class="lineNum">     115 </span>            :                         receiver-&gt;ECS_index = 0;
+<span class="lineNum">     116 </span>            :                         receiver-&gt;wait_on_rendezvous = 0;
+<span class="lineNum">     117 </span>            :                 }
+<span class="lineNum">     118 </span>            : 
+<span class="lineNum">     119 </span>            :                 return false;
+<span class="lineNum">     120 </span>            :         }
+<span class="lineNum">     121 </span>            : #endif
+<span class="lineNum">     122 </span>            : 
+<span class="lineNum">     123 </span>            :         return true;
+<span class="lineNum">     124 </span>            : }
+<span class="lineNum">     125 </span>            : 
+<span class="lineNum">     126 </span>            : // return true if the control message should be reprocessed during silent exceution
+<span class="lineNum">     127 </span><span class="lineNoCov">          0 : bool reprocess_control_msg(msg_t * msg)</span>
+<span class="lineNum">     128 </span>            : {
+<span class="lineNum">     129 </span>            : 
+<span class="lineNum">     130 </span>            :         if (msg-&gt;type &lt; MIN_VALUE_CONTROL) {
+<span class="lineNum">     131 </span>            :                 return true;
+<span class="lineNum">     132 </span>            :         }
+<span class="lineNum">     133 </span>            : 
+<span class="lineNum">     134 </span>            :         return false;
+<span class="lineNum">     135 </span>            : }
+<span class="lineNum">     136 </span>            : 
+<span class="lineNum">     137 </span>            : // return true if the event must not be filtered here
+<span class="lineNum">     138 </span><span class="lineNoCov">          0 : bool receive_control_msg(msg_t * msg)</span>
+<span class="lineNum">     139 </span>            : {
+<span class="lineNum">     140 </span>            : 
+<span class="lineNum">     141 </span>            :         if (msg-&gt;type &lt; MIN_VALUE_CONTROL || msg-&gt;type &gt; MAX_VALUE_CONTROL) {
+<span class="lineNum">     142 </span>            :                 return true;
+<span class="lineNum">     143 </span>            :         }
+<span class="lineNum">     144 </span>            : #ifdef  HAVE_CROSS_STATE
+<span class="lineNum">     145 </span>            :         struct lp_struct *receiver = find_lp_by_gid(msg-&gt;receiver);
+<span class="lineNum">     146 </span>            :         switch (msg-&gt;type) {
+<span class="lineNum">     147 </span>            : 
+<span class="lineNum">     148 </span>            :         case RENDEZVOUS_START:
+<span class="lineNum">     149 </span>            :                 return true;
+<span class="lineNum">     150 </span>            : 
+<span class="lineNum">     151 </span>            :         case RENDEZVOUS_GET_PAGE:
+<span class="lineNum">     152 </span>            :                 ecs_send_pages(msg);
+<span class="lineNum">     153 </span>            :                 break;
+<span class="lineNum">     154 </span>            : 
+<span class="lineNum">     155 </span>            :         case RENDEZVOUS_PAGE_WRITE_BACK:
+<span class="lineNum">     156 </span>            :         case RENDEZVOUS_GET_PAGE_ACK:
+<span class="lineNum">     157 </span>            :                 if (receiver-&gt;state == LP_STATE_ROLLBACK ||
+<span class="lineNum">     158 </span>            :                     receiver-&gt;state == LP_STATE_SILENT_EXEC) {
+<span class="lineNum">     159 </span>            :                         break;
+<span class="lineNum">     160 </span>            :                 }
+<span class="lineNum">     161 </span>            :                 if (receiver-&gt;wait_on_rendezvous == msg-&gt;rendezvous_mark) {
+<span class="lineNum">     162 </span>            :                         ecs_install_pages(msg);
+<span class="lineNum">     163 </span>            :                         receiver-&gt;state = LP_STATE_READY_FOR_SYNCH;
+<span class="lineNum">     164 </span>            :                 }
+<span class="lineNum">     165 </span>            :                 break;
+<span class="lineNum">     166 </span>            : 
+<span class="lineNum">     167 </span>            :         case RENDEZVOUS_ACK:
+<span class="lineNum">     168 </span>            :                 if (receiver-&gt;state == LP_STATE_ROLLBACK ||
+<span class="lineNum">     169 </span>            :                     receiver-&gt;state == LP_STATE_SILENT_EXEC) {
+<span class="lineNum">     170 </span>            :                         break;
+<span class="lineNum">     171 </span>            :                 }
+<span class="lineNum">     172 </span>            :                 if (receiver-&gt;wait_on_rendezvous == msg-&gt;rendezvous_mark) {
+<span class="lineNum">     173 </span>            :                         setup_ecs_on_segment(msg);
+<span class="lineNum">     174 </span>            :                         receiver-&gt;state = LP_STATE_READY_FOR_SYNCH;
+<span class="lineNum">     175 </span>            :                 }
+<span class="lineNum">     176 </span>            : 
+<span class="lineNum">     177 </span>            :                 break;
+<span class="lineNum">     178 </span>            : 
+<span class="lineNum">     179 </span>            :         case RENDEZVOUS_UNBLOCK:
+<span class="lineNum">     180 </span>            :                 if (receiver-&gt;state == LP_STATE_ROLLBACK ||
+<span class="lineNum">     181 </span>            :                     receiver-&gt;state == LP_STATE_SILENT_EXEC) {
+<span class="lineNum">     182 </span>            :                         break;
+<span class="lineNum">     183 </span>            :                 }
+<span class="lineNum">     184 </span>            : 
+<span class="lineNum">     185 </span>            :                 if (receiver-&gt;wait_on_rendezvous == msg-&gt;rendezvous_mark) {
+<span class="lineNum">     186 </span>            :                         receiver-&gt;wait_on_rendezvous = 0;
+<span class="lineNum">     187 </span>            :                         receiver-&gt;state = LP_STATE_READY;
+<span class="lineNum">     188 </span>            :                 }
+<span class="lineNum">     189 </span>            : 
+<span class="lineNum">     190 </span>            :                 current = find_lp_by_gid(msg-&gt;receiver);
+<span class="lineNum">     191 </span>            :                 current_lvt = msg-&gt;timestamp;
+<span class="lineNum">     192 </span>            :                 force_LP_checkpoint(current);
+<span class="lineNum">     193 </span>            :                 LogState(current);
+<span class="lineNum">     194 </span>            :                 current_lvt = INFTY;
+<span class="lineNum">     195 </span>            :                 current = NULL;
+<span class="lineNum">     196 </span>            : 
+<span class="lineNum">     197 </span>            :                 break;
+<span class="lineNum">     198 </span>            : 
+<span class="lineNum">     199 </span>            :         case RENDEZVOUS_ROLLBACK:
+<span class="lineNum">     200 </span>            :                 return true;
+<span class="lineNum">     201 </span>            : 
+<span class="lineNum">     202 </span>            :         default:
+<span class="lineNum">     203 </span>            :                 rootsim_error(true,
+<span class="lineNum">     204 </span>            :                               &quot;Trying to handle a control message which is meaningless at receive time: %d\n&quot;,
+<span class="lineNum">     205 </span>            :                               msg-&gt;type);
+<span class="lineNum">     206 </span>            : 
+<span class="lineNum">     207 </span>            :         }
+<span class="lineNum">     208 </span>            : #endif
+<span class="lineNum">     209 </span>            : 
+<span class="lineNum">     210 </span>            :         return false;
+<span class="lineNum">     211 </span>            : }
+<span class="lineNum">     212 </span>            : 
+<span class="lineNum">     213 </span>            : // return true if must be passed to the LP
+<span class="lineNum">     214 </span><span class="lineNoCov">          0 : bool process_control_msg(msg_t * msg)</span>
+<span class="lineNum">     215 </span>            : {
+<span class="lineNum">     216 </span>            : 
+<span class="lineNum">     217 </span>            : #ifdef HAVE_CROSS_STATE
+<span class="lineNum">     218 </span>            :         msg_t *control_msg;
+<span class="lineNum">     219 </span>            : #endif
+<span class="lineNum">     220 </span>            : 
+<span class="lineNum">     221 </span>            :         if (msg-&gt;type &lt; MIN_VALUE_CONTROL || msg-&gt;type &gt; MAX_VALUE_CONTROL) {
+<span class="lineNum">     222 </span>            :                 return true;
+<span class="lineNum">     223 </span>            :         }
+<span class="lineNum">     224 </span>            : #ifdef HAVE_CROSS_STATE
+<span class="lineNum">     225 </span>            :         struct lp_struct *receiver = find_lp_by_gid(msg-&gt;receiver);
+<span class="lineNum">     226 </span>            :         msg_t *copy;
+<span class="lineNum">     227 </span>            :         switch (msg-&gt;type) {
+<span class="lineNum">     228 </span>            : 
+<span class="lineNum">     229 </span>            :         case RENDEZVOUS_START:
+<span class="lineNum">     230 </span>            :                 copy = rsalloc(sizeof(msg_t));
+<span class="lineNum">     231 </span>            :                 *copy = *msg;
+<span class="lineNum">     232 </span>            :                 list_insert(receiver-&gt;rendezvous_queue, timestamp, copy);
+<span class="lineNum">     233 </span>            :                 // Place this into input queue
+<span class="lineNum">     234 </span>            :                 receiver-&gt;wait_on_rendezvous = msg-&gt;rendezvous_mark;
+<span class="lineNum">     235 </span>            : 
+<span class="lineNum">     236 </span>            :                 receiver-&gt;state = LP_STATE_WAIT_FOR_UNBLOCK;
+<span class="lineNum">     237 </span>            : 
+<span class="lineNum">     238 </span>            :                 pack_msg(&amp;control_msg, msg-&gt;receiver, msg-&gt;sender,
+<span class="lineNum">     239 </span>            :                          RENDEZVOUS_ACK, msg-&gt;timestamp, msg-&gt;timestamp, 0,
+<span class="lineNum">     240 </span>            :                          NULL);
+<span class="lineNum">     241 </span>            :                 control_msg-&gt;message_kind = positive;
+<span class="lineNum">     242 </span>            :                 control_msg-&gt;rendezvous_mark = msg-&gt;rendezvous_mark;
+<span class="lineNum">     243 </span>            :                 Send(control_msg);
+<span class="lineNum">     244 </span>            : 
+<span class="lineNum">     245 </span>            :                 break;
+<span class="lineNum">     246 </span>            : 
+<span class="lineNum">     247 </span>            :         default:
+<span class="lineNum">     248 </span>            :                 rootsim_error(true,
+<span class="lineNum">     249 </span>            :                               &quot;Trying to handle a control message which is meaningless at schedule time: %d\n&quot;,
+<span class="lineNum">     250 </span>            :                               msg-&gt;type);
+<span class="lineNum">     251 </span>            : 
+<span class="lineNum">     252 </span>            :         }
+<span class="lineNum">     253 </span>            : #endif
+<span class="lineNum">     254 </span>            : 
+<span class="lineNum">     255 </span>            :         return false;
+<span class="lineNum">     256 </span>            : }
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.12</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>

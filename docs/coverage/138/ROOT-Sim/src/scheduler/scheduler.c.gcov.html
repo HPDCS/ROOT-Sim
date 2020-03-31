@@ -1,0 +1,532 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - doc-coverage.info - ROOT-Sim/src/scheduler/scheduler.c</title>
+  <link rel="stylesheet" type="text/css" href="../../../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../../../index.html">top level</a> - <a href="index.html">ROOT-Sim/src/scheduler</a> - scheduler.c</td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">doc-coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">8</td>
+            <td class="headerCovTableEntry">12</td>
+            <td class="headerCovTableEntryLo">66.7 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2020-02-28 13:00:44</td>
+            <td></td>
+          </tr>
+          <tr><td><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<span class="lineNum">       1 </span><span class="lineCov">          1 : /**</span>
+<span class="lineNum">       2 </span>            :  * @file scheduler/scheduler.c
+<span class="lineNum">       3 </span>            :  *
+<span class="lineNum">       4 </span>            :  * @brief The ROOT-Sim scheduler main module
+<span class="lineNum">       5 </span>            :  *
+<span class="lineNum">       6 </span>            :  * This module implements the schedule() function, which is the main
+<span class="lineNum">       7 </span>            :  * entry point for all the schedulers implemented in ROOT-Sim, and
+<span class="lineNum">       8 </span>            :  * several support functions which allow to initialize worker threads.
+<span class="lineNum">       9 </span>            :  *
+<span class="lineNum">      10 </span>            :  * Also, the LP_main_loop() function, which is the function where all
+<span class="lineNum">      11 </span>            :  * the User-Level Threads associated with Logical Processes live, is
+<span class="lineNum">      12 </span>            :  * defined here.
+<span class="lineNum">      13 </span>            :  *
+<span class="lineNum">      14 </span>            :  * @copyright
+<span class="lineNum">      15 </span>            :  * Copyright (C) 2008-2019 HPDCS Group
+<span class="lineNum">      16 </span>            :  * https://hpdcs.github.io
+<span class="lineNum">      17 </span>            :  *
+<span class="lineNum">      18 </span>            :  * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
+<span class="lineNum">      19 </span>            :  *
+<span class="lineNum">      20 </span>            :  * ROOT-Sim is free software; you can redistribute it and/or modify it under the
+<span class="lineNum">      21 </span>            :  * terms of the GNU General Public License as published by the Free Software
+<span class="lineNum">      22 </span>            :  * Foundation; only version 3 of the License applies.
+<span class="lineNum">      23 </span>            :  *
+<span class="lineNum">      24 </span>            :  * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
+<span class="lineNum">      25 </span>            :  * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+<span class="lineNum">      26 </span>            :  * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+<span class="lineNum">      27 </span>            :  *
+<span class="lineNum">      28 </span>            :  * You should have received a copy of the GNU General Public License along with
+<span class="lineNum">      29 </span>            :  * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
+<span class="lineNum">      30 </span>            :  * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+<span class="lineNum">      31 </span>            :  *
+<span class="lineNum">      32 </span>            :  * @author Francesco Quaglia
+<span class="lineNum">      33 </span>            :  * @author Alessandro Pellegrini
+<span class="lineNum">      34 </span>            :  * @author Roberto Vitali
+<span class="lineNum">      35 </span>            :  */
+<span class="lineNum">      36 </span>            : 
+<span class="lineNum">      37 </span>            : #include &lt;stdlib.h&gt;
+<span class="lineNum">      38 </span>            : #include &lt;string.h&gt;
+<span class="lineNum">      39 </span>            : #include &lt;stdbool.h&gt;
+<span class="lineNum">      40 </span>            : #include &lt;datatypes/list.h&gt;
+<span class="lineNum">      41 </span>            : #include &lt;datatypes/msgchannel.h&gt;
+<span class="lineNum">      42 </span>            : #include &lt;core/core.h&gt;
+<span class="lineNum">      43 </span>            : #include &lt;core/timer.h&gt;
+<span class="lineNum">      44 </span>            : #include &lt;arch/atomic.h&gt;
+<span class="lineNum">      45 </span>            : #include &lt;arch/ult.h&gt;
+<span class="lineNum">      46 </span>            : #include &lt;arch/thread.h&gt;
+<span class="lineNum">      47 </span>            : #include &lt;core/init.h&gt;
+<span class="lineNum">      48 </span>            : #include &lt;scheduler/binding.h&gt;
+<span class="lineNum">      49 </span>            : #include &lt;scheduler/process.h&gt;
+<span class="lineNum">      50 </span>            : #include &lt;scheduler/scheduler.h&gt;
+<span class="lineNum">      51 </span>            : #include &lt;scheduler/stf.h&gt;
+<span class="lineNum">      52 </span>            : #include &lt;mm/state.h&gt;
+<span class="lineNum">      53 </span>            : #include &lt;communication/communication.h&gt;
+<span class="lineNum">      54 </span>            : 
+<span class="lineNum">      55 </span>            : #ifdef HAVE_CROSS_STATE
+<span class="lineNum">      56 </span>            : #include &lt;mm/ecs.h&gt;
+<span class="lineNum">      57 </span>            : #endif
+<span class="lineNum">      58 </span>            : 
+<span class="lineNum">      59 </span>            : #include &lt;mm/mm.h&gt;
+<span class="lineNum">      60 </span>            : #include &lt;statistics/statistics.h&gt;
+<span class="lineNum">      61 </span>            : #include &lt;arch/thread.h&gt;
+<span class="lineNum">      62 </span>            : #include &lt;communication/communication.h&gt;
+<span class="lineNum">      63 </span>            : #include &lt;gvt/gvt.h&gt;
+<span class="lineNum">      64 </span>            : #include &lt;statistics/statistics.h&gt;
+<span class="lineNum">      65 </span>            : #include &lt;arch/x86/linux/cross_state_manager/cross_state_manager.h&gt;
+<span class="lineNum">      66 </span>            : #include &lt;queues/xxhash.h&gt;
+<span class="lineNum">      67 </span>            : 
+<span class="lineNum">      68 </span>            : /// This is used to keep track of how many LPs were bound to the current KLT
+<span class="lineNum">      69 </span><span class="lineCov">          1 : __thread unsigned int n_prc_per_thread;</span>
+<span class="lineNum">      70 </span>            : 
+<span class="lineNum">      71 </span>            : /// This is a per-thread variable pointing to the block state of the LP currently scheduled
+<span class="lineNum">      72 </span><span class="lineCov">          1 : __thread struct lp_struct *current;</span>
+<span class="lineNum">      73 </span>            : 
+<span class="lineNum">      74 </span>            : /**
+<span class="lineNum">      75 </span>            :  * This is a per-thread variable telling what is the event that should be executed
+<span class="lineNum">      76 </span>            :  * when activating an LP. It is incorrect to rely on current-&gt;bound, as there
+<span class="lineNum">      77 </span>            :  * are cases (such as the silent execution) in which we have a certain bound set,
+<span class="lineNum">      78 </span>            :  * but we execute a different event.
+<span class="lineNum">      79 </span>            :  *
+<span class="lineNum">      80 </span>            :  * @todo We should uniform this behaviour, and drop current_evt, as this might be
+<span class="lineNum">      81 </span>            :  *       misleading when reading the code.
+<span class="lineNum">      82 </span>            :  */
+<span class="lineNum">      83 </span><span class="lineCov">          1 : __thread msg_t *current_evt;</span>
+<span class="lineNum">      84 </span>            : 
+<span class="lineNum">      85 </span>            : /*
+<span class="lineNum">      86 </span>            : * This function initializes the scheduler. In particular, it relies on MPI to broadcast to every simulation kernel process
+<span class="lineNum">      87 </span>            : * which is the actual scheduling algorithm selected.
+<span class="lineNum">      88 </span>            : *
+<span class="lineNum">      89 </span>            : * @author Francesco Quaglia
+<span class="lineNum">      90 </span>            : *
+<span class="lineNum">      91 </span>            : * @param sched The scheduler selected initially, but master can decide to change it, so slaves must rely on what master send to them
+<span class="lineNum">      92 </span>            : */
+<span class="lineNum">      93 </span><span class="lineNoCov">          0 : void scheduler_init(void)</span>
+<span class="lineNum">      94 </span>            : {
+<span class="lineNum">      95 </span>            : #ifdef HAVE_PREEMPTION
+<span class="lineNum">      96 </span>            :         preempt_init();
+<span class="lineNum">      97 </span>            : #endif
+<span class="lineNum">      98 </span>            : }
+<span class="lineNum">      99 </span>            : 
+<span class="lineNum">     100 </span>            : /**
+<span class="lineNum">     101 </span>            : * This function finalizes the scheduler
+<span class="lineNum">     102 </span>            : *
+<span class="lineNum">     103 </span>            : * @author Alessandro Pellegrini
+<span class="lineNum">     104 </span>            : */
+<span class="lineNum">     105 </span><span class="lineCov">          1 : void scheduler_fini(void)</span>
+<span class="lineNum">     106 </span>            : {
+<span class="lineNum">     107 </span>            : #ifdef HAVE_PREEMPTION
+<span class="lineNum">     108 </span>            :         preempt_fini();
+<span class="lineNum">     109 </span>            : #endif
+<span class="lineNum">     110 </span>            : 
+<span class="lineNum">     111 </span>            :         foreach_lp(lp) {
+<span class="lineNum">     112 </span>            :                 rsfree(lp-&gt;queue_in);
+<span class="lineNum">     113 </span>            :                 rsfree(lp-&gt;queue_out);
+<span class="lineNum">     114 </span>            :                 rsfree(lp-&gt;queue_states);
+<span class="lineNum">     115 </span>            :                 rsfree(lp-&gt;bottom_halves);
+<span class="lineNum">     116 </span>            :                 rsfree(lp-&gt;rendezvous_queue);
+<span class="lineNum">     117 </span>            : 
+<span class="lineNum">     118 </span>            :                 // Destroy stacks
+<span class="lineNum">     119 </span>            :                 rsfree(lp-&gt;stack);
+<span class="lineNum">     120 </span>            : 
+<span class="lineNum">     121 </span>            :                 rsfree(lp);
+<span class="lineNum">     122 </span>            :         }
+<span class="lineNum">     123 </span>            : 
+<span class="lineNum">     124 </span>            :         rsfree(lps_blocks);
+<span class="lineNum">     125 </span>            :         rsfree(lps_bound_blocks);
+<span class="lineNum">     126 </span>            : }
+<span class="lineNum">     127 </span>            : 
+<span class="lineNum">     128 </span>            : /**
+<span class="lineNum">     129 </span>            : * This is a LP main loop. It s the embodiment of the usrespace thread implementing the logic of the LP.
+<span class="lineNum">     130 </span>            : * Whenever an event is to be scheduled, the corresponding metadata are set by the schedule() function,
+<span class="lineNum">     131 </span>            : * which in turns calls activate_LP() to execute the actual context switch.
+<span class="lineNum">     132 </span>            : * This ProcessEvent wrapper explicitly returns control to simulation kernel user thread when an event
+<span class="lineNum">     133 </span>            : * processing is finished. In case the LP tries to access state data which is not belonging to its
+<span class="lineNum">     134 </span>            : * simulation state, a SIGSEGV signal is raised and the LP might be descheduled if it is not safe
+<span class="lineNum">     135 </span>            : * to perform the remote memory access. This is the only case where control is not returned to simulation
+<span class="lineNum">     136 </span>            : * thread explicitly by this wrapper.
+<span class="lineNum">     137 </span>            : *
+<span class="lineNum">     138 </span>            : * @param args arguments passed to the LP main loop. Currently, this is not used.
+<span class="lineNum">     139 </span>            : */
+<span class="lineNum">     140 </span><span class="lineCov">          1 : void LP_main_loop(void *args)</span>
+<span class="lineNum">     141 </span>            : {
+<span class="lineNum">     142 </span>            : #ifdef EXTRA_CHECKS
+<span class="lineNum">     143 </span>            :         unsigned long long hash1, hash2;
+<span class="lineNum">     144 </span>            :         hash1 = hash2 = 0;
+<span class="lineNum">     145 </span>            : #endif
+<span class="lineNum">     146 </span>            : 
+<span class="lineNum">     147 </span>            :         (void)args;             // this is to make the compiler stop complaining about unused args
+<span class="lineNum">     148 </span>            : 
+<span class="lineNum">     149 </span>            :         // Save a default context
+<span class="lineNum">     150 </span>            :         context_save(&amp;current-&gt;default_context);
+<span class="lineNum">     151 </span>            : 
+<span class="lineNum">     152 </span>            :         while (true) {
+<span class="lineNum">     153 </span>            : 
+<span class="lineNum">     154 </span>            : #ifdef EXTRA_CHECKS
+<span class="lineNum">     155 </span>            :                 if (current-&gt;bound-&gt;size &gt; 0) {
+<span class="lineNum">     156 </span>            :                         hash1 = XXH64(current_evt-&gt;event_content, current_evt-&gt;size, current-&gt;gid);
+<span class="lineNum">     157 </span>            :                 }
+<span class="lineNum">     158 </span>            : #endif
+<span class="lineNum">     159 </span>            : 
+<span class="lineNum">     160 </span>            :                 timer event_timer;
+<span class="lineNum">     161 </span>            :                 timer_start(event_timer);
+<span class="lineNum">     162 </span>            : 
+<span class="lineNum">     163 </span>            :                 // Process the event
+<span class="lineNum">     164 </span>            :                 if(&amp;abm_settings){
+<span class="lineNum">     165 </span>            :                         ProcessEventABM();
+<span class="lineNum">     166 </span>            :                 }else if (&amp;topology_settings){
+<span class="lineNum">     167 </span>            :                         ProcessEventTopology();
+<span class="lineNum">     168 </span>            :                 }else{
+<span class="lineNum">     169 </span>            :                         switch_to_application_mode();
+<span class="lineNum">     170 </span>            :                         current-&gt;ProcessEvent(current-&gt;gid.to_int,
+<span class="lineNum">     171 </span>            :                                       current_evt-&gt;timestamp, current_evt-&gt;type,
+<span class="lineNum">     172 </span>            :                                       current_evt-&gt;event_content,
+<span class="lineNum">     173 </span>            :                                       current_evt-&gt;size,
+<span class="lineNum">     174 </span>            :                                       current-&gt;current_base_pointer);
+<span class="lineNum">     175 </span>            :                         switch_to_platform_mode();
+<span class="lineNum">     176 </span>            :                 }
+<span class="lineNum">     177 </span>            :                 int delta_event_timer = timer_value_micro(event_timer);
+<span class="lineNum">     178 </span>            : 
+<span class="lineNum">     179 </span>            : #ifdef EXTRA_CHECKS
+<span class="lineNum">     180 </span>            :                 if (current-&gt;bound-&gt;size &gt; 0) {
+<span class="lineNum">     181 </span>            :                         hash2 =
+<span class="lineNum">     182 </span>            :                             XXH64(current_evt-&gt;event_content, current_evt-&gt;size,
+<span class="lineNum">     183 </span>            :                                   current-&gt;gid);
+<span class="lineNum">     184 </span>            :                 }
+<span class="lineNum">     185 </span>            : 
+<span class="lineNum">     186 </span>            :                 if (hash1 != hash2) {
+<span class="lineNum">     187 </span>            :                         rootsim_error(true,
+<span class="lineNum">     188 </span>            :                                       &quot;Error, LP %d has modified the payload of event %d during its processing. Aborting...\n&quot;,
+<span class="lineNum">     189 </span>            :                                       current-&gt;gid, current-&gt;bound-&gt;type);
+<span class="lineNum">     190 </span>            :                 }
+<span class="lineNum">     191 </span>            : #endif
+<span class="lineNum">     192 </span>            : 
+<span class="lineNum">     193 </span>            :                 statistics_post_data(current, STAT_EVENT, 1.0);
+<span class="lineNum">     194 </span>            :                 statistics_post_data(current, STAT_EVENT_TIME,
+<span class="lineNum">     195 </span>            :                                      delta_event_timer);
+<span class="lineNum">     196 </span>            : 
+<span class="lineNum">     197 </span>            :                 // Give back control to the simulation kernel's user-level thread
+<span class="lineNum">     198 </span>            :                 context_switch(&amp;current-&gt;context, &amp;kernel_context);
+<span class="lineNum">     199 </span>            :         }
+<span class="lineNum">     200 </span>            : }
+<span class="lineNum">     201 </span>            : 
+<span class="lineNum">     202 </span><span class="lineNoCov">          0 : void initialize_worker_thread(void)</span>
+<span class="lineNum">     203 </span>            : {
+<span class="lineNum">     204 </span>            :         msg_t *init_event;
+<span class="lineNum">     205 </span>            : 
+<span class="lineNum">     206 </span>            :         // Divide LPs among worker threads, for the first time here
+<span class="lineNum">     207 </span>            :         rebind_LPs();
+<span class="lineNum">     208 </span>            :         if (master_thread() &amp;&amp; master_kernel()) {
+<span class="lineNum">     209 </span>            :                 printf(&quot;Initializing LPs... &quot;);
+<span class="lineNum">     210 </span>            :                 fflush(stdout);
+<span class="lineNum">     211 </span>            :         }
+<span class="lineNum">     212 </span>            :         // Worker Threads synchronization barrier: they all should start working together
+<span class="lineNum">     213 </span>            :         thread_barrier(&amp;all_thread_barrier);
+<span class="lineNum">     214 </span>            : 
+<span class="lineNum">     215 </span>            :         if (master_thread() &amp;&amp; master_kernel())
+<span class="lineNum">     216 </span>            :                 printf(&quot;done\n&quot;);
+<span class="lineNum">     217 </span>            : 
+<span class="lineNum">     218 </span>            :         // Schedule an INIT event to the newly instantiated LP
+<span class="lineNum">     219 </span>            :         // We need two separate foreach_bound_lp here, because
+<span class="lineNum">     220 </span>            :         // in this way we are sure that there is at least one
+<span class="lineNum">     221 </span>            :         // event to be used as the bound and we do not have to make
+<span class="lineNum">     222 </span>            :         // any check on null throughout the scheduler code.
+<span class="lineNum">     223 </span>            :         foreach_bound_lp(lp) {
+<span class="lineNum">     224 </span>            :                 pack_msg(&amp;init_event, lp-&gt;gid, lp-&gt;gid, INIT, 0.0, 0.0, 0, NULL);
+<span class="lineNum">     225 </span>            :                 init_event-&gt;mark = generate_mark(lp);
+<span class="lineNum">     226 </span>            :                 list_insert_head(lp-&gt;queue_in, init_event);
+<span class="lineNum">     227 </span>            :                 lp-&gt;state_log_forced = true;
+<span class="lineNum">     228 </span>            :         }
+<span class="lineNum">     229 </span>            : 
+<span class="lineNum">     230 </span>            :         thread_barrier(&amp;all_thread_barrier);
+<span class="lineNum">     231 </span>            : 
+<span class="lineNum">     232 </span>            :         foreach_bound_lp(lp) {
+<span class="lineNum">     233 </span>            :                 schedule_on_init(lp);
+<span class="lineNum">     234 </span>            :         }
+<span class="lineNum">     235 </span>            : 
+<span class="lineNum">     236 </span>            :         // Worker Threads synchronization barrier: they all should start working together
+<span class="lineNum">     237 </span>            :         thread_barrier(&amp;all_thread_barrier);
+<span class="lineNum">     238 </span>            : 
+<span class="lineNum">     239 </span>            : #ifdef HAVE_PREEMPTION
+<span class="lineNum">     240 </span>            :         if (!rootsim_config.disable_preemption)
+<span class="lineNum">     241 </span>            :                 enable_preemption();
+<span class="lineNum">     242 </span>            : #endif
+<span class="lineNum">     243 </span>            : 
+<span class="lineNum">     244 </span>            : }
+<span class="lineNum">     245 </span>            : 
+<span class="lineNum">     246 </span>            : /**
+<span class="lineNum">     247 </span>            : * This function is the application-level ProcessEvent() callback entry point.
+<span class="lineNum">     248 </span>            : * It allows to specify which lp must be scheduled, specifying its lvt, its event
+<span class="lineNum">     249 </span>            : * to be executed and its simulation state.
+<span class="lineNum">     250 </span>            : * This provides a general entry point to application-level code, to be used
+<span class="lineNum">     251 </span>            : * if the LP is in forward execution, in coasting forward or in initialization.
+<span class="lineNum">     252 </span>            : *
+<span class="lineNum">     253 </span>            : * @author Alessandro Pellegrini
+<span class="lineNum">     254 </span>            : *
+<span class="lineNum">     255 </span>            : * @date November 11, 2013
+<span class="lineNum">     256 </span>            : *
+<span class="lineNum">     257 </span>            : * @param next A pointer to the lp_struct of the LP which has to be activated
+<span class="lineNum">     258 </span>            : * @param evt A pointer to the event to be processed by the LP
+<span class="lineNum">     259 </span>            : */
+<span class="lineNum">     260 </span><span class="lineCov">          1 : void activate_LP(struct lp_struct *next, msg_t * evt)</span>
+<span class="lineNum">     261 </span>            : {
+<span class="lineNum">     262 </span>            : 
+<span class="lineNum">     263 </span>            :         // Notify the LP main execution loop of the information to be used for actual simulation
+<span class="lineNum">     264 </span>            :         current = next;
+<span class="lineNum">     265 </span>            :         current_evt = evt;
+<span class="lineNum">     266 </span>            : 
+<span class="lineNum">     267 </span>            : //      #ifdef HAVE_PREEMPTION
+<span class="lineNum">     268 </span>            : //      if(!rootsim_config.disable_preemption)
+<span class="lineNum">     269 </span>            : //              enable_preemption();
+<span class="lineNum">     270 </span>            : //      #endif
+<span class="lineNum">     271 </span>            : 
+<span class="lineNum">     272 </span>            : #ifdef HAVE_CROSS_STATE
+<span class="lineNum">     273 </span>            :         // Activate memory view for the current LP
+<span class="lineNum">     274 </span>            :         lp_alloc_schedule();
+<span class="lineNum">     275 </span>            : #endif
+<span class="lineNum">     276 </span>            : 
+<span class="lineNum">     277 </span>            :         if (unlikely(is_blocked_state(next-&gt;state))) {
+<span class="lineNum">     278 </span>            :                 rootsim_error(true, &quot;Critical condition: LP %d has a wrong state: %d. Aborting...\n&quot;,
+<span class="lineNum">     279 </span>            :                               next-&gt;gid.to_int, next-&gt;state);
+<span class="lineNum">     280 </span>            :         }
+<span class="lineNum">     281 </span>            : 
+<span class="lineNum">     282 </span>            :         context_switch(&amp;kernel_context, &amp;next-&gt;context);
+<span class="lineNum">     283 </span>            : 
+<span class="lineNum">     284 </span>            : //      #ifdef HAVE_PREEMPTION
+<span class="lineNum">     285 </span>            : //        if(!rootsim_config.disable_preemption)
+<span class="lineNum">     286 </span>            : //                disable_preemption();
+<span class="lineNum">     287 </span>            : //        #endif
+<span class="lineNum">     288 </span>            : 
+<span class="lineNum">     289 </span>            : #ifdef HAVE_CROSS_STATE
+<span class="lineNum">     290 </span>            :         // Deactivate memory view for the current LP if no conflict has arisen
+<span class="lineNum">     291 </span>            :         if (!is_blocked_state(next-&gt;state)) {
+<span class="lineNum">     292 </span>            : //              printf(&quot;Deschedule %d\n&quot;,lp);
+<span class="lineNum">     293 </span>            :                 lp_alloc_deschedule();
+<span class="lineNum">     294 </span>            :         }
+<span class="lineNum">     295 </span>            : #endif
+<span class="lineNum">     296 </span>            : 
+<span class="lineNum">     297 </span>            :         current = NULL;
+<span class="lineNum">     298 </span>            : }
+<span class="lineNum">     299 </span>            : 
+<span class="lineNum">     300 </span><span class="lineNoCov">          0 : bool check_rendevouz_request(struct lp_struct *lp)</span>
+<span class="lineNum">     301 </span>            : {
+<span class="lineNum">     302 </span>            :         msg_t *temp_mess;
+<span class="lineNum">     303 </span>            : 
+<span class="lineNum">     304 </span>            :         if (lp-&gt;state != LP_STATE_WAIT_FOR_SYNCH)
+<span class="lineNum">     305 </span>            :                 return false;
+<span class="lineNum">     306 </span>            : 
+<span class="lineNum">     307 </span>            :         if (lp-&gt;bound != NULL &amp;&amp; list_next(lp-&gt;bound) != NULL) {
+<span class="lineNum">     308 </span>            :                 temp_mess = list_next(lp-&gt;bound);
+<span class="lineNum">     309 </span>            :                 return temp_mess-&gt;type == RENDEZVOUS_START &amp;&amp; lp-&gt;wait_on_rendezvous &gt; temp_mess-&gt;rendezvous_mark;
+<span class="lineNum">     310 </span>            :         }
+<span class="lineNum">     311 </span>            : 
+<span class="lineNum">     312 </span>            :         return false;
+<span class="lineNum">     313 </span>            : }
+<span class="lineNum">     314 </span>            : 
+<span class="lineNum">     315 </span>            : /**
+<span class="lineNum">     316 </span>            : * This function checks wihch LP must be activated (if any),
+<span class="lineNum">     317 </span>            : * and in turn activates it. This is used only to support forward execution.
+<span class="lineNum">     318 </span>            : *
+<span class="lineNum">     319 </span>            : * @author Alessandro Pellegrini
+<span class="lineNum">     320 </span>            : */
+<span class="lineNum">     321 </span><span class="lineCov">          1 : void schedule(void)</span>
+<span class="lineNum">     322 </span>            : {
+<span class="lineNum">     323 </span>            :         struct lp_struct *next;
+<span class="lineNum">     324 </span>            :         msg_t *event;
+<span class="lineNum">     325 </span>            : 
+<span class="lineNum">     326 </span>            : #ifdef HAVE_CROSS_STATE
+<span class="lineNum">     327 </span>            :         bool resume_execution = false;
+<span class="lineNum">     328 </span>            : #endif
+<span class="lineNum">     329 </span>            : 
+<span class="lineNum">     330 </span>            :         // Find the next LP to be scheduled
+<span class="lineNum">     331 </span>            :         switch (rootsim_config.scheduler) {
+<span class="lineNum">     332 </span>            : 
+<span class="lineNum">     333 </span>            :         case SCHEDULER_STF:
+<span class="lineNum">     334 </span>            :                 next = smallest_timestamp_first();
+<span class="lineNum">     335 </span>            :                 break;
+<span class="lineNum">     336 </span>            : 
+<span class="lineNum">     337 </span>            :         default:
+<span class="lineNum">     338 </span>            :                 rootsim_error(true, &quot;unrecognized scheduler!&quot;);
+<span class="lineNum">     339 </span>            :         }
+<span class="lineNum">     340 </span>            : 
+<span class="lineNum">     341 </span>            :         // No logical process found with events to be processed
+<span class="lineNum">     342 </span>            :         if (next == NULL) {
+<span class="lineNum">     343 </span>            :                 statistics_post_data(NULL, STAT_IDLE_CYCLES, 1.0);
+<span class="lineNum">     344 </span>            :                 return;
+<span class="lineNum">     345 </span>            :         }
+<span class="lineNum">     346 </span>            :         // If we have to rollback
+<span class="lineNum">     347 </span>            :         if (next-&gt;state == LP_STATE_ROLLBACK) {
+<span class="lineNum">     348 </span>            :                 rollback(next);
+<span class="lineNum">     349 </span>            :                 next-&gt;state = LP_STATE_READY;
+<span class="lineNum">     350 </span>            :                 send_outgoing_msgs(next);
+<span class="lineNum">     351 </span>            :                 return;
+<span class="lineNum">     352 </span>            :         }
+<span class="lineNum">     353 </span>            : 
+<span class="lineNum">     354 </span>            :         if (!is_blocked_state(next-&gt;state)
+<span class="lineNum">     355 </span>            :             &amp;&amp; next-&gt;state != LP_STATE_READY_FOR_SYNCH) {
+<span class="lineNum">     356 </span>            :                 event = advance_to_next_event(next);
+<span class="lineNum">     357 </span>            :         } else {
+<span class="lineNum">     358 </span>            :                 event = next-&gt;bound;
+<span class="lineNum">     359 </span>            :         }
+<span class="lineNum">     360 </span>            : 
+<span class="lineNum">     361 </span>            :         // Sanity check: if we get here, it means that lid is a LP which has
+<span class="lineNum">     362 </span>            :         // at least one event to be executed. If advance_to_next_event() returns
+<span class="lineNum">     363 </span>            :         // NULL, it means that lid has no events to be executed. This is
+<span class="lineNum">     364 </span>            :         // a critical condition and we abort.
+<span class="lineNum">     365 </span>            :         if (unlikely(event == NULL)) {
+<span class="lineNum">     366 </span>            :                 rootsim_error(true,
+<span class="lineNum">     367 </span>            :                               &quot;Critical condition: LP %d seems to have events to be processed, but I cannot find them. Aborting...\n&quot;,
+<span class="lineNum">     368 </span>            :                               next-&gt;gid);
+<span class="lineNum">     369 </span>            :         }
+<span class="lineNum">     370 </span>            : 
+<span class="lineNum">     371 </span>            :         if (unlikely(!process_control_msg(event))) {
+<span class="lineNum">     372 </span>            :                 return;
+<span class="lineNum">     373 </span>            :         }
+<span class="lineNum">     374 </span>            : #ifdef HAVE_CROSS_STATE
+<span class="lineNum">     375 </span>            :         // In case we are resuming an interrupted execution, we keep track of this.
+<span class="lineNum">     376 </span>            :         // If at the end of the scheduling the LP is not blocked, we can unblock all the remote objects
+<span class="lineNum">     377 </span>            :         if (is_blocked_state(next-&gt;state) || next-&gt;state == LP_STATE_READY_FOR_SYNCH) {
+<span class="lineNum">     378 </span>            :                 resume_execution = true;
+<span class="lineNum">     379 </span>            :         }
+<span class="lineNum">     380 </span>            : #endif
+<span class="lineNum">     381 </span>            : 
+<span class="lineNum">     382 </span>            :         // Schedule the LP user-level thread
+<span class="lineNum">     383 </span>            :         if (next-&gt;state == LP_STATE_READY_FOR_SYNCH)
+<span class="lineNum">     384 </span>            :                 next-&gt;state = LP_STATE_RUNNING_ECS;
+<span class="lineNum">     385 </span>            :         else
+<span class="lineNum">     386 </span>            :                 next-&gt;state = LP_STATE_RUNNING;
+<span class="lineNum">     387 </span>            : 
+<span class="lineNum">     388 </span>            :         activate_LP(next, event);
+<span class="lineNum">     389 </span>            : 
+<span class="lineNum">     390 </span>            :         if (!is_blocked_state(next-&gt;state)) {
+<span class="lineNum">     391 </span>            :                 next-&gt;state = LP_STATE_READY;
+<span class="lineNum">     392 </span>            :                 send_outgoing_msgs(next);
+<span class="lineNum">     393 </span>            :         }
+<span class="lineNum">     394 </span>            : #ifdef HAVE_CROSS_STATE
+<span class="lineNum">     395 </span>            :         if (resume_execution &amp;&amp; !is_blocked_state(next-&gt;state)) {
+<span class="lineNum">     396 </span>            :                 //printf(&quot;ECS event is finished mark %llu !!!\n&quot;, next-&gt;wait_on_rendezvous);
+<span class="lineNum">     397 </span>            :                 fflush(stdout);
+<span class="lineNum">     398 </span>            :                 unblock_synchronized_objects(next);
+<span class="lineNum">     399 </span>            : 
+<span class="lineNum">     400 </span>            :                 // This is to avoid domino effect when relying on rendezvous messages
+<span class="lineNum">     401 </span>            :                 force_LP_checkpoint(next);
+<span class="lineNum">     402 </span>            :         }
+<span class="lineNum">     403 </span>            : #endif
+<span class="lineNum">     404 </span>            : 
+<span class="lineNum">     405 </span>            :         // Log the state, if needed
+<span class="lineNum">     406 </span>            :         LogState(next);
+<span class="lineNum">     407 </span>            : }
+<span class="lineNum">     408 </span>            : 
+<span class="lineNum">     409 </span><span class="lineNoCov">          0 : void schedule_on_init(struct lp_struct *next)</span>
+<span class="lineNum">     410 </span>            : {
+<span class="lineNum">     411 </span>            :         msg_t *event;
+<span class="lineNum">     412 </span>            : 
+<span class="lineNum">     413 </span>            : #ifdef HAVE_CROSS_STATE
+<span class="lineNum">     414 </span>            :         bool resume_execution = false;
+<span class="lineNum">     415 </span>            : #endif
+<span class="lineNum">     416 </span>            : 
+<span class="lineNum">     417 </span>            :         event = list_head(next-&gt;queue_in);
+<span class="lineNum">     418 </span>            :         next-&gt;bound = event;
+<span class="lineNum">     419 </span>            : 
+<span class="lineNum">     420 </span>            : 
+<span class="lineNum">     421 </span>            :         // Sanity check: if we get here, it means that lid is a LP which has
+<span class="lineNum">     422 </span>            :         // at least one event to be executed. If advance_to_next_event() returns
+<span class="lineNum">     423 </span>            :         // NULL, it means that lid has no events to be executed. This is
+<span class="lineNum">     424 </span>            :         // a critical condition and we abort.
+<span class="lineNum">     425 </span>            :         if (unlikely(event == NULL) || event-&gt;type != INIT) {
+<span class="lineNum">     426 </span>            :                 rootsim_error(true,
+<span class="lineNum">     427 </span>            :                               &quot;Critical condition: LP %d should have an INIT event but I cannot find it. Aborting...\n&quot;,
+<span class="lineNum">     428 </span>            :                               next-&gt;gid);
+<span class="lineNum">     429 </span>            :         }
+<span class="lineNum">     430 </span>            : 
+<span class="lineNum">     431 </span>            : #ifdef HAVE_CROSS_STATE
+<span class="lineNum">     432 </span>            :         // In case we are resuming an interrupted execution, we keep track of this.
+<span class="lineNum">     433 </span>            :         // If at the end of the scheduling the LP is not blocked, we can unblock all the remote objects
+<span class="lineNum">     434 </span>            :         if (is_blocked_state(next-&gt;state) || next-&gt;state == LP_STATE_READY_FOR_SYNCH) {
+<span class="lineNum">     435 </span>            :                 resume_execution = true;
+<span class="lineNum">     436 </span>            :         }
+<span class="lineNum">     437 </span>            : #endif
+<span class="lineNum">     438 </span>            : 
+<span class="lineNum">     439 </span>            :         next-&gt;state = LP_STATE_RUNNING;
+<span class="lineNum">     440 </span>            : 
+<span class="lineNum">     441 </span>            :         activate_LP(next, event);
+<span class="lineNum">     442 </span>            : 
+<span class="lineNum">     443 </span>            :         if (!is_blocked_state(next-&gt;state)) {
+<span class="lineNum">     444 </span>            :                 next-&gt;state = LP_STATE_READY;
+<span class="lineNum">     445 </span>            :                 send_outgoing_msgs(next);
+<span class="lineNum">     446 </span>            :         }
+<span class="lineNum">     447 </span>            : #ifdef HAVE_CROSS_STATE
+<span class="lineNum">     448 </span>            :         if (resume_execution &amp;&amp; !is_blocked_state(next-&gt;state)) {
+<span class="lineNum">     449 </span>            :                 //printf(&quot;ECS event is finished mark %llu !!!\n&quot;, next-&gt;wait_on_rendezvous);
+<span class="lineNum">     450 </span>            :                 fflush(stdout);
+<span class="lineNum">     451 </span>            :                 unblock_synchronized_objects(next);
+<span class="lineNum">     452 </span>            : 
+<span class="lineNum">     453 </span>            :                 // This is to avoid domino effect when relying on rendezvous messages
+<span class="lineNum">     454 </span>            :                 force_LP_checkpoint(next);
+<span class="lineNum">     455 </span>            :         }
+<span class="lineNum">     456 </span>            : #endif
+<span class="lineNum">     457 </span>            : 
+<span class="lineNum">     458 </span>            :         // Log the state, if needed
+<span class="lineNum">     459 </span>            :         LogState(next);
+<span class="lineNum">     460 </span>            : }
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.12</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>

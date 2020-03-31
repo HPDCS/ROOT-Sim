@@ -1,0 +1,6 @@
+<map id="_state_t" name="_state_t">
+<area shape="rect" id="node2" href="$struct__msg__t.html" title="Message Type definition. " alt="" coords="5,111,75,137"/>
+<area shape="rect" id="node3" href="$struct__gid__t.html" title="Definition of a GID. " alt="" coords="10,5,70,32"/>
+<area shape="rect" id="node4" href="$struct__topology__t.html" title="the customised struct for TOPOLOGY_OBSTACLES representation " alt="" coords="156,111,252,137"/>
+<area shape="rect" id="node5" href="$struct__numerical__state.html" title="_numerical_state" alt="" coords="277,111,409,137"/>
+</map>

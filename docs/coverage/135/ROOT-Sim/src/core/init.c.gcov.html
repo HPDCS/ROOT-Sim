@@ -1,0 +1,638 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - doc-coverage.info - ROOT-Sim/src/core/init.c</title>
+  <link rel="stylesheet" type="text/css" href="../../../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../../../index.html">top level</a> - <a href="index.html">ROOT-Sim/src/core</a> - init.c</td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">doc-coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">4</td>
+            <td class="headerCovTableEntry">14</td>
+            <td class="headerCovTableEntryLo">28.6 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2020-01-30 13:56:10</td>
+            <td></td>
+          </tr>
+          <tr><td><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<span class="lineNum">       1 </span><span class="lineCov">          1 : /**</span>
+<span class="lineNum">       2 </span>            : * @file core/init.c
+<span class="lineNum">       3 </span>            : *
+<span class="lineNum">       4 </span>            : * @brief Initialization routines
+<span class="lineNum">       5 </span>            : *
+<span class="lineNum">       6 </span>            : * This module implements the simulator initialization routines
+<span class="lineNum">       7 </span>            : *
+<span class="lineNum">       8 </span>            : * @copyright
+<span class="lineNum">       9 </span>            : * Copyright (C) 2008-2019 HPDCS Group
+<span class="lineNum">      10 </span>            : * https://hpdcs.github.io
+<span class="lineNum">      11 </span>            : *
+<span class="lineNum">      12 </span>            : * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
+<span class="lineNum">      13 </span>            : *
+<span class="lineNum">      14 </span>            : * ROOT-Sim is free software; you can redistribute it and/or modify it under the
+<span class="lineNum">      15 </span>            : * terms of the GNU General Public License as published by the Free Software
+<span class="lineNum">      16 </span>            : * Foundation; only version 3 of the License applies.
+<span class="lineNum">      17 </span>            : *
+<span class="lineNum">      18 </span>            : * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
+<span class="lineNum">      19 </span>            : * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+<span class="lineNum">      20 </span>            : * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+<span class="lineNum">      21 </span>            : *
+<span class="lineNum">      22 </span>            : * You should have received a copy of the GNU General Public License along with
+<span class="lineNum">      23 </span>            : * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
+<span class="lineNum">      24 </span>            : * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+<span class="lineNum">      25 </span>            : *
+<span class="lineNum">      26 </span>            : * @author Francesco Quaglia
+<span class="lineNum">      27 </span>            : * @author Andrea Piccione
+<span class="lineNum">      28 </span>            : * @author Alessandro Pellegrini
+<span class="lineNum">      29 </span>            : * @author Roberto Vitali
+<span class="lineNum">      30 </span>            : */
+<span class="lineNum">      31 </span>            : 
+<span class="lineNum">      32 </span>            : #include &lt;unistd.h&gt;
+<span class="lineNum">      33 </span>            : #include &lt;stdio.h&gt;
+<span class="lineNum">      34 </span>            : #include &lt;stdlib.h&gt;
+<span class="lineNum">      35 </span>            : #include &lt;string.h&gt;
+<span class="lineNum">      36 </span>            : #include &lt;sys/types.h&gt;
+<span class="lineNum">      37 </span>            : #include &lt;limits.h&gt;
+<span class="lineNum">      38 </span>            : #include &lt;sysexits.h&gt;
+<span class="lineNum">      39 </span>            : #include &lt;argp.h&gt;
+<span class="lineNum">      40 </span>            : #include &lt;errno.h&gt;
+<span class="lineNum">      41 </span>            : 
+<span class="lineNum">      42 </span>            : #include &lt;ROOT-Sim.h&gt;
+<span class="lineNum">      43 </span>            : #include &lt;arch/thread.h&gt;
+<span class="lineNum">      44 </span>            : #include &lt;communication/communication.h&gt;
+<span class="lineNum">      45 </span>            : #include &lt;core/core.h&gt;
+<span class="lineNum">      46 </span>            : #include &lt;core/init.h&gt;
+<span class="lineNum">      47 </span>            : #include &lt;datatypes/bitmap.h&gt;
+<span class="lineNum">      48 </span>            : #include &lt;scheduler/process.h&gt;
+<span class="lineNum">      49 </span>            : #include &lt;gvt/gvt.h&gt;
+<span class="lineNum">      50 </span>            : #include &lt;gvt/ccgs.h&gt;
+<span class="lineNum">      51 </span>            : #include &lt;scheduler/scheduler.h&gt;
+<span class="lineNum">      52 </span>            : #include &lt;mm/state.h&gt;
+<span class="lineNum">      53 </span>            : #include &lt;mm/ecs.h&gt;
+<span class="lineNum">      54 </span>            : #include &lt;mm/mm.h&gt;
+<span class="lineNum">      55 </span>            : #include &lt;statistics/statistics.h&gt;
+<span class="lineNum">      56 </span>            : #include &lt;lib/numerical.h&gt;
+<span class="lineNum">      57 </span>            : #include &lt;lib/topology.h&gt;
+<span class="lineNum">      58 </span>            : #include &lt;lib/abm_layer.h&gt;
+<span class="lineNum">      59 </span>            : #include &lt;serial/serial.h&gt;
+<span class="lineNum">      60 </span>            : #ifdef HAVE_MPI
+<span class="lineNum">      61 </span>            : #include &lt;communication/mpi.h&gt;
+<span class="lineNum">      62 </span>            : #endif
+<span class="lineNum">      63 </span>            : 
+<span class="lineNum">      64 </span>            : 
+<span class="lineNum">      65 </span>            : /// This is the list of mnemonics for arguments
+<span class="lineNum">      66 </span><span class="lineNoCov">          0 : enum _opt_codes{</span>
+<span class="lineNum">      67 </span>            :         OPT_FIRST = 128, /**&lt; this is used as an offset to the enum values, so that argp doesn't assign short options */
+<span class="lineNum">      68 </span>            : 
+<span class="lineNum">      69 </span>            :         // make sure these ones are mapped correctly to the external enum param_codes,
+<span class="lineNum">      70 </span>            :         OPT_SCHEDULER =         OPT_FIRST + PARAM_SCHEDULER,
+<span class="lineNum">      71 </span>            :         OPT_CKTRM_MODE =        OPT_FIRST + PARAM_CKTRM_MODE,
+<span class="lineNum">      72 </span>            :         OPT_LPS_DISTRIBUTION =  OPT_FIRST + PARAM_LPS_DISTRIBUTION,
+<span class="lineNum">      73 </span>            :         OPT_VERBOSE =           OPT_FIRST + PARAM_VERBOSE,
+<span class="lineNum">      74 </span>            :         OPT_STATS =             OPT_FIRST + PARAM_STATS,
+<span class="lineNum">      75 </span>            :         OPT_STATE_SAVING =      OPT_FIRST + PARAM_STATE_SAVING,
+<span class="lineNum">      76 </span>            :         OPT_SNAPSHOT =          OPT_FIRST + PARAM_SNAPSHOT,
+<span class="lineNum">      77 </span>            : 
+<span class="lineNum">      78 </span>            :         OPT_NP,
+<span class="lineNum">      79 </span>            :         OPT_NPRC,
+<span class="lineNum">      80 </span>            :         OPT_OUTPUT_DIR,
+<span class="lineNum">      81 </span>            :         OPT_NPWD,
+<span class="lineNum">      82 </span>            :         OPT_P,
+<span class="lineNum">      83 </span>            :         OPT_FULL,
+<span class="lineNum">      84 </span>            :         OPT_INC,
+<span class="lineNum">      85 </span>            :         OPT_A,
+<span class="lineNum">      86 </span>            :         OPT_GVT,
+<span class="lineNum">      87 </span>            :         OPT_GVT_SNAPSHOT_CYCLES,
+<span class="lineNum">      88 </span>            :         OPT_SIMULATION_TIME,
+<span class="lineNum">      89 </span>            :         OPT_DETERMINISTIC_SEED,
+<span class="lineNum">      90 </span>            :         OPT_SEED,
+<span class="lineNum">      91 </span>            :         OPT_SERIAL,
+<span class="lineNum">      92 </span>            :         OPT_NO_CORE_BINDING,
+<span class="lineNum">      93 </span>            :         OPT_PREEMPTION,
+<span class="lineNum">      94 </span>            :         OPT_LAST
+<span class="lineNum">      95 </span>            : };
+<span class="lineNum">      96 </span>            : 
+<span class="lineNum">      97 </span>            : // XXX we offset the first level with OPT_FIRST so remember about it when you index it!
+<span class="lineNum">      98 </span><span class="lineCov">          1 : const char * const param_to_text[][5] = {</span>
+<span class="lineNum">      99 </span>            :         [OPT_SCHEDULER - OPT_FIRST] = {
+<span class="lineNum">     100 </span>            :                         [SCHEDULER_INVALID] = &quot;invalid scheduler&quot;,
+<span class="lineNum">     101 </span>            :                         [SCHEDULER_STF] = &quot;stf&quot;,
+<span class="lineNum">     102 </span>            :         },
+<span class="lineNum">     103 </span>            :         [OPT_CKTRM_MODE - OPT_FIRST] = {
+<span class="lineNum">     104 </span>            :                         [CKTRM_INVALID] = &quot;invalid termination checking&quot;,
+<span class="lineNum">     105 </span>            :                         [CKTRM_NORMAL] = &quot;normal&quot;,
+<span class="lineNum">     106 </span>            :                         [CKTRM_INCREMENTAL] = &quot;incremental&quot;,
+<span class="lineNum">     107 </span>            :                         [CKTRM_ACCURATE] = &quot;accurate&quot;
+<span class="lineNum">     108 </span>            :         },
+<span class="lineNum">     109 </span>            :         [OPT_LPS_DISTRIBUTION - OPT_FIRST] = {
+<span class="lineNum">     110 </span>            :                         [LP_DISTRIBUTION_INVALID] = &quot;invalid LPs distribution&quot;,
+<span class="lineNum">     111 </span>            :                         [LP_DISTRIBUTION_BLOCK] = &quot;block&quot;,
+<span class="lineNum">     112 </span>            :                         [LP_DISTRIBUTION_CIRCULAR] = &quot;circular&quot;
+<span class="lineNum">     113 </span>            :         },
+<span class="lineNum">     114 </span>            :         [OPT_VERBOSE - OPT_FIRST] = {
+<span class="lineNum">     115 </span>            :                         [VERBOSE_INVALID] = &quot;invalid verbose specification&quot;,
+<span class="lineNum">     116 </span>            :                         [VERBOSE_INFO] = &quot;info&quot;,
+<span class="lineNum">     117 </span>            :                         [VERBOSE_DEBUG] = &quot;debug&quot;,
+<span class="lineNum">     118 </span>            :                         [VERBOSE_NO] = &quot;no&quot;
+<span class="lineNum">     119 </span>            :         },
+<span class="lineNum">     120 </span>            :         [OPT_STATS - OPT_FIRST] = {
+<span class="lineNum">     121 </span>            :                         [STATS_INVALID] = &quot;invalid statistics specification&quot;,
+<span class="lineNum">     122 </span>            :                         [STATS_GLOBAL] = &quot;global&quot;,
+<span class="lineNum">     123 </span>            :                         [STATS_PERF] = &quot;performance&quot;,
+<span class="lineNum">     124 </span>            :                         [STATS_LP] = &quot;lp&quot;,
+<span class="lineNum">     125 </span>            :                         [STATS_ALL] = &quot;all&quot;
+<span class="lineNum">     126 </span>            :         },
+<span class="lineNum">     127 </span>            :         [OPT_STATE_SAVING - OPT_FIRST] = {
+<span class="lineNum">     128 </span>            :                         [STATE_SAVING_INVALID] = &quot;invalid checkpointing specification&quot;,
+<span class="lineNum">     129 </span>            :                         [STATE_SAVING_COPY] = &quot;copy&quot;,
+<span class="lineNum">     130 </span>            :                         [STATE_SAVING_PERIODIC] = &quot;periodic&quot;,
+<span class="lineNum">     131 </span>            :         },
+<span class="lineNum">     132 </span>            :         [OPT_SNAPSHOT - OPT_FIRST] = {
+<span class="lineNum">     133 </span>            :                         [SNAPSHOT_INVALID] = &quot;invalid snapshot specification&quot;,
+<span class="lineNum">     134 </span>            :                         [SNAPSHOT_FULL] = &quot;full&quot;,
+<span class="lineNum">     135 </span>            :         }
+<span class="lineNum">     136 </span>            : };
+<span class="lineNum">     137 </span>            : 
+<span class="lineNum">     138 </span><span class="lineNoCov">          0 : const char *argp_program_version        = PACKAGE_STRING &quot;\nCopyright (C) 2008-2019 HPDCS Group&quot;;</span>
+<span class="lineNum">     139 </span><span class="lineNoCov">          0 : const char *argp_program_bug_address    = PACKAGE_BUGREPORT;</span>
+<span class="lineNum">     140 </span>            : 
+<span class="lineNum">     141 </span>            : // Directly from argp documentation:
+<span class="lineNum">     142 </span>            : // If non-zero, a string containing extra text to be printed before and after the options in a long help message,
+<span class="lineNum">     143 </span>            : // with the two sections separated by a vertical tab ('\v', '\013') character.
+<span class="lineNum">     144 </span>            : // By convention, the documentation before the options is just a short string explaining what the program does.
+<span class="lineNum">     145 </span>            : // Documentation printed after the options describe behavior in more detail.
+<span class="lineNum">     146 </span><span class="lineNoCov">          0 : static char doc[] = &quot;ROOT-Sim - a fast distributed multithreaded Parallel Discrete Event Simulator \v For more information check the official wiki at https://github.com/HPDCS/ROOT-Sim/wiki&quot;;</span>
+<span class="lineNum">     147 </span>            : 
+<span class="lineNum">     148 </span>            : // this isn't needed (we haven't got non option arguments to document)
+<span class="lineNum">     149 </span><span class="lineNoCov">          0 : static char args_doc[] = &quot;&quot;;</span>
+<span class="lineNum">     150 </span>            : // the options recognized by argp
+<span class="lineNum">     151 </span>            : static const struct argp_option argp_options[] = {
+<span class="lineNum">     152 </span>            :         {&quot;wt&quot;,                        OPT_NP,                 &quot;VALUE&quot;,      0,              &quot;Number of total cores being used by the simulation&quot;, 0},
+<span class="lineNum">     153 </span>            :         {&quot;lp&quot;,                        OPT_NPRC,               &quot;VALUE&quot;,      0,              &quot;Total number of Logical Processes being launched at simulation startup&quot;, 0},
+<span class="lineNum">     154 </span>            :         {&quot;output-dir&quot;,                OPT_OUTPUT_DIR,         &quot;PATH&quot;,               0,              &quot;Path to a folder where execution statistics are stored. If not present, it is created&quot;, 0},
+<span class="lineNum">     155 </span>            :         {&quot;scheduler&quot;,         OPT_SCHEDULER,          &quot;TYPE&quot;,               0,              &quot;LP Scheduling algorithm. Supported values are: stf&quot;, 0},
+<span class="lineNum">     156 </span>            :         {&quot;npwd&quot;,              OPT_NPWD,               0,              0,              &quot;Non Piece-Wise-Deterministic simulation model. See manpage for accurate description&quot;, 0},
+<span class="lineNum">     157 </span>            :         {&quot;p&quot;,                 OPT_P,                  &quot;VALUE&quot;,      0,              &quot;Checkpointing interval&quot;, 0},
+<span class="lineNum">     158 </span>            :         {&quot;full&quot;,              OPT_FULL,               0,              0,              &quot;Take only full logs&quot;, 0},
+<span class="lineNum">     159 </span>            :         {&quot;inc&quot;,                       OPT_INC,                0,              0,              &quot;Take only incremental logs (still to be released)&quot;, 0},
+<span class="lineNum">     160 </span>            :         {&quot;A&quot;,                 OPT_A,                  0,              0,              &quot;Autonomic subsystem: set checkpointing interval and log mode automatically at runtime (still to be released)&quot;, 0},
+<span class="lineNum">     161 </span>            :         {&quot;gvt&quot;,                       OPT_GVT,                &quot;VALUE&quot;,      0,              &quot;Time between two GVT reductions (in milliseconds)&quot;, 0},
+<span class="lineNum">     162 </span>            :         {&quot;cktrm-mode&quot;,                OPT_CKTRM_MODE,         &quot;TYPE&quot;,               0,              &quot;Termination Detection mode. Supported values: normal, incremental, accurate&quot;, 0},
+<span class="lineNum">     163 </span>            :         {&quot;gvt-snapshot-cycles&quot;,       OPT_GVT_SNAPSHOT_CYCLES, &quot;VALUE&quot;,     0,              &quot;Termination detection is invoked after this number of GVT reductions&quot;, 0},
+<span class="lineNum">     164 </span>            :         {&quot;simulation-time&quot;,   OPT_SIMULATION_TIME,    &quot;VALUE&quot;,      0,              &quot;Halt the simulation when all LPs reach this logical time. 0 means infinite&quot;, 0},
+<span class="lineNum">     165 </span>            :         {&quot;lps-distribution&quot;,  OPT_LPS_DISTRIBUTION,   &quot;TYPE&quot;,               0,              &quot;LPs distributions over simulation kernels policies. Supported values: block, circular&quot;, 0},
+<span class="lineNum">     166 </span>            :         {&quot;deterministic-seed&quot;,        OPT_DETERMINISTIC_SEED, 0,              0,              &quot;Do not change the initial random seed for LPs. Enforces different deterministic simulation runs&quot;, 0},
+<span class="lineNum">     167 </span>            :         {&quot;verbose&quot;,           OPT_VERBOSE,            &quot;TYPE&quot;,               0,              &quot;Verbose execution&quot;, 0},
+<span class="lineNum">     168 </span>            :         {&quot;stats&quot;,             OPT_STATS,              &quot;TYPE&quot;,               0,              &quot;Level of detail in the output statistics&quot;, 0},
+<span class="lineNum">     169 </span>            :         {&quot;seed&quot;,              OPT_SEED,               &quot;VALUE&quot;,      0,              &quot;Manually specify the initial random seed&quot;, 0},
+<span class="lineNum">     170 </span>            :         {&quot;serial&quot;,            OPT_SERIAL,             0,              0,              &quot;Run a serial simulation (using Calendar Queues)&quot;, 0},
+<span class="lineNum">     171 </span>            :         {&quot;sequential&quot;,                OPT_SERIAL,             0,              OPTION_ALIAS,   NULL, 0},
+<span class="lineNum">     172 </span>            :         {&quot;no-core-binding&quot;,   OPT_NO_CORE_BINDING,    0,              0,              &quot;Disable the binding of threads to specific physical processing cores&quot;, 0},
+<span class="lineNum">     173 </span>            :         {&quot;no-preemption&quot;,     OPT_PREEMPTION,         0,              0,              &quot;Disable Preemptive Time Warp&quot;, 0},
+<span class="lineNum">     174 </span>            :         {0}
+<span class="lineNum">     175 </span>            : };
+<span class="lineNum">     176 </span>            : 
+<span class="lineNum">     177 </span><span class="lineNoCov">          0 : #define malformed_option_failure()      argp_error(state, &quot;invalid value \&quot;%s\&quot; in %s option.\nAborting!&quot;, arg, state-&gt;argv[state-&gt;next -1 -(arg != NULL)])</span>
+<span class="lineNum">     178 </span>            : 
+<span class="lineNum">     179 </span><span class="lineNoCov">          0 : #define conflicting_option_failure(msg) argp_error(state, &quot;the requested option %s with value \&quot;%s\&quot; is conflicting: &quot; msg &quot;\nAborting!&quot;, state-&gt;argv[state-&gt;next -1 -(arg != NULL)], arg)</span>
+<span class="lineNum">     180 </span>            : 
+<span class="lineNum">     181 </span>            : // this parses an string option leveraging the 2d array of strings specified earlier
+<span class="lineNum">     182 </span>            : // the weird iteration style skips the element 0, which we know is associated with an invalid value description
+<span class="lineNum">     183 </span><span class="lineNoCov">          0 : #define handle_string_option(label, var)                                                \</span>
+<span class="lineNum">     184 </span>            :         case label:                                                                     \
+<span class="lineNum">     185 </span>            :         ({                                                                              \
+<span class="lineNum">     186 </span>            :                 unsigned __i = 1;                                                       \
+<span class="lineNum">     187 </span>            :                 while(1) {                                                              \
+<span class="lineNum">     188 </span>            :                         if(strcmp(arg, param_to_text[key - OPT_FIRST][__i]) == 0) {     \
+<span class="lineNum">     189 </span>            :                                 var = __i;                                              \
+<span class="lineNum">     190 </span>            :                                 break;                                                  \
+<span class="lineNum">     191 </span>            :                         }                                                               \
+<span class="lineNum">     192 </span>            :                         if(!param_to_text[key - OPT_FIRST][++__i])                      \
+<span class="lineNum">     193 </span>            :                                 malformed_option_failure();                             \
+<span class="lineNum">     194 </span>            :                 }                                                                       \
+<span class="lineNum">     195 </span>            :         });                                                                             \
+<span class="lineNum">     196 </span>            :         break
+<span class="lineNum">     197 </span>            : 
+<span class="lineNum">     198 </span>            : 
+<span class="lineNum">     199 </span>            : // the compound expression equivalent to __value &gt;= low is needed in order to suppress a warning when low == 0
+<span class="lineNum">     200 </span><span class="lineNoCov">          0 : #define parse_ullong_limits(low, high)  \</span>
+<span class="lineNum">     201 </span>            :         ({                                                                                                              \
+<span class="lineNum">     202 </span>            :                 unsigned long long int __value;                                                                         \
+<span class="lineNum">     203 </span>            :                 char *__endptr;                                                                                         \
+<span class="lineNum">     204 </span>            :                 __value = strtoull(arg, &amp;__endptr, 10);                                                                     \
+<span class="lineNum">     205 </span>            :                 if(!(*arg != '\0' &amp;&amp; *__endptr == '\0' &amp;&amp; (__value &gt; low || __value == low) &amp;&amp; __value &lt;= high)) {        \
+<span class="lineNum">     206 </span>            :                         malformed_option_failure();                                                                     \
+<span class="lineNum">     207 </span>            :                 }                                                                                                       \
+<span class="lineNum">     208 </span>            :                 __value;                                                                                                \
+<span class="lineNum">     209 </span>            :         })
+<span class="lineNum">     210 </span>            : 
+<span class="lineNum">     211 </span><span class="lineNoCov">          0 : static error_t parse_opt (int key, char *arg, struct argp_state *state)</span>
+<span class="lineNum">     212 </span>            : {
+<span class="lineNum">     213 </span>            :         // this is used in order to ensure that the user doesn't use duplicate options
+<span class="lineNum">     214 </span>            :         static rootsim_bitmap scanned[bitmap_required_size(OPT_LAST - OPT_FIRST)];
+<span class="lineNum">     215 </span>            : 
+<span class="lineNum">     216 </span>            :         if(key &gt;= OPT_FIRST &amp;&amp; key &lt; OPT_LAST){
+<span class="lineNum">     217 </span>            :                 if(bitmap_check(scanned, key - OPT_FIRST))
+<span class="lineNum">     218 </span>            :                         conflicting_option_failure(&quot;this option has already been specified&quot;);
+<span class="lineNum">     219 </span>            : 
+<span class="lineNum">     220 </span>            :                 bitmap_set(scanned, key - OPT_FIRST);
+<span class="lineNum">     221 </span>            :         }
+<span class="lineNum">     222 </span>            : 
+<span class="lineNum">     223 </span>            :         switch (key) {
+<span class="lineNum">     224 </span>            :                 case OPT_NP:
+<span class="lineNum">     225 </span>            :                         if(strcmp(arg, &quot;auto&quot;) == 0) {
+<span class="lineNum">     226 </span>            :                                 n_cores = get_cores();
+<span class="lineNum">     227 </span>            :                         } else {
+<span class="lineNum">     228 </span>            :                                 n_cores = parse_ullong_limits(1, UINT_MAX);
+<span class="lineNum">     229 </span>            :                         }
+<span class="lineNum">     230 </span>            :                         break;
+<span class="lineNum">     231 </span>            : 
+<span class="lineNum">     232 </span>            :                 case OPT_NPRC:
+<span class="lineNum">     233 </span>            :                         n_prc_tot = parse_ullong_limits(1, UINT_MAX);
+<span class="lineNum">     234 </span>            :                         break;
+<span class="lineNum">     235 </span>            : 
+<span class="lineNum">     236 </span>            :                 case OPT_OUTPUT_DIR:
+<span class="lineNum">     237 </span>            :                         rootsim_config.output_dir = arg;
+<span class="lineNum">     238 </span>            :                         break;
+<span class="lineNum">     239 </span>            : 
+<span class="lineNum">     240 </span>            :                 handle_string_option(OPT_SCHEDULER, rootsim_config.scheduler);
+<span class="lineNum">     241 </span>            :                 handle_string_option(OPT_FULL, rootsim_config.snapshot);
+<span class="lineNum">     242 </span>            :                 handle_string_option(OPT_CKTRM_MODE, rootsim_config.check_termination_mode);
+<span class="lineNum">     243 </span>            :                 handle_string_option(OPT_VERBOSE, rootsim_config.verbose);
+<span class="lineNum">     244 </span>            :                 handle_string_option(OPT_STATS, rootsim_config.stats);
+<span class="lineNum">     245 </span>            :                 handle_string_option(OPT_LPS_DISTRIBUTION, rootsim_config.lps_distribution);
+<span class="lineNum">     246 </span>            : 
+<span class="lineNum">     247 </span>            :                 case OPT_NPWD:
+<span class="lineNum">     248 </span>            :                         if (bitmap_check(scanned, OPT_P-OPT_FIRST)) {
+<span class="lineNum">     249 </span>            :                                 conflicting_option_failure(&quot;I'm requested to run non piece-wise deterministically, but a checkpointing interval is set already.&quot;);
+<span class="lineNum">     250 </span>            :                         } else {
+<span class="lineNum">     251 </span>            :                                 rootsim_config.checkpointing = STATE_SAVING_COPY;
+<span class="lineNum">     252 </span>            :                         }
+<span class="lineNum">     253 </span>            :                         break;
+<span class="lineNum">     254 </span>            : 
+<span class="lineNum">     255 </span>            :                 case OPT_P:
+<span class="lineNum">     256 </span>            :                         if(bitmap_check(scanned, OPT_NPWD-OPT_FIRST)) {
+<span class="lineNum">     257 </span>            :                                 conflicting_option_failure(&quot;Copy State Saving is selected, but I'm requested to set a checkpointing interval.&quot;);
+<span class="lineNum">     258 </span>            :                         } else {
+<span class="lineNum">     259 </span>            :                                 rootsim_config.checkpointing = STATE_SAVING_PERIODIC;
+<span class="lineNum">     260 </span>            :                                 rootsim_config.ckpt_period = parse_ullong_limits(1, 40);
+<span class="lineNum">     261 </span>            :                                 // This is a micro optimization that makes the LogState function to avoid checking the checkpointing interval and keeping track of the logs taken
+<span class="lineNum">     262 </span>            :                                 if(rootsim_config.ckpt_period == 1)
+<span class="lineNum">     263 </span>            :                                         rootsim_config.checkpointing = STATE_SAVING_COPY;
+<span class="lineNum">     264 </span>            :                         }
+<span class="lineNum">     265 </span>            :                         break;
+<span class="lineNum">     266 </span>            : 
+<span class="lineNum">     267 </span>            :                 case OPT_INC:
+<span class="lineNum">     268 </span>            :                         argp_failure(state, EXIT_FAILURE, ENOSYS, &quot;incremental state saving is not supported in stable version yet...\nAborting&quot;);
+<span class="lineNum">     269 </span>            :                         break;
+<span class="lineNum">     270 </span>            : 
+<span class="lineNum">     271 </span>            :                 case OPT_A:
+<span class="lineNum">     272 </span>            :                         argp_failure(state, EXIT_FAILURE, ENOSYS, &quot;autonomic state saving is not supported in stable version yet...\nAborting&quot;);
+<span class="lineNum">     273 </span>            :                         break;
+<span class="lineNum">     274 </span>            : 
+<span class="lineNum">     275 </span>            :                 case OPT_GVT:
+<span class="lineNum">     276 </span>            :                         rootsim_config.gvt_time_period = parse_ullong_limits(1, 10000);
+<span class="lineNum">     277 </span>            :                         break;
+<span class="lineNum">     278 </span>            : 
+<span class="lineNum">     279 </span>            :                 case OPT_GVT_SNAPSHOT_CYCLES:
+<span class="lineNum">     280 </span>            :                         rootsim_config.gvt_snapshot_cycles = parse_ullong_limits(1, INT_MAX);
+<span class="lineNum">     281 </span>            :                         break;
+<span class="lineNum">     282 </span>            : 
+<span class="lineNum">     283 </span>            :                 case OPT_SIMULATION_TIME:
+<span class="lineNum">     284 </span>            :                         rootsim_config.simulation_time = parse_ullong_limits(0, INT_MAX);
+<span class="lineNum">     285 </span>            :                         break;
+<span class="lineNum">     286 </span>            : 
+<span class="lineNum">     287 </span>            :                 case OPT_DETERMINISTIC_SEED:
+<span class="lineNum">     288 </span>            :                         rootsim_config.deterministic_seed = true;
+<span class="lineNum">     289 </span>            :                         break;
+<span class="lineNum">     290 </span>            : 
+<span class="lineNum">     291 </span>            :                 case OPT_SEED:
+<span class="lineNum">     292 </span>            :                         rootsim_config.set_seed = parse_ullong_limits(0, UINT64_MAX);
+<span class="lineNum">     293 </span>            :                         break;
+<span class="lineNum">     294 </span>            : 
+<span class="lineNum">     295 </span>            :                 case OPT_SERIAL:
+<span class="lineNum">     296 </span>            :                         rootsim_config.serial = true;
+<span class="lineNum">     297 </span>            :                         break;
+<span class="lineNum">     298 </span>            : 
+<span class="lineNum">     299 </span>            :                 case OPT_NO_CORE_BINDING:
+<span class="lineNum">     300 </span>            :                         rootsim_config.core_binding = false;
+<span class="lineNum">     301 </span>            :                         break;
+<span class="lineNum">     302 </span>            : 
+<span class="lineNum">     303 </span>            :                 case OPT_PREEMPTION:
+<span class="lineNum">     304 </span>            :                         rootsim_config.disable_preemption = true;
+<span class="lineNum">     305 </span>            :                         break;
+<span class="lineNum">     306 </span>            : 
+<span class="lineNum">     307 </span>            :                 case ARGP_KEY_INIT:
+<span class="lineNum">     308 </span>            : 
+<span class="lineNum">     309 </span>            :                         memset(&amp;rootsim_config, 0, sizeof(rootsim_config));
+<span class="lineNum">     310 </span>            :                         memset(scanned, 0, sizeof(scanned));
+<span class="lineNum">     311 </span>            :                         // Store the predefined values, before reading any overriding one
+<span class="lineNum">     312 </span>            :                         rootsim_config.output_dir = DEFAULT_OUTPUT_DIR;
+<span class="lineNum">     313 </span>            :                         rootsim_config.scheduler = SCHEDULER_STF;
+<span class="lineNum">     314 </span>            :                         rootsim_config.lps_distribution = LP_DISTRIBUTION_BLOCK;
+<span class="lineNum">     315 </span>            :                         rootsim_config.check_termination_mode = CKTRM_NORMAL;
+<span class="lineNum">     316 </span>            :                         rootsim_config.stats = STATS_ALL;
+<span class="lineNum">     317 </span>            :                         rootsim_config.verbose = VERBOSE_INFO;
+<span class="lineNum">     318 </span>            :                         rootsim_config.snapshot = SNAPSHOT_FULL; // TODO: in the future, default to AUTONOMIC_
+<span class="lineNum">     319 </span>            :                         rootsim_config.checkpointing = STATE_SAVING_PERIODIC;
+<span class="lineNum">     320 </span>            :                         rootsim_config.gvt_time_period = 1000;
+<span class="lineNum">     321 </span>            :                         rootsim_config.gvt_snapshot_cycles = 2;
+<span class="lineNum">     322 </span>            :                         rootsim_config.ckpt_period = 10;
+<span class="lineNum">     323 </span>            :                         rootsim_config.simulation_time = 0;
+<span class="lineNum">     324 </span>            :                         rootsim_config.deterministic_seed = false;
+<span class="lineNum">     325 </span>            :                         rootsim_config.set_seed = 0;
+<span class="lineNum">     326 </span>            :                         rootsim_config.serial = false;
+<span class="lineNum">     327 </span>            :                         rootsim_config.core_binding = true;
+<span class="lineNum">     328 </span>            :                         rootsim_config.disable_preemption = false;
+<span class="lineNum">     329 </span>            :                         break;
+<span class="lineNum">     330 </span>            : 
+<span class="lineNum">     331 </span>            :                 case ARGP_KEY_SUCCESS:
+<span class="lineNum">     332 </span>            : 
+<span class="lineNum">     333 </span>            :                         // sanity checks
+<span class="lineNum">     334 </span>            :                         if(!rootsim_config.serial &amp;&amp; !bitmap_check(scanned, OPT_NP - OPT_FIRST))
+<span class="lineNum">     335 </span>            :                                 rootsim_error(true, &quot;Number of cores was not provided \&quot;--wt\&quot;\n&quot;);
+<span class="lineNum">     336 </span>            : 
+<span class="lineNum">     337 </span>            :                         if(!bitmap_check(scanned, OPT_NPRC - OPT_FIRST))
+<span class="lineNum">     338 </span>            :                                 rootsim_error(true, &quot;Number of LPs was not provided \&quot;--lp\&quot;\n&quot;);
+<span class="lineNum">     339 </span>            : 
+<span class="lineNum">     340 </span>            :                         if(n_cores &gt; get_cores())
+<span class="lineNum">     341 </span>            :                                 rootsim_error(true, &quot;Demanding %u cores, which are more than available (%d)\n&quot;, n_cores, get_cores());
+<span class="lineNum">     342 </span>            : 
+<span class="lineNum">     343 </span>            :                         if(n_cores &gt; MAX_THREADS_PER_KERNEL)
+<span class="lineNum">     344 </span>            :                                 rootsim_error(true, &quot;Too many threads, maximum supported number is %u\n&quot;, MAX_THREADS_PER_KERNEL);
+<span class="lineNum">     345 </span>            : 
+<span class="lineNum">     346 </span>            :                         if(n_prc_tot &gt; MAX_LPs)
+<span class="lineNum">     347 </span>            :                                 rootsim_error(true, &quot;Too many LPs, maximum supported number is %u\n&quot;, MAX_LPs);
+<span class="lineNum">     348 </span>            : 
+<span class="lineNum">     349 </span>            :                         if(!rootsim_config.serial &amp;&amp; n_prc_tot &lt; n_cores)
+<span class="lineNum">     350 </span>            :                                 rootsim_error(true, &quot;Requested a simulation run with %u LPs and %u worker threads: the mapping is not possible\n&quot;, n_prc_tot, n_cores);
+<span class="lineNum">     351 </span>            : 
+<span class="lineNum">     352 </span>            :                         print_config();
+<span class="lineNum">     353 </span>            : 
+<span class="lineNum">     354 </span>            :                         break;
+<span class="lineNum">     355 </span>            :                         
+<span class="lineNum">     356 </span>            :                         /* these functionalities are not needed
+<span class="lineNum">     357 </span>            :                 case ARGP_KEY_ARGS:
+<span class="lineNum">     358 </span>            :                 case ARGP_KEY_NO_ARGS:
+<span class="lineNum">     359 </span>            :                 case ARGP_KEY_SUCCESS:
+<span class="lineNum">     360 </span>            :                 case ARGP_KEY_END:
+<span class="lineNum">     361 </span>            :                 case ARGP_KEY_ARG:
+<span class="lineNum">     362 </span>            :                 case ARGP_KEY_ERROR:
+<span class="lineNum">     363 </span>            :                         */
+<span class="lineNum">     364 </span>            :                 default:
+<span class="lineNum">     365 </span>            :                         return ARGP_ERR_UNKNOWN;
+<span class="lineNum">     366 </span>            :         }
+<span class="lineNum">     367 </span>            :         return 0;
+<span class="lineNum">     368 </span>            : }
+<span class="lineNum">     369 </span>            : 
+<span class="lineNum">     370 </span>            : #undef parse_ullong_limits
+<span class="lineNum">     371 </span>            : #undef handle_string_option
+<span class="lineNum">     372 </span>            : #undef conflicting_option_failure
+<span class="lineNum">     373 </span>            : #undef malformed_option_failure
+<span class="lineNum">     374 </span>            : 
+<span class="lineNum">     375 </span>            : static struct argp_child argp_child[2] = {
+<span class="lineNum">     376 </span>            :                 {0, 0, &quot;Model specific options&quot;, 0},
+<span class="lineNum">     377 </span>            :                 {0}
+<span class="lineNum">     378 </span>            : };
+<span class="lineNum">     379 </span>            : 
+<span class="lineNum">     380 </span>            : static struct argp argp = { argp_options, parse_opt, args_doc, doc, argp_child, 0, 0 };
+<span class="lineNum">     381 </span>            : 
+<span class="lineNum">     382 </span>            : 
+<span class="lineNum">     383 </span>            : /**
+<span class="lineNum">     384 </span>            : * This function initializes the simulator
+<span class="lineNum">     385 </span>            : *
+<span class="lineNum">     386 </span>            : * @author Francesco Quaglia
+<span class="lineNum">     387 </span>            : * @author Alessandro Pellegrini
+<span class="lineNum">     388 </span>            : *
+<span class="lineNum">     389 </span>            : * @param argc number of parameters passed at command line
+<span class="lineNum">     390 </span>            : * @param argv array of parameters passed at command line
+<span class="lineNum">     391 </span>            : */
+<span class="lineNum">     392 </span><span class="lineCov">          1 : void SystemInit(int argc, char **argv)</span>
+<span class="lineNum">     393 </span>            : {
+<span class="lineNum">     394 </span>            : #ifdef HAVE_MPI
+<span class="lineNum">     395 </span>            :         mpi_init(&amp;argc, &amp;argv);
+<span class="lineNum">     396 </span>            : 
+<span class="lineNum">     397 </span>            :         if(n_ker &gt; MAX_KERNELS){
+<span class="lineNum">     398 </span>            :                 rootsim_error(true, &quot;Too many kernels, maximum supported number is %u\n&quot;, MAX_KERNELS);
+<span class="lineNum">     399 </span>            :         }
+<span class="lineNum">     400 </span>            : #else
+<span class="lineNum">     401 </span>            :         n_ker = 1;
+<span class="lineNum">     402 </span>            : #endif
+<span class="lineNum">     403 </span>            : 
+<span class="lineNum">     404 </span>            :         // Early initialization of ECS subsystem if needed
+<span class="lineNum">     405 </span>            : #ifdef HAVE_CROSS_STATE
+<span class="lineNum">     406 </span>            :         ecs_init();
+<span class="lineNum">     407 </span>            : #endif
+<span class="lineNum">     408 </span>            : 
+<span class="lineNum">     409 </span>            :         // this retrieves the model's argp parser if declared by the developer
+<span class="lineNum">     410 </span>            :         argp_child[0].argp = &amp;model_argp;
+<span class="lineNum">     411 </span>            : 
+<span class="lineNum">     412 </span>            :         argp_parse (&amp;argp, argc, argv, 0, NULL, NULL);
+<span class="lineNum">     413 </span>            : 
+<span class="lineNum">     414 </span>            :         // If we're going to run a serial simulation, configure the simulation to support it
+<span class="lineNum">     415 </span>            :         if(rootsim_config.serial) {
+<span class="lineNum">     416 </span>            :                 ScheduleNewEvent = SerialScheduleNewEvent;
+<span class="lineNum">     417 </span>            :                 initialize_lps();
+<span class="lineNum">     418 </span>            :                 numerical_init();
+<span class="lineNum">     419 </span>            :                 statistics_init();
+<span class="lineNum">     420 </span>            :                 serial_init();
+<span class="lineNum">     421 </span>            :                 topology_init();
+<span class="lineNum">     422 </span>            :                 abm_layer_init();
+<span class="lineNum">     423 </span>            :                 return;
+<span class="lineNum">     424 </span>            :         } else {
+<span class="lineNum">     425 </span>            :                 ScheduleNewEvent = ParallelScheduleNewEvent;
+<span class="lineNum">     426 </span>            :         }
+<span class="lineNum">     427 </span>            : 
+<span class="lineNum">     428 </span>            :         // Initialize ROOT-Sim subsystems.
+<span class="lineNum">     429 </span>            :         // All init routines are executed serially (there is no notion of threads in there)
+<span class="lineNum">     430 </span>            :         // and the order of invocation can matter!
+<span class="lineNum">     431 </span>            :         base_init();
+<span class="lineNum">     432 </span>            :         segment_init();
+<span class="lineNum">     433 </span>            :         initialize_lps();
+<span class="lineNum">     434 </span>            :         remote_memory_init();
+<span class="lineNum">     435 </span>            :         statistics_init();
+<span class="lineNum">     436 </span>            :         scheduler_init();
+<span class="lineNum">     437 </span>            :         communication_init();
+<span class="lineNum">     438 </span>            :         gvt_init();
+<span class="lineNum">     439 </span>            :         numerical_init();
+<span class="lineNum">     440 </span>            :         topology_init();
+<span class="lineNum">     441 </span>            :         abm_layer_init();
+<span class="lineNum">     442 </span>            : 
+<span class="lineNum">     443 </span>            :         // This call tells the simulation engine that the sequential initial simulation is complete
+<span class="lineNum">     444 </span>            :         initialization_complete();
+<span class="lineNum">     445 </span>            : }
+<span class="lineNum">     446 </span>            : 
+<span class="lineNum">     447 </span>            : 
+<span class="lineNum">     448 </span>            : /**
+<span class="lineNum">     449 </span>            : * Expose to the simulation model the internal configuration of the simulator, to
+<span class="lineNum">     450 </span>            : * allow fine-tuning of the model depending on the current runtime configuration
+<span class="lineNum">     451 </span>            : * and/or command-line parameters.
+<span class="lineNum">     452 </span>            : *
+<span class="lineNum">     453 </span>            : * @author Alessandro Pellegrini
+<span class="lineNum">     454 </span>            : *
+<span class="lineNum">     455 </span>            : * @param which the capability which the model is querying for availability
+<span class="lineNum">     456 </span>            : * @param info if this parameter is non-NULL, additional information is sent back
+<span class="lineNum">     457 </span>            : *               to the application in the appropriate corresponding field. If this
+<span class="lineNum">     458 </span>            : *               member is non-NULL, the @c capability member is set to @c which value,
+<span class="lineNum">     459 </span>            : *               to let the model know what member of the union is meaningful.
+<span class="lineNum">     460 </span>            : */
+<span class="lineNum">     461 </span><span class="lineCov">          1 : bool CapabilityAvailable(enum capability_t which, struct capability_info_t *info)</span>
+<span class="lineNum">     462 </span>            : {
+<span class="lineNum">     463 </span>            : 
+<span class="lineNum">     464 </span>            :         // Early evaluate things that don't have any information to provide
+<span class="lineNum">     465 </span>            :         switch(which) {
+<span class="lineNum">     466 </span>            :                 case CAP_NPWD:
+<span class="lineNum">     467 </span>            :                         return rootsim_config.checkpointing == STATE_SAVING_COPY;
+<span class="lineNum">     468 </span>            :                 case CAP_FULL:
+<span class="lineNum">     469 </span>            :                         return true;
+<span class="lineNum">     470 </span>            :                 case CAP_INC:
+<span class="lineNum">     471 </span>            :                         return false; // not implemented
+<span class="lineNum">     472 </span>            :                 case CAP_A:
+<span class="lineNum">     473 </span>            :                         return false; // not implemented
+<span class="lineNum">     474 </span>            :                 case CAP_DETERMINISTIC_SEED:
+<span class="lineNum">     475 </span>            :                         return rootsim_config.deterministic_seed;
+<span class="lineNum">     476 </span>            :                 case CAP_SERIAL:
+<span class="lineNum">     477 </span>            :                         return rootsim_config.serial;
+<span class="lineNum">     478 </span>            :                 case CAP_CORE_BINDING:
+<span class="lineNum">     479 </span>            :                         return !rootsim_config.core_binding;
+<span class="lineNum">     480 </span>            :                 case CAP_PREEMPTION:
+<span class="lineNum">     481 </span>            :                         return !rootsim_config.disable_preemption;
+<span class="lineNum">     482 </span>            :                 case CAP_ECS:
+<span class="lineNum">     483 </span>            :                         return false; // not implemented
+<span class="lineNum">     484 </span>            :                 case CAP_LINUX_MODULES:
+<span class="lineNum">     485 </span>            :                         return false; // not implemented
+<span class="lineNum">     486 </span>            :                 case CAP_LP_REBINDING:
+<span class="lineNum">     487 </span>            :                         #ifdef HAVE_LP_REBINDING
+<span class="lineNum">     488 </span>            :                         return true;
+<span class="lineNum">     489 </span>            :                         #else
+<span class="lineNum">     490 </span>            :                         return false;
+<span class="lineNum">     491 </span>            :                         #endif
+<span class="lineNum">     492 </span>            :                 case CAP_MPI:
+<span class="lineNum">     493 </span>            :                         #ifdef HAVE_MPI
+<span class="lineNum">     494 </span>            :                         return true;
+<span class="lineNum">     495 </span>            :                         #else
+<span class="lineNum">     496 </span>            :                         return false;
+<span class="lineNum">     497 </span>            :                         #endif
+<span class="lineNum">     498 </span>            :                 default:
+<span class="lineNum">     499 </span>            :                         break; // Just to silence compiler's warnings [-Wswitch]: other values are evaluated later
+<span class="lineNum">     500 </span>            :         }
+<span class="lineNum">     501 </span>            :         
+<span class="lineNum">     502 </span>            : 
+<span class="lineNum">     503 </span>            :         // With respect to the above, evaluate here in case no information is requested
+<span class="lineNum">     504 </span>            :         if(info == NULL) {
+<span class="lineNum">     505 </span>            :                 switch(which) {
+<span class="lineNum">     506 </span>            :                         case CAP_SCHEDULER ... CAP_VERBOSE:
+<span class="lineNum">     507 </span>            :                                 return true;
+<span class="lineNum">     508 </span>            :                         case CAP_SIMULATION_TIME:
+<span class="lineNum">     509 </span>            :                                 return rootsim_config.simulation_time &gt; 0;
+<span class="lineNum">     510 </span>            :                         default:
+<span class="lineNum">     511 </span>            :                                 rootsim_error(false, &quot;Requesting information for an unknown capability\n&quot;);
+<span class="lineNum">     512 </span>            :                                 return false;
+<span class="lineNum">     513 </span>            :                 }
+<span class="lineNum">     514 </span>            :         }
+<span class="lineNum">     515 </span>            : 
+<span class="lineNum">     516 </span>            :         // Here we do the most work
+<span class="lineNum">     517 </span>            :         info-&gt;capability = which;
+<span class="lineNum">     518 </span>            : 
+<span class="lineNum">     519 </span>            :         switch(which) {
+<span class="lineNum">     520 </span>            :                 case CAP_SCHEDULER:
+<span class="lineNum">     521 </span>            :                         info-&gt;scheduler = rootsim_config.scheduler;
+<span class="lineNum">     522 </span>            :                         return true;
+<span class="lineNum">     523 </span>            :                 case CAP_CKTRM_MODE:
+<span class="lineNum">     524 </span>            :                         info-&gt;termination_mode = rootsim_config.check_termination_mode;
+<span class="lineNum">     525 </span>            :                         return true;
+<span class="lineNum">     526 </span>            :                 case CAP_LPS_DISTRIBUTION:
+<span class="lineNum">     527 </span>            :                         info-&gt;lps_distribution = rootsim_config.lps_distribution;
+<span class="lineNum">     528 </span>            :                         return true;
+<span class="lineNum">     529 </span>            :                 case CAP_STATS:
+<span class="lineNum">     530 </span>            :                         info-&gt;stats = rootsim_config.stats;
+<span class="lineNum">     531 </span>            :                         return true;
+<span class="lineNum">     532 </span>            :                 case CAP_STATE_SAVING:
+<span class="lineNum">     533 </span>            :                         info-&gt;state_saving = rootsim_config.ckpt_mode;
+<span class="lineNum">     534 </span>            :                         return true;
+<span class="lineNum">     535 </span>            :                 case CAP_THREADS:
+<span class="lineNum">     536 </span>            :                         info-&gt;lps = n_cores;
+<span class="lineNum">     537 </span>            :                         return true;
+<span class="lineNum">     538 </span>            :                 case CAP_LPS:
+<span class="lineNum">     539 </span>            :                         info-&gt;lps = n_prc_tot;
+<span class="lineNum">     540 </span>            :                         return true;
+<span class="lineNum">     541 </span>            :                 case CAP_OUTPUT_DIR:
+<span class="lineNum">     542 </span>            :                         info-&gt;output_dir = rootsim_config.output_dir;
+<span class="lineNum">     543 </span>            :                         return true;
+<span class="lineNum">     544 </span>            :                 case CAP_P:
+<span class="lineNum">     545 </span>            :                         info-&gt;ckpt_period = rootsim_config.ckpt_period;
+<span class="lineNum">     546 </span>            :                         return true;
+<span class="lineNum">     547 </span>            :                 case CAP_GVT:
+<span class="lineNum">     548 </span>            :                         info-&gt;gvt_time_period = rootsim_config.gvt_time_period;
+<span class="lineNum">     549 </span>            :                         return true;
+<span class="lineNum">     550 </span>            :                 case CAP_GVT_SNAPSHOT_CYCLES:
+<span class="lineNum">     551 </span>            :                         info-&gt;gvt_snapshot_cycles = rootsim_config.gvt_snapshot_cycles;
+<span class="lineNum">     552 </span>            :                         return true;
+<span class="lineNum">     553 </span>            :                 case CAP_SEED:
+<span class="lineNum">     554 </span>            :                         info-&gt;seed = rootsim_config.set_seed;
+<span class="lineNum">     555 </span>            :                         return true;
+<span class="lineNum">     556 </span>            :                 case CAP_VERBOSE:
+<span class="lineNum">     557 </span>            :                         info-&gt;verbose = rootsim_config.verbose;
+<span class="lineNum">     558 </span>            :                         return true;
+<span class="lineNum">     559 </span>            :                 case CAP_SIMULATION_TIME:
+<span class="lineNum">     560 </span>            :                         info-&gt;simulation_time = rootsim_config.simulation_time;
+<span class="lineNum">     561 </span>            :                         return rootsim_config.simulation_time &gt; 0;
+<span class="lineNum">     562 </span>            :                 default:
+<span class="lineNum">     563 </span>            :                         rootsim_error(false, &quot;Requesting information for an unknown capability\n&quot;);
+<span class="lineNum">     564 </span>            :                         return false;
+<span class="lineNum">     565 </span>            :         }
+<span class="lineNum">     566 </span>            : }
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.12</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>

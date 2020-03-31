@@ -1,0 +1,419 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - doc-coverage.info - ROOT-Sim/src/datatypes/calqueue.c</title>
+  <link rel="stylesheet" type="text/css" href="../../../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../../../index.html">top level</a> - <a href="index.html">ROOT-Sim/src/datatypes</a> - calqueue.c</td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">doc-coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">1</td>
+            <td class="headerCovTableEntry">14</td>
+            <td class="headerCovTableEntryLo">7.1 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2020-02-07 15:01:24</td>
+            <td></td>
+          </tr>
+          <tr><td><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<span class="lineNum">       1 </span><span class="lineCov">          1 : /**</span>
+<span class="lineNum">       2 </span>            : * @file datatypes/calqueue.c
+<span class="lineNum">       3 </span>            : *
+<span class="lineNum">       4 </span>            : * @brief Calendar Queue Implementation
+<span class="lineNum">       5 </span>            : *
+<span class="lineNum">       6 </span>            : * Classical Calendar Queue implementation. It is an array of lists of
+<span class="lineNum">       7 </span>            : * events which reorganizes itself upon each insertion/deletion, ensuring
+<span class="lineNum">       8 </span>            : * amortized O(1) operations.
+<span class="lineNum">       9 </span>            : *
+<span class="lineNum">      10 </span>            : * Due to the nature of the calendar queue, you cannot insert events which
+<span class="lineNum">      11 </span>            : * &quot;happen before&quot; the last extracted events, otherwise the list breaks
+<span class="lineNum">      12 </span>            : * and starts returning dummy events.
+<span class="lineNum">      13 </span>            : *
+<span class="lineNum">      14 </span>            : * For a thorough description of the algorithm, refer to:
+<span class="lineNum">      15 </span>            : *
+<span class="lineNum">      16 </span>            : * R. Brown
+<span class="lineNum">      17 </span>            : * “Calendar Queues: A Fast 0(1) Priority Queue Implementation for the
+<span class="lineNum">      18 </span>            : * Simulation Event Set Problem”
+<span class="lineNum">      19 </span>            : * CACM, Vol. 31, No. 10, pp. 1220-1227, Oct. 1988.
+<span class="lineNum">      20 </span>            : *
+<span class="lineNum">      21 </span>            : * @copyright
+<span class="lineNum">      22 </span>            : * Copyright (C) 2008-2019 HPDCS Group
+<span class="lineNum">      23 </span>            : * https://hpdcs.github.io
+<span class="lineNum">      24 </span>            : *
+<span class="lineNum">      25 </span>            : * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
+<span class="lineNum">      26 </span>            : *
+<span class="lineNum">      27 </span>            : * ROOT-Sim is free software; you can redistribute it and/or modify it under the
+<span class="lineNum">      28 </span>            : * terms of the GNU General Public License as published by the Free Software
+<span class="lineNum">      29 </span>            : * Foundation; only version 3 of the License applies.
+<span class="lineNum">      30 </span>            : *
+<span class="lineNum">      31 </span>            : * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
+<span class="lineNum">      32 </span>            : * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+<span class="lineNum">      33 </span>            : * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+<span class="lineNum">      34 </span>            : *
+<span class="lineNum">      35 </span>            : * You should have received a copy of the GNU General Public License along with
+<span class="lineNum">      36 </span>            : * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
+<span class="lineNum">      37 </span>            : * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+<span class="lineNum">      38 </span>            : *
+<span class="lineNum">      39 </span>            : * @author R. Brown
+<span class="lineNum">      40 </span>            : */
+<span class="lineNum">      41 </span>            : #include &lt;stdlib.h&gt;
+<span class="lineNum">      42 </span>            : #include &lt;stdio.h&gt;
+<span class="lineNum">      43 </span>            : #include &lt;string.h&gt;
+<span class="lineNum">      44 </span>            : #include &lt;unistd.h&gt;
+<span class="lineNum">      45 </span>            : #include &lt;limits.h&gt;
+<span class="lineNum">      46 </span>            : #include &lt;math.h&gt;
+<span class="lineNum">      47 </span>            : #include &lt;stdbool.h&gt;
+<span class="lineNum">      48 </span>            : 
+<span class="lineNum">      49 </span>            : #include &lt;core/core.h&gt;
+<span class="lineNum">      50 </span>            : #include &lt;datatypes/calqueue.h&gt;
+<span class="lineNum">      51 </span>            : #include &lt;mm/mm.h&gt;
+<span class="lineNum">      52 </span>            : 
+<span class="lineNum">      53 </span>            : // Declare data structures needed for the schedulers
+<span class="lineNum">      54 </span><span class="lineNoCov">          0 : static calqueue_node *calq[CALQSPACE];  // Array of linked lists of items</span>
+<span class="lineNum">      55 </span><span class="lineNoCov">          0 : static calqueue_node **calendar;        // Pointer to use as a sub-array to calq</span>
+<span class="lineNum">      56 </span>            : 
+<span class="lineNum">      57 </span>            : // Global variables for the calendar queueing routines
+<span class="lineNum">      58 </span><span class="lineNoCov">          0 : static int firstsub, nbuckets, qsize, lastbucket;</span>
+<span class="lineNum">      59 </span><span class="lineNoCov">          0 : static bool resize_enabled;</span>
+<span class="lineNum">      60 </span><span class="lineNoCov">          0 : static double top_threshold, bot_threshold, lastprio;</span>
+<span class="lineNum">      61 </span>            : 
+<span class="lineNum">      62 </span><span class="lineNoCov">          0 : static double buckettop, cwidth;</span>
+<span class="lineNum">      63 </span>            : 
+<span class="lineNum">      64 </span><span class="lineNoCov">          0 : static calqueue_node *calqueue_deq(void);</span>
+<span class="lineNum">      65 </span>            : 
+<span class="lineNum">      66 </span>            : /* This initializes a bucket array within the array a[].
+<span class="lineNum">      67 </span>            :    Bucket width is set equal to bwidth. Bucket[0] is made
+<span class="lineNum">      68 </span>            :    equal to a[qbase]; and the number of buckets is nbuck.
+<span class="lineNum">      69 </span>            :    Startprio is the priority at which dequeueing begins.
+<span class="lineNum">      70 </span>            :    All external variables except resize_enabled are
+<span class="lineNum">      71 </span>            :    initialized
+<span class="lineNum">      72 </span>            : */
+<span class="lineNum">      73 </span><span class="lineNoCov">          0 : static void localinit(int qbase, int nbucks, double bwidth, double startprio)</span>
+<span class="lineNum">      74 </span>            : {
+<span class="lineNum">      75 </span>            :         int i;
+<span class="lineNum">      76 </span>            :         long int n;
+<span class="lineNum">      77 </span>            : 
+<span class="lineNum">      78 </span>            :         // Set position and size of nnew queue
+<span class="lineNum">      79 </span>            :         firstsub = qbase;
+<span class="lineNum">      80 </span>            :         calendar = calq + qbase;
+<span class="lineNum">      81 </span>            :         cwidth = bwidth;
+<span class="lineNum">      82 </span>            :         nbuckets = nbucks;
+<span class="lineNum">      83 </span>            : 
+<span class="lineNum">      84 </span>            :         // Init as empty
+<span class="lineNum">      85 </span>            :         qsize = 0;
+<span class="lineNum">      86 </span>            :         for (i = 0; i &lt; nbuckets; i++) {
+<span class="lineNum">      87 </span>            :                 calendar[i] = NULL;
+<span class="lineNum">      88 </span>            :         }
+<span class="lineNum">      89 </span>            : 
+<span class="lineNum">      90 </span>            :         // Setup initial position in queue
+<span class="lineNum">      91 </span>            :         lastprio = startprio;
+<span class="lineNum">      92 </span>            :         n = (long)((double)startprio / cwidth); // Virtual bucket
+<span class="lineNum">      93 </span>            :         lastbucket = n % nbuckets;
+<span class="lineNum">      94 </span>            :         buckettop = (double)(n + 1) * cwidth + 0.5 * cwidth;
+<span class="lineNum">      95 </span>            : 
+<span class="lineNum">      96 </span>            :         // Setup queue-size-change thresholds
+<span class="lineNum">      97 </span>            :         bot_threshold = (int)((double)nbuckets / 2) - 2;
+<span class="lineNum">      98 </span>            :         top_threshold = 2 * nbuckets;
+<span class="lineNum">      99 </span>            : }
+<span class="lineNum">     100 </span>            : 
+<span class="lineNum">     101 </span>            : // This function returns the width that the buckets should have
+<span class="lineNum">     102 </span>            : // based on a random sample of the queue so that there will be about 3
+<span class="lineNum">     103 </span>            : // items in each bucket.
+<span class="lineNum">     104 </span><span class="lineNoCov">          0 : static double new_width(void)</span>
+<span class="lineNum">     105 </span>            : {
+<span class="lineNum">     106 </span>            :         int nsamples, templastbucket, i, j;
+<span class="lineNum">     107 </span>            :         double templastprio;
+<span class="lineNum">     108 </span>            :         double tempbuckettop, average, newaverage;
+<span class="lineNum">     109 </span>            :         calqueue_node *temp[25];
+<span class="lineNum">     110 </span>            : 
+<span class="lineNum">     111 </span>            :         // Init the temp node structure
+<span class="lineNum">     112 </span>            :         for (i = 0; i &lt; 25; i++) {
+<span class="lineNum">     113 </span>            :                 temp[i] = NULL;
+<span class="lineNum">     114 </span>            :         }
+<span class="lineNum">     115 </span>            : 
+<span class="lineNum">     116 </span>            :         // How many queue elements to sample?
+<span class="lineNum">     117 </span>            :         if (qsize &lt; 2)
+<span class="lineNum">     118 </span>            :                 return 1.0;
+<span class="lineNum">     119 </span>            : 
+<span class="lineNum">     120 </span>            :         if (qsize &lt;= 5)
+<span class="lineNum">     121 </span>            :                 nsamples = qsize;
+<span class="lineNum">     122 </span>            :         else
+<span class="lineNum">     123 </span>            :                 nsamples = 5 + (int)((double)qsize / 10);
+<span class="lineNum">     124 </span>            : 
+<span class="lineNum">     125 </span>            :         if (nsamples &gt; 25)
+<span class="lineNum">     126 </span>            :                 nsamples = 25;
+<span class="lineNum">     127 </span>            : 
+<span class="lineNum">     128 </span>            :         // Store the current situation
+<span class="lineNum">     129 </span>            :         templastbucket = lastbucket;
+<span class="lineNum">     130 </span>            :         templastprio = lastprio;
+<span class="lineNum">     131 </span>            :         tempbuckettop = buckettop;
+<span class="lineNum">     132 </span>            : 
+<span class="lineNum">     133 </span>            :         resize_enabled = false;
+<span class="lineNum">     134 </span>            :         average = 0.;
+<span class="lineNum">     135 </span>            : 
+<span class="lineNum">     136 </span>            :         for (i = 0; i &lt; nsamples; i++) {
+<span class="lineNum">     137 </span>            :                 // Dequeue nodes to get a test sample and sum up the differences in time
+<span class="lineNum">     138 </span>            :                 temp[i] = calqueue_deq();
+<span class="lineNum">     139 </span>            :                 if (likely(i &gt; 0)) {
+<span class="lineNum">     140 </span>            :                         average += temp[i]-&gt;timestamp - temp[i - 1]-&gt;timestamp;
+<span class="lineNum">     141 </span>            :                 }
+<span class="lineNum">     142 </span>            :         }
+<span class="lineNum">     143 </span>            : 
+<span class="lineNum">     144 </span>            :         // Get the average
+<span class="lineNum">     145 </span>            :         average = average / (double)(nsamples - 1);
+<span class="lineNum">     146 </span>            : 
+<span class="lineNum">     147 </span>            :         newaverage = 0.;
+<span class="lineNum">     148 </span>            :         j = 0;
+<span class="lineNum">     149 </span>            : 
+<span class="lineNum">     150 </span>            :         // Re-insert temp node 0
+<span class="lineNum">     151 </span>            :         calqueue_put(temp[0]-&gt;timestamp, temp[0]-&gt;payload);
+<span class="lineNum">     152 </span>            : 
+<span class="lineNum">     153 </span>            :         // Recalculate ignoring large separations
+<span class="lineNum">     154 </span>            :         for (i = 1; i &lt; nsamples; i++) {
+<span class="lineNum">     155 </span>            :                 if ((temp[i]-&gt;timestamp - temp[i - 1]-&gt;timestamp) &lt; (average * 2.0)) {
+<span class="lineNum">     156 </span>            :                         newaverage += (temp[i]-&gt;timestamp - temp[i - 1]-&gt;timestamp);
+<span class="lineNum">     157 </span>            :                         j++;
+<span class="lineNum">     158 </span>            :                 }
+<span class="lineNum">     159 </span>            :                 calqueue_put(temp[i]-&gt;timestamp, temp[i]-&gt;payload);
+<span class="lineNum">     160 </span>            :         }
+<span class="lineNum">     161 </span>            : 
+<span class="lineNum">     162 </span>            :         // Free the temp structure (the events have been re-injected in the queue)
+<span class="lineNum">     163 </span>            :         for (i = 0; i &lt; 25; i++) {
+<span class="lineNum">     164 </span>            :                 if (temp[i] != NULL) {
+<span class="lineNum">     165 </span>            :                         rsfree(temp[i]);
+<span class="lineNum">     166 </span>            :                 }
+<span class="lineNum">     167 </span>            :         }
+<span class="lineNum">     168 </span>            : 
+<span class="lineNum">     169 </span>            :         // Compute new width
+<span class="lineNum">     170 </span>            :         newaverage = (newaverage / (double)j) * 3.0; /* this is the new width */
+<span class="lineNum">     171 </span>            : 
+<span class="lineNum">     172 </span>            :         // Restore the original condition
+<span class="lineNum">     173 </span>            :         lastbucket = templastbucket; /* restore the original conditions */
+<span class="lineNum">     174 </span>            :         lastprio = templastprio;
+<span class="lineNum">     175 </span>            :         buckettop = tempbuckettop;
+<span class="lineNum">     176 </span>            :         resize_enabled = true;
+<span class="lineNum">     177 </span>            : 
+<span class="lineNum">     178 </span>            :         return newaverage;
+<span class="lineNum">     179 </span>            : }
+<span class="lineNum">     180 </span>            : 
+<span class="lineNum">     181 </span>            : // This copies the queue onto a calendar with nnewsize buckets. The new bucket
+<span class="lineNum">     182 </span>            : // array is on the opposite end of the array a[QSPACE] from the original        EH?!?!?!?!?!
+<span class="lineNum">     183 </span><span class="lineNoCov">          0 : static void resize(int newsize)</span>
+<span class="lineNum">     184 </span>            : {
+<span class="lineNum">     185 </span>            :         double bwidth;
+<span class="lineNum">     186 </span>            :         int i;
+<span class="lineNum">     187 </span>            :         int oldnbuckets;
+<span class="lineNum">     188 </span>            :         calqueue_node **oldcalendar, *temp, *temp2;
+<span class="lineNum">     189 </span>            : 
+<span class="lineNum">     190 </span>            :         if (!resize_enabled)
+<span class="lineNum">     191 </span>            :                 return;
+<span class="lineNum">     192 </span>            : 
+<span class="lineNum">     193 </span>            :         // Find new bucket width
+<span class="lineNum">     194 </span>            :         bwidth = new_width();
+<span class="lineNum">     195 </span>            : 
+<span class="lineNum">     196 </span>            :         // Save location and size of old calendar for use when copying calendar
+<span class="lineNum">     197 </span>            :         oldcalendar = calendar;
+<span class="lineNum">     198 </span>            :         oldnbuckets = nbuckets;
+<span class="lineNum">     199 </span>            : 
+<span class="lineNum">     200 </span>            :         // Init the new calendar
+<span class="lineNum">     201 </span>            :         if (firstsub == 0) {
+<span class="lineNum">     202 </span>            :                 localinit(CALQSPACE - newsize, newsize, bwidth, lastprio);
+<span class="lineNum">     203 </span>            :         } else {
+<span class="lineNum">     204 </span>            :                 localinit(0, newsize, bwidth, lastprio);
+<span class="lineNum">     205 </span>            :         }
+<span class="lineNum">     206 </span>            : 
+<span class="lineNum">     207 </span>            :         // Copy elements to the new calendar
+<span class="lineNum">     208 </span>            :         for (i = oldnbuckets - 1; i &gt;= 0; --i) {
+<span class="lineNum">     209 </span>            :                 temp = oldcalendar[i];
+<span class="lineNum">     210 </span>            :                 while (temp != NULL) {
+<span class="lineNum">     211 </span>            :                         calqueue_put(temp-&gt;timestamp, temp-&gt;payload);
+<span class="lineNum">     212 </span>            :                         temp2 = temp-&gt;next;
+<span class="lineNum">     213 </span>            :                         rsfree(temp);
+<span class="lineNum">     214 </span>            :                         temp = temp2;
+<span class="lineNum">     215 </span>            :                 }
+<span class="lineNum">     216 </span>            :         }
+<span class="lineNum">     217 </span>            : }
+<span class="lineNum">     218 </span>            : 
+<span class="lineNum">     219 </span>            : static calqueue_node *calqueue_deq(void)
+<span class="lineNum">     220 </span>            : {
+<span class="lineNum">     221 </span>            :         register int i;
+<span class="lineNum">     222 </span>            :         int temp2;
+<span class="lineNum">     223 </span>            :         calqueue_node *e;
+<span class="lineNum">     224 </span>            :         double lowest;
+<span class="lineNum">     225 </span>            : 
+<span class="lineNum">     226 </span>            :         // Is there an event to be processed?
+<span class="lineNum">     227 </span>            :         if (qsize == 0) {
+<span class="lineNum">     228 </span>            :                 return NULL;
+<span class="lineNum">     229 </span>            :         }
+<span class="lineNum">     230 </span>            : 
+<span class="lineNum">     231 </span>            :         for (i = lastbucket;;) {
+<span class="lineNum">     232 </span>            :                 // Check bucket i
+<span class="lineNum">     233 </span>            :                 if (calendar[i] != NULL &amp;&amp; calendar[i]-&gt;timestamp &lt; buckettop) {
+<span class="lineNum">     234 </span>            : 
+<span class="lineNum">     235 </span>            :                     calendar_process:
+<span class="lineNum">     236 </span>            : 
+<span class="lineNum">     237 </span>            :                         // Found an item to be processed
+<span class="lineNum">     238 </span>            :                         e = calendar[i];
+<span class="lineNum">     239 </span>            : 
+<span class="lineNum">     240 </span>            :                         // Update position on calendar and queue's size
+<span class="lineNum">     241 </span>            :                         lastbucket = i;
+<span class="lineNum">     242 </span>            :                         lastprio = e-&gt;timestamp;
+<span class="lineNum">     243 </span>            :                         qsize--;
+<span class="lineNum">     244 </span>            : 
+<span class="lineNum">     245 </span>            :                         // Remove the event from the calendar queue
+<span class="lineNum">     246 </span>            :                         calendar[i] = calendar[i]-&gt;next;
+<span class="lineNum">     247 </span>            : 
+<span class="lineNum">     248 </span>            :                         // Halve the calendar size if needed
+<span class="lineNum">     249 </span>            :                         if (qsize &lt; bot_threshold)
+<span class="lineNum">     250 </span>            :                                 resize((int)((double)nbuckets / 2));
+<span class="lineNum">     251 </span>            : 
+<span class="lineNum">     252 </span>            :                         // Processing completed
+<span class="lineNum">     253 </span>            :                         return e;
+<span class="lineNum">     254 </span>            : 
+<span class="lineNum">     255 </span>            :                 } else {
+<span class="lineNum">     256 </span>            :                         // Prepare to check the next bucket, or go to a direct search
+<span class="lineNum">     257 </span>            :                         i++;
+<span class="lineNum">     258 </span>            :                         if (i == nbuckets)
+<span class="lineNum">     259 </span>            :                                 i = 0;
+<span class="lineNum">     260 </span>            : 
+<span class="lineNum">     261 </span>            :                         buckettop += cwidth;
+<span class="lineNum">     262 </span>            : 
+<span class="lineNum">     263 </span>            :                         if (i == lastbucket)
+<span class="lineNum">     264 </span>            :                                 break;  // Go to direct search
+<span class="lineNum">     265 </span>            :                 }
+<span class="lineNum">     266 </span>            :         }
+<span class="lineNum">     267 </span>            : 
+<span class="lineNum">     268 </span>            :         // Directly search for minimum priority event
+<span class="lineNum">     269 </span>            :         temp2 = -1;
+<span class="lineNum">     270 </span>            :         lowest = (double)LLONG_MAX;
+<span class="lineNum">     271 </span>            :         for (i = 0; i &lt; nbuckets; i++) {
+<span class="lineNum">     272 </span>            :                 if ((calendar[i] != NULL)
+<span class="lineNum">     273 </span>            :                     &amp;&amp; ((temp2 == -1) || (calendar[i]-&gt;timestamp &lt; lowest))) {
+<span class="lineNum">     274 </span>            :                         temp2 = i;
+<span class="lineNum">     275 </span>            :                         lowest = calendar[i]-&gt;timestamp;
+<span class="lineNum">     276 </span>            :                 }
+<span class="lineNum">     277 </span>            :         }
+<span class="lineNum">     278 </span>            : 
+<span class="lineNum">     279 </span>            :         // Process the event found and and handle the queue
+<span class="lineNum">     280 </span>            :         i = temp2;
+<span class="lineNum">     281 </span>            :         goto calendar_process;
+<span class="lineNum">     282 </span>            : 
+<span class="lineNum">     283 </span>            : }
+<span class="lineNum">     284 </span>            : 
+<span class="lineNum">     285 </span>            : // This function initializes the messaging queue.
+<span class="lineNum">     286 </span><span class="lineNoCov">          0 : void calqueue_init(void)</span>
+<span class="lineNum">     287 </span>            : {
+<span class="lineNum">     288 </span>            :         localinit(0, 2, 1.0, 0.0);
+<span class="lineNum">     289 </span>            :         resize_enabled = true;
+<span class="lineNum">     290 </span>            : }
+<span class="lineNum">     291 </span>            : 
+<span class="lineNum">     292 </span><span class="lineNoCov">          0 : void calqueue_put(double timestamp, void *payload)</span>
+<span class="lineNum">     293 </span>            : {
+<span class="lineNum">     294 </span>            :         int i;
+<span class="lineNum">     295 </span>            :         calqueue_node *new_node, *traverse;
+<span class="lineNum">     296 </span>            : 
+<span class="lineNum">     297 </span>            :         // Fill the node entry
+<span class="lineNum">     298 </span>            :         new_node = rsalloc(sizeof(calqueue_node));
+<span class="lineNum">     299 </span>            :         new_node-&gt;timestamp = timestamp;
+<span class="lineNum">     300 </span>            :         new_node-&gt;payload = payload;
+<span class="lineNum">     301 </span>            :         new_node-&gt;next = NULL;
+<span class="lineNum">     302 </span>            : 
+<span class="lineNum">     303 </span>            :         // Calculate the number of the bucket in which to place the new entry
+<span class="lineNum">     304 </span>            :         i = (int)round(timestamp / (double)cwidth);     // Virtual bucket
+<span class="lineNum">     305 </span>            :         i = i % nbuckets;       // Actual bucket
+<span class="lineNum">     306 </span>            : 
+<span class="lineNum">     307 </span>            :         // Grab the head of events list in bucket i
+<span class="lineNum">     308 </span>            :         traverse = calendar[i];
+<span class="lineNum">     309 </span>            : 
+<span class="lineNum">     310 </span>            :         // Put at the head of the list, if appropriate
+<span class="lineNum">     311 </span>            :         if (traverse == NULL || traverse-&gt;timestamp &gt; timestamp) {
+<span class="lineNum">     312 </span>            :                 new_node-&gt;next = traverse;
+<span class="lineNum">     313 </span>            :                 calendar[i] = new_node;
+<span class="lineNum">     314 </span>            :         } else {
+<span class="lineNum">     315 </span>            :                 // Find the correct place in list
+<span class="lineNum">     316 </span>            :                 while (traverse-&gt;next != NULL
+<span class="lineNum">     317 </span>            :                        &amp;&amp; traverse-&gt;next-&gt;timestamp &lt;= timestamp)
+<span class="lineNum">     318 </span>            :                         traverse = traverse-&gt;next;
+<span class="lineNum">     319 </span>            : 
+<span class="lineNum">     320 </span>            :                 // Place the new event
+<span class="lineNum">     321 </span>            :                 new_node-&gt;next = traverse-&gt;next;
+<span class="lineNum">     322 </span>            :                 traverse-&gt;next = new_node;
+<span class="lineNum">     323 </span>            :         }
+<span class="lineNum">     324 </span>            : 
+<span class="lineNum">     325 </span>            :         // Update queue size
+<span class="lineNum">     326 </span>            :         qsize++;
+<span class="lineNum">     327 </span>            : 
+<span class="lineNum">     328 </span>            :         // Double the calendar size if needed
+<span class="lineNum">     329 </span>            :         if (qsize &gt; top_threshold &amp;&amp; nbuckets &lt; MAXNBUCKETS) {
+<span class="lineNum">     330 </span>            :                 resize(2 * nbuckets);
+<span class="lineNum">     331 </span>            :         }
+<span class="lineNum">     332 </span>            : }
+<span class="lineNum">     333 </span>            : 
+<span class="lineNum">     334 </span><span class="lineNoCov">          0 : void *calqueue_get(void)</span>
+<span class="lineNum">     335 </span>            : {
+<span class="lineNum">     336 </span>            :         calqueue_node *node;
+<span class="lineNum">     337 </span>            :         void *payload;
+<span class="lineNum">     338 </span>            : 
+<span class="lineNum">     339 </span>            :         node = calqueue_deq();
+<span class="lineNum">     340 </span>            :         if (unlikely(node == NULL)) {
+<span class="lineNum">     341 </span>            :                 return NULL;
+<span class="lineNum">     342 </span>            :         }
+<span class="lineNum">     343 </span>            : 
+<span class="lineNum">     344 </span>            :         payload = node-&gt;payload;
+<span class="lineNum">     345 </span>            :         rsfree(node);
+<span class="lineNum">     346 </span>            :         return payload;
+<span class="lineNum">     347 </span>            : }
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.12</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>

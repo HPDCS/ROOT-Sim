@@ -1,0 +1,399 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - doc-coverage.info - ROOT-Sim/src/lib/topology/obstacles.c</title>
+  <link rel="stylesheet" type="text/css" href="../../../../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../../../../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../../../../index.html">top level</a> - <a href="index.html">ROOT-Sim/src/lib/topology</a> - obstacles.c</td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">doc-coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">4</td>
+            <td class="headerCovTableEntry">19</td>
+            <td class="headerCovTableEntryLo">21.1 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2020-03-30 23:29:41</td>
+            <td></td>
+          </tr>
+          <tr><td><img src="../../../../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../../../../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<span class="lineNum">       1 </span><span class="lineNoCov">          0 : /*</span>
+<span class="lineNum">       2 </span>            :  * topology_binary.c
+<span class="lineNum">       3 </span>            :  *
+<span class="lineNum">       4 </span>            :  *  Created on: 02 ago 2018
+<span class="lineNum">       5 </span>            :  *      Author: andrea
+<span class="lineNum">       6 </span>            :  */
+<span class="lineNum">       7 </span>            : 
+<span class="lineNum">       8 </span>            : #include &lt;ROOT-Sim.h&gt;
+<span class="lineNum">       9 </span>            : #include &lt;lib/topology.h&gt;
+<span class="lineNum">      10 </span>            : 
+<span class="lineNum">      11 </span>            : #include &lt;math.h&gt;
+<span class="lineNum">      12 </span>            : 
+<span class="lineNum">      13 </span>            : #include &lt;scheduler/scheduler.h&gt;
+<span class="lineNum">      14 </span>            : #include &lt;lib/jsmn_helper.h&gt;
+<span class="lineNum">      15 </span>            : #include &lt;lib/numerical.h&gt;
+<span class="lineNum">      16 </span>            : #include &lt;datatypes/bitmap.h&gt;
+<span class="lineNum">      17 </span>            : #include &lt;datatypes/heap.h&gt;
+<span class="lineNum">      18 </span>            : #include &lt;scheduler/process.h&gt;
+<span class="lineNum">      19 </span>            : 
+<span class="lineNum">      20 </span>            : /// the customised struct for TOPOLOGY_OBSTACLES representation
+<span class="lineNum">      21 </span>            : typedef struct _topology_t {
+<span class="lineNum">      22 </span><span class="lineCov">          1 :         unsigned neighbours_id[6];      /**&lt; these are the cached neighbours IDs */</span>
+<span class="lineNum">      23 </span><span class="lineCov">          1 :         unsigned free_neighbours;       /**&lt; this is the number of reachable neighbours */</span>
+<span class="lineNum">      24 </span>            :         unsigned *prev_next_cache;      /**&lt; this is the cache of previous and next hops needed to reach a destination */
+<span class="lineNum">      25 </span>            :         bool dirty;                     /**&lt; this tells is the prev_next_cache is invalidated */
+<span class="lineNum">      26 </span><span class="lineCov">          1 :         rootsim_bitmap data[];          /**&lt; this is the obstacles bitmap */</span>
+<span class="lineNum">      27 </span><span class="lineCov">          1 : } topology_t;</span>
+<span class="lineNum">      28 </span>            : 
+<span class="lineNum">      29 </span><span class="lineNoCov">          0 : unsigned size_checkpoint_obstacles(void){</span>
+<span class="lineNum">      30 </span>            :         return  sizeof(topology_t) +                            // the basic struct size
+<span class="lineNum">      31 </span>            :                 bitmap_required_size(topology_global.lp_cnt) +  // the bitmap to hold obstacles
+<span class="lineNum">      32 </span>            :                 sizeof(unsigned) * 2 * topology_global.lp_cnt;  // the cache for next and previous hops
+<span class="lineNum">      33 </span>            : }
+<span class="lineNum">      34 </span>            : 
+<span class="lineNum">      35 </span>            : // this is called once per machine after the general
+<span class="lineNum">      36 </span><span class="lineNoCov">          0 : void *load_topology_file_obstacles(c_jsmntok_t *root_token, const char *json_base){</span>
+<span class="lineNum">      37 </span>            :         unsigned i;
+<span class="lineNum">      38 </span>            :         double tmp;
+<span class="lineNum">      39 </span>            :         const unsigned lp_cnt = topology_global.lp_cnt;
+<span class="lineNum">      40 </span>            :         // retrieve the values array checking its size against the lp_cnt in the topology
+<span class="lineNum">      41 </span>            :         c_jsmntok_t *values_tok = get_value_token_by_key(root_token, json_base, root_token, &quot;values&quot;);
+<span class="lineNum">      42 </span>            :         if(!values_tok|| values_tok-&gt;type != JSMN_ARRAY || children_count_token(root_token, values_tok) != lp_cnt)
+<span class="lineNum">      43 </span>            :                 rootsim_error(true, &quot;Invalid or missing json value with key \&quot;values\&quot;&quot;);
+<span class="lineNum">      44 </span>            :         // we initialize the machine shared initial obstacles status
+<span class="lineNum">      45 </span>            :         rootsim_bitmap *ret_data = rsalloc(bitmap_required_size(lp_cnt));
+<span class="lineNum">      46 </span>            :         bitmap_initialize(ret_data, lp_cnt);
+<span class="lineNum">      47 </span>            :         // now we parse the json array to fill in the actual data
+<span class="lineNum">      48 </span>            :         struct _gnt_closure_t closure = GNT_CLOSURE_INITIALIZER;
+<span class="lineNum">      49 </span>            :         for (i = 0; i &lt; lp_cnt; ++i) {
+<span class="lineNum">      50 </span>            :                 if(parse_double_token(json_base, get_next_token(root_token, values_tok, &amp;closure), &amp;tmp) &lt; 0)
+<span class="lineNum">      51 </span>            :                         rootsim_error(true, &quot;Invalid value found in the \&quot;value\&quot; array&quot;);
+<span class="lineNum">      52 </span>            :                 // we interpret ones as obstacles, we use the double comparison to avoid warnings
+<span class="lineNum">      53 </span>            :                 if(tmp &gt;= 1.0 &amp;&amp; tmp &lt;= 1.0) {bitmap_set(ret_data, i);}
+<span class="lineNum">      54 </span>            :         }
+<span class="lineNum">      55 </span>            :         return ret_data;
+<span class="lineNum">      56 </span>            : }
+<span class="lineNum">      57 </span>            : 
+<span class="lineNum">      58 </span>            : 
+<span class="lineNum">      59 </span><span class="lineNoCov">          0 : topology_t *topology_obstacles_init(unsigned this_region_id, void *topology_data){</span>
+<span class="lineNum">      60 </span>            :         unsigned i, lp_id;
+<span class="lineNum">      61 </span>            :         const unsigned lp_cnt = topology_global.lp_cnt;
+<span class="lineNum">      62 </span>            : 
+<span class="lineNum">      63 </span>            :         // allocate the topology struct, we use a single allocation for all the stuff we need
+<span class="lineNum">      64 </span>            :         topology_t* topology = rsalloc(topology_global.chkp_size);
+<span class="lineNum">      65 </span>            : 
+<span class="lineNum">      66 </span>            :         topology-&gt;prev_next_cache = (unsigned *)(((char *)topology-&gt;data) + bitmap_required_size(lp_cnt));
+<span class="lineNum">      67 </span>            : 
+<span class="lineNum">      68 </span>            :         if(topology_data){
+<span class="lineNum">      69 </span>            :                 memcpy(topology-&gt;data, topology_data, bitmap_required_size(lp_cnt));
+<span class="lineNum">      70 </span>            :         }else{
+<span class="lineNum">      71 </span>            :                 bitmap_initialize(topology-&gt;data, lp_cnt);
+<span class="lineNum">      72 </span>            :         }
+<span class="lineNum">      73 </span>            : 
+<span class="lineNum">      74 </span>            :         i = topology_global.directions;
+<span class="lineNum">      75 </span>            :         topology-&gt;free_neighbours = i;
+<span class="lineNum">      76 </span>            :         if(topology_global.geometry != TOPOLOGY_GRAPH){
+<span class="lineNum">      77 </span>            :                 // we save the neighbours ids for faster accessing
+<span class="lineNum">      78 </span>            :                 while(i--){
+<span class="lineNum">      79 </span>            :                         lp_id = get_raw_receiver(this_region_id, i);
+<span class="lineNum">      80 </span>            :                         topology-&gt;neighbours_id[i] = lp_id;
+<span class="lineNum">      81 </span>            :                         // we also count reachable neighbours
+<span class="lineNum">      82 </span>            :                         if(lp_id == DIRECTION_INVALID || bitmap_check(topology-&gt;data, lp_id))
+<span class="lineNum">      83 </span>            :                                 topology-&gt;free_neighbours--;
+<span class="lineNum">      84 </span>            :                 }
+<span class="lineNum">      85 </span>            :         }else{
+<span class="lineNum">      86 </span>            :                 // in a graph directions are 1 to 1 with regions
+<span class="lineNum">      87 </span>            :                 while(i--)
+<span class="lineNum">      88 </span>            :                         if(this_region_id == i || bitmap_check(topology-&gt;data, i))
+<span class="lineNum">      89 </span>            :                                 topology-&gt;free_neighbours--;
+<span class="lineNum">      90 </span>            :         }
+<span class="lineNum">      91 </span>            : 
+<span class="lineNum">      92 </span>            :         topology-&gt;dirty = true;
+<span class="lineNum">      93 </span>            : 
+<span class="lineNum">      94 </span>            :         return topology;
+<span class="lineNum">      95 </span>            : }
+<span class="lineNum">      96 </span>            : 
+<span class="lineNum">      97 </span><span class="lineNoCov">          0 : #define __cmp_dijkstra_h(a, b) (((a).hops &gt; (b).hops) - ((b).hops &gt; (a).hops))</span>
+<span class="lineNum">      98 </span>            : // this is costly: we try as much as possible to cache the results of this function
+<span class="lineNum">      99 </span><span class="lineNoCov">          0 : static void dijkstra_obstacles(const topology_t *topology, unsigned int source_cell, unsigned int previous[RegionsCount()]) {</span>
+<span class="lineNum">     100 </span>            : 
+<span class="lineNum">     101 </span>            :         // helper structure, we use this as heap elements to keep track of vertexes status during dijkstra execution
+<span class="lineNum">     102 </span>            :         struct _dijkstra_h_t{
+<span class="lineNum">     103 </span>            :                 unsigned hops;
+<span class="lineNum">     104 </span>            :                 unsigned cell;
+<span class="lineNum">     105 </span>            :         };
+<span class="lineNum">     106 </span>            : 
+<span class="lineNum">     107 </span>            :         const unsigned directions = topology_global.directions;
+<span class="lineNum">     108 </span>            :         const unsigned lp_cnt = topology_global.lp_cnt;
+<span class="lineNum">     109 </span>            :         unsigned i, receiver;
+<span class="lineNum">     110 </span>            :         unsigned min_costs[lp_cnt];
+<span class="lineNum">     111 </span>            :         rootsim_heap(struct _dijkstra_h_t) heap;
+<span class="lineNum">     112 </span>            :         const rootsim_bitmap *obstacles = topology-&gt;data;
+<span class="lineNum">     113 </span>            : 
+<span class="lineNum">     114 </span>            :         struct _dijkstra_h_t current_scan = {0, source_cell}, partial_scan = {0};
+<span class="lineNum">     115 </span>            :         // initialize regions as unreachable
+<span class="lineNum">     116 </span>            :         i = lp_cnt;
+<span class="lineNum">     117 </span>            :         while(i--){
+<span class="lineNum">     118 </span>            :                 min_costs[i] = UINT_MAX;
+<span class="lineNum">     119 </span>            :                 previous[i] = UINT_MAX;
+<span class="lineNum">     120 </span>            :         }
+<span class="lineNum">     121 </span>            :         // heap init
+<span class="lineNum">     122 </span>            :         heap_init(heap);
+<span class="lineNum">     123 </span>            :         // the source cell has distance 0
+<span class="lineNum">     124 </span>            :         min_costs[source_cell] = current_scan.hops;
+<span class="lineNum">     125 </span>            :         // textbook dijkstra (keep in mind i'm not passing pointers, this stuff gets copied)
+<span class="lineNum">     126 </span>            :         heap_insert(heap, current_scan, __cmp_dijkstra_h);
+<span class="lineNum">     127 </span>            :         // while we have vertexes to process
+<span class="lineNum">     128 </span>            :         while(!heap_empty(heap)) {
+<span class="lineNum">     129 </span>            :                 // extract the lowest one
+<span class="lineNum">     130 </span>            :                 current_scan = heap_extract(heap, __cmp_dijkstra_h);
+<span class="lineNum">     131 </span>            :                 // since we are not supporting decrease key on the heap we have to filter spurious duplicates
+<span class="lineNum">     132 </span>            :                 if(current_scan.hops &gt; min_costs[current_scan.cell])
+<span class="lineNum">     133 </span>            :                         continue;
+<span class="lineNum">     134 </span>            :                 // we compute the sum of the current distance plus one hop to the receiver
+<span class="lineNum">     135 </span>            :                 partial_scan.hops = current_scan.hops + 1;
+<span class="lineNum">     136 </span>            :                 // we cycle through the neighbours of the current cell
+<span class="lineNum">     137 </span>            :                 for(i = 0; i &lt; directions; ++i){
+<span class="lineNum">     138 </span>            :                         // we get the receiver cell
+<span class="lineNum">     139 </span>            :                         receiver = get_raw_receiver(current_scan.cell, i);
+<span class="lineNum">     140 </span>            :                         // obviously we want a valid neighbour
+<span class="lineNum">     141 </span>            :                         if(receiver == DIRECTION_INVALID || bitmap_check(obstacles, receiver))
+<span class="lineNum">     142 </span>            :                                 continue;
+<span class="lineNum">     143 </span>            :                         // if lower we have a candidate optimum for the cell
+<span class="lineNum">     144 </span>            :                         if(partial_scan.hops &lt; min_costs[receiver]){
+<span class="lineNum">     145 </span>            :                                 // set the previous cell to retrieve the path later on
+<span class="lineNum">     146 </span>            :                                 previous[receiver] = current_scan.cell;
+<span class="lineNum">     147 </span>            :                                 // we set the cell field on our struct
+<span class="lineNum">     148 </span>            :                                 partial_scan.cell = receiver;
+<span class="lineNum">     149 </span>            :                                 // refresh lowest cost found for the cell
+<span class="lineNum">     150 </span>            :                                 min_costs[receiver] = partial_scan.hops;
+<span class="lineNum">     151 </span>            :                                 // we insert this into the heap
+<span class="lineNum">     152 </span>            :                                 heap_insert(heap, partial_scan, __cmp_dijkstra_h);
+<span class="lineNum">     153 </span>            :                         }
+<span class="lineNum">     154 </span>            :                 }
+<span class="lineNum">     155 </span>            :         }
+<span class="lineNum">     156 </span>            : }
+<span class="lineNum">     157 </span>            : #undef __cmp_dijsktra_h
+<span class="lineNum">     158 </span>            : 
+<span class="lineNum">     159 </span><span class="lineNoCov">          0 : static void refresh_cache_obstacles(topology_t *topology){</span>
+<span class="lineNum">     160 </span>            :         if(topology-&gt;dirty){
+<span class="lineNum">     161 </span>            :                 const unsigned lp_cnt = topology_global.lp_cnt;
+<span class="lineNum">     162 </span>            :                 // calculate the minimum costs spanning tree
+<span class="lineNum">     163 </span>            :                 dijkstra_obstacles(topology, current-&gt;gid.to_int, topology-&gt;prev_next_cache);
+<span class="lineNum">     164 </span>            :                 // this sets to an uninitialized value the buffer which holds the next hop for
+<span class="lineNum">     165 </span>            :                 // each possible destination (we compute those on demand when asked by the user and we cache those here)
+<span class="lineNum">     166 </span>            :                 memset(&amp;topology-&gt;prev_next_cache[lp_cnt], UCHAR_MAX, sizeof(unsigned) * lp_cnt);
+<span class="lineNum">     167 </span>            :                 topology-&gt;dirty = false;
+<span class="lineNum">     168 </span>            :         }
+<span class="lineNum">     169 </span>            : }
+<span class="lineNum">     170 </span>            : 
+<span class="lineNum">     171 </span><span class="lineNoCov">          0 : unsigned int find_receiver_obstacles(void) {</span>
+<span class="lineNum">     172 </span>            :         const topology_t *topology = current-&gt;topology;
+<span class="lineNum">     173 </span>            :         const rootsim_bitmap *obstacles = topology-&gt;data;
+<span class="lineNum">     174 </span>            :         const unsigned sender = current-&gt;gid.to_int;
+<span class="lineNum">     175 </span>            :         if(unlikely(bitmap_check(obstacles, sender))){
+<span class="lineNum">     176 </span>            :                 rootsim_error(false, &quot;FindReceiver(): this is an obstacle region!!!\n&quot;);
+<span class="lineNum">     177 </span>            :                 return DIRECTION_INVALID;
+<span class="lineNum">     178 </span>            :         }
+<span class="lineNum">     179 </span>            : 
+<span class="lineNum">     180 </span>            :         if(unlikely(!topology-&gt;free_neighbours))
+<span class="lineNum">     181 </span>            :                 return sender;
+<span class="lineNum">     182 </span>            : 
+<span class="lineNum">     183 </span>            :         const unsigned directions = topology_global.directions;
+<span class="lineNum">     184 </span>            :         const unsigned *neighbours;
+<span class="lineNum">     185 </span>            :         unsigned receiver;
+<span class="lineNum">     186 </span>            : 
+<span class="lineNum">     187 </span>            :         switch(topology_global.geometry){
+<span class="lineNum">     188 </span>            :                 case TOPOLOGY_HEXAGON:
+<span class="lineNum">     189 </span>            :                 case TOPOLOGY_SQUARE:
+<span class="lineNum">     190 </span>            :                 case TOPOLOGY_TORUS:
+<span class="lineNum">     191 </span>            :                 case TOPOLOGY_BIDRING:
+<span class="lineNum">     192 </span>            :                 case TOPOLOGY_RING:
+<span class="lineNum">     193 </span>            :                 neighbours = topology-&gt;neighbours_id;
+<span class="lineNum">     194 </span>            :                 do{
+<span class="lineNum">     195 </span>            :                         receiver = neighbours[(unsigned)(directions * Random())];
+<span class="lineNum">     196 </span>            :                 }while(unlikely(receiver == DIRECTION_INVALID || bitmap_check(obstacles, receiver)));
+<span class="lineNum">     197 </span>            :                 break;
+<span class="lineNum">     198 </span>            : 
+<span class="lineNum">     199 </span>            :                 case TOPOLOGY_GRAPH:
+<span class="lineNum">     200 </span>            :                 do{
+<span class="lineNum">     201 </span>            :                         receiver = (directions + 1) * Random();
+<span class="lineNum">     202 </span>            :                 }while(unlikely(bitmap_check(obstacles, receiver)));
+<span class="lineNum">     203 </span>            :                 break;
+<span class="lineNum">     204 </span>            : 
+<span class="lineNum">     205 </span>            :                 case TOPOLOGY_STAR:
+<span class="lineNum">     206 </span>            :                         if(sender != 0) {
+<span class="lineNum">     207 </span>            :                                 receiver = 0;
+<span class="lineNum">     208 </span>            :                         } else {
+<span class="lineNum">     209 </span>            :                                 receiver = ((topology_global.lp_cnt - 1) * Random()) + 1;
+<span class="lineNum">     210 </span>            :                         }
+<span class="lineNum">     211 </span>            :         }
+<span class="lineNum">     212 </span>            :         return receiver;
+<span class="lineNum">     213 </span>            : }
+<span class="lineNum">     214 </span>            : 
+<span class="lineNum">     215 </span><span class="lineNoCov">          0 : static inline void toggle_bit_and_state(topology_t *topology, rootsim_bitmap *bitmap, unsigned from){</span>
+<span class="lineNum">     216 </span>            : 
+<span class="lineNum">     217 </span>            :         unsigned refresh_free = 0;
+<span class="lineNum">     218 </span>            :         if(topology_global.geometry != TOPOLOGY_GRAPH){
+<span class="lineNum">     219 </span>            :                 unsigned i = topology_global.directions;
+<span class="lineNum">     220 </span>            :                 while(i--)
+<span class="lineNum">     221 </span>            :                         if(topology-&gt;neighbours_id[i] != DIRECTION_INVALID){
+<span class="lineNum">     222 </span>            :                                 refresh_free = 1;
+<span class="lineNum">     223 </span>            :                                 break;
+<span class="lineNum">     224 </span>            :                         }
+<span class="lineNum">     225 </span>            :         }else{
+<span class="lineNum">     226 </span>            :                 refresh_free = (from != current-&gt;gid.to_int);
+<span class="lineNum">     227 </span>            :         }
+<span class="lineNum">     228 </span>            : 
+<span class="lineNum">     229 </span>            : 
+<span class="lineNum">     230 </span>            :         if(bitmap_check(bitmap, from)){
+<span class="lineNum">     231 </span>            :                 bitmap_reset(bitmap, from);
+<span class="lineNum">     232 </span>            :                 topology-&gt;free_neighbours += refresh_free;
+<span class="lineNum">     233 </span>            :         }else{
+<span class="lineNum">     234 </span>            :                 bitmap_set(bitmap, from);
+<span class="lineNum">     235 </span>            :                 topology-&gt;free_neighbours -= refresh_free;
+<span class="lineNum">     236 </span>            :         }
+<span class="lineNum">     237 </span>            :         topology-&gt;dirty = true;
+<span class="lineNum">     238 </span>            : }
+<span class="lineNum">     239 </span>            : 
+<span class="lineNum">     240 </span><span class="lineNoCov">          0 : void set_value_topology_obstacles(unsigned from, unsigned to, double value){</span>
+<span class="lineNum">     241 </span>            :         (void)to;
+<span class="lineNum">     242 </span>            : 
+<span class="lineNum">     243 </span>            :         topology_t *topology = current-&gt;topology;
+<span class="lineNum">     244 </span>            :         const unsigned this_lp = current-&gt;gid.to_int;
+<span class="lineNum">     245 </span>            :         rootsim_bitmap *bitmap = topology-&gt;data;
+<span class="lineNum">     246 </span>            : 
+<span class="lineNum">     247 </span>            :         if(!((value &gt; 0) ^ bitmap_check(bitmap, from)))
+<span class="lineNum">     248 </span>            :                 return;
+<span class="lineNum">     249 </span>            : 
+<span class="lineNum">     250 </span>            :         toggle_bit_and_state(topology, bitmap, from);
+<span class="lineNum">     251 </span>            : 
+<span class="lineNum">     252 </span>            :         unsigned i = topology_global.lp_cnt;
+<span class="lineNum">     253 </span>            :         while(i--){
+<span class="lineNum">     254 </span>            :                 if(i == this_lp)
+<span class="lineNum">     255 </span>            :                         continue;
+<span class="lineNum">     256 </span>            :                 UncheckedScheduleNewEvent(i, current_evt-&gt;timestamp, TOPOLOGY_UPDATE, &amp;from, sizeof(from));
+<span class="lineNum">     257 </span>            :         }
+<span class="lineNum">     258 </span>            : }
+<span class="lineNum">     259 </span>            : 
+<span class="lineNum">     260 </span><span class="lineNoCov">          0 : void update_topology_obstacles(void){</span>
+<span class="lineNum">     261 </span>            :         topology_t *topology = current-&gt;topology;
+<span class="lineNum">     262 </span>            :         toggle_bit_and_state(topology, topology-&gt;data, *((unsigned *)current_evt-&gt;event_content));
+<span class="lineNum">     263 </span>            : }
+<span class="lineNum">     264 </span>            : 
+<span class="lineNum">     265 </span><span class="lineNoCov">          0 : double get_value_topology_obstacles(unsigned from, unsigned to){</span>
+<span class="lineNum">     266 </span>            :         (void)to;
+<span class="lineNum">     267 </span>            :         return bitmap_check(current-&gt;topology-&gt;data, from) ? 1.0 : 0.0;
+<span class="lineNum">     268 </span>            : }
+<span class="lineNum">     269 </span>            : 
+<span class="lineNum">     270 </span><span class="lineNoCov">          0 : bool is_reachable_obstacles(unsigned to){</span>
+<span class="lineNum">     271 </span>            :         // XXX do we want deep reachability or dumb reachability?
+<span class="lineNum">     272 </span>            :         return find_receiver_toward_obstacles(to) != UINT_MAX;
+<span class="lineNum">     273 </span>            : }
+<span class="lineNum">     274 </span>            : 
+<span class="lineNum">     275 </span><span class="lineNoCov">          0 : unsigned int find_receiver_toward_obstacles(unsigned int to){</span>
+<span class="lineNum">     276 </span>            :         topology_t *topology = current-&gt;topology;
+<span class="lineNum">     277 </span>            :         const unsigned lp_cnt = topology_global.lp_cnt;
+<span class="lineNum">     278 </span>            :         const unsigned this_lp = current-&gt;gid.to_int;
+<span class="lineNum">     279 </span>            : 
+<span class="lineNum">     280 </span>            :         refresh_cache_obstacles(topology);
+<span class="lineNum">     281 </span>            : 
+<span class="lineNum">     282 </span>            :         unsigned *ret_p = &amp;topology-&gt;prev_next_cache[lp_cnt + to];
+<span class="lineNum">     283 </span>            : 
+<span class="lineNum">     284 </span>            :         if(*ret_p == UINT_MAX){
+<span class="lineNum">     285 </span>            :                 // this value hasn't been requested yet
+<span class="lineNum">     286 </span>            :                 unsigned path[lp_cnt];
+<span class="lineNum">     287 </span>            :                 // we compute the complete path
+<span class="lineNum">     288 </span>            :                 if(!build_path(lp_cnt, path, topology-&gt;prev_next_cache, this_lp, to)){
+<span class="lineNum">     289 </span>            :                         // there's no path so we put in a sentinel value
+<span class="lineNum">     290 </span>            :                         *ret_p = this_lp;
+<span class="lineNum">     291 </span>            :                 }else{
+<span class="lineNum">     292 </span>            :                         // we got a feasible path, we save the first hop
+<span class="lineNum">     293 </span>            :                         *ret_p = path[0];
+<span class="lineNum">     294 </span>            :                 }
+<span class="lineNum">     295 </span>            :         }
+<span class="lineNum">     296 </span>            : 
+<span class="lineNum">     297 </span>            :         if(*ret_p == this_lp){
+<span class="lineNum">     298 </span>            :                 // the requested cell is unreachable
+<span class="lineNum">     299 </span>            :                 return UINT_MAX;
+<span class="lineNum">     300 </span>            :         }
+<span class="lineNum">     301 </span>            : 
+<span class="lineNum">     302 </span>            :         return *ret_p;
+<span class="lineNum">     303 </span>            : }
+<span class="lineNum">     304 </span>            : 
+<span class="lineNum">     305 </span><span class="lineNoCov">          0 : double compute_min_tour_obstacles(unsigned int source, unsigned int dest, unsigned int result[RegionsCount()]) {</span>
+<span class="lineNum">     306 </span>            :         topology_t *topology = current-&gt;topology;
+<span class="lineNum">     307 </span>            :         const unsigned lp_cnt = topology_global.lp_cnt;
+<span class="lineNum">     308 </span>            :         unsigned int previous[lp_cnt], hops;
+<span class="lineNum">     309 </span>            : 
+<span class="lineNum">     310 </span>            :         if(source == current-&gt;gid.to_int){
+<span class="lineNum">     311 </span>            :                 refresh_cache_obstacles(topology);
+<span class="lineNum">     312 </span>            :                 if(!(hops = build_path(lp_cnt, result, topology-&gt;prev_next_cache, source, dest))){
+<span class="lineNum">     313 </span>            :                         // the requested cell isn't reachable: this is a sentinel value indicating impossibility
+<span class="lineNum">     314 </span>            :                         topology-&gt;prev_next_cache[lp_cnt + dest] = source;
+<span class="lineNum">     315 </span>            :                         return -1.0;
+<span class="lineNum">     316 </span>            :                 }
+<span class="lineNum">     317 </span>            :                 topology-&gt;prev_next_cache[lp_cnt + dest] = result[0]; // we cache the next hop value;
+<span class="lineNum">     318 </span>            :                 return hops;
+<span class="lineNum">     319 </span>            :         }
+<span class="lineNum">     320 </span>            : 
+<span class="lineNum">     321 </span>            :         dijkstra_obstacles(topology, source, previous);
+<span class="lineNum">     322 </span>            : 
+<span class="lineNum">     323 </span>            :         if(!(hops = build_path(lp_cnt, result, previous, source, dest)))
+<span class="lineNum">     324 </span>            :                 return -1.0;
+<span class="lineNum">     325 </span>            : 
+<span class="lineNum">     326 </span>            :         return hops;
+<span class="lineNum">     327 </span>            : }
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../../../../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.12</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>

@@ -1,0 +1,11 @@
+<map id="gvt_comm_finalize" name="gvt_comm_finalize">
+<area shape="rect" id="node2" href="$mpi_8h.html#a38b0bdfeab3308a62e50dc362ebd2a68" title="Finalize inter&#45;kernel communication. " alt="" coords="195,51,391,77"/>
+<area shape="rect" id="node3" href="$communication_8h.html#a6bd2f352e0326608e9a2bef2efbde184" title="Finalize the communication subsystem. " alt="" coords="439,51,585,77"/>
+<area shape="rect" id="node4" href="$core_8h.html#a8f346536ccfbe77b78ed577674beb6cf" title="simulation_shutdown" alt="" coords="633,51,789,77"/>
+<area shape="rect" id="node5" href="$core_8c.html#a9b05d2af2e233e2616633eaa706682ee" title="exit_from_simulation\l_model" alt="" coords="841,9,995,50"/>
+<area shape="rect" id="node9" href="$main_8c.html#aa729cb27350c33119484501e13df4fec" title="main_simulation_loop" alt="" coords="837,85,999,112"/>
+<area shape="rect" id="node6" href="$core_8h.html#a7fb819521b1ab5fc7644ad216fe7b465" title="base_init" alt="" coords="1068,5,1147,32"/>
+<area shape="rect" id="node7" href="$init_8h.html#a417eb072179d09f441dbae3125049e46" title="SystemInit" alt="" coords="1216,5,1307,32"/>
+<area shape="rect" id="node8" href="$main_8c.html#a3c04138a5bfe5d72780bb7e82a18e627" title="main" alt="" coords="1355,31,1409,57"/>
+<area shape="rect" id="node10" href="$main_8c.html#af2ac8c142556588d87e6c069a4ca9894" title="end_computing" alt="" coords="1047,107,1168,133"/>
+</map>

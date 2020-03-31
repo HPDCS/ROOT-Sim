@@ -1,0 +1,127 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - doc-coverage.info - ROOT-Sim/src/arch/x86/linux/schedule-hook/schedule.h</title>
+  <link rel="stylesheet" type="text/css" href="../../../../../../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../../../../../../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../../../../../../index.html">top level</a> - <a href="index.html">ROOT-Sim/src/arch/x86/linux/schedule-hook</a> - schedule.h</td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">doc-coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">1</td>
+            <td class="headerCovTableEntry">15</td>
+            <td class="headerCovTableEntryLo">6.7 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2020-02-28 13:00:44</td>
+            <td></td>
+          </tr>
+          <tr><td><img src="../../../../../../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../../../../../../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<span class="lineNum">       1 </span><span class="lineCov">          1 : /**</span>
+<span class="lineNum">       2 </span>            : *                       Copyright (C) 2008-2019 HPDCS Group
+<span class="lineNum">       3 </span>            : *                       http://www.dis.uniroma1.it/~hpdcs
+<span class="lineNum">       4 </span>            : *
+<span class="lineNum">       5 </span>            : * This is free software;
+<span class="lineNum">       6 </span>            : * You can redistribute it and/or modify this file under the
+<span class="lineNum">       7 </span>            : * terms of the GNU General Public License as published by the Free Software
+<span class="lineNum">       8 </span>            : * Foundation; either version 3 of the License, or (at your option) any later
+<span class="lineNum">       9 </span>            : * version.
+<span class="lineNum">      10 </span>            : *
+<span class="lineNum">      11 </span>            : * This file is distributed in the hope that it will be useful, but WITHOUT ANY
+<span class="lineNum">      12 </span>            : * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+<span class="lineNum">      13 </span>            : * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+<span class="lineNum">      14 </span>            : *
+<span class="lineNum">      15 </span>            : * You should have received a copy of the GNU General Public License along with
+<span class="lineNum">      16 </span>            : * this file; if not, write to the Free Software Foundation, Inc.,
+<span class="lineNum">      17 </span>            : * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+<span class="lineNum">      18 </span>            : *
+<span class="lineNum">      19 </span>            : * @file schedule.h
+<span class="lineNum">      20 </span>            : * @brief This is the header file to configure the timestretch module
+<span class="lineNum">      21 </span>            : * @author Francesco Quaglia
+<span class="lineNum">      22 </span>            : * @author Alessandro Pellegrini
+<span class="lineNum">      23 </span>            : *
+<span class="lineNum">      24 </span>            : * @date November 11, 2014
+<span class="lineNum">      25 </span>            : */
+<span class="lineNum">      26 </span>            : #pragma once
+<span class="lineNum">      27 </span>            : #ifndef __KERNEL_TIME_SLICE_STRETCH
+<span class="lineNum">      28 </span><span class="lineNoCov">          0 : #define __KERNEL_TIME_SLICE_STRETCH</span>
+<span class="lineNum">      29 </span>            : 
+<span class="lineNum">      30 </span>            : #include &lt;linux/ioctl.h&gt;
+<span class="lineNum">      31 </span>            : 
+<span class="lineNum">      32 </span><span class="lineNoCov">          0 : #define TSTRETCH_IOCTL_MAGIC 'T'</span>
+<span class="lineNum">      33 </span>            : 
+<span class="lineNum">      34 </span><span class="lineNoCov">          0 : #define UNLIKELY_FLAG 0xf0f0f0f0</span>
+<span class="lineNum">      35 </span><span class="lineNoCov">          0 : #define RESET_FLAG    0x00000000</span>
+<span class="lineNum">      36 </span>            : 
+<span class="lineNum">      37 </span><span class="lineNoCov">          0 : #define MAX_STRETCH 3000 //this is expressed in milliseconds</span>
+<span class="lineNum">      38 </span>            : 
+<span class="lineNum">      39 </span><span class="lineNoCov">          0 : #define DELAY 1000</span>
+<span class="lineNum">      40 </span><span class="lineNoCov">          0 : #define ENABLE if(1)</span>
+<span class="lineNum">      41 </span>            : //#define MAX_CPUs 32
+<span class="lineNum">      42 </span><span class="lineNoCov">          0 : #define SIBLING_PGD 128 // max number of concurrent memory views (concurrent root-sim worker threads on a node)</span>
+<span class="lineNum">      43 </span><span class="lineNoCov">          0 : #define TS_THREADS (SIBLING_PGD) //max number of concurrent HTM threads with time stretch</span>
+<span class="lineNum">      44 </span>            : 
+<span class="lineNum">      45 </span>            : 
+<span class="lineNum">      46 </span>            : 
+<span class="lineNum">      47 </span>            : 
+<span class="lineNum">      48 </span><span class="lineNoCov">          0 : #define HTM_THREADS 16 // max number of concurrent threads rnning HTM transactions with timer stretch</span>
+<span class="lineNum">      49 </span>            : 
+<span class="lineNum">      50 </span><span class="lineNoCov">          0 : #define IOCTL_SETUP_PID _IOW(TSTRETCH_IOCTL_MAGIC, 2, unsigned long )</span>
+<span class="lineNum">      51 </span><span class="lineNoCov">          0 : #define IOCTL_SHUTDOWN_PID _IOW(TSTRETCH_IOCTL_MAGIC, 3, unsigned long )</span>
+<span class="lineNum">      52 </span><span class="lineNoCov">          0 : #define IOCTL_SHUTDOWN_ACK _IOW(TSTRETCH_IOCTL_MAGIC, 4, unsigned long )</span>
+<span class="lineNum">      53 </span><span class="lineNoCov">          0 : #define IOCTL_SHUTDOWN_VIEWS _IOW(TSTRETCH_IOCTL_MAGIC, 5, unsigned long )</span>
+<span class="lineNum">      54 </span>            : 
+<span class="lineNum">      55 </span>            : #endif /* __KERNEL_TIME_SLICE_STRETCH */
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../../../../../../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.12</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>

@@ -1,0 +1,175 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - doc-coverage.info - ROOT-Sim/src/arch/x86/linux/cross_state_manager/cross_state_manager.h</title>
+  <link rel="stylesheet" type="text/css" href="../../../../../../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../../../../../../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../../../../../../index.html">top level</a> - <a href="index.html">ROOT-Sim/src/arch/x86/linux/cross_state_manager</a> - cross_state_manager.h</td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">doc-coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">1</td>
+            <td class="headerCovTableEntry">44</td>
+            <td class="headerCovTableEntryLo">2.3 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2020-03-30 23:29:41</td>
+            <td></td>
+          </tr>
+          <tr><td><img src="../../../../../../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../../../../../../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<span class="lineNum">       1 </span><span class="lineCov">          1 : /**</span>
+<span class="lineNum">       2 </span>            : * @file arch/x86/linux/cross_state_manager/cross_state_manager.h
+<span class="lineNum">       3 </span>            : *
+<span class="lineNum">       4 </span>            : * @brief Per-thread page table
+<span class="lineNum">       5 </span>            : *
+<span class="lineNum">       6 </span>            : *
+<span class="lineNum">       7 </span>            : * This Linux kernel module implements a modification to the x86_64 page
+<span class="lineNum">       8 </span>            : * table management to support event cross state dependency tracking
+<span class="lineNum">       9 </span>            : *
+<span class="lineNum">      10 </span>            : * @copyright
+<span class="lineNum">      11 </span>            : * Copyright (C) 2008-2019 HPDCS Group
+<span class="lineNum">      12 </span>            : * https://hpdcs.github.io
+<span class="lineNum">      13 </span>            : *
+<span class="lineNum">      14 </span>            : * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
+<span class="lineNum">      15 </span>            : *
+<span class="lineNum">      16 </span>            : * ROOT-Sim is free software; you can redistribute it and/or modify it under the
+<span class="lineNum">      17 </span>            : * terms of the GNU General Public License as published by the Free Software
+<span class="lineNum">      18 </span>            : * Foundation; only version 3 of the License applies.
+<span class="lineNum">      19 </span>            : *
+<span class="lineNum">      20 </span>            : * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
+<span class="lineNum">      21 </span>            : * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+<span class="lineNum">      22 </span>            : * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+<span class="lineNum">      23 </span>            : *
+<span class="lineNum">      24 </span>            : * You should have received a copy of the GNU General Public License along with
+<span class="lineNum">      25 </span>            : * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
+<span class="lineNum">      26 </span>            : * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+<span class="lineNum">      27 </span>            : * @author Alessandro Pellegrini
+<span class="lineNum">      28 </span>            : * @author Francesco Quaglia
+<span class="lineNum">      29 </span>            : *
+<span class="lineNum">      30 </span>            : * @date November 15, 2013 - Initial version
+<span class="lineNum">      31 </span>            : * @date September 19, 2015 - Full restyle of the module, to use dynamic scheduler
+<span class="lineNum">      32 </span>            : *                            patching
+<span class="lineNum">      33 </span>            : */
+<span class="lineNum">      34 </span>            : 
+<span class="lineNum">      35 </span>            : #pragma once
+<span class="lineNum">      36 </span>            : 
+<span class="lineNum">      37 </span>            : //#ifdef HAVE_CROSS_STATE
+<span class="lineNum">      38 </span>            : 
+<span class="lineNum">      39 </span>            : #include &lt;linux/ioctl.h&gt;
+<span class="lineNum">      40 </span>            : 
+<span class="lineNum">      41 </span><span class="lineNoCov">          0 : #define CROSS_STATE_IOCTL_MAGIC 'R'</span>
+<span class="lineNum">      42 </span>            : 
+<span class="lineNum">      43 </span>            : /* core user defined parameters */
+<span class="lineNum">      44 </span><span class="lineNoCov">          0 : #define SIBLING_PGD 128 // max number of concurrent memory views (concurrent root-sim worker threads on a node)</span>
+<span class="lineNum">      45 </span><span class="lineNoCov">          0 : #define MAX_CROSS_STATE_DEPENDENCIES 1024 // max number of cross-state dependencied per LP at each event</span>
+<span class="lineNum">      46 </span>            : 
+<span class="lineNum">      47 </span>            : #ifndef IOCTL_STRUCT
+<span class="lineNum">      48 </span><span class="lineNoCov">          0 : #define IOCTL_STRUCT</span>
+<span class="lineNum">      49 </span>            : 
+<span class="lineNum">      50 </span><span class="lineNoCov">          0 : typedef struct _ioctl_info{</span>
+<span class="lineNum">      51 </span><span class="lineNoCov">          0 :         int ds;</span>
+<span class="lineNum">      52 </span><span class="lineNoCov">          0 :         void *addr;</span>
+<span class="lineNum">      53 </span><span class="lineNoCov">          0 :         int id;</span>
+<span class="lineNum">      54 </span><span class="lineNoCov">          0 :         unsigned int count;</span>
+<span class="lineNum">      55 </span><span class="lineNoCov">          0 :         unsigned int *objects;</span>
+<span class="lineNum">      56 </span><span class="lineNoCov">          0 :         unsigned mapped_processes;</span>
+<span class="lineNum">      57 </span>            : 
+<span class="lineNum">      58 </span><span class="lineNoCov">          0 :         ulong callback;</span>
+<span class="lineNum">      59 </span>            : 
+<span class="lineNum">      60 </span><span class="lineNoCov">          0 :         void *base_address;</span>
+<span class="lineNum">      61 </span><span class="lineNoCov">          0 :         int page_count;</span>
+<span class="lineNum">      62 </span><span class="lineNoCov">          0 :         int write_mode;</span>
+<span class="lineNum">      63 </span><span class="lineNoCov">          0 : } ioctl_info;</span>
+<span class="lineNum">      64 </span>            : 
+<span class="lineNum">      65 </span>            : #endif
+<span class="lineNum">      66 </span>            : 
+<span class="lineNum">      67 </span>            : 
+<span class="lineNum">      68 </span><span class="lineNoCov">          0 : #define ECS_MAJOR_FAULT 0</span>
+<span class="lineNum">      69 </span><span class="lineNoCov">          0 : #define ECS_MINOR_FAULT 1</span>
+<span class="lineNum">      70 </span><span class="lineNoCov">          0 : #define ECS_CHANGE_PAGE_PRIVILEGE       2</span>
+<span class="lineNum">      71 </span>            : 
+<span class="lineNum">      72 </span><span class="lineNoCov">          0 : typedef struct _fault_info_t {</span>
+<span class="lineNum">      73 </span><span class="lineNoCov">          0 :         long long rcx;</span>
+<span class="lineNum">      74 </span><span class="lineNoCov">          0 :         long long rip;</span>
+<span class="lineNum">      75 </span><span class="lineNoCov">          0 :         long long target_address;</span>
+<span class="lineNum">      76 </span><span class="lineNoCov">          0 :         unsigned long target_gid;</span>
+<span class="lineNum">      77 </span><span class="lineNoCov">          0 :         unsigned char fault_type;</span>
+<span class="lineNum">      78 </span><span class="lineNoCov">          0 : } fault_info_t;</span>
+<span class="lineNum">      79 </span>            : 
+<span class="lineNum">      80 </span>            : // Setup all ioctl commands
+<span class="lineNum">      81 </span><span class="lineNoCov">          0 : #define IOCTL_GET_PGD _IOW(CROSS_STATE_IOCTL_MAGIC, 1, void *)</span>
+<span class="lineNum">      82 </span><span class="lineNoCov">          0 : #define IOCTL_SET_ANCESTOR_PGD _IO(CROSS_STATE_IOCTL_MAGIC, 2)</span>
+<span class="lineNum">      83 </span><span class="lineNoCov">          0 : #define IOCTL_SET_VM_RANGE _IOW(CROSS_STATE_IOCTL_MAGIC, 3, ioctl_info *)</span>
+<span class="lineNum">      84 </span><span class="lineNoCov">          0 : #define IOCTL_SCHEDULE_ON_PGD _IOW(CROSS_STATE_IOCTL_MAGIC, 4, ioctl_info *)</span>
+<span class="lineNum">      85 </span><span class="lineNoCov">          0 : #define IOCTL_UNSCHEDULE_ON_PGD _IOW(CROSS_STATE_IOCTL_MAGIC, 5, int)</span>
+<span class="lineNum">      86 </span><span class="lineNoCov">          0 : #define IOCTL_SET_PAGE_PRIVILEGE _IOW(CROSS_STATE_IOCTL_MAGIC, 6, int)</span>
+<span class="lineNum">      87 </span><span class="lineNoCov">          0 : #define IOCTL_PROTECT_REMOTE_LP _IOW(CROSS_STATE_IOCTL_MAGIC, 7, int)</span>
+<span class="lineNum">      88 </span>            : 
+<span class="lineNum">      89 </span>            : // Macros to access subportions of an address
+<span class="lineNum">      90 </span><span class="lineNoCov">          0 : #define PML4(addr) (((long long)(addr) &gt;&gt; 39) &amp; 0x1ff)</span>
+<span class="lineNum">      91 </span><span class="lineNoCov">          0 : #define PDP(addr)  (((long long)(addr) &gt;&gt; 30) &amp; 0x1ff)</span>
+<span class="lineNum">      92 </span><span class="lineNoCov">          0 : #define PDE(addr)  (((long long)(addr) &gt;&gt; 21) &amp; 0x1ff)</span>
+<span class="lineNum">      93 </span><span class="lineNoCov">          0 : #define PTE(addr)  (((long long)(addr) &gt;&gt; 12) &amp; 0x1ff)</span>
+<span class="lineNum">      94 </span>            : 
+<span class="lineNum">      95 </span><span class="lineNoCov">          0 : #define OBJECT_TO_PML4(object_id) ((ulong)object_id &gt;&gt; 9 )</span>
+<span class="lineNum">      96 </span><span class="lineNoCov">          0 : #define OBJECT_TO_PDP(object_id) ((ulong)object_id &amp;  0x1ff)</span>
+<span class="lineNum">      97 </span><span class="lineNoCov">          0 : #define GET_ADDRESS(addr)  ( (((long long)(addr)) &amp; ((1LL &lt;&lt; 40) - 1)) &gt;&gt; 12)</span>
+<span class="lineNum">      98 </span><span class="lineNoCov">          0 : #define PML4_PLUS_ONE(addr) (void *)((long long)(addr) + (1LL &lt;&lt; 39))</span>
+<span class="lineNum">      99 </span>            : 
+<span class="lineNum">     100 </span><span class="lineNoCov">          0 : #define MASK_PTADDR 0x07FFFFFFFFFFF000</span>
+<span class="lineNum">     101 </span><span class="lineNoCov">          0 : #define MASK_PTCONT 0xF800000000000FFF</span>
+<span class="lineNum">     102 </span>            : 
+<span class="lineNum">     103 </span>            : //#endif /* HAVE_CROSS_STATE */
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../../../../../../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.12</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>

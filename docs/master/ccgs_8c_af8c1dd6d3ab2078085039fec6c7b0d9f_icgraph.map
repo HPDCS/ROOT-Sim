@@ -1,0 +1,7 @@
+<map id="ccgs_compute_snapshot" name="ccgs_compute_snapshot">
+<area shape="rect" id="node2" href="$gvt_2gvt_8h.html#a62e7abde0dac08e56aa2a57401aed27b" title="adopt_new_gvt" alt="" coords="235,5,353,32"/>
+<area shape="rect" id="node3" href="$gvt_2gvt_8h.html#a899b50ab45427cf145360ff3a6c29808" title="gvt_operations" alt="" coords="401,5,519,32"/>
+<area shape="rect" id="node4" href="$main_8c.html#aa729cb27350c33119484501e13df4fec" title="main_simulation_loop" alt="" coords="567,5,728,32"/>
+<area shape="rect" id="node5" href="$main_8c.html#af2ac8c142556588d87e6c069a4ca9894" title="end_computing" alt="" coords="776,5,897,32"/>
+<area shape="rect" id="node6" href="$main_8c.html#a3c04138a5bfe5d72780bb7e82a18e627" title="main" alt="" coords="809,56,864,83"/>
+</map>

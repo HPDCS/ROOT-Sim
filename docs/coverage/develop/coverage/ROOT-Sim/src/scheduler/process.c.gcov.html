@@ -1,0 +1,236 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - doc-coverage.info - ROOT-Sim/src/scheduler/process.c</title>
+  <link rel="stylesheet" type="text/css" href="../../../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../../../index.html">top level</a> - <a href="index.html">ROOT-Sim/src/scheduler</a> - process.c</td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">doc-coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">3</td>
+            <td class="headerCovTableEntry">8</td>
+            <td class="headerCovTableEntryLo">37.5 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2020-01-31 15:54:55</td>
+            <td></td>
+          </tr>
+          <tr><td><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<span class="lineNum">       1 </span><span class="lineCov">          1 : /**</span>
+<span class="lineNum">       2 </span>            :  * @file scheduler/process.c
+<span class="lineNum">       3 </span>            :  *
+<span class="lineNum">       4 </span>            :  * @brief Generic LP management functions
+<span class="lineNum">       5 </span>            :  *
+<span class="lineNum">       6 </span>            :  * Generic LP management functions
+<span class="lineNum">       7 </span>            :  *
+<span class="lineNum">       8 </span>            :  * @copyright
+<span class="lineNum">       9 </span>            :  * Copyright (C) 2008-2019 HPDCS Group
+<span class="lineNum">      10 </span>            :  * https://hpdcs.github.io
+<span class="lineNum">      11 </span>            :  *
+<span class="lineNum">      12 </span>            :  * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
+<span class="lineNum">      13 </span>            :  *
+<span class="lineNum">      14 </span>            :  * ROOT-Sim is free software; you can redistribute it and/or modify it under the
+<span class="lineNum">      15 </span>            :  * terms of the GNU General Public License as published by the Free Software
+<span class="lineNum">      16 </span>            :  * Foundation; only version 3 of the License applies.
+<span class="lineNum">      17 </span>            :  *
+<span class="lineNum">      18 </span>            :  * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
+<span class="lineNum">      19 </span>            :  * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+<span class="lineNum">      20 </span>            :  * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+<span class="lineNum">      21 </span>            :  *
+<span class="lineNum">      22 </span>            :  * You should have received a copy of the GNU General Public License along with
+<span class="lineNum">      23 </span>            :  * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
+<span class="lineNum">      24 </span>            :  * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+<span class="lineNum">      25 </span>            :  *
+<span class="lineNum">      26 </span>            :  * @author Alessandro Pellegrini
+<span class="lineNum">      27 </span>            :  * @author Francesco Quaglia
+<span class="lineNum">      28 </span>            :  *
+<span class="lineNum">      29 </span>            :  * @date December 14, 2017
+<span class="lineNum">      30 </span>            :  */
+<span class="lineNum">      31 </span>            : 
+<span class="lineNum">      32 </span>            : #include &lt;limits.h&gt;
+<span class="lineNum">      33 </span>            : 
+<span class="lineNum">      34 </span>            : #include &lt;core/core.h&gt;
+<span class="lineNum">      35 </span>            : #include &lt;core/init.h&gt;
+<span class="lineNum">      36 </span>            : #include &lt;scheduler/process.h&gt;
+<span class="lineNum">      37 </span>            : #include &lt;scheduler/scheduler.h&gt;
+<span class="lineNum">      38 </span>            : 
+<span class="lineNum">      39 </span>            : // TODO: see issue #121 to see how to make this ugly hack disappear
+<span class="lineNum">      40 </span><span class="lineNoCov">          0 : __thread unsigned int __lp_counter = 0;</span>
+<span class="lineNum">      41 </span><span class="lineNoCov">          0 : __thread unsigned int __lp_bound_counter = 0;</span>
+<span class="lineNum">      42 </span>            : 
+<span class="lineNum">      43 </span>            : /// Maintain LPs' simulation and execution states
+<span class="lineNum">      44 </span><span class="lineCov">          1 : struct lp_struct **lps_blocks = NULL;</span>
+<span class="lineNum">      45 </span>            : 
+<span class="lineNum">      46 </span>            : /** Each KLT has a binding towards some LPs. This is the structure used
+<span class="lineNum">      47 </span>            :  *  to keep track of LPs currently being handled
+<span class="lineNum">      48 </span>            :  */
+<span class="lineNum">      49 </span><span class="lineCov">          1 : __thread struct lp_struct **lps_bound_blocks = NULL;</span>
+<span class="lineNum">      50 </span>            : 
+<span class="lineNum">      51 </span><span class="lineNoCov">          0 : void initialize_binding_blocks(void)</span>
+<span class="lineNum">      52 </span>            : {
+<span class="lineNum">      53 </span>            :         lps_bound_blocks =
+<span class="lineNum">      54 </span>            :             (struct lp_struct **)rsalloc(n_prc * sizeof(struct lp_struct *));
+<span class="lineNum">      55 </span>            :         bzero(lps_bound_blocks, sizeof(struct lp_struct *) * n_prc);
+<span class="lineNum">      56 </span>            : }
+<span class="lineNum">      57 </span>            : 
+<span class="lineNum">      58 </span><span class="lineNoCov">          0 : void initialize_lps(void)</span>
+<span class="lineNum">      59 </span>            : {
+<span class="lineNum">      60 </span>            :         unsigned int i, j;
+<span class="lineNum">      61 </span>            :         unsigned int lid = 0;
+<span class="lineNum">      62 </span>            :         struct lp_struct *lp;
+<span class="lineNum">      63 </span>            :         unsigned int local = 0;
+<span class="lineNum">      64 </span>            :         GID_t gid;
+<span class="lineNum">      65 </span>            : 
+<span class="lineNum">      66 </span>            :         // First of all, determine what LPs should be locally hosted.
+<span class="lineNum">      67 </span>            :         // Only for them, we are creating struct lp_structs here.
+<span class="lineNum">      68 </span>            :         distribute_lps_on_kernels();
+<span class="lineNum">      69 </span>            : 
+<span class="lineNum">      70 </span>            :         // We now know how many LPs should be locally hosted. Prepare
+<span class="lineNum">      71 </span>            :         // the place for their control blocks.
+<span class="lineNum">      72 </span>            :         lps_blocks =
+<span class="lineNum">      73 </span>            :             (struct lp_struct **)rsalloc(n_prc * sizeof(struct lp_struct *));
+<span class="lineNum">      74 </span>            : 
+<span class="lineNum">      75 </span>            :         // We now iterate over all LP Gids. Everytime that we find an LP
+<span class="lineNum">      76 </span>            :         // which should be locally hosted, we create the local lp_struct
+<span class="lineNum">      77 </span>            :         // process control block.
+<span class="lineNum">      78 </span>            :         for (i = 0; i &lt; n_prc_tot; i++) {
+<span class="lineNum">      79 </span>            :                 set_gid(gid, i);
+<span class="lineNum">      80 </span>            :                 if (find_kernel_by_gid(gid) != kid)
+<span class="lineNum">      81 </span>            :                         continue;
+<span class="lineNum">      82 </span>            : 
+<span class="lineNum">      83 </span>            :                 // Initialize the control block for the current lp
+<span class="lineNum">      84 </span>            :                 lp = (struct lp_struct *)rsalloc(sizeof(struct lp_struct));
+<span class="lineNum">      85 </span>            :                 bzero(lp, sizeof(struct lp_struct));
+<span class="lineNum">      86 </span>            :                 lps_blocks[local++] = lp;
+<span class="lineNum">      87 </span>            : 
+<span class="lineNum">      88 </span>            :                 if (local &gt; n_prc) {
+<span class="lineNum">      89 </span>            :                         printf(&quot;reached local %d\n&quot;, local);
+<span class="lineNum">      90 </span>            :                         fflush(stdout);
+<span class="lineNum">      91 </span>            :                         abort();
+<span class="lineNum">      92 </span>            :                 }
+<span class="lineNum">      93 </span>            :                 // We sequentially assign lids, and use the current gid
+<span class="lineNum">      94 </span>            :                 lp-&gt;lid.to_int = lid++;
+<span class="lineNum">      95 </span>            :                 lp-&gt;gid = gid;
+<span class="lineNum">      96 </span>            : 
+<span class="lineNum">      97 </span>            :                 // Initialize memory map
+<span class="lineNum">      98 </span>            :                 initialize_memory_map(lp);
+<span class="lineNum">      99 </span>            : 
+<span class="lineNum">     100 </span>            :                 // Allocate memory for the outgoing buffer
+<span class="lineNum">     101 </span>            :                 lp-&gt;outgoing_buffer.max_size = INIT_OUTGOING_MSG;
+<span class="lineNum">     102 </span>            :                 lp-&gt;outgoing_buffer.outgoing_msgs =
+<span class="lineNum">     103 </span>            :                     rsalloc(sizeof(msg_t *) * INIT_OUTGOING_MSG);
+<span class="lineNum">     104 </span>            : 
+<span class="lineNum">     105 </span>            :                 // Initialize bottom halves msg channel
+<span class="lineNum">     106 </span>            :                 lp-&gt;bottom_halves = init_channel();
+<span class="lineNum">     107 </span>            : 
+<span class="lineNum">     108 </span>            :                 // Which version of OnGVT and ProcessEvent should we use?
+<span class="lineNum">     109 </span>            :                 if (rootsim_config.snapshot == SNAPSHOT_FULL) {
+<span class="lineNum">     110 </span>            :                         lp-&gt;OnGVT = &amp;OnGVT_light;
+<span class="lineNum">     111 </span>            :                         lp-&gt;ProcessEvent = &amp;ProcessEvent_light;
+<span class="lineNum">     112 </span>            :                 }               // TODO: add here an else for ISS
+<span class="lineNum">     113 </span>            : 
+<span class="lineNum">     114 </span>            :                 // Allocate LP stack
+<span class="lineNum">     115 </span>            :                 lp-&gt;stack = get_ult_stack(LP_STACK_SIZE);
+<span class="lineNum">     116 </span>            : 
+<span class="lineNum">     117 </span>            :                 // Set the initial checkpointing period for this LP.
+<span class="lineNum">     118 </span>            :                 // If the checkpointing period is fixed, this will not change during the
+<span class="lineNum">     119 </span>            :                 // execution. Otherwise, new calls to this function will (locally) update
+<span class="lineNum">     120 </span>            :                 // this.
+<span class="lineNum">     121 </span>            :                 set_checkpoint_period(lp, rootsim_config.ckpt_period);
+<span class="lineNum">     122 </span>            : 
+<span class="lineNum">     123 </span>            :                 // Initially, every LP is ready
+<span class="lineNum">     124 </span>            :                 lp-&gt;state = LP_STATE_READY;
+<span class="lineNum">     125 </span>            : 
+<span class="lineNum">     126 </span>            :                 // There is no current state layout at the beginning
+<span class="lineNum">     127 </span>            :                 lp-&gt;current_base_pointer = NULL;
+<span class="lineNum">     128 </span>            : 
+<span class="lineNum">     129 </span>            :                 // Initialize the queues
+<span class="lineNum">     130 </span>            :                 lp-&gt;queue_in = new_list(msg_t);
+<span class="lineNum">     131 </span>            :                 lp-&gt;queue_out = new_list(msg_hdr_t);
+<span class="lineNum">     132 </span>            :                 lp-&gt;queue_states = new_list(state_t);
+<span class="lineNum">     133 </span>            :                 lp-&gt;rendezvous_queue = new_list(msg_t);
+<span class="lineNum">     134 </span>            : 
+<span class="lineNum">     135 </span>            :                 // No event has been processed so far
+<span class="lineNum">     136 </span>            :                 lp-&gt;bound = NULL;
+<span class="lineNum">     137 </span>            : 
+<span class="lineNum">     138 </span>            :                 // We have no information about messages still to be delivered to this LP
+<span class="lineNum">     139 </span>            :                 lp-&gt;outgoing_buffer.min_in_transit = rsalloc(sizeof(simtime_t) * n_cores);
+<span class="lineNum">     140 </span>            :                 for (j = 0; j &lt; n_cores; j++) {
+<span class="lineNum">     141 </span>            :                         lp-&gt;outgoing_buffer.min_in_transit[j] = INFTY;
+<span class="lineNum">     142 </span>            :                 }
+<span class="lineNum">     143 </span>            : 
+<span class="lineNum">     144 </span>            : #ifdef HAVE_CROSS_STATE
+<span class="lineNum">     145 </span>            :                 // No read/write dependencies open so far for the LP. The current lp is always opened
+<span class="lineNum">     146 </span>            :                 lp-&gt;ECS_index = 0;
+<span class="lineNum">     147 </span>            :                 lp-&gt;ECS_synch_table[0] = LidToGid(lp);       // LidToGid for distributed ECS
+<span class="lineNum">     148 </span>            : #endif
+<span class="lineNum">     149 </span>            : 
+<span class="lineNum">     150 </span>            :                 // Create User-Level Thread
+<span class="lineNum">     151 </span>            :                 context_create(&amp;lp-&gt;context, LP_main_loop, NULL, lp-&gt;stack,
+<span class="lineNum">     152 </span>            :                                LP_STACK_SIZE);
+<span class="lineNum">     153 </span>            :         }
+<span class="lineNum">     154 </span>            : }
+<span class="lineNum">     155 </span>            : 
+<span class="lineNum">     156 </span>            : // This works only for locally-hosted LPs!
+<span class="lineNum">     157 </span><span class="lineNoCov">          0 : struct lp_struct *find_lp_by_gid(GID_t gid)</span>
+<span class="lineNum">     158 </span>            : {
+<span class="lineNum">     159 </span>            :         foreach_lp(lp) {
+<span class="lineNum">     160 </span>            :                 if (lp-&gt;gid.to_int == gid.to_int)
+<span class="lineNum">     161 </span>            :                         return lp;
+<span class="lineNum">     162 </span>            :         }
+<span class="lineNum">     163 </span>            :         return NULL;
+<span class="lineNum">     164 </span>            : }
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.12</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>

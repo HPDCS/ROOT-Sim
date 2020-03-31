@@ -1,0 +1,233 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - doc-coverage.info - ROOT-Sim/src/arch/x86/linux/intercept/my_page_fault.c</title>
+  <link rel="stylesheet" type="text/css" href="../../../../../../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../../../../../../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../../../../../../index.html">top level</a> - <a href="index.html">ROOT-Sim/src/arch/x86/linux/intercept</a> - my_page_fault.c</td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">doc-coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">0</td>
+            <td class="headerCovTableEntry">40</td>
+            <td class="headerCovTableEntryLo">0.0 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2020-02-28 13:00:44</td>
+            <td></td>
+          </tr>
+          <tr><td><img src="../../../../../../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../../../../../../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<span class="lineNum">       1 </span><span class="lineNoCov">          0 : #include &lt;linux/module.h&gt;</span>
+<span class="lineNum">       2 </span>            : #include &lt;linux/kernel.h&gt;
+<span class="lineNum">       3 </span>            : #include &lt;linux/errno.h&gt;
+<span class="lineNum">       4 </span>            : #include &lt;linux/types.h&gt;
+<span class="lineNum">       5 </span>            : #include &lt;linux/mm.h&gt;
+<span class="lineNum">       6 </span>            : #include &lt;asm/uaccess.h&gt;
+<span class="lineNum">       7 </span>            : //#include &lt;asm/traps.h&gt;
+<span class="lineNum">       8 </span>            : #include &quot;traps-dummy.h&quot;
+<span class="lineNum">       9 </span>            : #include &lt;asm/desc_defs.h&gt;
+<span class="lineNum">      10 </span>            : #include &lt;linux/sched.h&gt;
+<span class="lineNum">      11 </span>            : #include &lt;linux/moduleparam.h&gt;
+<span class="lineNum">      12 </span>            : 
+<span class="lineNum">      13 </span><span class="lineNoCov">          0 : #define  X86_TRAP_PF  14</span>
+<span class="lineNum">      14 </span>            : //PGFAULT_NR is the interrupt number of page fault. It is platform specific.
+<span class="lineNum">      15 </span>            : #if defined(CONFIG_X86_64)
+<span class="lineNum">      16 </span>            : #define PGFAULT_NR X86_TRAP_PF
+<span class="lineNum">      17 </span>            : #else
+<span class="lineNum">      18 </span>            : #error This module is only for X86_64 kernel
+<span class="lineNum">      19 </span>            : #endif
+<span class="lineNum">      20 </span>            : 
+<span class="lineNum">      21 </span><span class="lineNoCov">          0 : static unsigned long new_idt_table_page;</span>
+<span class="lineNum">      22 </span>            : static struct desc_ptr default_idtr;
+<span class="lineNum">      23 </span>            : 
+<span class="lineNum">      24 </span>            : //addresses of some symbols
+<span class="lineNum">      25 </span><span class="lineNoCov">          0 : static unsigned long addr_dft_page_fault = 0UL; //address of default 'page_fault'</span>
+<span class="lineNum">      26 </span><span class="lineNoCov">          0 : static unsigned long addr_dft_do_page_fault = 0UL; //address of default 'do_page_fault'</span>
+<span class="lineNum">      27 </span><span class="lineNoCov">          0 : static unsigned long addr_pv_irq_ops = 0UL; //address of 'pv_irq_ops'</span>
+<span class="lineNum">      28 </span><span class="lineNoCov">          0 : static unsigned long addr_adjust_exception_frame; //content of pv_irq_ops.adjust_exception_frame, it's a function</span>
+<span class="lineNum">      29 </span><span class="lineNoCov">          0 : static unsigned long addr_error_entry = 0UL;</span>
+<span class="lineNum">      30 </span><span class="lineNoCov">          0 : static unsigned long addr_error_exit = 0UL;</span>
+<span class="lineNum">      31 </span>            : 
+<span class="lineNum">      32 </span><span class="lineNoCov">          0 : module_param(addr_dft_page_fault, ulong, S_IRUGO);</span>
+<span class="lineNum">      33 </span><span class="lineNoCov">          0 : module_param(addr_dft_do_page_fault, ulong, S_IRUGO);</span>
+<span class="lineNum">      34 </span><span class="lineNoCov">          0 : module_param(addr_pv_irq_ops, ulong, S_IRUGO);</span>
+<span class="lineNum">      35 </span><span class="lineNoCov">          0 : module_param(addr_error_entry, ulong, S_IRUGO);</span>
+<span class="lineNum">      36 </span><span class="lineNoCov">          0 : module_param(addr_error_exit, ulong, S_IRUGO);</span>
+<span class="lineNum">      37 </span>            : 
+<span class="lineNum">      38 </span><span class="lineNoCov">          0 : #define CHECK_PARAM(x) do{\</span>
+<span class="lineNum">      39 </span>            :     if(!x){\
+<span class="lineNum">      40 </span>            :         printk(KERN_INFO &quot;my_virt_drv: Error: need to set '%s'\n&quot;, #x);\
+<span class="lineNum">      41 </span>            :         is_any_unset = 1;\
+<span class="lineNum">      42 </span>            :     }\
+<span class="lineNum">      43 </span>            :     printk(KERN_INFO &quot;my_virt_drv: %s=0x%lx\n&quot;, #x, x);\
+<span class="lineNum">      44 </span>            : }while(0)
+<span class="lineNum">      45 </span>            : 
+<span class="lineNum">      46 </span><span class="lineNoCov">          0 : typedef void (*do_page_fault_t)(struct pt_regs*, unsigned long);</span>
+<span class="lineNum">      47 </span>            : 
+<span class="lineNum">      48 </span><span class="lineNoCov">          0 : extern void root_sim_page_fault(struct pt_regs* regs, long error_code, do_page_fault_t kernel_handler);</span>
+<span class="lineNum">      49 </span>            : 
+<span class="lineNum">      50 </span><span class="lineNoCov">          0 : static int check_parameters(void){</span>
+<span class="lineNum">      51 </span>            :     int is_any_unset = 0;
+<span class="lineNum">      52 </span>            :     CHECK_PARAM(addr_dft_page_fault);
+<span class="lineNum">      53 </span>            :     CHECK_PARAM(addr_dft_do_page_fault);
+<span class="lineNum">      54 </span>            :     CHECK_PARAM(addr_pv_irq_ops);
+<span class="lineNum">      55 </span>            :     CHECK_PARAM(addr_error_entry);
+<span class="lineNum">      56 </span>            :     CHECK_PARAM(addr_error_exit);
+<span class="lineNum">      57 </span>            :     return is_any_unset;
+<span class="lineNum">      58 </span>            : }
+<span class="lineNum">      59 </span>            : 
+<span class="lineNum">      60 </span><span class="lineNoCov">          0 : void my_do_page_fault(struct pt_regs* regs, unsigned long error_code){</span>
+<span class="lineNum">      61 </span>            :     // We call the ROOT-Sim page fault handler. Warning: if we have to call the
+<span class="lineNum">      62 </span>            :     // original kernel handler, this must be done prior to returning!!!!
+<span class="lineNum">      63 </span>            :     root_sim_page_fault(regs, error_code, (do_page_fault_t)addr_dft_do_page_fault);
+<span class="lineNum">      64 </span>            : }
+<span class="lineNum">      65 </span>            : 
+<span class="lineNum">      66 </span><span class="lineNoCov">          0 : asmlinkage void my_page_fault(void);</span>
+<span class="lineNum">      67 </span><span class="lineNoCov">          0 : asm(&quot;   .text&quot;);</span>
+<span class="lineNum">      68 </span><span class="lineNoCov">          0 : asm(&quot;   .type my_page_fault,@function&quot;);</span>
+<span class="lineNum">      69 </span><span class="lineNoCov">          0 : asm(&quot;my_page_fault:&quot;);</span>
+<span class="lineNum">      70 </span><span class="lineNoCov">          0 : asm(&quot;   .byte 0x66&quot;);</span>
+<span class="lineNum">      71 </span><span class="lineNoCov">          0 : asm(&quot;   xchg %ax, %ax&quot;);</span>
+<span class="lineNum">      72 </span><span class="lineNoCov">          0 : asm(&quot;   callq *addr_adjust_exception_frame&quot;);</span>
+<span class="lineNum">      73 </span><span class="lineNoCov">          0 : asm(&quot;   sub $0x78, %rsp&quot;);</span>
+<span class="lineNum">      74 </span><span class="lineNoCov">          0 : asm(&quot;   callq *addr_error_entry&quot;);</span>
+<span class="lineNum">      75 </span><span class="lineNoCov">          0 : asm(&quot;   mov %rsp, %rdi&quot;);</span>
+<span class="lineNum">      76 </span><span class="lineNoCov">          0 : asm(&quot;   mov 0x78(%rsp), %rsi&quot;);</span>
+<span class="lineNum">      77 </span><span class="lineNoCov">          0 : asm(&quot;   movq $0xffffffffffffffff, 0x78(%rsp)&quot;);</span>
+<span class="lineNum">      78 </span><span class="lineNoCov">          0 : asm(&quot;   callq my_do_page_fault&quot;);</span>
+<span class="lineNum">      79 </span><span class="lineNoCov">          0 : asm(&quot;   jmpq *addr_error_exit&quot;);</span>
+<span class="lineNum">      80 </span><span class="lineNoCov">          0 : asm(&quot;   nopl (%rax)&quot;);</span>
+<span class="lineNum">      81 </span>            : 
+<span class="lineNum">      82 </span>            : //this function is copied from kernel source
+<span class="lineNum">      83 </span><span class="lineNoCov">          0 : static inline void pack_gate(gate_desc *gate, unsigned type, unsigned long func,</span>
+<span class="lineNum">      84 </span>            :                          unsigned dpl, unsigned ist, unsigned seg){
+<span class="lineNum">      85 </span>            :     gate-&gt;offset_low    = PTR_LOW(func);
+<span class="lineNum">      86 </span>            :     gate-&gt;segment       = __KERNEL_CS;
+<span class="lineNum">      87 </span>            :     gate-&gt;ist       = ist;
+<span class="lineNum">      88 </span>            :     gate-&gt;p         = 1;
+<span class="lineNum">      89 </span>            :     gate-&gt;dpl       = dpl;
+<span class="lineNum">      90 </span>            :     gate-&gt;zero0     = 0;
+<span class="lineNum">      91 </span>            :     gate-&gt;zero1     = 0;
+<span class="lineNum">      92 </span>            :     gate-&gt;type      = type;
+<span class="lineNum">      93 </span>            :     gate-&gt;offset_middle = PTR_MIDDLE(func);
+<span class="lineNum">      94 </span>            :     gate-&gt;offset_high   = PTR_HIGH(func);
+<span class="lineNum">      95 </span>            : }
+<span class="lineNum">      96 </span>            : 
+<span class="lineNum">      97 </span><span class="lineNoCov">          0 : static void my_load_idt(void *info){</span>
+<span class="lineNum">      98 </span>            :     struct desc_ptr *idtr_ptr = (struct desc_ptr *)info;
+<span class="lineNum">      99 </span>            :     load_idt(idtr_ptr);
+<span class="lineNum">     100 </span>            : }
+<span class="lineNum">     101 </span>            : 
+<span class="lineNum">     102 </span><span class="lineNoCov">          0 : static int my_fault_init(void){</span>
+<span class="lineNum">     103 </span>            :     //check all the module_parameters are set properly
+<span class="lineNum">     104 </span>            :     if(check_parameters())
+<span class="lineNum">     105 </span>            :         return -1;
+<span class="lineNum">     106 </span>            :     //get the address of 'adjust_exception_frame' from pv_irq_ops struct
+<span class="lineNum">     107 </span>            :     addr_adjust_exception_frame = *(unsigned long *)(addr_pv_irq_ops + 0x30);
+<span class="lineNum">     108 </span>            :     return 0;
+<span class="lineNum">     109 </span>            : }
+<span class="lineNum">     110 </span>            : 
+<span class="lineNum">     111 </span><span class="lineNoCov">          0 : int register_my_page_fault_handler(void){</span>
+<span class="lineNum">     112 </span>            :     struct desc_ptr idtr;
+<span class="lineNum">     113 </span>            :     gate_desc *old_idt, *new_idt;
+<span class="lineNum">     114 </span>            :     int retval;
+<span class="lineNum">     115 </span>            : 
+<span class="lineNum">     116 </span>            :     //first, do some initialization work.
+<span class="lineNum">     117 </span>            :     retval = my_fault_init();
+<span class="lineNum">     118 </span>            :     if(retval)
+<span class="lineNum">     119 </span>            :         return retval;
+<span class="lineNum">     120 </span>            : 
+<span class="lineNum">     121 </span>            :     //record the default idtr
+<span class="lineNum">     122 </span>            :     store_idt(&amp;default_idtr);
+<span class="lineNum">     123 </span>            : 
+<span class="lineNum">     124 </span>            :     //read the content of idtr register and get the address of old IDT table
+<span class="lineNum">     125 </span>            :     old_idt = (gate_desc *)default_idtr.address; //'default_idtr' is initialized in 'my_virt_drv_init'
+<span class="lineNum">     126 </span>            : 
+<span class="lineNum">     127 </span>            :     //allocate a page to store the new IDT table
+<span class="lineNum">     128 </span>            :     printk(KERN_INFO &quot;my_virt_drv: alloc a page to store new idt table.\n&quot;);
+<span class="lineNum">     129 </span>            :     new_idt_table_page = __get_free_page(GFP_KERNEL);
+<span class="lineNum">     130 </span>            :     if(!new_idt_table_page)
+<span class="lineNum">     131 </span>            :         return -ENOMEM;
+<span class="lineNum">     132 </span>            : 
+<span class="lineNum">     133 </span>            :     idtr.address = new_idt_table_page;
+<span class="lineNum">     134 </span>            :     idtr.size = default_idtr.size;
+<span class="lineNum">     135 </span>            : 
+<span class="lineNum">     136 </span>            :     //copy the old idt table to the new one
+<span class="lineNum">     137 </span>            :     new_idt = (gate_desc *)idtr.address;
+<span class="lineNum">     138 </span>            :     memcpy(new_idt, old_idt, idtr.size);
+<span class="lineNum">     139 </span>            :     pack_gate(&amp;new_idt[PGFAULT_NR], GATE_INTERRUPT, (unsigned long)my_page_fault, 0, 0, __KERNEL_CS);
+<span class="lineNum">     140 </span>            : 
+<span class="lineNum">     141 </span>            :     //load idt for all the processors
+<span class="lineNum">     142 </span>            :     printk(KERN_INFO &quot;my_virt_drv: load the new idt table.\n&quot;);
+<span class="lineNum">     143 </span>            :     load_idt(&amp;idtr);
+<span class="lineNum">     144 </span>            :     printk(KERN_INFO &quot;my_virt_drv: new idt table loaded.\n&quot;);
+<span class="lineNum">     145 </span>            :     smp_call_function(my_load_idt, (void *)&amp;idtr, 1); //wait till all are finished
+<span class="lineNum">     146 </span>            :     printk(KERN_INFO &quot;my_virt_drv: all CPUs have loaded the new idt table.\n&quot;);
+<span class="lineNum">     147 </span>            :     return 0;
+<span class="lineNum">     148 </span>            : }
+<span class="lineNum">     149 </span>            : 
+<span class="lineNum">     150 </span><span class="lineNoCov">          0 : void unregister_my_page_fault_handler(void){</span>
+<span class="lineNum">     151 </span>            :     struct desc_ptr idtr;
+<span class="lineNum">     152 </span>            :     store_idt(&amp;idtr);
+<span class="lineNum">     153 </span>            :     //if the current idt is not the default one, restore the default one
+<span class="lineNum">     154 </span>            :     if(idtr.address != default_idtr.address || idtr.size != default_idtr.size){
+<span class="lineNum">     155 </span>            :         load_idt(&amp;default_idtr);
+<span class="lineNum">     156 </span>            :         smp_call_function(my_load_idt, (void *)&amp;default_idtr, 1);
+<span class="lineNum">     157 </span>            :         free_page(new_idt_table_page);
+<span class="lineNum">     158 </span>            :     }
+<span class="lineNum">     159 </span>            : }
+<span class="lineNum">     160 </span>            : 
+<span class="lineNum">     161 </span><span class="lineNoCov">          0 : MODULE_LICENSE(&quot;Dual BSD/GPL&quot;);</span>
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../../../../../../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.12</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>

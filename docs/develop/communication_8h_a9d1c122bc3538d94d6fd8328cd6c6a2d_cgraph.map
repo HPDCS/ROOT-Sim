@@ -1,0 +1,8 @@
+<map id="communication_init" name="communication_init">
+<area shape="rect" id="node2" href="$mpi_8c.html#aae0b9d97e0c3d31df6e27e2455e66a13" title="Initialize inter&#45;kernel communication. " alt="" coords="200,81,371,108"/>
+<area shape="rect" id="node3" href="$wnd_8c.html#a620f72de0294d3c638894de54d14ea27" title="Outgoing queue initialization. " alt="" coords="419,5,575,32"/>
+<area shape="rect" id="node4" href="$communication_2gvt_8c.html#ae0cb1aa4dae8060ac662c0534849ecf3" title="Initialize the MPI&#45;based distributed GVT reduction submodule. " alt="" coords="439,56,555,83"/>
+<area shape="rect" id="node5" href="$mpi_8c.html#a6e129776fd0d7fc31a255a396ce28c39" title="Setup the distributed termination subsystem. " alt="" coords="421,107,573,133"/>
+<area shape="rect" id="node6" href="$mpi_8c.html#a013115e2b9fb4af92de3a6b212fc8065" title="Initialize MPI Datatype and Operation for statistics reduction. " alt="" coords="423,157,570,184"/>
+<area shape="rect" id="node7" href="$mpi_8c.html#ace2c9a712d7d5f8e73dda54c9de3e358" title="Reduce operation for statistics. " alt="" coords="623,157,768,184"/>
+</map>

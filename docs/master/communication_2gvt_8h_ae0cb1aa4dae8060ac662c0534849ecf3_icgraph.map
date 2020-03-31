@@ -1,0 +1,6 @@
+<map id="gvt_comm_init" name="gvt_comm_init">
+<area shape="rect" id="node2" href="$mpi_8h.html#aae0b9d97e0c3d31df6e27e2455e66a13" title="Initialize inter&#45;kernel communication. " alt="" coords="169,5,340,32"/>
+<area shape="rect" id="node3" href="$communication_8h.html#a9d1c122bc3538d94d6fd8328cd6c6a2d" title="Initialize the communication subsystem. " alt="" coords="388,5,535,32"/>
+<area shape="rect" id="node4" href="$init_8h.html#a417eb072179d09f441dbae3125049e46" title="SystemInit" alt="" coords="583,5,673,32"/>
+<area shape="rect" id="node5" href="$main_8c.html#a3c04138a5bfe5d72780bb7e82a18e627" title="main" alt="" coords="721,5,776,32"/>
+</map>

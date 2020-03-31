@@ -1,0 +1,9 @@
+<map id="statistics_fini" name="statistics_fini">
+<area shape="rect" id="node2" href="$core_8h.html#a8f346536ccfbe77b78ed577674beb6cf" title="simulation_shutdown" alt="" coords="157,51,313,77"/>
+<area shape="rect" id="node3" href="$core_8c.html#a9b05d2af2e233e2616633eaa706682ee" title="exit_from_simulation\l_model" alt="" coords="365,9,519,50"/>
+<area shape="rect" id="node7" href="$main_8c.html#aa729cb27350c33119484501e13df4fec" title="main_simulation_loop" alt="" coords="361,85,523,112"/>
+<area shape="rect" id="node4" href="$core_8h.html#a7fb819521b1ab5fc7644ad216fe7b465" title="base_init" alt="" coords="592,5,671,32"/>
+<area shape="rect" id="node5" href="$init_8h.html#a417eb072179d09f441dbae3125049e46" title="SystemInit" alt="" coords="740,5,831,32"/>
+<area shape="rect" id="node6" href="$main_8c.html#a3c04138a5bfe5d72780bb7e82a18e627" title="main" alt="" coords="879,31,933,57"/>
+<area shape="rect" id="node8" href="$main_8c.html#af2ac8c142556588d87e6c069a4ca9894" title="end_computing" alt="" coords="571,107,692,133"/>
+</map>

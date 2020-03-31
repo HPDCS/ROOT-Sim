@@ -1,0 +1,112 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - doc-coverage.info - ROOT-Sim/src/serial/serial.h</title>
+  <link rel="stylesheet" type="text/css" href="../../../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../../../index.html">top level</a> - <a href="index.html">ROOT-Sim/src/serial</a> - serial.h</td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">doc-coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">1</td>
+            <td class="headerCovTableEntry">5</td>
+            <td class="headerCovTableEntryLo">20.0 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2020-02-07 15:01:24</td>
+            <td></td>
+          </tr>
+          <tr><td><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<span class="lineNum">       1 </span><span class="lineCov">          1 : /**</span>
+<span class="lineNum">       2 </span>            :  * @file serial/serial.h
+<span class="lineNum">       3 </span>            :  *
+<span class="lineNum">       4 </span>            :  * @brief Serial scheduler
+<span class="lineNum">       5 </span>            :  *
+<span class="lineNum">       6 </span>            :  * This module implements the sequential execution of simulation models.
+<span class="lineNum">       7 </span>            :  * Here all the routines to support sequential simulations are implemented,
+<span class="lineNum">       8 </span>            :  * except for the event queue which uses the Calendar Queue implemented in
+<span class="lineNum">       9 </span>            :  * calqueue.c.
+<span class="lineNum">      10 </span>            :  *
+<span class="lineNum">      11 </span>            :  * @copyright
+<span class="lineNum">      12 </span>            :  * Copyright (C) 2008-2019 HPDCS Group
+<span class="lineNum">      13 </span>            :  * https://hpdcs.github.io
+<span class="lineNum">      14 </span>            :  *
+<span class="lineNum">      15 </span>            :  * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
+<span class="lineNum">      16 </span>            :  *
+<span class="lineNum">      17 </span>            :  * ROOT-Sim is free software; you can redistribute it and/or modify it under the
+<span class="lineNum">      18 </span>            :  * terms of the GNU General Public License as published by the Free Software
+<span class="lineNum">      19 </span>            :  * Foundation; only version 3 of the License applies.
+<span class="lineNum">      20 </span>            :  *
+<span class="lineNum">      21 </span>            :  * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
+<span class="lineNum">      22 </span>            :  * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+<span class="lineNum">      23 </span>            :  * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+<span class="lineNum">      24 </span>            :  *
+<span class="lineNum">      25 </span>            :  * You should have received a copy of the GNU General Public License along with
+<span class="lineNum">      26 </span>            :  * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
+<span class="lineNum">      27 </span>            :  * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+<span class="lineNum">      28 </span>            :  *
+<span class="lineNum">      29 </span>            :  * @author Alessandro Pellegrini
+<span class="lineNum">      30 </span>            :  */
+<span class="lineNum">      31 </span>            : #pragma once
+<span class="lineNum">      32 </span>            : 
+<span class="lineNum">      33 </span>            : #include &lt;ROOT-Sim.h&gt;
+<span class="lineNum">      34 </span>            : 
+<span class="lineNum">      35 </span><span class="lineNoCov">          0 : extern void SerialSetState(void *);</span>
+<span class="lineNum">      36 </span><span class="lineNoCov">          0 : extern void SerialScheduleNewEvent(unsigned int, simtime_t, unsigned int,</span>
+<span class="lineNum">      37 </span>            :                                    void *, unsigned int);
+<span class="lineNum">      38 </span>            : 
+<span class="lineNum">      39 </span><span class="lineNoCov">          0 : extern void serial_init(void);</span>
+<span class="lineNum">      40 </span><span class="lineNoCov">          0 : extern void serial_simulation(void) __attribute__((noreturn));</span>
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.12</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>

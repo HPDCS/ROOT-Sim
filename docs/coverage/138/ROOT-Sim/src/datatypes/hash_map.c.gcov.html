@@ -1,0 +1,317 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - doc-coverage.info - ROOT-Sim/src/datatypes/hash_map.c</title>
+  <link rel="stylesheet" type="text/css" href="../../../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../../../index.html">top level</a> - <a href="index.html">ROOT-Sim/src/datatypes</a> - hash_map.c</td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">doc-coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">1</td>
+            <td class="headerCovTableEntry">19</td>
+            <td class="headerCovTableEntryLo">5.3 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2020-02-28 13:00:44</td>
+            <td></td>
+          </tr>
+          <tr><td><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<span class="lineNum">       1 </span><span class="lineCov">          1 : /**</span>
+<span class="lineNum">       2 </span>            : *                       Copyright (C) 2008-2018 HPDCS Group
+<span class="lineNum">       3 </span>            : *                       http://www.dis.uniroma1.it/~hpdcs
+<span class="lineNum">       4 </span>            : *
+<span class="lineNum">       5 </span>            : *
+<span class="lineNum">       6 </span>            : * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
+<span class="lineNum">       7 </span>            : *
+<span class="lineNum">       8 </span>            : * ROOT-Sim is free software; you can redistribute it and/or modify it under the
+<span class="lineNum">       9 </span>            : * terms of the GNU General Public License as published by the Free Software
+<span class="lineNum">      10 </span>            : * Foundation; only version 3 of the License applies.
+<span class="lineNum">      11 </span>            : *
+<span class="lineNum">      12 </span>            : * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
+<span class="lineNum">      13 </span>            : * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+<span class="lineNum">      14 </span>            : * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+<span class="lineNum">      15 </span>            : *
+<span class="lineNum">      16 </span>            : * You should have received a copy of the GNU General Public License along with
+<span class="lineNum">      17 </span>            : * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
+<span class="lineNum">      18 </span>            : * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+<span class="lineNum">      19 </span>            : *
+<span class="lineNum">      20 </span>            : * @file hash_map.c
+<span class="lineNum">      21 </span>            : * @date 9 Nov 2018
+<span class="lineNum">      22 </span>            : * @brief This header implements a simple hash map data structure
+<span class="lineNum">      23 </span>            : * @author Andrea Piccione
+<span class="lineNum">      24 </span>            : *
+<span class="lineNum">      25 </span>            : * This a simple hash map implementation, currently used in the abm layer.
+<span class="lineNum">      26 </span>            : * It's based on a open addressing design:
+<span class="lineNum">      27 </span>            : * it handles collisions through linear probing,
+<span class="lineNum">      28 </span>            : * entries are reordered on insertion through robin hood hashing.
+<span class="lineNum">      29 </span>            : */
+<span class="lineNum">      30 </span>            : 
+<span class="lineNum">      31 </span>            : 
+<span class="lineNum">      32 </span>            : #include &lt;datatypes/hash_map.h&gt;
+<span class="lineNum">      33 </span>            : #include &lt;mm/mm.h&gt;
+<span class="lineNum">      34 </span>            : #include &lt;memory.h&gt;
+<span class="lineNum">      35 </span>            : #include &lt;limits.h&gt;
+<span class="lineNum">      36 </span>            : 
+<span class="lineNum">      37 </span>            : // must be a power of two
+<span class="lineNum">      38 </span><span class="lineNoCov">          0 : #define HM_INITIAL_CAPACITY 8</span>
+<span class="lineNum">      39 </span><span class="lineNoCov">          0 : #define DIB(curr_i, hash, capacity_mo) ((curr_i) &gt;= ((hash) &amp; (capacity_mo)) ? (curr_i) - ((hash) &amp; (capacity_mo)) : (capacity_mo) + 1 + (curr_i) - ((hash) &amp; (capacity_mo)))</span>
+<span class="lineNum">      40 </span><span class="lineNoCov">          0 : #define SWAP_VALUES(a, b) do{__typeof(a) _tmp = (a); (a) = (b); (b) = _tmp;}while(0)</span>
+<span class="lineNum">      41 </span>            : 
+<span class="lineNum">      42 </span>            : // Adapted from http://xorshift.di.unimi.it/splitmix64.c PRNG,
+<span class="lineNum">      43 </span>            : // written by Sebastiano Vigna (vigna@acm.org)
+<span class="lineNum">      44 </span>            : // TODO benchmark further and select a possibly better hash function
+<span class="lineNum">      45 </span><span class="lineNoCov">          0 : static hash_t _get_hash(key_type_t key){</span>
+<span class="lineNum">      46 </span>            :         uint64_t z = key + 0x9e3779b97f4a7c15;
+<span class="lineNum">      47 </span>            :         z = (z ^ (z &gt;&gt; 30)) * 0xbf58476d1ce4e5b9;
+<span class="lineNum">      48 </span>            :         z = (z ^ (z &gt;&gt; 27)) * 0x94d049bb133111eb;
+<span class="lineNum">      49 </span>            :         return (hash_t)((z ^ (z &gt;&gt; 31)) &gt;&gt; 32);
+<span class="lineNum">      50 </span>            : }
+<span class="lineNum">      51 </span>            : 
+<span class="lineNum">      52 </span><span class="lineNoCov">          0 : void _hash_map_init(struct _inner_hash_map_t *_i_hmap){</span>
+<span class="lineNum">      53 </span>            :         // this is the effective capacity_minus_one
+<span class="lineNum">      54 </span>            :         // this trick saves us some subtractions when we
+<span class="lineNum">      55 </span>            :         // use the capacity as a bitmask to
+<span class="lineNum">      56 </span>            :         // select the relevant hash bits for table indexing
+<span class="lineNum">      57 </span>            :         _i_hmap-&gt;capacity_mo = HM_INITIAL_CAPACITY - 1;
+<span class="lineNum">      58 </span>            :         _i_hmap-&gt;nodes = rsalloc(sizeof(struct _hash_map_node_t) * HM_INITIAL_CAPACITY);
+<span class="lineNum">      59 </span>            :         memset(_i_hmap-&gt;nodes, UCHAR_MAX, sizeof(struct _hash_map_node_t) * HM_INITIAL_CAPACITY);
+<span class="lineNum">      60 </span>            : }
+<span class="lineNum">      61 </span>            : 
+<span class="lineNum">      62 </span><span class="lineNoCov">          0 : void _hash_map_fini(struct _inner_hash_map_t *_i_hmap){</span>
+<span class="lineNum">      63 </span>            :         rsfree(_i_hmap-&gt;nodes);
+<span class="lineNum">      64 </span>            : }
+<span class="lineNum">      65 </span>            : 
+<span class="lineNum">      66 </span><span class="lineNoCov">          0 : static void _hash_map_insert_hashed(struct _inner_hash_map_t *_i_hmap, struct _hash_map_node_t node){</span>
+<span class="lineNum">      67 </span>            :         struct _hash_map_node_t *nodes = _i_hmap-&gt;nodes;
+<span class="lineNum">      68 </span>            :         struct _hash_map_node_t cur_node = node;
+<span class="lineNum">      69 </span>            :         map_size_t capacity_mo = _i_hmap-&gt;capacity_mo;
+<span class="lineNum">      70 </span>            :         // since capacity_mo is 2^n - 1 for some n
+<span class="lineNum">      71 </span>            :         // this effectively is a modulo 2^n
+<span class="lineNum">      72 </span>            :         map_size_t i = node.hash &amp; capacity_mo;
+<span class="lineNum">      73 </span>            :         // dib stays for distance from initial bucket
+<span class="lineNum">      74 </span>            :         map_size_t dib = 0;
+<span class="lineNum">      75 </span>            : 
+<span class="lineNum">      76 </span>            :         // linear probing with robin hood hashing
+<span class="lineNum">      77 </span>            :         // https://cs.uwaterloo.ca/research/tr/1986/CS-86-14.pdf by Pedro Celis
+<span class="lineNum">      78 </span>            :         while(1){
+<span class="lineNum">      79 </span>            :                 if(nodes[i].elem_i == HMAP_INVALID_I){
+<span class="lineNum">      80 </span>            :                         // found an empty cell, put the pair here and we're done
+<span class="lineNum">      81 </span>            :                         nodes[i] = cur_node;
+<span class="lineNum">      82 </span>            :                         return;
+<span class="lineNum">      83 </span>            :                 } else if(dib &gt; DIB(i, nodes[i].hash, capacity_mo)){
+<span class="lineNum">      84 </span>            :                         // found a &quot;richer&quot; cell, swap the pairs and continue looking for a hole
+<span class="lineNum">      85 </span>            :                         dib = DIB(i, nodes[i].hash, capacity_mo);
+<span class="lineNum">      86 </span>            :                         SWAP_VALUES(cur_node, nodes[i]);
+<span class="lineNum">      87 </span>            :                 }
+<span class="lineNum">      88 </span>            :                 ++i;
+<span class="lineNum">      89 </span>            :                 // modulo capacity
+<span class="lineNum">      90 </span>            :                 i &amp;= capacity_mo;
+<span class="lineNum">      91 </span>            :                 ++dib;
+<span class="lineNum">      92 </span>            :         }
+<span class="lineNum">      93 </span>            : }
+<span class="lineNum">      94 </span>            : 
+<span class="lineNum">      95 </span><span class="lineNoCov">          0 : static void _hash_map_realloc_rehash(struct _inner_hash_map_t *_i_hmap, map_size_t count){</span>
+<span class="lineNum">      96 </span>            :         // helper pointers to iterate over the old array
+<span class="lineNum">      97 </span>            :         struct _hash_map_node_t *rmv = _i_hmap-&gt;nodes;
+<span class="lineNum">      98 </span>            :         // instantiates new array
+<span class="lineNum">      99 </span>            :         _i_hmap-&gt;nodes = rsalloc(sizeof(struct _hash_map_node_t) * (_i_hmap-&gt;capacity_mo + 1));
+<span class="lineNum">     100 </span>            :         memset(_i_hmap-&gt;nodes, UCHAR_MAX, sizeof(struct _hash_map_node_t) * (_i_hmap-&gt;capacity_mo + 1));
+<span class="lineNum">     101 </span>            :         // rehash the old array elements
+<span class="lineNum">     102 </span>            :         map_size_t i = count, j = 0;
+<span class="lineNum">     103 </span>            :         while(i--){
+<span class="lineNum">     104 </span>            :                 while(rmv[j].elem_i == HMAP_INVALID_I)
+<span class="lineNum">     105 </span>            :                         ++j;
+<span class="lineNum">     106 </span>            :                 // TODO: implement more efficient rehashing (in place rehashing)
+<span class="lineNum">     107 </span>            :                 _hash_map_insert_hashed(_i_hmap, rmv[j]);
+<span class="lineNum">     108 </span>            :                 ++j;
+<span class="lineNum">     109 </span>            :         }
+<span class="lineNum">     110 </span>            :         // free the old array
+<span class="lineNum">     111 </span>            :         rsfree(rmv);
+<span class="lineNum">     112 </span>            : }
+<span class="lineNum">     113 </span>            : 
+<span class="lineNum">     114 </span><span class="lineNoCov">          0 : static void _hash_map_expand(struct _inner_hash_map_t *_i_hmap, map_size_t count){</span>
+<span class="lineNum">     115 </span>            :         // check if threshold has been reached
+<span class="lineNum">     116 </span>            :         if((double)_i_hmap-&gt;capacity_mo * MAX_LOAD_FACTOR &gt;= count)
+<span class="lineNum">     117 </span>            :                 return;
+<span class="lineNum">     118 </span>            :         // increase map capacity (remember capacity_minus_one)
+<span class="lineNum">     119 </span>            :         _i_hmap-&gt;capacity_mo = 2 * _i_hmap-&gt;capacity_mo + 1;
+<span class="lineNum">     120 </span>            : 
+<span class="lineNum">     121 </span>            :         _hash_map_realloc_rehash(_i_hmap, count);
+<span class="lineNum">     122 </span>            : }
+<span class="lineNum">     123 </span>            : 
+<span class="lineNum">     124 </span><span class="lineNoCov">          0 : static void _hash_map_shrink(struct _inner_hash_map_t *_i_hmap, map_size_t count){</span>
+<span class="lineNum">     125 </span>            :         // check if threshold has been reached
+<span class="lineNum">     126 </span>            :         if((double)_i_hmap-&gt;capacity_mo * MIN_LOAD_FACTOR &lt;= count ||
+<span class="lineNum">     127 </span>            :                         _i_hmap-&gt;capacity_mo &lt;= HM_INITIAL_CAPACITY)
+<span class="lineNum">     128 </span>            :                 return;
+<span class="lineNum">     129 </span>            :         // decrease map capacity (remember capacity_minus_one)
+<span class="lineNum">     130 </span>            :         _i_hmap-&gt;capacity_mo /= 2;
+<span class="lineNum">     131 </span>            : 
+<span class="lineNum">     132 </span>            :         _hash_map_realloc_rehash(_i_hmap, count);
+<span class="lineNum">     133 </span>            : }
+<span class="lineNum">     134 </span>            : 
+<span class="lineNum">     135 </span><span class="lineNoCov">          0 : void _hash_map_add(struct _inner_hash_map_t *_i_hmap, key_type_t key, map_size_t count){</span>
+<span class="lineNum">     136 </span>            :         // expand if needed
+<span class="lineNum">     137 </span>            :         _hash_map_expand(_i_hmap, count);
+<span class="lineNum">     138 </span>            : 
+<span class="lineNum">     139 </span>            :         struct _hash_map_node_t node = {key, _get_hash(key), count};
+<span class="lineNum">     140 </span>            :         // insert the element
+<span class="lineNum">     141 </span>            :         _hash_map_insert_hashed(_i_hmap, node);
+<span class="lineNum">     142 </span>            : }
+<span class="lineNum">     143 </span>            : 
+<span class="lineNum">     144 </span><span class="lineNoCov">          0 : static map_size_t _hash_map_index_lookup(struct _inner_hash_map_t *_i_hmap, key_type_t key){</span>
+<span class="lineNum">     145 </span>            :         struct _hash_map_node_t *nodes = _i_hmap-&gt;nodes;
+<span class="lineNum">     146 </span>            :         map_size_t capacity_mo = _i_hmap-&gt;capacity_mo;
+<span class="lineNum">     147 </span>            : 
+<span class="lineNum">     148 </span>            :         hash_t cur_hash = _get_hash(key);
+<span class="lineNum">     149 </span>            :         map_size_t i = cur_hash &amp; capacity_mo;
+<span class="lineNum">     150 </span>            :         map_size_t dib = 0;
+<span class="lineNum">     151 </span>            : 
+<span class="lineNum">     152 </span>            :         do{
+<span class="lineNum">     153 </span>            :                 if(nodes[i].elem_i == HMAP_INVALID_I){
+<span class="lineNum">     154 </span>            :                         // we found a hole where we expected something, the pair hasn't been found
+<span class="lineNum">     155 </span>            :                         return HMAP_INVALID_I;
+<span class="lineNum">     156 </span>            :                 //  the more expensive comparison with the key is done only if necessary
+<span class="lineNum">     157 </span>            :                 } else if(nodes[i].hash == cur_hash &amp;&amp; nodes[i].key == key)
+<span class="lineNum">     158 </span>            :                         // we found a pair with coinciding keys, return the index
+<span class="lineNum">     159 </span>            :                         return i;
+<span class="lineNum">     160 </span>            :                 ++i;
+<span class="lineNum">     161 </span>            :                 i &amp;= capacity_mo;
+<span class="lineNum">     162 </span>            :                 ++dib;
+<span class="lineNum">     163 </span>            :         }while(dib &lt;= DIB(i, nodes[i].hash, capacity_mo));
+<span class="lineNum">     164 </span>            :         // we found a node- with lower DIB than expected: the wanted key isn't here
+<span class="lineNum">     165 </span>            :         // (else it would have finished here during its insertion).
+<span class="lineNum">     166 </span>            :         return UINT_MAX;
+<span class="lineNum">     167 </span>            : }
+<span class="lineNum">     168 </span>            : 
+<span class="lineNum">     169 </span><span class="lineNoCov">          0 : unsigned _hash_map_lookup(struct _inner_hash_map_t *_i_hmap, unsigned long long key){</span>
+<span class="lineNum">     170 </span>            :         // find the index of the wanted key
+<span class="lineNum">     171 </span>            :         map_size_t i = _hash_map_index_lookup(_i_hmap, key);
+<span class="lineNum">     172 </span>            :         // return the pair if successful
+<span class="lineNum">     173 </span>            :         return i == UINT_MAX ? UINT_MAX : _i_hmap-&gt;nodes[i].elem_i;
+<span class="lineNum">     174 </span>            : }
+<span class="lineNum">     175 </span>            : 
+<span class="lineNum">     176 </span><span class="lineNoCov">          0 : void _hash_map_update_i(struct _inner_hash_map_t *_i_hmap, unsigned long long key, map_size_t new_i){</span>
+<span class="lineNum">     177 </span>            :         // find the index of the wanted key
+<span class="lineNum">     178 </span>            :         map_size_t i = _hash_map_index_lookup(_i_hmap, key);
+<span class="lineNum">     179 </span>            :         // update the pair if successful
+<span class="lineNum">     180 </span>            :         if(i != UINT_MAX)
+<span class="lineNum">     181 </span>            :                 _i_hmap-&gt;nodes[i].elem_i = new_i;
+<span class="lineNum">     182 </span>            : }
+<span class="lineNum">     183 </span>            : 
+<span class="lineNum">     184 </span><span class="lineNoCov">          0 : void _hash_map_remove(struct _inner_hash_map_t *_i_hmap, unsigned long long key, map_size_t cur_count){</span>
+<span class="lineNum">     185 </span>            :         // find the index of the wanted key
+<span class="lineNum">     186 </span>            :         map_size_t i = _hash_map_index_lookup(_i_hmap, key);
+<span class="lineNum">     187 </span>            :         // if unsuccessful we're done, nothing to remove here!
+<span class="lineNum">     188 </span>            :         if(i == UINT_MAX) return;
+<span class="lineNum">     189 </span>            : 
+<span class="lineNum">     190 </span>            :         struct _hash_map_node_t *nodes = _i_hmap-&gt;nodes;
+<span class="lineNum">     191 </span>            :         map_size_t capacity_mo = _i_hmap-&gt;capacity_mo;
+<span class="lineNum">     192 </span>            :         map_size_t j = i;
+<span class="lineNum">     193 </span>            :         // backward shift to restore the table state as if the insertion never happened:
+<span class="lineNum">     194 </span>            :         // http://codecapsule.com/2013/11/17/robin-hood-hashing-backward-shift-deletion by Emmanuel Goossaert
+<span class="lineNum">     195 </span>            :         do{ // the first iteration is necessary since the removed element is always overwritten somehow
+<span class="lineNum">     196 </span>            :                 ++j;
+<span class="lineNum">     197 </span>            :                 j &amp;= capacity_mo;
+<span class="lineNum">     198 </span>            :         }while(nodes[j].elem_i != UINT_MAX &amp;&amp; DIB(j, nodes[j].hash, capacity_mo) != 0);
+<span class="lineNum">     199 </span>            :         // we finally found out the end of the displaced sequence of nodes,
+<span class="lineNum">     200 </span>            :         // since we either found an empty slot or we found a node residing in his correct position
+<span class="lineNum">     201 </span>            : 
+<span class="lineNum">     202 </span>            :         --j; // we now point to the last element to move
+<span class="lineNum">     203 </span>            :         j &amp;= capacity_mo;
+<span class="lineNum">     204 </span>            : 
+<span class="lineNum">     205 </span>            :         if(j &gt;= i){
+<span class="lineNum">     206 </span>            :                 // we simply move the nodes one slot back
+<span class="lineNum">     207 </span>            :                 memmove(&amp;nodes[i], &amp;nodes[i + 1], (j - i) * sizeof(struct _hash_map_node_t));
+<span class="lineNum">     208 </span>            :         }else{
+<span class="lineNum">     209 </span>            :                 // we wrapped around the table: move the first part back
+<span class="lineNum">     210 </span>            :                 memmove(&amp;nodes[i], &amp;nodes[i + 1], (capacity_mo - i) * sizeof(struct _hash_map_node_t));
+<span class="lineNum">     211 </span>            :                 // move the first node to the last slot in the table
+<span class="lineNum">     212 </span>            :                 memcpy(&amp;nodes[capacity_mo], &amp;nodes[0], sizeof(struct _hash_map_node_t));
+<span class="lineNum">     213 </span>            :                 // move the remaining stuff at the table beginning
+<span class="lineNum">     214 </span>            :                 memmove(&amp;nodes[0], &amp;nodes[1], j * sizeof(struct _hash_map_node_t));
+<span class="lineNum">     215 </span>            :         }
+<span class="lineNum">     216 </span>            : 
+<span class="lineNum">     217 </span>            :         // we clear the last moved slot (if we didn't move anything this clears the removed entry)
+<span class="lineNum">     218 </span>            :         nodes[j].elem_i = UINT_MAX;
+<span class="lineNum">     219 </span>            : 
+<span class="lineNum">     220 </span>            :         // shrink the table if necessary
+<span class="lineNum">     221 </span>            :         _hash_map_shrink(_i_hmap, cur_count - 1);
+<span class="lineNum">     222 </span>            : }
+<span class="lineNum">     223 </span>            : 
+<span class="lineNum">     224 </span><span class="lineNoCov">          0 : size_t _hash_map_dump_size(struct _inner_hash_map_t *_i_hmap){</span>
+<span class="lineNum">     225 </span>            :         return sizeof(_i_hmap-&gt;capacity_mo) + (_i_hmap-&gt;capacity_mo + 1) * sizeof(*(_i_hmap-&gt;nodes));
+<span class="lineNum">     226 </span>            : }
+<span class="lineNum">     227 </span>            : 
+<span class="lineNum">     228 </span><span class="lineNoCov">          0 : inline unsigned char * _hash_map_dump(struct _inner_hash_map_t *_i_hmap, unsigned char *_destination){</span>
+<span class="lineNum">     229 </span>            :         *((map_size_t *)_destination) = _i_hmap-&gt;capacity_mo;
+<span class="lineNum">     230 </span>            :         _destination += sizeof(map_size_t);
+<span class="lineNum">     231 </span>            :         size_t table_cpy_size = (_i_hmap-&gt;capacity_mo + 1) * sizeof(*(_i_hmap-&gt;nodes));
+<span class="lineNum">     232 </span>            :         memcpy(_destination, _i_hmap-&gt;nodes, table_cpy_size);
+<span class="lineNum">     233 </span>            :         _destination += table_cpy_size;
+<span class="lineNum">     234 </span>            :         return _destination;
+<span class="lineNum">     235 </span>            : }
+<span class="lineNum">     236 </span>            : 
+<span class="lineNum">     237 </span><span class="lineNoCov">          0 : inline unsigned char * _hash_map_load(struct _inner_hash_map_t *_i_hmap, unsigned char *_source){</span>
+<span class="lineNum">     238 </span>            :         _i_hmap-&gt;capacity_mo = *((map_size_t *)_source);
+<span class="lineNum">     239 </span>            :         _source += sizeof(map_size_t);
+<span class="lineNum">     240 </span>            :         size_t table_cpy_size = (_i_hmap-&gt;capacity_mo + 1) * sizeof(*(_i_hmap-&gt;nodes));
+<span class="lineNum">     241 </span>            :         _i_hmap-&gt;nodes = rsalloc(table_cpy_size);
+<span class="lineNum">     242 </span>            :         memcpy(_i_hmap-&gt;nodes, _source, table_cpy_size);
+<span class="lineNum">     243 </span>            :         _source += table_cpy_size;
+<span class="lineNum">     244 </span>            :         return _source;
+<span class="lineNum">     245 </span>            : }
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.12</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>

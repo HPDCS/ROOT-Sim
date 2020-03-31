@@ -1,0 +1,386 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - doc-coverage.info - ROOT-Sim/src/lib/jsmn.c</title>
+  <link rel="stylesheet" type="text/css" href="../../../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../../../index.html">top level</a> - <a href="index.html">ROOT-Sim/src/lib</a> - jsmn.c</td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">doc-coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">6</td>
+            <td class="headerCovTableEntry">7</td>
+            <td class="headerCovTableEntryMed">85.7 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2020-01-30 13:56:10</td>
+            <td></td>
+          </tr>
+          <tr><td><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<span class="lineNum">       1 </span><span class="lineNoCov">          0 : #include &quot;jsmn.h&quot;</span>
+<span class="lineNum">       2 </span>            : 
+<span class="lineNum">       3 </span>            : /**
+<span class="lineNum">       4 </span>            :  * Allocates a fresh unused token from the token pull.
+<span class="lineNum">       5 </span>            :  */
+<span class="lineNum">       6 </span><span class="lineCov">          1 : static jsmntok_t *jsmn_alloc_token(jsmn_parser *parser,</span>
+<span class="lineNum">       7 </span>            :                 jsmntok_t *tokens, size_t num_tokens) {
+<span class="lineNum">       8 </span>            :         jsmntok_t *tok;
+<span class="lineNum">       9 </span>            :         if (parser-&gt;toknext &gt;= num_tokens) {
+<span class="lineNum">      10 </span>            :                 return NULL;
+<span class="lineNum">      11 </span>            :         }
+<span class="lineNum">      12 </span>            :         tok = &amp;tokens[parser-&gt;toknext++];
+<span class="lineNum">      13 </span>            :         tok-&gt;start = tok-&gt;end = -1;
+<span class="lineNum">      14 </span>            :         tok-&gt;size = 0;
+<span class="lineNum">      15 </span>            : #ifdef JSMN_PARENT_LINKS
+<span class="lineNum">      16 </span>            :         tok-&gt;parent = -1;
+<span class="lineNum">      17 </span>            : #endif
+<span class="lineNum">      18 </span>            :         return tok;
+<span class="lineNum">      19 </span>            : }
+<span class="lineNum">      20 </span>            : 
+<span class="lineNum">      21 </span>            : /**
+<span class="lineNum">      22 </span>            :  * Fills token type and boundaries.
+<span class="lineNum">      23 </span>            :  */
+<span class="lineNum">      24 </span><span class="lineCov">          1 : static void jsmn_fill_token(jsmntok_t *token, jsmntype_t type,</span>
+<span class="lineNum">      25 </span>            :                             int start, int end) {
+<span class="lineNum">      26 </span>            :         token-&gt;type = type;
+<span class="lineNum">      27 </span>            :         token-&gt;start = start;
+<span class="lineNum">      28 </span>            :         token-&gt;end = end;
+<span class="lineNum">      29 </span>            :         token-&gt;size = 0;
+<span class="lineNum">      30 </span>            : }
+<span class="lineNum">      31 </span>            : 
+<span class="lineNum">      32 </span>            : /**
+<span class="lineNum">      33 </span>            :  * Fills next available token with JSON primitive.
+<span class="lineNum">      34 </span>            :  */
+<span class="lineNum">      35 </span><span class="lineCov">          1 : static int jsmn_parse_primitive(jsmn_parser *parser, const char *js,</span>
+<span class="lineNum">      36 </span>            :                 size_t len, jsmntok_t *tokens, size_t num_tokens) {
+<span class="lineNum">      37 </span>            :         jsmntok_t *token;
+<span class="lineNum">      38 </span>            :         int start;
+<span class="lineNum">      39 </span>            : 
+<span class="lineNum">      40 </span>            :         start = parser-&gt;pos;
+<span class="lineNum">      41 </span>            : 
+<span class="lineNum">      42 </span>            :         for (; parser-&gt;pos &lt; len &amp;&amp; js[parser-&gt;pos] != '\0'; parser-&gt;pos++) {
+<span class="lineNum">      43 </span>            :                 switch (js[parser-&gt;pos]) {
+<span class="lineNum">      44 </span>            : #ifndef JSMN_STRICT
+<span class="lineNum">      45 </span>            :                         /* In strict mode primitive must be followed by &quot;,&quot; or &quot;}&quot; or &quot;]&quot; */
+<span class="lineNum">      46 </span>            :                         case ':':
+<span class="lineNum">      47 </span>            : #endif
+<span class="lineNum">      48 </span>            :                         case '\t' : case '\r' : case '\n' : case ' ' :
+<span class="lineNum">      49 </span>            :                         case ','  : case ']'  : case '}' :
+<span class="lineNum">      50 </span>            :                                 goto found;
+<span class="lineNum">      51 </span>            :                 }
+<span class="lineNum">      52 </span>            :                 if (js[parser-&gt;pos] &lt; 32 || js[parser-&gt;pos] &gt;= 127) {
+<span class="lineNum">      53 </span>            :                         parser-&gt;pos = start;
+<span class="lineNum">      54 </span>            :                         return JSMN_ERROR_INVAL;
+<span class="lineNum">      55 </span>            :                 }
+<span class="lineNum">      56 </span>            :         }
+<span class="lineNum">      57 </span>            : #ifdef JSMN_STRICT
+<span class="lineNum">      58 </span>            :         /* In strict mode primitive must be followed by a comma/object/array */
+<span class="lineNum">      59 </span>            :         parser-&gt;pos = start;
+<span class="lineNum">      60 </span>            :         return JSMN_ERROR_PART;
+<span class="lineNum">      61 </span>            : #endif
+<span class="lineNum">      62 </span>            : 
+<span class="lineNum">      63 </span>            : found:
+<span class="lineNum">      64 </span>            :         if (tokens == NULL) {
+<span class="lineNum">      65 </span>            :                 parser-&gt;pos--;
+<span class="lineNum">      66 </span>            :                 return 0;
+<span class="lineNum">      67 </span>            :         }
+<span class="lineNum">      68 </span>            :         token = jsmn_alloc_token(parser, tokens, num_tokens);
+<span class="lineNum">      69 </span>            :         if (token == NULL) {
+<span class="lineNum">      70 </span>            :                 parser-&gt;pos = start;
+<span class="lineNum">      71 </span>            :                 return JSMN_ERROR_NOMEM;
+<span class="lineNum">      72 </span>            :         }
+<span class="lineNum">      73 </span>            :         jsmn_fill_token(token, JSMN_PRIMITIVE, start, parser-&gt;pos);
+<span class="lineNum">      74 </span>            : #ifdef JSMN_PARENT_LINKS
+<span class="lineNum">      75 </span>            :         token-&gt;parent = parser-&gt;toksuper;
+<span class="lineNum">      76 </span>            : #endif
+<span class="lineNum">      77 </span>            :         parser-&gt;pos--;
+<span class="lineNum">      78 </span>            :         return 0;
+<span class="lineNum">      79 </span>            : }
+<span class="lineNum">      80 </span>            : 
+<span class="lineNum">      81 </span>            : /**
+<span class="lineNum">      82 </span>            :  * Fills next token with JSON string.
+<span class="lineNum">      83 </span>            :  */
+<span class="lineNum">      84 </span><span class="lineCov">          1 : static int jsmn_parse_string(jsmn_parser *parser, const char *js,</span>
+<span class="lineNum">      85 </span>            :                 size_t len, jsmntok_t *tokens, size_t num_tokens) {
+<span class="lineNum">      86 </span>            :         jsmntok_t *token;
+<span class="lineNum">      87 </span>            : 
+<span class="lineNum">      88 </span>            :         int start = parser-&gt;pos;
+<span class="lineNum">      89 </span>            : 
+<span class="lineNum">      90 </span>            :         parser-&gt;pos++;
+<span class="lineNum">      91 </span>            : 
+<span class="lineNum">      92 </span>            :         /* Skip starting quote */
+<span class="lineNum">      93 </span>            :         for (; parser-&gt;pos &lt; len &amp;&amp; js[parser-&gt;pos] != '\0'; parser-&gt;pos++) {
+<span class="lineNum">      94 </span>            :                 char c = js[parser-&gt;pos];
+<span class="lineNum">      95 </span>            : 
+<span class="lineNum">      96 </span>            :                 /* Quote: end of string */
+<span class="lineNum">      97 </span>            :                 if (c == '\&quot;') {
+<span class="lineNum">      98 </span>            :                         if (tokens == NULL) {
+<span class="lineNum">      99 </span>            :                                 return 0;
+<span class="lineNum">     100 </span>            :                         }
+<span class="lineNum">     101 </span>            :                         token = jsmn_alloc_token(parser, tokens, num_tokens);
+<span class="lineNum">     102 </span>            :                         if (token == NULL) {
+<span class="lineNum">     103 </span>            :                                 parser-&gt;pos = start;
+<span class="lineNum">     104 </span>            :                                 return JSMN_ERROR_NOMEM;
+<span class="lineNum">     105 </span>            :                         }
+<span class="lineNum">     106 </span>            :                         jsmn_fill_token(token, JSMN_STRING, start+1, parser-&gt;pos);
+<span class="lineNum">     107 </span>            : #ifdef JSMN_PARENT_LINKS
+<span class="lineNum">     108 </span>            :                         token-&gt;parent = parser-&gt;toksuper;
+<span class="lineNum">     109 </span>            : #endif
+<span class="lineNum">     110 </span>            :                         return 0;
+<span class="lineNum">     111 </span>            :                 }
+<span class="lineNum">     112 </span>            : 
+<span class="lineNum">     113 </span>            :                 /* Backslash: Quoted symbol expected */
+<span class="lineNum">     114 </span>            :                 if (c == '\\' &amp;&amp; parser-&gt;pos + 1 &lt; len) {
+<span class="lineNum">     115 </span>            :                         int i;
+<span class="lineNum">     116 </span>            :                         parser-&gt;pos++;
+<span class="lineNum">     117 </span>            :                         switch (js[parser-&gt;pos]) {
+<span class="lineNum">     118 </span>            :                                 /* Allowed escaped symbols */
+<span class="lineNum">     119 </span>            :                                 case '\&quot;': case '/' : case '\\' : case 'b' :
+<span class="lineNum">     120 </span>            :                                 case 'f' : case 'r' : case 'n'  : case 't' :
+<span class="lineNum">     121 </span>            :                                         break;
+<span class="lineNum">     122 </span>            :                                 /* Allows escaped symbol \uXXXX */
+<span class="lineNum">     123 </span>            :                                 case 'u':
+<span class="lineNum">     124 </span>            :                                         parser-&gt;pos++;
+<span class="lineNum">     125 </span>            :                                         for(i = 0; i &lt; 4 &amp;&amp; parser-&gt;pos &lt; len &amp;&amp; js[parser-&gt;pos] != '\0'; i++) {
+<span class="lineNum">     126 </span>            :                                                 /* If it isn't a hex character we have an error */
+<span class="lineNum">     127 </span>            :                                                 if(!((js[parser-&gt;pos] &gt;= 48 &amp;&amp; js[parser-&gt;pos] &lt;= 57) || /* 0-9 */
+<span class="lineNum">     128 </span>            :                                                                         (js[parser-&gt;pos] &gt;= 65 &amp;&amp; js[parser-&gt;pos] &lt;= 70) || /* A-F */
+<span class="lineNum">     129 </span>            :                                                                         (js[parser-&gt;pos] &gt;= 97 &amp;&amp; js[parser-&gt;pos] &lt;= 102))) { /* a-f */
+<span class="lineNum">     130 </span>            :                                                         parser-&gt;pos = start;
+<span class="lineNum">     131 </span>            :                                                         return JSMN_ERROR_INVAL;
+<span class="lineNum">     132 </span>            :                                                 }
+<span class="lineNum">     133 </span>            :                                                 parser-&gt;pos++;
+<span class="lineNum">     134 </span>            :                                         }
+<span class="lineNum">     135 </span>            :                                         parser-&gt;pos--;
+<span class="lineNum">     136 </span>            :                                         break;
+<span class="lineNum">     137 </span>            :                                 /* Unexpected symbol */
+<span class="lineNum">     138 </span>            :                                 default:
+<span class="lineNum">     139 </span>            :                                         parser-&gt;pos = start;
+<span class="lineNum">     140 </span>            :                                         return JSMN_ERROR_INVAL;
+<span class="lineNum">     141 </span>            :                         }
+<span class="lineNum">     142 </span>            :                 }
+<span class="lineNum">     143 </span>            :         }
+<span class="lineNum">     144 </span>            :         parser-&gt;pos = start;
+<span class="lineNum">     145 </span>            :         return JSMN_ERROR_PART;
+<span class="lineNum">     146 </span>            : }
+<span class="lineNum">     147 </span>            : 
+<span class="lineNum">     148 </span>            : /**
+<span class="lineNum">     149 </span>            :  * Parse JSON string and fill tokens.
+<span class="lineNum">     150 </span>            :  */
+<span class="lineNum">     151 </span><span class="lineCov">          1 : int jsmn_parse(jsmn_parser *parser, const char *js, size_t len,</span>
+<span class="lineNum">     152 </span>            :                 jsmntok_t *tokens, unsigned int num_tokens) {
+<span class="lineNum">     153 </span>            :         int r;
+<span class="lineNum">     154 </span>            :         int i;
+<span class="lineNum">     155 </span>            :         jsmntok_t *token;
+<span class="lineNum">     156 </span>            :         int count = parser-&gt;toknext;
+<span class="lineNum">     157 </span>            : 
+<span class="lineNum">     158 </span>            :         for (; parser-&gt;pos &lt; len &amp;&amp; js[parser-&gt;pos] != '\0'; parser-&gt;pos++) {
+<span class="lineNum">     159 </span>            :                 char c;
+<span class="lineNum">     160 </span>            :                 jsmntype_t type;
+<span class="lineNum">     161 </span>            : 
+<span class="lineNum">     162 </span>            :                 c = js[parser-&gt;pos];
+<span class="lineNum">     163 </span>            :                 switch (c) {
+<span class="lineNum">     164 </span>            :                         case '{': case '[':
+<span class="lineNum">     165 </span>            :                                 count++;
+<span class="lineNum">     166 </span>            :                                 if (tokens == NULL) {
+<span class="lineNum">     167 </span>            :                                         break;
+<span class="lineNum">     168 </span>            :                                 }
+<span class="lineNum">     169 </span>            :                                 token = jsmn_alloc_token(parser, tokens, num_tokens);
+<span class="lineNum">     170 </span>            :                                 if (token == NULL)
+<span class="lineNum">     171 </span>            :                                         return JSMN_ERROR_NOMEM;
+<span class="lineNum">     172 </span>            :                                 if (parser-&gt;toksuper != -1) {
+<span class="lineNum">     173 </span>            :                                         tokens[parser-&gt;toksuper].size++;
+<span class="lineNum">     174 </span>            : #ifdef JSMN_PARENT_LINKS
+<span class="lineNum">     175 </span>            :                                         token-&gt;parent = parser-&gt;toksuper;
+<span class="lineNum">     176 </span>            : #endif
+<span class="lineNum">     177 </span>            :                                 }
+<span class="lineNum">     178 </span>            :                                 token-&gt;type = (c == '{' ? JSMN_OBJECT : JSMN_ARRAY);
+<span class="lineNum">     179 </span>            :                                 token-&gt;start = parser-&gt;pos;
+<span class="lineNum">     180 </span>            :                                 parser-&gt;toksuper = parser-&gt;toknext - 1;
+<span class="lineNum">     181 </span>            :                                 break;
+<span class="lineNum">     182 </span>            :                         case '}': case ']':
+<span class="lineNum">     183 </span>            :                                 if (tokens == NULL)
+<span class="lineNum">     184 </span>            :                                         break;
+<span class="lineNum">     185 </span>            :                                 type = (c == '}' ? JSMN_OBJECT : JSMN_ARRAY);
+<span class="lineNum">     186 </span>            : #ifdef JSMN_PARENT_LINKS
+<span class="lineNum">     187 </span>            :                                 if (parser-&gt;toknext &lt; 1) {
+<span class="lineNum">     188 </span>            :                                         return JSMN_ERROR_INVAL;
+<span class="lineNum">     189 </span>            :                                 }
+<span class="lineNum">     190 </span>            :                                 token = &amp;tokens[parser-&gt;toknext - 1];
+<span class="lineNum">     191 </span>            :                                 for (;;) {
+<span class="lineNum">     192 </span>            :                                         if (token-&gt;start != -1 &amp;&amp; token-&gt;end == -1) {
+<span class="lineNum">     193 </span>            :                                                 if (token-&gt;type != type) {
+<span class="lineNum">     194 </span>            :                                                         return JSMN_ERROR_INVAL;
+<span class="lineNum">     195 </span>            :                                                 }
+<span class="lineNum">     196 </span>            :                                                 token-&gt;end = parser-&gt;pos + 1;
+<span class="lineNum">     197 </span>            :                                                 parser-&gt;toksuper = token-&gt;parent;
+<span class="lineNum">     198 </span>            :                                                 break;
+<span class="lineNum">     199 </span>            :                                         }
+<span class="lineNum">     200 </span>            :                                         if (token-&gt;parent == -1) {
+<span class="lineNum">     201 </span>            :                                                 if(token-&gt;type != type || parser-&gt;toksuper == -1) {
+<span class="lineNum">     202 </span>            :                                                         return JSMN_ERROR_INVAL;
+<span class="lineNum">     203 </span>            :                                                 }
+<span class="lineNum">     204 </span>            :                                                 break;
+<span class="lineNum">     205 </span>            :                                         }
+<span class="lineNum">     206 </span>            :                                         token = &amp;tokens[token-&gt;parent];
+<span class="lineNum">     207 </span>            :                                 }
+<span class="lineNum">     208 </span>            : #else
+<span class="lineNum">     209 </span>            :                                 for (i = parser-&gt;toknext - 1; i &gt;= 0; i--) {
+<span class="lineNum">     210 </span>            :                                         token = &amp;tokens[i];
+<span class="lineNum">     211 </span>            :                                         if (token-&gt;start != -1 &amp;&amp; token-&gt;end == -1) {
+<span class="lineNum">     212 </span>            :                                                 if (token-&gt;type != type) {
+<span class="lineNum">     213 </span>            :                                                         return JSMN_ERROR_INVAL;
+<span class="lineNum">     214 </span>            :                                                 }
+<span class="lineNum">     215 </span>            :                                                 parser-&gt;toksuper = -1;
+<span class="lineNum">     216 </span>            :                                                 token-&gt;end = parser-&gt;pos + 1;
+<span class="lineNum">     217 </span>            :                                                 break;
+<span class="lineNum">     218 </span>            :                                         }
+<span class="lineNum">     219 </span>            :                                 }
+<span class="lineNum">     220 </span>            :                                 /* Error if unmatched closing bracket */
+<span class="lineNum">     221 </span>            :                                 if (i == -1) return JSMN_ERROR_INVAL;
+<span class="lineNum">     222 </span>            :                                 for (; i &gt;= 0; i--) {
+<span class="lineNum">     223 </span>            :                                         token = &amp;tokens[i];
+<span class="lineNum">     224 </span>            :                                         if (token-&gt;start != -1 &amp;&amp; token-&gt;end == -1) {
+<span class="lineNum">     225 </span>            :                                                 parser-&gt;toksuper = i;
+<span class="lineNum">     226 </span>            :                                                 break;
+<span class="lineNum">     227 </span>            :                                         }
+<span class="lineNum">     228 </span>            :                                 }
+<span class="lineNum">     229 </span>            : #endif
+<span class="lineNum">     230 </span>            :                                 break;
+<span class="lineNum">     231 </span>            :                         case '\&quot;':
+<span class="lineNum">     232 </span>            :                                 r = jsmn_parse_string(parser, js, len, tokens, num_tokens);
+<span class="lineNum">     233 </span>            :                                 if (r &lt; 0) return r;
+<span class="lineNum">     234 </span>            :                                 count++;
+<span class="lineNum">     235 </span>            :                                 if (parser-&gt;toksuper != -1 &amp;&amp; tokens != NULL)
+<span class="lineNum">     236 </span>            :                                         tokens[parser-&gt;toksuper].size++;
+<span class="lineNum">     237 </span>            :                                 break;
+<span class="lineNum">     238 </span>            :                         case '\t' : case '\r' : case '\n' : case ' ':
+<span class="lineNum">     239 </span>            :                                 break;
+<span class="lineNum">     240 </span>            :                         case ':':
+<span class="lineNum">     241 </span>            :                                 parser-&gt;toksuper = parser-&gt;toknext - 1;
+<span class="lineNum">     242 </span>            :                                 break;
+<span class="lineNum">     243 </span>            :                         case ',':
+<span class="lineNum">     244 </span>            :                                 if (tokens != NULL &amp;&amp; parser-&gt;toksuper != -1 &amp;&amp;
+<span class="lineNum">     245 </span>            :                                                 tokens[parser-&gt;toksuper].type != JSMN_ARRAY &amp;&amp;
+<span class="lineNum">     246 </span>            :                                                 tokens[parser-&gt;toksuper].type != JSMN_OBJECT) {
+<span class="lineNum">     247 </span>            : #ifdef JSMN_PARENT_LINKS
+<span class="lineNum">     248 </span>            :                                         parser-&gt;toksuper = tokens[parser-&gt;toksuper].parent;
+<span class="lineNum">     249 </span>            : #else
+<span class="lineNum">     250 </span>            :                                         for (i = parser-&gt;toknext - 1; i &gt;= 0; i--) {
+<span class="lineNum">     251 </span>            :                                                 if (tokens[i].type == JSMN_ARRAY || tokens[i].type == JSMN_OBJECT) {
+<span class="lineNum">     252 </span>            :                                                         if (tokens[i].start != -1 &amp;&amp; tokens[i].end == -1) {
+<span class="lineNum">     253 </span>            :                                                                 parser-&gt;toksuper = i;
+<span class="lineNum">     254 </span>            :                                                                 break;
+<span class="lineNum">     255 </span>            :                                                         }
+<span class="lineNum">     256 </span>            :                                                 }
+<span class="lineNum">     257 </span>            :                                         }
+<span class="lineNum">     258 </span>            : #endif
+<span class="lineNum">     259 </span>            :                                 }
+<span class="lineNum">     260 </span>            :                                 break;
+<span class="lineNum">     261 </span>            : #ifdef JSMN_STRICT
+<span class="lineNum">     262 </span>            :                         /* In strict mode primitives are: numbers and booleans */
+<span class="lineNum">     263 </span>            :                         case '-': case '0': case '1' : case '2': case '3' : case '4':
+<span class="lineNum">     264 </span>            :                         case '5': case '6': case '7' : case '8': case '9':
+<span class="lineNum">     265 </span>            :                         case 't': case 'f': case 'n' :
+<span class="lineNum">     266 </span>            :                                 /* And they must not be keys of the object */
+<span class="lineNum">     267 </span>            :                                 if (tokens != NULL &amp;&amp; parser-&gt;toksuper != -1) {
+<span class="lineNum">     268 </span>            :                                         jsmntok_t *t = &amp;tokens[parser-&gt;toksuper];
+<span class="lineNum">     269 </span>            :                                         if (t-&gt;type == JSMN_OBJECT ||
+<span class="lineNum">     270 </span>            :                                                         (t-&gt;type == JSMN_STRING &amp;&amp; t-&gt;size != 0)) {
+<span class="lineNum">     271 </span>            :                                                 return JSMN_ERROR_INVAL;
+<span class="lineNum">     272 </span>            :                                         }
+<span class="lineNum">     273 </span>            :                                 }
+<span class="lineNum">     274 </span>            : #else
+<span class="lineNum">     275 </span>            :                         /* In non-strict mode every unquoted value is a primitive */
+<span class="lineNum">     276 </span>            :                         default:
+<span class="lineNum">     277 </span>            : #endif
+<span class="lineNum">     278 </span>            :                                 r = jsmn_parse_primitive(parser, js, len, tokens, num_tokens);
+<span class="lineNum">     279 </span>            :                                 if (r &lt; 0) return r;
+<span class="lineNum">     280 </span>            :                                 count++;
+<span class="lineNum">     281 </span>            :                                 if (parser-&gt;toksuper != -1 &amp;&amp; tokens != NULL)
+<span class="lineNum">     282 </span>            :                                         tokens[parser-&gt;toksuper].size++;
+<span class="lineNum">     283 </span>            :                                 break;
+<span class="lineNum">     284 </span>            : 
+<span class="lineNum">     285 </span>            : #ifdef JSMN_STRICT
+<span class="lineNum">     286 </span>            :                         /* Unexpected char in strict mode */
+<span class="lineNum">     287 </span>            :                         default:
+<span class="lineNum">     288 </span>            :                                 return JSMN_ERROR_INVAL;
+<span class="lineNum">     289 </span>            : #endif
+<span class="lineNum">     290 </span>            :                 }
+<span class="lineNum">     291 </span>            :         }
+<span class="lineNum">     292 </span>            : 
+<span class="lineNum">     293 </span>            :         if (tokens != NULL) {
+<span class="lineNum">     294 </span>            :                 for (i = parser-&gt;toknext - 1; i &gt;= 0; i--) {
+<span class="lineNum">     295 </span>            :                         /* Unmatched opened object or array */
+<span class="lineNum">     296 </span>            :                         if (tokens[i].start != -1 &amp;&amp; tokens[i].end == -1) {
+<span class="lineNum">     297 </span>            :                                 return JSMN_ERROR_PART;
+<span class="lineNum">     298 </span>            :                         }
+<span class="lineNum">     299 </span>            :                 }
+<span class="lineNum">     300 </span>            :         }
+<span class="lineNum">     301 </span>            : 
+<span class="lineNum">     302 </span>            :         return count;
+<span class="lineNum">     303 </span>            : }
+<span class="lineNum">     304 </span>            : 
+<span class="lineNum">     305 </span>            : /**
+<span class="lineNum">     306 </span>            :  * Creates a new parser based over a given  buffer with an array of tokens
+<span class="lineNum">     307 </span>            :  * available.
+<span class="lineNum">     308 </span>            :  */
+<span class="lineNum">     309 </span><span class="lineCov">          1 : void jsmn_init(jsmn_parser *parser) {</span>
+<span class="lineNum">     310 </span>            :         parser-&gt;pos = 0;
+<span class="lineNum">     311 </span>            :         parser-&gt;toknext = 0;
+<span class="lineNum">     312 </span>            :         parser-&gt;toksuper = -1;
+<span class="lineNum">     313 </span>            : }
+<span class="lineNum">     314 </span>            : 
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.12</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>

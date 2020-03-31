@@ -1,0 +1,6 @@
+<map id="pack_msg" name="pack_msg">
+<area shape="rect" id="node2" href="$communication_8h.html#ae0329023aeab7047bcb7b4708698a008" title="Schedule a new message to some LP. " alt="" coords="140,5,329,32"/>
+<area shape="rect" id="node5" href="$scheduler_8h.html#a1b1b085c6b05a9d202a1629dcd71cffe" title="LP_main_loop" alt="" coords="179,56,290,83"/>
+<area shape="rect" id="node3" href="$init_8h.html#a417eb072179d09f441dbae3125049e46" title="SystemInit" alt="" coords="377,5,468,32"/>
+<area shape="rect" id="node4" href="$main_8c.html#a3c04138a5bfe5d72780bb7e82a18e627" title="main" alt="" coords="516,5,571,32"/>
+</map>

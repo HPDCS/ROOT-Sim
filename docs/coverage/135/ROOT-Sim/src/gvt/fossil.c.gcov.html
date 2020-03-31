@@ -1,0 +1,203 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - doc-coverage.info - ROOT-Sim/src/gvt/fossil.c</title>
+  <link rel="stylesheet" type="text/css" href="../../../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../../../index.html">top level</a> - <a href="index.html">ROOT-Sim/src/gvt</a> - fossil.c</td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">doc-coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">4</td>
+            <td class="headerCovTableEntry">4</td>
+            <td class="headerCovTableEntryHi">100.0 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2020-01-30 13:56:10</td>
+            <td></td>
+          </tr>
+          <tr><td><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<span class="lineNum">       1 </span><span class="lineCov">          1 : /**</span>
+<span class="lineNum">       2 </span>            : * @file gvt/fossil.c
+<span class="lineNum">       3 </span>            : *
+<span class="lineNum">       4 </span>            : * @brief Housekeeping operations
+<span class="lineNum">       5 </span>            : *
+<span class="lineNum">       6 </span>            : * In this module all the housekeeping operations related to GVT computation phase
+<span class="lineNum">       7 </span>            : * are present.
+<span class="lineNum">       8 </span>            : *
+<span class="lineNum">       9 </span>            : * @copyright
+<span class="lineNum">      10 </span>            : * Copyright (C) 2008-2019 HPDCS Group
+<span class="lineNum">      11 </span>            : * https://hpdcs.github.io
+<span class="lineNum">      12 </span>            : *
+<span class="lineNum">      13 </span>            : * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
+<span class="lineNum">      14 </span>            : *
+<span class="lineNum">      15 </span>            : * ROOT-Sim is free software; you can redistribute it and/or modify it under the
+<span class="lineNum">      16 </span>            : * terms of the GNU General Public License as published by the Free Software
+<span class="lineNum">      17 </span>            : * Foundation; only version 3 of the License applies.
+<span class="lineNum">      18 </span>            : *
+<span class="lineNum">      19 </span>            : * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
+<span class="lineNum">      20 </span>            : * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+<span class="lineNum">      21 </span>            : * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+<span class="lineNum">      22 </span>            : *
+<span class="lineNum">      23 </span>            : * You should have received a copy of the GNU General Public License along with
+<span class="lineNum">      24 </span>            : * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
+<span class="lineNum">      25 </span>            : * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+<span class="lineNum">      26 </span>            : *
+<span class="lineNum">      27 </span>            : * @author Alessandro Pellegrini
+<span class="lineNum">      28 </span>            : * @author Francesco Quaglia
+<span class="lineNum">      29 </span>            : */
+<span class="lineNum">      30 </span>            : 
+<span class="lineNum">      31 </span>            : #include &lt;arch/thread.h&gt;
+<span class="lineNum">      32 </span>            : #include &lt;core/init.h&gt;
+<span class="lineNum">      33 </span>            : #include &lt;gvt/gvt.h&gt;
+<span class="lineNum">      34 </span>            : #include &lt;gvt/ccgs.h&gt;
+<span class="lineNum">      35 </span>            : #include &lt;mm/state.h&gt;
+<span class="lineNum">      36 </span>            : #include &lt;mm/mm.h&gt;
+<span class="lineNum">      37 </span>            : #include &lt;scheduler/process.h&gt;
+<span class="lineNum">      38 </span>            : #include &lt;scheduler/scheduler.h&gt;
+<span class="lineNum">      39 </span>            : #include &lt;statistics/statistics.h&gt;
+<span class="lineNum">      40 </span>            : 
+<span class="lineNum">      41 </span>            : /// Counter for the invocations of adopt_new_gvt. This is used to determine whether a consistent state must be reconstructed
+<span class="lineNum">      42 </span><span class="lineCov">          1 : static unsigned long long snapshot_cycles;</span>
+<span class="lineNum">      43 </span>            : 
+<span class="lineNum">      44 </span>            : /**
+<span class="lineNum">      45 </span>            : * Determine which snapshots in the state queue can be free'd because are placed before the current time barrier.
+<span class="lineNum">      46 </span>            : *
+<span class="lineNum">      47 </span>            : * Queues are cleaned by deleting all the events the timestamp of which is STRICTLY lower than the time barrier.
+<span class="lineNum">      48 </span>            : * Since state_pointer points to an event in queue_in, the state queue must be cleaned after the input queue.
+<span class="lineNum">      49 </span>            : *
+<span class="lineNum">      50 </span>            : * @param lp A pointer to the lp_struct for which we want to recollect memory
+<span class="lineNum">      51 </span>            : * @param time_barrier The current barrier
+<span class="lineNum">      52 </span>            : */
+<span class="lineNum">      53 </span><span class="lineCov">          1 : void fossil_collection(struct lp_struct *lp, simtime_t time_barrier)</span>
+<span class="lineNum">      54 </span>            : {
+<span class="lineNum">      55 </span>            :         state_t *state;
+<span class="lineNum">      56 </span>            :         msg_t *last_kept_event;
+<span class="lineNum">      57 </span>            :         double committed_events;
+<span class="lineNum">      58 </span>            : 
+<span class="lineNum">      59 </span>            :         // State list must be handled specifically, as nodes point to malloc'd
+<span class="lineNum">      60 </span>            :         // nodes. We therefore manually scan the list and free the memory.
+<span class="lineNum">      61 </span>            :         while ((state = list_head(lp-&gt;queue_states)) != NULL
+<span class="lineNum">      62 </span>            :                &amp;&amp; state-&gt;lvt &lt; time_barrier) {
+<span class="lineNum">      63 </span>            :                 log_delete(state-&gt;log);
+<span class="lineNum">      64 </span>            :                 if(&amp;topology_settings &amp;&amp; topology_settings.write_enabled)
+<span class="lineNum">      65 </span>            :                         rsfree(state-&gt;topology);
+<span class="lineNum">      66 </span>            :                 if(&amp;abm_settings)
+<span class="lineNum">      67 </span>            :                         rsfree(state-&gt;region_data);
+<span class="lineNum">      68 </span>            : #ifndef NDEBUG
+<span class="lineNum">      69 </span>            :                 state-&gt;last_event = (void *)0xDEADBABE;
+<span class="lineNum">      70 </span>            : #endif
+<span class="lineNum">      71 </span>            :                 list_pop(lp-&gt;queue_states);
+<span class="lineNum">      72 </span>            :         }
+<span class="lineNum">      73 </span>            : 
+<span class="lineNum">      74 </span>            :         // Determine queue pruning horizon
+<span class="lineNum">      75 </span>            :         state = list_head(lp-&gt;queue_states);
+<span class="lineNum">      76 </span>            :         last_kept_event = state-&gt;last_event;
+<span class="lineNum">      77 </span>            : 
+<span class="lineNum">      78 </span>            :         // Truncate the input queue, accounting for the event which is pointed by the lastly kept state
+<span class="lineNum">      79 </span>            :         committed_events =
+<span class="lineNum">      80 </span>            :             (double)list_trunc(lp-&gt;queue_in, timestamp,
+<span class="lineNum">      81 </span>            :                                last_kept_event-&gt;timestamp, msg_release);
+<span class="lineNum">      82 </span>            :         statistics_post_data(lp, STAT_COMMITTED, committed_events);
+<span class="lineNum">      83 </span>            : 
+<span class="lineNum">      84 </span>            :         // Truncate the output queue
+<span class="lineNum">      85 </span>            :         list_trunc(lp-&gt;queue_out, send_time, last_kept_event-&gt;timestamp,
+<span class="lineNum">      86 </span>            :                    msg_hdr_release);
+<span class="lineNum">      87 </span>            : }
+<span class="lineNum">      88 </span>            : 
+<span class="lineNum">      89 </span>            : /**
+<span class="lineNum">      90 </span>            : * This function is used by Master and Slave Kernels to determine the time barrier
+<span class="lineNum">      91 </span>            : * and perform some housekeeping once the new GVT value has been computed.
+<span class="lineNum">      92 </span>            : *
+<span class="lineNum">      93 </span>            : * @param new_gvt This is a new GVT value which has been computed and can be used
+<span class="lineNum">      94 </span>            : *        to perform fossil collection and to activate CCGS
+<span class="lineNum">      95 </span>            : */
+<span class="lineNum">      96 </span><span class="lineCov">          1 : void adopt_new_gvt(simtime_t new_gvt)</span>
+<span class="lineNum">      97 </span>            : {
+<span class="lineNum">      98 </span>            :         unsigned int i;
+<span class="lineNum">      99 </span>            : 
+<span class="lineNum">     100 </span>            :         state_t *time_barrier_pointer[n_prc_per_thread];
+<span class="lineNum">     101 </span>            :         bool compute_snapshot;
+<span class="lineNum">     102 </span>            : 
+<span class="lineNum">     103 </span>            :         // Snapshot should be recomputed only periodically
+<span class="lineNum">     104 </span>            :         snapshot_cycles++;
+<span class="lineNum">     105 </span>            :         compute_snapshot =
+<span class="lineNum">     106 </span>            :             ((snapshot_cycles % rootsim_config.gvt_snapshot_cycles) == 0);
+<span class="lineNum">     107 </span>            : 
+<span class="lineNum">     108 </span>            :         // Precompute the time barrier for each process
+<span class="lineNum">     109 </span>            :         i = 0;
+<span class="lineNum">     110 </span>            :         foreach_bound_lp(lp) {
+<span class="lineNum">     111 </span>            :                 time_barrier_pointer[i++] = find_time_barrier(lp, new_gvt);
+<span class="lineNum">     112 </span>            :         }
+<span class="lineNum">     113 </span>            : 
+<span class="lineNum">     114 </span>            :         // If needed, call the CCGS subsystem
+<span class="lineNum">     115 </span>            :         if (compute_snapshot)
+<span class="lineNum">     116 </span>            :                 ccgs_compute_snapshot(time_barrier_pointer, new_gvt);
+<span class="lineNum">     117 </span>            : 
+<span class="lineNum">     118 </span>            :         i = 0;
+<span class="lineNum">     119 </span>            :         foreach_bound_lp(lp) {
+<span class="lineNum">     120 </span>            :                 if (time_barrier_pointer[i] == NULL)
+<span class="lineNum">     121 </span>            :                         continue;
+<span class="lineNum">     122 </span>            : 
+<span class="lineNum">     123 </span>            :                 // Execute the fossil collection
+<span class="lineNum">     124 </span>            :                 fossil_collection(lp, time_barrier_pointer[i]-&gt;lvt);
+<span class="lineNum">     125 </span>            : 
+<span class="lineNum">     126 </span>            :                 // Actually release memory buffer allocated by the LPs and then released via free() calls
+<span class="lineNum">     127 </span>            :                 clean_buffers_on_gvt(lp, time_barrier_pointer[i]-&gt;lvt);
+<span class="lineNum">     128 </span>            : 
+<span class="lineNum">     129 </span>            :                 i++;
+<span class="lineNum">     130 </span>            :         }
+<span class="lineNum">     131 </span>            : }
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.12</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>

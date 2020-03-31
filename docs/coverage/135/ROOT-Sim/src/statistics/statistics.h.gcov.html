@@ -1,0 +1,232 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - doc-coverage.info - ROOT-Sim/src/statistics/statistics.h</title>
+  <link rel="stylesheet" type="text/css" href="../../../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../../../index.html">top level</a> - <a href="index.html">ROOT-Sim/src/statistics</a> - statistics.h</td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">doc-coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">8</td>
+            <td class="headerCovTableEntry">45</td>
+            <td class="headerCovTableEntryLo">17.8 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2020-01-30 13:56:10</td>
+            <td></td>
+          </tr>
+          <tr><td><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<span class="lineNum">       1 </span><span class="lineCov">          1 : /**</span>
+<span class="lineNum">       2 </span>            :  * @file statistics/statistics.h
+<span class="lineNum">       3 </span>            :  *
+<span class="lineNum">       4 </span>            :  * @brief Statistics module
+<span class="lineNum">       5 </span>            :  *
+<span class="lineNum">       6 </span>            :  * All facitilies to collect, gather, and dump statistics are implemented
+<span class="lineNum">       7 </span>            :  * in this module. The statistics subsystem relies on the struct @ref stat_t
+<span class="lineNum">       8 </span>            :  * type to keep the relevant fields. Every statistic variable *must* be
+<span class="lineNum">       9 </span>            :  * a @c double, because the aggregation functions are type-agnostic and
+<span class="lineNum">      10 </span>            :  * consider every value to be a @c double. This allows to speedup some
+<span class="lineNum">      11 </span>            :  * aggregations by relying on vectorized instructions.
+<span class="lineNum">      12 </span>            :  *
+<span class="lineNum">      13 </span>            :  * There are two main entry points in this module:
+<span class="lineNum">      14 </span>            :  *
+<span class="lineNum">      15 </span>            :  * * statistics_post_data() can be called anywhere in the runtime library,
+<span class="lineNum">      16 </span>            :  *   allowing to specify a numerical code which identifies some statistic
+<span class="lineNum">      17 </span>            :  *   information. A value can be also passed, which is handled depending on
+<span class="lineNum">      18 </span>            :  *   the type of statistics managed. This function allows to update statistics
+<span class="lineNum">      19 </span>            :  *   values for each LP of the system.
+<span class="lineNum">      20 </span>            :  *
+<span class="lineNum">      21 </span>            :  * * statistics_get_lp_data() can be called to retrieve current per-LP
+<span class="lineNum">      22 </span>            :  *   statistical values. This is useful to implement autonomic policies
+<span class="lineNum">      23 </span>            :  *   which self-tune the behaviour of the runtime depending on, e.g.,
+<span class="lineNum">      24 </span>            :  *   workload factors.
+<span class="lineNum">      25 </span>            :  *
+<span class="lineNum">      26 </span>            :  * At the end of the simulation (or if the simulation is stopped), this
+<span class="lineNum">      27 </span>            :  * module implements a coordination protocol to reduce all values, both
+<span class="lineNum">      28 </span>            :  * at a machine level, and among distributed processes (using MPI).
+<span class="lineNum">      29 </span>            :  *
+<span class="lineNum">      30 </span>            :  * @copyright
+<span class="lineNum">      31 </span>            :  * Copyright (C) 2008-2019 HPDCS Group
+<span class="lineNum">      32 </span>            :  * https://hpdcs.github.io
+<span class="lineNum">      33 </span>            :  *
+<span class="lineNum">      34 </span>            :  * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
+<span class="lineNum">      35 </span>            :  *
+<span class="lineNum">      36 </span>            :  * ROOT-Sim is free software; you can redistribute it and/or modify it under the
+<span class="lineNum">      37 </span>            :  * terms of the GNU General Public License as published by the Free Software
+<span class="lineNum">      38 </span>            :  * Foundation; only version 3 of the License applies.
+<span class="lineNum">      39 </span>            :  *
+<span class="lineNum">      40 </span>            :  * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
+<span class="lineNum">      41 </span>            :  * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+<span class="lineNum">      42 </span>            :  * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+<span class="lineNum">      43 </span>            :  *
+<span class="lineNum">      44 </span>            :  * You should have received a copy of the GNU General Public License along with
+<span class="lineNum">      45 </span>            :  * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
+<span class="lineNum">      46 </span>            :  * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+<span class="lineNum">      47 </span>            :  *
+<span class="lineNum">      48 </span>            :  * @author Andrea Piccione
+<span class="lineNum">      49 </span>            :  * @author Alessandro Pellegrini
+<span class="lineNum">      50 </span>            :  * @author Tommaso Tocci
+<span class="lineNum">      51 </span>            :  * @author Roberto Vitali
+<span class="lineNum">      52 </span>            :  */
+<span class="lineNum">      53 </span>            : 
+<span class="lineNum">      54 </span>            : #pragma once
+<span class="lineNum">      55 </span>            : 
+<span class="lineNum">      56 </span>            : #include &lt;scheduler/process.h&gt;
+<span class="lineNum">      57 </span>            : 
+<span class="lineNum">      58 </span>            : /// This macro specified the default output directory, if nothing is passed as an option
+<span class="lineNum">      59 </span><span class="lineCov">          1 : #define DEFAULT_OUTPUT_DIR &quot;outputs&quot;</span>
+<span class="lineNum">      60 </span>            : 
+<span class="lineNum">      61 </span>            : /// Longest length of a path
+<span class="lineNum">      62 </span><span class="lineCov">          1 : #define MAX_PATHLEN 512</span>
+<span class="lineNum">      63 </span>            : 
+<span class="lineNum">      64 </span><span class="lineNoCov">          0 : enum stat_file_unique {</span>
+<span class="lineNum">      65 </span>            :         STAT_FILE_U_NODE = 0,
+<span class="lineNum">      66 </span>            :         STAT_FILE_U_GLOBAL,
+<span class="lineNum">      67 </span>            :         NUM_STAT_FILE_U
+<span class="lineNum">      68 </span>            : };
+<span class="lineNum">      69 </span>            : 
+<span class="lineNum">      70 </span>            : /* Definition of statistics file names/indices for unique files */
+<span class="lineNum">      71 </span><span class="lineNoCov">          0 : #define STAT_FILE_NAME_NODE             &quot;execution_stats&quot;</span>
+<span class="lineNum">      72 </span><span class="lineNoCov">          0 : #define STAT_FILE_NAME_GLOBAL           &quot;global_execution_stats&quot;</span>
+<span class="lineNum">      73 </span>            : 
+<span class="lineNum">      74 </span><span class="lineNoCov">          0 : enum stat_file_per_thread {</span>
+<span class="lineNum">      75 </span>            :         STAT_FILE_T_THREAD = 0,
+<span class="lineNum">      76 </span>            :         STAT_FILE_T_GVT,
+<span class="lineNum">      77 </span>            :         STAT_FILE_T_LP,
+<span class="lineNum">      78 </span>            :         NUM_STAT_FILE_T
+<span class="lineNum">      79 </span>            : };
+<span class="lineNum">      80 </span>            : 
+<span class="lineNum">      81 </span>            : /* Definition of statistics file names/indices for per-thread files */
+<span class="lineNum">      82 </span><span class="lineNoCov">          0 : #define STAT_FILE_NAME_THREAD   &quot;local_stats&quot;</span>
+<span class="lineNum">      83 </span><span class="lineNoCov">          0 : #define STAT_FILE_NAME_GVT              &quot;gvt&quot;</span>
+<span class="lineNum">      84 </span><span class="lineNoCov">          0 : #define STAT_FILE_NAME_LP               &quot;lps&quot;</span>
+<span class="lineNum">      85 </span>            : 
+<span class="lineNum">      86 </span>            : /* Definition of LP Statistics Post Messages */
+<span class="lineNum">      87 </span><span class="lineNoCov">          0 : enum stat_msg_t {</span>
+<span class="lineNum">      88 </span>            :         STAT_ANTIMESSAGE = 1001,
+<span class="lineNum">      89 </span>            :         STAT_EVENT,
+<span class="lineNum">      90 </span>            :         STAT_COMMITTED,
+<span class="lineNum">      91 </span>            :         STAT_ROLLBACK,
+<span class="lineNum">      92 </span>            :         STAT_CKPT,
+<span class="lineNum">      93 </span>            :         STAT_CKPT_TIME,
+<span class="lineNum">      94 </span>            :         STAT_CKPT_MEM,
+<span class="lineNum">      95 </span>            :         STAT_RECOVERY,
+<span class="lineNum">      96 </span>            :         STAT_RECOVERY_TIME,
+<span class="lineNum">      97 </span>            :         STAT_EVENT_TIME,
+<span class="lineNum">      98 </span>            :         STAT_IDLE_CYCLES,
+<span class="lineNum">      99 </span>            :         STAT_SILENT,
+<span class="lineNum">     100 </span>            :         STAT_GVT_ROUND_TIME,
+<span class="lineNum">     101 </span>            :         STAT_GET_SIMTIME_ADVANCEMENT,   //xxx totally unused
+<span class="lineNum">     102 </span>            :         STAT_GET_EVENT_TIME_LP
+<span class="lineNum">     103 </span>            : };
+<span class="lineNum">     104 </span>            : 
+<span class="lineNum">     105 </span><span class="lineNoCov">          0 : enum stats_levels {</span>
+<span class="lineNum">     106 </span>            :         STATS_INVALID = 0,      /**&lt; By convention 0 is the invalid field */
+<span class="lineNum">     107 </span>            :         STATS_GLOBAL,           /**&lt; xxx documentation */
+<span class="lineNum">     108 </span>            :         STATS_PERF,             /**&lt; xxx documentation */
+<span class="lineNum">     109 </span>            :         STATS_LP,               /**&lt; xxx documentation */
+<span class="lineNum">     110 </span>            :         STATS_ALL               /**&lt; xxx documentation */
+<span class="lineNum">     111 </span>            : };
+<span class="lineNum">     112 </span>            : 
+<span class="lineNum">     113 </span>            : // this is used in order to have more efficient stats additions during gvt reductions
+<span class="lineNum">     114 </span><span class="lineNoCov">          0 : typedef double vec_double __attribute__((vector_size(16 * sizeof(double))));</span>
+<span class="lineNum">     115 </span>            : 
+<span class="lineNum">     116 </span>            : // Structure to keep track of (incremental) statistics
+<span class="lineNum">     117 </span><span class="lineNoCov">          0 : struct stat_t {</span>
+<span class="lineNum">     118 </span>            :         union {
+<span class="lineNum">     119 </span>            :                 struct {
+<span class="lineNum">     120 </span><span class="lineNoCov">          0 :                         double tot_antimessages,</span>
+<span class="lineNum">     121 </span><span class="lineNoCov">          0 :                             tot_events,</span>
+<span class="lineNum">     122 </span><span class="lineNoCov">          0 :                             committed_events,</span>
+<span class="lineNum">     123 </span><span class="lineNoCov">          0 :                             reprocessed_events,</span>
+<span class="lineNum">     124 </span><span class="lineNoCov">          0 :                             tot_rollbacks,</span>
+<span class="lineNum">     125 </span><span class="lineNoCov">          0 :                             tot_ckpts,</span>
+<span class="lineNum">     126 </span><span class="lineNoCov">          0 :                             ckpt_time,</span>
+<span class="lineNum">     127 </span><span class="lineNoCov">          0 :                             ckpt_mem,</span>
+<span class="lineNum">     128 </span><span class="lineNoCov">          0 :                             tot_recoveries,</span>
+<span class="lineNum">     129 </span><span class="lineNoCov">          0 :                             recovery_time,</span>
+<span class="lineNum">     130 </span><span class="lineNoCov">          0 :                             event_time,</span>
+<span class="lineNum">     131 </span><span class="lineNoCov">          0 :                             idle_cycles,</span>
+<span class="lineNum">     132 </span><span class="lineNoCov">          0 :                             memory_usage,</span>
+<span class="lineNum">     133 </span><span class="lineNoCov">          0 :                             simtime_advancement,</span>
+<span class="lineNum">     134 </span><span class="lineNoCov">          0 :                             gvt_computations, exponential_event_time;</span>
+<span class="lineNum">     135 </span>            :                 };
+<span class="lineNum">     136 </span><span class="lineNoCov">          0 :                 vec_double vec;</span>
+<span class="lineNum">     137 </span><span class="lineNoCov">          0 :         };</span>
+<span class="lineNum">     138 </span><span class="lineNoCov">          0 :         double gvt_time,</span>
+<span class="lineNum">     139 </span><span class="lineNoCov">          0 :             gvt_round_time,</span>
+<span class="lineNum">     140 </span><span class="lineNoCov">          0 :             gvt_round_time_min, gvt_round_time_max, max_resident_set;</span>
+<span class="lineNum">     141 </span>            : };
+<span class="lineNum">     142 </span>            : 
+<span class="lineNum">     143 </span><span class="lineCov">          1 : extern void _mkdir(const char *path);</span>
+<span class="lineNum">     144 </span>            : 
+<span class="lineNum">     145 </span><span class="lineNoCov">          0 : extern void print_config(void);</span>
+<span class="lineNum">     146 </span>            : 
+<span class="lineNum">     147 </span><span class="lineCov">          1 : extern void statistics_init(void);</span>
+<span class="lineNum">     148 </span><span class="lineCov">          1 : extern void statistics_fini(void);</span>
+<span class="lineNum">     149 </span>            : 
+<span class="lineNum">     150 </span><span class="lineCov">          1 : extern void statistics_start(void);</span>
+<span class="lineNum">     151 </span><span class="lineCov">          1 : extern void statistics_stop(int exit_code);</span>
+<span class="lineNum">     152 </span>            : 
+<span class="lineNum">     153 </span><span class="lineNoCov">          0 : extern inline void statistics_on_gvt(double gvt);</span>
+<span class="lineNum">     154 </span><span class="lineNoCov">          0 : extern inline void statistics_on_gvt_serial(double gvt);</span>
+<span class="lineNum">     155 </span>            : 
+<span class="lineNum">     156 </span><span class="lineNoCov">          0 : extern inline void statistics_post_data(struct lp_struct *, enum stat_msg_t type, double data);</span>
+<span class="lineNum">     157 </span><span class="lineNoCov">          0 : extern inline void statistics_post_data_serial(enum stat_msg_t type, double data);</span>
+<span class="lineNum">     158 </span>            : 
+<span class="lineNum">     159 </span><span class="lineNoCov">          0 : extern double statistics_get_lp_data(struct lp_struct *, unsigned int type);</span>
+<span class="lineNum">     160 </span>            : 
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.12</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>

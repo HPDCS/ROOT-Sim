@@ -1,0 +1,51 @@
+<map id="src/arch/atomic.h" name="src/arch/atomic.h">
+<area shape="rect" id="node2" href="$thread_8h.html" title="Generic thread management facilities. " alt="" coords="1945,80,2076,107"/>
+<area shape="rect" id="node10" href="$communication_8c.html" title="Communication Routines. " alt="" coords="433,677,692,704"/>
+<area shape="rect" id="node21" href="$queues_8c.html" title="Message queueing subsystem. " alt="" coords="1777,677,1932,704"/>
+<area shape="rect" id="node23" href="$mpi_8c.html" title="MPI Support Module. " alt="" coords="1262,603,1445,629"/>
+<area shape="rect" id="node26" href="$binding_8c.html" title="Load sharing rules across worker threads. " alt="" coords="99,677,267,704"/>
+<area shape="rect" id="node28" href="$preempt_8c.html" title="LP preemption management. " alt="" coords="6639,677,6817,704"/>
+<area shape="rect" id="node30" href="$scheduler_8c.html" title="The ROOT&#45;Sim scheduler main module. " alt="" coords="5698,677,5881,704"/>
+<area shape="rect" id="node37" href="$msgchannel_8c.html" title="A (M, 1) channel for messages. " alt="" coords="2149,453,2352,480"/>
+<area shape="rect" id="node40" href="$wnd_8h.html" title="Message delivery support. " alt="" coords="1363,528,1549,555"/>
+<area shape="rect" id="node43" href="$x86_8c.html" title="x86 synchronization primitives " alt="" coords="6275,379,6386,405"/>
+<area shape="rect" id="node44" href="$mm_8h.html" title="Memory Manager main header. " alt="" coords="4455,379,4569,405"/>
+<area shape="rect" id="node50" href="$list_8h.html" title="Generic Lists. " alt="" coords="1678,379,1821,405"/>
+<area shape="rect" id="node3" href="$thread_8c.html" title="Generic thread management facilities. " alt="" coords="3632,453,3763,480"/>
+<area shape="rect" id="node4" href="$core_8c.html" title="Core ROOT&#45;Sim functionalities. " alt="" coords="3259,677,3375,704"/>
+<area shape="rect" id="node5" href="$core_8h.html" title="Core ROOT&#45;Sim functionalities. " alt="" coords="3196,155,3313,181"/>
+<area shape="rect" id="node11" href="$init_8c.html" title="Initialization routines. " alt="" coords="2781,677,2888,704"/>
+<area shape="rect" id="node13" href="$fossil_8c.html" title="Housekeeping operations. " alt="" coords="6368,677,6480,704"/>
+<area shape="rect" id="node14" href="$gvt_2gvt_8c.html" title="Global Virtual Time. " alt="" coords="817,677,917,704"/>
+<area shape="rect" id="node16" href="$main_8c.html" title="This module contains the entry point for the simulator, and some core functions. " alt="" coords="5321,677,5409,704"/>
+<area shape="rect" id="node31" href="$stf_8c.html" title="O(n) scheduling algorithm. " alt="" coords="5134,677,5271,704"/>
+<area shape="rect" id="node33" href="$statistics_8c.html" title="Statistics module. " alt="" coords="2582,677,2757,704"/>
+<area shape="rect" id="node6" href="$ult_8c.html" title="User&#45;Level Threads. " alt="" coords="6131,528,6235,555"/>
+<area shape="rect" id="node7" href="$ult_8h.html" title="User&#45;Level Threads Headers. " alt="" coords="5726,379,5831,405"/>
+<area shape="rect" id="node8" href="$ecs_8c.html" title="Event &amp; Cross State Synchornization. " alt="" coords="4951,677,5059,704"/>
+<area shape="rect" id="node12" href="$ccgs_8c.html" title="Consistent and Committed Global State. " alt="" coords="3400,677,3509,704"/>
+<area shape="rect" id="node17" href="$buddy_8c.html" title="A Buddy System implementation. " alt="" coords="4707,528,4829,555"/>
+<area shape="rect" id="node18" href="$checkpoints_8c.html" title="State saving and restore for model state buffers. " alt="" coords="5460,677,5623,704"/>
+<area shape="rect" id="node20" href="$state_8c.html" title="LP state management. " alt="" coords="4295,677,4414,704"/>
+<area shape="rect" id="node22" href="$queues_8h.html" title="Message queueing subsystem. " alt="" coords="2384,528,2539,555"/>
+<area shape="rect" id="node24" href="$scheduler_8h.html" title="The ROOT&#45;Sim scheduler main module header. " alt="" coords="4032,603,4216,629"/>
+<area shape="rect" id="node27" href="$control_8c.html" title="Processing points for control messages. " alt="" coords="2391,677,2558,704"/>
+<area shape="rect" id="node29" href="$process_8c.html" title="Generic LP management functions. " alt="" coords="3679,677,3851,704"/>
+<area shape="rect" id="node32" href="$serial_8c.html" title="Serial scheduler. " alt="" coords="4696,677,4824,704"/>
+<area shape="rect" id="node34" href="$stf_8h.html" title="O(n) scheduling algorithm. " alt="" coords="5056,528,5195,555"/>
+<area shape="rect" id="node35" href="$communication_8h.html" title="Communication Routines. " alt="" coords="2781,379,3040,405"/>
+<area shape="rect" id="node38" href="$communication_2gvt_8h.html" title="Distributed GVT Support module. " alt="" coords="905,528,1085,555"/>
+<area shape="rect" id="node39" href="$mpi_8h.html" title="MPI Support Module. " alt="" coords="1563,453,1747,480"/>
+<area shape="rect" id="node41" href="$bitmap_8h.html" title="Bitmap data type. " alt="" coords="5328,229,5499,256"/>
+<area shape="rect" id="node42" href="$dymelor_8h.html" title="Dynamic Memory Logger and Restorer (DyMeLoR) " alt="" coords="6109,304,6248,331"/>
+<area shape="rect" id="node45" href="$calqueue_8c.html" title="Calendar Queue Implementation. " alt="" coords="3289,453,3471,480"/>
+<area shape="rect" id="node46" href="$slab_8c.html" title="a Slab Allocator " alt="" coords="3496,453,3608,480"/>
+<area shape="rect" id="node47" href="$platform_8c.html" title="malloc wrappers " alt="" coords="6009,379,6149,405"/>
+<area shape="rect" id="node48" href="$msgchannel_8h.html" title="A (M, 1) channel for messages. " alt="" coords="2352,379,2555,405"/>
+<area shape="rect" id="node49" href="$state_8h.html" title="LP state management. " alt="" coords="3504,229,3624,256"/>
+<area shape="rect" id="node9" href="$process_8h.html" title="LP control blocks. " alt="" coords="4091,453,4264,480"/>
+<area shape="rect" id="node15" href="$numerical_8c.html" title="Numerical Library. " alt="" coords="3875,677,4013,704"/>
+<area shape="rect" id="node19" href="$segment_8c.html" title="Segment allocator. " alt="" coords="4387,528,4530,555"/>
+<area shape="rect" id="node25" href="$dymelor_8c.html" title="Dynamic Memory Logger and Restorer (DyMeLoR) " alt="" coords="4094,677,4231,704"/>
+<area shape="rect" id="node36" href="$wnd_8c.html" title="Message delivery support. " alt="" coords="1469,603,1653,629"/>
+</map>

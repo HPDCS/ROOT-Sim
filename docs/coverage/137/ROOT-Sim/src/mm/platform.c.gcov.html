@@ -1,0 +1,135 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - doc-coverage.info - ROOT-Sim/src/mm/platform.c</title>
+  <link rel="stylesheet" type="text/css" href="../../../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../../../index.html">top level</a> - <a href="index.html">ROOT-Sim/src/mm</a> - platform.c</td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">doc-coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">1</td>
+            <td class="headerCovTableEntry">9</td>
+            <td class="headerCovTableEntryLo">11.1 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2020-02-07 15:01:24</td>
+            <td></td>
+          </tr>
+          <tr><td><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<span class="lineNum">       1 </span><span class="lineCov">          1 : /**</span>
+<span class="lineNum">       2 </span>            : * @file mm/platform.c
+<span class="lineNum">       3 </span>            : *
+<span class="lineNum">       4 </span>            : * @brief malloc wrappers
+<span class="lineNum">       5 </span>            : *
+<span class="lineNum">       6 </span>            : * For security reasons we poison standard malloc calls. These are
+<span class="lineNum">       7 </span>            : *  wrappers used in ROOT-Sim, which also make some quick checks.
+<span class="lineNum">       8 </span>            : *
+<span class="lineNum">       9 </span>            : * @copyright
+<span class="lineNum">      10 </span>            : * Copyright (C) 2008-2019 HPDCS Group
+<span class="lineNum">      11 </span>            : * https://hpdcs.github.io
+<span class="lineNum">      12 </span>            : *
+<span class="lineNum">      13 </span>            : * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
+<span class="lineNum">      14 </span>            : *
+<span class="lineNum">      15 </span>            : * ROOT-Sim is free software; you can redistribute it and/or modify it under the
+<span class="lineNum">      16 </span>            : * terms of the GNU General Public License as published by the Free Software
+<span class="lineNum">      17 </span>            : * Foundation; only version 3 of the License applies.
+<span class="lineNum">      18 </span>            : *
+<span class="lineNum">      19 </span>            : * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
+<span class="lineNum">      20 </span>            : * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+<span class="lineNum">      21 </span>            : * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+<span class="lineNum">      22 </span>            : *
+<span class="lineNum">      23 </span>            : * You should have received a copy of the GNU General Public License along with
+<span class="lineNum">      24 </span>            : * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
+<span class="lineNum">      25 </span>            : * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+<span class="lineNum">      26 </span>            : *
+<span class="lineNum">      27 </span>            : * @author Alessandro Pellegrini
+<span class="lineNum">      28 </span>            : */
+<span class="lineNum">      29 </span>            : 
+<span class="lineNum">      30 </span>            : #include &lt;stddef.h&gt;
+<span class="lineNum">      31 </span>            : #include &lt;stdlib.h&gt;
+<span class="lineNum">      32 </span>            : 
+<span class="lineNum">      33 </span>            : #include &lt;mm/dymelor.h&gt;
+<span class="lineNum">      34 </span>            : #include &lt;core/core.h&gt;
+<span class="lineNum">      35 </span>            : 
+<span class="lineNum">      36 </span><span class="lineNoCov">          0 : extern void *__real_malloc(size_t);</span>
+<span class="lineNum">      37 </span><span class="lineNoCov">          0 : extern void __real_free(void *);</span>
+<span class="lineNum">      38 </span><span class="lineNoCov">          0 : extern void *__real_realloc(void *, size_t);</span>
+<span class="lineNum">      39 </span><span class="lineNoCov">          0 : extern void *__real_calloc(size_t, size_t);</span>
+<span class="lineNum">      40 </span>            : 
+<span class="lineNum">      41 </span><span class="lineNoCov">          0 : inline void *rsalloc(size_t size)</span>
+<span class="lineNum">      42 </span>            : {
+<span class="lineNum">      43 </span>            :         void *mem_block = __real_malloc(size);
+<span class="lineNum">      44 </span>            :         if (unlikely(mem_block == NULL)) {
+<span class="lineNum">      45 </span>            :                 rootsim_error(true, &quot;Error in memory allocation, aborting...&quot;);
+<span class="lineNum">      46 </span>            :         }
+<span class="lineNum">      47 </span>            :         return mem_block;
+<span class="lineNum">      48 </span>            : }
+<span class="lineNum">      49 </span>            : 
+<span class="lineNum">      50 </span><span class="lineNoCov">          0 : inline void rsfree(void *ptr)</span>
+<span class="lineNum">      51 </span>            : {
+<span class="lineNum">      52 </span>            :         __real_free(ptr);
+<span class="lineNum">      53 </span>            : }
+<span class="lineNum">      54 </span>            : 
+<span class="lineNum">      55 </span><span class="lineNoCov">          0 : inline void *rsrealloc(void *ptr, size_t size)</span>
+<span class="lineNum">      56 </span>            : {
+<span class="lineNum">      57 </span>            :         return __real_realloc(ptr, size);
+<span class="lineNum">      58 </span>            : }
+<span class="lineNum">      59 </span>            : 
+<span class="lineNum">      60 </span><span class="lineNoCov">          0 : inline void *rscalloc(size_t nmemb, size_t size)</span>
+<span class="lineNum">      61 </span>            : {
+<span class="lineNum">      62 </span>            :         return __real_calloc(nmemb, size);
+<span class="lineNum">      63 </span>            : }
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.12</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>

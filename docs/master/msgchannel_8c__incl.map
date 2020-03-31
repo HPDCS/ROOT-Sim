@@ -1,0 +1,19 @@
+<map id="src/datatypes/msgchannel.c" name="src/datatypes/msgchannel.c">
+<area shape="rect" id="node5" href="$atomic_8h.html" title="Atomic operations. " alt="" coords="32,603,143,629"/>
+<area shape="rect" id="node8" href="$core_8h.html" title="Core ROOT&#45;Sim functionalities. " alt="" coords="477,453,572,480"/>
+<area shape="rect" id="node19" href="$communication_8h.html" title="Communication Routines. " alt="" coords="292,155,528,181"/>
+<area shape="rect" id="node20" href="$list_8h.html" title="Generic Lists. " alt="" coords="274,528,394,555"/>
+<area shape="rect" id="node23" href="$msgchannel_8h.html" title="A (M, 1) channel for messages. " alt="" coords="451,80,631,107"/>
+<area shape="rect" id="node24" href="$mm_8h.html" title="Memory Manager main header. " alt="" coords="658,80,749,107"/>
+<area shape="rect" id="node9" href="$ROOT-Sim_8h.html" title="ROOT&#45;Sim header for model development. " alt="" coords="1099,528,1198,555"/>
+<area shape="rect" id="node15" href="$thread_8h.html" title="Generic thread management facilities. " alt="" coords="141,528,249,555"/>
+<area shape="rect" id="node26" href="$dymelor_8h.html" title="Dynamic Memory Logger and Restorer (DyMeLoR) " alt="" coords="778,155,893,181"/>
+<area shape="rect" id="node27" href="$bitmap_8h.html" title="Bitmap data type. " alt="" coords="827,379,974,405"/>
+<area shape="rect" id="node29" href="$state_8h.html" title="LP state management. " alt="" coords="936,229,1033,256"/>
+<area shape="rect" id="node35" href="$timer_8h.html" title="Timers. " alt="" coords="639,229,738,256"/>
+<area shape="rect" id="node30" href="$numerical_8h.html" title="Numerical Library. " alt="" coords="1099,379,1214,405"/>
+<area shape="rect" id="node31" href="$abm__layer_8h_source.html" title="lib/abm_layer.h" alt="" coords="993,304,1112,331"/>
+<area shape="rect" id="node32" href="$topology_8h_source.html" title="lib/topology.h" alt="" coords="864,304,969,331"/>
+<area shape="rect" id="node33" href="$jsmn__helper_8h_source.html" title="lib/jsmn_helper.h" alt="" coords="959,453,1088,480"/>
+<area shape="rect" id="node34" href="$jsmn_8h_source.html" title="lib/jsmn.h" alt="" coords="818,528,901,555"/>
+</map>

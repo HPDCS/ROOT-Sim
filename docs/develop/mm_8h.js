@@ -1,0 +1,25 @@
+var mm_8h =
+[
+    [ "memory_map", "structmemory__map.html", "structmemory__map" ],
+    [ "allocator_fini", "mm_8h.html#a4efde26b534d03e963a4ff4903f8ba88", null ],
+    [ "allocator_init", "mm_8h.html#accf456c506e2226878e1856369eedfca", null ],
+    [ "clean_buffers_on_gvt", "mm_8h.html#ab034b03a284ecc619e07a051d95b7dd7", null ],
+    [ "finalize_memory_map", "mm_8h.html#a891f6c2edc03d05f1f17bb046be719f8", null ],
+    [ "get_base_pointer", "mm_8h.html#a02d6ca4621e0cbbd0e84524a1f6a18dc", null ],
+    [ "get_segment", "mm_8h.html#a75389d54c9cdeefffef8dff11324cfae", null ],
+    [ "initialize_memory_map", "mm_8h.html#a55b0b8e4a65be959f5adb5343f36ff94", null ],
+    [ "log_delete", "mm_8h.html#a638015576623fa22a4710def61ad19ab", null ],
+    [ "log_full", "mm_8h.html#a1c7f2848dc6193b55e9edddf10aea99d", null ],
+    [ "log_restore", "mm_8h.html#aea7bcb3e0ec0c731b510785a3ff23e50", null ],
+    [ "log_state", "mm_8h.html#afbb9e43630a99b023ad7421afdb6dee9", null ],
+    [ "malloc_state_wipe", "mm_8h.html#aee301c68dfef2abe9f16a19215ea48d1", null ],
+    [ "rsalloc", "mm_8h.html#a9e80751b3934b0cd4411695f6743016b", null ],
+    [ "rscalloc", "mm_8h.html#a9d9ef7f17d1da53b67c7a8171d2b5ddf", null ],
+    [ "rsfree", "mm_8h.html#aa6966af54ab40823b6a31934cfba500a", null ],
+    [ "rsrealloc", "mm_8h.html#a480bc47d84033faa5410d5a3c4470ff7", null ],
+    [ "rszalloc", "mm_8h.html#a3211cfe04aa3649379e22c3b9ef9984a", null ],
+    [ "segment_init", "mm_8h.html#af1aa0c7cf4139b859f60b66d6bbd769f", null ],
+    [ "slab_alloc", "mm_8h.html#accbdb8d497f1171ed979e0ba27060349", null ],
+    [ "slab_free", "mm_8h.html#a167da57c353ffd9928e33a9508d1f282", null ],
+    [ "slab_init", "mm_8h.html#a9ddefb6c0499750d4928a2462d3aa0ae", null ]
+];

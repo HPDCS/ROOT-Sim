@@ -1,0 +1,15 @@
+<map id="msg_to_hdr" name="msg_to_hdr">
+<area shape="rect" id="node2" href="$communication_8h.html#ad154a0e0c0815b786ead70143505abd6" title="Send all pending outgoing messages. " alt="" coords="152,143,311,170"/>
+<area shape="rect" id="node3" href="$scheduler_8h.html#ac48128e72b303ea22d8ec641a9516b15" title="schedule" alt="" coords="359,143,437,170"/>
+<area shape="rect" id="node4" href="$gvt_2gvt_8h.html#a234e866bb1e37fa25dec9bb40134234d" title="get_last_gvt" alt="" coords="485,118,585,145"/>
+<area shape="rect" id="node6" href="$main_8c.html#aa729cb27350c33119484501e13df4fec" title="main_simulation_loop" alt="" coords="1223,71,1384,98"/>
+<area shape="rect" id="node5" href="$main_8c.html#af2ac8c142556588d87e6c069a4ca9894" title="end_computing" alt="" coords="1036,67,1157,94"/>
+<area shape="rect" id="node8" href="$queues_8h.html#a54eca9bfa893cac072d1b1d3010c2944" title="process_bottom_halves" alt="" coords="633,118,808,145"/>
+<area shape="rect" id="node9" href="$statistics_8c.html#ab7b584959699657a63a49384f07fd7a9" title="format_size" alt="" coords="672,17,769,43"/>
+<area shape="rect" id="node7" href="$main_8c.html#a3c04138a5bfe5d72780bb7e82a18e627" title="main" alt="" coords="1697,42,1752,69"/>
+<area shape="rect" id="node10" href="$statistics_8h.html#aeff52bbf045362270639b2baed20762b" title="statistics_stop" alt="" coords="856,17,971,43"/>
+<area shape="rect" id="node11" href="$core_8h.html#a8f346536ccfbe77b78ed577674beb6cf" title="simulation_shutdown" alt="" coords="1019,17,1175,43"/>
+<area shape="rect" id="node12" href="$core_8c.html#a9b05d2af2e233e2616633eaa706682ee" title="exit_from_simulation\l_model" alt="" coords="1226,5,1381,47"/>
+<area shape="rect" id="node13" href="$core_8h.html#a7fb819521b1ab5fc7644ad216fe7b465" title="base_init" alt="" coords="1432,14,1511,41"/>
+<area shape="rect" id="node14" href="$init_8h.html#a417eb072179d09f441dbae3125049e46" title="SystemInit" alt="" coords="1559,15,1649,42"/>
+</map>

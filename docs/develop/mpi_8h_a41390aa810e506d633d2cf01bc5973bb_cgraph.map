@@ -1,0 +1,11 @@
+<map id="send_remote_msg" name="send_remote_msg">
+<area shape="rect" id="node2" href="$wnd_8c.html#a76d33aed8e7dfe9ab6d8ce4f9b1f4fd8" title="Allocate a buffer for an outgoing message node. " alt="" coords="196,5,367,32"/>
+<area shape="rect" id="node3" href="$core_8c.html#a6793e4c70d69277f24ff0e494ed8ed10" title="find_kernel_by_gid" alt="" coords="415,107,553,133"/>
+<area shape="rect" id="node4" href="$communication_8c.html#aebec05b86f3467473116d555954b80f4" title="Perform some sanity checks on a message buffer. " alt="" coords="228,56,335,83"/>
+<area shape="rect" id="node6" href="$communication_2gvt_8c.html#a76f513e8aeeeb0abebc46f19ceb72293" title="Register an outgoing message, if necessary. " alt="" coords="197,157,366,184"/>
+<area shape="rect" id="node8" href="$wnd_8c.html#a16850c4710b9b54fc67b88547b3b87ee" title="Store an outgoing message. " alt="" coords="205,208,358,235"/>
+<area shape="rect" id="node5" href="$communication_8c.html#ab442ee81854e910ac0b21e3caf21cc48" title="Tell the GID of the sender of a message, given its mark. " alt="" coords="433,56,535,83"/>
+<area shape="rect" id="node7" href="$atomic_8h.html#ae2153aa1dc0d0362246d6e14f60b5550" title="atomic_inc" alt="" coords="439,157,529,184"/>
+<area shape="rect" id="node9" href="$atomic_8h.html#a7a6b9868956dd8e51e5de80e16c76fc4" title="spin_lock" alt="" coords="444,259,524,285"/>
+<area shape="rect" id="node10" href="$atomic_8h.html#a4e8c9d1c6101995f1ecd2141d77e4824" title="spin_unlock" alt="" coords="436,208,532,235"/>
+</map>

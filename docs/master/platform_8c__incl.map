@@ -1,0 +1,15 @@
+<map id="src/mm/platform.c" name="src/mm/platform.c">
+<area shape="rect" id="node4" href="$dymelor_8h.html" title="Dynamic Memory Logger and Restorer (DyMeLoR) " alt="" coords="719,80,834,107"/>
+<area shape="rect" id="node7" href="$core_8h.html" title="Core ROOT&#45;Sim functionalities. " alt="" coords="720,379,815,405"/>
+<area shape="rect" id="node21" href="$bitmap_8h.html" title="Bitmap data type. " alt="" coords="875,304,1022,331"/>
+<area shape="rect" id="node23" href="$state_8h.html" title="LP state management. " alt="" coords="965,155,1063,181"/>
+<area shape="rect" id="node29" href="$timer_8h.html" title="Timers. " alt="" coords="641,155,739,181"/>
+<area shape="rect" id="node8" href="$ROOT-Sim_8h.html" title="ROOT&#45;Sim header for model development. " alt="" coords="853,453,951,480"/>
+<area shape="rect" id="node16" href="$thread_8h.html" title="Generic thread management facilities. " alt="" coords="377,453,485,480"/>
+<area shape="rect" id="node17" href="$atomic_8h.html" title="Atomic operations. " alt="" coords="257,528,368,555"/>
+<area shape="rect" id="node24" href="$numerical_8h.html" title="Numerical Library. " alt="" coords="1251,304,1366,331"/>
+<area shape="rect" id="node25" href="$abm__layer_8h_source.html" title="lib/abm_layer.h" alt="" coords="1097,229,1216,256"/>
+<area shape="rect" id="node26" href="$topology_8h_source.html" title="lib/topology.h" alt="" coords="916,229,1021,256"/>
+<area shape="rect" id="node27" href="$jsmn__helper_8h_source.html" title="lib/jsmn_helper.h" alt="" coords="1097,304,1227,331"/>
+<area shape="rect" id="node28" href="$jsmn_8h_source.html" title="lib/jsmn.h" alt="" coords="1191,379,1274,405"/>
+</map>

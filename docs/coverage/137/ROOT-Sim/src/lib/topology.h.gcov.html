@@ -1,0 +1,151 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - doc-coverage.info - ROOT-Sim/src/lib/topology.h</title>
+  <link rel="stylesheet" type="text/css" href="../../../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../../../index.html">top level</a> - <a href="index.html">ROOT-Sim/src/lib</a> - topology.h</td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">doc-coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">8</td>
+            <td class="headerCovTableEntry">40</td>
+            <td class="headerCovTableEntryLo">20.0 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2020-02-07 15:01:24</td>
+            <td></td>
+          </tr>
+          <tr><td><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<span class="lineNum">       1 </span><span class="lineNoCov">          0 : /*</span>
+<span class="lineNum">       2 </span>            :  * topology.h
+<span class="lineNum">       3 </span>            :  *
+<span class="lineNum">       4 </span>            :  *  Created on: 02 lug 2018
+<span class="lineNum">       5 </span>            :  *      Author: andrea
+<span class="lineNum">       6 </span>            :  */
+<span class="lineNum">       7 </span>            : 
+<span class="lineNum">       8 </span>            : #ifndef __TOPOLOGY_H_
+<span class="lineNum">       9 </span>            : #define __TOPOLOGY_H_
+<span class="lineNum">      10 </span>            : 
+<span class="lineNum">      11 </span>            : #include &lt;lib/jsmn_helper.h&gt;
+<span class="lineNum">      12 </span>            : #include &lt;datatypes/bitmap.h&gt;
+<span class="lineNum">      13 </span>            : 
+<span class="lineNum">      14 </span>            : typedef struct _topology_t topology_t;
+<span class="lineNum">      15 </span>            : 
+<span class="lineNum">      16 </span>            : /// this is used to store the common characteristics of the topology
+<span class="lineNum">      17 </span><span class="lineCov">          1 : extern struct _topology_global_t{</span>
+<span class="lineNum">      18 </span><span class="lineCov">          1 :         unsigned chkp_size;                     /**&lt; the size of the topology struct of each region (used for efficient check-pointing) */</span>
+<span class="lineNum">      19 </span><span class="lineCov">          1 :         unsigned directions;                    /**&lt; the number of valid directions in the topology */</span>
+<span class="lineNum">      20 </span><span class="lineCov">          1 :         unsigned edge;                          /**&lt; the pre-computed edge length (if it makes sense for the current topology geometry) */</span>
+<span class="lineNum">      21 </span><span class="lineCov">          1 :         unsigned lp_cnt;                        /**&lt; the number of LPs involved in the topology */</span>
+<span class="lineNum">      22 </span>            :         enum _topology_geometry_t geometry;     /**&lt; the topology geometry (see ROOT-Sim.h) */
+<span class="lineNum">      23 </span><span class="lineNoCov">          0 : } topology_global;</span>
+<span class="lineNum">      24 </span>            : 
+<span class="lineNum">      25 </span>            : // this initializes the topology environment
+<span class="lineNum">      26 </span><span class="lineCov">          1 : void topology_init(void);</span>
+<span class="lineNum">      27 </span>            : 
+<span class="lineNum">      28 </span>            : //used internally (also in abm_layer module) to schedule our reserved events TODO: move in a more system-like module
+<span class="lineNum">      29 </span><span class="lineNoCov">          0 : void UncheckedScheduleNewEvent(unsigned int gid_receiver, simtime_t timestamp, unsigned int event_type, void *event_content, unsigned int event_size);</span>
+<span class="lineNum">      30 </span>            : 
+<span class="lineNum">      31 </span>            : // if the model is using a topology this gets called instead of the plain ProcessEvent
+<span class="lineNum">      32 </span><span class="lineNoCov">          0 : void ProcessEventTopology(void);</span>
+<span class="lineNum">      33 </span>            : 
+<span class="lineNum">      34 </span>            : // STUFF FOR INTERNAL USE (in between topology sources)
+<span class="lineNum">      35 </span><span class="lineNoCov">          0 : unsigned        size_checkpoint_probabilities   (void);</span>
+<span class="lineNum">      36 </span><span class="lineNoCov">          0 : unsigned        size_checkpoint_costs           (void);</span>
+<span class="lineNum">      37 </span><span class="lineNoCov">          0 : unsigned        size_checkpoint_obstacles       (void);</span>
+<span class="lineNum">      38 </span>            : 
+<span class="lineNum">      39 </span><span class="lineNoCov">          0 : void *          load_topology_file_probabilities(c_jsmntok_t *root_token, const char *json_base);</span>
+<span class="lineNum">      40 </span><span class="lineNoCov">          0 : void *          load_topology_file_costs        (c_jsmntok_t *root_token, const char *json_base);</span>
+<span class="lineNum">      41 </span><span class="lineNoCov">          0 : void *          load_topology_file_obstacles    (c_jsmntok_t *root_token, const char *json_base);</span>
+<span class="lineNum">      42 </span>            : 
+<span class="lineNum">      43 </span><span class="lineNoCov">          0 : topology_t *    topology_probabilities_init     (unsigned this_region_id, void *topology_data);</span>
+<span class="lineNum">      44 </span><span class="lineNoCov">          0 : topology_t *    topology_costs_init             (unsigned this_region_id, void *topology_data);</span>
+<span class="lineNum">      45 </span><span class="lineNoCov">          0 : topology_t *    topology_obstacles_init         (unsigned this_region_id, void *topology_data);</span>
+<span class="lineNum">      46 </span>            : 
+<span class="lineNum">      47 </span><span class="lineNoCov">          0 : double          get_value_topology_probabilities(unsigned from, unsigned to);</span>
+<span class="lineNum">      48 </span><span class="lineNoCov">          0 : double          get_value_topology_costs        (unsigned from, unsigned to);</span>
+<span class="lineNum">      49 </span><span class="lineNoCov">          0 : double          get_value_topology_obstacles    (unsigned from, unsigned to);</span>
+<span class="lineNum">      50 </span>            : 
+<span class="lineNum">      51 </span><span class="lineNoCov">          0 : void            set_value_topology_probabilities(unsigned from, unsigned to, double value);</span>
+<span class="lineNum">      52 </span><span class="lineNoCov">          0 : void            set_value_topology_costs        (unsigned from, unsigned to, double value);</span>
+<span class="lineNum">      53 </span><span class="lineNoCov">          0 : void            set_value_topology_obstacles    (unsigned from, unsigned to, double value);</span>
+<span class="lineNum">      54 </span>            : 
+<span class="lineNum">      55 </span><span class="lineNoCov">          0 : bool            is_reachable_probabilities      (unsigned to);</span>
+<span class="lineNum">      56 </span><span class="lineNoCov">          0 : bool            is_reachable_costs              (unsigned to);</span>
+<span class="lineNum">      57 </span><span class="lineNoCov">          0 : bool            is_reachable_obstacles          (unsigned to);</span>
+<span class="lineNum">      58 </span>            : 
+<span class="lineNum">      59 </span><span class="lineNoCov">          0 : void            update_topology_probabilities   (void);</span>
+<span class="lineNum">      60 </span><span class="lineNoCov">          0 : void            update_topology_costs           (void);</span>
+<span class="lineNum">      61 </span><span class="lineNoCov">          0 : void            update_topology_obstacles       (void);</span>
+<span class="lineNum">      62 </span>            : 
+<span class="lineNum">      63 </span><span class="lineNoCov">          0 : unsigned int    find_receiver_probabilities     (void);</span>
+<span class="lineNum">      64 </span><span class="lineNoCov">          0 : unsigned int    find_receiver_obstacles         (void);</span>
+<span class="lineNum">      65 </span>            : 
+<span class="lineNum">      66 </span><span class="lineNoCov">          0 : double          compute_min_tour_costs          (unsigned int source, unsigned int dest, unsigned int result[RegionsCount()]);</span>
+<span class="lineNum">      67 </span><span class="lineNoCov">          0 : double          compute_min_tour_obstacles      (unsigned int source, unsigned int dest, unsigned int result[RegionsCount()]);</span>
+<span class="lineNum">      68 </span>            : 
+<span class="lineNum">      69 </span><span class="lineNoCov">          0 : unsigned int    find_receiver_toward_costs      (unsigned int to);</span>
+<span class="lineNum">      70 </span><span class="lineNoCov">          0 : unsigned int    find_receiver_toward_obstacles  (unsigned int to);</span>
+<span class="lineNum">      71 </span>            : 
+<span class="lineNum">      72 </span>            : 
+<span class="lineNum">      73 </span><span class="lineCov">          1 : unsigned int    get_raw_receiver                (unsigned int from, direction_t direction);</span>
+<span class="lineNum">      74 </span>            : // the dijkstra algorithm returns a spanning tree rooted at the source with information about the parent of
+<span class="lineNum">      75 </span>            : // each node: this method is needed to build the complete path of a node given such an array of previous hops
+<span class="lineNum">      76 </span>            : // it's here because it's needed by both COSTS and BINARY
+<span class="lineNum">      77 </span><span class="lineCov">          1 : unsigned build_path(unsigned lp_cnt, unsigned result[lp_cnt], const unsigned int previous[lp_cnt], unsigned source, unsigned dest);</span>
+<span class="lineNum">      78 </span>            : 
+<span class="lineNum">      79 </span>            : #endif /* __TOPOLOGY_H_ */
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.12</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>

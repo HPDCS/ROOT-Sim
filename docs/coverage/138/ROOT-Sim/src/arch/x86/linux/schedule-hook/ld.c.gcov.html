@@ -1,0 +1,208 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - doc-coverage.info - ROOT-Sim/src/arch/x86/linux/schedule-hook/ld.c</title>
+  <link rel="stylesheet" type="text/css" href="../../../../../../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../../../../../../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../../../../../../index.html">top level</a> - <a href="index.html">ROOT-Sim/src/arch/x86/linux/schedule-hook</a> - ld.c</td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">doc-coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">0</td>
+            <td class="headerCovTableEntry">3</td>
+            <td class="headerCovTableEntryLo">0.0 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2020-02-28 13:00:44</td>
+            <td></td>
+          </tr>
+          <tr><td><img src="../../../../../../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../../../../../../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<span class="lineNum">       1 </span><span class="lineNoCov">          0 : /*</span>
+<span class="lineNum">       2 </span>            : x86 Length Disassembler.
+<span class="lineNum">       3 </span>            : Copyright (C) 2016 Alessandro Pellegrini
+<span class="lineNum">       4 </span>            : Copyright (C) 2013 Byron Platt
+<span class="lineNum">       5 </span>            : 
+<span class="lineNum">       6 </span>            : This program is free software: you can redistribute it and/or modify
+<span class="lineNum">       7 </span>            : it under the terms of the GNU General Public License as published by
+<span class="lineNum">       8 </span>            : the Free Software Foundation, either version 3 of the License, or
+<span class="lineNum">       9 </span>            : (at your option) any later version.
+<span class="lineNum">      10 </span>            : 
+<span class="lineNum">      11 </span>            : This program is distributed in the hope that it will be useful,
+<span class="lineNum">      12 </span>            : but WITHOUT ANY WARRANTY; without even the implied warranty of
+<span class="lineNum">      13 </span>            : MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+<span class="lineNum">      14 </span>            : GNU General Public License for more details.
+<span class="lineNum">      15 </span>            : 
+<span class="lineNum">      16 </span>            : You should have received a copy of the GNU General Public License
+<span class="lineNum">      17 </span>            : along with this program.  If not, see &lt;http://www.gnu.org/licenses/&gt;.
+<span class="lineNum">      18 </span>            : */
+<span class="lineNum">      19 </span>            : #include &lt;stdbool.h&gt;
+<span class="lineNum">      20 </span>            : 
+<span class="lineNum">      21 </span>            : #include &quot;lend.h&quot;
+<span class="lineNum">      22 </span>            : #include &quot;ld.h&quot;
+<span class="lineNum">      23 </span>            : 
+<span class="lineNum">      24 </span>            : //__thread bool _rip_relative;
+<span class="lineNum">      25 </span><span class="lineNoCov">          0 : bool _rip_relative;</span>
+<span class="lineNum">      26 </span>            : 
+<span class="lineNum">      27 </span>            : /* length_disasm */
+<span class="lineNum">      28 </span><span class="lineNoCov">          0 : unsigned int length_disasm(void *opcode0, char mode) {</span>
+<span class="lineNum">      29 </span>            :     unsigned char *opcode = opcode0;
+<span class="lineNum">      30 </span>            : 
+<span class="lineNum">      31 </span>            :     unsigned int flag = 0;
+<span class="lineNum">      32 </span>            :     unsigned int ddef = 4, mdef = 4;
+<span class="lineNum">      33 </span>            :     unsigned int msize = 0, dsize = 0;
+<span class="lineNum">      34 </span>            : 
+<span class="lineNum">      35 </span>            :     unsigned char first_op, op, modrm, mod, rm, rex = 0;
+<span class="lineNum">      36 </span>            :     unsigned char multibyte = 0;
+<span class="lineNum">      37 </span>            : 
+<span class="lineNum">      38 </span>            :     _rip_relative = false;
+<span class="lineNum">      39 </span>            : 
+<span class="lineNum">      40 </span>            : prefix:
+<span class="lineNum">      41 </span>            :     op = *opcode++;
+<span class="lineNum">      42 </span>            : 
+<span class="lineNum">      43 </span>            :     /* prefix */
+<span class="lineNum">      44 </span>            :     if (CHECK_PREFIX(op)) {
+<span class="lineNum">      45 </span>            :         if (CHECK_PREFIX_66(op)) ddef = 2;
+<span class="lineNum">      46 </span>            :         else if (CHECK_PREFIX_67(op)) mdef = 2;
+<span class="lineNum">      47 </span>            :         goto prefix;
+<span class="lineNum">      48 </span>            :     }
+<span class="lineNum">      49 </span>            : 
+<span class="lineNum">      50 </span>            :     /* Possible REX prefixes, which come after legacy prefixes.
+<span class="lineNum">      51 </span>            :      * Moreover, multiple REX prefixes could be present. Although the behaviour should
+<span class="lineNum">      52 </span>            :      * be undefined, most CPUs consider only the last one. */
+<span class="lineNum">      53 </span>            :     if (mode == MODE_X64 &amp;&amp; CHECK_REX(op)) {
+<span class="lineNum">      54 </span>            :             rex = op;
+<span class="lineNum">      55 </span>            :             goto prefix;
+<span class="lineNum">      56 </span>            :     }
+<span class="lineNum">      57 </span>            : 
+<span class="lineNum">      58 </span>            :     first_op = op;
+<span class="lineNum">      59 </span>            : 
+<span class="lineNum">      60 </span>            :     /* two and three byte opcode */
+<span class="lineNum">      61 </span>            :     if (CHECK_0F(op)) {
+<span class="lineNum">      62 </span>            :             op = *opcode++;
+<span class="lineNum">      63 </span>            :             multibyte = 1;
+<span class="lineNum">      64 </span>            : 
+<span class="lineNum">      65 </span>            :             /* Three-byte 38 table */
+<span class="lineNum">      66 </span>            :             if(CHECK_38(op)) {
+<span class="lineNum">      67 </span>            :                 op = *opcode++;
+<span class="lineNum">      68 </span>            :                 if(CHECK_MODRM38(op)) flag++;
+<span class="lineNum">      69 </span>            :             } else
+<span class="lineNum">      70 </span>            : 
+<span class="lineNum">      71 </span>            :             /* Three-byte 3A table */
+<span class="lineNum">      72 </span>            :             if(CHECK_3A(op)) {
+<span class="lineNum">      73 </span>            :                 op = *opcode++;
+<span class="lineNum">      74 </span>            :                 if(CHECK_MODRM3A(op)) flag++;
+<span class="lineNum">      75 </span>            :             }
+<span class="lineNum">      76 </span>            : 
+<span class="lineNum">      77 </span>            :             /* Two-byte table */
+<span class="lineNum">      78 </span>            :             else {
+<span class="lineNum">      79 </span>            :                 if (CHECK_MODRM2(op)) flag++;
+<span class="lineNum">      80 </span>            :                 if (CHECK_DATA12(op)) dsize++;
+<span class="lineNum">      81 </span>            :                 if (CHECK_DATA662(op)) dsize += ddef;
+<span class="lineNum">      82 </span>            :             }
+<span class="lineNum">      83 </span>            :     }
+<span class="lineNum">      84 </span>            : 
+<span class="lineNum">      85 </span>            :     /* one byte opcode */
+<span class="lineNum">      86 </span>            :     else {
+<span class="lineNum">      87 </span>            :         if (CHECK_MODRM(op)) flag++;
+<span class="lineNum">      88 </span>            :         if (CHECK_TEST(op) &amp;&amp; !(*opcode &amp; 0x38)) dsize += (op &amp; 1) ? ddef : 1;
+<span class="lineNum">      89 </span>            :         if (CHECK_DATA1(op)) dsize++;
+<span class="lineNum">      90 </span>            :         if (CHECK_DATA2(op)) dsize += 2;
+<span class="lineNum">      91 </span>            :         if (CHECK_DATA66(op)) dsize += ddef;
+<span class="lineNum">      92 </span>            :         if (CHECK_MEM67(op)) msize += mdef;
+<span class="lineNum">      93 </span>            :     }
+<span class="lineNum">      94 </span>            : 
+<span class="lineNum">      95 </span>            :     /* modrm */
+<span class="lineNum">      96 </span>            :     if (flag) {
+<span class="lineNum">      97 </span>            :         modrm = *opcode++;
+<span class="lineNum">      98 </span>            :         mod = modrm &amp; 0xc0;
+<span class="lineNum">      99 </span>            :         rm  = modrm &amp; 0x07;
+<span class="lineNum">     100 </span>            : 
+<span class="lineNum">     101 </span>            :         if (mod != 0xc0) {
+<span class="lineNum">     102 </span>            :             if (mod == 0x40) msize++;
+<span class="lineNum">     103 </span>            :             if (mod == 0x80) msize += mdef;
+<span class="lineNum">     104 </span>            :             if (mdef == 2 &amp;&amp; mode == MODE_X32) {
+<span class="lineNum">     105 </span>            :                 if ((mod == 0x00) &amp;&amp; (rm == 0x06)) msize += 2;
+<span class="lineNum">     106 </span>            :             } else {
+<span class="lineNum">     107 </span>            :                 if (rm == 0x04) {
+<span class="lineNum">     108 </span>            :                         rm = *opcode++ &amp; 0x07; /* rm is the sib */
+<span class="lineNum">     109 </span>            :                 }
+<span class="lineNum">     110 </span>            :                 if (rm == 0x05 &amp;&amp; mod == 0x00) {
+<span class="lineNum">     111 </span>            :                         if(mdef == 2) msize += 2;
+<span class="lineNum">     112 </span>            :                         else msize += 4;
+<span class="lineNum">     113 </span>            :                 }
+<span class="lineNum">     114 </span>            :             }
+<span class="lineNum">     115 </span>            :             if(mode == MODE_X64 &amp;&amp; first_op != 0xff &amp;&amp; mod == 0x00 &amp;&amp; rm == 0x05) {
+<span class="lineNum">     116 </span>            :                         _rip_relative = true;
+<span class="lineNum">     117 </span>            :             }
+<span class="lineNum">     118 </span>            : 
+<span class="lineNum">     119 </span>            :          } else {
+<span class="lineNum">     120 </span>            :                 if(op == 0x70) { /* TODO: need another table here! */
+<span class="lineNum">     121 </span>            :                         /* Three operands instruction (SSE extension) */
+<span class="lineNum">     122 </span>            :                         dsize = 1;
+<span class="lineNum">     123 </span>            :                 }
+<span class="lineNum">     124 </span>            :          }
+<span class="lineNum">     125 </span>            :     }
+<span class="lineNum">     126 </span>            : 
+<span class="lineNum">     127 </span>            :     /* REX.W causes 66h to be ignored */
+<span class="lineNum">     128 </span>            :     if (CHECK_REXW(rex) &amp;&amp; !multibyte) {
+<span class="lineNum">     129 </span>            :         if(CHECK_IMM64(op)) dsize = 8;
+<span class="lineNum">     130 </span>            :         if(CHECK_OFF64(op)) msize = 8;
+<span class="lineNum">     131 </span>            :     }
+<span class="lineNum">     132 </span>            : 
+<span class="lineNum">     133 </span>            :     opcode += msize + dsize;
+<span class="lineNum">     134 </span>            : 
+<span class="lineNum">     135 </span>            :     return opcode - (unsigned char *)opcode0;
+<span class="lineNum">     136 </span>            : }
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../../../../../../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.12</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>

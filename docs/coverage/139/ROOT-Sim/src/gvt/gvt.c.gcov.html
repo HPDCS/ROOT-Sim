@@ -1,0 +1,528 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - doc-coverage.info - ROOT-Sim/src/gvt/gvt.c</title>
+  <link rel="stylesheet" type="text/css" href="../../../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../../../index.html">top level</a> - <a href="index.html">ROOT-Sim/src/gvt</a> - gvt.c</td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">doc-coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">13</td>
+            <td class="headerCovTableEntry">30</td>
+            <td class="headerCovTableEntryLo">43.3 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2020-03-30 23:29:41</td>
+            <td></td>
+          </tr>
+          <tr><td><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<span class="lineNum">       1 </span><span class="lineCov">          1 : /**</span>
+<span class="lineNum">       2 </span>            : * @file gvt/gvt.c
+<span class="lineNum">       3 </span>            : *
+<span class="lineNum">       4 </span>            : * @brief Global Virtual Time
+<span class="lineNum">       5 </span>            : *
+<span class="lineNum">       6 </span>            : * This module implements the GVT reduction. The current implementation
+<span class="lineNum">       7 </span>            : * is non blocking for observable simulation plaftorms.
+<span class="lineNum">       8 </span>            : *
+<span class="lineNum">       9 </span>            : * @copyright
+<span class="lineNum">      10 </span>            : * Copyright (C) 2008-2019 HPDCS Group
+<span class="lineNum">      11 </span>            : * https://hpdcs.github.io
+<span class="lineNum">      12 </span>            : *
+<span class="lineNum">      13 </span>            : * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
+<span class="lineNum">      14 </span>            : *
+<span class="lineNum">      15 </span>            : * ROOT-Sim is free software; you can redistribute it and/or modify it under the
+<span class="lineNum">      16 </span>            : * terms of the GNU General Public License as published by the Free Software
+<span class="lineNum">      17 </span>            : * Foundation; only version 3 of the License applies.
+<span class="lineNum">      18 </span>            : *
+<span class="lineNum">      19 </span>            : * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
+<span class="lineNum">      20 </span>            : * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+<span class="lineNum">      21 </span>            : * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+<span class="lineNum">      22 </span>            : *
+<span class="lineNum">      23 </span>            : * You should have received a copy of the GNU General Public License along with
+<span class="lineNum">      24 </span>            : * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
+<span class="lineNum">      25 </span>            : * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+<span class="lineNum">      26 </span>            : *
+<span class="lineNum">      27 </span>            : * @author Alessandro Pellegrini
+<span class="lineNum">      28 </span>            : * @author Francesco Quaglia
+<span class="lineNum">      29 </span>            : * @author Tommaso Tocci
+<span class="lineNum">      30 </span>            : *
+<span class="lineNum">      31 </span>            : * @date June 14, 2014
+<span class="lineNum">      32 </span>            : */
+<span class="lineNum">      33 </span>            : 
+<span class="lineNum">      34 </span>            : #include &lt;ROOT-Sim.h&gt;
+<span class="lineNum">      35 </span>            : #include &lt;arch/thread.h&gt;
+<span class="lineNum">      36 </span>            : #include &lt;gvt/gvt.h&gt;
+<span class="lineNum">      37 </span>            : #include &lt;gvt/ccgs.h&gt;
+<span class="lineNum">      38 </span>            : #include &lt;core/core.h&gt;
+<span class="lineNum">      39 </span>            : #include &lt;core/init.h&gt;
+<span class="lineNum">      40 </span>            : #include &lt;core/timer.h&gt;
+<span class="lineNum">      41 </span>            : #include &lt;scheduler/process.h&gt;
+<span class="lineNum">      42 </span>            : #include &lt;scheduler/scheduler.h&gt;
+<span class="lineNum">      43 </span>            : #include &lt;statistics/statistics.h&gt;
+<span class="lineNum">      44 </span>            : #include &lt;mm/mm.h&gt;
+<span class="lineNum">      45 </span>            : #include &lt;communication/mpi.h&gt;
+<span class="lineNum">      46 </span>            : #include &lt;communication/gvt.h&gt;
+<span class="lineNum">      47 </span>            : 
+<span class="lineNum">      48 </span><span class="lineNoCov">          0 : enum kernel_phases {</span>
+<span class="lineNum">      49 </span>            :         kphase_start,
+<span class="lineNum">      50 </span>            : #ifdef HAVE_MPI
+<span class="lineNum">      51 </span>            :         kphase_white_msg_redux,
+<span class="lineNum">      52 </span>            : #endif
+<span class="lineNum">      53 </span>            :         kphase_kvt,
+<span class="lineNum">      54 </span>            : #ifdef HAVE_MPI
+<span class="lineNum">      55 </span>            :         kphase_gvt_redux,
+<span class="lineNum">      56 </span>            : #endif
+<span class="lineNum">      57 </span>            :         kphase_fossil,
+<span class="lineNum">      58 </span>            :         kphase_idle
+<span class="lineNum">      59 </span>            : };
+<span class="lineNum">      60 </span>            : 
+<span class="lineNum">      61 </span><span class="lineNoCov">          0 : enum thread_phases {</span>
+<span class="lineNum">      62 </span>            :         tphase_A,
+<span class="lineNum">      63 </span>            :         tphase_send,
+<span class="lineNum">      64 </span>            :         tphase_B,
+<span class="lineNum">      65 </span>            :         tphase_aware,
+<span class="lineNum">      66 </span>            :         tphase_idle
+<span class="lineNum">      67 </span>            : };
+<span class="lineNum">      68 </span>            : 
+<span class="lineNum">      69 </span>            : // Timer to know when we have to start GVT computation.
+<span class="lineNum">      70 </span>            : // Each thread could start the GVT reduction phase, so this
+<span class="lineNum">      71 </span>            : // is a per-thread variable.
+<span class="lineNum">      72 </span><span class="lineNoCov">          0 : timer gvt_timer;</span>
+<span class="lineNum">      73 </span>            : 
+<span class="lineNum">      74 </span><span class="lineNoCov">          0 : timer gvt_round_timer;</span>
+<span class="lineNum">      75 </span>            : 
+<span class="lineNum">      76 </span>            : #ifdef HAVE_MPI
+<span class="lineNum">      77 </span><span class="lineNoCov">          0 : static unsigned int init_kvt_tkn;</span>
+<span class="lineNum">      78 </span><span class="lineNoCov">          0 : static unsigned int commit_gvt_tkn;</span>
+<span class="lineNum">      79 </span>            : #endif
+<span class="lineNum">      80 </span>            : 
+<span class="lineNum">      81 </span>            : /* Data shared across threads */
+<span class="lineNum">      82 </span>            : 
+<span class="lineNum">      83 </span>            : static volatile enum kernel_phases kernel_phase = kphase_idle;
+<span class="lineNum">      84 </span>            : 
+<span class="lineNum">      85 </span><span class="lineNoCov">          0 : static unsigned int init_completed_tkn;</span>
+<span class="lineNum">      86 </span><span class="lineNoCov">          0 : static unsigned int commit_kvt_tkn;</span>
+<span class="lineNum">      87 </span><span class="lineNoCov">          0 : static unsigned int idle_tkn;</span>
+<span class="lineNum">      88 </span>            : 
+<span class="lineNum">      89 </span><span class="lineNoCov">          0 : static atomic_t counter_initialized;</span>
+<span class="lineNum">      90 </span><span class="lineNoCov">          0 : static atomic_t counter_kvt;</span>
+<span class="lineNum">      91 </span><span class="lineNoCov">          0 : static atomic_t counter_finalized;</span>
+<span class="lineNum">      92 </span>            : 
+<span class="lineNum">      93 </span>            : /// To be used with CAS to determine who is starting the next GVT reduction phase
+<span class="lineNum">      94 </span><span class="lineCov">          1 : static volatile unsigned int current_GVT_round = 0;</span>
+<span class="lineNum">      95 </span>            : 
+<span class="lineNum">      96 </span>            : /// How many threads have left phase A?
+<span class="lineNum">      97 </span><span class="lineCov">          1 : static atomic_t counter_A;</span>
+<span class="lineNum">      98 </span>            : 
+<span class="lineNum">      99 </span>            : /// How many threads have left phase send?
+<span class="lineNum">     100 </span><span class="lineCov">          1 : static atomic_t counter_send;</span>
+<span class="lineNum">     101 </span>            : 
+<span class="lineNum">     102 </span>            : /// How many threads have left phase B?
+<span class="lineNum">     103 </span><span class="lineCov">          1 : static atomic_t counter_B;</span>
+<span class="lineNum">     104 </span>            : 
+<span class="lineNum">     105 </span>            : /** Keep track of the last computed gvt value. Its a per-thread variable
+<span class="lineNum">     106 </span>            :  * to avoid synchronization on it, but eventually all threads write here
+<span class="lineNum">     107 </span>            :  * the same exact value.
+<span class="lineNum">     108 </span>            :  * The 'adopted_last_gvt' version is used to maintain the adopted gvt
+<span class="lineNum">     109 </span>            :  * value in a temporary variable. It is then copied to last_gvt during
+<span class="lineNum">     110 </span>            :  * the end phase, to avoid possible critical races when checking the
+<span class="lineNum">     111 </span>            :  * termination upon reaching a certain simulation time value.
+<span class="lineNum">     112 </span>            :  */
+<span class="lineNum">     113 </span><span class="lineCov">          1 : static __thread simtime_t last_gvt = 0.0;</span>
+<span class="lineNum">     114 </span>            : 
+<span class="lineNum">     115 </span>            : // last agreed KVT
+<span class="lineNum">     116 </span><span class="lineNoCov">          0 : static volatile simtime_t new_gvt = 0.0;</span>
+<span class="lineNum">     117 </span>            : 
+<span class="lineNum">     118 </span>            : /// What is my phase? All threads start in the initial phase
+<span class="lineNum">     119 </span><span class="lineCov">          1 : static __thread enum thread_phases thread_phase = tphase_idle;</span>
+<span class="lineNum">     120 </span>            : 
+<span class="lineNum">     121 </span>            : /// Per-thread GVT round counter
+<span class="lineNum">     122 </span><span class="lineCov">          1 : static __thread unsigned int my_GVT_round = 0;</span>
+<span class="lineNum">     123 </span>            : 
+<span class="lineNum">     124 </span>            : /// The local (per-thread) minimum. It's not TLS, rather an array, to allow reduction by master thread
+<span class="lineNum">     125 </span><span class="lineCov">          1 : static simtime_t *local_min;</span>
+<span class="lineNum">     126 </span>            : 
+<span class="lineNum">     127 </span><span class="lineNoCov">          0 : static simtime_t *local_min_barrier;</span>
+<span class="lineNum">     128 </span>            : 
+<span class="lineNum">     129 </span>            : /**
+<span class="lineNum">     130 </span>            : * Initialization of the GVT subsystem.
+<span class="lineNum">     131 </span>            : */
+<span class="lineNum">     132 </span><span class="lineCov">          1 : void gvt_init(void)</span>
+<span class="lineNum">     133 </span>            : {
+<span class="lineNum">     134 </span>            :         unsigned int i;
+<span class="lineNum">     135 </span>            : 
+<span class="lineNum">     136 </span>            :         // This allows the first GVT phase to start
+<span class="lineNum">     137 </span>            :         atomic_set(&amp;counter_finalized, 0);
+<span class="lineNum">     138 </span>            : 
+<span class="lineNum">     139 </span>            :         // Initialize the local minima
+<span class="lineNum">     140 </span>            :         local_min = rsalloc(sizeof(simtime_t) * n_cores);
+<span class="lineNum">     141 </span>            :         local_min_barrier = rsalloc(sizeof(simtime_t) * n_cores);
+<span class="lineNum">     142 </span>            :         for (i = 0; i &lt; n_cores; i++) {
+<span class="lineNum">     143 </span>            :                 local_min[i] = INFTY;
+<span class="lineNum">     144 </span>            :                 local_min_barrier[i] = INFTY;
+<span class="lineNum">     145 </span>            :         }
+<span class="lineNum">     146 </span>            : 
+<span class="lineNum">     147 </span>            :         timer_start(gvt_timer);
+<span class="lineNum">     148 </span>            : 
+<span class="lineNum">     149 </span>            :         // Initialize the CCGS subsystem
+<span class="lineNum">     150 </span>            :         ccgs_init();
+<span class="lineNum">     151 </span>            : }
+<span class="lineNum">     152 </span>            : 
+<span class="lineNum">     153 </span>            : /**
+<span class="lineNum">     154 </span>            : * Finalizer of the GVT subsystem.
+<span class="lineNum">     155 </span>            : */
+<span class="lineNum">     156 </span><span class="lineCov">          1 : void gvt_fini(void)</span>
+<span class="lineNum">     157 </span>            : {
+<span class="lineNum">     158 </span>            :         // Finalize the CCGS subsystem
+<span class="lineNum">     159 </span>            :         ccgs_fini();
+<span class="lineNum">     160 </span>            : 
+<span class="lineNum">     161 </span>            : #ifdef HAVE_MPI
+<span class="lineNum">     162 </span>            :         if ((kernel_phase == kphase_idle &amp;&amp; !master_thread() &amp;&amp; gvt_init_pending()) || kernel_phase == kphase_start) {
+<span class="lineNum">     163 </span>            :                 join_white_msg_redux();
+<span class="lineNum">     164 </span>            :                 wait_white_msg_redux();
+<span class="lineNum">     165 </span>            :                 join_gvt_redux(-1.0);
+<span class="lineNum">     166 </span>            :         } else if (kernel_phase == kphase_white_msg_redux || kernel_phase == kphase_kvt) {
+<span class="lineNum">     167 </span>            :                 wait_white_msg_redux();
+<span class="lineNum">     168 </span>            :                 join_gvt_redux(-1.0);
+<span class="lineNum">     169 </span>            :         }
+<span class="lineNum">     170 </span>            : #endif
+<span class="lineNum">     171 </span>            : }
+<span class="lineNum">     172 </span>            : 
+<span class="lineNum">     173 </span>            : /**
+<span class="lineNum">     174 </span>            :  * This function returns the last computed GVT value at each thread.
+<span class="lineNum">     175 </span>            :  * It can be safely used concurrently to keep track of the evolution of
+<span class="lineNum">     176 </span>            :  * the committed trajectory. It's so far mainly used for termination
+<span class="lineNum">     177 </span>            :  * detection based on passed simulation time.
+<span class="lineNum">     178 </span>            :  */
+<span class="lineNum">     179 </span><span class="lineCov">          1 : inline simtime_t get_last_gvt(void)</span>
+<span class="lineNum">     180 </span>            : {
+<span class="lineNum">     181 </span>            :         return last_gvt;
+<span class="lineNum">     182 </span>            : }
+<span class="lineNum">     183 </span>            : 
+<span class="lineNum">     184 </span><span class="lineNoCov">          0 : static inline void reduce_local_gvt(void)</span>
+<span class="lineNum">     185 </span>            : {
+<span class="lineNum">     186 </span>            :         foreach_bound_lp(lp) {
+<span class="lineNum">     187 </span>            :                 // If no message has been processed, local estimate for
+<span class="lineNum">     188 </span>            :                 // GVT is forced to 0.0. This can happen, e.g., if
+<span class="lineNum">     189 </span>            :                 // GVT is computed very early in the run
+<span class="lineNum">     190 </span>            :                 if (unlikely(lp-&gt;bound == NULL)) {
+<span class="lineNum">     191 </span>            :                         local_min[local_tid] = 0.0;
+<span class="lineNum">     192 </span>            :                         break;
+<span class="lineNum">     193 </span>            :                 }
+<span class="lineNum">     194 </span>            : 
+<span class="lineNum">     195 </span>            :                 // GVT inheritance: if the current LP has no scheduled
+<span class="lineNum">     196 </span>            :                 // events, we can safely assume that it should not
+<span class="lineNum">     197 </span>            :                 // participate to the computation of the GVT, because any
+<span class="lineNum">     198 </span>            :                 // event to it will appear *after* the GVT
+<span class="lineNum">     199 </span>            :                 if (lp-&gt;bound-&gt;next == NULL)
+<span class="lineNum">     200 </span>            :                         continue;
+<span class="lineNum">     201 </span>            : 
+<span class="lineNum">     202 </span>            :                 local_min[local_tid] =
+<span class="lineNum">     203 </span>            :                     min(local_min[local_tid], lp-&gt;bound-&gt;timestamp);
+<span class="lineNum">     204 </span>            :         }
+<span class="lineNum">     205 </span>            : }
+<span class="lineNum">     206 </span>            : 
+<span class="lineNum">     207 </span><span class="lineNoCov">          0 : simtime_t GVT_phases(void)</span>
+<span class="lineNum">     208 </span>            : {
+<span class="lineNum">     209 </span>            :         unsigned int i;
+<span class="lineNum">     210 </span>            : 
+<span class="lineNum">     211 </span>            :         if (thread_phase == tphase_A) {
+<span class="lineNum">     212 </span>            : #ifdef HAVE_MPI
+<span class="lineNum">     213 </span>            :                 // Check whether we have new ingoing messages sent by remote instances
+<span class="lineNum">     214 </span>            :                 receive_remote_msgs();
+<span class="lineNum">     215 </span>            : #endif
+<span class="lineNum">     216 </span>            :                 process_bottom_halves();
+<span class="lineNum">     217 </span>            : 
+<span class="lineNum">     218 </span>            :                 reduce_local_gvt();
+<span class="lineNum">     219 </span>            : 
+<span class="lineNum">     220 </span>            :                 thread_phase = tphase_send;     // Entering phase send
+<span class="lineNum">     221 </span>            :                 atomic_dec(&amp;counter_A);     // Notify finalization of phase A
+<span class="lineNum">     222 </span>            :                 return -1.0;
+<span class="lineNum">     223 </span>            :         }
+<span class="lineNum">     224 </span>            : 
+<span class="lineNum">     225 </span>            :         if (thread_phase == tphase_send &amp;&amp; atomic_read(&amp;counter_A) == 0) {
+<span class="lineNum">     226 </span>            : #ifdef HAVE_MPI
+<span class="lineNum">     227 </span>            :                 // Check whether we have new ingoing messages sent by remote instances
+<span class="lineNum">     228 </span>            :                 receive_remote_msgs();
+<span class="lineNum">     229 </span>            : #endif
+<span class="lineNum">     230 </span>            :                 process_bottom_halves();
+<span class="lineNum">     231 </span>            :                 schedule();
+<span class="lineNum">     232 </span>            :                 thread_phase = tphase_B;
+<span class="lineNum">     233 </span>            :                 atomic_dec(&amp;counter_send);
+<span class="lineNum">     234 </span>            :                 return -1.0;
+<span class="lineNum">     235 </span>            :         }
+<span class="lineNum">     236 </span>            : 
+<span class="lineNum">     237 </span>            :         if (thread_phase == tphase_B &amp;&amp; atomic_read(&amp;counter_send) == 0) {
+<span class="lineNum">     238 </span>            : #ifdef HAVE_MPI
+<span class="lineNum">     239 </span>            :                 // Check whether we have new ingoing messages sent by remote instances
+<span class="lineNum">     240 </span>            :                 receive_remote_msgs();
+<span class="lineNum">     241 </span>            : #endif
+<span class="lineNum">     242 </span>            :                 process_bottom_halves();
+<span class="lineNum">     243 </span>            : 
+<span class="lineNum">     244 </span>            :                 reduce_local_gvt();
+<span class="lineNum">     245 </span>            : 
+<span class="lineNum">     246 </span>            : #ifdef HAVE_MPI
+<span class="lineNum">     247 </span>            :                 // WARNING: local thread cannot send any remote
+<span class="lineNum">     248 </span>            :                 // message between the two following calls
+<span class="lineNum">     249 </span>            :                 exit_red_phase();
+<span class="lineNum">     250 </span>            :                 local_min[local_tid] =
+<span class="lineNum">     251 </span>            :                     min(local_min[local_tid], min_outgoing_red_msg[local_tid]);
+<span class="lineNum">     252 </span>            : #endif
+<span class="lineNum">     253 </span>            : 
+<span class="lineNum">     254 </span>            :                 thread_phase = tphase_aware;
+<span class="lineNum">     255 </span>            :                 atomic_dec(&amp;counter_B);
+<span class="lineNum">     256 </span>            : 
+<span class="lineNum">     257 </span>            :                 if (atomic_read(&amp;counter_B) == 0) {
+<span class="lineNum">     258 </span>            :                         simtime_t agreed_vt = INFTY;
+<span class="lineNum">     259 </span>            :                         for (i = 0; i &lt; n_cores; i++) {
+<span class="lineNum">     260 </span>            :                                 agreed_vt = min(local_min[i], agreed_vt);
+<span class="lineNum">     261 </span>            :                         }
+<span class="lineNum">     262 </span>            :                         return agreed_vt;
+<span class="lineNum">     263 </span>            :                 }
+<span class="lineNum">     264 </span>            :                 return -1.0;
+<span class="lineNum">     265 </span>            :         }
+<span class="lineNum">     266 </span>            : 
+<span class="lineNum">     267 </span>            :         return -1.0;
+<span class="lineNum">     268 </span>            : }
+<span class="lineNum">     269 </span>            : 
+<span class="lineNum">     270 </span><span class="lineNoCov">          0 : bool start_new_gvt(void)</span>
+<span class="lineNum">     271 </span>            : {
+<span class="lineNum">     272 </span>            : #ifdef HAVE_MPI
+<span class="lineNum">     273 </span>            :         if (!master_kernel()) {
+<span class="lineNum">     274 </span>            :                 //Check if we received a new GVT init msg
+<span class="lineNum">     275 </span>            :                 return gvt_init_pending();
+<span class="lineNum">     276 </span>            :         }
+<span class="lineNum">     277 </span>            : #endif
+<span class="lineNum">     278 </span>            : 
+<span class="lineNum">     279 </span>            :         // Has enough time passed since the last GVT reduction?
+<span class="lineNum">     280 </span>            :         return timer_value_milli(gvt_timer) &gt;
+<span class="lineNum">     281 </span>            :             (int)rootsim_config.gvt_time_period;
+<span class="lineNum">     282 </span>            : }
+<span class="lineNum">     283 </span>            : 
+<span class="lineNum">     284 </span>            : /**
+<span class="lineNum">     285 </span>            : * This is the entry point from the main simulation loop to the GVT subsystem.
+<span class="lineNum">     286 </span>            : * This function is not executed in case of a serial simulation, and is executed
+<span class="lineNum">     287 </span>            : * concurrently by different worker threads in case of a parallel one.
+<span class="lineNum">     288 </span>            : * All the operations here implemented must be re-entrant.
+<span class="lineNum">     289 </span>            : * Any state variable of the GVT implementation must be declared statically and globally
+<span class="lineNum">     290 </span>            : * (in case, on a per-thread basis).
+<span class="lineNum">     291 </span>            : * This function is called at every simulation loop, so at the beginning the code should
+<span class="lineNum">     292 </span>            : * check whether a GVT computation is occurring, or if a computation must be started.
+<span class="lineNum">     293 </span>            : *
+<span class="lineNum">     294 </span>            : * @return The newly computed GVT value, or -1.0. Only a Master Thread should return a value
+<span class="lineNum">     295 </span>            : *         different from -1.0, to avoid generating too much information. If every thread
+<span class="lineNum">     296 </span>            : *         will return a value different from -1.0, nothing will be broken, but all the values
+<span class="lineNum">     297 </span>            : *         will be shown associated with the same kernel id (no way to distinguish between
+<span class="lineNum">     298 </span>            : *         different threads here).
+<span class="lineNum">     299 </span>            : */
+<span class="lineNum">     300 </span><span class="lineCov">          1 : simtime_t gvt_operations(void)</span>
+<span class="lineNum">     301 </span>            : {
+<span class="lineNum">     302 </span>            : 
+<span class="lineNum">     303 </span>            :         // GVT reduction initialization.
+<span class="lineNum">     304 </span>            :         // This is different from the paper's pseudocode to reduce
+<span class="lineNum">     305 </span>            :         // slightly the number of clock reads
+<span class="lineNum">     306 </span>            :         if (kernel_phase == kphase_idle) {
+<span class="lineNum">     307 </span>            : 
+<span class="lineNum">     308 </span>            :                 if (start_new_gvt() &amp;&amp;
+<span class="lineNum">     309 </span>            :                     iCAS(&amp;current_GVT_round, my_GVT_round, my_GVT_round + 1)) {
+<span class="lineNum">     310 </span>            : 
+<span class="lineNum">     311 </span>            :                         timer_start(gvt_round_timer);
+<span class="lineNum">     312 </span>            : 
+<span class="lineNum">     313 </span>            : #ifdef HAVE_MPI
+<span class="lineNum">     314 </span>            :                         //inform all the other kernels about the new gvt
+<span class="lineNum">     315 </span>            :                         if (master_kernel()) {
+<span class="lineNum">     316 </span>            :                                 broadcast_gvt_init(current_GVT_round);
+<span class="lineNum">     317 </span>            :                         } else {
+<span class="lineNum">     318 </span>            :                                 gvt_init_clear();
+<span class="lineNum">     319 </span>            :                         }
+<span class="lineNum">     320 </span>            : #endif
+<span class="lineNum">     321 </span>            : 
+<span class="lineNum">     322 </span>            :                         // Reduce the current CCGS termination detection
+<span class="lineNum">     323 </span>            :                         ccgs_reduce_termination();
+<span class="lineNum">     324 </span>            : 
+<span class="lineNum">     325 </span>            :                         /* kernel GVT round setup */
+<span class="lineNum">     326 </span>            : 
+<span class="lineNum">     327 </span>            : #ifdef HAVE_MPI
+<span class="lineNum">     328 </span>            :                         flush_white_msg_recv();
+<span class="lineNum">     329 </span>            : 
+<span class="lineNum">     330 </span>            :                         init_kvt_tkn = 1;
+<span class="lineNum">     331 </span>            :                         commit_gvt_tkn = 1;
+<span class="lineNum">     332 </span>            : #endif
+<span class="lineNum">     333 </span>            : 
+<span class="lineNum">     334 </span>            :                         init_completed_tkn = 1;
+<span class="lineNum">     335 </span>            :                         commit_kvt_tkn = 1;
+<span class="lineNum">     336 </span>            :                         idle_tkn = 1;
+<span class="lineNum">     337 </span>            : 
+<span class="lineNum">     338 </span>            :                         atomic_set(&amp;counter_initialized, n_cores);
+<span class="lineNum">     339 </span>            :                         atomic_set(&amp;counter_kvt, n_cores);
+<span class="lineNum">     340 </span>            :                         atomic_set(&amp;counter_finalized, n_cores);
+<span class="lineNum">     341 </span>            : 
+<span class="lineNum">     342 </span>            :                         atomic_set(&amp;counter_A, n_cores);
+<span class="lineNum">     343 </span>            :                         atomic_set(&amp;counter_send, n_cores);
+<span class="lineNum">     344 </span>            :                         atomic_set(&amp;counter_B, n_cores);
+<span class="lineNum">     345 </span>            : 
+<span class="lineNum">     346 </span>            :                         kernel_phase = kphase_start;
+<span class="lineNum">     347 </span>            : 
+<span class="lineNum">     348 </span>            :                         timer_restart(gvt_timer);
+<span class="lineNum">     349 </span>            :                 }
+<span class="lineNum">     350 </span>            :         }
+<span class="lineNum">     351 </span>            : 
+<span class="lineNum">     352 </span>            :         /* Thread setup phase:
+<span class="lineNum">     353 </span>            :          * each thread needs to setup its own local context
+<span class="lineNum">     354 </span>            :          * before to partecipate to the new GVT round */
+<span class="lineNum">     355 </span>            :         if (kernel_phase == kphase_start &amp;&amp; thread_phase == tphase_idle) {
+<span class="lineNum">     356 </span>            : 
+<span class="lineNum">     357 </span>            :                 // Someone has modified the GVT round (possibly me).
+<span class="lineNum">     358 </span>            :                 // Keep track of this update
+<span class="lineNum">     359 </span>            :                 my_GVT_round = current_GVT_round;
+<span class="lineNum">     360 </span>            : 
+<span class="lineNum">     361 </span>            : #ifdef HAVE_MPI
+<span class="lineNum">     362 </span>            :                 enter_red_phase();
+<span class="lineNum">     363 </span>            : #endif
+<span class="lineNum">     364 </span>            : 
+<span class="lineNum">     365 </span>            :                 local_min[local_tid] = INFTY;
+<span class="lineNum">     366 </span>            : 
+<span class="lineNum">     367 </span>            :                 thread_phase = tphase_A;
+<span class="lineNum">     368 </span>            :                 atomic_dec(&amp;counter_initialized);
+<span class="lineNum">     369 </span>            :                 if (atomic_read(&amp;counter_initialized) == 0) {
+<span class="lineNum">     370 </span>            :                         if (iCAS(&amp;init_completed_tkn, 1, 0)) {
+<span class="lineNum">     371 </span>            : #ifdef HAVE_MPI
+<span class="lineNum">     372 </span>            :                                 join_white_msg_redux();
+<span class="lineNum">     373 </span>            :                                 kernel_phase = kphase_white_msg_redux;
+<span class="lineNum">     374 </span>            : #else
+<span class="lineNum">     375 </span>            :                                 kernel_phase = kphase_kvt;
+<span class="lineNum">     376 </span>            : #endif
+<span class="lineNum">     377 </span>            :                         }
+<span class="lineNum">     378 </span>            :                 }
+<span class="lineNum">     379 </span>            :                 return -1.0;
+<span class="lineNum">     380 </span>            :         }
+<span class="lineNum">     381 </span>            : 
+<span class="lineNum">     382 </span>            : #ifdef HAVE_MPI
+<span class="lineNum">     383 </span>            :         if (kernel_phase == kphase_white_msg_redux
+<span class="lineNum">     384 </span>            :             &amp;&amp; white_msg_redux_completed() &amp;&amp; all_white_msg_received()) {
+<span class="lineNum">     385 </span>            :                 if (iCAS(&amp;init_kvt_tkn, 1, 0)) {
+<span class="lineNum">     386 </span>            :                         flush_white_msg_sent();
+<span class="lineNum">     387 </span>            :                         kernel_phase = kphase_kvt;
+<span class="lineNum">     388 </span>            :                 }
+<span class="lineNum">     389 </span>            :                 return -1.0;
+<span class="lineNum">     390 </span>            :         }
+<span class="lineNum">     391 </span>            : #endif
+<span class="lineNum">     392 </span>            : 
+<span class="lineNum">     393 </span>            :         /* KVT phase:
+<span class="lineNum">     394 </span>            :          * make all the threads agree on a common virtual time for this kernel */
+<span class="lineNum">     395 </span>            :         if (kernel_phase == kphase_kvt &amp;&amp; thread_phase != tphase_aware) {
+<span class="lineNum">     396 </span>            :                 simtime_t kvt = GVT_phases();
+<span class="lineNum">     397 </span>            :                 if (D_DIFFER(kvt, -1.0)) {
+<span class="lineNum">     398 </span>            :                         if (iCAS(&amp;commit_kvt_tkn, 1, 0)) {
+<span class="lineNum">     399 </span>            : 
+<span class="lineNum">     400 </span>            : #ifdef HAVE_MPI
+<span class="lineNum">     401 </span>            :                                 join_gvt_redux(kvt);
+<span class="lineNum">     402 </span>            :                                 kernel_phase = kphase_gvt_redux;
+<span class="lineNum">     403 </span>            : 
+<span class="lineNum">     404 </span>            : #else
+<span class="lineNum">     405 </span>            :                                 new_gvt = kvt;
+<span class="lineNum">     406 </span>            :                                 kernel_phase = kphase_fossil;
+<span class="lineNum">     407 </span>            : 
+<span class="lineNum">     408 </span>            : #endif
+<span class="lineNum">     409 </span>            :                         }
+<span class="lineNum">     410 </span>            :                 }
+<span class="lineNum">     411 </span>            :                 return -1.0;
+<span class="lineNum">     412 </span>            :         }
+<span class="lineNum">     413 </span>            : 
+<span class="lineNum">     414 </span>            : #ifdef HAVE_MPI
+<span class="lineNum">     415 </span>            :         if (kernel_phase == kphase_gvt_redux &amp;&amp; gvt_redux_completed()) {
+<span class="lineNum">     416 </span>            :                 if (iCAS(&amp;commit_gvt_tkn, 1, 0)) {
+<span class="lineNum">     417 </span>            :                         int gvt_round_time = timer_value_micro(gvt_round_timer);
+<span class="lineNum">     418 </span>            :                         statistics_post_data(current, STAT_GVT_ROUND_TIME, gvt_round_time);
+<span class="lineNum">     419 </span>            : 
+<span class="lineNum">     420 </span>            :                         new_gvt = last_reduced_gvt();
+<span class="lineNum">     421 </span>            :                         kernel_phase = kphase_fossil;
+<span class="lineNum">     422 </span>            :                 }
+<span class="lineNum">     423 </span>            :                 return -1.0;
+<span class="lineNum">     424 </span>            :         }
+<span class="lineNum">     425 </span>            : #endif
+<span class="lineNum">     426 </span>            : 
+<span class="lineNum">     427 </span>            :         /* GVT adoption phase:
+<span class="lineNum">     428 </span>            :          * the last agreed GVT needs to be adopted by every thread */
+<span class="lineNum">     429 </span>            :         if (kernel_phase == kphase_fossil &amp;&amp; thread_phase == tphase_aware) {
+<span class="lineNum">     430 </span>            : 
+<span class="lineNum">     431 </span>            :                 // Execute fossil collection and termination detection
+<span class="lineNum">     432 </span>            :                 // Each thread stores the last computed value in last_gvt,
+<span class="lineNum">     433 </span>            :                 // while the return value is the gvt only for the master
+<span class="lineNum">     434 </span>            :                 // thread. To check for termination based on simulation time,
+<span class="lineNum">     435 </span>            :                 // this variable must be explicitly inspected using
+<span class="lineNum">     436 </span>            :                 // get_last_gvt()
+<span class="lineNum">     437 </span>            :                 adopt_new_gvt(new_gvt);
+<span class="lineNum">     438 </span>            : 
+<span class="lineNum">     439 </span>            :                 // Dump statistics
+<span class="lineNum">     440 </span>            :                 statistics_on_gvt(new_gvt);
+<span class="lineNum">     441 </span>            : 
+<span class="lineNum">     442 </span>            :                 last_gvt = new_gvt;
+<span class="lineNum">     443 </span>            : 
+<span class="lineNum">     444 </span>            :                 thread_phase = tphase_idle;
+<span class="lineNum">     445 </span>            :                 atomic_dec(&amp;counter_finalized);
+<span class="lineNum">     446 </span>            : 
+<span class="lineNum">     447 </span>            :                 if (atomic_read(&amp;counter_finalized) == 0) {
+<span class="lineNum">     448 </span>            :                         if (iCAS(&amp;idle_tkn, 1, 0)) {
+<span class="lineNum">     449 </span>            :                                 kernel_phase = kphase_idle;
+<span class="lineNum">     450 </span>            :                         }
+<span class="lineNum">     451 </span>            :                 }
+<span class="lineNum">     452 </span>            :                 return last_gvt;
+<span class="lineNum">     453 </span>            :         }
+<span class="lineNum">     454 </span>            : 
+<span class="lineNum">     455 </span>            :         return -1.0;
+<span class="lineNum">     456 </span>            : }
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.12</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>

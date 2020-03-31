@@ -1,0 +1,300 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - doc-coverage.info - ROOT-Sim/src/serial/serial.c</title>
+  <link rel="stylesheet" type="text/css" href="../../../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../../../index.html">top level</a> - <a href="index.html">ROOT-Sim/src/serial</a> - serial.c</td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">doc-coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">1</td>
+            <td class="headerCovTableEntry">6</td>
+            <td class="headerCovTableEntryLo">16.7 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2020-01-31 15:54:55</td>
+            <td></td>
+          </tr>
+          <tr><td><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<span class="lineNum">       1 </span><span class="lineCov">          1 : /**</span>
+<span class="lineNum">       2 </span>            :  * @file serial/serial.c
+<span class="lineNum">       3 </span>            :  *
+<span class="lineNum">       4 </span>            :  * @brief Serial scheduler
+<span class="lineNum">       5 </span>            :  *
+<span class="lineNum">       6 </span>            :  * This module implements the sequential execution of simulation models.
+<span class="lineNum">       7 </span>            :  * Here all the routines to support sequential simulations are implemented,
+<span class="lineNum">       8 </span>            :  * except for the event queue which uses the Calendar Queue implemented in
+<span class="lineNum">       9 </span>            :  * calqueue.c.
+<span class="lineNum">      10 </span>            :  *
+<span class="lineNum">      11 </span>            :  * @copyright
+<span class="lineNum">      12 </span>            :  * Copyright (C) 2008-2019 HPDCS Group
+<span class="lineNum">      13 </span>            :  * https://hpdcs.github.io
+<span class="lineNum">      14 </span>            :  *
+<span class="lineNum">      15 </span>            :  * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
+<span class="lineNum">      16 </span>            :  *
+<span class="lineNum">      17 </span>            :  * ROOT-Sim is free software; you can redistribute it and/or modify it under the
+<span class="lineNum">      18 </span>            :  * terms of the GNU General Public License as published by the Free Software
+<span class="lineNum">      19 </span>            :  * Foundation; only version 3 of the License applies.
+<span class="lineNum">      20 </span>            :  *
+<span class="lineNum">      21 </span>            :  * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
+<span class="lineNum">      22 </span>            :  * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+<span class="lineNum">      23 </span>            :  * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+<span class="lineNum">      24 </span>            :  *
+<span class="lineNum">      25 </span>            :  * You should have received a copy of the GNU General Public License along with
+<span class="lineNum">      26 </span>            :  * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
+<span class="lineNum">      27 </span>            :  * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+<span class="lineNum">      28 </span>            :  *
+<span class="lineNum">      29 </span>            :  * @author Alessandro Pellegrini
+<span class="lineNum">      30 </span>            :  */
+<span class="lineNum">      31 </span>            : 
+<span class="lineNum">      32 </span>            : #include &lt;stdio.h&gt;
+<span class="lineNum">      33 </span>            : #include &lt;sys/time.h&gt;
+<span class="lineNum">      34 </span>            : #include &lt;stdlib.h&gt;
+<span class="lineNum">      35 </span>            : #include &lt;stdbool.h&gt;
+<span class="lineNum">      36 </span>            : 
+<span class="lineNum">      37 </span>            : #include &lt;ROOT-Sim.h&gt;
+<span class="lineNum">      38 </span>            : #include &lt;serial/serial.h&gt;
+<span class="lineNum">      39 </span>            : #include &lt;scheduler/scheduler.h&gt;
+<span class="lineNum">      40 </span>            : #include &lt;core/core.h&gt;
+<span class="lineNum">      41 </span>            : #include &lt;core/init.h&gt;
+<span class="lineNum">      42 </span>            : #include &lt;core/timer.h&gt;
+<span class="lineNum">      43 </span>            : #include &lt;gvt/ccgs.h&gt;
+<span class="lineNum">      44 </span>            : #include &lt;mm/mm.h&gt;
+<span class="lineNum">      45 </span>            : #include &lt;datatypes/calqueue.h&gt;
+<span class="lineNum">      46 </span>            : #include &lt;statistics/statistics.h&gt;
+<span class="lineNum">      47 </span>            : 
+<span class="lineNum">      48 </span>            : #ifdef EXTRA_CHECKS
+<span class="lineNum">      49 </span>            : #include &lt;queues/xxhash.h&gt;
+<span class="lineNum">      50 </span>            : #endif
+<span class="lineNum">      51 </span>            : 
+<span class="lineNum">      52 </span><span class="lineNoCov">          0 : static bool serial_simulation_complete = false;</span>
+<span class="lineNum">      53 </span><span class="lineNoCov">          0 : static bool *serial_completed_simulation;</span>
+<span class="lineNum">      54 </span>            : 
+<span class="lineNum">      55 </span><span class="lineNoCov">          0 : void SerialScheduleNewEvent(unsigned int rcv, simtime_t stamp,</span>
+<span class="lineNum">      56 </span>            :                             unsigned int event_type, void *event_content,
+<span class="lineNum">      57 </span>            :                             unsigned int event_size)
+<span class="lineNum">      58 </span>            : {
+<span class="lineNum">      59 </span>            :         GID_t receiver;
+<span class="lineNum">      60 </span>            :         msg_t *event;
+<span class="lineNum">      61 </span>            : 
+<span class="lineNum">      62 </span>            :         // Sanity checks
+<span class="lineNum">      63 </span>            :         if (unlikely(stamp &lt; lvt(current))) {
+<span class="lineNum">      64 </span>            :                 rootsim_error(true, &quot;LP %d is trying to send events in the past. Current time: %f, scheduled time: %f\n&quot;,
+<span class="lineNum">      65 </span>            :                               current-&gt;gid.to_int, lvt(current), stamp);
+<span class="lineNum">      66 </span>            :         }
+<span class="lineNum">      67 </span>            :         // Populate the message data structure
+<span class="lineNum">      68 </span>            :         set_gid(receiver, rcv);
+<span class="lineNum">      69 </span>            :         size_t size = sizeof(msg_t) + event_size;
+<span class="lineNum">      70 </span>            :         event = rsalloc(size);
+<span class="lineNum">      71 </span>            :         bzero(event, sizeof(msg_t));
+<span class="lineNum">      72 </span>            :         event-&gt;sender = current-&gt;gid;
+<span class="lineNum">      73 </span>            :         event-&gt;receiver = receiver;
+<span class="lineNum">      74 </span>            :         event-&gt;timestamp = stamp;
+<span class="lineNum">      75 </span>            :         event-&gt;send_time = lvt(current);
+<span class="lineNum">      76 </span>            :         event-&gt;type = event_type;
+<span class="lineNum">      77 </span>            :         event-&gt;size = event_size;
+<span class="lineNum">      78 </span>            :         memcpy(event-&gt;event_content, event_content, event_size);
+<span class="lineNum">      79 </span>            : 
+<span class="lineNum">      80 </span>            :         // Put the event in the Calenda Queue
+<span class="lineNum">      81 </span>            :         calqueue_put(stamp, event);
+<span class="lineNum">      82 </span>            : }
+<span class="lineNum">      83 </span>            : 
+<span class="lineNum">      84 </span><span class="lineNoCov">          0 : void serial_init(void)</span>
+<span class="lineNum">      85 </span>            : {
+<span class="lineNum">      86 </span>            :         // Sanity check on the number of LPs
+<span class="lineNum">      87 </span>            :         if (unlikely(n_prc_tot == 0)) {
+<span class="lineNum">      88 </span>            :                 rootsim_error(true, &quot;You must specify the total number of Logical Processes\n&quot;);
+<span class="lineNum">      89 </span>            :         }
+<span class="lineNum">      90 </span>            :         // Initialize the calendar queue
+<span class="lineNum">      91 </span>            :         calqueue_init();
+<span class="lineNum">      92 </span>            : 
+<span class="lineNum">      93 </span>            :         // Initialize the per LP variables
+<span class="lineNum">      94 </span>            :         serial_completed_simulation = rsalloc(sizeof(bool) * n_prc_tot);
+<span class="lineNum">      95 </span>            :         bzero(serial_completed_simulation, sizeof(bool) * n_prc_tot);
+<span class="lineNum">      96 </span>            : 
+<span class="lineNum">      97 </span>            :         // Generate the INIT events for all the LPs
+<span class="lineNum">      98 </span>            :         foreach_lp(lp) {
+<span class="lineNum">      99 </span>            :                 current = lp;
+<span class="lineNum">     100 </span>            :                 SerialScheduleNewEvent(current-&gt;gid.to_int, 0.0, INIT, NULL, 0);
+<span class="lineNum">     101 </span>            :         }
+<span class="lineNum">     102 </span>            : 
+<span class="lineNum">     103 </span>            :         // No LP is scheduled now
+<span class="lineNum">     104 </span>            :         current = NULL;
+<span class="lineNum">     105 </span>            : }
+<span class="lineNum">     106 </span>            : 
+<span class="lineNum">     107 </span><span class="lineNoCov">          0 : void serial_simulation(void)</span>
+<span class="lineNum">     108 </span>            : {
+<span class="lineNum">     109 </span>            :         timer serial_event_execution;
+<span class="lineNum">     110 </span>            :         timer serial_gvt_timer;
+<span class="lineNum">     111 </span>            :         msg_t *event;
+<span class="lineNum">     112 </span>            :         bool new_termination_decision;
+<span class="lineNum">     113 </span>            :         unsigned int completed = 0;
+<span class="lineNum">     114 </span>            : 
+<span class="lineNum">     115 </span>            : #ifdef EXTRA_CHECKS
+<span class="lineNum">     116 </span>            :         unsigned long long hash1, hash2;
+<span class="lineNum">     117 </span>            :         hash1 = hash2 = 0;
+<span class="lineNum">     118 </span>            : #endif
+<span class="lineNum">     119 </span>            : 
+<span class="lineNum">     120 </span>            :         timer_start(serial_gvt_timer);
+<span class="lineNum">     121 </span>            : 
+<span class="lineNum">     122 </span>            :         statistics_start();
+<span class="lineNum">     123 </span>            : 
+<span class="lineNum">     124 </span>            :         while (!serial_simulation_complete) {
+<span class="lineNum">     125 </span>            : 
+<span class="lineNum">     126 </span>            :                 // Pick an event from the calendar queue and use the
+<span class="lineNum">     127 </span>            :                 // receiver as the current lp
+<span class="lineNum">     128 </span>            :                 event = (msg_t *) calqueue_get();
+<span class="lineNum">     129 </span>            :                 if (unlikely(event == NULL)) {
+<span class="lineNum">     130 </span>            :                         rootsim_error(true, &quot;No events to process!\n&quot;);
+<span class="lineNum">     131 </span>            :                 }
+<span class="lineNum">     132 </span>            : 
+<span class="lineNum">     133 </span>            :                 current = find_lp_by_gid(event-&gt;receiver);
+<span class="lineNum">     134 </span>            :                 current-&gt;bound = event;
+<span class="lineNum">     135 </span>            :                 current_evt = event;
+<span class="lineNum">     136 </span>            : 
+<span class="lineNum">     137 </span>            : #ifdef EXTRA_CHECKS
+<span class="lineNum">     138 </span>            :                 if (event-&gt;size &gt; 0) {
+<span class="lineNum">     139 </span>            :                         hash1 = XXH64(event-&gt;event_content, event-&gt;size, current);
+<span class="lineNum">     140 </span>            :                 }
+<span class="lineNum">     141 </span>            : #endif
+<span class="lineNum">     142 </span>            : 
+<span class="lineNum">     143 </span>            :                 timer_start(serial_event_execution);
+<span class="lineNum">     144 </span>            :                 if(&amp;abm_settings){
+<span class="lineNum">     145 </span>            :                         ProcessEventABM();
+<span class="lineNum">     146 </span>            :                 }else if (&amp;topology_settings){
+<span class="lineNum">     147 </span>            :                         ProcessEventTopology();
+<span class="lineNum">     148 </span>            :                 }else{
+<span class="lineNum">     149 </span>            :                         ProcessEvent_light(current-&gt;gid.to_int, event-&gt;timestamp,
+<span class="lineNum">     150 </span>            :                                         event-&gt;type, event-&gt;event_content,
+<span class="lineNum">     151 </span>            :                                         event-&gt;size, current-&gt;current_base_pointer);
+<span class="lineNum">     152 </span>            :                 }
+<span class="lineNum">     153 </span>            : 
+<span class="lineNum">     154 </span>            :                 statistics_post_data_serial(STAT_EVENT, 1.0);
+<span class="lineNum">     155 </span>            :                 statistics_post_data_serial(STAT_EVENT_TIME, timer_value_seconds(serial_event_execution));
+<span class="lineNum">     156 </span>            : 
+<span class="lineNum">     157 </span>            : #ifdef EXTRA_CHECKS
+<span class="lineNum">     158 </span>            :                 if (event-&gt;size &gt; 0) {
+<span class="lineNum">     159 </span>            :                         hash2 = XXH64(event-&gt;event_content, event-&gt;size, current);
+<span class="lineNum">     160 </span>            :                 }
+<span class="lineNum">     161 </span>            : 
+<span class="lineNum">     162 </span>            :                 if (hash1 != hash2) {
+<span class="lineNum">     163 </span>            :                         printf(&quot;hash1 = %llu, hash2= %llu\n&quot;, hash1, hash2);
+<span class="lineNum">     164 </span>            :                         rootsim_error(true, &quot;Error, LP %d has modified the payload of event %d during its processing. Aborting...\n&quot;,
+<span class="lineNum">     165 </span>            :                                       current-&gt;gid, event-&gt;type);
+<span class="lineNum">     166 </span>            :                 }
+<span class="lineNum">     167 </span>            : #endif
+<span class="lineNum">     168 </span>            : 
+<span class="lineNum">     169 </span>            :                 // Termination detection can happen only after the state is initialized
+<span class="lineNum">     170 </span>            :                 if (likely(current-&gt;current_base_pointer != NULL)) {
+<span class="lineNum">     171 </span>            : 
+<span class="lineNum">     172 </span>            :                         // We have just executed a new event at some LP. Depending on the type of requested termination detection,
+<span class="lineNum">     173 </span>            :                         // we call or skip the termination detection for the current LP.
+<span class="lineNum">     174 </span>            :                         if(rootsim_config.check_termination_mode == CKTRM_INCREMENTAL) {
+<span class="lineNum">     175 </span>            :                                 // In incremental termination detection we are dealing with stable termination
+<span class="lineNum">     176 </span>            :                                 // predicates. We can suppose that after that an LP decided to terminate the
+<span class="lineNum">     177 </span>            :                                 // simulation, it will never change its mind.
+<span class="lineNum">     178 </span>            :                                 if (!serial_completed_simulation[event-&gt;receiver.to_int] &amp;&amp; current-&gt;OnGVT(event-&gt;receiver.to_int, current-&gt;current_base_pointer)) {
+<span class="lineNum">     179 </span>            :                                         completed++;
+<span class="lineNum">     180 </span>            :                                         serial_completed_simulation[event-&gt;receiver.to_int] = true;
+<span class="lineNum">     181 </span>            :                                         if (unlikely(completed == n_prc_tot)) {
+<span class="lineNum">     182 </span>            :                                                 serial_simulation_complete = true;
+<span class="lineNum">     183 </span>            :                                         }
+<span class="lineNum">     184 </span>            :                                 }
+<span class="lineNum">     185 </span>            :                         } else {
+<span class="lineNum">     186 </span>            :                                 // Normal and accurate termination detection policies are the same in sequential simulation.
+<span class="lineNum">     187 </span>            :                                 // We have to be sure that, at the current time, all the LPs are agreeing on termination.
+<span class="lineNum">     188 </span>            :                                 // We therefore keep track of past per-LP decisions and increment/decrement the termination counter depending
+<span class="lineNum">     189 </span>            :                                 // on changed decision.
+<span class="lineNum">     190 </span>            :                                 new_termination_decision = current-&gt;OnGVT(event-&gt;receiver.to_int, current-&gt;current_base_pointer);
+<span class="lineNum">     191 </span>            : 
+<span class="lineNum">     192 </span>            :                                 if(serial_completed_simulation[event-&gt;receiver.to_int] != new_termination_decision) {
+<span class="lineNum">     193 </span>            :                                         if(new_termination_decision) {
+<span class="lineNum">     194 </span>            :                                                 // Changed from false to true
+<span class="lineNum">     195 </span>            :                                                 completed++;
+<span class="lineNum">     196 </span>            :                                         } else {
+<span class="lineNum">     197 </span>            :                                                 // Changed from true to false
+<span class="lineNum">     198 </span>            :                                                 completed--;
+<span class="lineNum">     199 </span>            :                                         }
+<span class="lineNum">     200 </span>            :                                 }
+<span class="lineNum">     201 </span>            : 
+<span class="lineNum">     202 </span>            :                                 serial_completed_simulation[event-&gt;receiver.to_int] = new_termination_decision;
+<span class="lineNum">     203 </span>            : 
+<span class="lineNum">     204 </span>            :                                 if (unlikely(completed == n_prc_tot)) {
+<span class="lineNum">     205 </span>            :                                         serial_simulation_complete = true;
+<span class="lineNum">     206 </span>            :                                 }
+<span class="lineNum">     207 </span>            :                         }
+<span class="lineNum">     208 </span>            :                 }
+<span class="lineNum">     209 </span>            : 
+<span class="lineNum">     210 </span>            :                 // Termination detection on reached LVT value
+<span class="lineNum">     211 </span>            :                 if (rootsim_config.simulation_time &gt; 0 &amp;&amp; event-&gt;timestamp &gt;= rootsim_config.simulation_time) {
+<span class="lineNum">     212 </span>            :                         serial_simulation_complete = true;
+<span class="lineNum">     213 </span>            :                 }
+<span class="lineNum">     214 </span>            : 
+<span class="lineNum">     215 </span>            :                 // Print the time advancement periodically
+<span class="lineNum">     216 </span>            :                 if (timer_value_milli(serial_gvt_timer) &gt; (int)rootsim_config.gvt_time_period) {
+<span class="lineNum">     217 </span>            :                         timer_restart(serial_gvt_timer);
+<span class="lineNum">     218 </span>            :                         printf(&quot;TIME BARRIER: %f\n&quot;, lvt(current));
+<span class="lineNum">     219 </span>            :                         statistics_on_gvt_serial(lvt(current));
+<span class="lineNum">     220 </span>            :                 }
+<span class="lineNum">     221 </span>            : 
+<span class="lineNum">     222 </span>            :                 current = NULL;
+<span class="lineNum">     223 </span>            : 
+<span class="lineNum">     224 </span>            :                 rsfree(event);
+<span class="lineNum">     225 </span>            :         }
+<span class="lineNum">     226 </span>            : 
+<span class="lineNum">     227 </span>            :         simulation_shutdown(EXIT_SUCCESS);
+<span class="lineNum">     228 </span>            : }
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.12</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>

@@ -1,0 +1,4 @@
+<map id="buddy_alloc" name="buddy_alloc">
+<area shape="rect" id="node2" href="$atomic_8h.html#a7a6b9868956dd8e51e5de80e16c76fc4" title="spin_lock" alt="" coords="159,5,239,32"/>
+<area shape="rect" id="node3" href="$atomic_8h.html#a4e8c9d1c6101995f1ecd2141d77e4824" title="spin_unlock" alt="" coords="151,56,247,83"/>
+</map>

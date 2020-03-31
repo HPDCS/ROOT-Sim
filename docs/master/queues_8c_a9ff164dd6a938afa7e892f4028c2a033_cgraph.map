@@ -1,0 +1,4 @@
+<map id="insert_bottom_half" name="insert_bottom_half">
+<area shape="rect" id="node2" href="$communication_8c.html#aebec05b86f3467473116d555954b80f4" title="Perform some sanity checks on a message buffer. " alt="" coords="196,5,303,32"/>
+<area shape="rect" id="node3" href="$communication_8c.html#ab442ee81854e910ac0b21e3caf21cc48" title="Tell the GID of the sender of a message, given its mark. " alt="" coords="351,5,452,32"/>
+</map>

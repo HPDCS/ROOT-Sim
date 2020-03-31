@@ -1,0 +1,7 @@
+<map id="prune_outgoing_queue" name="prune_outgoing_queue">
+<area shape="rect" id="node2" href="$wnd_8h.html#a157ee75a6300b4d0ae3c99afe8c3ae6a" title="Prune all outgoing queues. " alt="" coords="223,31,399,57"/>
+<area shape="rect" id="node3" href="$wnd_8h.html#acbe46c456aa03b014ca2134604700789" title="Finalize the message delivery subsystem. " alt="" coords="447,5,628,32"/>
+<area shape="rect" id="node4" href="$main_8c.html#aa729cb27350c33119484501e13df4fec" title="main_simulation_loop" alt="" coords="457,56,618,83"/>
+<area shape="rect" id="node5" href="$main_8c.html#af2ac8c142556588d87e6c069a4ca9894" title="end_computing" alt="" coords="676,56,797,83"/>
+<area shape="rect" id="node6" href="$main_8c.html#a3c04138a5bfe5d72780bb7e82a18e627" title="main" alt="" coords="709,107,764,133"/>
+</map>

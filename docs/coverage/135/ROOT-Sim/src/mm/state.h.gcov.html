@@ -1,0 +1,158 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - doc-coverage.info - ROOT-Sim/src/mm/state.h</title>
+  <link rel="stylesheet" type="text/css" href="../../../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../../../index.html">top level</a> - <a href="index.html">ROOT-Sim/src/mm</a> - state.h</td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">doc-coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">14</td>
+            <td class="headerCovTableEntry">23</td>
+            <td class="headerCovTableEntryLo">60.9 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2020-01-30 13:56:10</td>
+            <td></td>
+          </tr>
+          <tr><td><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<span class="lineNum">       1 </span><span class="lineCov">          1 : /**</span>
+<span class="lineNum">       2 </span>            : * @file mm/state.h
+<span class="lineNum">       3 </span>            : *
+<span class="lineNum">       4 </span>            : * @brief LP state management
+<span class="lineNum">       5 </span>            : *
+<span class="lineNum">       6 </span>            : * The state module is responsible for managing LPs' simulation states.
+<span class="lineNum">       7 </span>            : * In particular, it allows to take a snapshot, to restore a previous snapshot,
+<span class="lineNum">       8 </span>            : * and to silently re-execute a portion of simulation events to bring
+<span class="lineNum">       9 </span>            : * a LP to a partiuclar LVT value for which no simulation state is available
+<span class="lineNum">      10 </span>            : * in the log chain.
+<span class="lineNum">      11 </span>            : *
+<span class="lineNum">      12 </span>            : * @copyright
+<span class="lineNum">      13 </span>            : * Copyright (C) 2008-2019 HPDCS Group
+<span class="lineNum">      14 </span>            : * https://hpdcs.github.io
+<span class="lineNum">      15 </span>            : *
+<span class="lineNum">      16 </span>            : * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
+<span class="lineNum">      17 </span>            : *
+<span class="lineNum">      18 </span>            : * ROOT-Sim is free software; you can redistribute it and/or modify it under the
+<span class="lineNum">      19 </span>            : * terms of the GNU General Public License as published by the Free Software
+<span class="lineNum">      20 </span>            : * Foundation; only version 3 of the License applies.
+<span class="lineNum">      21 </span>            : *
+<span class="lineNum">      22 </span>            : * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
+<span class="lineNum">      23 </span>            : * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+<span class="lineNum">      24 </span>            : * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+<span class="lineNum">      25 </span>            : *
+<span class="lineNum">      26 </span>            : * You should have received a copy of the GNU General Public License along with
+<span class="lineNum">      27 </span>            : * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
+<span class="lineNum">      28 </span>            : * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+<span class="lineNum">      29 </span>            : *
+<span class="lineNum">      30 </span>            : * @author Francesco Quaglia
+<span class="lineNum">      31 </span>            : * @author Alessandro Pellegrini
+<span class="lineNum">      32 </span>            : */
+<span class="lineNum">      33 </span>            : 
+<span class="lineNum">      34 </span>            : #pragma once
+<span class="lineNum">      35 </span>            : 
+<span class="lineNum">      36 </span>            : #include &lt;ROOT-Sim.h&gt;
+<span class="lineNum">      37 </span>            : #include &lt;core/core.h&gt;
+<span class="lineNum">      38 </span>            : #include &lt;lib/numerical.h&gt;
+<span class="lineNum">      39 </span>            : #include &lt;lib/abm_layer.h&gt;
+<span class="lineNum">      40 </span>            : #include &lt;lib/topology.h&gt;
+<span class="lineNum">      41 </span>            : 
+<span class="lineNum">      42 </span><span class="lineNoCov">          0 : enum {</span>
+<span class="lineNum">      43 </span>            :         STATE_SAVING_INVALID = 0,       /**&lt; By convention 0 is the invalid field */
+<span class="lineNum">      44 </span>            :         STATE_SAVING_COPY,                      /**&lt; Copy State Saving checkpointing interval */
+<span class="lineNum">      45 </span>            :         STATE_SAVING_PERIODIC           /**&lt; Periodic State Saving checkpointing interval */
+<span class="lineNum">      46 </span>            : };
+<span class="lineNum">      47 </span>            : 
+<span class="lineNum">      48 </span>            : /// Structure for LP's state
+<span class="lineNum">      49 </span><span class="lineCov">          1 : typedef struct _state_t {</span>
+<span class="lineNum">      50 </span>            :         // Pointers to chain this structure to the state queue
+<span class="lineNum">      51 </span><span class="lineNoCov">          0 :         struct _state_t *next;</span>
+<span class="lineNum">      52 </span><span class="lineNoCov">          0 :         struct _state_t *prev;</span>
+<span class="lineNum">      53 </span>            : 
+<span class="lineNum">      54 </span>            :         /// Simulation time associated with the state log
+<span class="lineNum">      55 </span><span class="lineCov">          1 :         simtime_t lvt;</span>
+<span class="lineNum">      56 </span>            :         /// A pointer to the actual log
+<span class="lineNum">      57 </span><span class="lineCov">          1 :         void *log;</span>
+<span class="lineNum">      58 </span>            :         /// This log has been taken after the execution of this event
+<span class="lineNum">      59 </span><span class="lineCov">          1 :         msg_t *last_event;</span>
+<span class="lineNum">      60 </span>            : 
+<span class="lineNum">      61 </span>            :         /* Per-LP fields which should be transparently rolled back */
+<span class="lineNum">      62 </span>            : 
+<span class="lineNum">      63 </span>            :         /// Execution state
+<span class="lineNum">      64 </span><span class="lineCov">          1 :         short unsigned int state;</span>
+<span class="lineNum">      65 </span>            :         /// This is a pointer used to keep track of changes to simulation states via SetState()
+<span class="lineNum">      66 </span><span class="lineCov">          1 :         void *base_pointer;</span>
+<span class="lineNum">      67 </span>            : 
+<span class="lineNum">      68 </span>            :         /* Library state fields */
+<span class="lineNum">      69 </span><span class="lineNoCov">          0 :         numerical_state_t numerical;</span>
+<span class="lineNum">      70 </span>            :         
+<span class="lineNum">      71 </span><span class="lineNoCov">          0 :         topology_t *topology;</span>
+<span class="lineNum">      72 </span>            : 
+<span class="lineNum">      73 </span><span class="lineNoCov">          0 :         void *region_data;</span>
+<span class="lineNum">      74 </span><span class="lineCov">          1 : } state_t;</span>
+<span class="lineNum">      75 </span>            : 
+<span class="lineNum">      76 </span>            : struct lp_struct;
+<span class="lineNum">      77 </span>            : 
+<span class="lineNum">      78 </span><span class="lineCov">          1 : extern bool LogState(struct lp_struct *);</span>
+<span class="lineNum">      79 </span><span class="lineNoCov">          0 : extern void RestoreState(struct lp_struct *, state_t * restore_state);</span>
+<span class="lineNum">      80 </span><span class="lineCov">          1 : extern void rollback(struct lp_struct *);</span>
+<span class="lineNum">      81 </span><span class="lineCov">          1 : extern state_t *find_time_barrier(struct lp_struct *, simtime_t time);</span>
+<span class="lineNum">      82 </span><span class="lineNoCov">          0 : extern void clean_queue_states(struct lp_struct *, simtime_t new_gvt);</span>
+<span class="lineNum">      83 </span><span class="lineNoCov">          0 : extern void rebuild_state(struct lp_struct *, state_t * state_pointer, simtime_t time);</span>
+<span class="lineNum">      84 </span><span class="lineCov">          1 : extern void set_checkpoint_period(struct lp_struct *, int period);</span>
+<span class="lineNum">      85 </span><span class="lineCov">          1 : extern void force_LP_checkpoint(struct lp_struct *);</span>
+<span class="lineNum">      86 </span><span class="lineCov">          1 : extern unsigned int silent_execution(struct lp_struct *, msg_t * evt, msg_t * final_evt);</span>
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.12</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>

@@ -1,0 +1,406 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - doc-coverage.info - ROOT-Sim/src/arch/x86/linux/schedule-hook/schedule.c</title>
+  <link rel="stylesheet" type="text/css" href="../../../../../../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../../../../../../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../../../../../../index.html">top level</a> - <a href="index.html">ROOT-Sim/src/arch/x86/linux/schedule-hook</a> - schedule.c</td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">doc-coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">1</td>
+            <td class="headerCovTableEntry">47</td>
+            <td class="headerCovTableEntryLo">2.1 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2020-01-31 15:54:55</td>
+            <td></td>
+          </tr>
+          <tr><td><img src="../../../../../../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../../../../../../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<span class="lineNum">       1 </span><span class="lineCov">          1 : /**                   Copyright (C) 2014-2017 HPDCS Group</span>
+<span class="lineNum">       2 </span>            : *                      http://www.dis.uniroma1.it/~hpdcs
+<span class="lineNum">       3 </span>            : *
+<span class="lineNum">       4 </span>            : * This is free software;
+<span class="lineNum">       5 </span>            : * You can redistribute it and/or modify this file under the
+<span class="lineNum">       6 </span>            : * terms of the GNU General Public License as published by the Free Software
+<span class="lineNum">       7 </span>            : * Foundation; either version 3 of the License, or (at your option) any later
+<span class="lineNum">       8 </span>            : * version.
+<span class="lineNum">       9 </span>            : *
+<span class="lineNum">      10 </span>            : * This file is distributed in the hope that it will be useful, but WITHOUT ANY
+<span class="lineNum">      11 </span>            : * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+<span class="lineNum">      12 </span>            : * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+<span class="lineNum">      13 </span>            : *
+<span class="lineNum">      14 </span>            : * You should have received a copy of the GNU General Public License along with
+<span class="lineNum">      15 </span>            : * this file; if not, write to the Free Software Foundation, Inc.,
+<span class="lineNum">      16 </span>            : * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+<span class="lineNum">      17 </span>            : *
+<span class="lineNum">      18 </span>            : * @file  schedule.c
+<span class="lineNum">      19 </span>            : * @brief This is the main source for the Linux Kernel Module which implements
+<span class="lineNum">      20 </span>            : *        a schedule-hook module allowing running a custom function each time a thread is cpu rescheduled
+<span class="lineNum">      21 </span>            : * @author Francesco Quaglia
+<span class="lineNum">      22 </span>            : * @author Alessandro Pellegrini
+<span class="lineNum">      23 </span>            : * @author Emanuele De Santis
+<span class="lineNum">      24 </span>            : *
+<span class="lineNum">      25 </span>            : * @date October 15, 2015
+<span class="lineNum">      26 </span>            : */
+<span class="lineNum">      27 </span>            : 
+<span class="lineNum">      28 </span><span class="lineNoCov">          0 : #define EXPORT_SYMTAB</span>
+<span class="lineNum">      29 </span>            : #include &lt;linux/module.h&gt;
+<span class="lineNum">      30 </span>            : #include &lt;linux/kernel.h&gt;
+<span class="lineNum">      31 </span>            : #include &lt;linux/fs.h&gt;
+<span class="lineNum">      32 </span>            : #include &lt;linux/cdev.h&gt;
+<span class="lineNum">      33 </span>            : #include &lt;linux/errno.h&gt;
+<span class="lineNum">      34 </span>            : #include &lt;linux/device.h&gt;
+<span class="lineNum">      35 </span>            : #include &lt;linux/kprobes.h&gt;
+<span class="lineNum">      36 </span>            : #include &lt;linux/mutex.h&gt;
+<span class="lineNum">      37 </span>            : #include &lt;linux/mm.h&gt;
+<span class="lineNum">      38 </span>            : #include &lt;linux/sched.h&gt;
+<span class="lineNum">      39 </span>            : #include &lt;linux/slab.h&gt;
+<span class="lineNum">      40 </span>            : #include &lt;linux/version.h&gt;
+<span class="lineNum">      41 </span>            : #include &lt;linux/interrupt.h&gt;
+<span class="lineNum">      42 </span>            : #include &lt;linux/time.h&gt;
+<span class="lineNum">      43 </span>            : #include &lt;linux/string.h&gt;
+<span class="lineNum">      44 </span>            : #include &lt;linux/vmalloc.h&gt;
+<span class="lineNum">      45 </span>            : #include &lt;linux/preempt.h&gt;
+<span class="lineNum">      46 </span>            : #include &lt;asm/atomic.h&gt;
+<span class="lineNum">      47 </span>            : #include &quot;ld.h&quot;
+<span class="lineNum">      48 </span>            : #include &quot;lend.h&quot;
+<span class="lineNum">      49 </span>            : //#include &lt;asm/page.h&gt;
+<span class="lineNum">      50 </span>            : //#include &lt;asm/cacheflush.h&gt;
+<span class="lineNum">      51 </span>            : //#include &lt;asm/apic.h&gt;
+<span class="lineNum">      52 </span>            : 
+<span class="lineNum">      53 </span>            : // This gives access to read_cr0() and write_cr0()
+<span class="lineNum">      54 </span>            : #if LINUX_VERSION_CODE &gt; KERNEL_VERSION(3,3,0)
+<span class="lineNum">      55 </span>            :         #include &lt;asm/switch_to.h&gt;
+<span class="lineNum">      56 </span>            : #else
+<span class="lineNum">      57 </span>            :         #include &lt;asm/system.h&gt;
+<span class="lineNum">      58 </span>            : #endif
+<span class="lineNum">      59 </span>            : #ifndef X86_CR0_WP
+<span class="lineNum">      60 </span><span class="lineNoCov">          0 : #define X86_CR0_WP 0x00010000</span>
+<span class="lineNum">      61 </span>            : #endif
+<span class="lineNum">      62 </span>            : 
+<span class="lineNum">      63 </span>            : // This macro was added in kernel 3.5
+<span class="lineNum">      64 </span>            : #if LINUX_VERSION_CODE &lt; KERNEL_VERSION(3,5,0)
+<span class="lineNum">      65 </span>            :         #define APIC_EOI_ACK 0x0 /* Docs say 0 for future compat. */
+<span class="lineNum">      66 </span>            : #endif
+<span class="lineNum">      67 </span>            : 
+<span class="lineNum">      68 </span>            : #include &quot;schedule.h&quot;
+<span class="lineNum">      69 </span>            : 
+<span class="lineNum">      70 </span>            : #if LINUX_VERSION_CODE &lt;= KERNEL_VERSION(2,6,25)
+<span class="lineNum">      71 </span>            : #error Unsupported Kernel Version
+<span class="lineNum">      72 </span>            : #endif
+<span class="lineNum">      73 </span>            : 
+<span class="lineNum">      74 </span>            : 
+<span class="lineNum">      75 </span>            : 
+<span class="lineNum">      76 </span><span class="lineNoCov">          0 : #define DEBUG if(1) // change with 0 for removing module coded debug stuff</span>
+<span class="lineNum">      77 </span><span class="lineNoCov">          0 : #define DEBUG_SCHEDULE_HOOK if(1) // change with 0 for removing schedule_hook coded debug stuff</span>
+<span class="lineNum">      78 </span>            : 
+<span class="lineNum">      79 </span>            : 
+<span class="lineNum">      80 </span>            : 
+<span class="lineNum">      81 </span><span class="lineNoCov">          0 : unsigned long the_hook = 0;</span>
+<span class="lineNum">      82 </span><span class="lineNoCov">          0 : #define PERMISSION_MASK (S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH)</span>
+<span class="lineNum">      83 </span><span class="lineNoCov">          0 : module_param(the_hook, ulong, PERMISSION_MASK);</span>
+<span class="lineNum">      84 </span><span class="lineNoCov">          0 : unsigned int audit_counter = 0;</span>
+<span class="lineNum">      85 </span>            : #undef PERMISSION_MASK
+<span class="lineNum">      86 </span><span class="lineNoCov">          0 : #define PERMISSION_MASK (S_IRUSR | S_IRGRP | S_IROTH)</span>
+<span class="lineNum">      87 </span><span class="lineNoCov">          0 : module_param(audit_counter, int, PERMISSION_MASK);</span>
+<span class="lineNum">      88 </span>            : 
+<span class="lineNum">      89 </span><span class="lineNoCov">          0 : static atomic_t synch_leave;</span>
+<span class="lineNum">      90 </span><span class="lineNoCov">          0 : static atomic_t synch_enter;</span>
+<span class="lineNum">      91 </span>            : 
+<span class="lineNum">      92 </span><span class="lineNoCov">          0 : atomic_t count ;</span>
+<span class="lineNum">      93 </span><span class="lineNoCov">          0 : atomic_t reference_count ;</span>
+<span class="lineNum">      94 </span><span class="lineNoCov">          0 : ulong phase = 0;//this is used to implement a phase based retry protocol for umounting this module</span>
+<span class="lineNum">      95 </span>            : 
+<span class="lineNum">      96 </span><span class="lineNoCov">          0 : static void synchronize_all_slaves(void *);</span>
+<span class="lineNum">      97 </span><span class="lineNoCov">          0 : static int schedule_hook_init(void);</span>
+<span class="lineNum">      98 </span><span class="lineNoCov">          0 : static void schedule_unpatch(void);</span>
+<span class="lineNum">      99 </span><span class="lineNoCov">          0 : static int schedule_patch(void);</span>
+<span class="lineNum">     100 </span><span class="lineNoCov">          0 : static void print_bytes(char *str, unsigned char *ptr, size_t s);</span>
+<span class="lineNum">     101 </span><span class="lineNoCov">          0 : extern void schedule_hook(void);</span>
+<span class="lineNum">     102 </span><span class="lineNoCov">          0 : extern void schedule_hook_2(void);</span>
+<span class="lineNum">     103 </span>            : 
+<span class="lineNum">     104 </span><span class="lineNoCov">          0 : MODULE_LICENSE(&quot;GPL&quot;);</span>
+<span class="lineNum">     105 </span><span class="lineNoCov">          0 : MODULE_AUTHOR(&quot;Alessandro Pellegrini &lt;pellegrini@dis.uniroma1.it&gt;, Francesco Quaglia &lt;quaglia@dis.uniroma1.it&gt;&quot;);</span>
+<span class="lineNum">     106 </span><span class="lineNoCov">          0 : MODULE_DESCRIPTION(&quot;Run time patch of the Linux kernel scheduler to support the execution of a generic custom function upon thread reschedule&quot;);</span>
+<span class="lineNum">     107 </span><span class="lineNoCov">          0 : module_init(schedule_hook_init);</span>
+<span class="lineNum">     108 </span><span class="lineNoCov">          0 : module_exit(schedule_unpatch);</span>
+<span class="lineNum">     109 </span>            : 
+<span class="lineNum">     110 </span>            : /* MODULE VARIABLES */
+<span class="lineNum">     111 </span>            : 
+<span class="lineNum">     112 </span><span class="lineNoCov">          0 : void *finish_task_switch = (void *)FTS_ADDR;</span>
+<span class="lineNum">     113 </span><span class="lineNoCov">          0 : void *finish_task_switch_next = (void *)FTS_ADDR_NEXT;</span>
+<span class="lineNum">     114 </span>            : 
+<span class="lineNum">     115 </span><span class="lineNoCov">          0 : typedef struct backup{</span>
+<span class="lineNum">     116 </span><span class="lineNoCov">          0 :         char bytes[128];</span>
+<span class="lineNum">     117 </span><span class="lineNoCov">          0 :         void* init_addr;</span>
+<span class="lineNum">     118 </span><span class="lineNoCov">          0 :         unsigned short int len;</span>
+<span class="lineNum">     119 </span><span class="lineNoCov">          0 : } backup_t;</span>
+<span class="lineNum">     120 </span>            : 
+<span class="lineNum">     121 </span><span class="lineNoCov">          0 : backup_t *b;</span>
+<span class="lineNum">     122 </span>            : 
+<span class="lineNum">     123 </span><span class="lineNoCov">          0 : unsigned short int backup_count = 0;</span>
+<span class="lineNum">     124 </span>            : 
+<span class="lineNum">     125 </span><span class="lineNoCov">          0 : typedef struct instr {</span>
+<span class="lineNum">     126 </span><span class="lineNoCov">          0 :         void* ptr;</span>
+<span class="lineNum">     127 </span><span class="lineNoCov">          0 :         unsigned char bytecode[16];</span>
+<span class="lineNum">     128 </span><span class="lineNoCov">          0 :         short unsigned int size;</span>
+<span class="lineNum">     129 </span><span class="lineNoCov">          0 : } instr_t;</span>
+<span class="lineNum">     130 </span>            : 
+<span class="lineNum">     131 </span>            : 
+<span class="lineNum">     132 </span>            : // These are set in hook.S
+<span class="lineNum">     133 </span><span class="lineNoCov">          0 : extern void schedule_hook_end(void);</span>
+<span class="lineNum">     134 </span><span class="lineNoCov">          0 : extern void schedule_hook_patch_point(void);</span>
+<span class="lineNum">     135 </span><span class="lineNoCov">          0 : extern void schedule_hook_patch_point_2(void);</span>
+<span class="lineNum">     136 </span>            : 
+<span class="lineNum">     137 </span>            : 
+<span class="lineNum">     138 </span>            : static void synchronize_all_slaves(void *info) {
+<span class="lineNum">     139 </span>            :         (void)info;
+<span class="lineNum">     140 </span>            : 
+<span class="lineNum">     141 </span>            :         printk(KERN_DEBUG &quot;%s: cpu %d entering synchronize_all_slaves\n&quot;, KBUILD_MODNAME, smp_processor_id());
+<span class="lineNum">     142 </span>            :         atomic_dec(&amp;synch_enter);
+<span class="lineNum">     143 </span>            :         preempt_disable();
+<span class="lineNum">     144 </span>            :         while(atomic_read(&amp;synch_leave) &gt; 0);
+<span class="lineNum">     145 </span>            :         preempt_enable();
+<span class="lineNum">     146 </span>            :         printk(KERN_DEBUG &quot;%s: cpu %d leaving synchronize_all_slaves\n&quot;, KBUILD_MODNAME, smp_processor_id());
+<span class="lineNum">     147 </span>            : }
+<span class="lineNum">     148 </span>            : 
+<span class="lineNum">     149 </span><span class="lineNoCov">          0 : #define synchronize_all() do { \</span>
+<span class="lineNum">     150 </span>            :                 printk(&quot;cpu %d asking from unpreemptive synchronization\n&quot;, smp_processor_id()); \
+<span class="lineNum">     151 </span>            :                 atomic_set(&amp;synch_enter, num_online_cpus() - 1); \
+<span class="lineNum">     152 </span>            :                 atomic_set(&amp;synch_leave, 1); \
+<span class="lineNum">     153 </span>            :                 preempt_disable(); \
+<span class="lineNum">     154 </span>            :                 smp_call_function_many(cpu_online_mask, synchronize_all_slaves, NULL, false); /* false because we manually synchronize */ \
+<span class="lineNum">     155 </span>            :                 while(atomic_read(&amp;synch_enter) &gt; 0); \
+<span class="lineNum">     156 </span>            :                 printk(&quot;cpu %d all kernel threads synchronized\n&quot;, smp_processor_id()); \
+<span class="lineNum">     157 </span>            :         } while(0)
+<span class="lineNum">     158 </span>            : 
+<span class="lineNum">     159 </span><span class="lineNoCov">          0 : #define unsynchronize_all() do { \</span>
+<span class="lineNum">     160 </span>            :                 printk(&quot;cpu %d freeing other kernel threads\n&quot;, smp_processor_id()); \
+<span class="lineNum">     161 </span>            :                 atomic_set(&amp;synch_leave, 0); \
+<span class="lineNum">     162 </span>            :                 preempt_enable(); \
+<span class="lineNum">     163 </span>            :         } while(0)
+<span class="lineNum">     164 </span>            : 
+<span class="lineNum">     165 </span>            : 
+<span class="lineNum">     166 </span>            : static void print_bytes(char *str, unsigned char *ptr, size_t s) {
+<span class="lineNum">     167 </span>            :         size_t i;
+<span class="lineNum">     168 </span>            : 
+<span class="lineNum">     169 </span>            :         printk(KERN_DEBUG &quot;%s: %s: &quot;, KBUILD_MODNAME, str);
+<span class="lineNum">     170 </span>            :         for(i = 0; i &lt; s; i++)
+<span class="lineNum">     171 </span>            :                 printk(KERN_CONT &quot;%02x &quot;, ptr[i]);
+<span class="lineNum">     172 </span>            :         printk(KERN_CONT &quot;\n&quot;);
+<span class="lineNum">     173 </span>            : }
+<span class="lineNum">     174 </span>            : 
+<span class="lineNum">     175 </span>            : 
+<span class="lineNum">     176 </span>            : 
+<span class="lineNum">     177 </span>            : static int schedule_patch(void) {
+<span class="lineNum">     178 </span>            : 
+<span class="lineNum">     179 </span>            :         int pos = 0;
+<span class="lineNum">     180 </span>            :         long displacement;
+<span class="lineNum">     181 </span>            :         unsigned long cr0;
+<span class="lineNum">     182 </span>            :         unsigned char bytes_to_redirect[6];
+<span class="lineNum">     183 </span>            :         int i=0;
+<span class="lineNum">     184 </span>            :         int j;
+<span class="lineNum">     185 </span>            :         int k=0;
+<span class="lineNum">     186 </span>            :         int count;
+<span class="lineNum">     187 </span>            :         int size;
+<span class="lineNum">     188 </span>            :         int patch_size, patch_offset;
+<span class="lineNum">     189 </span>            :         void *temp;
+<span class="lineNum">     190 </span>            :         void *upper_bound, *lower_bound;
+<span class="lineNum">     191 </span>            : 
+<span class="lineNum">     192 </span>            :         instr_t* v=(instr_t*) kmalloc(((unsigned char*)(finish_task_switch_next)-(unsigned char*)(finish_task_switch))*sizeof(instr_t), GFP_KERNEL);
+<span class="lineNum">     193 </span>            :         if(!v){
+<span class="lineNum">     194 </span>            :                 printk(&quot;Errore 1\n&quot;);
+<span class="lineNum">     195 </span>            :                 return 0;
+<span class="lineNum">     196 </span>            :         }
+<span class="lineNum">     197 </span>            :         memset(v, 0, ((unsigned char*)(finish_task_switch_next)-(unsigned char*)(finish_task_switch))*sizeof(instr_t));
+<span class="lineNum">     198 </span>            : 
+<span class="lineNum">     199 </span>            : 
+<span class="lineNum">     200 </span>            :         b=(backup_t*) kmalloc(20*sizeof(backup_t), GFP_KERNEL); //this size is the maximum number of return this module can handle
+<span class="lineNum">     201 </span>            :         if(!b){
+<span class="lineNum">     202 </span>            :                 printk(&quot;Errore 2\n&quot;);
+<span class="lineNum">     203 </span>            :                 return 0;
+<span class="lineNum">     204 </span>            :         }
+<span class="lineNum">     205 </span>            : 
+<span class="lineNum">     206 </span>            :         memset(b, 0, 20*sizeof(backup_t));
+<span class="lineNum">     207 </span>            : 
+<span class="lineNum">     208 </span>            :         //instr_t* v will contain all the instructions between finish_task_switch and finish_task_switch_next
+<span class="lineNum">     209 </span>            :         temp=(void*)finish_task_switch; // copy of finish_task_switch for ld
+<span class="lineNum">     210 </span>            : 
+<span class="lineNum">     211 </span>            :         while (temp&lt;finish_task_switch_next){
+<span class="lineNum">     212 </span>            :                 size=length_disasm(temp, MODE_X64);
+<span class="lineNum">     213 </span>            :                 v[i].size=size;
+<span class="lineNum">     214 </span>            :                 v[i].ptr=(void*)((char*)(temp));
+<span class="lineNum">     215 </span>            :                 memcpy(v[i].bytecode, (unsigned char*)(temp), size);
+<span class="lineNum">     216 </span>            :                 i++;
+<span class="lineNum">     217 </span>            :                 temp=((unsigned char*)(temp))+size;
+<span class="lineNum">     218 </span>            :         }
+<span class="lineNum">     219 </span>            :         //instr_t* v populated successfully
+<span class="lineNum">     220 </span>            :         print_bytes(&quot;finish_task_switch before patch&quot;, finish_task_switch, finish_task_switch_next-finish_task_switch);
+<span class="lineNum">     221 </span>            : 
+<span class="lineNum">     222 </span>            :         for (j=0; j&lt;i; j++){
+<span class="lineNum">     223 </span>            :                 print_bytes(&quot;instruction:&quot;, v[j].bytecode, v[j].size);
+<span class="lineNum">     224 </span>            :                 //printk(&quot;\t address: %p\n&quot;, v[j].ptr);
+<span class="lineNum">     225 </span>            :         }
+<span class="lineNum">     226 </span>            : 
+<span class="lineNum">     227 </span>            :         //disable memory protection
+<span class="lineNum">     228 </span>            :         cr0 = read_cr0();
+<span class="lineNum">     229 </span>            :         write_cr0(cr0 &amp; ~X86_CR0_WP);
+<span class="lineNum">     230 </span>            : 
+<span class="lineNum">     231 </span>            :         //HERE FIND 0XC3 PREVIOUS INSTRUCTIONS, BACKUP THEM INTO AN ARRAY AND PATCH SCHEDULE
+<span class="lineNum">     232 </span>            :         print_bytes(&quot;finish_task_switch_next before self patching&quot;, (unsigned char *)finish_task_switch, finish_task_switch_next-finish_task_switch);
+<span class="lineNum">     233 </span>            :         for (j=0; j&lt;i; j++){
+<span class="lineNum">     234 </span>            :                 if (v[j].size==1 &amp;&amp; v[j].bytecode[0]==0xc3){ //return found
+<span class="lineNum">     235 </span>            :                         printk(KERN_DEBUG &quot;%s: return found at address %p, offset %p\n&quot;, KBUILD_MODNAME, (unsigned char*)v[j].ptr, (void*)(v[j].ptr-finish_task_switch));
+<span class="lineNum">     236 </span>            :                         count=1;
+<span class="lineNum">     237 </span>            :                         do{
+<span class="lineNum">     238 </span>            :                                 k+=v[j-count].size;
+<span class="lineNum">     239 </span>            :                                 count++;
+<span class="lineNum">     240 </span>            :                         }while(k&lt;5);
+<span class="lineNum">     241 </span>            :                         count--;
+<span class="lineNum">     242 </span>            :                         print_bytes(&quot;upper bound instruction: &quot;, v[j-count].bytecode, v[j-count].size);
+<span class="lineNum">     243 </span>            :                         upper_bound=v[j-count].ptr;
+<span class="lineNum">     244 </span>            :                         lower_bound=v[j].ptr;
+<span class="lineNum">     245 </span>            :                         size=lower_bound-upper_bound;
+<span class="lineNum">     246 </span>            :                         printk(KERN_DEBUG &quot;%s: size=%d\n&quot;, KBUILD_MODNAME, size);
+<span class="lineNum">     247 </span>            :                         b[backup_count].init_addr=upper_bound;
+<span class="lineNum">     248 </span>            :                         b[backup_count].len=size;
+<span class="lineNum">     249 </span>            :                         memcpy(b[backup_count].bytes, upper_bound, size);
+<span class="lineNum">     250 </span>            :                         print_bytes(&quot;Backup bytes: &quot;, b[backup_count].bytes, size);
+<span class="lineNum">     251 </span>            : 
+<span class="lineNum">     252 </span>            :                         //Assemble JMP
+<span class="lineNum">     253 </span>            :                         displacement=((long)((long)schedule_hook+(long)backup_count*((long)schedule_hook_2-(long)schedule_hook))-(long)upper_bound)-5;
+<span class="lineNum">     254 </span>            :                         //displacement=((long)schedule_hook-(long)finish_task_switch_next);
+<span class="lineNum">     255 </span>            :                         pos = 0;
+<span class="lineNum">     256 </span>            :                         bytes_to_redirect[pos++] = 0xe9;
+<span class="lineNum">     257 </span>            :                         bytes_to_redirect[pos++] = (unsigned char)(displacement &amp; 0xff);
+<span class="lineNum">     258 </span>            :                         bytes_to_redirect[pos++] = (unsigned char)(displacement &gt;&gt; 8 &amp; 0xff);
+<span class="lineNum">     259 </span>            :                         bytes_to_redirect[pos++] = (unsigned char)(displacement &gt;&gt; 16 &amp; 0xff);
+<span class="lineNum">     260 </span>            :                         bytes_to_redirect[pos++] = (unsigned char)(displacement &gt;&gt; 24 &amp; 0xff);
+<span class="lineNum">     261 </span>            : 
+<span class="lineNum">     262 </span>            :                         print_bytes(&quot;assembled jump is&quot;, bytes_to_redirect, 5);
+<span class="lineNum">     263 </span>            : 
+<span class="lineNum">     264 </span>            :                         backup_count++;
+<span class="lineNum">     265 </span>            : 
+<span class="lineNum">     266 </span>            :                         //Patch schedule()
+<span class="lineNum">     267 </span>            :                         //if (backup_count!=-1)
+<span class="lineNum">     268 </span>            :                                 memcpy(upper_bound, bytes_to_redirect, 5);
+<span class="lineNum">     269 </span>            :                 }
+<span class="lineNum">     270 </span>            :         }
+<span class="lineNum">     271 </span>            : 
+<span class="lineNum">     272 </span>            :         print_bytes(&quot;schedule after patch: &quot;, finish_task_switch, finish_task_switch_next-finish_task_switch);
+<span class="lineNum">     273 </span>            : 
+<span class="lineNum">     274 </span>            :         //here all bytes are backed-up
+<span class="lineNum">     275 </span>            : 
+<span class="lineNum">     276 </span>            :         patch_size=schedule_hook_2-schedule_hook_patch_point;
+<span class="lineNum">     277 </span>            :         patch_offset=schedule_hook_patch_point_2-schedule_hook_patch_point;
+<span class="lineNum">     278 </span>            :         printk(KERN_DEBUG &quot;%s: schedule_hook is at address %p\n&quot;, KBUILD_MODNAME, schedule_hook);
+<span class="lineNum">     279 </span>            :         print_bytes(&quot;schedule_hook_patch_point: &quot;, (unsigned char *)schedule_hook_patch_point, patch_size);
+<span class="lineNum">     280 </span>            : 
+<span class="lineNum">     281 </span>            :         //patch schedule_hook_patch_point
+<span class="lineNum">     282 </span>            : 
+<span class="lineNum">     283 </span>            :         for (j=0; j&lt;backup_count; j++){
+<span class="lineNum">     284 </span>            :                 memcpy(schedule_hook_patch_point+j*patch_offset, b[j].bytes, b[j].len);
+<span class="lineNum">     285 </span>            :                 print_bytes(&quot;schedule_hook_patch_point after patch: &quot;, (unsigned char *)schedule_hook+j*(schedule_hook_2-schedule_hook), (schedule_hook_2-schedule_hook));
+<span class="lineNum">     286 </span>            :         }
+<span class="lineNum">     287 </span>            :         write_cr0(cr0);
+<span class="lineNum">     288 </span>            :         kfree(v);
+<span class="lineNum">     289 </span>            :         return 0;
+<span class="lineNum">     290 </span>            : }
+<span class="lineNum">     291 </span>            : 
+<span class="lineNum">     292 </span>            : 
+<span class="lineNum">     293 </span>            : static void schedule_unpatch(void) {
+<span class="lineNum">     294 </span>            : 
+<span class="lineNum">     295 </span>            :         unsigned long cr0;
+<span class="lineNum">     296 </span>            :         int i;
+<span class="lineNum">     297 </span>            : 
+<span class="lineNum">     298 </span>            :         synchronize_all();
+<span class="lineNum">     299 </span>            :         printk(KERN_DEBUG &quot;%s: restoring standard schedule function...\n&quot;, KBUILD_MODNAME);
+<span class="lineNum">     300 </span>            : 
+<span class="lineNum">     301 </span>            : 
+<span class="lineNum">     302 </span>            :         // To unpatch, simply place back original bytes of finish_task_switch
+<span class="lineNum">     303 </span>            :         cr0 = read_cr0();
+<span class="lineNum">     304 </span>            :         write_cr0(cr0 &amp; ~X86_CR0_WP);
+<span class="lineNum">     305 </span>            : 
+<span class="lineNum">     306 </span>            : 
+<span class="lineNum">     307 </span>            :         // Restore original bytes of finish_task_switch postamble
+<span class="lineNum">     308 </span>            :         for (i=0; i&lt;backup_count; i++){
+<span class="lineNum">     309 </span>            :                 memcpy(b[i].init_addr, b[i].bytes, b[i].len);
+<span class="lineNum">     310 </span>            :         }
+<span class="lineNum">     311 </span>            : 
+<span class="lineNum">     312 </span>            :         write_cr0(cr0);
+<span class="lineNum">     313 </span>            :         kfree(b);
+<span class="lineNum">     314 </span>            :         print_bytes(&quot;Schedule after restore: &quot;, finish_task_switch, finish_task_switch_next-finish_task_switch);
+<span class="lineNum">     315 </span>            :         printk(KERN_INFO &quot;%s: standard schedule function correctly restored...\n&quot;, KBUILD_MODNAME);
+<span class="lineNum">     316 </span>            :         unsynchronize_all();
+<span class="lineNum">     317 </span>            :         return;
+<span class="lineNum">     318 </span>            : }
+<span class="lineNum">     319 </span>            : 
+<span class="lineNum">     320 </span>            : 
+<span class="lineNum">     321 </span>            : static int schedule_hook_init(void) {
+<span class="lineNum">     322 </span>            : 
+<span class="lineNum">     323 </span>            :         int ret = 0;
+<span class="lineNum">     324 </span>            : 
+<span class="lineNum">     325 </span>            :         atomic_set(&amp;count,0);
+<span class="lineNum">     326 </span>            :         atomic_set(&amp;reference_count,0);
+<span class="lineNum">     327 </span>            : 
+<span class="lineNum">     328 </span>            :         printk(KERN_INFO &quot;%s: mounting the module\n&quot;, KBUILD_MODNAME);
+<span class="lineNum">     329 </span>            : 
+<span class="lineNum">     330 </span>            :         ret = schedule_patch();
+<span class="lineNum">     331 </span>            : 
+<span class="lineNum">     332 </span>            :         return 0;
+<span class="lineNum">     333 </span>            : }
+<span class="lineNum">     334 </span>            : 
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../../../../../../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.12</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>

@@ -1,0 +1,17 @@
+<map id="gvt_init_pending" name="gvt_init_pending">
+<area shape="rect" id="node2" href="$communication_2gvt_8h.html#ac35f5f227c553fffd0911c995c865e17" title="Shut down the MPI&#45;based distributed GVT reduction submodule. " alt="" coords="180,56,321,83"/>
+<area shape="rect" id="node12" href="$gvt_2gvt_8h.html#a10977cb9180000f423f184cca0b6338d" title="gvt_fini" alt="" coords="653,5,720,32"/>
+<area shape="rect" id="node13" href="$gvt_2gvt_8h.html#a234e866bb1e37fa25dec9bb40134234d" title="get_last_gvt" alt="" coords="201,157,301,184"/>
+<area shape="rect" id="node3" href="$mpi_8h.html#a38b0bdfeab3308a62e50dc362ebd2a68" title="Finalize inter&#45;kernel communication. " alt="" coords="369,56,565,83"/>
+<area shape="rect" id="node4" href="$communication_8h.html#a6bd2f352e0326608e9a2bef2efbde184" title="Finalize the communication subsystem. " alt="" coords="613,56,760,83"/>
+<area shape="rect" id="node5" href="$core_8h.html#a8f346536ccfbe77b78ed577674beb6cf" title="simulation_shutdown" alt="" coords="808,77,964,104"/>
+<area shape="rect" id="node6" href="$core_8c.html#a9b05d2af2e233e2616633eaa706682ee" title="exit_from_simulation\l_model" alt="" coords="1015,70,1170,111"/>
+<area shape="rect" id="node10" href="$main_8c.html#aa729cb27350c33119484501e13df4fec" title="main_simulation_loop" alt="" coords="1012,157,1173,184"/>
+<area shape="rect" id="node7" href="$core_8h.html#a7fb819521b1ab5fc7644ad216fe7b465" title="base_init" alt="" coords="1243,77,1321,104"/>
+<area shape="rect" id="node8" href="$init_8h.html#a417eb072179d09f441dbae3125049e46" title="SystemInit" alt="" coords="1391,77,1481,104"/>
+<area shape="rect" id="node9" href="$main_8c.html#a3c04138a5bfe5d72780bb7e82a18e627" title="main" alt="" coords="1529,103,1584,129"/>
+<area shape="rect" id="node11" href="$main_8c.html#af2ac8c142556588d87e6c069a4ca9894" title="end_computing" alt="" coords="1221,179,1343,205"/>
+<area shape="rect" id="node14" href="$queues_8h.html#a54eca9bfa893cac072d1b1d3010c2944" title="process_bottom_halves" alt="" coords="380,157,555,184"/>
+<area shape="rect" id="node15" href="$statistics_8c.html#ab7b584959699657a63a49384f07fd7a9" title="format_size" alt="" coords="419,107,516,133"/>
+<area shape="rect" id="node16" href="$statistics_8h.html#aeff52bbf045362270639b2baed20762b" title="statistics_stop" alt="" coords="629,107,744,133"/>
+</map>

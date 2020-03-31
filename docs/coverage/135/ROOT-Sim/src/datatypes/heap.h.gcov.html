@@ -1,0 +1,129 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - doc-coverage.info - ROOT-Sim/src/datatypes/heap.h</title>
+  <link rel="stylesheet" type="text/css" href="../../../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../../../index.html">top level</a> - <a href="index.html">ROOT-Sim/src/datatypes</a> - heap.h</td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">doc-coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">0</td>
+            <td class="headerCovTableEntry">7</td>
+            <td class="headerCovTableEntryLo">0.0 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2020-01-30 13:56:10</td>
+            <td></td>
+          </tr>
+          <tr><td><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<span class="lineNum">       1 </span><span class="lineNoCov">          0 : /*</span>
+<span class="lineNum">       2 </span>            :  * heap.h
+<span class="lineNum">       3 </span>            :  *
+<span class="lineNum">       4 </span>            :  *  Created on: 30 giu 2018
+<span class="lineNum">       5 </span>            :  *      Author: andrea
+<span class="lineNum">       6 </span>            :  */
+<span class="lineNum">       7 </span>            : 
+<span class="lineNum">       8 </span>            : #ifndef __HEAP_H_
+<span class="lineNum">       9 </span>            : #define __HEAP_H_
+<span class="lineNum">      10 </span>            : 
+<span class="lineNum">      11 </span>            : #include &lt;datatypes/array.h&gt;
+<span class="lineNum">      12 </span>            : 
+<span class="lineNum">      13 </span><span class="lineNoCov">          0 : #define rootsim_heap(type) rootsim_array(type)</span>
+<span class="lineNum">      14 </span>            : 
+<span class="lineNum">      15 </span><span class="lineNoCov">          0 : #define heap_init(self) array_init(self)</span>
+<span class="lineNum">      16 </span>            : 
+<span class="lineNum">      17 </span><span class="lineNoCov">          0 : #define heap_empty(self) array_empty(self)</span>
+<span class="lineNum">      18 </span>            : 
+<span class="lineNum">      19 </span><span class="lineNoCov">          0 : #define heap_insert(self, elem, cmp_f) ({\</span>
+<span class="lineNum">      20 </span>            :                 __typeof(array_count(self)) __i_h = array_count(self);\
+<span class="lineNum">      21 </span>            :                 array_push(self, elem);\
+<span class="lineNum">      22 </span>            :                 while(__i_h &amp;&amp; cmp_f(elem, array_items(self)[(__i_h - 1)/2]) &lt; 0){\
+<span class="lineNum">      23 </span>            :                         array_items(self)[__i_h] = array_items(self)[(__i_h - 1)/2];\
+<span class="lineNum">      24 </span>            :                         __i_h = (__i_h - 1)/2;\
+<span class="lineNum">      25 </span>            :                 }\
+<span class="lineNum">      26 </span>            :                 array_items(self)[__i_h] = elem;\
+<span class="lineNum">      27 </span>            :         })
+<span class="lineNum">      28 </span>            : 
+<span class="lineNum">      29 </span><span class="lineNoCov">          0 : #define heap_min(self) ((const)(array_items(self)[0]))</span>
+<span class="lineNum">      30 </span>            : 
+<span class="lineNum">      31 </span><span class="lineNoCov">          0 : #define heap_extract(self, cmp_f) ({\</span>
+<span class="lineNum">      32 </span>            :                 __typeof(*array_items(self)) __ret_h = array_items(self)[0]; \
+<span class="lineNum">      33 </span>            :                 __typeof(*array_items(self)) __last_h = array_pop(self); \
+<span class="lineNum">      34 </span>            :                 __typeof(array_count(self)) __i_h = 0; \
+<span class="lineNum">      35 </span>            :                 do{ \
+<span class="lineNum">      36 </span>            :                         __i_h &lt;&lt;= 1; \
+<span class="lineNum">      37 </span>            :                         ++__i_h; \
+<span class="lineNum">      38 </span>            :                         if(__i_h &gt;= array_count(self)){\
+<span class="lineNum">      39 </span>            :                                 break; \
+<span class="lineNum">      40 </span>            :                         } \
+<span class="lineNum">      41 </span>            :                         if(__i_h + 1 &lt; array_count(self)){ \
+<span class="lineNum">      42 </span>            :                                 if(cmp_f(array_items(self)[__i_h + 1], array_items(self)[__i_h]) &lt; 0) {\
+<span class="lineNum">      43 </span>            :                                         ++__i_h;\
+<span class="lineNum">      44 </span>            :                                 } \
+<span class="lineNum">      45 </span>            :                         }\
+<span class="lineNum">      46 </span>            :                         if(cmp_f(array_items(self)[__i_h], __last_h) &lt; 0) {\
+<span class="lineNum">      47 </span>            :                                 array_items(self)[(__i_h-1) &gt;&gt; 1] = array_items(self)[__i_h]; \
+<span class="lineNum">      48 </span>            :                         } \
+<span class="lineNum">      49 </span>            :                         else{ \
+<span class="lineNum">      50 </span>            :                                 break; \
+<span class="lineNum">      51 </span>            :                         }\
+<span class="lineNum">      52 </span>            :                 } while(1); \
+<span class="lineNum">      53 </span>            :                 array_items(self)[(__i_h-1) &gt;&gt; 1] = __last_h; \
+<span class="lineNum">      54 </span>            :                 __ret_h; \
+<span class="lineNum">      55 </span>            :         })
+<span class="lineNum">      56 </span>            : 
+<span class="lineNum">      57 </span>            : #endif /* __HEAP_H_ */
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.12</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>

@@ -1,0 +1,8 @@
+<map id="ParallelScheduleNewEvent" name="ParallelScheduleNewEvent">
+<area shape="rect" id="node2" href="$communication_8c.html#a56a4865196c169691525e99bae337519" title="Pack a message in a platform&#45;level data structure. " alt="" coords="277,31,364,57"/>
+<area shape="rect" id="node6" href="$queues_8c.html#aee531712d642cd5d4a54e613aa2c70f9" title="generate_mark" alt="" coords="261,81,381,108"/>
+<area shape="rect" id="node7" href="$communication_8c.html#ae80f5356cc32f9f2373305341e409b3b" title="Place a message in the temporary LP outgoing buffer. " alt="" coords="243,132,399,159"/>
+<area shape="rect" id="node3" href="$communication_8c.html#ab957dc2cd186382c50ef8cfde9761909" title="Get a buffer to keep a message. " alt="" coords="447,5,595,32"/>
+<area shape="rect" id="node4" href="$communication_8c.html#ae6b96249d35969d688d0d84209919c8f" title="Find a slab to allocate a message buffer. " alt="" coords="451,56,591,83"/>
+<area shape="rect" id="node5" href="$core_8c.html#a6793e4c70d69277f24ff0e494ed8ed10" title="find_kernel_by_gid" alt="" coords="643,56,781,83"/>
+</map>

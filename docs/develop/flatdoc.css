@@ -1,0 +1,47 @@
+body, table, div, p, dl {
+	font-size: 10pt;
+	line-height: normal;
+	font-family: Consolas, monospace;
+}
+
+.memdoc, dl.reflist dd {
+	background-image: none;
+	border-bottom-left-radius: 0px;
+	border-bottom-right-radius: 0px;
+	box-shadow: none;
+}
+
+.memproto, dl.reflist dt {
+	padding: 0px;
+	background-image: none;
+	text-shadow: none;
+	box-shadow: none;
+	border-top-left-radius: 0px;
+	border-top-right-radius: 0px;
+	text-shadow: none;
+}
+
+.dynheader {
+	font-weight: bold;
+	text-decoration: underline;
+	background-color: lightgrey;
+}
+
+td.mlabels-right {
+	vertical-align: middle;
+}
+
+.fieldtable th {
+	background-image: none;
+	border-radius: 0px;
+}
+
+table.fieldtable {
+	border-radius: 0px;
+	box-shadow: none;
+}
+
+div.ah, span.ah {
+	box-shadow: none;
+	background-image: none;
+}

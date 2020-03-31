@@ -1,0 +1,179 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - doc-coverage.info - ROOT-Sim/src/arch/asm_defines.c</title>
+  <link rel="stylesheet" type="text/css" href="../../../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../../../index.html">top level</a> - <a href="index.html">ROOT-Sim/src/arch</a> - asm_defines.c</td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">doc-coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">1</td>
+            <td class="headerCovTableEntry">1</td>
+            <td class="headerCovTableEntryHi">100.0 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2020-02-07 15:01:24</td>
+            <td></td>
+          </tr>
+          <tr><td><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<span class="lineNum">       1 </span><span class="lineCov">          1 : /**</span>
+<span class="lineNum">       2 </span>            :  * @file arch/asm_defines.c
+<span class="lineNum">       3 </span>            :  *
+<span class="lineNum">       4 </span>            :  * @brief Assembly build support module
+<span class="lineNum">       5 </span>            :  *
+<span class="lineNum">       6 </span>            :  * This file is not actually compiled into ROOT-Sim. This is used by the
+<span class="lineNum">       7 </span>            :  * system to generate the asm_defines.h file in which several sizes
+<span class="lineNum">       8 </span>            :  * offsets of structs are dynamically generated. In this way, the assembly
+<span class="lineNum">       9 </span>            :  * which we generate does not have to carry hard-coded constants and
+<span class="lineNum">      10 </span>            :  * nasty bugs are less likely to appear.
+<span class="lineNum">      11 </span>            :  *
+<span class="lineNum">      12 </span>            :  * This file is not compiled in the runtime environment, but it is
+<span class="lineNum">      13 </span>            :  * processed in order to generate the @c asm_defines.h one which is
+<span class="lineNum">      14 </span>            :  * included by all assembly files.
+<span class="lineNum">      15 </span>            :  *
+<span class="lineNum">      16 </span>            :  * @copyright
+<span class="lineNum">      17 </span>            :  * Copyright (C) 2008-2019 HPDCS Group
+<span class="lineNum">      18 </span>            :  * https://hpdcs.github.io
+<span class="lineNum">      19 </span>            :  *
+<span class="lineNum">      20 </span>            :  * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
+<span class="lineNum">      21 </span>            :  *
+<span class="lineNum">      22 </span>            :  * ROOT-Sim is free software; you can redistribute it and/or modify it under the
+<span class="lineNum">      23 </span>            :  * terms of the GNU General Public License as published by the Free Software
+<span class="lineNum">      24 </span>            :  * Foundation; only version 3 of the License applies.
+<span class="lineNum">      25 </span>            :  *
+<span class="lineNum">      26 </span>            :  * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
+<span class="lineNum">      27 </span>            :  * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+<span class="lineNum">      28 </span>            :  * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+<span class="lineNum">      29 </span>            :  *
+<span class="lineNum">      30 </span>            :  * You should have received a copy of the GNU General Public License along with
+<span class="lineNum">      31 </span>            :  * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
+<span class="lineNum">      32 </span>            :  * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+<span class="lineNum">      33 </span>            :  *
+<span class="lineNum">      34 </span>            :  * @author Alessandro Pellegrini
+<span class="lineNum">      35 </span>            :  */
+<span class="lineNum">      36 </span>            : 
+<span class="lineNum">      37 </span>            : 
+<span class="lineNum">      38 </span>            : #ifdef ASM_DEFINES
+<span class="lineNum">      39 </span>            : 
+<span class="lineNum">      40 </span>            : 
+<span class="lineNum">      41 </span>            : #include &lt;scheduler/process.h&gt;
+<span class="lineNum">      42 </span>            : #include &lt;arch/x86/jmp.h&gt;
+<span class="lineNum">      43 </span>            : 
+<span class="lineNum">      44 </span>            : /**
+<span class="lineNum">      45 </span>            :  * This macro emits some non-standard assembly code, which cannot be actually
+<span class="lineNum">      46 </span>            :  * assembled, but allows to retrieve the lines we are interested in in all
+<span class="lineNum">      47 </span>            :  * the garbage which is generated when compiling this file with -S. This is done
+<span class="lineNum">      48 </span>            :  * by prepending to the line the string &quot;-&gt;&quot; as a marker for the lines of interest.
+<span class="lineNum">      49 </span>            :  * We then emit a constant, which corresponds to the value of interest to be
+<span class="lineNum">      50 </span>            :  * retrieved using OFFSETOF() of SIZEOF().
+<span class="lineNum">      51 </span>            :  */
+<span class="lineNum">      52 </span>            : #define DEFINE(sym, val) __asm__ __volatile__(&quot;\n-&gt; &quot; #sym &quot; %0 \n&quot; : : &quot;i&quot; (val))
+<span class="lineNum">      53 </span>            : 
+<span class="lineNum">      54 </span>            : /**
+<span class="lineNum">      55 </span>            :  * This macro relies no the DEFINE() macro to generate a line in which the offset
+<span class="lineNum">      56 </span>            :  * of a member of a structure from the beginning of that structure is dynamically
+<span class="lineNum">      57 </span>            :  * computed at compile time.
+<span class="lineNum">      58 </span>            :  */
+<span class="lineNum">      59 </span>            : #define OFFSETOF(s, m) DEFINE(offsetof_##s##_##m, offsetof(s, m));
+<span class="lineNum">      60 </span>            : 
+<span class="lineNum">      61 </span>            : /**
+<span class="lineNum">      62 </span>            :  * This macro relies no the DEFINE() macro to generate a line in which the size
+<span class="lineNum">      63 </span>            :  * of a structure is dynamically computed at compile time.
+<span class="lineNum">      64 </span>            :  */
+<span class="lineNum">      65 </span>            : #define SIZEOF(s) DEFINE(sizeof_##s, sizeof(s));
+<span class="lineNum">      66 </span>            : 
+<span class="lineNum">      67 </span>            : /**
+<span class="lineNum">      68 </span>            :  * This is a function which is not actually compiled in the core, and thus
+<span class="lineNum">      69 </span>            :  * never ever executed. We declare in this function a set of statements which
+<span class="lineNum">      70 </span>            :  * are later assembled and post-processed using awk in the makefile to expose
+<span class="lineNum">      71 </span>            :  * to the assembly modules some constants which can only be computed by the
+<span class="lineNum">      72 </span>            :  * C compiler.
+<span class="lineNum">      73 </span>            :  * By doing this, if we change C struct definitions, we do not break assembly
+<span class="lineNum">      74 </span>            :  * code.
+<span class="lineNum">      75 </span>            :  *
+<span class="lineNum">      76 </span>            :  * @warning Do not call this function. This is not compiled in the library
+<span class="lineNum">      77 </span>            :  */
+<span class="lineNum">      78 </span>            : void foo(void)
+<span class="lineNum">      79 </span>            : {
+<span class="lineNum">      80 </span>            :         // We need the offset of the LP State to make a context switch in ECS
+<span class="lineNum">      81 </span>            :         SIZEOF(struct lp_struct);
+<span class="lineNum">      82 </span>            :         OFFSETOF(struct lp_struct, context);
+<span class="lineNum">      83 </span>            : 
+<span class="lineNum">      84 </span>            :         // Size and offsets of a context are used when creating/saving/restoring contexts in jmp.S
+<span class="lineNum">      85 </span>            :         SIZEOF(exec_context_t);
+<span class="lineNum">      86 </span>            :         OFFSETOF(exec_context_t, rax);
+<span class="lineNum">      87 </span>            :         OFFSETOF(exec_context_t, rdx);
+<span class="lineNum">      88 </span>            :         OFFSETOF(exec_context_t, rcx);
+<span class="lineNum">      89 </span>            :         OFFSETOF(exec_context_t, rbx);
+<span class="lineNum">      90 </span>            :         OFFSETOF(exec_context_t, rsp);
+<span class="lineNum">      91 </span>            :         OFFSETOF(exec_context_t, rbp);
+<span class="lineNum">      92 </span>            :         OFFSETOF(exec_context_t, rsi);
+<span class="lineNum">      93 </span>            :         OFFSETOF(exec_context_t, rdi);
+<span class="lineNum">      94 </span>            :         OFFSETOF(exec_context_t, r8);
+<span class="lineNum">      95 </span>            :         OFFSETOF(exec_context_t, r9);
+<span class="lineNum">      96 </span>            :         OFFSETOF(exec_context_t, r10);
+<span class="lineNum">      97 </span>            :         OFFSETOF(exec_context_t, r11);
+<span class="lineNum">      98 </span>            :         OFFSETOF(exec_context_t, r12);
+<span class="lineNum">      99 </span>            :         OFFSETOF(exec_context_t, r13);
+<span class="lineNum">     100 </span>            :         OFFSETOF(exec_context_t, r14);
+<span class="lineNum">     101 </span>            :         OFFSETOF(exec_context_t, r15);
+<span class="lineNum">     102 </span>            :         OFFSETOF(exec_context_t, rip);
+<span class="lineNum">     103 </span>            :         OFFSETOF(exec_context_t, flags);
+<span class="lineNum">     104 </span>            :         OFFSETOF(exec_context_t, fpu);
+<span class="lineNum">     105 </span>            : }
+<span class="lineNum">     106 </span>            : 
+<span class="lineNum">     107 </span>            : #endif /* ASM_DEFINES */
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.12</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>

@@ -1,0 +1,25 @@
+<map id="src/communication/wnd.h" name="src/communication/wnd.h">
+<area shape="rect" id="node2" href="$mpi_8h.html" title="MPI Support Module. " alt="" coords="934,80,993,107"/>
+<area shape="rect" id="node5" href="$ROOT-Sim_8h.html" title="ROOT&#45;Sim header for model development. " alt="" coords="866,632,965,659"/>
+<area shape="rect" id="node16" href="$atomic_8h.html" title="Atomic operations. " alt="" coords="429,707,540,733"/>
+<area shape="rect" id="node31" href="$mm_8h.html" title="Memory Manager main header. " alt="" coords="678,483,769,509"/>
+<area shape="rect" id="node34" href="$list_8h.html" title="Generic Lists. " alt="" coords="1325,557,1445,584"/>
+<area shape="rect" id="node4" href="$core_8h.html" title="Core ROOT&#45;Sim functionalities. " alt="" coords="451,557,545,584"/>
+<area shape="rect" id="node20" href="$statistics_8h.html" title="Statistics module. " alt="" coords="887,155,1039,181"/>
+<area shape="rect" id="node15" href="$thread_8h.html" title="Generic thread management facilities. " alt="" coords="91,632,199,659"/>
+<area shape="rect" id="node21" href="$process_8h.html" title="LP control blocks. " alt="" coords="888,229,1039,256"/>
+<area shape="rect" id="node22" href="$state_8h.html" title="LP state management. " alt="" coords="1064,319,1161,345"/>
+<area shape="rect" id="node23" href="$numerical_8h.html" title="Numerical Library. " alt="" coords="1381,408,1495,435"/>
+<area shape="rect" id="node24" href="$abm__layer_8h_source.html" title="lib/abm_layer.h" alt="" coords="904,408,1023,435"/>
+<area shape="rect" id="node25" href="$topology_8h_source.html" title="lib/topology.h" alt="" coords="1149,408,1255,435"/>
+<area shape="rect" id="node33" href="$ecs_8h.html" title="Event &amp; Cross State Synchornization. " alt="" coords="480,319,567,345"/>
+<area shape="rect" id="node36" href="$msgchannel_8h.html" title="A (M, 1) channel for messages. " alt="" coords="185,483,365,509"/>
+<area shape="rect" id="node37" href="$ult_8h.html" title="User&#45;Level Threads Headers. " alt="" coords="591,319,674,345"/>
+<area shape="rect" id="node40" href="$communication_8h.html" title="Communication Routines. " alt="" coords="220,319,456,345"/>
+<area shape="rect" id="node41" href="$cross__state__manager_8h.html" title="Per&#45;thread page table. " alt="" coords="749,304,914,360"/>
+<area shape="rect" id="node26" href="$jsmn__helper_8h_source.html" title="lib/jsmn_helper.h" alt="" coords="1176,483,1305,509"/>
+<area shape="rect" id="node29" href="$bitmap_8h.html" title="Bitmap data type. " alt="" coords="954,483,1101,509"/>
+<area shape="rect" id="node27" href="$jsmn_8h_source.html" title="lib/jsmn.h" alt="" coords="1218,557,1301,584"/>
+<area shape="rect" id="node38" href="$jmp_8h.html" title="Architecture&#45;independent ULT header. " alt="" coords="546,408,637,435"/>
+<area shape="rect" id="node39" href="$x86_2jmp_8h.html" title="x86 ULT support header " alt="" coords="535,483,653,509"/>
+</map>

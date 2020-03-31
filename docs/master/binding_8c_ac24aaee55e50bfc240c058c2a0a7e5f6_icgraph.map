@@ -1,0 +1,8 @@
+<map id="compare_lp_cost" name="compare_lp_cost">
+<area shape="rect" id="node2" href="$binding_8c.html#a7356539bd24b02d48f6ac1d7e37a8eb4" title="LP_knapsack" alt="" coords="184,31,288,57"/>
+<area shape="rect" id="node3" href="$binding_8h.html#ae26b2a8055156e8648f8ad806f5fa5b0" title="rebind_LPs" alt="" coords="336,31,427,57"/>
+<area shape="rect" id="node4" href="$main_8c.html#aa729cb27350c33119484501e13df4fec" title="main_simulation_loop" alt="" coords="475,5,636,32"/>
+<area shape="rect" id="node7" href="$scheduler_8h.html#a1b1b085c6b05a9d202a1629dcd71cffe" title="LP_main_loop" alt="" coords="500,56,611,83"/>
+<area shape="rect" id="node5" href="$main_8c.html#af2ac8c142556588d87e6c069a4ca9894" title="end_computing" alt="" coords="684,5,805,32"/>
+<area shape="rect" id="node6" href="$main_8c.html#a3c04138a5bfe5d72780bb7e82a18e627" title="main" alt="" coords="717,56,772,83"/>
+</map>

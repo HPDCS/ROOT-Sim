@@ -1,0 +1,743 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - doc-coverage.info - ROOT-Sim/src/communication/communication.c</title>
+  <link rel="stylesheet" type="text/css" href="../../../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../../../index.html">top level</a> - <a href="index.html">ROOT-Sim/src/communication</a> - communication.c</td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">doc-coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">20</td>
+            <td class="headerCovTableEntry">20</td>
+            <td class="headerCovTableEntryHi">100.0 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2020-01-31 15:54:55</td>
+            <td></td>
+          </tr>
+          <tr><td><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<span class="lineNum">       1 </span><span class="lineCov">          1 : /**</span>
+<span class="lineNum">       2 </span>            : * @file communication/communication.c
+<span class="lineNum">       3 </span>            : *
+<span class="lineNum">       4 </span>            : * @brief Communication Routines
+<span class="lineNum">       5 </span>            : *
+<span class="lineNum">       6 </span>            : * This file contains all the communication routines, for exchanging
+<span class="lineNum">       7 </span>            : * messages among different logical processes and simulator instances.
+<span class="lineNum">       8 </span>            : *
+<span class="lineNum">       9 </span>            : * @copyright
+<span class="lineNum">      10 </span>            : * Copyright (C) 2008-2019 HPDCS Group
+<span class="lineNum">      11 </span>            : * https://hpdcs.github.io
+<span class="lineNum">      12 </span>            : *
+<span class="lineNum">      13 </span>            : * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
+<span class="lineNum">      14 </span>            : *
+<span class="lineNum">      15 </span>            : * ROOT-Sim is free software; you can redistribute it and/or modify it under the
+<span class="lineNum">      16 </span>            : * terms of the GNU General Public License as published by the Free Software
+<span class="lineNum">      17 </span>            : * Foundation; only version 3 of the License applies.
+<span class="lineNum">      18 </span>            : *
+<span class="lineNum">      19 </span>            : * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
+<span class="lineNum">      20 </span>            : * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+<span class="lineNum">      21 </span>            : * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+<span class="lineNum">      22 </span>            : *
+<span class="lineNum">      23 </span>            : * You should have received a copy of the GNU General Public License along with
+<span class="lineNum">      24 </span>            : * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
+<span class="lineNum">      25 </span>            : * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+<span class="lineNum">      26 </span>            : *
+<span class="lineNum">      27 </span>            : * @author Francesco Quaglia
+<span class="lineNum">      28 </span>            : * @author Roberto Vitali
+<span class="lineNum">      29 </span>            : * @author Alessandro Pellegrini
+<span class="lineNum">      30 </span>            : */
+<span class="lineNum">      31 </span>            : 
+<span class="lineNum">      32 </span>            : #include &lt;stdlib.h&gt;
+<span class="lineNum">      33 </span>            : #include &lt;float.h&gt;
+<span class="lineNum">      34 </span>            : 
+<span class="lineNum">      35 </span>            : #include &lt;core/core.h&gt;
+<span class="lineNum">      36 </span>            : #include &lt;gvt/gvt.h&gt;
+<span class="lineNum">      37 </span>            : #include &lt;queues/queues.h&gt;
+<span class="lineNum">      38 </span>            : #include &lt;communication/communication.h&gt;
+<span class="lineNum">      39 </span>            : #include &lt;statistics/statistics.h&gt;
+<span class="lineNum">      40 </span>            : #include &lt;scheduler/scheduler.h&gt;
+<span class="lineNum">      41 </span>            : #include &lt;scheduler/process.h&gt;
+<span class="lineNum">      42 </span>            : #include &lt;datatypes/list.h&gt;
+<span class="lineNum">      43 </span>            : #include &lt;mm/mm.h&gt;
+<span class="lineNum">      44 </span>            : #include &lt;arch/atomic.h&gt;
+<span class="lineNum">      45 </span>            : #ifdef HAVE_MPI
+<span class="lineNum">      46 </span>            : #include &lt;communication/mpi.h&gt;
+<span class="lineNum">      47 </span>            : #endif
+<span class="lineNum">      48 </span>            : 
+<span class="lineNum">      49 </span>            : /// This is the function pointer to correctly set ScheduleNewEvent API version, depending if we're running serially or in parallel
+<span class="lineNum">      50 </span><span class="lineCov">          1 : void (*ScheduleNewEvent)(unsigned int gid_receiver, simtime_t timestamp, unsigned int event_type, void *event_content, unsigned int event_size);</span>
+<span class="lineNum">      51 </span>            : 
+<span class="lineNum">      52 </span>            : /**
+<span class="lineNum">      53 </span>            : * @brief Initialize the communication subsystem
+<span class="lineNum">      54 </span>            : *
+<span class="lineNum">      55 </span>            : * This function initializes the communication subsystem. It is called
+<span class="lineNum">      56 </span>            : * by the init module upon simulation startup. Any initialization of
+<span class="lineNum">      57 </span>            : * this subsystem should be placed here.
+<span class="lineNum">      58 </span>            : */
+<span class="lineNum">      59 </span><span class="lineCov">          1 : void communication_init(void)</span>
+<span class="lineNum">      60 </span>            : {
+<span class="lineNum">      61 </span>            : #ifdef HAVE_MPI
+<span class="lineNum">      62 </span>            :         inter_kernel_comm_init();
+<span class="lineNum">      63 </span>            : #endif
+<span class="lineNum">      64 </span>            : }
+<span class="lineNum">      65 </span>            : 
+<span class="lineNum">      66 </span>            : 
+<span class="lineNum">      67 </span>            : /**
+<span class="lineNum">      68 </span>            : * @brief Finalize the communication subsystem
+<span class="lineNum">      69 </span>            : *
+<span class="lineNum">      70 </span>            : * This function finalizes the communication subsystem. It is called
+<span class="lineNum">      71 </span>            : * by at simulation shutdown, both if the simulation was successful or
+<span class="lineNum">      72 </span>            : * if it failed. This is the place where to cleanly shutdown the
+<span class="lineNum">      73 </span>            : * communication subsystem.
+<span class="lineNum">      74 </span>            : */
+<span class="lineNum">      75 </span><span class="lineCov">          1 : void communication_fini(void)</span>
+<span class="lineNum">      76 </span>            : {
+<span class="lineNum">      77 </span>            : #ifdef HAVE_MPI
+<span class="lineNum">      78 </span>            :         inter_kernel_comm_finalize();
+<span class="lineNum">      79 </span>            :         mpi_finalize();
+<span class="lineNum">      80 </span>            : #endif
+<span class="lineNum">      81 </span>            : 
+<span class="lineNum">      82 </span>            :         // Release memory used for remaining input/output queues
+<span class="lineNum">      83 </span>            :         foreach_lp(lp) {
+<span class="lineNum">      84 </span>            :                 while (!list_empty(lp-&gt;queue_in)) {
+<span class="lineNum">      85 </span>            :                         list_pop(lp-&gt;queue_in);
+<span class="lineNum">      86 </span>            :                 }
+<span class="lineNum">      87 </span>            :                 while (!list_empty(lp-&gt;queue_out)) {
+<span class="lineNum">      88 </span>            :                         list_pop(lp-&gt;queue_out);
+<span class="lineNum">      89 </span>            :                 }
+<span class="lineNum">      90 </span>            :         }
+<span class="lineNum">      91 </span>            : }
+<span class="lineNum">      92 </span>            : 
+<span class="lineNum">      93 </span>            : 
+<span class="lineNum">      94 </span>            : /**
+<span class="lineNum">      95 </span>            : * @brief Find a slab to allocate a message buffer
+<span class="lineNum">      96 </span>            : *
+<span class="lineNum">      97 </span>            : * Messages are kept in per-LP memory. This function is used to find out
+<span class="lineNum">      98 </span>            : * from what LP slab a message buffer should be allocated. The reason for
+<span class="lineNum">      99 </span>            : * such a function to exist is because messages can be targeted to local
+<span class="lineNum">     100 </span>            : * or remote LPs, but in both cases we need some memory. Therefore, this
+<span class="lineNum">     101 </span>            : * function takes the GID of two LPs and finds out whether the destination
+<span class="lineNum">     102 </span>            : * LP is local or not. If it is local, then the message will be incorporated
+<span class="lineNum">     103 </span>            : * in some local LP queue, therefore we take memory from there. On the
+<span class="lineNum">     104 </span>            : * other hand, if the LP is remote, it means that we are packing a message
+<span class="lineNum">     105 </span>            : * which will be later passed to MPI for remote transmission---as soon as
+<span class="lineNum">     106 </span>            : * the transmission is completed, that buffer will be released. Therefore,
+<span class="lineNum">     107 </span>            : * in that case, we take the memory from the source LP.
+<span class="lineNum">     108 </span>            : *
+<span class="lineNum">     109 </span>            : * @param sender The GID of the sender LP of a message
+<span class="lineNum">     110 </span>            : * @param receiver the GID of the destination LP of the message
+<span class="lineNum">     111 </span>            : */
+<span class="lineNum">     112 </span><span class="lineCov">          1 : static inline struct lp_struct *which_slab_to_use(GID_t sender, GID_t receiver)</span>
+<span class="lineNum">     113 </span>            : {
+<span class="lineNum">     114 </span>            :         if (find_kernel_by_gid(receiver) == kid)
+<span class="lineNum">     115 </span>            :                 return find_lp_by_gid(receiver);
+<span class="lineNum">     116 </span>            :         return find_lp_by_gid(sender);
+<span class="lineNum">     117 </span>            : }
+<span class="lineNum">     118 </span>            : 
+<span class="lineNum">     119 </span>            : 
+<span class="lineNum">     120 </span>            : /**
+<span class="lineNum">     121 </span>            : * @brief Release a message header
+<span class="lineNum">     122 </span>            : *
+<span class="lineNum">     123 </span>            : * Message headers are taken always from the sender LP, as they are the
+<span class="lineNum">     124 </span>            : * compact representation of an antimessage. Therefore, the release function
+<span class="lineNum">     125 </span>            : * does not check whether the LP is local or not, but it frees memory
+<span class="lineNum">     126 </span>            : * directly from the sender slab allocator.
+<span class="lineNum">     127 </span>            : *
+<span class="lineNum">     128 </span>            : * @param msg A pointer to the message header to release
+<span class="lineNum">     129 </span>            : */
+<span class="lineNum">     130 </span><span class="lineCov">          1 : void msg_hdr_release(msg_hdr_t *msg)</span>
+<span class="lineNum">     131 </span>            : {
+<span class="lineNum">     132 </span>            :         struct lp_struct *lp;
+<span class="lineNum">     133 </span>            : 
+<span class="lineNum">     134 </span>            :         lp = find_lp_by_gid(msg-&gt;sender);
+<span class="lineNum">     135 </span>            :         slab_free(lp-&gt;mm-&gt;slab, msg);
+<span class="lineNum">     136 </span>            : }
+<span class="lineNum">     137 </span>            : 
+<span class="lineNum">     138 </span>            : 
+<span class="lineNum">     139 </span>            : /**
+<span class="lineNum">     140 </span>            : * @brief Get a buffer to keep a message header
+<span class="lineNum">     141 </span>            : *
+<span class="lineNum">     142 </span>            : * Message headers are the compact way used to represent antimessages. This
+<span class="lineNum">     143 </span>            : * function retrieves a buffer to keep a message header. Antimessages are
+<span class="lineNum">     144 </span>            : * associated with the sender LP, so the @ref lp_struct used here must be
+<span class="lineNum">     145 </span>            : * the one of the sender LP.
+<span class="lineNum">     146 </span>            : *
+<span class="lineNum">     147 </span>            : * @todo This function is hacky: to preserve memory separation, we rely on
+<span class="lineNum">     148 </span>            : *       the LP message slab. Nevertheless, currently we have only a slab
+<span class="lineNum">     149 </span>            : *       for one single size, which is the size of a message. Therefore,
+<span class="lineNum">     150 </span>            : *       we are wasting a lot lot lot of memory here to keep antimessages.
+<span class="lineNum">     151 </span>            : *       A separate per-LP slab allocator, sized to the size of a message
+<span class="lineNum">     152 </span>            : *       header, should be added.
+<span class="lineNum">     153 </span>            : *
+<span class="lineNum">     154 </span>            : * @param lp A pointer to the @ref lp_struct where to take the message header
+<span class="lineNum">     155 </span>            : *           from. The slab allocator of the LP is used.
+<span class="lineNum">     156 </span>            : *
+<span class="lineNum">     157 </span>            : * @return A pointer to the freshly allocated buffer. It is large enough to
+<span class="lineNum">     158 </span>            : *         keep a @ref msg_hdr_t datatype.
+<span class="lineNum">     159 </span>            : */
+<span class="lineNum">     160 </span><span class="lineCov">          1 : msg_hdr_t *get_msg_hdr_from_slab(struct lp_struct *lp)</span>
+<span class="lineNum">     161 </span>            : {
+<span class="lineNum">     162 </span>            :         // TODO: The magnitude of this hack compares to that of the national debt.
+<span class="lineNum">     163 </span>            :         // We are wasting a lot of memory from the LP buddy just to keep antimessages!
+<span class="lineNum">     164 </span>            :         msg_hdr_t *msg = (msg_hdr_t *) get_msg_from_slab(lp);
+<span class="lineNum">     165 </span>            :         bzero(msg, SLAB_MSG_SIZE);
+<span class="lineNum">     166 </span>            :         return msg;
+<span class="lineNum">     167 </span>            : }
+<span class="lineNum">     168 </span>            : 
+<span class="lineNum">     169 </span>            : 
+<span class="lineNum">     170 </span>            : /**
+<span class="lineNum">     171 </span>            : * @brief Get a buffer to keep a message.
+<span class="lineNum">     172 </span>            : *
+<span class="lineNum">     173 </span>            : * This function allocates a buffer from the slab of the LP identified by
+<span class="lineNum">     174 </span>            : * the specified @ref lp_struct to keep a message.
+<span class="lineNum">     175 </span>            : *
+<span class="lineNum">     176 </span>            : * @warning The slab allocator is configured at simulation startup to keep
+<span class="lineNum">     177 </span>            : *          buffers of size @ref SLAB_MSG_SIZE. The type @ref msg_t uses
+<span class="lineNum">     178 </span>            : *          a flexible array (the @c event_content member) to keep also
+<span class="lineNum">     179 </span>            : *          the model-specific payload. Therefore, if the size of the payload
+<span class="lineNum">     180 </span>            : *          is such that @c sizeof(msg_t)+payload is larger that @ref SLAB_MSG_SIZE,
+<span class="lineNum">     181 </span>            : *          relying on this function to allocate a @ref msg_t will generate
+<span class="lineNum">     182 </span>            : *          a memory overflow. @b ALWAYS check the size of the payload before
+<span class="lineNum">     183 </span>            : *          getting a message buffer from here!
+<span class="lineNum">     184 </span>            : *
+<span class="lineNum">     185 </span>            : * @param lp A pointer to the @ref lp_struct where to take the message
+<span class="lineNum">     186 </span>            : *           buffer from. The slab allocator of the LP is used.
+<span class="lineNum">     187 </span>            : *
+<span class="lineNum">     188 </span>            : * @return A pointer to the freshly allocated buffer. It is large enough to
+<span class="lineNum">     189 </span>            : *         keep a @ref msg_t datatype, but it might be too small to also
+<span class="lineNum">     190 </span>            : *         keep the event payload.
+<span class="lineNum">     191 </span>            : */
+<span class="lineNum">     192 </span><span class="lineCov">          1 : msg_t *get_msg_from_slab(struct lp_struct *lp)</span>
+<span class="lineNum">     193 </span>            : {
+<span class="lineNum">     194 </span>            :         msg_t *msg = (msg_t *) slab_alloc(lp-&gt;mm-&gt;slab);
+<span class="lineNum">     195 </span>            :         bzero(msg, SLAB_MSG_SIZE);
+<span class="lineNum">     196 </span>            :         return msg;
+<span class="lineNum">     197 </span>            : }
+<span class="lineNum">     198 </span>            : 
+<span class="lineNum">     199 </span>            : 
+<span class="lineNum">     200 </span>            : /**
+<span class="lineNum">     201 </span>            :  * @brief Release a message buffer
+<span class="lineNum">     202 </span>            :  *
+<span class="lineNum">     203 </span>            :  * This function releases a message buffer which is no longer needed
+<span class="lineNum">     204 </span>            :  * (i.e., it was keeping a message annihilated by a corresponding
+<span class="lineNum">     205 </span>            :  * antimessage, or a message which is now beyond the commit horizon
+<span class="lineNum">     206 </span>            :  * identified by the GVT).
+<span class="lineNum">     207 </span>            :  *
+<span class="lineNum">     208 </span>            :  * To free the message, this function checks againts the total size
+<span class="lineNum">     209 </span>            :  * of the message, considering both the size of the @ref msg_t structure
+<span class="lineNum">     210 </span>            :  * and that of the payload kept in the @c event_content member of @ref msg_t.
+<span class="lineNum">     211 </span>            :  * If the total size is smaller than @ref SLAB_MSG_SIZE, then the message
+<span class="lineNum">     212 </span>            :  * was taken from a slab, otherwise it has been taken by the buddy system.
+<span class="lineNum">     213 </span>            :  * Therefore, we free the buffer from the corresponding data structure.
+<span class="lineNum">     214 </span>            :  *
+<span class="lineNum">     215 </span>            :  * Messages are freed using this function both if they are stable and
+<span class="lineNum">     216 </span>            :  * transient in this simulation instance, i.e. if they were destined
+<span class="lineNum">     217 </span>            :  * for a local LP or if they were temporarily allocated here to be
+<span class="lineNum">     218 </span>            :  * transmitted to a remote rank using MPI. Therefore, the function
+<span class="lineNum">     219 </span>            :  * which_slab_to_use() is queried to find out the proper slab to use
+<span class="lineNum">     220 </span>            :  * for deallocating the buffer.
+<span class="lineNum">     221 </span>            :  *
+<span class="lineNum">     222 </span>            :  * @param msg A pointer to the message buffer to release.
+<span class="lineNum">     223 </span>            :  */
+<span class="lineNum">     224 </span><span class="lineCov">          1 : void msg_release(msg_t *msg)</span>
+<span class="lineNum">     225 </span>            : {
+<span class="lineNum">     226 </span>            :         struct lp_struct *lp;
+<span class="lineNum">     227 </span>            : 
+<span class="lineNum">     228 </span>            :         if (likely(sizeof(msg_t) + msg-&gt;size &lt;= SLAB_MSG_SIZE)) {
+<span class="lineNum">     229 </span>            :                 lp = which_slab_to_use(msg-&gt;sender, msg-&gt;receiver);
+<span class="lineNum">     230 </span>            :                 slab_free(lp-&gt;mm-&gt;slab, msg);
+<span class="lineNum">     231 </span>            :         } else {
+<span class="lineNum">     232 </span>            :                 rsfree(msg);
+<span class="lineNum">     233 </span>            :         }
+<span class="lineNum">     234 </span>            : }
+<span class="lineNum">     235 </span>            : 
+<span class="lineNum">     236 </span>            : 
+<span class="lineNum">     237 </span>            : /**
+<span class="lineNum">     238 </span>            :  * @brief Schedule a new message to some LP
+<span class="lineNum">     239 </span>            :  *
+<span class="lineNum">     240 </span>            :  * This is one of the entry points from the application model, used in
+<span class="lineNum">     241 </span>            :  * parallel/distributed simulations. The simulation model calls
+<span class="lineNum">     242 </span>            :  * ScheduleNewEvent() which is a function pointer, set to point to this
+<span class="lineNum">     243 </span>            :  * implementation if the @c --sequential flag is not passed as an option.
+<span class="lineNum">     244 </span>            :  *
+<span class="lineNum">     245 </span>            :  * This function performs all the required sanity checks:
+<span class="lineNum">     246 </span>            :  * * Is the destination LP id valid?
+<span class="lineNum">     247 </span>            :  * * Are we sending an event to the past?
+<span class="lineNum">     248 </span>            :  * * Is the event type in a valid range?
+<span class="lineNum">     249 </span>            :  *
+<span class="lineNum">     250 </span>            :  * If all the checks pass, then the event content is copied in a platform-level
+<span class="lineNum">     251 </span>            :  * buffer and a pointer to it is placed in the temporary LP outgoing buffer,
+<span class="lineNum">     252 </span>            :  * for later delivery (possibly via MPI).
+<span class="lineNum">     253 </span>            :  *
+<span class="lineNum">     254 </span>            :  * If the LP is running in silent execution, this function simply returns
+<span class="lineNum">     255 </span>            :  * as the event has already been sent during a previous event execution.
+<span class="lineNum">     256 </span>            :  * 
+<span class="lineNum">     257 </span>            :  * @param gid_receiver Global id of logical process at which the message must be delivered
+<span class="lineNum">     258 </span>            :  * @param timestamp Logical Virtual Time associated with the event enveloped into the message
+<span class="lineNum">     259 </span>            :  * @param event_type Type of the event
+<span class="lineNum">     260 </span>            :  * @param event_content Payload of the event
+<span class="lineNum">     261 </span>            :  * @param event_size Size of event's payload
+<span class="lineNum">     262 </span>            :  */
+<span class="lineNum">     263 </span><span class="lineCov">          1 : void ParallelScheduleNewEvent(unsigned int gid_receiver, simtime_t timestamp, unsigned int event_type, void *event_content, unsigned int event_size)</span>
+<span class="lineNum">     264 </span>            : {
+<span class="lineNum">     265 </span>            :         msg_t *event;
+<span class="lineNum">     266 </span>            :         GID_t receiver;
+<span class="lineNum">     267 </span>            : 
+<span class="lineNum">     268 </span>            :         switch_to_platform_mode();
+<span class="lineNum">     269 </span>            : 
+<span class="lineNum">     270 </span>            :         // Internally to the platform, the receiver is a GID, while models
+<span class="lineNum">     271 </span>            :         // have no difference across GIDs and LIDs. We convert here the passed
+<span class="lineNum">     272 </span>            :         // id to a GID.
+<span class="lineNum">     273 </span>            :         set_gid(receiver, gid_receiver);
+<span class="lineNum">     274 </span>            : 
+<span class="lineNum">     275 </span>            :         // In Silent execution, we do not send again already sent messages
+<span class="lineNum">     276 </span>            :         if (unlikely(current-&gt;state == LP_STATE_SILENT_EXEC)) {
+<span class="lineNum">     277 </span>            :                 return;
+<span class="lineNum">     278 </span>            :         }
+<span class="lineNum">     279 </span>            :         // Check whether the destination LP is out of range
+<span class="lineNum">     280 </span>            :         if (unlikely(gid_receiver &gt; n_prc_tot - 1)) {        // It's unsigned, so no need to check whether it's &lt; 0
+<span class="lineNum">     281 </span>            :                 rootsim_error(false, &quot;Warning: the destination LP %u is out of range. The event has been ignored\n&quot;, gid_receiver);
+<span class="lineNum">     282 </span>            :                 goto out;
+<span class="lineNum">     283 </span>            :         }
+<span class="lineNum">     284 </span>            :         // Check if the associated timestamp is negative
+<span class="lineNum">     285 </span>            :         if (unlikely(timestamp &lt; lvt(current))) {
+<span class="lineNum">     286 </span>            :                 rootsim_error(true, &quot;LP %u is trying to generate an event (type %d) to %u in the past! (Current LVT = %f, generated event's timestamp = %f) Aborting...\n&quot;,
+<span class="lineNum">     287 </span>            :                               current-&gt;gid, event_type, gid_receiver,
+<span class="lineNum">     288 </span>            :                               lvt(current), timestamp);
+<span class="lineNum">     289 </span>            :         }
+<span class="lineNum">     290 </span>            :         // Check if the event type is mapped to an internal control message
+<span class="lineNum">     291 </span>            :         if (unlikely(event_type &gt;= RESERVED_MSG_CODE)) {
+<span class="lineNum">     292 </span>            :                 rootsim_error(true, &quot;LP %u is generating an event with type %d which is a reserved type. Switch event type to a value less than %d. Aborting...\n&quot;,
+<span class="lineNum">     293 </span>            :                               current-&gt;gid, event_type, MIN_VALUE_CONTROL);
+<span class="lineNum">     294 </span>            :         }
+<span class="lineNum">     295 </span>            : 
+<span class="lineNum">     296 </span>            :         // Copy all the information into the event structure
+<span class="lineNum">     297 </span>            :         pack_msg(&amp;event, current-&gt;gid, receiver, event_type, timestamp, lvt(current), event_size, event_content);
+<span class="lineNum">     298 </span>            :         event-&gt;mark = generate_mark(current);
+<span class="lineNum">     299 </span>            : 
+<span class="lineNum">     300 </span>            :         if (unlikely(event-&gt;type == RENDEZVOUS_START)) {
+<span class="lineNum">     301 </span>            :                 event-&gt;rendezvous_mark = current_evt-&gt;rendezvous_mark;
+<span class="lineNum">     302 </span>            :                 printf(&quot;rendezvous_start mark=%llu\n&quot;, event-&gt;rendezvous_mark);
+<span class="lineNum">     303 </span>            :                 fflush(stdout);
+<span class="lineNum">     304 </span>            :         }
+<span class="lineNum">     305 </span>            : 
+<span class="lineNum">     306 </span>            :         insert_outgoing_msg(event);
+<span class="lineNum">     307 </span>            : 
+<span class="lineNum">     308 </span>            :  out:
+<span class="lineNum">     309 </span>            :         switch_to_application_mode();
+<span class="lineNum">     310 </span>            : }
+<span class="lineNum">     311 </span>            : 
+<span class="lineNum">     312 </span>            : 
+<span class="lineNum">     313 </span>            : /**
+<span class="lineNum">     314 </span>            :  * @brief Send all antimessages for a certain LP
+<span class="lineNum">     315 </span>            :  *
+<span class="lineNum">     316 </span>            :  * This function send all the antimessages for a certain LP, provided
+<span class="lineNum">     317 </span>            :  * a simulation time (which is associated with the time at which
+<span class="lineNum">     318 </span>            :  * we are rolling back.
+<span class="lineNum">     319 </span>            :  *
+<span class="lineNum">     320 </span>            :  * After that the antimessage is sent, the header is immediately removed
+<span class="lineNum">     321 </span>            :  * from the output queue, as MPI guarantees that the antimessage is
+<span class="lineNum">     322 </span>            :  * eventually received at the destination.
+<span class="lineNum">     323 </span>            :  *
+<span class="lineNum">     324 </span>            :  * @param lp A pointer to the LP lp_struct for which antimessages should be sent
+<span class="lineNum">     325 </span>            :  * @param after_simtime The simulation time instant after which to send antimessages
+<span class="lineNum">     326 </span>            :  */
+<span class="lineNum">     327 </span><span class="lineCov">          1 : void send_antimessages(struct lp_struct *lp, simtime_t after_simtime)</span>
+<span class="lineNum">     328 </span>            : {
+<span class="lineNum">     329 </span>            :         msg_hdr_t *anti_msg, *anti_msg_prev;
+<span class="lineNum">     330 </span>            :         msg_t *msg;
+<span class="lineNum">     331 </span>            : 
+<span class="lineNum">     332 </span>            :         if (unlikely(list_empty(lp-&gt;queue_out)))
+<span class="lineNum">     333 </span>            :                 return;
+<span class="lineNum">     334 </span>            : 
+<span class="lineNum">     335 </span>            :         // Scan the output queue backwards, sending all required antimessages
+<span class="lineNum">     336 </span>            :         anti_msg = list_tail(lp-&gt;queue_out);
+<span class="lineNum">     337 </span>            :         while (anti_msg != NULL &amp;&amp; anti_msg-&gt;send_time &gt; after_simtime) {
+<span class="lineNum">     338 </span>            :                 msg = get_msg_from_slab(which_slab_to_use(anti_msg-&gt;sender, anti_msg-&gt;receiver));
+<span class="lineNum">     339 </span>            :                 hdr_to_msg(anti_msg, msg);
+<span class="lineNum">     340 </span>            :                 msg-&gt;message_kind = negative;
+<span class="lineNum">     341 </span>            : 
+<span class="lineNum">     342 </span>            :                 Send(msg);
+<span class="lineNum">     343 </span>            : 
+<span class="lineNum">     344 </span>            :                 // Remove the already-sent antimessage from the output queue
+<span class="lineNum">     345 </span>            :                 anti_msg_prev = list_prev(anti_msg);
+<span class="lineNum">     346 </span>            :                 list_delete_by_content(lp-&gt;queue_out, anti_msg);
+<span class="lineNum">     347 </span>            :                 msg_hdr_release(anti_msg);
+<span class="lineNum">     348 </span>            :                 anti_msg = anti_msg_prev;
+<span class="lineNum">     349 </span>            :         }
+<span class="lineNum">     350 </span>            : }
+<span class="lineNum">     351 </span>            : 
+<span class="lineNum">     352 </span>            : 
+<span class="lineNum">     353 </span>            : 
+<span class="lineNum">     354 </span>            : /**
+<span class="lineNum">     355 </span>            :  * @brief Send a message
+<span class="lineNum">     356 </span>            :  *
+<span class="lineNum">     357 </span>            :  * This function sends a message. This is the decision point where a
+<span class="lineNum">     358 </span>            :  * message receiver is checked to understand whether it must be sent using
+<span class="lineNum">     359 </span>            :  * MPI, or if it is heading towards a local LP and therefore it can be
+<span class="lineNum">     360 </span>            :  * placed in the bottom half buffer.
+<span class="lineNum">     361 </span>            :  *
+<span class="lineNum">     362 </span>            :  * This function is therefore a uniform internal API function to implement
+<span class="lineNum">     363 </span>            :  * message passing in a parallel/distributed simulation environment.
+<span class="lineNum">     364 </span>            :  *
+<span class="lineNum">     365 </span>            :  * @param msg A pointer to the message to send
+<span class="lineNum">     366 </span>            :  */
+<span class="lineNum">     367 </span><span class="lineCov">          1 : void Send(msg_t *msg)</span>
+<span class="lineNum">     368 </span>            : {
+<span class="lineNum">     369 </span>            : #ifdef HAVE_MPI
+<span class="lineNum">     370 </span>            :         // Check whether the message recepient kernel is remote
+<span class="lineNum">     371 </span>            :         if (find_kernel_by_gid(msg-&gt;receiver) != kid) {
+<span class="lineNum">     372 </span>            :                 send_remote_msg(msg);
+<span class="lineNum">     373 </span>            :                 return;
+<span class="lineNum">     374 </span>            :         }
+<span class="lineNum">     375 </span>            : #endif
+<span class="lineNum">     376 </span>            :         insert_bottom_half(msg);
+<span class="lineNum">     377 </span>            : }
+<span class="lineNum">     378 </span>            : 
+<span class="lineNum">     379 </span>            : 
+<span class="lineNum">     380 </span>            : /**
+<span class="lineNum">     381 </span>            :  * @brief Place a message in the temporary LP outgoing buffer
+<span class="lineNum">     382 </span>            :  *
+<span class="lineNum">     383 </span>            :  * To quickly finish the execution of events, once a simulation model
+<span class="lineNum">     384 </span>            :  * calls ScheduleNewEvent(), the event is not actually immediately sent.
+<span class="lineNum">     385 </span>            :  * On the other hand, the message is packed and placed in a temporary
+<span class="lineNum">     386 </span>            :  * output queue. Once the event's execution is completed, this queue
+<span class="lineNum">     387 </span>            :  * is scanned to send out all the generated events.
+<span class="lineNum">     388 </span>            :  *
+<span class="lineNum">     389 </span>            :  * This function places a newly-scheduled event into this temporary queue,
+<span class="lineNum">     390 </span>            :  * which is implemented as a resizable array of pointers to message buffers.
+<span class="lineNum">     391 </span>            :  *
+<span class="lineNum">     392 </span>            :  * @param msg The packed message to insert in the temporary outgoing queue.
+<span class="lineNum">     393 </span>            :  */
+<span class="lineNum">     394 </span><span class="lineCov">          1 : void insert_outgoing_msg(msg_t *msg)</span>
+<span class="lineNum">     395 </span>            : {
+<span class="lineNum">     396 </span>            : 
+<span class="lineNum">     397 </span>            :         // if the model is generating many events at the same time, reallocate the outgoing buffer
+<span class="lineNum">     398 </span>            :         if (unlikely(current-&gt;outgoing_buffer.size == current-&gt;outgoing_buffer.max_size)) {
+<span class="lineNum">     399 </span>            :                 current-&gt;outgoing_buffer.max_size *= 2;
+<span class="lineNum">     400 </span>            :                 current-&gt;outgoing_buffer.outgoing_msgs = rsrealloc(current-&gt;outgoing_buffer.outgoing_msgs, sizeof(msg_t *) * current-&gt;outgoing_buffer.max_size);
+<span class="lineNum">     401 </span>            :         }
+<span class="lineNum">     402 </span>            : 
+<span class="lineNum">     403 </span>            :         current-&gt;outgoing_buffer.outgoing_msgs[current-&gt;outgoing_buffer.size++] = msg;
+<span class="lineNum">     404 </span>            : 
+<span class="lineNum">     405 </span>            :         // Store the minimum timestamp of outgoing messages
+<span class="lineNum">     406 </span>            :         // TODO: check whether this is still used by preemptive Time Warp or not
+<span class="lineNum">     407 </span>            :         if (msg-&gt;timestamp &lt; current-&gt;outgoing_buffer.min_in_transit[current-&gt;worker_thread]) {
+<span class="lineNum">     408 </span>            :                 current-&gt;outgoing_buffer.min_in_transit[current-&gt;worker_thread] = msg-&gt;timestamp;
+<span class="lineNum">     409 </span>            :         }
+<span class="lineNum">     410 </span>            : }
+<span class="lineNum">     411 </span>            : 
+<span class="lineNum">     412 </span>            : 
+<span class="lineNum">     413 </span>            : /**
+<span class="lineNum">     414 </span>            :  * @brief Send all pending outgoing messages
+<span class="lineNum">     415 </span>            :  *
+<span class="lineNum">     416 </span>            :  * This function sends all messages registered in the outgoing message
+<span class="lineNum">     417 </span>            :  * queue during the execution of an event (see insert_outgoing_msg())
+<span class="lineNum">     418 </span>            :  * to the destination LPs. Also, this function records in the output
+<span class="lineNum">     419 </span>            :  * queue of the sender LP that at a certain simulation time a certain
+<span class="lineNum">     420 </span>            :  * message was sent---this is done using the @ref msg_hdr_t type.
+<span class="lineNum">     421 </span>            :  * This information is used upon a rollback to send out antimessages.
+<span class="lineNum">     422 </span>            :  *
+<span class="lineNum">     423 </span>            :  * After the execution of this function, the temporary outgoing queue
+<span class="lineNum">     424 </span>            :  * is considered as empty.
+<span class="lineNum">     425 </span>            :  *
+<span class="lineNum">     426 </span>            :  * @param lp A pointer to the LP's @ref lp_struct for which we want to
+<span class="lineNum">     427 </span>            :  *           finalize the event send operation.
+<span class="lineNum">     428 </span>            :  */
+<span class="lineNum">     429 </span><span class="lineCov">          1 : void send_outgoing_msgs(struct lp_struct *lp)</span>
+<span class="lineNum">     430 </span>            : {
+<span class="lineNum">     431 </span>            :         register unsigned int i = 0;
+<span class="lineNum">     432 </span>            :         msg_t *msg;
+<span class="lineNum">     433 </span>            :         msg_hdr_t *msg_hdr;
+<span class="lineNum">     434 </span>            : 
+<span class="lineNum">     435 </span>            :         for (i = 0; i &lt; lp-&gt;outgoing_buffer.size; i++) {
+<span class="lineNum">     436 </span>            :                 msg_hdr = get_msg_hdr_from_slab(lp);
+<span class="lineNum">     437 </span>            :                 msg = lp-&gt;outgoing_buffer.outgoing_msgs[i];
+<span class="lineNum">     438 </span>            :                 msg_to_hdr(msg_hdr, msg);
+<span class="lineNum">     439 </span>            : 
+<span class="lineNum">     440 </span>            :                 Send(msg);
+<span class="lineNum">     441 </span>            : 
+<span class="lineNum">     442 </span>            :                 // register the message in the sender's output queue, for antimessage management
+<span class="lineNum">     443 </span>            :                 list_insert(lp-&gt;queue_out, send_time, msg_hdr);
+<span class="lineNum">     444 </span>            :         }
+<span class="lineNum">     445 </span>            : 
+<span class="lineNum">     446 </span>            :         lp-&gt;outgoing_buffer.size = 0;
+<span class="lineNum">     447 </span>            : }
+<span class="lineNum">     448 </span>            : 
+<span class="lineNum">     449 </span>            : 
+<span class="lineNum">     450 </span>            : /**
+<span class="lineNum">     451 </span>            :  * @brief Pack a message in a platform-level data structure
+<span class="lineNum">     452 </span>            :  *
+<span class="lineNum">     453 </span>            :  * This function takes all the parameters which represent a model-level
+<span class="lineNum">     454 </span>            :  * event and pack it in a simulation-level datastructure representing
+<span class="lineNum">     455 </span>            :  * a message (namely, a @ref msg_t type).
+<span class="lineNum">     456 </span>            :  *
+<span class="lineNum">     457 </span>            :  * This function also allocates the buffer for that message. To this end,
+<span class="lineNum">     458 </span>            :  * it determines whether the buffer can be taken from some slab allocator
+<span class="lineNum">     459 </span>            :  * or not (depending on the size of the payload, which determines whether
+<span class="lineNum">     460 </span>            :  * the final message fits into a buffer of size @ref SLAB_MSG_SIZE).
+<span class="lineNum">     461 </span>            :  *
+<span class="lineNum">     462 </span>            :  * This is a uniform internal API which can be used in any situation.
+<span class="lineNum">     463 </span>            :  * Indeed, it relies on the which_slab_to_use() internal function to find
+<span class="lineNum">     464 </span>            :  * out whether this message will be kept in the local instance of a
+<span class="lineNum">     465 </span>            :  * distributed simulation or not.
+<span class="lineNum">     466 </span>            :  *
+<span class="lineNum">     467 </span>            :  * @param msg A double pointer to a @ref msg_t type. Since this function
+<span class="lineNum">     468 </span>            :  *            allocates the buffer, a pointer to a @c msg_t @c * datatype
+<span class="lineNum">     469 </span>            :  *            should be passed, in order for the caller to receive the
+<span class="lineNum">     470 </span>            :  *            pointer to the message.
+<span class="lineNum">     471 </span>            :  * @param sender The GID of the sender
+<span class="lineNum">     472 </span>            :  * @param receiver The GID of the receiver
+<span class="lineNum">     473 </span>            :  * @param type A numerical code identifying the event type. This can be a
+<span class="lineNum">     474 </span>            :  *            model-specific type, or a platform-level code used to
+<span class="lineNum">     475 </span>            :  *            identify a control message.
+<span class="lineNum">     476 </span>            :  * @param timestamp This is the simulation time at which the destination LP
+<span class="lineNum">     477 </span>            :  *            will have to execute this event.
+<span class="lineNum">     478 </span>            :  * @param send_time This event has been sent by @p sender at this particular
+<span class="lineNum">     479 </span>            :  *            simulation time. This information is used to handle
+<span class="lineNum">     480 </span>            :  *            antimessages upon a rollback operation.
+<span class="lineNum">     481 </span>            :  * @param size The size of the model-specific payload.
+<span class="lineNum">     482 </span>            :  * @param payload A pointer to the model-specific payload. It can be
+<span class="lineNum">     483 </span>            :  *            a pointer to whatever, e.g. the stack of a ULT in which
+<span class="lineNum">     484 </span>            :  *            the LP is running, or a data structure in the simulation
+<span class="lineNum">     485 </span>            :  *            state of the LP. This is not a problem because we make
+<span class="lineNum">     486 </span>            :  *            a full copy of the event payload. Problems might arise
+<span class="lineNum">     487 </span>            :  *            if a pointer is present in the payload, and the ECS
+<span class="lineNum">     488 </span>            :  *            subsystem is not running, but at that point it is the
+<span class="lineNum">     489 </span>            :  *            simulation model's responsibility to make the simulation
+<span class="lineNum">     490 </span>            :  *            inconsistent or to crash the run.
+<span class="lineNum">     491 </span>            :  */
+<span class="lineNum">     492 </span><span class="lineCov">          1 : void pack_msg(msg_t **msg, GID_t sender, GID_t receiver, int type, simtime_t timestamp, simtime_t send_time, size_t size, void *payload)</span>
+<span class="lineNum">     493 </span>            : {
+<span class="lineNum">     494 </span>            :         // Check if we can rely on a slab to initialize the message
+<span class="lineNum">     495 </span>            :         if (likely(sizeof(msg_t) + size &lt;= SLAB_MSG_SIZE)) {
+<span class="lineNum">     496 </span>            :                 *msg = get_msg_from_slab(which_slab_to_use(sender, receiver));
+<span class="lineNum">     497 </span>            :         } else {
+<span class="lineNum">     498 </span>            :                 *msg = rsalloc(sizeof(msg_t) + size);
+<span class="lineNum">     499 </span>            :                 bzero(*msg, sizeof(msg_t) + size);
+<span class="lineNum">     500 </span>            :         }
+<span class="lineNum">     501 </span>            : 
+<span class="lineNum">     502 </span>            :         (*msg)-&gt;sender = sender;
+<span class="lineNum">     503 </span>            :         (*msg)-&gt;receiver = receiver;
+<span class="lineNum">     504 </span>            :         (*msg)-&gt;type = type;
+<span class="lineNum">     505 </span>            :         (*msg)-&gt;message_kind = positive;
+<span class="lineNum">     506 </span>            :         (*msg)-&gt;timestamp = timestamp;
+<span class="lineNum">     507 </span>            :         (*msg)-&gt;send_time = send_time;
+<span class="lineNum">     508 </span>            :         (*msg)-&gt;size = size;
+<span class="lineNum">     509 </span>            :         // TODO: si può generare qua dentro la marca, perché si usa sempre il sender. Occhio al gid/lid!!!!
+<span class="lineNum">     510 </span>            : 
+<span class="lineNum">     511 </span>            :         if (payload != NULL &amp;&amp; size &gt; 0)
+<span class="lineNum">     512 </span>            :                 memcpy((*msg)-&gt;event_content, payload, size);
+<span class="lineNum">     513 </span>            : }
+<span class="lineNum">     514 </span>            : 
+<span class="lineNum">     515 </span>            : 
+<span class="lineNum">     516 </span>            : /**
+<span class="lineNum">     517 </span>            :  * @brief Convert a message to a message header
+<span class="lineNum">     518 </span>            :  *
+<span class="lineNum">     519 </span>            :  * This function takes an already packed message pointed by @p msg
+<span class="lineNum">     520 </span>            :  * and populates the relevant fields of the message header pointed by
+<span class="lineNum">     521 </span>            :  * @p hdr to create a compact representation of the message being sent
+<span class="lineNum">     522 </span>            :  * out. This is necessary to later send antimessages, upon a rollback
+<span class="lineNum">     523 </span>            :  * operation.
+<span class="lineNum">     524 </span>            :  *
+<span class="lineNum">     525 </span>            :  * @param hdr A pointer to a @ref msg_hdr_t where to store the relevant
+<span class="lineNum">     526 </span>            :  *            information to represent an antimessage.
+<span class="lineNum">     527 </span>            :  * @param msg A pointer to an already-packed message from which to take
+<span class="lineNum">     528 </span>            :  *            the relevant information to populate the header
+<span class="lineNum">     529 </span>            :  */
+<span class="lineNum">     530 </span><span class="lineCov">          1 : void msg_to_hdr(msg_hdr_t *hdr, msg_t *msg)</span>
+<span class="lineNum">     531 </span>            : {
+<span class="lineNum">     532 </span>            :         validate_msg(msg);
+<span class="lineNum">     533 </span>            : 
+<span class="lineNum">     534 </span>            :         hdr-&gt;sender = msg-&gt;sender;
+<span class="lineNum">     535 </span>            :         hdr-&gt;receiver = msg-&gt;receiver;
+<span class="lineNum">     536 </span>            :         hdr-&gt;type = msg-&gt;type;
+<span class="lineNum">     537 </span>            :         hdr-&gt;rendezvous_mark = msg-&gt;rendezvous_mark;
+<span class="lineNum">     538 </span>            :         hdr-&gt;timestamp = msg-&gt;timestamp;
+<span class="lineNum">     539 </span>            :         hdr-&gt;send_time = msg-&gt;send_time;
+<span class="lineNum">     540 </span>            :         hdr-&gt;mark = msg-&gt;mark;
+<span class="lineNum">     541 </span>            : }
+<span class="lineNum">     542 </span>            : 
+<span class="lineNum">     543 </span>            : 
+<span class="lineNum">     544 </span>            : /**
+<span class="lineNum">     545 </span>            :  * @brief convert a message header into a message
+<span class="lineNum">     546 </span>            :  *
+<span class="lineNum">     547 </span>            :  * This is a commodity function which prepares a message data structure
+<span class="lineNum">     548 </span>            :  * from a message header. Both the header and the message buffers must
+<span class="lineNum">     549 </span>            :  * be already allocated.
+<span class="lineNum">     550 </span>            :  *
+<span class="lineNum">     551 </span>            :  * The purpose of this function is to prepare the sending of an antimessage.
+<span class="lineNum">     552 </span>            :  * Indeed, an antimessage is sent as a message of size zero, and the
+<span class="lineNum">     553 </span>            :  * information is taken from compact versions of the originally sent
+<span class="lineNum">     554 </span>            :  * messages, kept in the @ref msg_hdr_t type. When an antimessage must
+<span class="lineNum">     555 </span>            :  * be sent out, this is done by copying the message header into a
+<span class="lineNum">     556 </span>            :  * @ref msg_t type.
+<span class="lineNum">     557 </span>            :  * This is required because all message sending logic assumes that
+<span class="lineNum">     558 </span>            :  * a @ref msg_t data structure is being passed (this avoid having to
+<span class="lineNum">     559 </span>            :  * perform multiple checks or multiple casts in the code base).
+<span class="lineNum">     560 </span>            :  *
+<span class="lineNum">     561 </span>            :  * @param hdr A pointer to the message header from which the message
+<span class="lineNum">     562 </span>            :  *            information is taken.
+<span class="lineNum">     563 </span>            :  * @param msg A pointer to the message where the header information is
+<span class="lineNum">     564 </span>            :  *            copied.
+<span class="lineNum">     565 </span>            :  */
+<span class="lineNum">     566 </span><span class="lineCov">          1 : void hdr_to_msg(msg_hdr_t *hdr, msg_t *msg)</span>
+<span class="lineNum">     567 </span>            : {
+<span class="lineNum">     568 </span>            :         msg-&gt;sender = hdr-&gt;sender;
+<span class="lineNum">     569 </span>            :         msg-&gt;receiver = hdr-&gt;receiver;
+<span class="lineNum">     570 </span>            :         msg-&gt;type = hdr-&gt;type;
+<span class="lineNum">     571 </span>            :         msg-&gt;rendezvous_mark = hdr-&gt;rendezvous_mark;
+<span class="lineNum">     572 </span>            :         msg-&gt;timestamp = hdr-&gt;timestamp;
+<span class="lineNum">     573 </span>            :         msg-&gt;send_time = hdr-&gt;send_time;
+<span class="lineNum">     574 </span>            :         msg-&gt;mark = hdr-&gt;mark;
+<span class="lineNum">     575 </span>            : }
+<span class="lineNum">     576 </span>            : 
+<span class="lineNum">     577 </span>            : 
+<span class="lineNum">     578 </span>            : /**
+<span class="lineNum">     579 </span>            :  * @brief Dump the content of a message
+<span class="lineNum">     580 </span>            :  *
+<span class="lineNum">     581 </span>            :  * This function dumps the content of a message. This is mainly used
+<span class="lineNum">     582 </span>            :  * when some runtime error is encountered, to provide on screen information
+<span class="lineNum">     583 </span>            :  * which might be used for debugging what is going on.
+<span class="lineNum">     584 </span>            :  *
+<span class="lineNum">     585 </span>            :  * @param msg A pointer to the message to dump on screen.
+<span class="lineNum">     586 </span>            :  */
+<span class="lineNum">     587 </span><span class="lineCov">          1 : void dump_msg_content(msg_t *msg)</span>
+<span class="lineNum">     588 </span>            : {
+<span class="lineNum">     589 </span>            :         printf(&quot;\tsender: %u\n&quot;, msg-&gt;sender.to_int);
+<span class="lineNum">     590 </span>            :         printf(&quot;\treceiver: %u\n&quot;, msg-&gt;sender.to_int);
+<span class="lineNum">     591 </span>            : #ifdef HAVE_MPI
+<span class="lineNum">     592 </span>            :         printf(&quot;\tcolour: %d\n&quot;, msg-&gt;colour);
+<span class="lineNum">     593 </span>            : #endif
+<span class="lineNum">     594 </span>            :         printf(&quot;\ttype: %d\n&quot;, msg-&gt;type);
+<span class="lineNum">     595 </span>            :         printf(&quot;\tmessage_kind: %d\n&quot;, msg-&gt;message_kind);
+<span class="lineNum">     596 </span>            :         printf(&quot;\ttimestamp: %f\n&quot;, msg-&gt;timestamp);
+<span class="lineNum">     597 </span>            :         printf(&quot;\tsend_time: %f\n&quot;, msg-&gt;send_time);
+<span class="lineNum">     598 </span>            :         printf(&quot;\tmark: %llu\n&quot;, msg-&gt;mark);
+<span class="lineNum">     599 </span>            :         printf(&quot;\trendezvous_mark: %llu\n&quot;, msg-&gt;rendezvous_mark);
+<span class="lineNum">     600 </span>            :         printf(&quot;\tsize: %d\n&quot;, msg-&gt;size);
+<span class="lineNum">     601 </span>            : }
+<span class="lineNum">     602 </span>            : 
+<span class="lineNum">     603 </span>            : 
+<span class="lineNum">     604 </span>            : 
+<span class="lineNum">     605 </span>            : #ifndef NDEBUG
+<span class="lineNum">     606 </span>            : 
+<span class="lineNum">     607 </span>            : /**
+<span class="lineNum">     608 </span>            :  * @brief Tell the GID of the sender of a message, given its mark
+<span class="lineNum">     609 </span>            :  *
+<span class="lineNum">     610 </span>            :  * This function inverts the Cantor pairing function used to generate
+<span class="lineNum">     611 </span>            :  * unique message marks. It can be used to perform sanity checks on
+<span class="lineNum">     612 </span>            :  * the marks, to see whether they are correct or corrupted. Also,
+<span class="lineNum">     613 </span>            :  * it can assist in debugging errors in the management of messages.
+<span class="lineNum">     614 </span>            :  *
+<span class="lineNum">     615 </span>            :  * @warning This function is computationally costly! @b never @b ever
+<span class="lineNum">     616 </span>            :  *          use it in a production environment. The @c NDEBUG guard
+<span class="lineNum">     617 </span>            :  *          ensures that it is never compiled in a final version of the
+<span class="lineNum">     618 </span>            :  *          runtime environment, so keep it only as a debugging function.
+<span class="lineNum">     619 </span>            :  *
+<span class="lineNum">     620 </span>            :  * @param mark The mark to invert.
+<span class="lineNum">     621 </span>            :  *
+<span class="lineNum">     622 </span>            :  * @return The GID of the sender of the message stamped with the @p mark.
+<span class="lineNum">     623 </span>            :  *         The GID is not actually represented as a @ref GID_t, rather
+<span class="lineNum">     624 </span>            :  *         as an @c int.
+<span class="lineNum">     625 </span>            :  */
+<span class="lineNum">     626 </span><span class="lineCov">          1 : unsigned int mark_to_gid(unsigned long long mark)</span>
+<span class="lineNum">     627 </span>            : {
+<span class="lineNum">     628 </span>            :         double z = (double)mark;
+<span class="lineNum">     629 </span>            :         double w = floor((sqrt(8 * z + 1) - 1) / 2.0);
+<span class="lineNum">     630 </span>            :         double t = (w * w + w) / 2.0;
+<span class="lineNum">     631 </span>            :         double y = z - t;
+<span class="lineNum">     632 </span>            :         double x = w - y;
+<span class="lineNum">     633 </span>            : 
+<span class="lineNum">     634 </span>            :         return (int)x;
+<span class="lineNum">     635 </span>            : }
+<span class="lineNum">     636 </span>            : 
+<span class="lineNum">     637 </span>            : 
+<span class="lineNum">     638 </span>            : /**
+<span class="lineNum">     639 </span>            :  * @brief Perform some sanity checks on a message buffer
+<span class="lineNum">     640 </span>            :  *
+<span class="lineNum">     641 </span>            :  * This is a debugging function which performs some sanity checks on a
+<span class="lineNum">     642 </span>            :  * message buffer, and aborts the simulation if these checks do not pass.
+<span class="lineNum">     643 </span>            :  *
+<span class="lineNum">     644 </span>            :  * The checks performed are:
+<span class="lineNum">     645 </span>            :  * * Is the sender LP GID in a valid range?
+<span class="lineNum">     646 </span>            :  * * Is the destination LP GID in a valid range?
+<span class="lineNum">     647 </span>            :  * * Is the message kind of a valid type?
+<span class="lineNum">     648 </span>            :  * * Is the sender associated with the message mark in a valid range?
+<span class="lineNum">     649 </span>            :  * * Is the sender associated with a rendezvous mark in a valid range?
+<span class="lineNum">     650 </span>            :  * * Is the message type in a valid range?
+<span class="lineNum">     651 </span>            :  *
+<span class="lineNum">     652 </span>            :  * If a message is corrupted due to any reason, the likelihood that this
+<span class="lineNum">     653 </span>            :  * function spots the corruption is very high.
+<span class="lineNum">     654 </span>            :  *
+<span class="lineNum">     655 </span>            :  * @warning This function is computationally costly! @b never @b ever
+<span class="lineNum">     656 </span>            :  *          use it in a production environment. The @c NDEBUG guard
+<span class="lineNum">     657 </span>            :  *          ensures that it is never compiled in a final version of the
+<span class="lineNum">     658 </span>            :  *          runtime environment, so keep it only as a debugging function.
+<span class="lineNum">     659 </span>            :  * 
+<span class="lineNum">     660 </span>            :  * @param msg A pointer to the message to validate
+<span class="lineNum">     661 </span>            :  */
+<span class="lineNum">     662 </span><span class="lineCov">          1 : void validate_msg(msg_t *msg)</span>
+<span class="lineNum">     663 </span>            : {
+<span class="lineNum">     664 </span>            :         assert(msg-&gt;sender.to_int &lt;= n_prc_tot);
+<span class="lineNum">     665 </span>            :         assert(msg-&gt;receiver.to_int &lt;= n_prc_tot);
+<span class="lineNum">     666 </span>            :         assert(msg-&gt;message_kind == positive || msg-&gt;message_kind == negative || msg-&gt;message_kind == control);
+<span class="lineNum">     667 </span>            :         assert(mark_to_gid(msg-&gt;mark) &lt;= n_prc_tot);
+<span class="lineNum">     668 </span>            :         assert(mark_to_gid(msg-&gt;rendezvous_mark) &lt;= n_prc_tot);
+<span class="lineNum">     669 </span>            :         assert(msg-&gt;type &lt; MAX_VALUE_CONTROL);
+<span class="lineNum">     670 </span>            : }
+<span class="lineNum">     671 </span>            : #endif
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.12</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>

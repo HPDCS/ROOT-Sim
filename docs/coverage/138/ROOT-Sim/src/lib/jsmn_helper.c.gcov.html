@@ -1,0 +1,351 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - doc-coverage.info - ROOT-Sim/src/lib/jsmn_helper.c</title>
+  <link rel="stylesheet" type="text/css" href="../../../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../../../index.html">top level</a> - <a href="index.html">ROOT-Sim/src/lib</a> - jsmn_helper.c</td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">doc-coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">8</td>
+            <td class="headerCovTableEntry">15</td>
+            <td class="headerCovTableEntryLo">53.3 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2020-02-28 13:00:44</td>
+            <td></td>
+          </tr>
+          <tr><td><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<span class="lineNum">       1 </span><span class="lineNoCov">          0 : #include &lt;lib/jsmn_helper.h&gt;</span>
+<span class="lineNum">       2 </span>            : #include &lt;mm/mm.h&gt;
+<span class="lineNum">       3 </span>            : 
+<span class="lineNum">       4 </span>            : #include &lt;string.h&gt;
+<span class="lineNum">       5 </span>            : #include &lt;stdio.h&gt;
+<span class="lineNum">       6 </span>            : #include &lt;limits.h&gt;
+<span class="lineNum">       7 </span>            : 
+<span class="lineNum">       8 </span>            : 
+<span class="lineNum">       9 </span><span class="lineNoCov">          0 : int load_and_parse_json_file(const char *file_name, char **file_str_p, jsmntok_t **tokens_p) {</span>
+<span class="lineNum">      10 </span>            :         FILE *t_file;
+<span class="lineNum">      11 </span>            :         long int file_len;
+<span class="lineNum">      12 </span>            :         jsmn_parser parser;
+<span class="lineNum">      13 </span>            :         int tokens_cnt;
+<span class="lineNum">      14 </span>            :         char *buffer = NULL;            // we initialize those pointers so we can safely free them even if uninstantiated
+<span class="lineNum">      15 </span>            :         jsmntok_t *tokens = NULL;
+<span class="lineNum">      16 </span>            : 
+<span class="lineNum">      17 </span>            :         // by default we fail
+<span class="lineNum">      18 </span>            :         int ret = -1;
+<span class="lineNum">      19 </span>            : 
+<span class="lineNum">      20 </span>            :         // sanity check
+<span class="lineNum">      21 </span>            :         if(file_name == NULL || file_str_p ==  NULL || tokens_p ==  NULL)
+<span class="lineNum">      22 </span>            :                 return -1;
+<span class="lineNum">      23 </span>            : 
+<span class="lineNum">      24 </span>            :         // open file
+<span class="lineNum">      25 </span>            :         t_file = fopen(file_name, &quot;r&quot;);
+<span class="lineNum">      26 </span>            :         if(t_file == NULL)
+<span class="lineNum">      27 </span>            :                 return -1;
+<span class="lineNum">      28 </span>            : 
+<span class="lineNum">      29 </span>            :         // compute file length
+<span class="lineNum">      30 </span>            :         // set file position at EOF
+<span class="lineNum">      31 </span>            :         if(fseek(t_file, 0L, SEEK_END))
+<span class="lineNum">      32 </span>            :                 goto end;
+<span class="lineNum">      33 </span>            :         //get the actual length
+<span class="lineNum">      34 </span>            :         file_len = ftell(t_file);
+<span class="lineNum">      35 </span>            :         if(file_len &lt; 0)
+<span class="lineNum">      36 </span>            :                 goto end;
+<span class="lineNum">      37 </span>            :         // reset file position
+<span class="lineNum">      38 </span>            :         if(fseek(t_file, 0L, SEEK_SET))
+<span class="lineNum">      39 </span>            :                 goto end;
+<span class="lineNum">      40 </span>            : 
+<span class="lineNum">      41 </span>            :         // allocate buffer
+<span class="lineNum">      42 </span>            :         buffer = rsalloc(file_len + 1);
+<span class="lineNum">      43 </span>            :         // Load the whole JSON file from disk
+<span class="lineNum">      44 </span>            :         if(!fread(buffer, (size_t) file_len, 1, t_file))
+<span class="lineNum">      45 </span>            :                 goto end;
+<span class="lineNum">      46 </span>            : 
+<span class="lineNum">      47 </span>            :         // close file
+<span class="lineNum">      48 </span>            :         fclose(t_file);
+<span class="lineNum">      49 </span>            : 
+<span class="lineNum">      50 </span>            :         // terminate buffer with null character
+<span class="lineNum">      51 </span>            :         buffer[file_len] = '\0';
+<span class="lineNum">      52 </span>            : 
+<span class="lineNum">      53 </span>            :         // init parser
+<span class="lineNum">      54 </span>            :         jsmn_init(&amp;parser);
+<span class="lineNum">      55 </span>            :         // compute tokens count
+<span class="lineNum">      56 </span>            :         tokens_cnt = jsmn_parse(&amp;parser, buffer, file_len, NULL, 0);
+<span class="lineNum">      57 </span>            :         if(tokens_cnt &lt;= 0)
+<span class="lineNum">      58 </span>            :                 goto end;
+<span class="lineNum">      59 </span>            :         // allocate tokens buffer
+<span class="lineNum">      60 </span>            :         tokens = rsalloc(sizeof(jsmntok_t) * (size_t) tokens_cnt);
+<span class="lineNum">      61 </span>            : 
+<span class="lineNum">      62 </span>            :         // re init parser
+<span class="lineNum">      63 </span>            :         jsmn_init(&amp;parser);
+<span class="lineNum">      64 </span>            :         // Parse the loaded JSON file
+<span class="lineNum">      65 </span>            :         if(jsmn_parse(&amp;parser, buffer, file_len, tokens, tokens_cnt) != tokens_cnt)
+<span class="lineNum">      66 </span>            :                 goto end;
+<span class="lineNum">      67 </span>            : 
+<span class="lineNum">      68 </span>            :         // returns the important values
+<span class="lineNum">      69 </span>            :         *file_str_p = buffer;
+<span class="lineNum">      70 </span>            :         *tokens_p = tokens;
+<span class="lineNum">      71 </span>            :         // set a correct return code
+<span class="lineNum">      72 </span>            :         ret = 0;
+<span class="lineNum">      73 </span>            :         end:
+<span class="lineNum">      74 </span>            : 
+<span class="lineNum">      75 </span>            :         // if we are failing free the buffers
+<span class="lineNum">      76 </span>            :         if(ret) {
+<span class="lineNum">      77 </span>            :                 rsfree(buffer);
+<span class="lineNum">      78 </span>            :                 rsfree(tokens);
+<span class="lineNum">      79 </span>            :         }
+<span class="lineNum">      80 </span>            : 
+<span class="lineNum">      81 </span>            :         return ret;
+<span class="lineNum">      82 </span>            : }
+<span class="lineNum">      83 </span>            : 
+<span class="lineNum">      84 </span><span class="lineCov">          1 : void init_gnt_closure(struct _gnt_closure_t *closure) {</span>
+<span class="lineNum">      85 </span>            :         closure-&gt;a = 0;
+<span class="lineNum">      86 </span>            :         closure-&gt;b = 0;
+<span class="lineNum">      87 </span>            : }
+<span class="lineNum">      88 </span>            : 
+<span class="lineNum">      89 </span><span class="lineCov">          1 : c_jsmntok_t* get_next_token(c_jsmntok_t *base_t, c_jsmntok_t *t, struct _gnt_closure_t *closure) {</span>
+<span class="lineNum">      90 </span>            : 
+<span class="lineNum">      91 </span>            :         // we expect t to be an object or an array
+<span class="lineNum">      92 </span>            :         if((t-&gt;type != JSMN_OBJECT &amp;&amp; t-&gt;type != JSMN_ARRAY) || t-&gt;size &lt;= closure-&gt;a)
+<span class="lineNum">      93 </span>            :                 return NULL;
+<span class="lineNum">      94 </span>            : 
+<span class="lineNum">      95 </span>            :         closure-&gt;a++;
+<span class="lineNum">      96 </span>            :         closure-&gt;b++;
+<span class="lineNum">      97 </span>            : 
+<span class="lineNum">      98 </span>            :         while ((t + closure-&gt;b)-&gt;parent != (t - base_t))
+<span class="lineNum">      99 </span>            :                 closure-&gt;b++;
+<span class="lineNum">     100 </span>            : 
+<span class="lineNum">     101 </span>            :         return t + closure-&gt;b;
+<span class="lineNum">     102 </span>            : }
+<span class="lineNum">     103 </span>            : 
+<span class="lineNum">     104 </span><span class="lineCov">          1 : c_jsmntok_t* get_value_token_by_key(c_jsmntok_t *base_t, const char *base, c_jsmntok_t *t, const char *key) {</span>
+<span class="lineNum">     105 </span>            : 
+<span class="lineNum">     106 </span>            :         c_jsmntok_t *t_aux;
+<span class="lineNum">     107 </span>            : 
+<span class="lineNum">     108 </span>            :         // we expect t to be an object
+<span class="lineNum">     109 </span>            :         if(t-&gt;type != JSMN_OBJECT)
+<span class="lineNum">     110 </span>            :                 return NULL;
+<span class="lineNum">     111 </span>            : 
+<span class="lineNum">     112 </span>            :         struct _gnt_closure_t closure = GNT_CLOSURE_INITIALIZER;
+<span class="lineNum">     113 </span>            : 
+<span class="lineNum">     114 </span>            :         while ((t_aux = get_next_token(base_t, t, &amp;closure)) != NULL) {
+<span class="lineNum">     115 </span>            :                 /*
+<span class="lineNum">     116 </span>            :                  *  this stuff is not greatly documented in jsmn, anyway turns out that
+<span class="lineNum">     117 </span>            :                  *      strings acting as object keys have child count set to 1.
+<span class="lineNum">     118 </span>            :                  *      This is just another unnecessary check.
+<span class="lineNum">     119 </span>            :                  */
+<span class="lineNum">     120 </span>            :                 if(t_aux-&gt;type == JSMN_STRING &amp;&amp; t_aux-&gt;size == 1) {
+<span class="lineNum">     121 </span>            :                         if(strcmp_token(base, t_aux, key) == 0)
+<span class="lineNum">     122 </span>            :                                 // this is token representing the value associated with the key we found
+<span class="lineNum">     123 </span>            :                                 return t_aux + 1;
+<span class="lineNum">     124 </span>            :                 }
+<span class="lineNum">     125 </span>            :         }
+<span class="lineNum">     126 </span>            :         return NULL;
+<span class="lineNum">     127 </span>            : }
+<span class="lineNum">     128 </span>            : 
+<span class="lineNum">     129 </span><span class="lineCov">          1 : size_t children_count_token(c_jsmntok_t *base_t, c_jsmntok_t *t) {</span>
+<span class="lineNum">     130 </span>            :         struct _gnt_closure_t closure = GNT_CLOSURE_INITIALIZER;
+<span class="lineNum">     131 </span>            :         size_t ret = 0;
+<span class="lineNum">     132 </span>            : 
+<span class="lineNum">     133 </span>            :         while (get_next_token(base_t, t, &amp;closure))
+<span class="lineNum">     134 </span>            :                 ret++;
+<span class="lineNum">     135 </span>            : 
+<span class="lineNum">     136 </span>            :         return ret;
+<span class="lineNum">     137 </span>            : }
+<span class="lineNum">     138 </span>            : 
+<span class="lineNum">     139 </span><span class="lineCov">          1 : c_jsmntok_t* get_at_token(c_jsmntok_t *base_t, c_jsmntok_t *t, size_t i) {</span>
+<span class="lineNum">     140 </span>            :         struct _gnt_closure_t closure = GNT_CLOSURE_INITIALIZER;
+<span class="lineNum">     141 </span>            : 
+<span class="lineNum">     142 </span>            :         while (i--)
+<span class="lineNum">     143 </span>            :                 if(!(get_next_token(base_t, t, &amp;closure)))
+<span class="lineNum">     144 </span>            :                         return NULL;
+<span class="lineNum">     145 </span>            : 
+<span class="lineNum">     146 </span>            :         return get_next_token(base_t, t, &amp;closure);
+<span class="lineNum">     147 </span>            : }
+<span class="lineNum">     148 </span>            : 
+<span class="lineNum">     149 </span><span class="lineCov">          1 : int parse_double_token(const char *base, c_jsmntok_t *t, double *result) {</span>
+<span class="lineNum">     150 </span>            :         char buff[64];
+<span class="lineNum">     151 </span>            :         size_t size;
+<span class="lineNum">     152 </span>            :         double tmp;
+<span class="lineNum">     153 </span>            :         char *check;
+<span class="lineNum">     154 </span>            : 
+<span class="lineNum">     155 </span>            :         if(t-&gt;type != JSMN_PRIMITIVE)
+<span class="lineNum">     156 </span>            :                 return -1;
+<span class="lineNum">     157 </span>            : 
+<span class="lineNum">     158 </span>            :         size = (size_t) (t-&gt;end - t-&gt;start);
+<span class="lineNum">     159 </span>            :         size = size &lt; (64 - 1) ? size : (64 - 1);
+<span class="lineNum">     160 </span>            : 
+<span class="lineNum">     161 </span>            :         memcpy(buff, &amp;base[t-&gt;start], size);
+<span class="lineNum">     162 </span>            :         buff[size] = '\0';
+<span class="lineNum">     163 </span>            : 
+<span class="lineNum">     164 </span>            :         tmp = strtod(buff, &amp;check);
+<span class="lineNum">     165 </span>            :         if(buff == check)
+<span class="lineNum">     166 </span>            :                 return -1;
+<span class="lineNum">     167 </span>            : 
+<span class="lineNum">     168 </span>            :         *result = tmp;
+<span class="lineNum">     169 </span>            :         return 0;
+<span class="lineNum">     170 </span>            : }
+<span class="lineNum">     171 </span>            : 
+<span class="lineNum">     172 </span><span class="lineCov">          1 : int parse_unsigned_token(const char *base, c_jsmntok_t *t, unsigned *result) {</span>
+<span class="lineNum">     173 </span>            :         double tmp;
+<span class="lineNum">     174 </span>            : 
+<span class="lineNum">     175 </span>            :         if(parse_double_token(base, t, &amp;tmp) &lt; 0 ||
+<span class="lineNum">     176 </span>            :                         tmp &lt; 0.0            ||
+<span class="lineNum">     177 </span>            :                         tmp &gt; UINT_MAX               ||
+<span class="lineNum">     178 </span>            :                         tmp &gt; (unsigned) tmp         ||
+<span class="lineNum">     179 </span>            :                         tmp &lt; (unsigned) tmp)
+<span class="lineNum">     180 </span>            :                 return -1;
+<span class="lineNum">     181 </span>            : 
+<span class="lineNum">     182 </span>            :         *result = (unsigned) tmp;
+<span class="lineNum">     183 </span>            :         return 0;
+<span class="lineNum">     184 </span>            : }
+<span class="lineNum">     185 </span>            : 
+<span class="lineNum">     186 </span><span class="lineCov">          1 : int strcmp_token(const char *base, c_jsmntok_t *t, const char* str) {</span>
+<span class="lineNum">     187 </span>            :         int t_len = t-&gt;end - t-&gt;start;
+<span class="lineNum">     188 </span>            :         int res = strncmp(&amp;base[t-&gt;start], str, t_len);
+<span class="lineNum">     189 </span>            :         return res == 0 ? str[t_len] != '\0' : res;
+<span class="lineNum">     190 </span>            : }
+<span class="lineNum">     191 </span>            : 
+<span class="lineNum">     192 </span><span class="lineNoCov">          0 : int parse_double_by_key(c_jsmntok_t *base_t, const char *base, c_jsmntok_t *t_obj, const char *key, double *result) {</span>
+<span class="lineNum">     193 </span>            :         // sanity checks
+<span class="lineNum">     194 </span>            :         if(!(base_t &amp;&amp; base &amp;&amp; t_obj &amp;&amp; key &amp;&amp; result))
+<span class="lineNum">     195 </span>            :                 return -1;
+<span class="lineNum">     196 </span>            : 
+<span class="lineNum">     197 </span>            :         // parse requested double
+<span class="lineNum">     198 </span>            :         c_jsmntok_t *t = get_value_token_by_key(base_t, base, t_obj, key);
+<span class="lineNum">     199 </span>            :         if(t == NULL || parse_double_token(base, t, result) &lt; 0) {
+<span class="lineNum">     200 </span>            :                 return -1;
+<span class="lineNum">     201 </span>            :         }
+<span class="lineNum">     202 </span>            : 
+<span class="lineNum">     203 </span>            :         return 0;
+<span class="lineNum">     204 </span>            : }
+<span class="lineNum">     205 </span>            : 
+<span class="lineNum">     206 </span><span class="lineNoCov">          0 : int parse_unsigned_by_key(c_jsmntok_t *base_t, const char *base, c_jsmntok_t *t_obj, const char *key, unsigned *result) {</span>
+<span class="lineNum">     207 </span>            :         // sanity checks
+<span class="lineNum">     208 </span>            :         if(!(base_t &amp;&amp; base &amp;&amp; t_obj &amp;&amp; key &amp;&amp; result))
+<span class="lineNum">     209 </span>            :                 return -1;
+<span class="lineNum">     210 </span>            : 
+<span class="lineNum">     211 </span>            :         // parse requested unsigned
+<span class="lineNum">     212 </span>            :         c_jsmntok_t *t = get_value_token_by_key(base_t, base, t_obj, key);
+<span class="lineNum">     213 </span>            :         if(t == NULL || parse_unsigned_token(base, t, result) &lt; 0) {
+<span class="lineNum">     214 </span>            :                 return -1;
+<span class="lineNum">     215 </span>            :         }
+<span class="lineNum">     216 </span>            : 
+<span class="lineNum">     217 </span>            :         return 0;
+<span class="lineNum">     218 </span>            : }
+<span class="lineNum">     219 </span>            : 
+<span class="lineNum">     220 </span><span class="lineNoCov">          0 : int parse_boolean_by_key(c_jsmntok_t *base_t, const char *base, c_jsmntok_t *t_obj, const char *key, bool *result) {</span>
+<span class="lineNum">     221 </span>            :         // sanity checks
+<span class="lineNum">     222 </span>            :         if(!(base_t &amp;&amp; base &amp;&amp; t_obj &amp;&amp; key &amp;&amp; result))
+<span class="lineNum">     223 </span>            :                 return -1;
+<span class="lineNum">     224 </span>            : 
+<span class="lineNum">     225 </span>            :         // find relevant token
+<span class="lineNum">     226 </span>            :         c_jsmntok_t *t = get_value_token_by_key(base_t, base, t_obj, key);
+<span class="lineNum">     227 </span>            :         if(t == NULL || t-&gt;type != JSMN_PRIMITIVE) {
+<span class="lineNum">     228 </span>            :                 return -1;
+<span class="lineNum">     229 </span>            :         }
+<span class="lineNum">     230 </span>            : 
+<span class="lineNum">     231 </span>            :         // parse the boolean value
+<span class="lineNum">     232 </span>            :         if(!strcmp_token(base, t, &quot;false&quot;)) {
+<span class="lineNum">     233 </span>            :                 *result = false;
+<span class="lineNum">     234 </span>            :         } else if(!strcmp_token(base, t, &quot;true&quot;)) {
+<span class="lineNum">     235 </span>            :                 *result = true;
+<span class="lineNum">     236 </span>            :         } else {
+<span class="lineNum">     237 </span>            :                 return -1;
+<span class="lineNum">     238 </span>            :         }
+<span class="lineNum">     239 </span>            : 
+<span class="lineNum">     240 </span>            :         return 0;
+<span class="lineNum">     241 </span>            : }
+<span class="lineNum">     242 </span>            : 
+<span class="lineNum">     243 </span><span class="lineNoCov">          0 : int parse_double_array(c_jsmntok_t *base_t, const char *base, c_jsmntok_t *t_arr, unsigned expected_cnt, double *result) {</span>
+<span class="lineNum">     244 </span>            :         // sanity checks
+<span class="lineNum">     245 </span>            :         if(!(base_t &amp;&amp; base &amp;&amp; t_arr &amp;&amp; result))
+<span class="lineNum">     246 </span>            :                 return -1;
+<span class="lineNum">     247 </span>            : 
+<span class="lineNum">     248 </span>            :         // we make sure the elements count is the same
+<span class="lineNum">     249 </span>            :         if(t_arr-&gt;type != JSMN_ARRAY || children_count_token(base_t, t_arr) != expected_cnt) {
+<span class="lineNum">     250 </span>            :                 return -1;
+<span class="lineNum">     251 </span>            :         }
+<span class="lineNum">     252 </span>            : 
+<span class="lineNum">     253 </span>            :         struct _gnt_closure_t closure = GNT_CLOSURE_INITIALIZER;
+<span class="lineNum">     254 </span>            :         unsigned i;
+<span class="lineNum">     255 </span>            :         for (i = 0; i &lt; expected_cnt; ++i) {
+<span class="lineNum">     256 </span>            :                 if(parse_double_token(base, get_next_token(base_t, t_arr, &amp;closure), &amp;result[i]) &lt; 0)
+<span class="lineNum">     257 </span>            :                         return -1;
+<span class="lineNum">     258 </span>            :         }
+<span class="lineNum">     259 </span>            : 
+<span class="lineNum">     260 </span>            :         return 0;
+<span class="lineNum">     261 </span>            : }
+<span class="lineNum">     262 </span>            : 
+<span class="lineNum">     263 </span><span class="lineNoCov">          0 : unsigned parse_string_choice(c_jsmntok_t *base_t, const char *base, c_jsmntok_t *t_str, unsigned cnt, const char *choices[cnt]) {</span>
+<span class="lineNum">     264 </span>            :         // sanity checks
+<span class="lineNum">     265 </span>            :         if(!(base_t &amp;&amp; base &amp;&amp; t_str &amp;&amp; choices))
+<span class="lineNum">     266 </span>            :                 return UINT_MAX;
+<span class="lineNum">     267 </span>            : 
+<span class="lineNum">     268 </span>            :         // look for the topology type
+<span class="lineNum">     269 </span>            :         if(t_str-&gt;type != JSMN_STRING) {
+<span class="lineNum">     270 </span>            :                 return UINT_MAX;
+<span class="lineNum">     271 </span>            :         }
+<span class="lineNum">     272 </span>            : 
+<span class="lineNum">     273 </span>            :         unsigned i;
+<span class="lineNum">     274 </span>            :         for (i = 0; i &lt; cnt; ++i) {
+<span class="lineNum">     275 </span>            :                 if(!strcmp_token(base, t_str, choices[i]))
+<span class="lineNum">     276 </span>            :                         return i;
+<span class="lineNum">     277 </span>            :         }
+<span class="lineNum">     278 </span>            :         return cnt;
+<span class="lineNum">     279 </span>            : }
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.12</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>

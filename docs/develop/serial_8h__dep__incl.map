@@ -1,0 +1,6 @@
+<map id="src/serial/serial.h" name="src/serial/serial.h">
+<area shape="rect" id="node2" href="$init_8c.html" title="Initialization routines. " alt="" coords="5,80,112,107"/>
+<area shape="rect" id="node3" href="$topology_8c_source.html" title="src/lib/topology/topology.c" alt="" coords="136,80,323,107"/>
+<area shape="rect" id="node4" href="$main_8c.html" title="This module contains the entry point for the simulator, and some core functions. " alt="" coords="347,80,435,107"/>
+<area shape="rect" id="node5" href="$serial_8c.html" title="Serial scheduler. " alt="" coords="459,80,587,107"/>
+</map>

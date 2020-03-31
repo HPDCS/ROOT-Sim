@@ -1,0 +1,391 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - doc-coverage.info - ROOT-Sim/src/core/core.c</title>
+  <link rel="stylesheet" type="text/css" href="../../../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../../../index.html">top level</a> - <a href="index.html">ROOT-Sim/src/core</a> - core.c</td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">doc-coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">20</td>
+            <td class="headerCovTableEntry">24</td>
+            <td class="headerCovTableEntryMed">83.3 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2020-02-28 13:00:44</td>
+            <td></td>
+          </tr>
+          <tr><td><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<span class="lineNum">       1 </span><span class="lineCov">          1 : /**</span>
+<span class="lineNum">       2 </span>            : * @file core/core.c
+<span class="lineNum">       3 </span>            : *
+<span class="lineNum">       4 </span>            : * @brief Core ROOT-Sim functionalities
+<span class="lineNum">       5 </span>            : *
+<span class="lineNum">       6 </span>            : * Core ROOT-Sim functionalities
+<span class="lineNum">       7 </span>            : *
+<span class="lineNum">       8 </span>            : * @copyright
+<span class="lineNum">       9 </span>            : * Copyright (C) 2008-2019 HPDCS Group
+<span class="lineNum">      10 </span>            : * https://hpdcs.github.io
+<span class="lineNum">      11 </span>            : *
+<span class="lineNum">      12 </span>            : * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
+<span class="lineNum">      13 </span>            : *
+<span class="lineNum">      14 </span>            : * ROOT-Sim is free software; you can redistribute it and/or modify it under the
+<span class="lineNum">      15 </span>            : * terms of the GNU General Public License as published by the Free Software
+<span class="lineNum">      16 </span>            : * Foundation; only version 3 of the License applies.
+<span class="lineNum">      17 </span>            : *
+<span class="lineNum">      18 </span>            : * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
+<span class="lineNum">      19 </span>            : * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+<span class="lineNum">      20 </span>            : * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+<span class="lineNum">      21 </span>            : *
+<span class="lineNum">      22 </span>            : * You should have received a copy of the GNU General Public License along with
+<span class="lineNum">      23 </span>            : * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
+<span class="lineNum">      24 </span>            : * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+<span class="lineNum">      25 </span>            : *
+<span class="lineNum">      26 </span>            : * @author Francesco Quaglia
+<span class="lineNum">      27 </span>            : * @author Alessandro Pellegrini
+<span class="lineNum">      28 </span>            : * @author Roberto Vitali
+<span class="lineNum">      29 </span>            : *
+<span class="lineNum">      30 </span>            : * @date 3/18/2011
+<span class="lineNum">      31 </span>            : */
+<span class="lineNum">      32 </span>            : 
+<span class="lineNum">      33 </span>            : #include &lt;stdlib.h&gt;
+<span class="lineNum">      34 </span>            : #include &lt;stdio.h&gt;
+<span class="lineNum">      35 </span>            : #include &lt;stdarg.h&gt;
+<span class="lineNum">      36 </span>            : #include &lt;limits.h&gt;
+<span class="lineNum">      37 </span>            : #include &lt;signal.h&gt;
+<span class="lineNum">      38 </span>            : 
+<span class="lineNum">      39 </span>            : #include &lt;arch/thread.h&gt;
+<span class="lineNum">      40 </span>            : #include &lt;core/core.h&gt;
+<span class="lineNum">      41 </span>            : #include &lt;core/init.h&gt;
+<span class="lineNum">      42 </span>            : #include &lt;scheduler/process.h&gt;
+<span class="lineNum">      43 </span>            : #include &lt;scheduler/scheduler.h&gt;
+<span class="lineNum">      44 </span>            : #include &lt;statistics/statistics.h&gt;
+<span class="lineNum">      45 </span>            : #include &lt;gvt/gvt.h&gt;
+<span class="lineNum">      46 </span>            : #include &lt;mm/mm.h&gt;
+<span class="lineNum">      47 </span>            : 
+<span class="lineNum">      48 </span>            : /// Barrier for all worker threads
+<span class="lineNum">      49 </span><span class="lineCov">          1 : barrier_t all_thread_barrier;</span>
+<span class="lineNum">      50 </span>            : 
+<span class="lineNum">      51 </span>            : /// Mapping between kernel instances and logical processes
+<span class="lineNum">      52 </span><span class="lineCov">          1 : unsigned int *kernel;</span>
+<span class="lineNum">      53 </span>            : 
+<span class="lineNum">      54 </span>            : /// Identifier of the local kernel
+<span class="lineNum">      55 </span><span class="lineCov">          1 : unsigned int kid;</span>
+<span class="lineNum">      56 </span>            : 
+<span class="lineNum">      57 </span>            : /// Total number of simulation kernel instances running
+<span class="lineNum">      58 </span><span class="lineCov">          1 : unsigned int n_ker;</span>
+<span class="lineNum">      59 </span>            : 
+<span class="lineNum">      60 </span>            : /// Total number of cores required for simulation
+<span class="lineNum">      61 </span><span class="lineCov">          1 : unsigned int n_cores;</span>
+<span class="lineNum">      62 </span>            : 
+<span class="lineNum">      63 </span>            : /// Total number of logical processes running in the simulation
+<span class="lineNum">      64 </span><span class="lineCov">          1 : unsigned int n_prc_tot;</span>
+<span class="lineNum">      65 </span>            : 
+<span class="lineNum">      66 </span>            : /// Number of logical processes hosted by the current kernel instance
+<span class="lineNum">      67 </span><span class="lineCov">          1 : unsigned int n_prc;</span>
+<span class="lineNum">      68 </span>            : 
+<span class="lineNum">      69 </span>            : /// This global variable holds the configuration for the current simulation
+<span class="lineNum">      70 </span><span class="lineCov">          1 : simulation_configuration rootsim_config;</span>
+<span class="lineNum">      71 </span>            : 
+<span class="lineNum">      72 </span>            : /// Flag to notify all workers that there was an error
+<span class="lineNum">      73 </span><span class="lineCov">          1 : static bool sim_error = false;</span>
+<span class="lineNum">      74 </span>            : 
+<span class="lineNum">      75 </span>            : /// This flag tells whether we are exiting from the kernel of from userspace
+<span class="lineNum">      76 </span><span class="lineCov">          1 : bool exit_silently_from_kernel = false;</span>
+<span class="lineNum">      77 </span>            : 
+<span class="lineNum">      78 </span>            : /// This flag is set when the initialization of the simulator is complete, with no errors
+<span class="lineNum">      79 </span><span class="lineCov">          1 : static bool init_complete = false;</span>
+<span class="lineNum">      80 </span>            : 
+<span class="lineNum">      81 </span><span class="lineNoCov">          0 : bool user_exit_flag = false;</span>
+<span class="lineNum">      82 </span>            : 
+<span class="lineNum">      83 </span>            : /**
+<span class="lineNum">      84 </span>            :  * This function is used to terminate with not much pain the simulation
+<span class="lineNum">      85 </span>            :  * if the user model inadvertently calls exit(). It displays a warning
+<span class="lineNum">      86 </span>            :  * message, and then tries to silently shutdown.
+<span class="lineNum">      87 </span>            :  * The software enters this function using the standard atexit() API.
+<span class="lineNum">      88 </span>            :  *
+<span class="lineNum">      89 </span>            :  * @author Alessandro Pellegrini
+<span class="lineNum">      90 </span>            :  */
+<span class="lineNum">      91 </span><span class="lineCov">          1 : void exit_from_simulation_model(void)</span>
+<span class="lineNum">      92 </span>            : {
+<span class="lineNum">      93 </span>            : 
+<span class="lineNum">      94 </span>            :         if (likely(!init_complete))
+<span class="lineNum">      95 </span>            :                 return;
+<span class="lineNum">      96 </span>            : 
+<span class="lineNum">      97 </span>            :         if (unlikely(!exit_silently_from_kernel)) {
+<span class="lineNum">      98 </span>            :                 exit_silently_from_kernel = true;
+<span class="lineNum">      99 </span>            : 
+<span class="lineNum">     100 </span>            :                 printf(&quot;Warning: exit() has been called from the model.\n&quot;
+<span class="lineNum">     101 </span>            :                        &quot;The simulation will now halt, but its unlikely what you really wanted...\n&quot;
+<span class="lineNum">     102 </span>            :                        &quot;You should use OnGVT() instead. See the manpages for an explanation.\n&quot;);
+<span class="lineNum">     103 </span>            : 
+<span class="lineNum">     104 </span>            :                 simulation_shutdown(EXIT_FAILURE);
+<span class="lineNum">     105 </span>            :         }
+<span class="lineNum">     106 </span>            : }
+<span class="lineNum">     107 </span>            : 
+<span class="lineNum">     108 </span><span class="lineNoCov">          0 : inline bool user_requested_exit(void)</span>
+<span class="lineNum">     109 </span>            : {
+<span class="lineNum">     110 </span>            :         return user_exit_flag;
+<span class="lineNum">     111 </span>            : }
+<span class="lineNum">     112 </span>            : 
+<span class="lineNum">     113 </span><span class="lineNoCov">          0 : static void handle_signal(int signum)</span>
+<span class="lineNum">     114 </span>            : {
+<span class="lineNum">     115 </span>            :         if (signum == SIGINT) {
+<span class="lineNum">     116 </span>            :                 user_exit_flag = true;
+<span class="lineNum">     117 </span>            :         }
+<span class="lineNum">     118 </span>            : }
+<span class="lineNum">     119 </span>            : 
+<span class="lineNum">     120 </span>            : /**
+<span class="lineNum">     121 </span>            : * This function initilizes basic functionalities within ROOT-Sim. In particular, it
+<span class="lineNum">     122 </span>            : * creates a mapping between logical processes and kernel instances.
+<span class="lineNum">     123 </span>            : *
+<span class="lineNum">     124 </span>            : * @author Francesco Quaglia
+<span class="lineNum">     125 </span>            : * @author Roberto Vitali
+<span class="lineNum">     126 </span>            : * @author Alessandro Pellegrini
+<span class="lineNum">     127 </span>            : *
+<span class="lineNum">     128 </span>            : */
+<span class="lineNum">     129 </span><span class="lineCov">          1 : void base_init(void)</span>
+<span class="lineNum">     130 </span>            : {
+<span class="lineNum">     131 </span>            :         struct sigaction new_act = { 0 };
+<span class="lineNum">     132 </span>            : 
+<span class="lineNum">     133 </span>            :         barrier_init(&amp;all_thread_barrier, n_cores);
+<span class="lineNum">     134 </span>            : 
+<span class="lineNum">     135 </span>            :         // complete the sigaction struct init
+<span class="lineNum">     136 </span>            :         new_act.sa_handler = handle_signal;
+<span class="lineNum">     137 </span>            :         // we set the signal action so that it auto disarms itself after the first invocation
+<span class="lineNum">     138 </span>            :         new_act.sa_flags = SA_RESETHAND;
+<span class="lineNum">     139 </span>            :         // register the signal handler
+<span class="lineNum">     140 </span>            :         sigaction(SIGINT, &amp;new_act, NULL);
+<span class="lineNum">     141 </span>            :         // register the exit function
+<span class="lineNum">     142 </span>            :         atexit(exit_from_simulation_model);
+<span class="lineNum">     143 </span>            : }
+<span class="lineNum">     144 </span>            : 
+<span class="lineNum">     145 </span>            : /**
+<span class="lineNum">     146 </span>            : * This function finalizes the core structures of ROOT-Sim, just before terminating a simulation
+<span class="lineNum">     147 </span>            : *
+<span class="lineNum">     148 </span>            : * @author Roberto Vitali
+<span class="lineNum">     149 </span>            : *
+<span class="lineNum">     150 </span>            : */
+<span class="lineNum">     151 </span><span class="lineCov">          1 : void base_fini(void)</span>
+<span class="lineNum">     152 </span>            : {
+<span class="lineNum">     153 </span>            : }
+<span class="lineNum">     154 </span>            : 
+<span class="lineNum">     155 </span>            : /**
+<span class="lineNum">     156 </span>            : * Creates a mapping between logical processes and kernel instances
+<span class="lineNum">     157 </span>            : *
+<span class="lineNum">     158 </span>            : * @author Francesco Quaglia
+<span class="lineNum">     159 </span>            : *
+<span class="lineNum">     160 </span>            : * @param gid The logical process' global identifier
+<span class="lineNum">     161 </span>            : * @return The id of the kernel currently hosting the logical process
+<span class="lineNum">     162 </span>            : */
+<span class="lineNum">     163 </span>            : __attribute__((pure))
+<span class="lineNum">     164 </span><span class="lineCov">          1 : unsigned int find_kernel_by_gid(GID_t gid)</span>
+<span class="lineNum">     165 </span>            : {
+<span class="lineNum">     166 </span>            :         // restituisce il kernel su cui si trova il processo identificato da gid
+<span class="lineNum">     167 </span>            :         return kernel[gid.to_int];
+<span class="lineNum">     168 </span>            : }
+<span class="lineNum">     169 </span>            : 
+<span class="lineNum">     170 </span>            : /**
+<span class="lineNum">     171 </span>            : * This function calls all the finalization functions exposed by subsystems and then
+<span class="lineNum">     172 </span>            : * exits.
+<span class="lineNum">     173 </span>            : *
+<span class="lineNum">     174 </span>            : * @author Alessandro Pellegrini
+<span class="lineNum">     175 </span>            : *
+<span class="lineNum">     176 </span>            : * @param code The exit code to be returned by the process
+<span class="lineNum">     177 </span>            : */
+<span class="lineNum">     178 </span><span class="lineCov">          1 : void simulation_shutdown(int code)</span>
+<span class="lineNum">     179 </span>            : {
+<span class="lineNum">     180 </span>            : 
+<span class="lineNum">     181 </span>            :         exit_silently_from_kernel = true;
+<span class="lineNum">     182 </span>            : 
+<span class="lineNum">     183 </span>            :         statistics_stop(code);
+<span class="lineNum">     184 </span>            : 
+<span class="lineNum">     185 </span>            :         if (likely(rootsim_config.serial == false)) {
+<span class="lineNum">     186 </span>            : 
+<span class="lineNum">     187 </span>            :                 thread_barrier(&amp;all_thread_barrier);
+<span class="lineNum">     188 </span>            : 
+<span class="lineNum">     189 </span>            :                 if (master_thread()) {
+<span class="lineNum">     190 </span>            :                         statistics_fini();
+<span class="lineNum">     191 </span>            :                         gvt_fini();
+<span class="lineNum">     192 </span>            :                         communication_fini();
+<span class="lineNum">     193 </span>            :                         scheduler_fini();
+<span class="lineNum">     194 </span>            :                         base_fini();
+<span class="lineNum">     195 </span>            :                 }
+<span class="lineNum">     196 </span>            : 
+<span class="lineNum">     197 </span>            :                 thread_barrier(&amp;all_thread_barrier);
+<span class="lineNum">     198 </span>            :         }
+<span class="lineNum">     199 </span>            : 
+<span class="lineNum">     200 </span>            :         exit(code);
+<span class="lineNum">     201 </span>            : }
+<span class="lineNum">     202 </span>            : 
+<span class="lineNum">     203 </span><span class="lineNoCov">          0 : inline bool simulation_error(void)</span>
+<span class="lineNum">     204 </span>            : {
+<span class="lineNum">     205 </span>            :         return sim_error;
+<span class="lineNum">     206 </span>            : }
+<span class="lineNum">     207 </span>            : 
+<span class="lineNum">     208 </span>            : /**
+<span class="lineNum">     209 </span>            : * A variadic function which prints out error messages. If the errors are marked as fatal,
+<span class="lineNum">     210 </span>            : * the simulation is correctly shut down.
+<span class="lineNum">     211 </span>            : *
+<span class="lineNum">     212 </span>            : * @author Alessandro Pellegrini
+<span class="lineNum">     213 </span>            : *
+<span class="lineNum">     214 </span>            : * @param fatal This flag marks an error as fatal (true) or not (false)
+<span class="lineNum">     215 </span>            : * @param msg The error message to be printed out. This can be specified as in the printf()
+<span class="lineNum">     216 </span>            : *        format message, thus a matching number of extra parameters can be passed.
+<span class="lineNum">     217 </span>            : *
+<span class="lineNum">     218 </span>            : * @todo If a fatal error is received, write it on the log file as well!
+<span class="lineNum">     219 </span>            : */
+<span class="lineNum">     220 </span><span class="lineCov">          1 : void _rootsim_error(bool fatal, const char *msg, ...)</span>
+<span class="lineNum">     221 </span>            : {
+<span class="lineNum">     222 </span>            :         char buf[1024];
+<span class="lineNum">     223 </span>            :         va_list args;
+<span class="lineNum">     224 </span>            : 
+<span class="lineNum">     225 </span>            :         va_start(args, msg);
+<span class="lineNum">     226 </span>            :         vsnprintf(buf, 1024, msg, args);
+<span class="lineNum">     227 </span>            :         va_end(args);
+<span class="lineNum">     228 </span>            : 
+<span class="lineNum">     229 </span>            :         fprintf(stderr, (fatal ? &quot;[FATAL ERROR] &quot; : &quot;[WARNING] &quot;));
+<span class="lineNum">     230 </span>            : 
+<span class="lineNum">     231 </span>            :         fprintf(stderr, &quot;%s&quot;, buf);
+<span class="lineNum">     232 </span>            :         fflush(stderr);
+<span class="lineNum">     233 </span>            : 
+<span class="lineNum">     234 </span>            :         if (fatal) {
+<span class="lineNum">     235 </span>            :                 if (rootsim_config.serial) {
+<span class="lineNum">     236 </span>            :                         exit(EXIT_FAILURE);
+<span class="lineNum">     237 </span>            :                 } else {
+<span class="lineNum">     238 </span>            : 
+<span class="lineNum">     239 </span>            :                         if (!init_complete) {
+<span class="lineNum">     240 </span>            :                                 exit(EXIT_FAILURE);
+<span class="lineNum">     241 </span>            :                         }
+<span class="lineNum">     242 </span>            : 
+<span class="lineNum">     243 </span>            :                         // Notify all KLT to shut down the simulation
+<span class="lineNum">     244 </span>            :                         sim_error = true;
+<span class="lineNum">     245 </span>            : 
+<span class="lineNum">     246 </span>            :                         // Bye bye main loop!
+<span class="lineNum">     247 </span>            :                         longjmp(exit_jmp, 1);
+<span class="lineNum">     248 </span>            :                 }
+<span class="lineNum">     249 </span>            :         }
+<span class="lineNum">     250 </span>            : }
+<span class="lineNum">     251 </span>            : 
+<span class="lineNum">     252 </span>            : /**
+<span class="lineNum">     253 </span>            : * This function maps logical processes onto kernel instances
+<span class="lineNum">     254 </span>            : *
+<span class="lineNum">     255 </span>            : * @author Francesco Quaglia
+<span class="lineNum">     256 </span>            : * @author Alessandro Pellegrini
+<span class="lineNum">     257 </span>            : */
+<span class="lineNum">     258 </span><span class="lineCov">          1 : void distribute_lps_on_kernels(void)</span>
+<span class="lineNum">     259 </span>            : {
+<span class="lineNum">     260 </span>            :         register unsigned int i = 0;
+<span class="lineNum">     261 </span>            :         unsigned int j;
+<span class="lineNum">     262 </span>            :         unsigned int buf1;
+<span class="lineNum">     263 </span>            :         int offset;
+<span class="lineNum">     264 </span>            :         int block_leftover;
+<span class="lineNum">     265 </span>            : 
+<span class="lineNum">     266 </span>            :         // Sanity check on number of LPs
+<span class="lineNum">     267 </span>            :         if (n_prc_tot &lt; n_ker) {
+<span class="lineNum">     268 </span>            :                 rootsim_error(true, &quot;Unable to allocate %d logical processes on %d kernels: must have at least %d LPs\n&quot;, n_prc_tot, n_ker, n_ker);
+<span class="lineNum">     269 </span>            :         }
+<span class="lineNum">     270 </span>            : 
+<span class="lineNum">     271 </span>            :         kernel = (unsigned int *)rsalloc(sizeof(unsigned int) * n_prc_tot);
+<span class="lineNum">     272 </span>            : 
+<span class="lineNum">     273 </span>            :         switch (rootsim_config.lps_distribution) {
+<span class="lineNum">     274 </span>            : 
+<span class="lineNum">     275 </span>            :         case LP_DISTRIBUTION_BLOCK:
+<span class="lineNum">     276 </span>            :                 buf1 = (n_prc_tot / n_ker);
+<span class="lineNum">     277 </span>            :                 block_leftover = n_prc_tot - buf1 * n_ker;
+<span class="lineNum">     278 </span>            : 
+<span class="lineNum">     279 </span>            :                 // It is a hack to bypass the first check that set offset to 0
+<span class="lineNum">     280 </span>            :                 if (block_leftover &gt; 0)
+<span class="lineNum">     281 </span>            :                         buf1++;
+<span class="lineNum">     282 </span>            : 
+<span class="lineNum">     283 </span>            :                 offset = 0;
+<span class="lineNum">     284 </span>            :                 while (i &lt; n_prc_tot) {
+<span class="lineNum">     285 </span>            :                         j = 0;
+<span class="lineNum">     286 </span>            :                         while (j &lt; buf1) {
+<span class="lineNum">     287 </span>            :                                 kernel[i] = offset;
+<span class="lineNum">     288 </span>            : 
+<span class="lineNum">     289 </span>            :                                 if (kernel[i] == kid)
+<span class="lineNum">     290 </span>            :                                         n_prc++;
+<span class="lineNum">     291 </span>            : 
+<span class="lineNum">     292 </span>            :                                 i++;
+<span class="lineNum">     293 </span>            :                                 j++;
+<span class="lineNum">     294 </span>            :                         }
+<span class="lineNum">     295 </span>            :                         offset++;
+<span class="lineNum">     296 </span>            :                         block_leftover--;
+<span class="lineNum">     297 </span>            :                         if (block_leftover == 0)
+<span class="lineNum">     298 </span>            :                                 buf1--;
+<span class="lineNum">     299 </span>            :                 }
+<span class="lineNum">     300 </span>            :                 break;
+<span class="lineNum">     301 </span>            : 
+<span class="lineNum">     302 </span>            :         case LP_DISTRIBUTION_CIRCULAR:
+<span class="lineNum">     303 </span>            :                 for (i = 0; i &lt; n_prc_tot; i++) {
+<span class="lineNum">     304 </span>            :                         kernel[i] = i % n_ker;
+<span class="lineNum">     305 </span>            : 
+<span class="lineNum">     306 </span>            :                         if (kernel[i] == kid)
+<span class="lineNum">     307 </span>            :                                 n_prc++;
+<span class="lineNum">     308 </span>            :                 }
+<span class="lineNum">     309 </span>            :                 break;
+<span class="lineNum">     310 </span>            :         }
+<span class="lineNum">     311 </span>            : }
+<span class="lineNum">     312 </span>            : 
+<span class="lineNum">     313 </span>            : /**
+<span class="lineNum">     314 </span>            :  * This function records that the initialization is complete.
+<span class="lineNum">     315 </span>            :  */
+<span class="lineNum">     316 </span><span class="lineCov">          1 : void initialization_complete(void)</span>
+<span class="lineNum">     317 </span>            : {
+<span class="lineNum">     318 </span>            :         init_complete = true;
+<span class="lineNum">     319 </span>            : }
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.12</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>

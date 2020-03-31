@@ -1,0 +1,19 @@
+<map id="restore_full" name="restore_full">
+<area shape="rect" id="node2" href="$dymelor_8h.html#aea7bcb3e0ec0c731b510785a3ff23e50" title="log_restore" alt="" coords="147,31,241,57"/>
+<area shape="rect" id="node3" href="$ccgs_8h.html#af8c1dd6d3ab2078085039fec6c7b0d9f" title="ccgs_compute_snapshot" alt="" coords="289,5,471,32"/>
+<area shape="rect" id="node9" href="$state_8h.html#affa280b9d6f43896c9db64f0e32b2f3d" title="LogState" alt="" coords="340,56,420,83"/>
+<area shape="rect" id="node4" href="$gvt_2gvt_8h.html#a62e7abde0dac08e56aa2a57401aed27b" title="adopt_new_gvt" alt="" coords="519,5,637,32"/>
+<area shape="rect" id="node5" href="$gvt_2gvt_8h.html#a899b50ab45427cf145360ff3a6c29808" title="gvt_operations" alt="" coords="1056,5,1173,32"/>
+<area shape="rect" id="node6" href="$main_8c.html#aa729cb27350c33119484501e13df4fec" title="main_simulation_loop" alt="" coords="1425,132,1587,159"/>
+<area shape="rect" id="node7" href="$main_8c.html#af2ac8c142556588d87e6c069a4ca9894" title="end_computing" alt="" coords="1635,183,1756,209"/>
+<area shape="rect" id="node8" href="$main_8c.html#a3c04138a5bfe5d72780bb7e82a18e627" title="main" alt="" coords="1943,175,1997,201"/>
+<area shape="rect" id="node10" href="$scheduler_8h.html#ac48128e72b303ea22d8ec641a9516b15" title="schedule" alt="" coords="539,56,617,83"/>
+<area shape="rect" id="node11" href="$gvt_2gvt_8h.html#a234e866bb1e37fa25dec9bb40134234d" title="get_last_gvt" alt="" coords="685,107,785,133"/>
+<area shape="rect" id="node12" href="$queues_8h.html#a54eca9bfa893cac072d1b1d3010c2944" title="process_bottom_halves" alt="" coords="833,107,1008,133"/>
+<area shape="rect" id="node13" href="$statistics_8c.html#ab7b584959699657a63a49384f07fd7a9" title="format_size" alt="" coords="872,157,969,184"/>
+<area shape="rect" id="node14" href="$statistics_8h.html#aeff52bbf045362270639b2baed20762b" title="statistics_stop" alt="" coords="1057,157,1172,184"/>
+<area shape="rect" id="node15" href="$core_8h.html#a8f346536ccfbe77b78ed577674beb6cf" title="simulation_shutdown" alt="" coords="1221,157,1377,184"/>
+<area shape="rect" id="node16" href="$core_8c.html#a9b05d2af2e233e2616633eaa706682ee" title="exit_from_simulation\l_model" alt="" coords="1429,259,1583,301"/>
+<area shape="rect" id="node17" href="$core_8h.html#a7fb819521b1ab5fc7644ad216fe7b465" title="base_init" alt="" coords="1656,249,1735,276"/>
+<area shape="rect" id="node18" href="$init_8h.html#a417eb072179d09f441dbae3125049e46" title="SystemInit" alt="" coords="1804,216,1895,243"/>
+</map>

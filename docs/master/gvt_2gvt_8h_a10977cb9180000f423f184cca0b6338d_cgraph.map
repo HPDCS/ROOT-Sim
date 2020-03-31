@@ -1,0 +1,7 @@
+<map id="gvt_fini" name="gvt_fini">
+<area shape="rect" id="node2" href="$communication_2gvt_8c.html#abb460bc63d1b830804752ce6bdd4e30a" title="Check if there are pending GVT&#45;init messages around. " alt="" coords="139,5,266,32"/>
+<area shape="rect" id="node4" href="$communication_2gvt_8c.html#a0ed9e4affac9f35d26194a98a089f2c6" title="Join the white message reduction collective operation. " alt="" coords="121,56,284,83"/>
+<area shape="rect" id="node5" href="$communication_2gvt_8c.html#a4c4efc6874baad6133dd05ed355fe8d8" title="Wait for the completion of wait message reduction. " alt="" coords="120,107,285,133"/>
+<area shape="rect" id="node6" href="$communication_2gvt_8c.html#a53ca71f17a218181b76a3ef8ffa12e95" title="Reduce the GVT value. " alt="" coords="145,157,260,184"/>
+<area shape="rect" id="node3" href="$mpi_8c.html#a621b43e2d97c134914cb2737e13e97e2" title="Check if there are pending messages. " alt="" coords="333,5,448,32"/>
+</map>

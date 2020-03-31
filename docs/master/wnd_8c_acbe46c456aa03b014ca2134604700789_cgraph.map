@@ -1,0 +1,12 @@
+<map id="outgoing_window_finalize" name="outgoing_window_finalize">
+<area shape="rect" id="node2" href="$wnd_8c.html#a157ee75a6300b4d0ae3c99afe8c3ae6a" title="Prune all outgoing queues. " alt="" coords="235,81,411,108"/>
+<area shape="rect" id="node11" href="$wnd_8c.html#abb89cd249e078e812ea6692080b7c2d8" title="Compute the size of all outgoing queues. " alt="" coords="241,132,405,159"/>
+<area shape="rect" id="node3" href="$wnd_8c.html#a9b192f19fc6af0cfd7bcefd788b0b93f" title="Prune an outgoing queue. " alt="" coords="459,81,628,108"/>
+<area shape="rect" id="node4" href="$atomic_8h.html#a7a6b9868956dd8e51e5de80e16c76fc4" title="spin_lock" alt="" coords="702,5,782,32"/>
+<area shape="rect" id="node5" href="$wnd_8c.html#af652d88db30c0405a4d1bfc6de43cffc" title="Check if a message has been delivered. " alt="" coords="676,56,808,83"/>
+<area shape="rect" id="node7" href="$communication_8c.html#a323ad017762155352c38983e67e8adeb" title="Release a message buffer. " alt="" coords="690,107,794,133"/>
+<area shape="rect" id="node10" href="$atomic_8h.html#a4e8c9d1c6101995f1ecd2141d77e4824" title="spin_unlock" alt="" coords="694,157,790,184"/>
+<area shape="rect" id="node6" href="$mpi_8c.html#a15047d29439a8f03a2747ecadda5b4a4" title="check if an MPI request has been completed " alt="" coords="856,56,1019,83"/>
+<area shape="rect" id="node8" href="$communication_8c.html#ae6b96249d35969d688d0d84209919c8f" title="Find a slab to allocate a message buffer. " alt="" coords="867,107,1007,133"/>
+<area shape="rect" id="node9" href="$core_8c.html#a6793e4c70d69277f24ff0e494ed8ed10" title="find_kernel_by_gid" alt="" coords="1067,107,1205,133"/>
+</map>

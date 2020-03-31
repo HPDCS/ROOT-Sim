@@ -1,0 +1,151 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - doc-coverage.info - ROOT-Sim/src/lib/jsmn.h</title>
+  <link rel="stylesheet" type="text/css" href="../../../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../../../index.html">top level</a> - <a href="index.html">ROOT-Sim/src/lib</a> - jsmn.h</td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">doc-coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">4</td>
+            <td class="headerCovTableEntry">17</td>
+            <td class="headerCovTableEntryLo">23.5 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2020-01-30 13:56:10</td>
+            <td></td>
+          </tr>
+          <tr><td><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<span class="lineNum">       1 </span><span class="lineNoCov">          0 : #ifndef __JSMN_H_</span>
+<span class="lineNum">       2 </span>            : #define __JSMN_H_
+<span class="lineNum">       3 </span>            : 
+<span class="lineNum">       4 </span>            : #include &lt;stddef.h&gt;
+<span class="lineNum">       5 </span>            : 
+<span class="lineNum">       6 </span><span class="lineNoCov">          0 : #define JSMN_PARENT_LINKS</span>
+<span class="lineNum">       7 </span><span class="lineNoCov">          0 : #define JSMN_STRICT</span>
+<span class="lineNum">       8 </span>            : // TODO HOMEBREW OUR OWN JSON PARSER FOR PRIDE
+<span class="lineNum">       9 </span>            : #ifdef __cplusplus
+<span class="lineNum">      10 </span>            : extern &quot;C&quot; {
+<span class="lineNum">      11 </span>            : #endif
+<span class="lineNum">      12 </span>            : 
+<span class="lineNum">      13 </span>            : /**
+<span class="lineNum">      14 </span>            :  * JSON type identifier. Basic types are:
+<span class="lineNum">      15 </span>            :  *      o Object
+<span class="lineNum">      16 </span>            :  *      o Array
+<span class="lineNum">      17 </span>            :  *      o String
+<span class="lineNum">      18 </span>            :  *      o Other primitive: number, boolean (true/false) or null
+<span class="lineNum">      19 </span>            :  */
+<span class="lineNum">      20 </span><span class="lineNoCov">          0 : typedef enum {</span>
+<span class="lineNum">      21 </span>            :         JSMN_UNDEFINED = 0,
+<span class="lineNum">      22 </span>            :         JSMN_OBJECT = 1,
+<span class="lineNum">      23 </span>            :         JSMN_ARRAY = 2,
+<span class="lineNum">      24 </span>            :         JSMN_STRING = 3,
+<span class="lineNum">      25 </span>            :         JSMN_PRIMITIVE = 4
+<span class="lineNum">      26 </span>            : } jsmntype_t;
+<span class="lineNum">      27 </span>            : 
+<span class="lineNum">      28 </span><span class="lineNoCov">          0 : enum jsmnerr {</span>
+<span class="lineNum">      29 </span>            :         /* Not enough tokens were provided */
+<span class="lineNum">      30 </span>            :         JSMN_ERROR_NOMEM = -1,
+<span class="lineNum">      31 </span>            :         /* Invalid character inside JSON string */
+<span class="lineNum">      32 </span>            :         JSMN_ERROR_INVAL = -2,
+<span class="lineNum">      33 </span>            :         /* The string is not a full JSON packet, more bytes expected */
+<span class="lineNum">      34 </span>            :         JSMN_ERROR_PART = -3
+<span class="lineNum">      35 </span>            : };
+<span class="lineNum">      36 </span>            : 
+<span class="lineNum">      37 </span>            : /**
+<span class="lineNum">      38 </span>            :  * JSON token description.
+<span class="lineNum">      39 </span>            :  * type         type (object, array, string etc.)
+<span class="lineNum">      40 </span>            :  * start        start position in JSON data string
+<span class="lineNum">      41 </span>            :  * end          end position in JSON data string
+<span class="lineNum">      42 </span>            :  */
+<span class="lineNum">      43 </span><span class="lineCov">          1 : typedef struct {</span>
+<span class="lineNum">      44 </span><span class="lineNoCov">          0 :         jsmntype_t type;</span>
+<span class="lineNum">      45 </span><span class="lineNoCov">          0 :         int start;</span>
+<span class="lineNum">      46 </span><span class="lineNoCov">          0 :         int end;</span>
+<span class="lineNum">      47 </span><span class="lineNoCov">          0 :         int size;</span>
+<span class="lineNum">      48 </span>            : #ifdef JSMN_PARENT_LINKS
+<span class="lineNum">      49 </span><span class="lineNoCov">          0 :         int parent;</span>
+<span class="lineNum">      50 </span>            : #endif
+<span class="lineNum">      51 </span>            : } jsmntok_t;
+<span class="lineNum">      52 </span>            : 
+<span class="lineNum">      53 </span>            : /**
+<span class="lineNum">      54 </span>            :  * JSON parser. Contains an array of token blocks available. Also stores
+<span class="lineNum">      55 </span>            :  * the string being parsed now and current position in that string
+<span class="lineNum">      56 </span>            :  */
+<span class="lineNum">      57 </span><span class="lineCov">          1 : typedef struct {</span>
+<span class="lineNum">      58 </span><span class="lineNoCov">          0 :         unsigned int pos; /* offset in the JSON string */</span>
+<span class="lineNum">      59 </span><span class="lineNoCov">          0 :         unsigned int toknext; /* next token to allocate */</span>
+<span class="lineNum">      60 </span><span class="lineNoCov">          0 :         int toksuper; /* superior token node, e.g parent object or array */</span>
+<span class="lineNum">      61 </span>            : } jsmn_parser;
+<span class="lineNum">      62 </span>            : 
+<span class="lineNum">      63 </span>            : /**
+<span class="lineNum">      64 </span>            :  * Create JSON parser over an array of tokens
+<span class="lineNum">      65 </span>            :  */
+<span class="lineNum">      66 </span><span class="lineCov">          1 : void jsmn_init(jsmn_parser *parser);</span>
+<span class="lineNum">      67 </span>            : 
+<span class="lineNum">      68 </span>            : /**
+<span class="lineNum">      69 </span>            :  * Run JSON parser. It parses a JSON data string into and array of tokens, each describing
+<span class="lineNum">      70 </span>            :  * a single JSON object.
+<span class="lineNum">      71 </span>            :  */
+<span class="lineNum">      72 </span><span class="lineCov">          1 : int jsmn_parse(jsmn_parser *parser, const char *js, size_t len,</span>
+<span class="lineNum">      73 </span>            :                 jsmntok_t *tokens, unsigned int num_tokens);
+<span class="lineNum">      74 </span>            : 
+<span class="lineNum">      75 </span>            : #ifdef __cplusplus
+<span class="lineNum">      76 </span>            : }
+<span class="lineNum">      77 </span>            : #endif
+<span class="lineNum">      78 </span>            : 
+<span class="lineNum">      79 </span>            : #endif /* __JSMN_H_ */
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.12</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>

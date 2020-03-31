@@ -1,0 +1,307 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - doc-coverage.info - ROOT-Sim/src/communication/wnd.c</title>
+  <link rel="stylesheet" type="text/css" href="../../../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../../../index.html">top level</a> - <a href="index.html">ROOT-Sim/src/communication</a> - wnd.c</td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">doc-coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">11</td>
+            <td class="headerCovTableEntry">11</td>
+            <td class="headerCovTableEntryHi">100.0 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2020-02-07 15:01:24</td>
+            <td></td>
+          </tr>
+          <tr><td><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<span class="lineNum">       1 </span><span class="lineCov">          1 : /**</span>
+<span class="lineNum">       2 </span>            : * @file communication/wnd.c
+<span class="lineNum">       3 </span>            : *
+<span class="lineNum">       4 </span>            : * @brief Message delivery support
+<span class="lineNum">       5 </span>            : *
+<span class="lineNum">       6 </span>            : * This module implements the message delivery support functions.
+<span class="lineNum">       7 </span>            : * Message delivery is carried out asynchronously via MPI, therefore
+<span class="lineNum">       8 </span>            : * we need a way to let MPI notify us when a certain message has been
+<span class="lineNum">       9 </span>            : * delivered to the destination simulation kernel and is now in charge of it.
+<span class="lineNum">      10 </span>            : *
+<span class="lineNum">      11 </span>            : * This module implements a set of per-remote-kernel queues in which each
+<span class="lineNum">      12 </span>            : * remote message is registered before an Isend operation is initiated.
+<span class="lineNum">      13 </span>            : *
+<span class="lineNum">      14 </span>            : * MPI will eventually notify us of the delivery of that message. By
+<span class="lineNum">      15 </span>            : * scanning the outgoing queues, we can know what messages have reached
+<span class="lineNum">      16 </span>            : * destination and remove the corresponding entry.
+<span class="lineNum">      17 </span>            : *
+<span class="lineNum">      18 </span>            : * @copyright
+<span class="lineNum">      19 </span>            : * Copyright (C) 2008-2019 HPDCS Group
+<span class="lineNum">      20 </span>            : * https://hpdcs.github.io
+<span class="lineNum">      21 </span>            : *
+<span class="lineNum">      22 </span>            : * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
+<span class="lineNum">      23 </span>            : *
+<span class="lineNum">      24 </span>            : * ROOT-Sim is free software; you can redistribute it and/or modify it under the
+<span class="lineNum">      25 </span>            : * terms of the GNU General Public License as published by the Free Software
+<span class="lineNum">      26 </span>            : * Foundation; only version 3 of the License applies.
+<span class="lineNum">      27 </span>            : *
+<span class="lineNum">      28 </span>            : * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
+<span class="lineNum">      29 </span>            : * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+<span class="lineNum">      30 </span>            : * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+<span class="lineNum">      31 </span>            : *
+<span class="lineNum">      32 </span>            : * You should have received a copy of the GNU General Public License along with
+<span class="lineNum">      33 </span>            : * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
+<span class="lineNum">      34 </span>            : * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+<span class="lineNum">      35 </span>            : *
+<span class="lineNum">      36 </span>            : * @author Tommaso Tocci
+<span class="lineNum">      37 </span>            : */
+<span class="lineNum">      38 </span>            : 
+<span class="lineNum">      39 </span>            : #ifdef HAVE_MPI
+<span class="lineNum">      40 </span>            : 
+<span class="lineNum">      41 </span>            : #include &lt;communication/communication.h&gt;
+<span class="lineNum">      42 </span>            : #include &lt;communication/wnd.h&gt;
+<span class="lineNum">      43 </span>            : #include &lt;communication/mpi.h&gt;
+<span class="lineNum">      44 </span>            : 
+<span class="lineNum">      45 </span>            : /**
+<span class="lineNum">      46 </span>            :  * Outgoing queues are used to keep track, at the MPI level, of what
+<span class="lineNum">      47 </span>            :  * messages have been scheduled for asynchronous delivery through MPI.
+<span class="lineNum">      48 </span>            :  * These queues are used to let MPI notify ROOT-Sim that a certain
+<span class="lineNum">      49 </span>            :  * message has been delivered to the destination simulation kernel, and
+<span class="lineNum">      50 </span>            :  * it is now in charge of its management.
+<span class="lineNum">      51 </span>            :  *
+<span class="lineNum">      52 </span>            :  * We keep one outgoing queue for each remote kernel instance.
+<span class="lineNum">      53 </span>            :  */
+<span class="lineNum">      54 </span><span class="lineCov">          1 : static outgoing_queue *outgoing_queues;</span>
+<span class="lineNum">      55 </span>            : 
+<span class="lineNum">      56 </span>            : /// The number of outgoing queues which are managed by the submodule
+<span class="lineNum">      57 </span><span class="lineCov">          1 : static int n_queues = 0;</span>
+<span class="lineNum">      58 </span>            : 
+<span class="lineNum">      59 </span>            : 
+<span class="lineNum">      60 </span>            : /**
+<span class="lineNum">      61 </span>            :  * @brief Compute the size of all outgoing queues
+<span class="lineNum">      62 </span>            :  *
+<span class="lineNum">      63 </span>            :  * This function determines the total size (in number of managed nodes)
+<span class="lineNum">      64 </span>            :  * of the local outgoing queues.
+<span class="lineNum">      65 </span>            :  *
+<span class="lineNum">      66 </span>            :  * @return The total number of elements in all the local outgoing queues
+<span class="lineNum">      67 </span>            :  */
+<span class="lineNum">      68 </span><span class="lineCov">          1 : static size_t outgoing_queues_size(void)</span>
+<span class="lineNum">      69 </span>            : {
+<span class="lineNum">      70 </span>            :         int i;
+<span class="lineNum">      71 </span>            :         size_t size = 0;
+<span class="lineNum">      72 </span>            :         for (i = 0; i &lt; n_queues; i++) {
+<span class="lineNum">      73 </span>            :                 size += list_sizeof(outgoing_queues[i].queue);
+<span class="lineNum">      74 </span>            :         }
+<span class="lineNum">      75 </span>            :         return size;
+<span class="lineNum">      76 </span>            : }
+<span class="lineNum">      77 </span>            : 
+<span class="lineNum">      78 </span>            : 
+<span class="lineNum">      79 </span>            : /**
+<span class="lineNum">      80 </span>            :  * @brief Outgoing queue initialization
+<span class="lineNum">      81 </span>            :  *
+<span class="lineNum">      82 </span>            :  * This function is called at simulation startup, and initializes the
+<span class="lineNum">      83 </span>            :  * outgoing queue subsystem, to keep track of the delivery of messages
+<span class="lineNum">      84 </span>            :  * to remote simulation kernel instances.
+<span class="lineNum">      85 </span>            :  */
+<span class="lineNum">      86 </span><span class="lineCov">          1 : void outgoing_window_init(void)</span>
+<span class="lineNum">      87 </span>            : {
+<span class="lineNum">      88 </span>            :         n_queues = n_ker;
+<span class="lineNum">      89 </span>            :         outgoing_queues = rsalloc(n_queues * sizeof(outgoing_queue));
+<span class="lineNum">      90 </span>            :         outgoing_queue *oq;
+<span class="lineNum">      91 </span>            :         int i;
+<span class="lineNum">      92 </span>            :         for (i = 0; i &lt; n_queues; i++) {
+<span class="lineNum">      93 </span>            :                 oq = outgoing_queues + i;
+<span class="lineNum">      94 </span>            :                 spinlock_init(&amp;(oq-&gt;lock));
+<span class="lineNum">      95 </span>            :                 oq-&gt;queue = new_list(outgoing_msg);
+<span class="lineNum">      96 </span>            :         }
+<span class="lineNum">      97 </span>            : }
+<span class="lineNum">      98 </span>            : 
+<span class="lineNum">      99 </span>            : 
+<span class="lineNum">     100 </span>            : /**
+<span class="lineNum">     101 </span>            :  * @brief Finalize the message delivery subsystem
+<span class="lineNum">     102 </span>            :  *
+<span class="lineNum">     103 </span>            :  * At simulation shutdown, this function is invoked to release all
+<span class="lineNum">     104 </span>            :  * the datastructures which have been used to keep track of remote
+<span class="lineNum">     105 </span>            :  * message delivery.
+<span class="lineNum">     106 </span>            :  */
+<span class="lineNum">     107 </span><span class="lineCov">          1 : void outgoing_window_finalize(void)</span>
+<span class="lineNum">     108 </span>            : {
+<span class="lineNum">     109 </span>            :         prune_outgoing_queues();
+<span class="lineNum">     110 </span>            :         size_t pending_out_msgs = outgoing_queues_size();
+<span class="lineNum">     111 </span>            : 
+<span class="lineNum">     112 </span>            :         if (unlikely(pending_out_msgs &gt; 0)) {
+<span class="lineNum">     113 </span>            :                 rootsim_error(true, &quot;Outgoing queues not empty on exit: %zu\n&quot;, outgoing_queues_size());
+<span class="lineNum">     114 </span>            :         }
+<span class="lineNum">     115 </span>            : 
+<span class="lineNum">     116 </span>            :         // TODO: release also lists allocated via new_list in outgoing_window_init()
+<span class="lineNum">     117 </span>            :         rsfree(outgoing_queues);
+<span class="lineNum">     118 </span>            : }
+<span class="lineNum">     119 </span>            : 
+<span class="lineNum">     120 </span>            : 
+<span class="lineNum">     121 </span>            : /**
+<span class="lineNum">     122 </span>            :  * @brief Allocate a buffer for an outgoing message node
+<span class="lineNum">     123 </span>            :  *
+<span class="lineNum">     124 </span>            :  * This function allocates a buffer to keep track of one message
+<span class="lineNum">     125 </span>            :  * which is being remotely sent through MPI
+<span class="lineNum">     126 </span>            :  *
+<span class="lineNum">     127 </span>            :  * @return a pointer to a buffer keeping an @ref outgoing_msg to
+<span class="lineNum">     128 </span>            :  *         be populated before linking to an outgoing queue
+<span class="lineNum">     129 </span>            :  */
+<span class="lineNum">     130 </span><span class="lineCov">          1 : outgoing_msg *allocate_outgoing_msg(void)</span>
+<span class="lineNum">     131 </span>            : {
+<span class="lineNum">     132 </span>            :         return rsalloc(sizeof(outgoing_msg));
+<span class="lineNum">     133 </span>            : }
+<span class="lineNum">     134 </span>            : 
+<span class="lineNum">     135 </span>            : 
+<span class="lineNum">     136 </span>            : /**
+<span class="lineNum">     137 </span>            :  * @brief Check if a message has been delivered
+<span class="lineNum">     138 </span>            :  * 
+<span class="lineNum">     139 </span>            :  * Given a message node in an outgoing queue, this function determines
+<span class="lineNum">     140 </span>            :  * whether the corresponding MPI Request tells that the operation is
+<span class="lineNum">     141 </span>            :  * comple, therefore meaning that the message has been delivered to
+<span class="lineNum">     142 </span>            :  * the destination simulation kernel instance.
+<span class="lineNum">     143 </span>            :  *
+<span class="lineNum">     144 </span>            :  * @param msg A pointer to an @ref outgoing_msg to check for delivery
+<span class="lineNum">     145 </span>            :  *
+<span class="lineNum">     146 </span>            :  * @return @c true if the message has been delivered, @c false otherwise
+<span class="lineNum">     147 </span>            :  */
+<span class="lineNum">     148 </span><span class="lineCov">          1 : static inline bool is_msg_delivered(outgoing_msg *msg)</span>
+<span class="lineNum">     149 </span>            : {
+<span class="lineNum">     150 </span>            :         return is_request_completed(&amp;(msg-&gt;req));
+<span class="lineNum">     151 </span>            : }
+<span class="lineNum">     152 </span>            : 
+<span class="lineNum">     153 </span>            : 
+<span class="lineNum">     154 </span>            : /**
+<span class="lineNum">     155 </span>            :  * @brief Store an outgoing message
+<span class="lineNum">     156 </span>            :  *
+<span class="lineNum">     157 </span>            :  * Given an @ref outgoing_msg node and a destination kernel id, this
+<span class="lineNum">     158 </span>            :  * function properly links the node in @p out_msg to the proper
+<span class="lineNum">     159 </span>            :  * outgoing queue associated with the destination kernel.
+<span class="lineNum">     160 </span>            :  *
+<span class="lineNum">     161 </span>            :  * @note This function is thread safe
+<span class="lineNum">     162 </span>            :  *
+<span class="lineNum">     163 </span>            :  * @param out_msg A pointer to an @ref outgoing_msg node
+<span class="lineNum">     164 </span>            :  * @param dest_kid The global ID of the simulation kernel instance for
+<span class="lineNum">     165 </span>            :  *                 which this node represents an outgoing message
+<span class="lineNum">     166 </span>            :  */
+<span class="lineNum">     167 </span><span class="lineCov">          1 : void store_outgoing_msg(outgoing_msg *out_msg, unsigned int dest_kid)</span>
+<span class="lineNum">     168 </span>            : {
+<span class="lineNum">     169 </span>            :         outgoing_queue *oq = &amp;outgoing_queues[dest_kid];
+<span class="lineNum">     170 </span>            : 
+<span class="lineNum">     171 </span>            :         spin_lock(&amp;(oq-&gt;lock));
+<span class="lineNum">     172 </span>            :         list_insert_tail(oq-&gt;queue, out_msg);
+<span class="lineNum">     173 </span>            :         spin_unlock(&amp;(oq-&gt;lock));
+<span class="lineNum">     174 </span>            : }
+<span class="lineNum">     175 </span>            : 
+<span class="lineNum">     176 </span>            : 
+<span class="lineNum">     177 </span>            : /**
+<span class="lineNum">     178 </span>            :  * @brief Prune an outgoing queue
+<span class="lineNum">     179 </span>            :  *
+<span class="lineNum">     180 </span>            :  * Given an outgoing queue, this function scans through it looking for
+<span class="lineNum">     181 </span>            :  * all messages which have been correctly delivered to their destination.
+<span class="lineNum">     182 </span>            :  *
+<span class="lineNum">     183 </span>            :  * The nodes associated with operations which have completed are removed
+<span class="lineNum">     184 </span>            :  * and freed.
+<span class="lineNum">     185 </span>            :  *
+<span class="lineNum">     186 </span>            :  * @note This function is thread safe
+<span class="lineNum">     187 </span>            :  * 
+<span class="lineNum">     188 </span>            :  * @param oq The output queue to inspect
+<span class="lineNum">     189 </span>            :  */
+<span class="lineNum">     190 </span><span class="lineCov">          1 : static int prune_outgoing_queue(outgoing_queue *oq)</span>
+<span class="lineNum">     191 </span>            : {
+<span class="lineNum">     192 </span>            :         int pruned = 0;
+<span class="lineNum">     193 </span>            : 
+<span class="lineNum">     194 </span>            :         spin_lock(&amp;(oq-&gt;lock));
+<span class="lineNum">     195 </span>            : 
+<span class="lineNum">     196 </span>            :         outgoing_msg *msg = list_head(oq-&gt;queue);
+<span class="lineNum">     197 </span>            : 
+<span class="lineNum">     198 </span>            :         // check all the outgoing messages in the queue starting from the
+<span class="lineNum">     199 </span>            :         // head (the entry with the minimum timestamp) and delete them
+<span class="lineNum">     200 </span>            :         // if they have been already delivered
+<span class="lineNum">     201 </span>            :         while (msg != NULL &amp;&amp; is_msg_delivered(msg)) {
+<span class="lineNum">     202 </span>            :                 msg_release(msg-&gt;msg);
+<span class="lineNum">     203 </span>            : 
+<span class="lineNum">     204 </span>            :                 list_delete_by_content(oq-&gt;queue, msg);
+<span class="lineNum">     205 </span>            :                 pruned++;
+<span class="lineNum">     206 </span>            :                 msg = list_head(oq-&gt;queue);
+<span class="lineNum">     207 </span>            :         }
+<span class="lineNum">     208 </span>            : 
+<span class="lineNum">     209 </span>            :         spin_unlock(&amp;(oq-&gt;lock));
+<span class="lineNum">     210 </span>            : 
+<span class="lineNum">     211 </span>            :         return pruned;
+<span class="lineNum">     212 </span>            : }
+<span class="lineNum">     213 </span>            : 
+<span class="lineNum">     214 </span>            : 
+<span class="lineNum">     215 </span>            : /**
+<span class="lineNum">     216 </span>            :  * @brief Prune all outgoing queues
+<span class="lineNum">     217 </span>            :  *
+<span class="lineNum">     218 </span>            :  * This function scans through all the local outgoing queues, looking
+<span class="lineNum">     219 </span>            :  * for messages which have been correctly delivered to the destination.
+<span class="lineNum">     220 </span>            :  *
+<span class="lineNum">     221 </span>            :  * Such message nodes are removed from the queue.
+<span class="lineNum">     222 </span>            :  *
+<span class="lineNum">     223 </span>            :  * Actual queue pruning is performed in prune_outgoing_queue()
+<span class="lineNum">     224 </span>            :  */
+<span class="lineNum">     225 </span><span class="lineCov">          1 : int prune_outgoing_queues(void)</span>
+<span class="lineNum">     226 </span>            : {
+<span class="lineNum">     227 </span>            :         int i;
+<span class="lineNum">     228 </span>            :         int pruned = 0;
+<span class="lineNum">     229 </span>            :         for (i = 0; i &lt; n_queues; i++) {
+<span class="lineNum">     230 </span>            :                 pruned += prune_outgoing_queue(outgoing_queues + i);
+<span class="lineNum">     231 </span>            :         }
+<span class="lineNum">     232 </span>            :         return pruned;
+<span class="lineNum">     233 </span>            : }
+<span class="lineNum">     234 </span>            : 
+<span class="lineNum">     235 </span>            : #endif
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.12</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>

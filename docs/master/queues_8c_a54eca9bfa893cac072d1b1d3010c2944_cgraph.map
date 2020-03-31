@@ -1,0 +1,50 @@
+<map id="process_bottom_halves" name="process_bottom_halves">
+<area shape="rect" id="node2" href="$gvt_2gvt_8c.html#a234e866bb1e37fa25dec9bb40134234d" title="get_last_gvt" alt="" coords="253,355,353,381"/>
+<area shape="rect" id="node47" href="$communication_8c.html#a323ad017762155352c38983e67e8adeb" title="Release a message buffer. " alt="" coords="251,220,355,247"/>
+<area shape="rect" id="node48" href="$communication_8c.html#ac5d2aab0b4d3d676e4a8fd2d3d6e7bf9" title="Dump the content of a message. " alt="" coords="228,405,379,432"/>
+<area shape="rect" id="node49" href="$communication_2gvt_8c.html#a5f8f575e93930869ac20641c7305e850" title="Register an incoming message, if necessary. " alt="" coords="1472,5,1643,32"/>
+<area shape="rect" id="node3" href="$mpi_8c.html#ad243611fd168b265105bce70c193394d" title="Receive remote messages. " alt="" coords="1058,563,1222,589"/>
+<area shape="rect" id="node11" href="$atomic_8h.html#a52336e036d2da5656c6db69b121458ba" title="atomic_dec" alt="" coords="442,405,538,432"/>
+<area shape="rect" id="node12" href="$scheduler_8c.html#ac48128e72b303ea22d8ec641a9516b15" title="schedule" alt="" coords="451,355,529,381"/>
+<area shape="rect" id="node44" href="$communication_2gvt_8c.html#ada741933a843e0427d9768d6bb2a511b" title="Make a thread exit from red phase. " alt="" coords="431,456,549,483"/>
+<area shape="rect" id="node45" href="$communication_2gvt_8c.html#abb460bc63d1b830804752ce6bdd4e30a" title="Check if there are pending GVT&#45;init messages around. " alt="" coords="427,245,553,272"/>
+<area shape="rect" id="node4" href="$atomic_8h.html#afd2c05472274bd1c73d5408a213cf429" title="spin_trylock" alt="" coords="1301,563,1399,589"/>
+<area shape="rect" id="node6" href="$communication_8c.html#ab957dc2cd186382c50ef8cfde9761909" title="Get a buffer to keep a message. " alt="" coords="1276,411,1424,437"/>
+<area shape="rect" id="node7" href="$communication_8c.html#aebec05b86f3467473116d555954b80f4" title="Perform some sanity checks on a message buffer. " alt="" coords="1504,360,1611,387"/>
+<area shape="rect" id="node9" href="$queues_8c.html#a9ff164dd6a938afa7e892f4028c2a033" title="insert_bottom_half" alt="" coords="1279,360,1421,387"/>
+<area shape="rect" id="node10" href="$atomic_8h.html#a4e8c9d1c6101995f1ecd2141d77e4824" title="spin_unlock" alt="" coords="1712,335,1808,361"/>
+<area shape="rect" id="node5" href="$x86_8c.html#af8f8b0714bc5f4f7238feae5ca425117" title="atomic_test_and_set" alt="" coords="1479,563,1635,589"/>
+<area shape="rect" id="node8" href="$communication_8c.html#ab442ee81854e910ac0b21e3caf21cc48" title="Tell the GID of the sender of a message, given its mark. " alt="" coords="1709,385,1811,412"/>
+<area shape="rect" id="node13" href="$stf_8c.html#a726ca866bf5abd4a57d94280908b8f14" title="O(n) scheduler. " alt="" coords="612,289,765,330"/>
+<area shape="rect" id="node15" href="$state_8c.html#aef9ea0a6819ef7dffb471f1ff13190c2" title="rollback" alt="" coords="653,355,724,381"/>
+<area shape="rect" id="node30" href="$scheduler_8c.html#abc4b7b27d2597ef760c4305da6cf476b" title="activate_LP" alt="" coords="1093,461,1187,488"/>
+<area shape="rect" id="node31" href="$communication_8c.html#a694613eb88ca26ef684f9bcf1bab1b59" title="Send all pending outgoing messages. " alt="" coords="835,185,993,212"/>
+<area shape="rect" id="node34" href="$queues_8c.html#a49dd051443fe976047f5dcbc6247fa95" title="advance_to_next_event" alt="" coords="601,540,776,567"/>
+<area shape="rect" id="node35" href="$state_8c.html#ae0a3272d4a130bc40478a1ceb7f46e39" title="force_LP_checkpoint" alt="" coords="613,591,765,617"/>
+<area shape="rect" id="node36" href="$state_8c.html#a29fbf84fed206d7f721cd03b74d082cd" title="LogState" alt="" coords="649,489,729,516"/>
+<area shape="rect" id="node14" href="$queues_8c.html#a8ad36135fbbdd63698d5e633b7814d9f" title="next_event_timestamp" alt="" coords="829,236,999,263"/>
+<area shape="rect" id="node16" href="$communication_8c.html#a4b5cfcdce234d44ebd663be3c23e02d1" title="Send all antimessages for a certain LP. " alt="" coords="839,287,989,313"/>
+<area shape="rect" id="node28" href="$checkpoints_8c.html#a727e4cd3fa1d7b332b9f212733eec8d3" title="log_delete" alt="" coords="870,388,958,415"/>
+<area shape="rect" id="node29" href="$state_8c.html#ac716710e9e3da3d0318b467c0ed0b47f" title="silent_execution" alt="" coords="851,337,977,364"/>
+<area shape="rect" id="node17" href="$communication_8c.html#ae6b96249d35969d688d0d84209919c8f" title="Find a slab to allocate a message buffer. " alt="" coords="1070,107,1210,133"/>
+<area shape="rect" id="node19" href="$communication_8c.html#a5bbdfc874efd40b9126ce2202fb19534" title="convert a message header into a message " alt="" coords="1091,360,1189,387"/>
+<area shape="rect" id="node20" href="$communication_8c.html#ab5250867c0edfc326732c059b0c0c3b5" title="Send a message. " alt="" coords="1113,208,1167,235"/>
+<area shape="rect" id="node27" href="$communication_8c.html#a762b3dacaa82c4590e0572ac08117153" title="Release a message header. " alt="" coords="1074,309,1206,336"/>
+<area shape="rect" id="node18" href="$core_8c.html#a6793e4c70d69277f24ff0e494ed8ed10" title="find_kernel_by_gid" alt="" coords="1691,107,1829,133"/>
+<area shape="rect" id="node21" href="$mpi_8c.html#a41390aa810e506d633d2cf01bc5973bb" title="Send a message to a remote LP. " alt="" coords="1279,208,1421,235"/>
+<area shape="rect" id="node22" href="$wnd_8c.html#a76d33aed8e7dfe9ab6d8ce4f9b1f4fd8" title="Allocate a buffer for an outgoing message node. " alt="" coords="1472,259,1643,285"/>
+<area shape="rect" id="node23" href="$communication_2gvt_8c.html#a76f513e8aeeeb0abebc46f19ceb72293" title="Register an outgoing message, if necessary. " alt="" coords="1473,56,1642,83"/>
+<area shape="rect" id="node25" href="$wnd_8c.html#a16850c4710b9b54fc67b88547b3b87ee" title="Store an outgoing message. " alt="" coords="1481,309,1634,336"/>
+<area shape="rect" id="node24" href="$atomic_8h.html#ae2153aa1dc0d0362246d6e14f60b5550" title="atomic_inc" alt="" coords="1715,31,1805,57"/>
+<area shape="rect" id="node26" href="$atomic_8h.html#a7a6b9868956dd8e51e5de80e16c76fc4" title="spin_lock" alt="" coords="1720,284,1800,311"/>
+<area shape="rect" id="node32" href="$communication_8c.html#a8c19c92f7666ae90abb179ec12c75023" title="Get a buffer to keep a message header. " alt="" coords="1052,259,1228,285"/>
+<area shape="rect" id="node33" href="$communication_8c.html#a91ccc25aa3eaa49ec96ea9328aa99dbd" title="Convert a message to a message header. " alt="" coords="1301,259,1399,285"/>
+<area shape="rect" id="node37" href="$checkpoints_8c.html#af5802791ee41b774e796caa15315c24c" title="log_state" alt="" coords="873,641,955,668"/>
+<area shape="rect" id="node40" href="$abm__layer_8c.html#aaa938454239a876784c54890be88d058" title="abm_do_checkpoint" alt="" coords="839,591,989,617"/>
+<area shape="rect" id="node41" href="$checkpoints_8c.html#a21384b7f254e3d372111b3dbbf785e73" title="log_restore" alt="" coords="867,540,961,567"/>
+<area shape="rect" id="node43" href="$abm__layer_8c.html#ab25808462b1c440e1f43bf520e39f048" title="abm_restore_checkpoint" alt="" coords="824,489,1004,516"/>
+<area shape="rect" id="node38" href="$checkpoints_8c.html#a9be0910d1b3a99682d5d2971b4b79f3b" title="log_full" alt="" coords="1107,641,1173,668"/>
+<area shape="rect" id="node39" href="$dymelor_8c.html#a90e313c8735836c166694aa746cc841e" title="get_log_size" alt="" coords="1299,641,1401,668"/>
+<area shape="rect" id="node42" href="$checkpoints_8c.html#a10856fb7b6aab5e9072633b8a99875ff" title="restore_full" alt="" coords="1093,512,1187,539"/>
+<area shape="rect" id="node46" href="$mpi_8c.html#a621b43e2d97c134914cb2737e13e97e2" title="Check if there are pending messages. " alt="" coords="631,187,746,213"/>
+</map>

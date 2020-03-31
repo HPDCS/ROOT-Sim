@@ -1,0 +1,32 @@
+<map id="find_kernel_by_gid" name="find_kernel_by_gid">
+<area shape="rect" id="node2" href="$communication_8c.html#ae6b96249d35969d688d0d84209919c8f" title="Find a slab to allocate a message buffer. " alt="" coords="628,144,768,171"/>
+<area shape="rect" id="node27" href="$communication_8h.html#ab5250867c0edfc326732c059b0c0c3b5" title="Send a message. " alt="" coords="671,271,725,297"/>
+<area shape="rect" id="node29" href="$communication_2gvt_8h.html#a71be178d11f21969670eadcc34d1de0a" title="Register an outgoing message, if necessary. " alt="" coords="192,347,361,373"/>
+<area shape="rect" id="node30" href="$mpi_8h.html#a41390aa810e506d633d2cf01bc5973bb" title="Send a message to a remote LP. " alt="" coords="423,296,566,323"/>
+<area shape="rect" id="node31" href="$communication_2gvt_8h.html#ae864e6ab552e1726236d6707bec455d8" title="Register an incoming message, if necessary. " alt="" coords="409,195,580,221"/>
+<area shape="rect" id="node3" href="$communication_8h.html#a323ad017762155352c38983e67e8adeb" title="Release a message buffer. " alt="" coords="1026,144,1130,171"/>
+<area shape="rect" id="node21" href="$communication_8h.html#aa8047651e174f4d26bef644233b5c8f8" title="Send all antimessages for a certain LP. " alt="" coords="820,245,971,272"/>
+<area shape="rect" id="node24" href="$communication_8h.html#a56a4865196c169691525e99bae337519" title="Pack a message in a platform&#45;level data structure. " alt="" coords="852,68,939,95"/>
+<area shape="rect" id="node4" href="$wnd_8c.html#a9b192f19fc6af0cfd7bcefd788b0b93f" title="Prune an outgoing queue. " alt="" coords="1184,93,1353,120"/>
+<area shape="rect" id="node10" href="$fossil_8c.html#af4d5d546129fe91cedfc16ddedf76464" title="fossil_collection" alt="" coords="1431,144,1553,171"/>
+<area shape="rect" id="node13" href="$queues_8h.html#a54eca9bfa893cac072d1b1d3010c2944" title="process_bottom_halves" alt="" coords="1181,195,1356,221"/>
+<area shape="rect" id="node5" href="$wnd_8h.html#a157ee75a6300b4d0ae3c99afe8c3ae6a" title="Prune all outgoing queues. " alt="" coords="1404,93,1580,120"/>
+<area shape="rect" id="node6" href="$wnd_8h.html#acbe46c456aa03b014ca2134604700789" title="Finalize the message delivery subsystem. " alt="" coords="1628,43,1809,69"/>
+<area shape="rect" id="node7" href="$main_8c.html#aa729cb27350c33119484501e13df4fec" title="main_simulation_loop" alt="" coords="2299,195,2460,221"/>
+<area shape="rect" id="node8" href="$main_8c.html#af2ac8c142556588d87e6c069a4ca9894" title="end_computing" alt="" coords="2508,220,2629,247"/>
+<area shape="rect" id="node9" href="$main_8c.html#a3c04138a5bfe5d72780bb7e82a18e627" title="main" alt="" coords="2816,144,2871,171"/>
+<area shape="rect" id="node11" href="$gvt_2gvt_8h.html#a62e7abde0dac08e56aa2a57401aed27b" title="adopt_new_gvt" alt="" coords="1659,144,1778,171"/>
+<area shape="rect" id="node12" href="$gvt_2gvt_8h.html#a899b50ab45427cf145360ff3a6c29808" title="gvt_operations" alt="" coords="2114,144,2231,171"/>
+<area shape="rect" id="node14" href="$gvt_2gvt_8h.html#a234e866bb1e37fa25dec9bb40134234d" title="get_last_gvt" alt="" coords="1442,245,1542,272"/>
+<area shape="rect" id="node15" href="$statistics_8c.html#ab7b584959699657a63a49384f07fd7a9" title="format_size" alt="" coords="1670,347,1767,373"/>
+<area shape="rect" id="node16" href="$statistics_8h.html#aeff52bbf045362270639b2baed20762b" title="statistics_stop" alt="" coords="1895,347,2009,373"/>
+<area shape="rect" id="node17" href="$core_8h.html#a8f346536ccfbe77b78ed577674beb6cf" title="simulation_shutdown" alt="" coords="2095,347,2251,373"/>
+<area shape="rect" id="node18" href="$core_8c.html#a9b05d2af2e233e2616633eaa706682ee" title="exit_from_simulation\l_model" alt="" coords="2302,318,2457,359"/>
+<area shape="rect" id="node19" href="$core_8h.html#a7fb819521b1ab5fc7644ad216fe7b465" title="base_init" alt="" coords="2529,285,2608,312"/>
+<area shape="rect" id="node20" href="$init_8h.html#a417eb072179d09f441dbae3125049e46" title="SystemInit" alt="" coords="2677,119,2768,145"/>
+<area shape="rect" id="node22" href="$state_8h.html#a1fd6b7926db41257e07600226d87fffa" title="rollback" alt="" coords="1043,245,1113,272"/>
+<area shape="rect" id="node23" href="$scheduler_8h.html#ac48128e72b303ea22d8ec641a9516b15" title="schedule" alt="" coords="1229,271,1308,297"/>
+<area shape="rect" id="node25" href="$communication_8h.html#ae0329023aeab7047bcb7b4708698a008" title="Schedule a new message to some LP. " alt="" coords="1857,5,2047,32"/>
+<area shape="rect" id="node26" href="$scheduler_8h.html#a1b1b085c6b05a9d202a1629dcd71cffe" title="LP_main_loop" alt="" coords="1023,68,1133,95"/>
+<area shape="rect" id="node28" href="$communication_8h.html#ad154a0e0c0815b786ead70143505abd6" title="Send all pending outgoing messages. " alt="" coords="816,296,975,323"/>
+</map>

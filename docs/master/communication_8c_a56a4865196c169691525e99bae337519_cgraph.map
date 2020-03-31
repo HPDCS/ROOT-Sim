@@ -1,0 +1,5 @@
+<map id="pack_msg" name="pack_msg">
+<area shape="rect" id="node2" href="$communication_8c.html#ab957dc2cd186382c50ef8cfde9761909" title="Get a buffer to keep a message. " alt="" coords="140,5,288,32"/>
+<area shape="rect" id="node3" href="$communication_8c.html#ae6b96249d35969d688d0d84209919c8f" title="Find a slab to allocate a message buffer. " alt="" coords="144,56,284,83"/>
+<area shape="rect" id="node4" href="$core_8c.html#a6793e4c70d69277f24ff0e494ed8ed10" title="find_kernel_by_gid" alt="" coords="336,56,475,83"/>
+</map>

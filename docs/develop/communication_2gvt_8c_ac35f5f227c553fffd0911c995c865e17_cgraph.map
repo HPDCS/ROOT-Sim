@@ -1,0 +1,5 @@
+<map id="gvt_comm_finalize" name="gvt_comm_finalize">
+<area shape="rect" id="node2" href="$communication_2gvt_8c.html#abb460bc63d1b830804752ce6bdd4e30a" title="Check if there are pending GVT&#45;init messages around. " alt="" coords="195,5,321,32"/>
+<area shape="rect" id="node4" href="$communication_2gvt_8c.html#a97741fc617b443cee108c44a26cd513b" title="Forcely extract GVT&#45;init message from MPI. " alt="" coords="205,56,311,83"/>
+<area shape="rect" id="node3" href="$mpi_8c.html#a621b43e2d97c134914cb2737e13e97e2" title="Check if there are pending messages. " alt="" coords="369,5,484,32"/>
+</map>

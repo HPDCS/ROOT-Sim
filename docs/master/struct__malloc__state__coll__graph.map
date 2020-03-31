@@ -1,0 +1,4 @@
+<map id="_malloc_state" name="_malloc_state">
+<area shape="rect" id="node2" href="$struct__malloc__area.html" title="This structure let DyMeLoR handle one malloc area (for serving given&#45;size memory requests) ..." alt="" coords="7,95,114,121"/>
+<area shape="rect" id="node3" href="$structatomic__t.html" title="atomic_t" alt="" coords="21,5,100,32"/>
+</map>

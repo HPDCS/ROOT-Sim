@@ -1,0 +1,21 @@
+<map id="src/mm/dymelor.h" name="src/mm/dymelor.h">
+<area shape="rect" id="node2" href="$memusage_8c.html" title="Memory usage module. " alt="" coords="5,80,167,107"/>
+<area shape="rect" id="node3" href="$ult_8c.html" title="User&#45;Level Threads. " alt="" coords="191,80,295,107"/>
+<area shape="rect" id="node4" href="$x86_8c.html" title="x86 synchronization primitives " alt="" coords="320,80,431,107"/>
+<area shape="rect" id="node5" href="$array_8h.html" title="This is the implementation of a dynamic array, used for managing various data structures. " alt="" coords="455,80,611,107"/>
+<area shape="rect" id="node13" href="$wrapper_8c.html" title="stdlib wrapper " alt="" coords="635,80,815,107"/>
+<area shape="rect" id="node14" href="$buddy_8c.html" title="A Buddy System implementation. " alt="" coords="839,80,962,107"/>
+<area shape="rect" id="node15" href="$checkpoints_8c.html" title="State saving and restore for model state buffers. " alt="" coords="986,80,1149,107"/>
+<area shape="rect" id="node16" href="$dymelor_8c.html" title="Dynamic Memory Logger and Restorer (DyMeLoR) " alt="" coords="1173,80,1311,107"/>
+<area shape="rect" id="node17" href="$platform_8c.html" title="malloc wrappers " alt="" coords="1335,80,1475,107"/>
+<area shape="rect" id="node18" href="$segment_8c.html" title="Segment allocator. " alt="" coords="1499,80,1641,107"/>
+<area shape="rect" id="node19" href="$slab_8c.html" title="a Slab Allocator " alt="" coords="1665,80,1777,107"/>
+<area shape="rect" id="node20" href="$preempt_8c.html" title="LP preemption management. " alt="" coords="1801,80,1979,107"/>
+<area shape="rect" id="node6" href="$hash__map_8h.html" title="This header implements a simple hash map data structure. " alt="" coords="283,155,427,196"/>
+<area shape="rect" id="node8" href="$abm__layer_8c.html" title="This file contains the implementation of the the agent based modeling interface offered by ROOT&#45;Sim..." alt="" coords="285,251,425,278"/>
+<area shape="rect" id="node9" href="$heap_8h_source.html" title="src/datatypes/heap.h" alt="" coords="614,162,771,189"/>
+<area shape="rect" id="node10" href="$costs_8c_source.html" title="src/lib/topology/costs.c" alt="" coords="449,251,616,278"/>
+<area shape="rect" id="node12" href="$topology_8c_source.html" title="src/lib/topology/topology.c" alt="" coords="859,251,1046,278"/>
+<area shape="rect" id="node7" href="$hash__map_8c.html" title="This header implements a simple hash map data structure. " alt="" coords="117,244,261,285"/>
+<area shape="rect" id="node11" href="$obstacles_8c_source.html" title="src/lib/topology/obstacles.c" alt="" coords="641,251,835,278"/>
+</map>

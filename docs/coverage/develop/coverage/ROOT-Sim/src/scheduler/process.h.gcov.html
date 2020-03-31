@@ -1,0 +1,256 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - doc-coverage.info - ROOT-Sim/src/scheduler/process.h</title>
+  <link rel="stylesheet" type="text/css" href="../../../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../../../index.html">top level</a> - <a href="index.html">ROOT-Sim/src/scheduler</a> - process.h</td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">doc-coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">28</td>
+            <td class="headerCovTableEntry">55</td>
+            <td class="headerCovTableEntryLo">50.9 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2020-01-31 15:54:55</td>
+            <td></td>
+          </tr>
+          <tr><td><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<span class="lineNum">       1 </span><span class="lineCov">          1 : /**</span>
+<span class="lineNum">       2 </span>            :  * @file scheduler/process.h
+<span class="lineNum">       3 </span>            :  *
+<span class="lineNum">       4 </span>            :  * @brief LP control blocks
+<span class="lineNum">       5 </span>            :  *
+<span class="lineNum">       6 </span>            :  * This header defines a LP control block, keeping information about both
+<span class="lineNum">       7 </span>            :  * simulation state and execution state as a user thread.
+<span class="lineNum">       8 </span>            :  *
+<span class="lineNum">       9 </span>            :  * @copyright
+<span class="lineNum">      10 </span>            :  * Copyright (C) 2008-2019 HPDCS Group
+<span class="lineNum">      11 </span>            :  * https://hpdcs.github.io
+<span class="lineNum">      12 </span>            :  *
+<span class="lineNum">      13 </span>            :  * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
+<span class="lineNum">      14 </span>            :  *
+<span class="lineNum">      15 </span>            :  * ROOT-Sim is free software; you can redistribute it and/or modify it under the
+<span class="lineNum">      16 </span>            :  * terms of the GNU General Public License as published by the Free Software
+<span class="lineNum">      17 </span>            :  * Foundation; only version 3 of the License applies.
+<span class="lineNum">      18 </span>            :  *
+<span class="lineNum">      19 </span>            :  * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
+<span class="lineNum">      20 </span>            :  * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+<span class="lineNum">      21 </span>            :  * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+<span class="lineNum">      22 </span>            :  *
+<span class="lineNum">      23 </span>            :  * You should have received a copy of the GNU General Public License along with
+<span class="lineNum">      24 </span>            :  * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
+<span class="lineNum">      25 </span>            :  * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+<span class="lineNum">      26 </span>            :  *
+<span class="lineNum">      27 </span>            :  * @author Alessandro Pellegrini
+<span class="lineNum">      28 </span>            :  * @author Roberto Vitali
+<span class="lineNum">      29 </span>            :  *
+<span class="lineNum">      30 </span>            :  * @date November 5, 2013
+<span class="lineNum">      31 </span>            :  */
+<span class="lineNum">      32 </span>            : 
+<span class="lineNum">      33 </span>            : #pragma once
+<span class="lineNum">      34 </span>            : 
+<span class="lineNum">      35 </span>            : #include &lt;stdbool.h&gt;
+<span class="lineNum">      36 </span>            : 
+<span class="lineNum">      37 </span>            : #include &lt;mm/state.h&gt;
+<span class="lineNum">      38 </span>            : #include &lt;mm/mm.h&gt;
+<span class="lineNum">      39 </span>            : #include &lt;mm/ecs.h&gt;
+<span class="lineNum">      40 </span>            : #include &lt;datatypes/list.h&gt;
+<span class="lineNum">      41 </span>            : #include &lt;datatypes/msgchannel.h&gt;
+<span class="lineNum">      42 </span>            : #include &lt;arch/ult.h&gt;
+<span class="lineNum">      43 </span>            : #include &lt;lib/numerical.h&gt;
+<span class="lineNum">      44 </span>            : #include &lt;lib/abm_layer.h&gt;
+<span class="lineNum">      45 </span>            : #include &lt;lib/topology.h&gt;
+<span class="lineNum">      46 </span>            : #include &lt;communication/communication.h&gt;
+<span class="lineNum">      47 </span>            : #include &lt;arch/x86/linux/cross_state_manager/cross_state_manager.h&gt;
+<span class="lineNum">      48 </span>            : 
+<span class="lineNum">      49 </span><span class="lineNoCov">          0 : #define LP_STACK_SIZE   4194304 // 4 MB</span>
+<span class="lineNum">      50 </span>            : 
+<span class="lineNum">      51 </span><span class="lineNoCov">          0 : #define LP_STATE_READY                  0x00001</span>
+<span class="lineNum">      52 </span><span class="lineNoCov">          0 : #define LP_STATE_RUNNING                0x00002</span>
+<span class="lineNum">      53 </span><span class="lineNoCov">          0 : #define LP_STATE_RUNNING_ECS            0x00004</span>
+<span class="lineNum">      54 </span><span class="lineNoCov">          0 : #define LP_STATE_ROLLBACK               0x00008</span>
+<span class="lineNum">      55 </span><span class="lineNoCov">          0 : #define LP_STATE_SILENT_EXEC            0x00010</span>
+<span class="lineNum">      56 </span><span class="lineNoCov">          0 : #define LP_STATE_SUSPENDED              0x01010</span>
+<span class="lineNum">      57 </span><span class="lineNoCov">          0 : #define LP_STATE_READY_FOR_SYNCH        0x00011 // This should be a blocked state! Check schedule() and stf()</span>
+<span class="lineNum">      58 </span><span class="lineNoCov">          0 : #define LP_STATE_WAIT_FOR_SYNCH         0x01001</span>
+<span class="lineNum">      59 </span><span class="lineNoCov">          0 : #define LP_STATE_WAIT_FOR_UNBLOCK       0x01002</span>
+<span class="lineNum">      60 </span><span class="lineNoCov">          0 : #define LP_STATE_WAIT_FOR_DATA          0x01004</span>
+<span class="lineNum">      61 </span>            : 
+<span class="lineNum">      62 </span><span class="lineNoCov">          0 : #define BLOCKED_STATE                   0x01000</span>
+<span class="lineNum">      63 </span><span class="lineNoCov">          0 : #define is_blocked_state(state) (bool)(state &amp; BLOCKED_STATE)</span>
+<span class="lineNum">      64 </span>            : 
+<span class="lineNum">      65 </span><span class="lineNoCov">          0 : struct lp_struct {</span>
+<span class="lineNum">      66 </span>            :         /// LP execution state.
+<span class="lineNum">      67 </span><span class="lineCov">          1 :         LP_context_t context;</span>
+<span class="lineNum">      68 </span>            : 
+<span class="lineNum">      69 </span>            :         /// LP execution state when blocked during the execution of an event
+<span class="lineNum">      70 </span><span class="lineCov">          1 :         LP_context_t default_context;</span>
+<span class="lineNum">      71 </span>            : 
+<span class="lineNum">      72 </span>            :         /// Process' stack
+<span class="lineNum">      73 </span><span class="lineCov">          1 :         void *stack;</span>
+<span class="lineNum">      74 </span>            : 
+<span class="lineNum">      75 </span>            :         /// Memory map of the LP
+<span class="lineNum">      76 </span><span class="lineCov">          1 :         struct memory_map *mm;</span>
+<span class="lineNum">      77 </span>            : 
+<span class="lineNum">      78 </span>            :         /// Local ID of the LP
+<span class="lineNum">      79 </span><span class="lineCov">          1 :         LID_t lid;</span>
+<span class="lineNum">      80 </span>            : 
+<span class="lineNum">      81 </span>            :         /// Global ID of the LP
+<span class="lineNum">      82 </span><span class="lineCov">          1 :         GID_t gid;</span>
+<span class="lineNum">      83 </span>            : 
+<span class="lineNum">      84 </span>            :         /// ID of the worker thread towards which the LP is bound
+<span class="lineNum">      85 </span><span class="lineCov">          1 :         unsigned int worker_thread;</span>
+<span class="lineNum">      86 </span>            : 
+<span class="lineNum">      87 </span>            :         /// Current execution state of the LP
+<span class="lineNum">      88 </span><span class="lineCov">          1 :         short unsigned int state;</span>
+<span class="lineNum">      89 </span>            : 
+<span class="lineNum">      90 </span>            :         /// This variable mainains the current checkpointing interval for the LP
+<span class="lineNum">      91 </span><span class="lineCov">          1 :         unsigned int ckpt_period;</span>
+<span class="lineNum">      92 </span>            : 
+<span class="lineNum">      93 </span>            :         /// Counts how many events executed from the last checkpoint (to support PSS)
+<span class="lineNum">      94 </span><span class="lineCov">          1 :         unsigned int from_last_ckpt;</span>
+<span class="lineNum">      95 </span>            : 
+<span class="lineNum">      96 </span>            :         /// If this variable is set, the next invocation to LogState() takes a new state log, independently of the checkpointing interval
+<span class="lineNum">      97 </span><span class="lineCov">          1 :         bool state_log_forced;</span>
+<span class="lineNum">      98 </span>            : 
+<span class="lineNum">      99 </span>            :         /// The current state base pointer (updated by SetState())
+<span class="lineNum">     100 </span><span class="lineCov">          1 :         void *current_base_pointer;</span>
+<span class="lineNum">     101 </span>            : 
+<span class="lineNum">     102 </span>            :         /// Input messages queue
+<span class="lineNum">     103 </span><span class="lineCov">          1 :          list(msg_t) queue_in;</span>
+<span class="lineNum">     104 </span>            : 
+<span class="lineNum">     105 </span>            :         /// Pointer to the last correctly processed event
+<span class="lineNum">     106 </span><span class="lineCov">          1 :         msg_t *bound;</span>
+<span class="lineNum">     107 </span>            : 
+<span class="lineNum">     108 </span>            :         /// Output messages queue
+<span class="lineNum">     109 </span><span class="lineCov">          1 :          list(msg_hdr_t) queue_out;</span>
+<span class="lineNum">     110 </span>            : 
+<span class="lineNum">     111 </span>            :         /// Saved states queue
+<span class="lineNum">     112 </span><span class="lineCov">          1 :          list(state_t) queue_states;</span>
+<span class="lineNum">     113 </span>            : 
+<span class="lineNum">     114 </span>            :         /// Bottom halves
+<span class="lineNum">     115 </span><span class="lineCov">          1 :         msg_channel *bottom_halves;</span>
+<span class="lineNum">     116 </span>            : 
+<span class="lineNum">     117 </span>            :         /// Processed rendezvous queue
+<span class="lineNum">     118 </span><span class="lineCov">          1 :          list(msg_t) rendezvous_queue;</span>
+<span class="lineNum">     119 </span>            : 
+<span class="lineNum">     120 </span>            :         /// Unique identifier within the LP
+<span class="lineNum">     121 </span><span class="lineCov">          1 :         unsigned long long mark;</span>
+<span class="lineNum">     122 </span>            : 
+<span class="lineNum">     123 </span>            :         /// Buffer used by KLTs for buffering outgoing messages during the execution of an event
+<span class="lineNum">     124 </span><span class="lineCov">          1 :         outgoing_t outgoing_buffer;</span>
+<span class="lineNum">     125 </span>            : 
+<span class="lineNum">     126 </span>            :         /**
+<span class="lineNum">     127 </span>            :          * Implementation of OnGVT used for this LP. This can be changed
+<span class="lineNum">     128 </span>            :          * at runtime by the autonomic subsystem, when dealing with ISS and SSS
+<span class="lineNum">     129 </span>            :          */
+<span class="lineNum">     130 </span><span class="lineCov">          1 :         bool (*OnGVT)(unsigned int me, void *snapshot);</span>
+<span class="lineNum">     131 </span>            : 
+<span class="lineNum">     132 </span>            :         /**
+<span class="lineNum">     133 </span>            :          * Implementation of ProcessEvent used for this LP. This can be changed
+<span class="lineNum">     134 </span>            :          * at runtime by the autonomic subsystem, when dealing with ISS and SSS
+<span class="lineNum">     135 </span>            :          */
+<span class="lineNum">     136 </span><span class="lineCov">          1 :         void (*ProcessEvent)(unsigned int me, simtime_t now, int event_type,</span>
+<span class="lineNum">     137 </span>            :                              void *event_content, unsigned int size,
+<span class="lineNum">     138 </span>            :                              void *state);
+<span class="lineNum">     139 </span>            : 
+<span class="lineNum">     140 </span>            : #ifdef HAVE_CROSS_STATE
+<span class="lineNum">     141 </span><span class="lineNoCov">          0 :         GID_t ECS_synch_table[MAX_CROSS_STATE_DEPENDENCIES];</span>
+<span class="lineNum">     142 </span><span class="lineNoCov">          0 :         unsigned int ECS_index;</span>
+<span class="lineNum">     143 </span>            : #endif
+<span class="lineNum">     144 </span>            : 
+<span class="lineNum">     145 </span><span class="lineNoCov">          0 :         unsigned long long wait_on_rendezvous;</span>
+<span class="lineNum">     146 </span><span class="lineNoCov">          0 :         unsigned int wait_on_object;</span>
+<span class="lineNum">     147 </span>            : 
+<span class="lineNum">     148 </span>            :         /* Per-Library variables */
+<span class="lineNum">     149 </span><span class="lineNoCov">          0 :         numerical_state_t numerical;</span>
+<span class="lineNum">     150 </span>            : 
+<span class="lineNum">     151 </span>            :         /// pointer to the topology struct
+<span class="lineNum">     152 </span><span class="lineCov">          1 :         topology_t *topology;</span>
+<span class="lineNum">     153 </span>            : 
+<span class="lineNum">     154 </span>            :         /// pointer to the region struct
+<span class="lineNum">     155 </span><span class="lineCov">          1 :         region_abm_t *region;</span>
+<span class="lineNum">     156 </span>            :         
+<span class="lineNum">     157 </span>            : };
+<span class="lineNum">     158 </span>            : 
+<span class="lineNum">     159 </span>            : // LPs process control blocks and binding control blocks
+<span class="lineNum">     160 </span><span class="lineCov">          1 : extern struct lp_struct **lps_blocks;</span>
+<span class="lineNum">     161 </span><span class="lineCov">          1 : extern __thread struct lp_struct **lps_bound_blocks;</span>
+<span class="lineNum">     162 </span>            : 
+<span class="lineNum">     163 </span>            : /** This macro retrieves the LVT for the current LP. There is a small interval window
+<span class="lineNum">     164 </span>            :  *  where the value returned is the one of the next event to be processed. In particular,
+<span class="lineNum">     165 </span>            :  *  this happens in the scheduling function, when the bound is advanced to the next event to
+<span class="lineNum">     166 </span>            :  *  be processed, just before its actual execution.
+<span class="lineNum">     167 </span>            :  */
+<span class="lineNum">     168 </span><span class="lineCov">          1 : #define lvt(lp) (lp-&gt;bound != NULL ? lp-&gt;bound-&gt;timestamp : 0.0)</span>
+<span class="lineNum">     169 </span>            : 
+<span class="lineNum">     170 </span>            : // TODO: see issue #121 to see how to make this ugly hack disappear
+<span class="lineNum">     171 </span><span class="lineNoCov">          0 : extern __thread unsigned int __lp_counter;</span>
+<span class="lineNum">     172 </span><span class="lineNoCov">          0 : extern __thread unsigned int __lp_bound_counter;</span>
+<span class="lineNum">     173 </span>            : 
+<span class="lineNum">     174 </span><span class="lineNoCov">          0 : #define foreach_lp(lp)          __lp_counter = 0;\</span>
+<span class="lineNum">     175 </span>            :                                 for(struct lp_struct *(lp) = lps_blocks[__lp_counter]; __lp_counter &lt; n_prc &amp;&amp; ((lp) = lps_blocks[__lp_counter]); ++__lp_counter)
+<span class="lineNum">     176 </span>            : 
+<span class="lineNum">     177 </span><span class="lineNoCov">          0 : #define foreach_bound_lp(lp)    __lp_bound_counter = 0;\</span>
+<span class="lineNum">     178 </span>            :                                 for(struct lp_struct *(lp) = lps_bound_blocks[__lp_bound_counter]; __lp_bound_counter &lt; n_prc_per_thread &amp;&amp; ((lp) = lps_bound_blocks[__lp_bound_counter]); ++__lp_bound_counter)
+<span class="lineNum">     179 </span>            : 
+<span class="lineNum">     180 </span><span class="lineNoCov">          0 : #define LPS_bound_set(entry, lp)        lps_bound_blocks[(entry)] = (lp);</span>
+<span class="lineNum">     181 </span>            : 
+<span class="lineNum">     182 </span><span class="lineNoCov">          0 : extern void initialize_binding_blocks(void);</span>
+<span class="lineNum">     183 </span><span class="lineNoCov">          0 : extern void initialize_lps(void);</span>
+<span class="lineNum">     184 </span><span class="lineNoCov">          0 : extern struct lp_struct *find_lp_by_gid(GID_t);</span>
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.12</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>

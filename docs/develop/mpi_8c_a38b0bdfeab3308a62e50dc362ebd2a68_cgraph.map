@@ -1,0 +1,7 @@
+<map id="inter_kernel_comm_finalize" name="inter_kernel_comm_finalize">
+<area shape="rect" id="node2" href="$mpi_8c.html#a3ac4bf6fda6cd92f529134aac34edabf" title="Cleanup routine of the distributed termination subsystem. " alt="" coords="249,5,427,32"/>
+<area shape="rect" id="node3" href="$communication_2gvt_8c.html#ac35f5f227c553fffd0911c995c865e17" title="Shut down the MPI&#45;based distributed GVT reduction submodule. " alt="" coords="267,56,409,83"/>
+<area shape="rect" id="node4" href="$communication_2gvt_8c.html#abb460bc63d1b830804752ce6bdd4e30a" title="Check if there are pending GVT&#45;init messages around. " alt="" coords="475,31,601,57"/>
+<area shape="rect" id="node6" href="$communication_2gvt_8c.html#a97741fc617b443cee108c44a26cd513b" title="Forcely extract GVT&#45;init message from MPI. " alt="" coords="485,81,591,108"/>
+<area shape="rect" id="node5" href="$mpi_8c.html#a621b43e2d97c134914cb2737e13e97e2" title="Check if there are pending messages. " alt="" coords="649,31,764,57"/>
+</map>

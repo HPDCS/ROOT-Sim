@@ -1,0 +1,308 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - doc-coverage.info - ROOT-Sim/src/core/core.h</title>
+  <link rel="stylesheet" type="text/css" href="../../../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../../../index.html">top level</a> - <a href="index.html">ROOT-Sim/src/core</a> - core.h</td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">doc-coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">44</td>
+            <td class="headerCovTableEntry">81</td>
+            <td class="headerCovTableEntryLo">54.3 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2020-02-28 13:00:44</td>
+            <td></td>
+          </tr>
+          <tr><td><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<span class="lineNum">       1 </span><span class="lineCov">          1 : /**</span>
+<span class="lineNum">       2 </span>            : * @file core/core.h
+<span class="lineNum">       3 </span>            : *
+<span class="lineNum">       4 </span>            : * @brief Core ROOT-Sim functionalities
+<span class="lineNum">       5 </span>            : *
+<span class="lineNum">       6 </span>            : * Core ROOT-Sim functionalities
+<span class="lineNum">       7 </span>            : *
+<span class="lineNum">       8 </span>            : * @copyright
+<span class="lineNum">       9 </span>            : * Copyright (C) 2008-2019 HPDCS Group
+<span class="lineNum">      10 </span>            : * https://hpdcs.github.io
+<span class="lineNum">      11 </span>            : *
+<span class="lineNum">      12 </span>            : * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
+<span class="lineNum">      13 </span>            : *
+<span class="lineNum">      14 </span>            : * ROOT-Sim is free software; you can redistribute it and/or modify it under the
+<span class="lineNum">      15 </span>            : * terms of the GNU General Public License as published by the Free Software
+<span class="lineNum">      16 </span>            : * Foundation; only version 3 of the License applies.
+<span class="lineNum">      17 </span>            : *
+<span class="lineNum">      18 </span>            : * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
+<span class="lineNum">      19 </span>            : * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+<span class="lineNum">      20 </span>            : * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+<span class="lineNum">      21 </span>            : *
+<span class="lineNum">      22 </span>            : * You should have received a copy of the GNU General Public License along with
+<span class="lineNum">      23 </span>            : * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
+<span class="lineNum">      24 </span>            : * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+<span class="lineNum">      25 </span>            : *
+<span class="lineNum">      26 </span>            : * @author Francesco Quaglia
+<span class="lineNum">      27 </span>            : * @author Alessandro Pellegrini
+<span class="lineNum">      28 </span>            : * @author Roberto Vitali
+<span class="lineNum">      29 </span>            : *
+<span class="lineNum">      30 </span>            : * @date 3/18/2011
+<span class="lineNum">      31 </span>            : */
+<span class="lineNum">      32 </span>            : 
+<span class="lineNum">      33 </span>            : #pragma once
+<span class="lineNum">      34 </span>            : 
+<span class="lineNum">      35 </span>            : #include &lt;ROOT-Sim.h&gt;
+<span class="lineNum">      36 </span>            : #include &lt;stdio.h&gt;
+<span class="lineNum">      37 </span>            : #include &lt;limits.h&gt;
+<span class="lineNum">      38 </span>            : #include &lt;float.h&gt;
+<span class="lineNum">      39 </span>            : #include &lt;math.h&gt;
+<span class="lineNum">      40 </span>            : #include &lt;stdint.h&gt;
+<span class="lineNum">      41 </span>            : #include &lt;setjmp.h&gt;
+<span class="lineNum">      42 </span>            : 
+<span class="lineNum">      43 </span>            : #include &lt;arch/thread.h&gt;
+<span class="lineNum">      44 </span>            : 
+<span class="lineNum">      45 </span>            : 
+<span class="lineNum">      46 </span>            : /// This macro expands to true if the local kernel is the master kernel
+<span class="lineNum">      47 </span><span class="lineCov">          1 : #define master_kernel() (kid == 0)</span>
+<span class="lineNum">      48 </span>            : 
+<span class="lineNum">      49 </span>            : // XXX: This should be moved to state or queues
+<span class="lineNum">      50 </span><span class="lineNoCov">          0 : enum {</span>
+<span class="lineNum">      51 </span>            :         SNAPSHOT_INVALID = 0,   /**&lt; By convention 0 is the invalid field */
+<span class="lineNum">      52 </span>            :         SNAPSHOT_FULL,          /**&lt; xxx documentation */
+<span class="lineNum">      53 </span>            : };
+<span class="lineNum">      54 </span>            : 
+<span class="lineNum">      55 </span>            : /// Maximum number of kernels the distributed simulator can handle
+<span class="lineNum">      56 </span><span class="lineCov">          1 : #define N_KER_MAX       128</span>
+<span class="lineNum">      57 </span>            : 
+<span class="lineNum">      58 </span>            : /// Maximum number of LPs the simulator will handle
+<span class="lineNum">      59 </span><span class="lineCov">          1 : #define MAX_LPs         250000</span>
+<span class="lineNum">      60 </span>            : 
+<span class="lineNum">      61 </span>            : // XXX: this should be moved somewhere else...
+<span class="lineNum">      62 </span><span class="lineNoCov">          0 : enum {</span>
+<span class="lineNum">      63 </span>            :         VERBOSE_INVALID = 0,    /**&lt; By convention 0 is the invalid field */
+<span class="lineNum">      64 </span>            :         VERBOSE_INFO,           /**&lt; xxx documentation */
+<span class="lineNum">      65 </span>            :         VERBOSE_DEBUG,          /**&lt; xxx documentation */
+<span class="lineNum">      66 </span>            :         VERBOSE_NO              /**&lt; xxx documentation */
+<span class="lineNum">      67 </span>            : };
+<span class="lineNum">      68 </span>            : 
+<span class="lineNum">      69 </span><span class="lineCov">          1 : extern __thread jmp_buf exit_jmp;</span>
+<span class="lineNum">      70 </span>            : 
+<span class="lineNum">      71 </span>            : /// Optimize the branch as likely taken
+<span class="lineNum">      72 </span><span class="lineCov">          1 : #define likely(exp) __builtin_expect(exp, 1)</span>
+<span class="lineNum">      73 </span>            : /// Optimize the branch as likely not taken
+<span class="lineNum">      74 </span><span class="lineCov">          1 : #define unlikely(exp) __builtin_expect(exp, 0)</span>
+<span class="lineNum">      75 </span>            : 
+<span class="lineNum">      76 </span>            : 
+<span class="lineNum">      77 </span><span class="lineNoCov">          0 : enum {</span>
+<span class="lineNum">      78 </span>            :         LP_DISTRIBUTION_INVALID = 0,    /**&lt; By convention 0 is the invalid field */
+<span class="lineNum">      79 </span>            :         LP_DISTRIBUTION_BLOCK,          /**&lt; Distribute exceeding LPs according to a block policy */
+<span class="lineNum">      80 </span>            :         LP_DISTRIBUTION_CIRCULAR        /**&lt; Distribute exceeding LPs according to a circular policy */
+<span class="lineNum">      81 </span>            : };
+<span class="lineNum">      82 </span>            : 
+<span class="lineNum">      83 </span>            : // XXX should be moved to a more librarish header
+<span class="lineNum">      84 </span>            : /// Equality condition for floats
+<span class="lineNum">      85 </span><span class="lineCov">          1 : #define F_EQUAL(a,b) (fabsf((a) - (b)) &lt; FLT_EPSILON)</span>
+<span class="lineNum">      86 </span>            : /// Equality to zero condition for floats
+<span class="lineNum">      87 </span><span class="lineCov">          1 : #define F_EQUAL_ZERO(a) (fabsf(a) &lt; FLT_EPSILON)</span>
+<span class="lineNum">      88 </span>            : /// Difference condition for floats
+<span class="lineNum">      89 </span><span class="lineCov">          1 : #define F_DIFFER(a,b) (fabsf((a) - (b)) &gt;= FLT_EPSILON)</span>
+<span class="lineNum">      90 </span>            : /// Difference from zero condition for floats
+<span class="lineNum">      91 </span><span class="lineCov">          1 : #define F_DIFFER_ZERO(a) (fabsf(a) &gt;= FLT_EPSILON)</span>
+<span class="lineNum">      92 </span>            : 
+<span class="lineNum">      93 </span>            : /// Equality condition for doubles
+<span class="lineNum">      94 </span><span class="lineCov">          1 : #define D_EQUAL(a,b) (fabs((a) - (b)) &lt; DBL_EPSILON)</span>
+<span class="lineNum">      95 </span>            : /// Equality to zero condition for doubles
+<span class="lineNum">      96 </span><span class="lineCov">          1 : #define D_EQUAL_ZERO(a) (fabs(a) &lt; DBL_EPSILON)</span>
+<span class="lineNum">      97 </span>            : /// Difference condition for doubles
+<span class="lineNum">      98 </span><span class="lineCov">          1 : #define D_DIFFER(a,b) (fabs((a) - (b)) &gt;= DBL_EPSILON)</span>
+<span class="lineNum">      99 </span>            : /// Difference from zero condition for doubles
+<span class="lineNum">     100 </span><span class="lineCov">          1 : #define D_DIFFER_ZERO(a) (fabs(a) &gt;= DBL_EPSILON)</span>
+<span class="lineNum">     101 </span>            : 
+<span class="lineNum">     102 </span>            : /// Macro to find the maximum among two values
+<span class="lineNum">     103 </span>            : #ifdef max
+<span class="lineNum">     104 </span>            : #undef max
+<span class="lineNum">     105 </span>            : #endif
+<span class="lineNum">     106 </span><span class="lineCov">          1 : #define max(a, b) \</span>
+<span class="lineNum">     107 </span>            :    ({ __typeof__ (a) _a = (a); \
+<span class="lineNum">     108 </span>            :        __typeof__ (b) _b = (b); \
+<span class="lineNum">     109 </span>            :      _a &gt; _b ? _a : _b; })
+<span class="lineNum">     110 </span>            : 
+<span class="lineNum">     111 </span>            : /// Macro to find the minimum among two values
+<span class="lineNum">     112 </span>            : #ifdef min
+<span class="lineNum">     113 </span>            : #undef min
+<span class="lineNum">     114 </span>            : #endif
+<span class="lineNum">     115 </span><span class="lineCov">          1 : #define min(a, b) \</span>
+<span class="lineNum">     116 </span>            :    ({ __typeof__ (a) _a = (a); \
+<span class="lineNum">     117 </span>            :        __typeof__ (b) _b = (b); \
+<span class="lineNum">     118 </span>            :      _a &lt; _b ? _a : _b; })
+<span class="lineNum">     119 </span>            : 
+<span class="lineNum">     120 </span>            : /// Macro to &quot;legitimately&quot; pun a type
+<span class="lineNum">     121 </span><span class="lineCov">          1 : #define UNION_CAST(x, destType) (((union {__typeof__(x) a; destType b;})x).b)</span>
+<span class="lineNum">     122 </span>            : 
+<span class="lineNum">     123 </span>            : // GID and LID types
+<span class="lineNum">     124 </span>            : 
+<span class="lineNum">     125 </span>            : /**
+<span class="lineNum">     126 </span>            :  * @brief Definition of a GID.
+<span class="lineNum">     127 </span>            :  *
+<span class="lineNum">     128 </span>            :  * This structure defines a GID. The purpose of this structure is to make
+<span class="lineNum">     129 </span>            :  * functions dealing with GIDs and LIDs type safe, to avoid runtime problems
+<span class="lineNum">     130 </span>            :  * if the two are mixed when calling a function.
+<span class="lineNum">     131 </span>            :  */
+<span class="lineNum">     132 </span><span class="lineCov">          1 : typedef struct _gid_t {</span>
+<span class="lineNum">     133 </span><span class="lineCov">          1 :         unsigned int to_int;    ///&lt; The GID numerical value</span>
+<span class="lineNum">     134 </span><span class="lineCov">          1 : } GID_t;</span>
+<span class="lineNum">     135 </span>            : 
+<span class="lineNum">     136 </span>            : 
+<span class="lineNum">     137 </span>            : /**
+<span class="lineNum">     138 </span>            :  * @brief Definition of a LID.
+<span class="lineNum">     139 </span>            :  *
+<span class="lineNum">     140 </span>            :  * This structure defines a LID. The purpose of this structure is to make
+<span class="lineNum">     141 </span>            :  * functions dealing with GIDs and LIDs type safe, to avoid runtime problems
+<span class="lineNum">     142 </span>            :  * if the two are mixed when calling a function.
+<span class="lineNum">     143 </span>            :  */
+<span class="lineNum">     144 </span><span class="lineCov">          1 : typedef struct _lid_t {</span>
+<span class="lineNum">     145 </span><span class="lineCov">          1 :         unsigned int to_int;    ///&lt; The LID numerical value</span>
+<span class="lineNum">     146 </span><span class="lineCov">          1 : } LID_t;</span>
+<span class="lineNum">     147 </span>            : 
+<span class="lineNum">     148 </span><span class="lineNoCov">          0 : #define is_lid(val) __builtin_types_compatible_p(__typeof__ (val), LID_t)</span>
+<span class="lineNum">     149 </span><span class="lineNoCov">          0 : #define is_gid(val) __builtin_types_compatible_p(__typeof__ (val), GID_t)</span>
+<span class="lineNum">     150 </span>            : 
+<span class="lineNum">     151 </span><span class="lineNoCov">          0 : #define set_lid(lid, value) (__builtin_choose_expr(is_lid(lid), lid.to_int, (void)0) = (value))</span>
+<span class="lineNum">     152 </span><span class="lineNoCov">          0 : #define set_gid(gid, value) (__builtin_choose_expr(is_gid(gid), gid.to_int, (void)0) = (value))</span>
+<span class="lineNum">     153 </span>            : 
+<span class="lineNum">     154 </span><span class="lineNoCov">          0 : typedef enum { positive, negative, control } message_kind_t;</span>
+<span class="lineNum">     155 </span>            : 
+<span class="lineNum">     156 </span>            : #ifdef HAVE_MPI
+<span class="lineNum">     157 </span><span class="lineNoCov">          0 : typedef unsigned char phase_colour;</span>
+<span class="lineNum">     158 </span>            : #endif
+<span class="lineNum">     159 </span>            : 
+<span class="lineNum">     160 </span><span class="lineNoCov">          0 : #define MSG_PADDING offsetof(msg_t, sender)</span>
+<span class="lineNum">     161 </span><span class="lineNoCov">          0 : #define MSG_META_SIZE (offsetof(msg_t, event_content) - MSG_PADDING)</span>
+<span class="lineNum">     162 </span>            : 
+<span class="lineNum">     163 </span>            : /// Message Type definition
+<span class="lineNum">     164 </span><span class="lineCov">          1 : typedef struct _msg_t {</span>
+<span class="lineNum">     165 </span>            : 
+<span class="lineNum">     166 </span>            :         /* Place here all memebers of the struct which should not be transmitted over the network */
+<span class="lineNum">     167 </span>            : 
+<span class="lineNum">     168 </span>            :         // Pointers to attach messages to chains
+<span class="lineNum">     169 </span><span class="lineNoCov">          0 :         struct _msg_t *next;</span>
+<span class="lineNum">     170 </span><span class="lineNoCov">          0 :         struct _msg_t *prev;</span>
+<span class="lineNum">     171 </span>            : 
+<span class="lineNum">     172 </span>            :         /* Place here all members which must be transmitted over the network. It is convenient not to reorder the members
+<span class="lineNum">     173 </span>            :          * of the structure. If new members have to be addedd, place them right before the &quot;Model data&quot; part.*/
+<span class="lineNum">     174 </span>            : 
+<span class="lineNum">     175 </span>            :         // Kernel's information
+<span class="lineNum">     176 </span><span class="lineNoCov">          0 :         GID_t sender;</span>
+<span class="lineNum">     177 </span><span class="lineNoCov">          0 :         GID_t receiver;</span>
+<span class="lineNum">     178 </span>            : #ifdef HAVE_MPI
+<span class="lineNum">     179 </span><span class="lineNoCov">          0 :         phase_colour colour;</span>
+<span class="lineNum">     180 </span>            : #endif
+<span class="lineNum">     181 </span><span class="lineNoCov">          0 :         int type;</span>
+<span class="lineNum">     182 </span><span class="lineNoCov">          0 :         message_kind_t message_kind;</span>
+<span class="lineNum">     183 </span><span class="lineNoCov">          0 :         simtime_t timestamp;</span>
+<span class="lineNum">     184 </span><span class="lineNoCov">          0 :         simtime_t send_time;</span>
+<span class="lineNum">     185 </span><span class="lineNoCov">          0 :         unsigned long long mark;        /// Unique identifier of the message, used for antimessages</span>
+<span class="lineNum">     186 </span><span class="lineCov">          1 :         unsigned long long rendezvous_mark;     /// Unique identifier of the message, used for rendez-vous events</span>
+<span class="lineNum">     187 </span>            : 
+<span class="lineNum">     188 </span>            :         // Model data
+<span class="lineNum">     189 </span><span class="lineCov">          1 :         unsigned int size;</span>
+<span class="lineNum">     190 </span><span class="lineNoCov">          0 :         unsigned char event_content[];</span>
+<span class="lineNum">     191 </span><span class="lineCov">          1 : } msg_t;</span>
+<span class="lineNum">     192 </span>            : 
+<span class="lineNum">     193 </span>            : /// Message envelope definition. This is used to handle the output queue and stores information needed to generate antimessages
+<span class="lineNum">     194 </span><span class="lineCov">          1 : typedef struct _msg_hdr_t {</span>
+<span class="lineNum">     195 </span>            :         // Pointers to attach messages to chains
+<span class="lineNum">     196 </span><span class="lineNoCov">          0 :         struct _msg_hdr_t *next;</span>
+<span class="lineNum">     197 </span><span class="lineNoCov">          0 :         struct _msg_hdr_t *prev;</span>
+<span class="lineNum">     198 </span>            :         // Kernel's information
+<span class="lineNum">     199 </span><span class="lineNoCov">          0 :         GID_t sender;</span>
+<span class="lineNum">     200 </span><span class="lineNoCov">          0 :         GID_t receiver;</span>
+<span class="lineNum">     201 </span>            :         // TODO: non serve davvero, togliere
+<span class="lineNum">     202 </span><span class="lineNoCov">          0 :         int type;</span>
+<span class="lineNum">     203 </span><span class="lineNoCov">          0 :         unsigned long long rendezvous_mark;     /// Unique identifier of the message, used for rendez-vous event</span>
+<span class="lineNum">     204 </span>            :         // TODO: fine togliere
+<span class="lineNum">     205 </span><span class="lineCov">          1 :         simtime_t timestamp;</span>
+<span class="lineNum">     206 </span><span class="lineNoCov">          0 :         simtime_t send_time;</span>
+<span class="lineNum">     207 </span><span class="lineNoCov">          0 :         unsigned long long mark;</span>
+<span class="lineNum">     208 </span><span class="lineCov">          1 : } msg_hdr_t;</span>
+<span class="lineNum">     209 </span>            : 
+<span class="lineNum">     210 </span>            : 
+<span class="lineNum">     211 </span>            : /// Barrier for all worker threads
+<span class="lineNum">     212 </span><span class="lineCov">          1 : extern barrier_t all_thread_barrier;</span>
+<span class="lineNum">     213 </span>            : 
+<span class="lineNum">     214 </span>            : // XXX: this should be refactored someway
+<span class="lineNum">     215 </span><span class="lineCov">          1 : extern unsigned int kid,        /* Kernel ID for the local kernel */</span>
+<span class="lineNum">     216 </span><span class="lineCov">          1 :  n_ker,                         /* Total number of kernel instances */</span>
+<span class="lineNum">     217 </span><span class="lineCov">          1 :  n_cores,                       /* Total number of cores required for simulation */</span>
+<span class="lineNum">     218 </span><span class="lineCov">          1 :  n_prc,                         /* Number of LPs hosted by the current kernel instance */</span>
+<span class="lineNum">     219 </span><span class="lineCov">          1 : *kernel;</span>
+<span class="lineNum">     220 </span>            : 
+<span class="lineNum">     221 </span><span class="lineNoCov">          0 : extern void ProcessEvent_light(unsigned int me, simtime_t now, int event_type, void *event_content, unsigned int size, void *state);</span>
+<span class="lineNum">     222 </span><span class="lineNoCov">          0 : bool OnGVT_light(unsigned int me, void *snapshot);</span>
+<span class="lineNum">     223 </span><span class="lineNoCov">          0 : extern void ProcessEvent_inc(unsigned int me, simtime_t now, int event_type, void *event_content, unsigned int size, void *state);</span>
+<span class="lineNum">     224 </span><span class="lineNoCov">          0 : bool OnGVT_inc(unsigned int me, void *snapshot);</span>
+<span class="lineNum">     225 </span>            : 
+<span class="lineNum">     226 </span><span class="lineCov">          1 : extern void base_init(void);</span>
+<span class="lineNum">     227 </span><span class="lineCov">          1 : extern void base_fini(void);</span>
+<span class="lineNum">     228 </span><span class="lineCov">          1 : extern unsigned int find_kernel_by_gid(GID_t gid) __attribute__((pure));</span>
+<span class="lineNum">     229 </span><span class="lineCov">          1 : extern void _rootsim_error(bool fatal, const char *msg, ...);</span>
+<span class="lineNum">     230 </span><span class="lineCov">          1 : extern void distribute_lps_on_kernels(void);</span>
+<span class="lineNum">     231 </span><span class="lineCov">          1 : extern void simulation_shutdown(int code) __attribute__((noreturn));</span>
+<span class="lineNum">     232 </span><span class="lineNoCov">          0 : extern inline bool user_requested_exit(void);</span>
+<span class="lineNum">     233 </span><span class="lineNoCov">          0 : extern inline bool simulation_error(void);</span>
+<span class="lineNum">     234 </span><span class="lineCov">          1 : extern void initialization_complete(void);</span>
+<span class="lineNum">     235 </span>            : 
+<span class="lineNum">     236 </span><span class="lineNoCov">          0 : #define rootsim_error(fatal, msg, ...) _rootsim_error(fatal, &quot;%s:%d: %s(): &quot; msg, __FILE__, __LINE__, __FUNCTION__, ##__VA_ARGS__)</span>
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.12</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>

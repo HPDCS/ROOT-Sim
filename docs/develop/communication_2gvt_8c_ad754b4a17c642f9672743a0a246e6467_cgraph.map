@@ -1,0 +1,6 @@
+<map id="white_msg_redux_completed" name="white_msg_redux_completed">
+<area shape="rect" id="node2" href="$atomic_8h.html#afd2c05472274bd1c73d5408a213cf429" title="spin_trylock" alt="" coords="294,5,391,32"/>
+<area shape="rect" id="node4" href="$mpi_8c.html#a15047d29439a8f03a2747ecadda5b4a4" title="check if an MPI request has been completed " alt="" coords="261,56,424,83"/>
+<area shape="rect" id="node5" href="$atomic_8h.html#a4e8c9d1c6101995f1ecd2141d77e4824" title="spin_unlock" alt="" coords="295,107,391,133"/>
+<area shape="rect" id="node3" href="$x86_8c.html#af8f8b0714bc5f4f7238feae5ca425117" title="atomic_test_and_set" alt="" coords="472,5,628,32"/>
+</map>

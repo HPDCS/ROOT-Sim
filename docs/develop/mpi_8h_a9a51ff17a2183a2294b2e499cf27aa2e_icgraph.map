@@ -1,0 +1,13 @@
+<map id="is_request_completed" name="is_request_completed">
+<area shape="rect" id="node2" href="$communication_2gvt_8h.html#ad754b4a17c642f9672743a0a246e6467" title="Test completion of white message reduction collective operation. " alt="" coords="216,5,424,32"/>
+<area shape="rect" id="node7" href="$communication_2gvt_8h.html#ae81bd7f5958dcb41dad5c697a6628569" title="Initiate a distributed GVT. " alt="" coords="251,56,389,83"/>
+<area shape="rect" id="node8" href="$communication_2gvt_8h.html#a0d0d87c4ff2f7290727fc3d3f9b2034f" title="Check if final GVT reduction is complete. " alt="" coords="240,107,400,133"/>
+<area shape="rect" id="node9" href="$wnd_8c.html#af652d88db30c0405a4d1bfc6de43cffc" title="Check if a message has been delivered. " alt="" coords="254,157,386,184"/>
+<area shape="rect" id="node3" href="$gvt_2gvt_8h.html#a899b50ab45427cf145360ff3a6c29808" title="gvt_operations" alt="" coords="498,60,615,87"/>
+<area shape="rect" id="node4" href="$main_8c.html#aa729cb27350c33119484501e13df4fec" title="main_simulation_loop" alt="" coords="923,76,1085,103"/>
+<area shape="rect" id="node5" href="$main_8c.html#af2ac8c142556588d87e6c069a4ca9894" title="end_computing" alt="" coords="1143,76,1264,103"/>
+<area shape="rect" id="node6" href="$main_8c.html#a3c04138a5bfe5d72780bb7e82a18e627" title="main" alt="" coords="1176,127,1231,153"/>
+<area shape="rect" id="node10" href="$wnd_8c.html#a9b192f19fc6af0cfd7bcefd788b0b93f" title="Prune an outgoing queue. " alt="" coords="472,132,641,159"/>
+<area shape="rect" id="node11" href="$wnd_8h.html#a157ee75a6300b4d0ae3c99afe8c3ae6a" title="Prune all outgoing queues. " alt="" coords="689,129,865,156"/>
+<area shape="rect" id="node12" href="$wnd_8h.html#acbe46c456aa03b014ca2134604700789" title="Finalize the message delivery subsystem. " alt="" coords="913,129,1095,156"/>
+</map>

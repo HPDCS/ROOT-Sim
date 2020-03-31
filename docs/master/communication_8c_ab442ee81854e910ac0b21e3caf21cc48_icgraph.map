@@ -1,0 +1,22 @@
+<map id="mark_to_gid" name="mark_to_gid">
+<area shape="rect" id="node2" href="$communication_8h.html#aebec05b86f3467473116d555954b80f4" title="Perform some sanity checks on a message buffer. " alt="" coords="155,81,261,108"/>
+<area shape="rect" id="node3" href="$communication_8h.html#ab5250867c0edfc326732c059b0c0c3b5" title="Send a message. " alt="" coords="522,5,577,32"/>
+<area shape="rect" id="node19" href="$communication_8h.html#a91ccc25aa3eaa49ec96ea9328aa99dbd" title="Convert a message to a message header. " alt="" coords="500,56,599,83"/>
+<area shape="rect" id="node20" href="$mpi_8h.html#ad243611fd168b265105bce70c193394d" title="Receive remote messages. " alt="" coords="853,107,1017,133"/>
+<area shape="rect" id="node21" href="$queues_8h.html#a9ff164dd6a938afa7e892f4028c2a033" title="insert_bottom_half" alt="" coords="309,107,452,133"/>
+<area shape="rect" id="node4" href="$communication_8h.html#aa8047651e174f4d26bef644233b5c8f8" title="Send all antimessages for a certain LP. " alt="" coords="651,5,801,32"/>
+<area shape="rect" id="node18" href="$communication_8h.html#ad154a0e0c0815b786ead70143505abd6" title="Send all pending outgoing messages. " alt="" coords="647,56,805,83"/>
+<area shape="rect" id="node5" href="$state_8h.html#a1fd6b7926db41257e07600226d87fffa" title="rollback" alt="" coords="900,5,971,32"/>
+<area shape="rect" id="node6" href="$scheduler_8h.html#ac48128e72b303ea22d8ec641a9516b15" title="schedule" alt="" coords="1065,31,1144,57"/>
+<area shape="rect" id="node7" href="$gvt_2gvt_8h.html#a234e866bb1e37fa25dec9bb40134234d" title="get_last_gvt" alt="" coords="1192,132,1292,159"/>
+<area shape="rect" id="node9" href="$main_8c.html#aa729cb27350c33119484501e13df4fec" title="main_simulation_loop" alt="" coords="1929,175,2091,201"/>
+<area shape="rect" id="node8" href="$main_8c.html#af2ac8c142556588d87e6c069a4ca9894" title="end_computing" alt="" coords="1743,183,1864,209"/>
+<area shape="rect" id="node11" href="$queues_8h.html#a54eca9bfa893cac072d1b1d3010c2944" title="process_bottom_halves" alt="" coords="1340,132,1515,159"/>
+<area shape="rect" id="node12" href="$statistics_8c.html#ab7b584959699657a63a49384f07fd7a9" title="format_size" alt="" coords="1379,233,1476,260"/>
+<area shape="rect" id="node10" href="$main_8c.html#a3c04138a5bfe5d72780bb7e82a18e627" title="main" alt="" coords="2404,203,2459,229"/>
+<area shape="rect" id="node13" href="$statistics_8h.html#aeff52bbf045362270639b2baed20762b" title="statistics_stop" alt="" coords="1563,233,1677,260"/>
+<area shape="rect" id="node14" href="$core_8h.html#a8f346536ccfbe77b78ed577674beb6cf" title="simulation_shutdown" alt="" coords="1725,233,1881,260"/>
+<area shape="rect" id="node15" href="$core_8c.html#a9b05d2af2e233e2616633eaa706682ee" title="exit_from_simulation\l_model" alt="" coords="1933,226,2087,267"/>
+<area shape="rect" id="node16" href="$core_8h.html#a7fb819521b1ab5fc7644ad216fe7b465" title="base_init" alt="" coords="2139,229,2217,256"/>
+<area shape="rect" id="node17" href="$init_8h.html#a417eb072179d09f441dbae3125049e46" title="SystemInit" alt="" coords="2265,228,2356,255"/>
+</map>

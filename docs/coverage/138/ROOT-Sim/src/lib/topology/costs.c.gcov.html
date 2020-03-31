@@ -1,0 +1,365 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - doc-coverage.info - ROOT-Sim/src/lib/topology/costs.c</title>
+  <link rel="stylesheet" type="text/css" href="../../../../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../../../../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../../../../index.html">top level</a> - <a href="index.html">ROOT-Sim/src/lib/topology</a> - costs.c</td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">doc-coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">5</td>
+            <td class="headerCovTableEntry">23</td>
+            <td class="headerCovTableEntryLo">21.7 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2020-02-28 13:00:44</td>
+            <td></td>
+          </tr>
+          <tr><td><img src="../../../../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../../../../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<span class="lineNum">       1 </span><span class="lineNoCov">          0 : /*</span>
+<span class="lineNum">       2 </span>            :  * topology_costs.c
+<span class="lineNum">       3 </span>            :  *
+<span class="lineNum">       4 </span>            :  *  Created on: 02 ago 2018
+<span class="lineNum">       5 </span>            :  *      Author: andrea
+<span class="lineNum">       6 </span>            :  */
+<span class="lineNum">       7 </span>            : 
+<span class="lineNum">       8 </span>            : #include &lt;ROOT-Sim.h&gt;
+<span class="lineNum">       9 </span>            : #include &lt;lib/topology.h&gt;
+<span class="lineNum">      10 </span>            : 
+<span class="lineNum">      11 </span>            : #include &lt;math.h&gt;
+<span class="lineNum">      12 </span>            : #include &lt;stdint.h&gt;
+<span class="lineNum">      13 </span>            : 
+<span class="lineNum">      14 </span>            : #include &lt;scheduler/scheduler.h&gt;
+<span class="lineNum">      15 </span>            : #include &lt;lib/jsmn_helper.h&gt;
+<span class="lineNum">      16 </span>            : #include &lt;lib/numerical.h&gt;
+<span class="lineNum">      17 </span>            : #include &lt;datatypes/bitmap.h&gt;
+<span class="lineNum">      18 </span>            : #include &lt;datatypes/array.h&gt;
+<span class="lineNum">      19 </span>            : #include &lt;datatypes/heap.h&gt;
+<span class="lineNum">      20 </span>            : #include &lt;scheduler/process.h&gt;
+<span class="lineNum">      21 </span>            : 
+<span class="lineNum">      22 </span><span class="lineCov">          1 : typedef struct _topology_t {</span>
+<span class="lineNum">      23 </span><span class="lineCov">          1 :         bool dirty;</span>
+<span class="lineNum">      24 </span><span class="lineCov">          1 :         unsigned *prev_next_cache;      /// a pointer to the cache used to speedup queries on paths (unused in probabilities topology type)</span>
+<span class="lineNum">      25 </span><span class="lineCov">          1 :         double data[];                  /// the costs, probabilities or obstacles matrix (depending on the topology type)</span>
+<span class="lineNum">      26 </span><span class="lineNoCov">          0 : } topology_t;</span>
+<span class="lineNum">      27 </span>            : 
+<span class="lineNum">      28 </span><span class="lineNoCov">          0 : unsigned size_checkpoint_costs(void){</span>
+<span class="lineNum">      29 </span>            :         return  sizeof(topology_t) +                                                    // the basic struct size
+<span class="lineNum">      30 </span>            :                 sizeof(double) * topology_global.directions * topology_global.lp_cnt +  // the whole cost matrix
+<span class="lineNum">      31 </span>            :                 sizeof(double) * topology_global.lp_cnt +                               // the cache of total path costs to speed up queries
+<span class="lineNum">      32 </span>            :                 sizeof(unsigned) * 2 * topology_global.lp_cnt;                          // the cache of previous and next hops to speed up queries
+<span class="lineNum">      33 </span>            : }
+<span class="lineNum">      34 </span>            : 
+<span class="lineNum">      35 </span><span class="lineNoCov">          0 : void *load_topology_file_costs(c_jsmntok_t *root_token, const char *json_base){</span>
+<span class="lineNum">      36 </span>            :         unsigned i;
+<span class="lineNum">      37 </span>            :         c_jsmntok_t *aux_tok;
+<span class="lineNum">      38 </span>            :         const unsigned lp_cnt = topology_global.lp_cnt;
+<span class="lineNum">      39 </span>            :         const unsigned neighbours_cnt = topology_global.directions;
+<span class="lineNum">      40 </span>            : 
+<span class="lineNum">      41 </span>            :         // retrieve the values array
+<span class="lineNum">      42 </span>            :         c_jsmntok_t *values_tok = get_value_token_by_key(root_token, json_base, root_token, &quot;values&quot;);
+<span class="lineNum">      43 </span>            :         if(!values_tok|| values_tok-&gt;type != JSMN_ARRAY || children_count_token(root_token, values_tok) != lp_cnt)
+<span class="lineNum">      44 </span>            :                 rootsim_error(false, &quot;Invalid or missing json value with key \&quot;values\&quot;&quot;);
+<span class="lineNum">      45 </span>            : 
+<span class="lineNum">      46 </span>            :         // instantiates the array
+<span class="lineNum">      47 </span>            :         double *ret_data = rsalloc(sizeof(double) * neighbours_cnt * lp_cnt);
+<span class="lineNum">      48 </span>            : 
+<span class="lineNum">      49 </span>            :         // we iterate and store the costs of going into a neighbour
+<span class="lineNum">      50 </span>            :         for (i = 0; i &lt; lp_cnt; ++i) {
+<span class="lineNum">      51 </span>            :                 // get the token of the lp we are scanning
+<span class="lineNum">      52 </span>            :                 aux_tok = get_at_token(root_token, values_tok, i);
+<span class="lineNum">      53 </span>            : 
+<span class="lineNum">      54 </span>            :                 // we parse the array
+<span class="lineNum">      55 </span>            :                 if(!aux_tok || parse_double_array(root_token, json_base, aux_tok, neighbours_cnt, &amp;ret_data[i * neighbours_cnt]) &lt; 0)
+<span class="lineNum">      56 </span>            :                         rootsim_error(false, &quot;Invalid or missing value in the current array of costs&quot;);
+<span class="lineNum">      57 </span>            :         }
+<span class="lineNum">      58 </span>            : 
+<span class="lineNum">      59 </span>            :         // sanity check on the values of the costs
+<span class="lineNum">      60 </span>            :         // XXX could negative costs be useful to someone?
+<span class="lineNum">      61 </span>            :         // they would require non-minimal work to implement
+<span class="lineNum">      62 </span>            :         // Bellman-Ford would be required
+<span class="lineNum">      63 </span>            :         for (i = 0; i &lt; neighbours_cnt * lp_cnt; ++i) {
+<span class="lineNum">      64 </span>            :                 if(ret_data[i] &lt; 0) {
+<span class="lineNum">      65 </span>            :                         // xxx if negative costs need to be implemented we can't do this
+<span class="lineNum">      66 </span>            :                         if(ret_data[i] &gt; -1.0 || ret_data[i] &lt; -1.0)
+<span class="lineNum">      67 </span>            :                                 rootsim_error(true, &quot;Negative costs are still not supported&quot;);
+<span class="lineNum">      68 </span>            : 
+<span class="lineNum">      69 </span>            :                         ret_data[i] = INFINITY; // this way we can mark an edge as non crossable
+<span class="lineNum">      70 </span>            :                 }
+<span class="lineNum">      71 </span>            :         }
+<span class="lineNum">      72 </span>            :         return ret_data;
+<span class="lineNum">      73 </span>            : }
+<span class="lineNum">      74 </span>            : 
+<span class="lineNum">      75 </span>            : 
+<span class="lineNum">      76 </span><span class="lineNoCov">          0 : topology_t *topology_costs_init(unsigned this_region_id, void *topology_data){</span>
+<span class="lineNum">      77 </span>            :         (void) this_region_id;
+<span class="lineNum">      78 </span>            :         unsigned i;
+<span class="lineNum">      79 </span>            :         const unsigned lp_cnt = topology_global.lp_cnt;
+<span class="lineNum">      80 </span>            :         const unsigned neighbours = topology_global.directions;
+<span class="lineNum">      81 </span>            : 
+<span class="lineNum">      82 </span>            :         // instantiate the topology struct
+<span class="lineNum">      83 </span>            :         topology_t *topology = rsalloc(topology_global.chkp_size);
+<span class="lineNum">      84 </span>            : 
+<span class="lineNum">      85 </span>            :         // from now on we expect a topology based on cost to reside in a unique memory block and to have this layout in memory:
+<span class="lineNum">      86 </span>            :         // BASE_STRUCT | COST MATRIX | CACHE MINIMUM COSTS | CACHE PREVIOUS HOP | CACHE NEXT HOP
+<span class="lineNum">      87 </span>            :         topology-&gt;prev_next_cache = UNION_CAST(&amp;topology-&gt;data[(neighbours + 1) * lp_cnt], unsigned *);
+<span class="lineNum">      88 </span>            : 
+<span class="lineNum">      89 </span>            :         if(topology_data)
+<span class="lineNum">      90 </span>            :                 memcpy(topology-&gt;data, topology_data, sizeof(double) * neighbours * lp_cnt);
+<span class="lineNum">      91 </span>            :         else{
+<span class="lineNum">      92 </span>            :                 for(i = 0; i &lt; neighbours * lp_cnt; ++i)
+<span class="lineNum">      93 </span>            :                         topology-&gt;data[i] = 1.0;
+<span class="lineNum">      94 </span>            :         }
+<span class="lineNum">      95 </span>            :         topology-&gt;dirty = true;
+<span class="lineNum">      96 </span>            : 
+<span class="lineNum">      97 </span>            :         return topology;
+<span class="lineNum">      98 </span>            : }
+<span class="lineNum">      99 </span>            : 
+<span class="lineNum">     100 </span>            : // this is used in order to sort the elements of the heap
+<span class="lineNum">     101 </span><span class="lineNoCov">          0 : #define __cmp_dijkstra_h(a, b) CmpSumHelpers(a.cost, b.cost)</span>
+<span class="lineNum">     102 </span>            : // this is costly: we try as much as possible to cache the results of this function
+<span class="lineNum">     103 </span><span class="lineNoCov">          0 : static void dijkstra_costs(const topology_t *topology, unsigned int source_cell, double min_costs[RegionsCount()], unsigned int previous[RegionsCount()]) {</span>
+<span class="lineNum">     104 </span>            :         // helper structure, we use this as heap elements to keep track of vertexes status during dijkstra execution
+<span class="lineNum">     105 </span>            :         struct _dijkstra_h_t{
+<span class="lineNum">     106 </span>            :                 struct _sum_helper_t cost;
+<span class="lineNum">     107 </span>            :                 unsigned cell;
+<span class="lineNum">     108 </span>            :         };
+<span class="lineNum">     109 </span>            : 
+<span class="lineNum">     110 </span>            :         const unsigned neighbours = topology_global.directions;
+<span class="lineNum">     111 </span>            :         const unsigned lp_cnt = topology_global.lp_cnt;
+<span class="lineNum">     112 </span>            :         unsigned i, receiver;
+<span class="lineNum">     113 </span>            :         struct _sum_helper_t min_costs_h[lp_cnt];
+<span class="lineNum">     114 </span>            :         rootsim_heap(struct _dijkstra_h_t) heap;
+<span class="lineNum">     115 </span>            :         const double *costs = topology-&gt;data;
+<span class="lineNum">     116 </span>            : 
+<span class="lineNum">     117 </span>            :         struct _dijkstra_h_t current_scan = {{0, 0}, source_cell}, partial_scan = {0};
+<span class="lineNum">     118 </span>            : 
+<span class="lineNum">     119 </span>            :         i = lp_cnt;
+<span class="lineNum">     120 </span>            :         while(i--){
+<span class="lineNum">     121 </span>            :                 min_costs_h[i].crt = 0;
+<span class="lineNum">     122 </span>            :                 min_costs_h[i].sum = INFINITY;
+<span class="lineNum">     123 </span>            :                 previous[i] = UINT_MAX;
+<span class="lineNum">     124 </span>            :         }
+<span class="lineNum">     125 </span>            : 
+<span class="lineNum">     126 </span>            :         heap_init(heap);
+<span class="lineNum">     127 </span>            : 
+<span class="lineNum">     128 </span>            :         min_costs_h[source_cell] = current_scan.cost;
+<span class="lineNum">     129 </span>            :         // textbook dijkstra (keep in mind i'm not passing pointers, this stuff gets copied)
+<span class="lineNum">     130 </span>            :         heap_insert(heap, current_scan, __cmp_dijkstra_h);
+<span class="lineNum">     131 </span>            :         // while we have vertexes to process
+<span class="lineNum">     132 </span>            :         while(!heap_empty(heap)) {
+<span class="lineNum">     133 </span>            :                 // extract the lowest one
+<span class="lineNum">     134 </span>            :                 current_scan = heap_extract(heap, __cmp_dijkstra_h);
+<span class="lineNum">     135 </span>            :                 // since we are not supporting decrease key on the heap we have to filter spurious duplicates
+<span class="lineNum">     136 </span>            :                 if(CmpSumHelpers(current_scan.cost, min_costs_h[current_scan.cell]) &gt; 0)
+<span class="lineNum">     137 </span>            :                         continue;
+<span class="lineNum">     138 </span>            :                 // we cycle through the neighbours of the current cell
+<span class="lineNum">     139 </span>            :                 for(i = 0; i &lt; neighbours; ++i){
+<span class="lineNum">     140 </span>            :                         // we get the receiver cell
+<span class="lineNum">     141 </span>            :                         receiver = get_raw_receiver(current_scan.cell, i);
+<span class="lineNum">     142 </span>            :                         if(receiver == DIRECTION_INVALID || isinf(costs[current_scan.cell * neighbours + i]))
+<span class="lineNum">     143 </span>            :                                 continue;
+<span class="lineNum">     144 </span>            :                         // we compute the sum of the current distance plus one hop to the receiver
+<span class="lineNum">     145 </span>            :                         partial_scan.cost = PartialNeumaierSum(current_scan.cost, costs[current_scan.cell * neighbours + i]);
+<span class="lineNum">     146 </span>            :                         // if lower we have a candidate optimum for the cell
+<span class="lineNum">     147 </span>            :                         if(CmpSumHelpers(partial_scan.cost, min_costs_h[receiver]) &lt; 0){
+<span class="lineNum">     148 </span>            :                                 // set the previous cell to retrieve the path later on
+<span class="lineNum">     149 </span>            :                                 previous[receiver] = current_scan.cell;
+<span class="lineNum">     150 </span>            :                                 // we set the cell field on our struct
+<span class="lineNum">     151 </span>            :                                 partial_scan.cell = receiver;
+<span class="lineNum">     152 </span>            :                                 // refresh lowest cost found for the cell
+<span class="lineNum">     153 </span>            :                                 min_costs_h[receiver] = partial_scan.cost;
+<span class="lineNum">     154 </span>            :                                 // we insert this into the heap
+<span class="lineNum">     155 </span>            :                                 heap_insert(heap, partial_scan, __cmp_dijkstra_h);
+<span class="lineNum">     156 </span>            :                         }
+<span class="lineNum">     157 </span>            :                 }
+<span class="lineNum">     158 </span>            :         }
+<span class="lineNum">     159 </span>            :         // we transform the sum helpers into single double value
+<span class="lineNum">     160 </span>            :         i = lp_cnt;
+<span class="lineNum">     161 </span>            :         while(i--){
+<span class="lineNum">     162 </span>            :                 min_costs[i] = ValueSumHelper(min_costs_h[i]);
+<span class="lineNum">     163 </span>            :         }
+<span class="lineNum">     164 </span>            : }
+<span class="lineNum">     165 </span>            : #undef __cmp_dijsktra_h
+<span class="lineNum">     166 </span>            : 
+<span class="lineNum">     167 </span><span class="lineNoCov">          0 : static void refresh_cache_costs(topology_t *topology){</span>
+<span class="lineNum">     168 </span>            :         if(topology-&gt;dirty){
+<span class="lineNum">     169 </span>            :                 const unsigned lp_cnt = topology_global.lp_cnt;
+<span class="lineNum">     170 </span>            :                 // computes minimum cost spanning tree rooted in the current region
+<span class="lineNum">     171 </span>            :                 dijkstra_costs(topology, current-&gt;gid.to_int, &amp;topology-&gt;data[topology_global.directions*lp_cnt], topology-&gt;prev_next_cache);
+<span class="lineNum">     172 </span>            :                 // this sets to an uninitialized value the buffer which holds the next hop for
+<span class="lineNum">     173 </span>            :                 // each possible destination (we compute those on demand when asked by the user and we cache those here)
+<span class="lineNum">     174 </span>            :                 memset(&amp;topology-&gt;prev_next_cache[lp_cnt], UCHAR_MAX, sizeof(unsigned) * lp_cnt);
+<span class="lineNum">     175 </span>            :                 topology-&gt;dirty = false;
+<span class="lineNum">     176 </span>            :         }
+<span class="lineNum">     177 </span>            : }
+<span class="lineNum">     178 </span>            : 
+<span class="lineNum">     179 </span><span class="lineNoCov">          0 : union _double_bits_trick{</span>
+<span class="lineNum">     180 </span><span class="lineNoCov">          0 :         uint64_t val_bits;      /// needed by the bitwise XOR</span>
+<span class="lineNum">     181 </span><span class="lineCov">          1 :         double val;             /// the new cost value</span>
+<span class="lineNum">     182 </span>            : };
+<span class="lineNum">     183 </span>            : 
+<span class="lineNum">     184 </span><span class="lineNoCov">          0 : struct update_topology_t{</span>
+<span class="lineNum">     185 </span><span class="lineNoCov">          0 :         long unsigned loc_i;            /// where to put the new value</span>
+<span class="lineNum">     186 </span>            :         union _double_bits_trick upd;
+<span class="lineNum">     187 </span>            : };
+<span class="lineNum">     188 </span>            : 
+<span class="lineNum">     189 </span><span class="lineNoCov">          0 : void set_value_topology_costs(unsigned from, unsigned to, double value){</span>
+<span class="lineNum">     190 </span>            :         topology_t *topology = current-&gt;topology;
+<span class="lineNum">     191 </span>            :         struct update_topology_t to_send = {from * topology_global.directions + to, .upd = {value}};
+<span class="lineNum">     192 </span>            :         // this makes sure our bitwise tricks work properly
+<span class="lineNum">     193 </span>            :         static_assert(sizeof(double) == sizeof(uint64_t), &quot;the bit operation trick on TOPOLOGY_COST updates is wrong&quot;);
+<span class="lineNum">     194 </span>            :         union _double_bits_trick old = {topology-&gt;data[to_send.loc_i]};
+<span class="lineNum">     195 </span>            :         // the XOR is needed in order to have a consistent state after contemporaneous update events
+<span class="lineNum">     196 </span>            :         to_send.upd.val_bits ^= old.val_bits;
+<span class="lineNum">     197 </span>            : 
+<span class="lineNum">     198 </span>            :         if(unlikely(to_send.upd.val_bits == 0))
+<span class="lineNum">     199 </span>            :                 // the update is unnecessary
+<span class="lineNum">     200 </span>            :                 return;
+<span class="lineNum">     201 </span>            :         // save the value locally
+<span class="lineNum">     202 </span>            :         topology-&gt;data[to_send.loc_i] = value;
+<span class="lineNum">     203 </span>            :         // send the update message to the other LPs
+<span class="lineNum">     204 </span>            :         unsigned i = topology_global.lp_cnt;
+<span class="lineNum">     205 </span>            :         while(i--){
+<span class="lineNum">     206 </span>            :                 if(i == current-&gt;gid.to_int)
+<span class="lineNum">     207 </span>            :                         continue;
+<span class="lineNum">     208 </span>            :                 UncheckedScheduleNewEvent(i, current_evt-&gt;timestamp, TOPOLOGY_UPDATE, &amp;to_send, sizeof(to_send));
+<span class="lineNum">     209 </span>            :         }
+<span class="lineNum">     210 </span>            :         // mark the topology as dirty
+<span class="lineNum">     211 </span>            :         topology-&gt;dirty = true;
+<span class="lineNum">     212 </span>            : }
+<span class="lineNum">     213 </span>            : 
+<span class="lineNum">     214 </span><span class="lineNoCov">          0 : void update_topology_costs(void){</span>
+<span class="lineNum">     215 </span>            :         topology_t *topology = current-&gt;topology;
+<span class="lineNum">     216 </span>            :         struct update_topology_t *upd_p = (struct update_topology_t *)current_evt-&gt;event_content;
+<span class="lineNum">     217 </span>            :         // same ol' trick as set_value_topology_costs()
+<span class="lineNum">     218 </span>            :         union _double_bits_trick *old_p = (union _double_bits_trick *)&amp;topology-&gt;data[upd_p-&gt;loc_i];
+<span class="lineNum">     219 </span>            :         // update our value through the XOR
+<span class="lineNum">     220 </span>            :         old_p-&gt;val_bits ^= upd_p-&gt;upd.val_bits;
+<span class="lineNum">     221 </span>            :         // mark the topology as dirty
+<span class="lineNum">     222 </span>            :         topology-&gt;dirty = true;
+<span class="lineNum">     223 </span>            : }
+<span class="lineNum">     224 </span>            : 
+<span class="lineNum">     225 </span><span class="lineNoCov">          0 : double get_value_topology_costs(unsigned from, unsigned to){</span>
+<span class="lineNum">     226 </span>            :         return current-&gt;topology-&gt;data[from * topology_global.directions + to];
+<span class="lineNum">     227 </span>            : }
+<span class="lineNum">     228 </span>            : 
+<span class="lineNum">     229 </span><span class="lineNoCov">          0 : bool is_reachable_costs(unsigned to){</span>
+<span class="lineNum">     230 </span>            :         // XXX do we want deep reachability or dumb reachability?
+<span class="lineNum">     231 </span>            :         return find_receiver_toward_costs(to) != UINT_MAX;
+<span class="lineNum">     232 </span>            : }
+<span class="lineNum">     233 </span>            : 
+<span class="lineNum">     234 </span><span class="lineNoCov">          0 : unsigned int find_receiver_toward_costs(unsigned int to){</span>
+<span class="lineNum">     235 </span>            :         topology_t *topology = current-&gt;topology;
+<span class="lineNum">     236 </span>            :         const unsigned lp_cnt = topology_global.lp_cnt;
+<span class="lineNum">     237 </span>            :         const unsigned this_lp = current-&gt;gid.to_int;
+<span class="lineNum">     238 </span>            :         // refresh the cache
+<span class="lineNum">     239 </span>            :         refresh_cache_costs(topology);
+<span class="lineNum">     240 </span>            :         // this is the location where we expect to find the cached next hop
+<span class="lineNum">     241 </span>            :         unsigned *ret_p = &amp;topology-&gt;prev_next_cache[lp_cnt + to];
+<span class="lineNum">     242 </span>            : 
+<span class="lineNum">     243 </span>            :         if(*ret_p == UINT_MAX){
+<span class="lineNum">     244 </span>            :                 // this value hasn't been requested yet
+<span class="lineNum">     245 </span>            :                 unsigned path[lp_cnt];
+<span class="lineNum">     246 </span>            :                 // we compute the complete path
+<span class="lineNum">     247 </span>            :                 if(!build_path(lp_cnt, path, topology-&gt;prev_next_cache, this_lp, to)){
+<span class="lineNum">     248 </span>            :                         // there's no path so we put in a sentinel value
+<span class="lineNum">     249 </span>            :                         *ret_p = this_lp;
+<span class="lineNum">     250 </span>            :                 }else{
+<span class="lineNum">     251 </span>            :                         // we got a feasible path, we save the first hop
+<span class="lineNum">     252 </span>            :                         *ret_p = path[0];
+<span class="lineNum">     253 </span>            :                 }
+<span class="lineNum">     254 </span>            :         }
+<span class="lineNum">     255 </span>            :         // we mark the unreachable regions with next hop = current LP id
+<span class="lineNum">     256 </span>            :         if(*ret_p == this_lp){
+<span class="lineNum">     257 </span>            :                 // the requested cell is unreachable
+<span class="lineNum">     258 </span>            :                 return UINT_MAX;
+<span class="lineNum">     259 </span>            :         }
+<span class="lineNum">     260 </span>            : 
+<span class="lineNum">     261 </span>            :         return *ret_p;
+<span class="lineNum">     262 </span>            : }
+<span class="lineNum">     263 </span>            : 
+<span class="lineNum">     264 </span><span class="lineNoCov">          0 : double compute_min_tour_costs(unsigned int source, unsigned int dest, unsigned int result[RegionsCount()]) {</span>
+<span class="lineNum">     265 </span>            :         topology_t *topology = current-&gt;topology;
+<span class="lineNum">     266 </span>            :         const unsigned lp_cnt = topology_global.lp_cnt;
+<span class="lineNum">     267 </span>            : 
+<span class="lineNum">     268 </span>            :         // I suppose (I HOPE!!!) the requests will be more frequent for paths starting from the region where we are staying
+<span class="lineNum">     269 </span>            :         if(source == current-&gt;gid.to_int){
+<span class="lineNum">     270 </span>            :                 refresh_cache_costs(topology); // so we cache that stuff
+<span class="lineNum">     271 </span>            :                 // the path is built on the fly (but this is almost as costly as copying it directly)
+<span class="lineNum">     272 </span>            :                 if(!build_path(lp_cnt, result, topology-&gt;prev_next_cache, source, dest)){
+<span class="lineNum">     273 </span>            :                         // the destination is unreachable
+<span class="lineNum">     274 </span>            :                         // we mark the cache a sentinel value indicating impossibility
+<span class="lineNum">     275 </span>            :                         topology-&gt;prev_next_cache[lp_cnt + dest] = source;
+<span class="lineNum">     276 </span>            :                         return -1.0;
+<span class="lineNum">     277 </span>            :                 }
+<span class="lineNum">     278 </span>            :                 topology-&gt;prev_next_cache[lp_cnt + dest] = result[0]; // we cache the next hop value;
+<span class="lineNum">     279 </span>            :                 // this is the cached value for the minimum cost incurred in the path
+<span class="lineNum">     280 </span>            :                 return topology-&gt;data[topology_global.directions * lp_cnt + dest];
+<span class="lineNum">     281 </span>            :         }
+<span class="lineNum">     282 </span>            : 
+<span class="lineNum">     283 </span>            :         unsigned int previous[lp_cnt];
+<span class="lineNum">     284 </span>            :         double min_costs[lp_cnt];
+<span class="lineNum">     285 </span>            :         // this is not cahced, we need to execute the whole algorithm, again only for this request
+<span class="lineNum">     286 </span>            :         dijkstra_costs(topology, source, min_costs, previous);
+<span class="lineNum">     287 </span>            :         // we build the path
+<span class="lineNum">     288 </span>            :         if(!build_path(lp_cnt, result, previous, source, dest))
+<span class="lineNum">     289 </span>            :                 return -1.0;
+<span class="lineNum">     290 </span>            : 
+<span class="lineNum">     291 </span>            :         return min_costs[dest];
+<span class="lineNum">     292 </span>            : }
+<span class="lineNum">     293 </span>            : 
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../../../../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.12</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>

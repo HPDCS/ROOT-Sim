@@ -1,0 +1,9 @@
+<map id="LogState" name="LogState">
+<area shape="rect" id="node2" href="$checkpoints_8c.html#af5802791ee41b774e796caa15315c24c" title="log_state" alt="" coords="183,5,264,32"/>
+<area shape="rect" id="node5" href="$abm__layer_8c.html#aaa938454239a876784c54890be88d058" title="abm_do_checkpoint" alt="" coords="148,56,299,83"/>
+<area shape="rect" id="node6" href="$checkpoints_8c.html#a21384b7f254e3d372111b3dbbf785e73" title="log_restore" alt="" coords="176,107,271,133"/>
+<area shape="rect" id="node8" href="$abm__layer_8c.html#ab25808462b1c440e1f43bf520e39f048" title="abm_restore_checkpoint" alt="" coords="133,157,313,184"/>
+<area shape="rect" id="node3" href="$checkpoints_8c.html#a9be0910d1b3a99682d5d2971b4b79f3b" title="log_full" alt="" coords="375,5,441,32"/>
+<area shape="rect" id="node4" href="$dymelor_8c.html#a90e313c8735836c166694aa746cc841e" title="get_log_size" alt="" coords="503,5,604,32"/>
+<area shape="rect" id="node7" href="$checkpoints_8c.html#a10856fb7b6aab5e9072633b8a99875ff" title="restore_full" alt="" coords="361,107,455,133"/>
+</map>

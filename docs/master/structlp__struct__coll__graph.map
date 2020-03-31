@@ -1,0 +1,21 @@
+<map id="lp_struct" name="lp_struct">
+<area shape="rect" id="node2" href="$struct__region__abm__t.html" title="_region_abm_t" alt="" coords="720,128,837,155"/>
+<area shape="rect" id="node3" href="$structmemory__map.html" title="memory_map" alt="" coords="723,179,835,205"/>
+<area shape="rect" id="node4" href="$structbuddy.html" title="buddy" alt="" coords="479,204,541,231"/>
+<area shape="rect" id="node5" href="$structspinlock__t.html" title="spinlock_t" alt="" coords="207,213,292,240"/>
+<area shape="rect" id="node7" href="$structslab__chain.html" title="slab_chain" alt="" coords="465,153,555,180"/>
+<area shape="rect" id="node12" href="$struct__msg__channel.html" title="_msg_channel" alt="" coords="721,325,836,352"/>
+<area shape="rect" id="node6" href="$structsegment.html" title="segment" alt="" coords="471,52,549,79"/>
+<area shape="rect" id="node8" href="$structslab__header.html" title="slab_header" alt="" coords="199,163,299,189"/>
+<area shape="rect" id="node9" href="$structatomic__t.html" title="atomic_t" alt="" coords="5,163,84,189"/>
+<area shape="rect" id="node11" href="$struct__malloc__area.html" title="This structure let DyMeLoR handle one malloc area (for serving given&#45;size memory requests) ..." alt="" coords="196,44,303,71"/>
+<area shape="rect" id="node10" href="$struct__malloc__state.html" title="Definition of the memory map. " alt="" coords="455,103,565,129"/>
+<area shape="rect" id="node13" href="$struct__msg__buff.html" title="_msg_buff" alt="" coords="466,445,554,472"/>
+<area shape="rect" id="node14" href="$struct__msg__t.html" title="Message Type definition. " alt="" coords="215,492,284,519"/>
+<area shape="rect" id="node17" href="$struct__outgoing__t.html" title="Per&#45;LP buffer of newly&#45;generated events. " alt="" coords="591,479,688,505"/>
+<area shape="rect" id="node15" href="$struct__gid__t.html" title="Definition of a GID. " alt="" coords="15,408,75,435"/>
+<area shape="rect" id="node16" href="$struct__topology__t.html" title="the customised struct for TOPOLOGY_OBSTACLES representation " alt="" coords="731,497,827,524"/>
+<area shape="rect" id="node18" href="$struct__lid__t.html" title="Definition of a LID. " alt="" coords="751,599,806,625"/>
+<area shape="rect" id="node19" href="$struct____exec__context__t.html" title="This structure describes the CPU context of a User&#45;Level Thread. " alt="" coords="712,649,845,676"/>
+<area shape="rect" id="node20" href="$struct__numerical__state.html" title="_numerical_state" alt="" coords="713,700,845,727"/>
+</map>

@@ -1,0 +1,162 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - doc-coverage.info - ROOT-Sim/src/arch/x86/linux/intercept/traps-dummy.h</title>
+  <link rel="stylesheet" type="text/css" href="../../../../../../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../../../../../../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../../../../../../index.html">top level</a> - <a href="index.html">ROOT-Sim/src/arch/x86/linux/intercept</a> - traps-dummy.h</td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">doc-coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">0</td>
+            <td class="headerCovTableEntry">47</td>
+            <td class="headerCovTableEntryLo">0.0 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2020-01-30 13:56:10</td>
+            <td></td>
+          </tr>
+          <tr><td><img src="../../../../../../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../../../../../../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<span class="lineNum">       1 </span><span class="lineNoCov">          0 : #ifndef _ASM_X86_TRAPS_H</span>
+<span class="lineNum">       2 </span>            : #define _ASM_X86_TRAPS_H
+<span class="lineNum">       3 </span>            : 
+<span class="lineNum">       4 </span>            : #include &lt;asm/debugreg.h&gt;
+<span class="lineNum">       5 </span>            : #include &lt;asm/siginfo.h&gt;                  /* TRAP_TRACE, ... */
+<span class="lineNum">       6 </span>            : 
+<span class="lineNum">       7 </span>            : #ifdef CONFIG_X86_32
+<span class="lineNum">       8 </span>            : #define dotraplinkage
+<span class="lineNum">       9 </span>            : #else
+<span class="lineNum">      10 </span><span class="lineNoCov">          0 : #define dotraplinkage asmlinkage</span>
+<span class="lineNum">      11 </span>            : #endif
+<span class="lineNum">      12 </span>            : 
+<span class="lineNum">      13 </span><span class="lineNoCov">          0 : asmlinkage void divide_error(void);</span>
+<span class="lineNum">      14 </span><span class="lineNoCov">          0 : asmlinkage void debug(void);</span>
+<span class="lineNum">      15 </span><span class="lineNoCov">          0 : asmlinkage void nmi(void);</span>
+<span class="lineNum">      16 </span><span class="lineNoCov">          0 : asmlinkage void int3(void);</span>
+<span class="lineNum">      17 </span><span class="lineNoCov">          0 : asmlinkage void xen_debug(void);</span>
+<span class="lineNum">      18 </span><span class="lineNoCov">          0 : asmlinkage void xen_int3(void);</span>
+<span class="lineNum">      19 </span><span class="lineNoCov">          0 : asmlinkage void xen_stack_segment(void);</span>
+<span class="lineNum">      20 </span><span class="lineNoCov">          0 : asmlinkage void overflow(void);</span>
+<span class="lineNum">      21 </span><span class="lineNoCov">          0 : asmlinkage void bounds(void);</span>
+<span class="lineNum">      22 </span><span class="lineNoCov">          0 : asmlinkage void invalid_op(void);</span>
+<span class="lineNum">      23 </span><span class="lineNoCov">          0 : asmlinkage void device_not_available(void);</span>
+<span class="lineNum">      24 </span>            : #ifdef CONFIG_X86_64
+<span class="lineNum">      25 </span>            : asmlinkage void double_fault(void);
+<span class="lineNum">      26 </span>            : #endif
+<span class="lineNum">      27 </span><span class="lineNoCov">          0 : asmlinkage void coprocessor_segment_overrun(void);</span>
+<span class="lineNum">      28 </span><span class="lineNoCov">          0 : asmlinkage void invalid_TSS(void);</span>
+<span class="lineNum">      29 </span><span class="lineNoCov">          0 : asmlinkage void segment_not_present(void);</span>
+<span class="lineNum">      30 </span><span class="lineNoCov">          0 : asmlinkage void stack_segment(void);</span>
+<span class="lineNum">      31 </span><span class="lineNoCov">          0 : asmlinkage void general_protection(void);</span>
+<span class="lineNum">      32 </span><span class="lineNoCov">          0 : asmlinkage void page_fault(void);</span>
+<span class="lineNum">      33 </span><span class="lineNoCov">          0 : asmlinkage void spurious_interrupt_bug(void);</span>
+<span class="lineNum">      34 </span><span class="lineNoCov">          0 : asmlinkage void coprocessor_error(void);</span>
+<span class="lineNum">      35 </span><span class="lineNoCov">          0 : asmlinkage void alignment_check(void);</span>
+<span class="lineNum">      36 </span>            : #ifdef CONFIG_X86_MCE
+<span class="lineNum">      37 </span>            : asmlinkage void machine_check(void);
+<span class="lineNum">      38 </span>            : #endif /* CONFIG_X86_MCE */
+<span class="lineNum">      39 </span><span class="lineNoCov">          0 : asmlinkage void simd_coprocessor_error(void);</span>
+<span class="lineNum">      40 </span>            : 
+<span class="lineNum">      41 </span><span class="lineNoCov">          0 : dotraplinkage void do_divide_error(struct pt_regs *, long);</span>
+<span class="lineNum">      42 </span><span class="lineNoCov">          0 : dotraplinkage void do_debug(struct pt_regs *, long);</span>
+<span class="lineNum">      43 </span><span class="lineNoCov">          0 : dotraplinkage void do_nmi(struct pt_regs *, long);</span>
+<span class="lineNum">      44 </span><span class="lineNoCov">          0 : dotraplinkage void do_int3(struct pt_regs *, long);</span>
+<span class="lineNum">      45 </span><span class="lineNoCov">          0 : dotraplinkage void do_overflow(struct pt_regs *, long);</span>
+<span class="lineNum">      46 </span><span class="lineNoCov">          0 : dotraplinkage void do_bounds(struct pt_regs *, long);</span>
+<span class="lineNum">      47 </span><span class="lineNoCov">          0 : dotraplinkage void do_invalid_op(struct pt_regs *, long);</span>
+<span class="lineNum">      48 </span><span class="lineNoCov">          0 : dotraplinkage void do_device_not_available(struct pt_regs *, long);</span>
+<span class="lineNum">      49 </span><span class="lineNoCov">          0 : dotraplinkage void do_coprocessor_segment_overrun(struct pt_regs *, long);</span>
+<span class="lineNum">      50 </span><span class="lineNoCov">          0 : dotraplinkage void do_invalid_TSS(struct pt_regs *, long);</span>
+<span class="lineNum">      51 </span><span class="lineNoCov">          0 : dotraplinkage void do_segment_not_present(struct pt_regs *, long);</span>
+<span class="lineNum">      52 </span><span class="lineNoCov">          0 : dotraplinkage void do_stack_segment(struct pt_regs *, long);</span>
+<span class="lineNum">      53 </span>            : #ifdef CONFIG_X86_64
+<span class="lineNum">      54 </span>            : dotraplinkage void do_double_fault(struct pt_regs *, long);
+<span class="lineNum">      55 </span>            : asmlinkage  struct pt_regs *sync_regs(struct pt_regs *);
+<span class="lineNum">      56 </span>            : //asmlinkage __kprobes struct pt_regs *sync_regs(struct pt_regs *);
+<span class="lineNum">      57 </span>            : #endif
+<span class="lineNum">      58 </span><span class="lineNoCov">          0 : dotraplinkage void do_general_protection(struct pt_regs *, long);</span>
+<span class="lineNum">      59 </span><span class="lineNoCov">          0 : dotraplinkage void do_page_fault(struct pt_regs *, unsigned long);</span>
+<span class="lineNum">      60 </span><span class="lineNoCov">          0 : dotraplinkage void do_spurious_interrupt_bug(struct pt_regs *, long);</span>
+<span class="lineNum">      61 </span><span class="lineNoCov">          0 : dotraplinkage void do_coprocessor_error(struct pt_regs *, long);</span>
+<span class="lineNum">      62 </span><span class="lineNoCov">          0 : dotraplinkage void do_alignment_check(struct pt_regs *, long);</span>
+<span class="lineNum">      63 </span>            : #ifdef CONFIG_X86_MCE
+<span class="lineNum">      64 </span>            : dotraplinkage void do_machine_check(struct pt_regs *, long);
+<span class="lineNum">      65 </span>            : #endif
+<span class="lineNum">      66 </span><span class="lineNoCov">          0 : dotraplinkage void do_simd_coprocessor_error(struct pt_regs *, long);</span>
+<span class="lineNum">      67 </span>            : #ifdef CONFIG_X86_32
+<span class="lineNum">      68 </span>            : dotraplinkage void do_iret_error(struct pt_regs *, long);
+<span class="lineNum">      69 </span>            : #endif
+<span class="lineNum">      70 </span>            : 
+<span class="lineNum">      71 </span><span class="lineNoCov">          0 : static inline int get_si_code(unsigned long condition)</span>
+<span class="lineNum">      72 </span>            : {
+<span class="lineNum">      73 </span>            :         if (condition &amp; DR_STEP)
+<span class="lineNum">      74 </span>            :                 return TRAP_TRACE;
+<span class="lineNum">      75 </span>            :         else if (condition &amp; (DR_TRAP0|DR_TRAP1|DR_TRAP2|DR_TRAP3))
+<span class="lineNum">      76 </span>            :                 return TRAP_HWBKPT;
+<span class="lineNum">      77 </span>            :         else
+<span class="lineNum">      78 </span>            :                 return TRAP_BRKPT;
+<span class="lineNum">      79 </span>            : }
+<span class="lineNum">      80 </span>            : 
+<span class="lineNum">      81 </span><span class="lineNoCov">          0 : extern int panic_on_unrecovered_nmi;</span>
+<span class="lineNum">      82 </span>            : 
+<span class="lineNum">      83 </span><span class="lineNoCov">          0 : void math_error(void __user *);</span>
+<span class="lineNum">      84 </span><span class="lineNoCov">          0 : void math_emulate(struct math_emu_info *);</span>
+<span class="lineNum">      85 </span>            : #ifndef CONFIG_X86_32
+<span class="lineNum">      86 </span><span class="lineNoCov">          0 : asmlinkage void smp_thermal_interrupt(void);</span>
+<span class="lineNum">      87 </span><span class="lineNoCov">          0 : asmlinkage void mce_threshold_interrupt(void);</span>
+<span class="lineNum">      88 </span>            : #endif
+<span class="lineNum">      89 </span>            : 
+<span class="lineNum">      90 </span>            : #endif /* _ASM_X86_TRAPS_H */
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../../../../../../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.12</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>

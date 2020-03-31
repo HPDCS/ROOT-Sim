@@ -1,0 +1,8 @@
+<map id="ccgs_compute_snapshot" name="ccgs_compute_snapshot">
+<area shape="rect" id="node2" href="$checkpoints_8c.html#af5802791ee41b774e796caa15315c24c" title="log_state" alt="" coords="241,5,323,32"/>
+<area shape="rect" id="node5" href="$checkpoints_8c.html#a21384b7f254e3d372111b3dbbf785e73" title="log_restore" alt="" coords="235,56,329,83"/>
+<area shape="rect" id="node7" href="$checkpoints_8c.html#a727e4cd3fa1d7b332b9f212733eec8d3" title="log_delete" alt="" coords="238,107,326,133"/>
+<area shape="rect" id="node3" href="$checkpoints_8c.html#a9be0910d1b3a99682d5d2971b4b79f3b" title="log_full" alt="" coords="391,5,457,32"/>
+<area shape="rect" id="node4" href="$dymelor_8c.html#a90e313c8735836c166694aa746cc841e" title="get_log_size" alt="" coords="519,5,620,32"/>
+<area shape="rect" id="node6" href="$checkpoints_8c.html#a10856fb7b6aab5e9072633b8a99875ff" title="restore_full" alt="" coords="377,56,471,83"/>
+</map>

@@ -1,0 +1,323 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - doc-coverage.info - ROOT-Sim/src/arch/x86/linux/schedule-hook/ld.h</title>
+  <link rel="stylesheet" type="text/css" href="../../../../../../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../../../../../../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../../../../../../index.html">top level</a> - <a href="index.html">ROOT-Sim/src/arch/x86/linux/schedule-hook</a> - ld.h</td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">doc-coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">0</td>
+            <td class="headerCovTableEntry">32</td>
+            <td class="headerCovTableEntryLo">0.0 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2020-01-31 15:54:55</td>
+            <td></td>
+          </tr>
+          <tr><td><img src="../../../../../../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../../../../../../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<span class="lineNum">       1 </span><span class="lineNoCov">          0 : /*</span>
+<span class="lineNum">       2 </span>            : x86 Length Disassembler.
+<span class="lineNum">       3 </span>            : Copyright (C) 2016 Alessandro Pellegrini
+<span class="lineNum">       4 </span>            : Copyright (C) 2013 Byron Platt
+<span class="lineNum">       5 </span>            : 
+<span class="lineNum">       6 </span>            : This program is free software: you can redistribute it and/or modify
+<span class="lineNum">       7 </span>            : it under the terms of the GNU General Public License as published by
+<span class="lineNum">       8 </span>            : the Free Software Foundation, either version 3 of the License, or
+<span class="lineNum">       9 </span>            : (at your option) any later version.
+<span class="lineNum">      10 </span>            : 
+<span class="lineNum">      11 </span>            : This program is distributed in the hope that it will be useful,
+<span class="lineNum">      12 </span>            : but WITHOUT ANY WARRANTY; without even the implied warranty of
+<span class="lineNum">      13 </span>            : MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+<span class="lineNum">      14 </span>            : GNU General Public License for more details.
+<span class="lineNum">      15 </span>            : 
+<span class="lineNum">      16 </span>            : You should have received a copy of the GNU General Public License
+<span class="lineNum">      17 </span>            : along with this program.  If not, see &lt;http://www.gnu.org/licenses/&gt;.
+<span class="lineNum">      18 </span>            : */
+<span class="lineNum">      19 </span>            : 
+<span class="lineNum">      20 </span>            : #pragma once
+<span class="lineNum">      21 </span>            : 
+<span class="lineNum">      22 </span>            : /* table macros */
+<span class="lineNum">      23 </span>            : #define BITMASK32(                                                             \
+<span class="lineNum">      24 </span>            :     b00,b01,b02,b03,b04,b05,b06,b07,                                           \
+<span class="lineNum">      25 </span>            :     b08,b09,b0a,b0b,b0c,b0d,b0e,b0f,                                           \
+<span class="lineNum">      26 </span>            :     b10,b11,b12,b13,b14,b15,b16,b17,                                           \
+<span class="lineNum">      27 </span>            :     b18,b19,b1a,b1b,b1c,b1d,b1e,b1f                                            \
+<span class="lineNum">      28 </span><span class="lineNoCov">          0 : ) (                                                                            \</span>
+<span class="lineNum">      29 </span>            :     (b00&lt;&lt;0x00)|(b01&lt;&lt;0x01)|(b02&lt;&lt;0x02)|(b03&lt;&lt;0x03)|                           \
+<span class="lineNum">      30 </span>            :     (b04&lt;&lt;0x04)|(b05&lt;&lt;0x05)|(b06&lt;&lt;0x06)|(b07&lt;&lt;0x07)|                           \
+<span class="lineNum">      31 </span>            :     (b08&lt;&lt;0x08)|(b09&lt;&lt;0x09)|(b0a&lt;&lt;0x0a)|(b0b&lt;&lt;0x0b)|                           \
+<span class="lineNum">      32 </span>            :     (b0c&lt;&lt;0x0c)|(b0d&lt;&lt;0x0d)|(b0e&lt;&lt;0x0e)|(b0f&lt;&lt;0x0f)|                           \
+<span class="lineNum">      33 </span>            :     (b10&lt;&lt;0x10)|(b11&lt;&lt;0x11)|(b12&lt;&lt;0x12)|(b13&lt;&lt;0x13)|                           \
+<span class="lineNum">      34 </span>            :     (b14&lt;&lt;0x14)|(b15&lt;&lt;0x15)|(b16&lt;&lt;0x16)|(b17&lt;&lt;0x17)|                           \
+<span class="lineNum">      35 </span>            :     (b18&lt;&lt;0x18)|(b19&lt;&lt;0x19)|(b1a&lt;&lt;0x1a)|(b1b&lt;&lt;0x1b)|                           \
+<span class="lineNum">      36 </span>            :     (b1c&lt;&lt;0x1c)|(b1d&lt;&lt;0x1d)|(b1e&lt;&lt;0x1e)|(b1f&lt;&lt;0x1f)                            \
+<span class="lineNum">      37 </span>            : )
+<span class="lineNum">      38 </span><span class="lineNoCov">          0 : #define CHECK_TABLE(t, v)   ((t[(v)&gt;&gt;5]&gt;&gt;((v)&amp;0x1f))&amp;1)</span>
+<span class="lineNum">      39 </span>            : 
+<span class="lineNum">      40 </span>            : /* CHECK_PREFIX */
+<span class="lineNum">      41 </span><span class="lineNoCov">          0 : const static unsigned int prefix_t[] = {</span>
+<span class="lineNum">      42 </span>            :            /* 0 1 2 3 4 5 6 7  8 9 a b c d e f */
+<span class="lineNum">      43 </span>            :     BITMASK32(0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,  /* 0 */
+<span class="lineNum">      44 </span>            :               0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0), /* 1 */
+<span class="lineNum">      45 </span>            :     BITMASK32(0,0,0,0,0,0,1,0, 0,0,0,0,0,0,1,0,  /* 2 */
+<span class="lineNum">      46 </span>            :               0,0,0,0,0,0,1,0, 0,0,0,0,0,0,1,0), /* 3 */
+<span class="lineNum">      47 </span>            :     BITMASK32(0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,  /* 4 */
+<span class="lineNum">      48 </span>            :               0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0), /* 5 */
+<span class="lineNum">      49 </span>            :     BITMASK32(0,0,0,0,1,1,1,1, 0,0,0,0,0,0,0,0,  /* 6 */
+<span class="lineNum">      50 </span>            :               0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0), /* 7 */
+<span class="lineNum">      51 </span>            :     BITMASK32(0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,  /* 8 */
+<span class="lineNum">      52 </span>            :               0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0), /* 9 */
+<span class="lineNum">      53 </span>            :     BITMASK32(0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,  /* a */
+<span class="lineNum">      54 </span>            :               0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0), /* b */
+<span class="lineNum">      55 </span>            :     BITMASK32(0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,  /* c */
+<span class="lineNum">      56 </span>            :               0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0), /* d */
+<span class="lineNum">      57 </span>            :     BITMASK32(0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,  /* e */
+<span class="lineNum">      58 </span>            :               1,0,1,1,0,0,0,0, 0,0,0,0,0,0,0,0)  /* f */
+<span class="lineNum">      59 </span>            : };
+<span class="lineNum">      60 </span><span class="lineNoCov">          0 : #define CHECK_PREFIX(v) CHECK_TABLE(prefix_t, v)</span>
+<span class="lineNum">      61 </span>            : 
+<span class="lineNum">      62 </span>            : /* x64 REX prefix handling */
+<span class="lineNum">      63 </span><span class="lineNoCov">          0 : #define CHECK_REX(v)    (((v)&gt;&gt;4)==0x4)</span>
+<span class="lineNum">      64 </span><span class="lineNoCov">          0 : #define CHECK_REXW(v)   ((v)&amp;0x08)</span>
+<span class="lineNum">      65 </span>            : 
+<span class="lineNum">      66 </span>            : /* Check for movs which handle imm64 */
+<span class="lineNum">      67 </span><span class="lineNoCov">          0 : #define CHECK_IMM64(v)  (((v)&amp;0xf8)==0xb8)</span>
+<span class="lineNum">      68 </span>            : 
+<span class="lineNum">      69 </span>            : /* Check for movs which handles moffs64 */
+<span class="lineNum">      70 </span><span class="lineNoCov">          0 : #define CHECK_OFF64(v)  ((v)==0xa1)</span>
+<span class="lineNum">      71 </span>            : 
+<span class="lineNum">      72 </span>            : /* CHECK_PREFIX_66 */
+<span class="lineNum">      73 </span><span class="lineNoCov">          0 : #define CHECK_PREFIX_66(v)  ((v)==0x66)</span>
+<span class="lineNum">      74 </span>            : 
+<span class="lineNum">      75 </span>            : /* CHECK_PREFIX_67 */
+<span class="lineNum">      76 </span><span class="lineNoCov">          0 : #define CHECK_PREFIX_67(v)  ((v)==0x67)</span>
+<span class="lineNum">      77 </span>            : 
+<span class="lineNum">      78 </span>            : /* CHECK_0F */
+<span class="lineNum">      79 </span><span class="lineNoCov">          0 : #define CHECK_0F(v)         ((v)==0x0f)</span>
+<span class="lineNum">      80 </span>            : 
+<span class="lineNum">      81 </span>            : /* CHECK_38 */
+<span class="lineNum">      82 </span><span class="lineNoCov">          0 : #define CHECK_38(v)         ((v)==0x38)</span>
+<span class="lineNum">      83 </span>            : 
+<span class="lineNum">      84 </span>            : /* CHECK_3A */
+<span class="lineNum">      85 </span><span class="lineNoCov">          0 : #define CHECK_3A(v)         ((v)==0x3a)</span>
+<span class="lineNum">      86 </span>            : 
+<span class="lineNum">      87 </span>            : /* CHECK_MODRM3A */
+<span class="lineNum">      88 </span><span class="lineNoCov">          0 : const static unsigned int modrm3a_t[] = {</span>
+<span class="lineNum">      89 </span>            :            /* 0 1 2 3 4 5 6 7  8 9 a b c d e f */
+<span class="lineNum">      90 </span>            :     BITMASK32(1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1,  /* 0 */
+<span class="lineNum">      91 </span>            :               0,0,0,0,1,1,1,1, 1,1,1,1,0,1,1,1), /* 1 */
+<span class="lineNum">      92 </span>            :     BITMASK32(1,1,1,1,1,1,1,1, 0,0,0,0,0,0,0,0,  /* 2 */
+<span class="lineNum">      93 </span>            :               1,1,1,1,0,0,0,0, 1,1,1,1,0,1,1,1), /* 3 */
+<span class="lineNum">      94 </span>            :     BITMASK32(1,1,1,1,1,0,1,0, 1,1,1,1,1,0,0,0,  /* 4 */
+<span class="lineNum">      95 </span>            :               1,1,1,0,1,1,1,1, 0,0,0,0,1,1,1,1), /* 5 */
+<span class="lineNum">      96 </span>            :     BITMASK32(1,1,1,1,0,0,1,1, 1,1,1,1,1,1,1,1,  /* 6 */
+<span class="lineNum">      97 </span>            :               0,0,0,0,0,0,0,0, 1,1,1,1,1,1,1,1), /* 7 */
+<span class="lineNum">      98 </span>            :     BITMASK32(0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,  /* 8 */
+<span class="lineNum">      99 </span>            :               0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0), /* 9 */
+<span class="lineNum">     100 </span>            :     BITMASK32(0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,  /* a */
+<span class="lineNum">     101 </span>            :               0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0), /* b */
+<span class="lineNum">     102 </span>            :     BITMASK32(0,0,0,0,0,0,0,0, 0,0,1,1,1,0,0,0,  /* c */
+<span class="lineNum">     103 </span>            :               0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,1), /* d */
+<span class="lineNum">     104 </span>            :     BITMASK32(0,0,0,0,0,0,1,0, 0,0,0,0,0,0,0,0,  /* e */
+<span class="lineNum">     105 </span>            :               1,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0)  /* f */
+<span class="lineNum">     106 </span>            : };
+<span class="lineNum">     107 </span><span class="lineNoCov">          0 : #define CHECK_MODRM3A(v) CHECK_TABLE(modrm3a_t, v)</span>
+<span class="lineNum">     108 </span>            : 
+<span class="lineNum">     109 </span>            : /* CHECK_MODRM38 */
+<span class="lineNum">     110 </span><span class="lineNoCov">          0 : const static unsigned int modrm38_t[] = {</span>
+<span class="lineNum">     111 </span>            :            /* 0 1 2 3 4 5 6 7  8 9 a b c d e f */
+<span class="lineNum">     112 </span>            :     BITMASK32(1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1,  /* 0 */
+<span class="lineNum">     113 </span>            :               1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1), /* 1 */
+<span class="lineNum">     114 </span>            :     BITMASK32(1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1,  /* 2 */
+<span class="lineNum">     115 </span>            :               1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1), /* 3 */
+<span class="lineNum">     116 </span>            :     BITMASK32(1,1,1,1,1,1,1,1, 0,0,0,0,1,1,1,1,  /* 4 */
+<span class="lineNum">     117 </span>            :               1,1,1,1,0,1,0,0, 1,1,1,1,1,1,1,1), /* 5 */
+<span class="lineNum">     118 </span>            :     BITMASK32(0,0,0,0,1,1,1,0, 0,0,0,0,1,1,1,1,  /* 6 */
+<span class="lineNum">     119 </span>            :               0,0,0,0,1,1,1,1, 1,1,1,1,1,1,1,1), /* 7 */
+<span class="lineNum">     120 </span>            :     BITMASK32(1,1,1,1,1,0,1,1, 1,1,1,1,1,1,1,1,  /* 8 */
+<span class="lineNum">     121 </span>            :               1,1,1,1,0,0,1,1, 1,1,1,1,1,1,1,1), /* 9 */
+<span class="lineNum">     122 </span>            :     BITMASK32(1,1,1,1,1,0,1,1, 1,1,1,1,1,1,1,1,  /* a */
+<span class="lineNum">     123 </span>            :               0,0,0,0,1,1,1,1, 1,1,1,1,1,1,1,1), /* b */
+<span class="lineNum">     124 </span>            :     BITMASK32(0,0,0,0,0,1,1,1, 1,1,1,1,1,1,0,0,  /* c */
+<span class="lineNum">     125 </span>            :               1,1,0,0,1,1,0,0, 0,0,0,1,1,1,1,1), /* d */
+<span class="lineNum">     126 </span>            :     BITMASK32(0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,  /* e */
+<span class="lineNum">     127 </span>            :               1,1,1,1,0,1,1,1, 0,0,0,0,0,0,0,0)  /* f */
+<span class="lineNum">     128 </span>            : };
+<span class="lineNum">     129 </span><span class="lineNoCov">          0 : #define CHECK_MODRM38(v) CHECK_TABLE(modrm38_t, v)</span>
+<span class="lineNum">     130 </span>            : 
+<span class="lineNum">     131 </span>            : /* CHECK_MODRM2 */
+<span class="lineNum">     132 </span><span class="lineNoCov">          0 : const static unsigned int modrm2_t[] = {</span>
+<span class="lineNum">     133 </span>            :            /* 0 1 2 3 4 5 6 7  8 9 a b c d e f */
+<span class="lineNum">     134 </span>            :     BITMASK32(1,1,1,1,0,0,0,0, 0,0,0,0,0,0,0,0,  /* 0 */
+<span class="lineNum">     135 </span>            :               1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1), /* 1 */
+<span class="lineNum">     136 </span>            :     BITMASK32(1,1,1,1,0,0,0,0, 1,1,1,1,1,1,1,1,  /* 2 */
+<span class="lineNum">     137 </span>            :               0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0), /* 3 */
+<span class="lineNum">     138 </span>            :     BITMASK32(1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1,  /* 4 */
+<span class="lineNum">     139 </span>            :               1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1), /* 5 */
+<span class="lineNum">     140 </span>            :     BITMASK32(1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1,  /* 6 */
+<span class="lineNum">     141 </span>            :               1,0,0,0,1,1,1,0, 1,1,0,0,1,1,1,1), /* 7 */
+<span class="lineNum">     142 </span>            :     BITMASK32(0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,  /* 8 */
+<span class="lineNum">     143 </span>            :               1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1), /* 9 */
+<span class="lineNum">     144 </span>            :     BITMASK32(0,0,0,1,1,1,0,0, 0,0,0,1,1,1,0,1,  /* a */
+<span class="lineNum">     145 </span>            :               1,1,1,1,1,1,1,1, 1,0,1,1,1,1,1,1), /* b */
+<span class="lineNum">     146 </span>            :     BITMASK32(1,1,1,1,1,1,1,0, 0,0,0,0,0,0,0,0,  /* c */
+<span class="lineNum">     147 </span>            :               1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1), /* d */
+<span class="lineNum">     148 </span>            :     BITMASK32(1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1,  /* e */
+<span class="lineNum">     149 </span>            :               1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1)  /* f */
+<span class="lineNum">     150 </span>            : };
+<span class="lineNum">     151 </span><span class="lineNoCov">          0 : #define CHECK_MODRM2(v) CHECK_TABLE(modrm2_t, v)</span>
+<span class="lineNum">     152 </span>            : 
+<span class="lineNum">     153 </span>            : /* CHECK_DATA12 */
+<span class="lineNum">     154 </span><span class="lineNoCov">          0 : #define CHECK_DATA12(v)     ((v)==0xa4||(v)==0xac||(v)==0xba)</span>
+<span class="lineNum">     155 </span>            : 
+<span class="lineNum">     156 </span>            : /* CHECK_DATA662 */
+<span class="lineNum">     157 </span><span class="lineNoCov">          0 : #define CHECK_DATA662(v)    (((v)&amp;0xf0)==0x80)</span>
+<span class="lineNum">     158 </span>            : 
+<span class="lineNum">     159 </span>            : /* CHECK_MODRM */
+<span class="lineNum">     160 </span><span class="lineNoCov">          0 : const static unsigned int modrm_t[] = {</span>
+<span class="lineNum">     161 </span>            :            /* 0 1 2 3 4 5 6 7  8 9 a b c d e f */
+<span class="lineNum">     162 </span>            :     BITMASK32(1,1,1,1,0,0,0,0, 1,1,1,1,0,0,0,0,  /* 0 */
+<span class="lineNum">     163 </span>            :               1,1,1,1,0,0,0,0, 1,1,1,1,0,0,0,0), /* 1 */
+<span class="lineNum">     164 </span>            :     BITMASK32(1,1,1,1,0,0,0,0, 1,1,1,1,0,0,0,0,  /* 2 */
+<span class="lineNum">     165 </span>            :               1,1,1,1,0,0,0,0, 1,1,1,1,0,0,0,0), /* 3 */
+<span class="lineNum">     166 </span>            :     BITMASK32(0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,  /* 4 */
+<span class="lineNum">     167 </span>            :               0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0), /* 5 */
+<span class="lineNum">     168 </span>            :     BITMASK32(0,0,1,1,0,0,0,0, 0,1,0,1,0,0,0,0,  /* 6 */
+<span class="lineNum">     169 </span>            :               0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0), /* 7 */
+<span class="lineNum">     170 </span>            :     BITMASK32(1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1,  /* 8 */
+<span class="lineNum">     171 </span>            :               0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0), /* 9 */
+<span class="lineNum">     172 </span>            :     BITMASK32(0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,  /* a */
+<span class="lineNum">     173 </span>            :               0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0), /* b */
+<span class="lineNum">     174 </span>            :     BITMASK32(1,1,0,0,1,1,1,1, 0,0,0,0,0,0,0,0,  /* c */
+<span class="lineNum">     175 </span>            :               1,1,1,1,0,0,0,0, 1,1,1,1,1,1,1,1), /* d */
+<span class="lineNum">     176 </span>            :     BITMASK32(0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,  /* e */
+<span class="lineNum">     177 </span>            :               0,0,0,0,0,0,1,1, 0,0,0,0,0,0,1,1)  /* f */
+<span class="lineNum">     178 </span>            : };
+<span class="lineNum">     179 </span><span class="lineNoCov">          0 : #define CHECK_MODRM(v) CHECK_TABLE(modrm_t, v)</span>
+<span class="lineNum">     180 </span>            : 
+<span class="lineNum">     181 </span>            : /* CHECK_TEST */
+<span class="lineNum">     182 </span><span class="lineNoCov">          0 : #define CHECK_TEST(v)   ((v)==0xf6||(v)==0xf7)</span>
+<span class="lineNum">     183 </span>            : 
+<span class="lineNum">     184 </span>            : /* CHECK_DATA1 */
+<span class="lineNum">     185 </span><span class="lineNoCov">          0 : const static unsigned int data1_t[] = {</span>
+<span class="lineNum">     186 </span>            :            /* 0 1 2 3 4 5 6 7  8 9 a b c d e f */
+<span class="lineNum">     187 </span>            :     BITMASK32(0,0,0,0,1,0,0,0, 0,0,0,0,1,0,0,0,  /* 0 */
+<span class="lineNum">     188 </span>            :               0,0,0,0,1,0,0,0, 0,0,0,0,1,0,0,0), /* 1 */
+<span class="lineNum">     189 </span>            :     BITMASK32(0,0,0,0,1,0,0,0, 0,0,0,0,1,0,0,0,  /* 2 */
+<span class="lineNum">     190 </span>            :               0,0,0,0,1,0,0,0, 0,0,0,0,1,0,0,0), /* 3 */
+<span class="lineNum">     191 </span>            :     BITMASK32(0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,  /* 4 */
+<span class="lineNum">     192 </span>            :               0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0), /* 5 */
+<span class="lineNum">     193 </span>            :     BITMASK32(0,0,0,0,0,0,0,0, 0,0,1,1,0,0,0,0,  /* 6 */
+<span class="lineNum">     194 </span>            :               1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1), /* 7 */
+<span class="lineNum">     195 </span>            :     BITMASK32(1,0,1,1,0,0,0,0, 0,0,0,0,0,0,0,0,  /* 8 */
+<span class="lineNum">     196 </span>            :               0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0), /* 9 */
+<span class="lineNum">     197 </span>            :     BITMASK32(0,0,0,0,0,0,0,0, 1,0,0,0,0,0,0,0,  /* a */
+<span class="lineNum">     198 </span>            :               1,1,1,1,1,1,1,1, 0,0,0,0,0,0,0,0), /* b */
+<span class="lineNum">     199 </span>            :     BITMASK32(1,1,0,0,0,0,1,0, 1,0,0,0,0,1,0,0,  /* c */
+<span class="lineNum">     200 </span>            :               0,0,0,0,1,1,0,0, 0,0,0,0,0,0,0,0), /* d */
+<span class="lineNum">     201 </span>            :     BITMASK32(1,1,1,1,1,1,1,1, 0,0,0,1,0,0,0,0,  /* e */
+<span class="lineNum">     202 </span>            :               0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0)  /* f */
+<span class="lineNum">     203 </span>            : };
+<span class="lineNum">     204 </span><span class="lineNoCov">          0 : #define CHECK_DATA1(v) CHECK_TABLE(data1_t, v)</span>
+<span class="lineNum">     205 </span>            : 
+<span class="lineNum">     206 </span>            : /* CHECK_DATA2 */
+<span class="lineNum">     207 </span><span class="lineNoCov">          0 : const static unsigned int data2_t[] = {</span>
+<span class="lineNum">     208 </span>            :            /* 0 1 2 3 4 5 6 7  8 9 a b c d e f */
+<span class="lineNum">     209 </span>            :     BITMASK32(0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,  /* 0 */
+<span class="lineNum">     210 </span>            :               0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0), /* 1 */
+<span class="lineNum">     211 </span>            :     BITMASK32(0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,  /* 2 */
+<span class="lineNum">     212 </span>            :               0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0), /* 3 */
+<span class="lineNum">     213 </span>            :     BITMASK32(0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,  /* 4 */
+<span class="lineNum">     214 </span>            :               0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0), /* 5 */
+<span class="lineNum">     215 </span>            :     BITMASK32(0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,  /* 6 */
+<span class="lineNum">     216 </span>            :               0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0), /* 7 */
+<span class="lineNum">     217 </span>            :     BITMASK32(0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,  /* 8 */
+<span class="lineNum">     218 </span>            :               0,0,0,0,0,0,0,0, 0,0,1,0,0,0,0,0), /* 9 */
+<span class="lineNum">     219 </span>            :     BITMASK32(0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,  /* a */
+<span class="lineNum">     220 </span>            :               0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0), /* b */
+<span class="lineNum">     221 </span>            :     BITMASK32(0,0,1,0,0,0,0,0, 1,0,1,0,0,0,0,0,  /* c */
+<span class="lineNum">     222 </span>            :               0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0), /* d */
+<span class="lineNum">     223 </span>            :     BITMASK32(0,0,0,0,0,0,0,0, 0,0,1,0,0,0,0,0,  /* e */
+<span class="lineNum">     224 </span>            :               0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0)  /* f */
+<span class="lineNum">     225 </span>            : };
+<span class="lineNum">     226 </span><span class="lineNoCov">          0 : #define CHECK_DATA2(v) CHECK_TABLE(data2_t, v)</span>
+<span class="lineNum">     227 </span>            : 
+<span class="lineNum">     228 </span>            : /* CHECK_DATA66 */
+<span class="lineNum">     229 </span><span class="lineNoCov">          0 : const static unsigned int data66_t[] = {</span>
+<span class="lineNum">     230 </span>            :            /* 0 1 2 3 4 5 6 7  8 9 a b c d e f */
+<span class="lineNum">     231 </span>            :     BITMASK32(0,0,0,0,0,1,0,0, 0,0,0,0,0,1,0,0,  /* 0 */
+<span class="lineNum">     232 </span>            :               0,0,0,0,0,1,0,0, 0,0,0,0,0,1,0,0), /* 1 */
+<span class="lineNum">     233 </span>            :     BITMASK32(0,0,0,0,0,1,0,0, 0,0,0,0,0,1,0,0,  /* 2 */
+<span class="lineNum">     234 </span>            :               0,0,0,0,0,1,0,0, 0,0,0,0,0,1,0,0), /* 3 */
+<span class="lineNum">     235 </span>            :     BITMASK32(0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,  /* 4 */
+<span class="lineNum">     236 </span>            :               0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0), /* 5 */
+<span class="lineNum">     237 </span>            :     BITMASK32(0,0,0,0,0,0,0,0, 1,1,0,0,0,0,0,0,  /* 6 */
+<span class="lineNum">     238 </span>            :               0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0), /* 7 */
+<span class="lineNum">     239 </span>            :     BITMASK32(0,1,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,  /* 8 */
+<span class="lineNum">     240 </span>            :               0,0,0,0,0,0,0,0, 0,0,1,0,0,0,0,0), /* 9 */
+<span class="lineNum">     241 </span>            :     BITMASK32(0,0,0,0,0,0,0,0, 0,1,0,0,0,0,0,0,  /* a */
+<span class="lineNum">     242 </span>            :               0,0,0,0,0,0,0,0, 1,1,1,1,1,1,1,1), /* b */
+<span class="lineNum">     243 </span>            :     BITMASK32(0,0,0,0,0,0,0,1, 0,0,0,0,0,0,0,0,  /* c */
+<span class="lineNum">     244 </span>            :               0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0), /* d */
+<span class="lineNum">     245 </span>            :     BITMASK32(0,0,0,0,0,0,0,0, 1,1,1,0,0,0,0,0,  /* e */
+<span class="lineNum">     246 </span>            :               0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0)  /* f */
+<span class="lineNum">     247 </span>            : };
+<span class="lineNum">     248 </span><span class="lineNoCov">          0 : #define CHECK_DATA66(v) CHECK_TABLE(data66_t, v)</span>
+<span class="lineNum">     249 </span>            : 
+<span class="lineNum">     250 </span>            : /* CHECK_MEM67 */
+<span class="lineNum">     251 </span><span class="lineNoCov">          0 : #define CHECK_MEM67(v)  (((v)&amp;0xfc)==0xa0)</span>
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../../../../../../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.12</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>

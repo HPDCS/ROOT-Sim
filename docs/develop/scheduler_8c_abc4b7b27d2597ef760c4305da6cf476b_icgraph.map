@@ -1,0 +1,16 @@
+<map id="activate_LP" name="activate_LP">
+<area shape="rect" id="node2" href="$state_8h.html#ae68a69540f60adf840c77f7a5dfee6c5" title="silent_execution" alt="" coords="148,118,273,145"/>
+<area shape="rect" id="node4" href="$scheduler_8h.html#ac48128e72b303ea22d8ec641a9516b15" title="schedule" alt="" coords="440,143,519,170"/>
+<area shape="rect" id="node3" href="$state_8h.html#a1fd6b7926db41257e07600226d87fffa" title="rollback" alt="" coords="321,118,392,145"/>
+<area shape="rect" id="node5" href="$gvt_2gvt_8h.html#a234e866bb1e37fa25dec9bb40134234d" title="get_last_gvt" alt="" coords="567,118,667,145"/>
+<area shape="rect" id="node7" href="$main_8c.html#aa729cb27350c33119484501e13df4fec" title="main_simulation_loop" alt="" coords="1304,71,1465,98"/>
+<area shape="rect" id="node6" href="$main_8c.html#af2ac8c142556588d87e6c069a4ca9894" title="end_computing" alt="" coords="1117,67,1239,94"/>
+<area shape="rect" id="node9" href="$queues_8h.html#a54eca9bfa893cac072d1b1d3010c2944" title="process_bottom_halves" alt="" coords="715,118,889,145"/>
+<area shape="rect" id="node10" href="$statistics_8c.html#ab7b584959699657a63a49384f07fd7a9" title="format_size" alt="" coords="753,17,851,43"/>
+<area shape="rect" id="node8" href="$main_8c.html#a3c04138a5bfe5d72780bb7e82a18e627" title="main" alt="" coords="1779,42,1833,69"/>
+<area shape="rect" id="node11" href="$statistics_8h.html#aeff52bbf045362270639b2baed20762b" title="statistics_stop" alt="" coords="937,17,1052,43"/>
+<area shape="rect" id="node12" href="$core_8h.html#a8f346536ccfbe77b78ed577674beb6cf" title="simulation_shutdown" alt="" coords="1100,17,1256,43"/>
+<area shape="rect" id="node13" href="$core_8c.html#a9b05d2af2e233e2616633eaa706682ee" title="exit_from_simulation\l_model" alt="" coords="1307,5,1462,47"/>
+<area shape="rect" id="node14" href="$core_8h.html#a7fb819521b1ab5fc7644ad216fe7b465" title="base_init" alt="" coords="1513,14,1592,41"/>
+<area shape="rect" id="node15" href="$init_8h.html#a417eb072179d09f441dbae3125049e46" title="SystemInit" alt="" coords="1640,15,1731,42"/>
+</map>

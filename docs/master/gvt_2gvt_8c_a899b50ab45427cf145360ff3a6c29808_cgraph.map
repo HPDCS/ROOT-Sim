@@ -1,0 +1,33 @@
+<map id="gvt_operations" name="gvt_operations">
+<area shape="rect" id="node2" href="$atomic_8h.html#a710db68e3b3e156fe414d7745c54ccd9" title="iCAS" alt="" coords="249,5,301,32"/>
+<area shape="rect" id="node3" href="$communication_2gvt_8c.html#ae81bd7f5958dcb41dad5c697a6628569" title="Initiate a distributed GVT. " alt="" coords="205,56,344,83"/>
+<area shape="rect" id="node5" href="$communication_2gvt_8c.html#a97741fc617b443cee108c44a26cd513b" title="Forcely extract GVT&#45;init message from MPI. " alt="" coords="221,208,328,235"/>
+<area shape="rect" id="node6" href="$communication_2gvt_8c.html#adbb9ce2068b5fd917d5e89cc39f66e12" title="Reset received white messages. " alt="" coords="194,259,355,285"/>
+<area shape="rect" id="node7" href="$communication_2gvt_8c.html#aa6de31111fcebe2242dc5af0a17f5d44" title="Make a thread enter into red phase. " alt="" coords="209,309,340,336"/>
+<area shape="rect" id="node8" href="$atomic_8h.html#a52336e036d2da5656c6db69b121458ba" title="atomic_dec" alt="" coords="227,360,323,387"/>
+<area shape="rect" id="node9" href="$communication_2gvt_8c.html#a0ed9e4affac9f35d26194a98a089f2c6" title="Join the white message reduction collective operation. " alt="" coords="193,411,356,437"/>
+<area shape="rect" id="node10" href="$communication_2gvt_8c.html#ad754b4a17c642f9672743a0a246e6467" title="Test completion of white message reduction collective operation. " alt="" coords="171,107,379,133"/>
+<area shape="rect" id="node14" href="$communication_2gvt_8c.html#a790d3d47b4d7409eab44e4341af4a22a" title="Check if white messages are all received. " alt="" coords="189,461,361,488"/>
+<area shape="rect" id="node15" href="$communication_2gvt_8c.html#a4918516de830ae69a67a15e4178a0485" title="Reset sent white messages. " alt="" coords="193,512,356,539"/>
+<area shape="rect" id="node16" href="$communication_2gvt_8c.html#a53ca71f17a218181b76a3ef8ffa12e95" title="Reduce the GVT value. " alt="" coords="217,563,332,589"/>
+<area shape="rect" id="node17" href="$communication_2gvt_8c.html#a0d0d87c4ff2f7290727fc3d3f9b2034f" title="Check if final GVT reduction is complete. " alt="" coords="195,157,355,184"/>
+<area shape="rect" id="node18" href="$communication_2gvt_8c.html#a022fe9fa84d6e6614c9572d23adfcc9b" title="Return the last GVT value. " alt="" coords="209,613,340,640"/>
+<area shape="rect" id="node19" href="$fossil_8c.html#a2386806cf345e4b59a7ea9bee1a54f52" title="adopt_new_gvt" alt="" coords="215,664,334,691"/>
+<area shape="rect" id="node4" href="$mpi_8c.html#a15047d29439a8f03a2747ecadda5b4a4" title="check if an MPI request has been completed " alt="" coords="436,56,599,83"/>
+<area shape="rect" id="node11" href="$atomic_8h.html#afd2c05472274bd1c73d5408a213cf429" title="spin_trylock" alt="" coords="469,107,566,133"/>
+<area shape="rect" id="node13" href="$atomic_8h.html#a4e8c9d1c6101995f1ecd2141d77e4824" title="spin_unlock" alt="" coords="469,157,565,184"/>
+<area shape="rect" id="node12" href="$x86_8c.html#af8f8b0714bc5f4f7238feae5ca425117" title="atomic_test_and_set" alt="" coords="656,107,812,133"/>
+<area shape="rect" id="node20" href="$state_8c.html#a01b40733b2ea3eb233439b9b7ffe5bcd" title="find_time_barrier" alt="" coords="452,613,583,640"/>
+<area shape="rect" id="node21" href="$ccgs_8c.html#af8c1dd6d3ab2078085039fec6c7b0d9f" title="ccgs_compute_snapshot" alt="" coords="427,664,608,691"/>
+<area shape="rect" id="node28" href="$fossil_8c.html#af4d5d546129fe91cedfc16ddedf76464" title="fossil_collection" alt="" coords="457,740,578,767"/>
+<area shape="rect" id="node22" href="$checkpoints_8c.html#af5802791ee41b774e796caa15315c24c" title="log_state" alt="" coords="693,600,775,627"/>
+<area shape="rect" id="node25" href="$checkpoints_8c.html#a21384b7f254e3d372111b3dbbf785e73" title="log_restore" alt="" coords="687,651,781,677"/>
+<area shape="rect" id="node27" href="$checkpoints_8c.html#a727e4cd3fa1d7b332b9f212733eec8d3" title="log_delete" alt="" coords="690,701,778,728"/>
+<area shape="rect" id="node23" href="$checkpoints_8c.html#a9be0910d1b3a99682d5d2971b4b79f3b" title="log_full" alt="" coords="897,600,963,627"/>
+<area shape="rect" id="node24" href="$dymelor_8c.html#a90e313c8735836c166694aa746cc841e" title="get_log_size" alt="" coords="1067,600,1168,627"/>
+<area shape="rect" id="node26" href="$checkpoints_8c.html#a10856fb7b6aab5e9072633b8a99875ff" title="restore_full" alt="" coords="883,651,977,677"/>
+<area shape="rect" id="node29" href="$communication_8c.html#a323ad017762155352c38983e67e8adeb" title="Release a message buffer. " alt="" coords="682,752,786,779"/>
+<area shape="rect" id="node32" href="$communication_8c.html#a762b3dacaa82c4590e0572ac08117153" title="Release a message header. " alt="" coords="668,803,800,829"/>
+<area shape="rect" id="node30" href="$communication_8c.html#ae6b96249d35969d688d0d84209919c8f" title="Find a slab to allocate a message buffer. " alt="" coords="860,752,1000,779"/>
+<area shape="rect" id="node31" href="$core_8c.html#a6793e4c70d69277f24ff0e494ed8ed10" title="find_kernel_by_gid" alt="" coords="1048,752,1187,779"/>
+</map>

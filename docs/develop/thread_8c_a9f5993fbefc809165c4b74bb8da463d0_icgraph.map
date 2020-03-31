@@ -1,0 +1,13 @@
+<map id="thread_barrier" name="thread_barrier">
+<area shape="rect" id="node2" href="$mpi_8h.html#a4d5b6bd7866b813152f5ead12012dc46" title="Syncronize all the kernels. " alt="" coords="352,5,463,32"/>
+<area shape="rect" id="node3" href="$main_8c.html#aa729cb27350c33119484501e13df4fec" title="main_simulation_loop" alt="" coords="533,56,695,83"/>
+<area shape="rect" id="node6" href="$core_8h.html#a8f346536ccfbe77b78ed577674beb6cf" title="simulation_shutdown" alt="" coords="329,111,485,137"/>
+<area shape="rect" id="node10" href="$binding_8h.html#ae26b2a8055156e8648f8ad806f5fa5b0" title="rebind_LPs" alt="" coords="179,208,269,235"/>
+<area shape="rect" id="node11" href="$scheduler_8h.html#a1b1b085c6b05a9d202a1629dcd71cffe" title="LP_main_loop" alt="" coords="352,237,463,264"/>
+<area shape="rect" id="node12" href="$statistics_8h.html#aeff52bbf045362270639b2baed20762b" title="statistics_stop" alt="" coords="167,107,281,133"/>
+<area shape="rect" id="node4" href="$main_8c.html#af2ac8c142556588d87e6c069a4ca9894" title="end_computing" alt="" coords="743,59,864,85"/>
+<area shape="rect" id="node5" href="$main_8c.html#a3c04138a5bfe5d72780bb7e82a18e627" title="main" alt="" coords="1051,47,1105,73"/>
+<area shape="rect" id="node7" href="$core_8c.html#a9b05d2af2e233e2616633eaa706682ee" title="exit_from_simulation\l_model" alt="" coords="537,107,691,149"/>
+<area shape="rect" id="node8" href="$core_8h.html#a7fb819521b1ab5fc7644ad216fe7b465" title="base_init" alt="" coords="764,111,843,137"/>
+<area shape="rect" id="node9" href="$init_8h.html#a417eb072179d09f441dbae3125049e46" title="SystemInit" alt="" coords="912,84,1003,111"/>
+</map>

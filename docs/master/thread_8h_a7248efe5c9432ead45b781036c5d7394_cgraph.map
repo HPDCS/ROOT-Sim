@@ -1,0 +1,5 @@
+<map id="create_threads" name="create_threads">
+<area shape="rect" id="node2" href="$thread_8c.html#a9a978a7c6a81cdde2633f5ef7e01b7f4" title="__helper_create_thread" alt="" coords="172,31,345,57"/>
+<area shape="rect" id="node3" href="$atomic_8h.html#a710db68e3b3e156fe414d7745c54ccd9" title="iCAS" alt="" coords="413,5,465,32"/>
+<area shape="rect" id="node4" href="$thread_8h.html#a170621cccd6340430706508452359dd5" title="set_affinity" alt="" coords="393,56,484,83"/>
+</map>

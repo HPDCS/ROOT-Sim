@@ -1,0 +1,248 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - doc-coverage.info - ROOT-Sim/src/datatypes/array.h</title>
+  <link rel="stylesheet" type="text/css" href="../../../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../../../index.html">top level</a> - <a href="index.html">ROOT-Sim/src/datatypes</a> - array.h</td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">doc-coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">1</td>
+            <td class="headerCovTableEntry">25</td>
+            <td class="headerCovTableEntryLo">4.0 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2020-01-30 13:56:10</td>
+            <td></td>
+          </tr>
+          <tr><td><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<span class="lineNum">       1 </span><span class="lineCov">          1 : /**</span>
+<span class="lineNum">       2 </span>            :  *                      Copyright (C) 2008-2018 HPDCS Group
+<span class="lineNum">       3 </span>            :  *                      http://www.dis.uniroma1.it/~hpdcs
+<span class="lineNum">       4 </span>            :  *
+<span class="lineNum">       5 </span>            :  *
+<span class="lineNum">       6 </span>            :  * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
+<span class="lineNum">       7 </span>            :  *
+<span class="lineNum">       8 </span>            :  * ROOT-Sim is free software; you can redistribute it and/or modify it under the
+<span class="lineNum">       9 </span>            :  * terms of the GNU General Public License as published by the Free Software
+<span class="lineNum">      10 </span>            :  * Foundation; only version 3 of the License applies.
+<span class="lineNum">      11 </span>            :  *
+<span class="lineNum">      12 </span>            :  * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
+<span class="lineNum">      13 </span>            :  * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+<span class="lineNum">      14 </span>            :  * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+<span class="lineNum">      15 </span>            :  *
+<span class="lineNum">      16 </span>            :  * You should have received a copy of the GNU General Public License along with
+<span class="lineNum">      17 </span>            :  * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
+<span class="lineNum">      18 </span>            :  * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+<span class="lineNum">      19 </span>            :  *
+<span class="lineNum">      20 </span>            :  * @file array.h
+<span class="lineNum">      21 </span>            :  * @brief This is the implementation of a dynamic array, used for managing various data structures
+<span class="lineNum">      22 </span>            :  * @author Andrea Piccione
+<span class="lineNum">      23 </span>            :  * @date 18 June 2018
+<span class="lineNum">      24 </span>            :  */
+<span class="lineNum">      25 </span>            : 
+<span class="lineNum">      26 </span>            : #ifndef ARRAY_H_
+<span class="lineNum">      27 </span>            : #define ARRAY_H_
+<span class="lineNum">      28 </span>            : 
+<span class="lineNum">      29 </span>            : #include &lt;mm/dymelor.h&gt;
+<span class="lineNum">      30 </span>            : 
+<span class="lineNum">      31 </span>            : #include &lt;memory.h&gt;
+<span class="lineNum">      32 </span>            : 
+<span class="lineNum">      33 </span>            : // TODO: add some type checking and size checking (is it necessary?)
+<span class="lineNum">      34 </span>            : 
+<span class="lineNum">      35 </span><span class="lineNoCov">          0 : #define INIT_SIZE_ARRAY 8U</span>
+<span class="lineNum">      36 </span>            : 
+<span class="lineNum">      37 </span><span class="lineNoCov">          0 : #define rootsim_array(type) \</span>
+<span class="lineNum">      38 </span>            :                 struct { \
+<span class="lineNum">      39 </span>            :                         type *items; \
+<span class="lineNum">      40 </span>            :                         unsigned count, capacity; \
+<span class="lineNum">      41 </span>            :                 }
+<span class="lineNum">      42 </span>            : 
+<span class="lineNum">      43 </span>            : // you can use the array to directly index items, but do at your risk and peril
+<span class="lineNum">      44 </span><span class="lineNoCov">          0 : #define array_items(self) ((self).items)</span>
+<span class="lineNum">      45 </span>            : 
+<span class="lineNum">      46 </span><span class="lineNoCov">          0 : #define array_count(self) ((self).count)</span>
+<span class="lineNum">      47 </span>            : 
+<span class="lineNum">      48 </span><span class="lineNoCov">          0 : #define array_capacity(self) ((self).capacity)</span>
+<span class="lineNum">      49 </span>            : 
+<span class="lineNum">      50 </span><span class="lineNoCov">          0 : #define array_shrink(self) ({ \</span>
+<span class="lineNum">      51 </span>            :                 if (array_count(self) &gt; INIT_SIZE_ARRAY &amp;&amp; array_count(self) * 3 &lt;= array_capacity(self)) { \
+<span class="lineNum">      52 </span>            :                         array_capacity(self) /= 2; \
+<span class="lineNum">      53 </span>            :                         array_items(self) = rsrealloc(array_items(self), array_capacity(self) * sizeof(*array_items(self))); \
+<span class="lineNum">      54 </span>            :                 } \
+<span class="lineNum">      55 </span>            :         })
+<span class="lineNum">      56 </span>            : 
+<span class="lineNum">      57 </span><span class="lineNoCov">          0 : #define array_expand(self) ({ \</span>
+<span class="lineNum">      58 </span>            :                 if(array_count(self) &gt;= array_capacity(self)){\
+<span class="lineNum">      59 </span>            :                         array_capacity(self) *= 2; \
+<span class="lineNum">      60 </span>            :                         array_items(self) = rsrealloc(array_items(self), array_capacity(self) * sizeof(*array_items(self))); \
+<span class="lineNum">      61 </span>            :                 } \
+<span class="lineNum">      62 </span>            :         })
+<span class="lineNum">      63 </span>            : 
+<span class="lineNum">      64 </span><span class="lineNoCov">          0 : #define array_new(type) ({ \</span>
+<span class="lineNum">      65 </span>            :                 rootsim_array(type) *__newarr; \
+<span class="lineNum">      66 </span>            :                 __newarr = rsalloc(sizeof(*__newarr)); \
+<span class="lineNum">      67 </span>            :                 array_init(*__newarr);\
+<span class="lineNum">      68 </span>            :                 __newarr; \
+<span class="lineNum">      69 </span>            :         })
+<span class="lineNum">      70 </span>            : 
+<span class="lineNum">      71 </span><span class="lineNoCov">          0 : #define array_free(self) ({ \</span>
+<span class="lineNum">      72 </span>            :                 rsfree(array_items(self)); \
+<span class="lineNum">      73 </span>            :                 rsfree(&amp;(self)); \
+<span class="lineNum">      74 </span>            :         })
+<span class="lineNum">      75 </span>            : 
+<span class="lineNum">      76 </span><span class="lineNoCov">          0 : #define array_init(self) ({ \</span>
+<span class="lineNum">      77 </span>            :                 array_capacity(self) = INIT_SIZE_ARRAY; \
+<span class="lineNum">      78 </span>            :                 array_items(self) = rsalloc(array_capacity(self) * sizeof(*array_items(self))); \
+<span class="lineNum">      79 </span>            :                 array_count(self) = 0; \
+<span class="lineNum">      80 </span>            :         })
+<span class="lineNum">      81 </span>            : 
+<span class="lineNum">      82 </span><span class="lineNoCov">          0 : #define array_fini(self) ({ \</span>
+<span class="lineNum">      83 </span>            :                 rsfree(array_items(self)); \
+<span class="lineNum">      84 </span>            :         })
+<span class="lineNum">      85 </span>            : //fixme array_expand doesn't work when reserving with count high since it only doubles once
+<span class="lineNum">      86 </span><span class="lineNoCov">          0 : #define array_reserve(self, count) ({ \</span>
+<span class="lineNum">      87 </span>            :                 __typeof__(array_count(self)) __rsvidx = array_count(self); \
+<span class="lineNum">      88 </span>            :                 array_count(self) += (count); \
+<span class="lineNum">      89 </span>            :                 array_expand(self); \
+<span class="lineNum">      90 </span>            :                 &amp;(array_items(self)[__rsvidx]); \
+<span class="lineNum">      91 </span>            : })
+<span class="lineNum">      92 </span>            : 
+<span class="lineNum">      93 </span><span class="lineNoCov">          0 : #define array_push(self, elem) ({ \</span>
+<span class="lineNum">      94 </span>            :                 array_expand(self); \
+<span class="lineNum">      95 </span>            :                 array_items(self)[array_count(self)] = (elem); \
+<span class="lineNum">      96 </span>            :                 array_count(self)++; \
+<span class="lineNum">      97 </span>            :         })
+<span class="lineNum">      98 </span>            : 
+<span class="lineNum">      99 </span><span class="lineNoCov">          0 : #define array_pop(self) ({ \</span>
+<span class="lineNum">     100 </span>            :                 if(unlikely(!array_count(self))) \
+<span class="lineNum">     101 </span>            :                         rootsim_error(true, &quot;pop of an empty array&quot;); \
+<span class="lineNum">     102 </span>            :                 __typeof__(*array_items(self)) __popval; \
+<span class="lineNum">     103 </span>            :                 array_count(self)--; \
+<span class="lineNum">     104 </span>            :                 __popval = array_items(self)[array_count(self)]; \
+<span class="lineNum">     105 </span>            :                 array_shrink(self); \
+<span class="lineNum">     106 </span>            :                 __popval; \
+<span class="lineNum">     107 </span>            :         })
+<span class="lineNum">     108 </span>            : 
+<span class="lineNum">     109 </span><span class="lineNoCov">          0 : #define array_add_at(self, i, elem) ({ \</span>
+<span class="lineNum">     110 </span>            :                 if(unlikely(array_count(self) &lt;= (i))) \
+<span class="lineNum">     111 </span>            :                         rootsim_error(true, &quot;out of bound add in a dynamic array&quot;); \
+<span class="lineNum">     112 </span>            :                 array_expand(self); \
+<span class="lineNum">     113 </span>            :                 memmove(&amp;(array_items(self)[(i)+1]), &amp;(array_items(self)[(i)]), sizeof(*array_items(self)) * (array_count(self)-(i))); \
+<span class="lineNum">     114 </span>            :                 array_items(self)[(i)] = (elem); \
+<span class="lineNum">     115 </span>            :                 array_count(self)++; \
+<span class="lineNum">     116 </span>            :         })
+<span class="lineNum">     117 </span>            : 
+<span class="lineNum">     118 </span><span class="lineNoCov">          0 : #define array_lazy_remove_at(self, i) ({ \</span>
+<span class="lineNum">     119 </span>            :                 if(unlikely(array_count(self) &lt;= (i))) \
+<span class="lineNum">     120 </span>            :                         rootsim_error(true, &quot;out of bound removal in a dynamic array&quot;); \
+<span class="lineNum">     121 </span>            :                 __typeof__(*array_items(self)) __rmval; \
+<span class="lineNum">     122 </span>            :                 array_count(self)--; \
+<span class="lineNum">     123 </span>            :                 __rmval = array_items(self)[(i)]; \
+<span class="lineNum">     124 </span>            :                 array_items(self)[(i)] = array_items(self)[array_count(self)]; \
+<span class="lineNum">     125 </span>            :                 array_shrink(self); \
+<span class="lineNum">     126 </span>            :                 __rmval; \
+<span class="lineNum">     127 </span>            :         })
+<span class="lineNum">     128 </span>            : 
+<span class="lineNum">     129 </span><span class="lineNoCov">          0 : #define array_remove_at(self, i) ({ \</span>
+<span class="lineNum">     130 </span>            :                 if(unlikely(array_count(self) &lt;= (i))) \
+<span class="lineNum">     131 </span>            :                         rootsim_error(true, &quot;out of bound removal in a dynamic array&quot;); \
+<span class="lineNum">     132 </span>            :                 __typeof__(*array_items(self)) __rmval; \
+<span class="lineNum">     133 </span>            :                 array_count(self)--; \
+<span class="lineNum">     134 </span>            :                 __rmval = array_items(self)[(i)]; \
+<span class="lineNum">     135 </span>            :                 memmove(&amp;(array_items(self)[(i)]), &amp;(array_items(self)[(i)+1]), sizeof(*array_items(self)) * (array_count(self)-(i))); \
+<span class="lineNum">     136 </span>            :                 array_shrink(self); \
+<span class="lineNum">     137 </span>            :                 __rmval; \
+<span class="lineNum">     138 </span>            :         })
+<span class="lineNum">     139 </span>            : 
+<span class="lineNum">     140 </span><span class="lineNoCov">          0 : #define array_remove(self, elem) ({ \</span>
+<span class="lineNum">     141 </span>            :                 typeof(array_count(self)) __cntr = array_count(self); \
+<span class="lineNum">     142 </span>            :                 while(__cntr--){ \
+<span class="lineNum">     143 </span>            :                         if(array_items(self)[__cntr] == (elem)){\
+<span class="lineNum">     144 </span>            :                                 array_remove_at(self, __cntr); \
+<span class="lineNum">     145 </span>            :                                 break; \
+<span class="lineNum">     146 </span>            :                         } \
+<span class="lineNum">     147 </span>            :                 } \
+<span class="lineNum">     148 </span>            :         })
+<span class="lineNum">     149 </span>            : //this isn't checked CARE! TODO add checking
+<span class="lineNum">     150 </span><span class="lineNoCov">          0 : #define array_peek(self) (array_items(self)[array_count(self)-1])</span>
+<span class="lineNum">     151 </span>            : //this isn't checked CARE! TODO add checking
+<span class="lineNum">     152 </span><span class="lineNoCov">          0 : #define array_get_at(self, i) (array_items(self)[i])</span>
+<span class="lineNum">     153 </span>            : 
+<span class="lineNum">     154 </span><span class="lineNoCov">          0 : #define array_empty(self) (array_count(self) == 0)</span>
+<span class="lineNum">     155 </span>            : 
+<span class="lineNum">     156 </span><span class="lineNoCov">          0 : #define array_dump_size(self) ({ \</span>
+<span class="lineNum">     157 </span>            :                 sizeof(array_count(self)) + array_count(self)*sizeof(*array_items(self)); \
+<span class="lineNum">     158 </span>            :         })
+<span class="lineNum">     159 </span>            : 
+<span class="lineNum">     160 </span><span class="lineNoCov">          0 : #define array_dump(self, mem_area) ({ \</span>
+<span class="lineNum">     161 </span>            :                 memcpy((mem_area), &amp;array_count(self), sizeof(array_count(self))); \
+<span class="lineNum">     162 </span>            :                 (mem_area) = ((unsigned char *)(mem_area)) + sizeof(array_count(self)); \
+<span class="lineNum">     163 </span>            :                 memcpy((mem_area), array_items(self), array_count(self) * sizeof(*array_items(self))); \
+<span class="lineNum">     164 </span>            :                 mem_area = ((unsigned char *)(mem_area)) + array_count(self) * sizeof(*array_items(self)); \
+<span class="lineNum">     165 </span>            :         })
+<span class="lineNum">     166 </span>            : 
+<span class="lineNum">     167 </span><span class="lineNoCov">          0 : #define array_load(self, mem_area) ({ \</span>
+<span class="lineNum">     168 </span>            :                 memcpy(&amp;array_count(self), (mem_area), sizeof(array_count(self))); \
+<span class="lineNum">     169 </span>            :                 (mem_area) = ((unsigned char *)(mem_area)) + sizeof(array_count(self)); \
+<span class="lineNum">     170 </span>            :                 array_capacity(self) = max(array_count(self), INIT_SIZE_ARRAY); \
+<span class="lineNum">     171 </span>            :                 array_items(self) = rsalloc(array_capacity(self) * sizeof(*array_items(self))); \
+<span class="lineNum">     172 </span>            :                 memcpy(array_items(self), (mem_area), array_count(self) * sizeof(*array_items(self))); \
+<span class="lineNum">     173 </span>            :                 (mem_area) = ((unsigned char *)(mem_area)) + (array_count(self) * sizeof(*array_items(self))); \
+<span class="lineNum">     174 </span>            :         })
+<span class="lineNum">     175 </span>            : 
+<span class="lineNum">     176 </span>            : #endif /* ARRAY_H_ */
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.12</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>

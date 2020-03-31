@@ -1,0 +1,262 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - doc-coverage.info - ROOT-Sim/src/gvt/ccgs.c</title>
+  <link rel="stylesheet" type="text/css" href="../../../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../../../index.html">top level</a> - <a href="index.html">ROOT-Sim/src/gvt</a> - ccgs.c</td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">doc-coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">4</td>
+            <td class="headerCovTableEntry">8</td>
+            <td class="headerCovTableEntryLo">50.0 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2020-01-31 15:54:55</td>
+            <td></td>
+          </tr>
+          <tr><td><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<span class="lineNum">       1 </span><span class="lineCov">          1 : /**</span>
+<span class="lineNum">       2 </span>            : * @file gvt/ccgs.c
+<span class="lineNum">       3 </span>            : *
+<span class="lineNum">       4 </span>            : * @brief Consistent and Committed Global State
+<span class="lineNum">       5 </span>            : *
+<span class="lineNum">       6 </span>            : * Consistent and Committed Global State (CCGS) is a subsystem that (poeriodically)
+<span class="lineNum">       7 </span>            : * recomputes a global state on which the LPs can inspect the simulation trajectory
+<span class="lineNum">       8 </span>            : * and determine whether the simulation can stop, by relying on the OnGVT() callback.
+<span class="lineNum">       9 </span>            : *
+<span class="lineNum">      10 </span>            : * @copyright
+<span class="lineNum">      11 </span>            : * Copyright (C) 2008-2019 HPDCS Group
+<span class="lineNum">      12 </span>            : * https://hpdcs.github.io
+<span class="lineNum">      13 </span>            : *
+<span class="lineNum">      14 </span>            : * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
+<span class="lineNum">      15 </span>            : *
+<span class="lineNum">      16 </span>            : * ROOT-Sim is free software; you can redistribute it and/or modify it under the
+<span class="lineNum">      17 </span>            : * terms of the GNU General Public License as published by the Free Software
+<span class="lineNum">      18 </span>            : * Foundation; only version 3 of the License applies.
+<span class="lineNum">      19 </span>            : *
+<span class="lineNum">      20 </span>            : * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
+<span class="lineNum">      21 </span>            : * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+<span class="lineNum">      22 </span>            : * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+<span class="lineNum">      23 </span>            : *
+<span class="lineNum">      24 </span>            : * You should have received a copy of the GNU General Public License along with
+<span class="lineNum">      25 </span>            : * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
+<span class="lineNum">      26 </span>            : * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+<span class="lineNum">      27 </span>            : *
+<span class="lineNum">      28 </span>            : * @author Francesco Quaglia
+<span class="lineNum">      29 </span>            : * @author Paolo Romano
+<span class="lineNum">      30 </span>            : * @author Alessandro Pellegrini
+<span class="lineNum">      31 </span>            : * @author Diego Cucuzzo
+<span class="lineNum">      32 </span>            : * @author Stefano D’Alessio
+<span class="lineNum">      33 </span>            : *
+<span class="lineNum">      34 </span>            : * @date 2007
+<span class="lineNum">      35 </span>            : */
+<span class="lineNum">      36 </span>            : 
+<span class="lineNum">      37 </span>            : #include &lt;stdbool.h&gt;
+<span class="lineNum">      38 </span>            : #include &lt;core/core.h&gt;
+<span class="lineNum">      39 </span>            : #include &lt;core/init.h&gt;
+<span class="lineNum">      40 </span>            : #include &lt;mm/mm.h&gt;
+<span class="lineNum">      41 </span>            : #include &lt;mm/state.h&gt;
+<span class="lineNum">      42 </span>            : #include &lt;communication/communication.h&gt;
+<span class="lineNum">      43 </span>            : #include &lt;communication/mpi.h&gt;
+<span class="lineNum">      44 </span>            : #include &lt;gvt/ccgs.h&gt;
+<span class="lineNum">      45 </span>            : #include &lt;scheduler/scheduler.h&gt;
+<span class="lineNum">      46 </span>            : #include &lt;scheduler/process.h&gt;
+<span class="lineNum">      47 </span>            : 
+<span class="lineNum">      48 </span>            : /// This variable is an aggregate result for the distributed termination detection
+<span class="lineNum">      49 </span><span class="lineCov">          1 : static bool ccgs_completed_simulation = false;</span>
+<span class="lineNum">      50 </span>            : 
+<span class="lineNum">      51 </span>            : /// In case termination detection is incremental, this array keeps track of LPs that think the simulation can be halted already
+<span class="lineNum">      52 </span><span class="lineCov">          1 : static bool *lps_termination;</span>
+<span class="lineNum">      53 </span>            : 
+<span class="lineNum">      54 </span><span class="lineNoCov">          0 : inline bool ccgs_can_halt_simulation(void)</span>
+<span class="lineNum">      55 </span>            : {
+<span class="lineNum">      56 </span>            : #ifdef HAVE_MPI
+<span class="lineNum">      57 </span>            :         return (ccgs_completed_simulation &amp;&amp; all_kernels_terminated());
+<span class="lineNum">      58 </span>            : #else
+<span class="lineNum">      59 </span>            :         return ccgs_completed_simulation;
+<span class="lineNum">      60 </span>            : #endif
+<span class="lineNum">      61 </span>            : }
+<span class="lineNum">      62 </span>            : 
+<span class="lineNum">      63 </span>            : // Deve essere chiamata da un solo thread al GVT
+<span class="lineNum">      64 </span><span class="lineNoCov">          0 : void ccgs_reduce_termination(void)</span>
+<span class="lineNum">      65 </span>            : {
+<span class="lineNum">      66 </span>            :         register unsigned int i;
+<span class="lineNum">      67 </span>            :         bool termination = true;
+<span class="lineNum">      68 </span>            : 
+<span class="lineNum">      69 </span>            :         /* Local termination:  all LPs need to be terminated */
+<span class="lineNum">      70 </span>            :         for (i = 0; i &lt; n_prc; i++) {
+<span class="lineNum">      71 </span>            :                 termination &amp;= lps_termination[i];
+<span class="lineNum">      72 </span>            :         }
+<span class="lineNum">      73 </span>            : 
+<span class="lineNum">      74 </span>            : #ifdef HAVE_MPI
+<span class="lineNum">      75 </span>            :         /* If terminated locally check for global termination
+<span class="lineNum">      76 </span>            :          * All other kernel need to terminated
+<span class="lineNum">      77 </span>            :          */
+<span class="lineNum">      78 </span>            :         if (unlikely(!ccgs_completed_simulation &amp;&amp; termination)) {
+<span class="lineNum">      79 </span>            :                 broadcast_termination();
+<span class="lineNum">      80 </span>            :         }
+<span class="lineNum">      81 </span>            : #endif
+<span class="lineNum">      82 </span>            : 
+<span class="lineNum">      83 </span>            :         ccgs_completed_simulation = termination;
+<span class="lineNum">      84 </span>            : }
+<span class="lineNum">      85 </span>            : 
+<span class="lineNum">      86 </span>            : /**
+<span class="lineNum">      87 </span>            : * This function rebuilds a simulation state aligned to the new GVT for every LP.
+<span class="lineNum">      88 </span>            : * In this way, each LP is asked (via the OnGVT() callback) to check whether the
+<span class="lineNum">      89 </span>            : * simulation can terminate.
+<span class="lineNum">      90 </span>            : * Two different execution modes are available for this function, depending on
+<span class="lineNum">      91 </span>            : * the CCGS level in rootsim_config: committed and consistent.
+<span class="lineNum">      92 </span>            : * The committed version passes to the simulation model for validation the first
+<span class="lineNum">      93 </span>            : * simulation state that is found committed before the GVT commitment horizon.
+<span class="lineNum">      94 </span>            : * Nevertheless, two states passed to two different LPs can be associated with
+<span class="lineNum">      95 </span>            : * different timestamps.
+<span class="lineNum">      96 </span>            : * Running this function in consistent state, realignes the state of all LPs
+<span class="lineNum">      97 </span>            : * to the same simulation time, namely the GVT. This allows all LPs to agree
+<span class="lineNum">      98 </span>            : * on a consistent simulation time for termination detection. This induces, of course,
+<span class="lineNum">      99 </span>            : * an additional overhead, because the runtime environment has to reprocess in
+<span class="lineNum">     100 </span>            : * silent execution multiple events.
+<span class="lineNum">     101 </span>            : *
+<span class="lineNum">     102 </span>            : * @param time_barrier_pointer An array containing the time barrier states of the LPs
+<span class="lineNum">     103 </span>            : *               as computed by the GVT subsystem
+<span class="lineNum">     104 </span>            : * @param gvt The Global Virtual Time value at which simulation states should be realigned
+<span class="lineNum">     105 </span>            : *               to generate a snapshot inspection which is also consistent
+<span class="lineNum">     106 </span>            : */
+<span class="lineNum">     107 </span><span class="lineCov">          1 : void ccgs_compute_snapshot(state_t * time_barrier_pointer[], simtime_t gvt)</span>
+<span class="lineNum">     108 </span>            : {
+<span class="lineNum">     109 </span>            :         int i;
+<span class="lineNum">     110 </span>            :         bool check_res = true;
+<span class="lineNum">     111 </span>            :         state_t temporary_log;
+<span class="lineNum">     112 </span>            : 
+<span class="lineNum">     113 </span>            :         (void)gvt;              // This is used for state reconstruction which is currently commented out
+<span class="lineNum">     114 </span>            :         //msg_t *realignment_evt;
+<span class="lineNum">     115 </span>            : 
+<span class="lineNum">     116 </span>            :         i = -1;
+<span class="lineNum">     117 </span>            :         foreach_bound_lp(lp) {
+<span class="lineNum">     118 </span>            :                 i++;
+<span class="lineNum">     119 </span>            : 
+<span class="lineNum">     120 </span>            :                 // If termination detection is incremental, we skip the current LP
+<span class="lineNum">     121 </span>            :                 if (rootsim_config.check_termination_mode == CKTRM_INCREMENTAL &amp;&amp; lps_termination[lp-&gt;lid.to_int]) {
+<span class="lineNum">     122 </span>            :                         continue;
+<span class="lineNum">     123 </span>            :                 }
+<span class="lineNum">     124 </span>            : 
+<span class="lineNum">     125 </span>            :                 if (time_barrier_pointer[i] == NULL)
+<span class="lineNum">     126 </span>            :                         continue;
+<span class="lineNum">     127 </span>            : 
+<span class="lineNum">     128 </span>            :                 // TODO: realign LogState and RestoreState to be compliant with the execution in the committed portion
+<span class="lineNum">     129 </span>            : 
+<span class="lineNum">     130 </span>            :                 // Log the current state so that after we can restore it.
+<span class="lineNum">     131 </span>            :                 current = lp;
+<span class="lineNum">     132 </span>            :                 temporary_log.log = log_state(lp);
+<span class="lineNum">     133 </span>            :                 temporary_log.state = lp-&gt;state;
+<span class="lineNum">     134 </span>            :                 temporary_log.base_pointer = lp-&gt;current_base_pointer;
+<span class="lineNum">     135 </span>            : 
+<span class="lineNum">     136 </span>            :                 // Restore the time barrier state
+<span class="lineNum">     137 </span>            :                 log_restore(lp, time_barrier_pointer[i]);
+<span class="lineNum">     138 </span>            :                 lp-&gt;state = time_barrier_pointer[i]-&gt;state;
+<span class="lineNum">     139 </span>            :                 lp-&gt;current_base_pointer =
+<span class="lineNum">     140 </span>            :                     time_barrier_pointer[i]-&gt;base_pointer;
+<span class="lineNum">     141 </span>            : 
+<span class="lineNum">     142 </span>            : /*
+<span class="lineNum">     143 </span>            :                 // If the LP is not blocked, we can reconstruct the state exactly to the GVT
+<span class="lineNum">     144 </span>            :                 if(!is_blocked_state(lp-&gt;state))  {
+<span class="lineNum">     145 </span>            :                         // Realign the state to the current GVT value
+<span class="lineNum">     146 </span>            :                         if(list_next(time_barrier_pointer[i]-&gt;last_event) != NULL) {
+<span class="lineNum">     147 </span>            :                                 realignment_evt = list_next(time_barrier_pointer[i]-&gt;last_event);
+<span class="lineNum">     148 </span>            :                                 while(realignment_evt != NULL &amp;&amp; realignment_evt-&gt;timestamp &lt; gvt) {
+<span class="lineNum">     149 </span>            :                                         realignment_evt = list_next(realignment_evt);
+<span class="lineNum">     150 </span>            :                                 }
+<span class="lineNum">     151 </span>            :                                 realignment_evt = list_prev(realignment_evt);
+<span class="lineNum">     152 </span>            : 
+<span class="lineNum">     153 </span>            :                                 // TODO: LPS[lid]-&gt;current_base_pointer can be removed as a parameter
+<span class="lineNum">     154 </span>            :                                 silent_execution(lid, LPS(lid)-&gt;current_base_pointer, list_next(time_barrier_pointer[i]-&gt;last_event), realignment_evt);
+<span class="lineNum">     155 </span>            :                         }
+<span class="lineNum">     156 </span>            :                 }
+<span class="lineNum">     157 </span>            : 
+<span class="lineNum">     158 </span>            : */
+<span class="lineNum">     159 </span>            :                 // Call the application to check termination
+<span class="lineNum">     160 </span>            :                 lps_termination[lp-&gt;lid.to_int] =
+<span class="lineNum">     161 </span>            :                     lp-&gt;OnGVT(lp-&gt;gid.to_int, lp-&gt;current_base_pointer);
+<span class="lineNum">     162 </span>            :                 check_res &amp;= lps_termination[lp-&gt;lid.to_int];
+<span class="lineNum">     163 </span>            : 
+<span class="lineNum">     164 </span>            :                 // Restore the current state
+<span class="lineNum">     165 </span>            :                 lp-&gt;state = temporary_log.state;
+<span class="lineNum">     166 </span>            :                 lp-&gt;current_base_pointer = temporary_log.base_pointer;
+<span class="lineNum">     167 </span>            :                 log_restore(lp, &amp;temporary_log);
+<span class="lineNum">     168 </span>            :                 log_delete(temporary_log.log);
+<span class="lineNum">     169 </span>            : 
+<span class="lineNum">     170 </span>            :                 // Early stop
+<span class="lineNum">     171 </span>            :                 if (rootsim_config.check_termination_mode == CKTRM_INCREMENTAL &amp;&amp; !check_res) {
+<span class="lineNum">     172 </span>            :                         break;
+<span class="lineNum">     173 </span>            :                 }
+<span class="lineNum">     174 </span>            : 
+<span class="lineNum">     175 </span>            :         }
+<span class="lineNum">     176 </span>            : 
+<span class="lineNum">     177 </span>            :         // No real LP is running now!
+<span class="lineNum">     178 </span>            :         current = NULL;
+<span class="lineNum">     179 </span>            : }
+<span class="lineNum">     180 </span>            : 
+<span class="lineNum">     181 </span><span class="lineNoCov">          0 : void ccgs_init(void)</span>
+<span class="lineNum">     182 </span>            : {
+<span class="lineNum">     183 </span>            :         lps_termination = rsalloc(sizeof(bool) * n_prc);
+<span class="lineNum">     184 </span>            :         memset(lps_termination, 0, sizeof(bool) * n_prc);
+<span class="lineNum">     185 </span>            : }
+<span class="lineNum">     186 </span>            : 
+<span class="lineNum">     187 </span><span class="lineNoCov">          0 : void ccgs_fini(void)</span>
+<span class="lineNum">     188 </span>            : {
+<span class="lineNum">     189 </span>            :         rsfree(lps_termination);
+<span class="lineNum">     190 </span>            : }
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.12</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>

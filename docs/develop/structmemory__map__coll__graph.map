@@ -1,0 +1,10 @@
+<map id="memory_map" name="memory_map">
+<area shape="rect" id="node2" href="$structbuddy.html" title="buddy" alt="" coords="21,231,83,257"/>
+<area shape="rect" id="node3" href="$structspinlock__t.html" title="spinlock_t" alt="" coords="5,103,91,130"/>
+<area shape="rect" id="node5" href="$structslab__chain.html" title="slab_chain" alt="" coords="117,231,206,257"/>
+<area shape="rect" id="node4" href="$structsegment.html" title="segment" alt="" coords="365,231,443,257"/>
+<area shape="rect" id="node6" href="$structslab__header.html" title="slab_header" alt="" coords="115,103,215,130"/>
+<area shape="rect" id="node7" href="$structatomic__t.html" title="atomic_t" alt="" coords="231,5,310,32"/>
+<area shape="rect" id="node9" href="$struct__malloc__area.html" title="This structure let DyMeLoR handle one malloc area (for serving given&#45;size memory requests) ..." alt="" coords="301,103,408,130"/>
+<area shape="rect" id="node8" href="$struct__malloc__state.html" title="Definition of the memory map. " alt="" coords="230,231,341,257"/>
+</map>

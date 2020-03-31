@@ -1,0 +1,25 @@
+var structdisassembly__state =
+[
+    [ "addr", "structdisassembly__state.html#a5b25fb1a8812a3adac3c4b2832d899fc", null ],
+    [ "addr_size", "structdisassembly__state.html#a898ed21585acf738dfefd97922e31bf4", null ],
+    [ "disp_offset", "structdisassembly__state.html#ac180f7315b9eae423605ba9255542a92", null ],
+    [ "disp_size", "structdisassembly__state.html#aaf228496f61e158b62b745176deb0fc4", null ],
+    [ "immed_offset", "structdisassembly__state.html#a5608a187e8b9d7bcc826de7ba48e227a", null ],
+    [ "immed_size", "structdisassembly__state.html#ab74b5dbcf22abd1530ea2f2757ecb20d", null ],
+    [ "instrument", "structdisassembly__state.html#a56ccc7c16980cd861dd71a96af8fbc81", null ],
+    [ "mode64", "structdisassembly__state.html#aa91f663da1b9d017f4323591ba2b1318", null ],
+    [ "modrm", "structdisassembly__state.html#a401dcaf0c69b67864984b24eaca19e44", null ],
+    [ "op", "structdisassembly__state.html#afd9a2bea03fcaee3170b3eaa8ea5b820", null ],
+    [ "opcode", "structdisassembly__state.html#a5635e2fc38d488b845013fbb7b9f6aaf", null ],
+    [ "opd_size", "structdisassembly__state.html#af0ea91b1d32c468154e87b69ee778768", null ],
+    [ "orig_pos", "structdisassembly__state.html#a7e8179d5a515dee74fe3b47b7f784518", null ],
+    [ "pos", "structdisassembly__state.html#a6ea98ccb6914fc15fa3d8d90eb8b3923", null ],
+    [ "prefix", "structdisassembly__state.html#ae86462fea9e4539260f3706bdd234378", null ],
+    [ "read_dest", "structdisassembly__state.html#a533bb92a3ec357b118596fb3fdc3a852", null ],
+    [ "read_modrm", "structdisassembly__state.html#a2a27c9ef27a802749851253a3be9f124", null ],
+    [ "rex", "structdisassembly__state.html#a88557af0850c66d04f72817fc01b74a4", null ],
+    [ "sib", "structdisassembly__state.html#a6a9af368feadd971c5ff41f0f7640d59", null ],
+    [ "sse_prefix", "structdisassembly__state.html#a9e319351ebfc5b77c533ff7dd589bb96", null ],
+    [ "text", "structdisassembly__state.html#a6982c24a05f7387c3577273ce663834c", null ],
+    [ "uses_rip", "structdisassembly__state.html#a90490c22643d87e7fc7da2b84d6c32cc", null ]
+];

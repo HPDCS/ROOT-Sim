@@ -1,0 +1,6 @@
+<map id="find_next_free" name="find_next_free">
+<area shape="rect" id="node2" href="$dymelor_8h.html#a0706c4a4237b3b20358ee252bdfb1a0f" title="do_malloc" alt="" coords="165,31,252,57"/>
+<area shape="rect" id="node3" href="$dymelor_8h.html#a26407e99c6266e774c65131ef12b03b8" title="__wrap_malloc" alt="" coords="300,31,415,57"/>
+<area shape="rect" id="node4" href="$dymelor_8h.html#a8b835f617273e3dcb51a0818e4d38090" title="__wrap_realloc" alt="" coords="463,5,577,32"/>
+<area shape="rect" id="node5" href="$dymelor_8h.html#ac413ddb09d9d07ab4988b4ef62e38e73" title="__wrap_calloc" alt="" coords="465,56,575,83"/>
+</map>

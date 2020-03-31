@@ -1,0 +1,84 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - doc-coverage.info - ROOT-Sim/docs/xml/indexpage.xml</title>
+  <link rel="stylesheet" type="text/css" href="../../../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../../../index.html">top level</a> - <a href="index.html">ROOT-Sim/docs/xml</a> - indexpage.xml</td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">doc-coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">1</td>
+            <td class="headerCovTableEntry">1</td>
+            <td class="headerCovTableEntryHi">100.0 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2020-01-30 13:56:10</td>
+            <td></td>
+          </tr>
+          <tr><td><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<span class="lineNum">       1 </span><span class="lineCov">          1 : &lt;?xml version='1.0' encoding='UTF-8' standalone='no'?&gt;</span>
+<span class="lineNum">       2 </span>            : &lt;doxygen xmlns:xsi=&quot;http://www.w3.org/2001/XMLSchema-instance&quot; xsi:noNamespaceSchemaLocation=&quot;compound.xsd&quot; version=&quot;1.8.11&quot;&gt;
+<span class="lineNum">       3 </span>            :   &lt;compounddef id=&quot;indexpage&quot; kind=&quot;page&quot;&gt;
+<span class="lineNum">       4 </span>            :     &lt;compoundname&gt;index&lt;/compoundname&gt;
+<span class="lineNum">       5 </span>            :     &lt;title&gt;The ROme OpTimistic Simulator (ROOT-Sim) 2.0.0&lt;/title&gt;
+<span class="lineNum">       6 </span>            :     &lt;detaileddescription&gt;
+<span class="lineNum">       7 </span>            : &lt;para&gt;&lt;ulink url=&quot;https://travis-ci.org/HPDCS/ROOT-Sim&quot;&gt;&lt;/ulink&gt; &lt;ulink url=&quot;http://codecov.io/github/HPDCS/ROOT-Sim&quot;&gt;&lt;/ulink&gt; &lt;ulink url=&quot;https://hpdcs.github.io/ROOT-Sim//documentation.html&quot;&gt;&lt;/ulink&gt; &lt;ulink url=&quot;https://github.com/HPDCS/ROOT-Sim/issues&quot;&gt;&lt;/ulink&gt; &lt;ulink url=&quot;https://github.com/HPDCS/ROOT-Sim/blob/master/COPYING&quot;&gt;&lt;/ulink&gt;&lt;/para&gt;&lt;para&gt;&lt;emphasis&gt;Brought to you by the &lt;ulink url=&quot;https://hpdcs.github.io/&quot;&gt;High Performance and Dependable Computing Systems (HPDCS)&lt;/ulink&gt; Research Group&lt;/emphasis&gt; &lt;hruler/&gt;
+<span class="lineNum">       8 </span>            : &lt;/para&gt;&lt;para&gt;The ROme OpTimistic Simulator is an x86-64 Open Source, distributed multithreaded parallel simulation library developed using C/POSIX technology. It transparently supports all the mechanisms associated with parallelization and distribution of workload across the nodes (e.g., mapping of simulation objects on different kernel instances) and optimistic synchronization (e.g., state recoverability). Distributed simulations rely on MPI3. In particular, global synchronization across the different nodes relies on asynchronous MPI primitives, for increased efficiency.&lt;/para&gt;&lt;para&gt;The programming model supported by ROOT-Sim allows the simulation model developer to use a simple application-callback function named &lt;computeroutput&gt;ProcessEvent()&lt;/computeroutput&gt; as the event handler, whose parameters determine which simulation object is currently taking control for processing its next event, and where the state of this object is located in memory. An object is a data structure, whose state can be scattered on dynamically allocated memory chunks, hence the memory address passed to the callback locates a top level data structure implementing the object state-layout.&lt;/para&gt;&lt;para&gt;ROOT-Sim&amp;apos;s development started as a research project late back in 1987, and is currently maintained by the High Performance and Dependable Computing Systems group, a joint research group between Sapienza, University of Rome and University of Rome &amp;quot;Tor Vergata&amp;quot;.&lt;/para&gt;&lt;para&gt;&lt;heading level=&quot;2&quot;&gt;Installation Notes&lt;/heading&gt;
+<span class="lineNum">       9 </span>            : &lt;/para&gt;&lt;para&gt;ROOT-Sim uses autotools to provide an installation workflow which is common for all supported platforms. This repository does not provide already-generated installation scripts (while released tarballs do), rather we provide the convenience &lt;computeroutput&gt;autogen.sh&lt;/computeroutput&gt; script which should build everything on the target machine. Using autotools, &lt;computeroutput&gt;autoconf&lt;/computeroutput&gt;, &lt;computeroutput&gt;automake&lt;/computeroutput&gt; and &lt;computeroutput&gt;libtoolize&lt;/computeroutput&gt; are required to let &lt;computeroutput&gt;autogen.sh&lt;/computeroutput&gt; generate the correct &lt;computeroutput&gt;configure&lt;/computeroutput&gt; script.&lt;/para&gt;&lt;para&gt;Briefly, the shell commands &lt;computeroutput&gt;./configure; make; make install&lt;/computeroutput&gt; should configure, build, and install this package. Also, you can also type &lt;computeroutput&gt;make uninstall&lt;/computeroutput&gt; to remove the installed files.&lt;/para&gt;&lt;para&gt;By default, &lt;computeroutput&gt;make install&lt;/computeroutput&gt; installs the package&amp;apos;s commands under &lt;computeroutput&gt;/usr/local/bin&lt;/computeroutput&gt;, include files under &lt;computeroutput&gt;/usr/local/include&lt;/computeroutput&gt;, etc. You can specify an installation prefix other than &lt;computeroutput&gt;/usr/local&lt;/computeroutput&gt; by giving &lt;computeroutput&gt;configure&lt;/computeroutput&gt; the option &lt;computeroutput&gt;--prefix=PREFIX&lt;/computeroutput&gt;, where &lt;computeroutput&gt;PREFIX&lt;/computeroutput&gt; must be an absolute path name.&lt;/para&gt;&lt;para&gt;ROOT-Sim uses many &lt;computeroutput&gt;gcc&lt;/computeroutput&gt; extensions, so the currently supported compiler is only &lt;computeroutput&gt;gcc&lt;/computeroutput&gt;.&lt;/para&gt;&lt;para&gt;For full configuration notes, and a discussion on the subsystems which this simulation library offers, please refer to the &lt;ulink url=&quot;https://github.com/HPDCS/ROOT-Sim/wiki&quot;&gt;wiki&lt;/ulink&gt;.&lt;/para&gt;&lt;para&gt;&lt;heading level=&quot;2&quot;&gt;Usage Notes&lt;/heading&gt;
+<span class="lineNum">      10 </span>            : &lt;/para&gt;&lt;para&gt;When running &lt;computeroutput&gt;make install&lt;/computeroutput&gt;, the &lt;computeroutput&gt;rootsim-cc&lt;/computeroutput&gt; compiler is added to the path.&lt;/para&gt;&lt;para&gt;To compile a simulaton model, simply &lt;computeroutput&gt;cd&lt;/computeroutput&gt; into the project&amp;apos;s directory and type &lt;computeroutput&gt;rootsim-cc *.c -o model&lt;/computeroutput&gt;. This will create the &lt;computeroutput&gt;model&lt;/computeroutput&gt; executable, which is the model code already linked with the ROOT-sim library. &lt;computeroutput&gt;rootsim-cc&lt;/computeroutput&gt; ultimately relies on &lt;computeroutput&gt;gcc&lt;/computeroutput&gt;, so any flag supported by &lt;computeroutput&gt;gcc&lt;/computeroutput&gt; can be passed to &lt;computeroutput&gt;rootsim-cc&lt;/computeroutput&gt;.&lt;/para&gt;&lt;para&gt;To test the correctness of the model, it can be run sequentially, typing &lt;computeroutput&gt;./model --sequential --lp &amp;lt;number of required LPs&amp;gt;&lt;/computeroutput&gt; This allows to spot errors in the implementation more easily.&lt;/para&gt;&lt;para&gt;Then, to run it in parallel, type &lt;computeroutput&gt;./model --wt &amp;lt;number of desired threads&amp;gt; --lp &amp;lt;number of required LPs&amp;gt;&lt;/computeroutput&gt;&lt;/para&gt;&lt;para&gt;To run in a distributed environment, you can use standard MPI commands, such as: &lt;computeroutput&gt;mpiexec -n 2 --hostfile hosts --map-by node ./model --wt 2 --lp 16&lt;/computeroutput&gt;&lt;/para&gt;&lt;para&gt;This command runs the simulation model on two nodes (&lt;computeroutput&gt;-n 2&lt;/computeroutput&gt;) specified in the &lt;computeroutput&gt;hosts&lt;/computeroutput&gt; file. Each node uses two concurrent threads (&lt;computeroutput&gt;--wt 2&lt;/computeroutput&gt;). The simulation involves 16 total Logical Processes (&lt;computeroutput&gt;--lp 16&lt;/computeroutput&gt;). &lt;/para&gt;    &lt;/detaileddescription&gt;
+<span class="lineNum">      11 </span>            :   &lt;/compounddef&gt;
+<span class="lineNum">      12 </span>            : &lt;/doxygen&gt;
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.12</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>

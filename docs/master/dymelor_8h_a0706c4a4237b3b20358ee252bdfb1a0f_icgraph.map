@@ -1,0 +1,5 @@
+<map id="do_malloc" name="do_malloc">
+<area shape="rect" id="node2" href="$dymelor_8h.html#a26407e99c6266e774c65131ef12b03b8" title="__wrap_malloc" alt="" coords="140,31,255,57"/>
+<area shape="rect" id="node3" href="$dymelor_8h.html#a8b835f617273e3dcb51a0818e4d38090" title="__wrap_realloc" alt="" coords="303,5,417,32"/>
+<area shape="rect" id="node4" href="$dymelor_8h.html#ac413ddb09d9d07ab4988b4ef62e38e73" title="__wrap_calloc" alt="" coords="305,56,415,83"/>
+</map>

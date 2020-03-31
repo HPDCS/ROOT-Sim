@@ -1,0 +1,437 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - doc-coverage.info - ROOT-Sim/src/arch/x86.h</title>
+  <link rel="stylesheet" type="text/css" href="../../../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../../../index.html">top level</a> - <a href="index.html">ROOT-Sim/src/arch</a> - x86.h</td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">doc-coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">1</td>
+            <td class="headerCovTableEntry">28</td>
+            <td class="headerCovTableEntryLo">3.6 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2020-02-07 15:01:24</td>
+            <td></td>
+          </tr>
+          <tr><td><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<span class="lineNum">       1 </span><span class="lineCov">          1 : /**</span>
+<span class="lineNum">       2 </span>            :  * @file arch/x86.h
+<span class="lineNum">       3 </span>            :  *
+<span class="lineNum">       4 </span>            :  * @brief x86 disassembler header
+<span class="lineNum">       5 </span>            :  *
+<span class="lineNum">       6 </span>            :  * x86 disassembler header
+<span class="lineNum">       7 </span>            :  *
+<span class="lineNum">       8 </span>            :  * @copyright
+<span class="lineNum">       9 </span>            :  * Copyright (C) 2008-2019 HPDCS Group
+<span class="lineNum">      10 </span>            :  * https://hpdcs.github.io
+<span class="lineNum">      11 </span>            :  *
+<span class="lineNum">      12 </span>            :  * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
+<span class="lineNum">      13 </span>            :  *
+<span class="lineNum">      14 </span>            :  * ROOT-Sim is free software; you can redistribute it and/or modify it under the
+<span class="lineNum">      15 </span>            :  * terms of the GNU General Public License as published by the Free Software
+<span class="lineNum">      16 </span>            :  * Foundation; only version 3 of the License applies.
+<span class="lineNum">      17 </span>            :  *
+<span class="lineNum">      18 </span>            :  * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
+<span class="lineNum">      19 </span>            :  * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+<span class="lineNum">      20 </span>            :  * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+<span class="lineNum">      21 </span>            :  *
+<span class="lineNum">      22 </span>            :  * You should have received a copy of the GNU General Public License along with
+<span class="lineNum">      23 </span>            :  * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
+<span class="lineNum">      24 </span>            :  * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+<span class="lineNum">      25 </span>            :  *
+<span class="lineNum">      26 </span>            :  * @author Alessandro Pellegrini
+<span class="lineNum">      27 </span>            :  *
+<span class="lineNum">      28 </span>            :  * @date Jan 25, 2012
+<span class="lineNum">      29 </span>            :  */
+<span class="lineNum">      30 </span>            : 
+<span class="lineNum">      31 </span>            : #pragma once
+<span class="lineNum">      32 </span>            : 
+<span class="lineNum">      33 </span>            : #include &lt;stdbool.h&gt;
+<span class="lineNum">      34 </span>            : 
+<span class="lineNum">      35 </span>            : #include &quot;instruction.h&quot;
+<span class="lineNum">      36 </span>            : 
+<span class="lineNum">      37 </span><span class="lineNoCov">          0 : #define A32(f) ((f) &amp; ADDR_32)      // Indirizzi a 32 bit?</span>
+<span class="lineNum">      38 </span><span class="lineNoCov">          0 : #define D32(f) ((f) &amp; DATA_32)      // Dati a 32 bit?</span>
+<span class="lineNum">      39 </span><span class="lineNoCov">          0 : #define A64(f) ((f) &amp; ADDR_64)      // Indirizzi a 64 bit?</span>
+<span class="lineNum">      40 </span><span class="lineNoCov">          0 : #define D64(f) ((f) &amp; DATA_64)      // Dati a 64 bit?</span>
+<span class="lineNum">      41 </span>            : 
+<span class="lineNum">      42 </span>            : /* Test sui prefissi */
+<span class="lineNum">      43 </span><span class="lineNoCov">          0 : #define p_is_group1(p) (((p) == 0xf0)           /* lock */ \</span>
+<span class="lineNum">      44 </span>            :                         || ((p) == 0xf2)        /* repne/repnz */ \
+<span class="lineNum">      45 </span>            :                         || ((p) == 0xf3))       /* rep/repe/repz */
+<span class="lineNum">      46 </span>            : 
+<span class="lineNum">      47 </span><span class="lineNoCov">          0 : #define p_is_group2(p) (((p) == 0x2e)           /* CS override/branch not taken */ \</span>
+<span class="lineNum">      48 </span>            :                         || ((p) == 0x36)        /* SS override */ \
+<span class="lineNum">      49 </span>            :                         || ((p) == 0x3e)        /* DS override/branch taken */ \
+<span class="lineNum">      50 </span>            :                         || ((p) == 0x26)        /* ES override */ \
+<span class="lineNum">      51 </span>            :                         || ((p) == 0x64)        /* FS override */ \
+<span class="lineNum">      52 </span>            :                         || ((p) == 0x65))       /* GS override */
+<span class="lineNum">      53 </span>            : 
+<span class="lineNum">      54 </span><span class="lineNoCov">          0 : #define p_is_group3(p) ((p) == 0x66)    /* opsize override */</span>
+<span class="lineNum">      55 </span>            : 
+<span class="lineNum">      56 </span><span class="lineNoCov">          0 : #define p_is_group4(p) ((p) == 0x67)    /* addr size override */</span>
+<span class="lineNum">      57 </span>            : 
+<span class="lineNum">      58 </span><span class="lineNoCov">          0 : #define is_prefix(o) (p_is_group1 (o) || p_is_group2 (o) \</span>
+<span class="lineNum">      59 </span>            :                       || p_is_group3 (o) || p_is_group4 (o))
+<span class="lineNum">      60 </span>            : 
+<span class="lineNum">      61 </span><span class="lineNoCov">          0 : #define is_sse_prefix(o) (((o) == 0xf2) || ((o) == 0xf3) || ((o) == 0x66))</span>
+<span class="lineNum">      62 </span>            : 
+<span class="lineNum">      63 </span><span class="lineNoCov">          0 : #define is_rex_prefix(r, mode64) (((r) &gt;= 0x40 &amp;&amp; (r) &lt;= 0x4f ) &amp;&amp; (mode64))</span>
+<span class="lineNum">      64 </span>            : 
+<span class="lineNum">      65 </span>            : /* Recuperano i bit di interesse del byte REX (i primi 4 bit sono fissi e valgono 0100b) */
+<span class="lineNum">      66 </span>            : 
+<span class="lineNum">      67 </span><span class="lineNoCov">          0 : #define REXW(r) (((r) &amp; 0x08) &gt;&gt; 3)</span>
+<span class="lineNum">      68 </span><span class="lineNoCov">          0 : #define REXR(r) (((r) &amp; 0x04) &gt;&gt; 2)</span>
+<span class="lineNum">      69 </span><span class="lineNoCov">          0 : #define REXX(r) (((r) &amp; 0x02) &gt;&gt; 1)</span>
+<span class="lineNum">      70 </span><span class="lineNoCov">          0 : #define REXB(r) (((r) &amp; 0x01))</span>
+<span class="lineNum">      71 </span>            : 
+<span class="lineNum">      72 </span>            : /* Test per le operazioni Jcc */
+<span class="lineNum">      73 </span>            : 
+<span class="lineNum">      74 </span>            : // opcode nell'intervallo 70-7f,e3
+<span class="lineNum">      75 </span><span class="lineNoCov">          0 : #define is_jcc_insn(o) (((o) == 0xe3) || (((o) &gt;= 0x70) &amp;&amp; ((o) &lt;= 0x7f)))</span>
+<span class="lineNum">      76 </span>            : 
+<span class="lineNum">      77 </span>            : // opcode nell'intervallo 80-8f (quando il primo byte è 0f)
+<span class="lineNum">      78 </span><span class="lineNoCov">          0 : #define is_esc_jcc_insn(o) (((o) &gt;= 0x80) &amp;&amp; ((o) &lt;= 0x8f))</span>
+<span class="lineNum">      79 </span>            : 
+<span class="lineNum">      80 </span>            : // Gli operandi dell'istruzione specificano se c'è o meno un byte ModR/M
+<span class="lineNum">      81 </span><span class="lineNoCov">          0 : #define has_modrm(addr) (((addr) == ADDR_C)    \</span>
+<span class="lineNum">      82 </span>            :                          || ((addr) == ADDR_D) \
+<span class="lineNum">      83 </span>            :                          || ((addr) == ADDR_E) \
+<span class="lineNum">      84 </span>            :                          || ((addr) == ADDR_G) \
+<span class="lineNum">      85 </span>            :                          || ((addr) == ADDR_M) \
+<span class="lineNum">      86 </span>            :                          || ((addr) == ADDR_P) \
+<span class="lineNum">      87 </span>            :                          || ((addr) == ADDR_Q) \
+<span class="lineNum">      88 </span>            :                          || ((addr) == ADDR_R) \
+<span class="lineNum">      89 </span>            :                          || ((addr) == ADDR_S) \
+<span class="lineNum">      90 </span>            :                          || ((addr) == ADDR_T) \
+<span class="lineNum">      91 </span>            :                          || ((addr) == ADDR_V) \
+<span class="lineNum">      92 </span>            :                          || ((addr) == ADDR_W))
+<span class="lineNum">      93 </span>            : 
+<span class="lineNum">      94 </span>            : // È presente un byte SIB se il campo Mod non è 11b, il campo R/M è
+<span class="lineNum">      95 </span>            : // 100b e la modalità di indirizzamento è a 32 bit o 64 bit
+<span class="lineNum">      96 </span><span class="lineNoCov">          0 : #define has_sib(modrm, addr) ((((modrm) &amp; 0x07) == 0x04) \</span>
+<span class="lineNum">      97 </span>            :                               &amp;&amp; (((addr) == SIZE_32) || (addr) == SIZE_64) \
+<span class="lineNum">      98 </span>            :                               &amp;&amp; (((modrm) &amp; 0xC0) != 0xC0))
+<span class="lineNum">      99 </span>            : 
+<span class="lineNum">     100 </span>            : // Se il campo Mod è 01b, allora c'è uno spiazzamento di 1 byte. Se il campo
+<span class="lineNum">     101 </span>            : // Mod è 10b, e siamo in modalità di indirizzamento a 32/64 bit, allora c'è
+<span class="lineNum">     102 </span>            : // uno spiazzamento di 4 byte. Inoltre, se la modalità di indirizzamento è
+<span class="lineNum">     103 </span>            : // a 16 bit e il campo Mod è 10b, allora c'è uno spiazzamento di 2 byte.
+<span class="lineNum">     104 </span>            : // Se la modalità di indirizzamento è a 32 o 64 bit e sia il campo Mod è 00b sia
+<span class="lineNum">     105 </span>            : // il campo R/M è 101b, o il campo Mod è 10b, allora c'è uno spiazzamento
+<span class="lineNum">     106 </span>            : // di 4 byte. Altrimenti non c'è spiazzamento.
+<span class="lineNum">     107 </span><span class="lineNoCov">          0 : #define disp_size(modrm, addr) ((((modrm) &amp; 0xC0) == 0x40) ? 1 \</span>
+<span class="lineNum">     108 </span>            :                                : ((((addr) == SIZE_16) \
+<span class="lineNum">     109 </span>            :                                    &amp;&amp; ((((modrm) &amp; 0xC7) == 0x06) \
+<span class="lineNum">     110 </span>            :                                        || (((modrm) &amp; 0xC0) == 0x80))) ? 2 \
+<span class="lineNum">     111 </span>            :                                    : (((((addr) == SIZE_32) || (addr) == SIZE_64) \
+<span class="lineNum">     112 </span>            :                                       &amp;&amp; ((((modrm) &amp; 0xC7) == 0x05) \
+<span class="lineNum">     113 </span>            :                                           || (((modrm) &amp; 0xC0) == 0x80))) ? 4\
+<span class="lineNum">     114 </span>            :                                      : 0)))
+<span class="lineNum">     115 </span>            : 
+<span class="lineNum">     116 </span><span class="lineNoCov">          0 : enum addr_method {</span>
+<span class="lineNum">     117 </span>            :         ADDR_0,                 /* Nessun metodo di indirizzamento */
+<span class="lineNum">     118 </span>            :         ADDR_A,                 /* Indirizzamento diretto, nessun byte ModR/M */
+<span class="lineNum">     119 </span>            :         ADDR_C,                 /* Il campo reg del byte ModR/M seleziona un registro di controllo */
+<span class="lineNum">     120 </span>            :         ADDR_D,                 /* Il campo reg del byte ModR/M seleziona un registro di debug */
+<span class="lineNum">     121 </span>            :         ADDR_E,                 /* Il byte ModR/M specifica l'operando: o un registro general purpose
+<span class="lineNum">     122 </span>            :                                    o un offset per un indirizzo di memoria da un segment register
+<span class="lineNum">     123 </span>            :                                    con un registro base, un registro d'indice, un fattore di scala
+<span class="lineNum">     124 </span>            :                                    o spiazzamento */
+<span class="lineNum">     125 </span>            :         ADDR_F,                 /* registro EFLAGS */
+<span class="lineNum">     126 </span>            :         ADDR_G,                 /* Il campo reg del byte ModR/M seleziona un registro generale */
+<span class="lineNum">     127 </span>            :         ADDR_I,                 /* Dati immediati */
+<span class="lineNum">     128 </span>            :         ADDR_J,                 /* L'istruzione contiene un offset relativo, da (E)IP */
+<span class="lineNum">     129 </span>            :         ADDR_M,                 /* Il byte ModR/M può riferirsi solo a memoria */
+<span class="lineNum">     130 </span>            :         ADDR_N,                 /* [FV] Il campo R/M del byte ModR/M indica un registro MMX */
+<span class="lineNum">     131 </span>            :         ADDR_O,                 /* Nessun byte ModR/M. L'op è codificata come word o dword o qword in 64bit */
+<span class="lineNum">     132 </span>            :         ADDR_P,                 /* Il campo reg del byte ModR/M seleziona un registro packed qword MMX */
+<span class="lineNum">     133 </span>            :         ADDR_Q,                 /* Il byte ModR/M specifica o un registro MMX o un indirizzo in memoria (scala, ecc...) */
+<span class="lineNum">     134 </span>            :         ADDR_R,                 /* Il campo reg del byte ModR/M si può riferire solo a un registro generale */
+<span class="lineNum">     135 </span>            :         ADDR_S,                 /* Il campo reg del byte ModR/M seleziona un segment register */
+<span class="lineNum">     136 </span>            :         ADDR_T,                 /* Il campo reg del byte ModR/M seleziona un registro di test */
+<span class="lineNum">     137 </span>            :         ADDR_U,                 // Alice: Il campo R/M del byte ModR/M seleziona un registro XMM
+<span class="lineNum">     138 </span>            :         ADDR_V,                 /* Il campo reg del byte ModR/M seleziona un registro MMX */
+<span class="lineNum">     139 </span>            :         ADDR_W,                 /* Il byte ModR/M seleziona un registro XMM o un indirizzo in memoria (scala, ecc...) */
+<span class="lineNum">     140 </span>            :         ADDR_X,                 /* Indirizzo di memoria da DS:SI */
+<span class="lineNum">     141 </span>            :         ADDR_Y,                 /* Indirizzo di memoria da ES:DI */
+<span class="lineNum">     142 </span>            : 
+<span class="lineNum">     143 </span>            :         /* Registri */
+<span class="lineNum">     144 </span>            :         R_START,
+<span class="lineNum">     145 </span>            : 
+<span class="lineNum">     146 </span>            :         R_AL,
+<span class="lineNum">     147 </span>            :         R_AH,
+<span class="lineNum">     148 </span>            :         R_AX,
+<span class="lineNum">     149 </span>            :         R_EAX,
+<span class="lineNum">     150 </span>            :         R_RAX,
+<span class="lineNum">     151 </span>            : 
+<span class="lineNum">     152 </span>            :         R_BL,
+<span class="lineNum">     153 </span>            :         R_BH,
+<span class="lineNum">     154 </span>            :         R_BX,
+<span class="lineNum">     155 </span>            :         R_EBX,
+<span class="lineNum">     156 </span>            :         R_RBX,
+<span class="lineNum">     157 </span>            : 
+<span class="lineNum">     158 </span>            :         R_CL,
+<span class="lineNum">     159 </span>            :         R_CH,
+<span class="lineNum">     160 </span>            :         R_CX,
+<span class="lineNum">     161 </span><span class="lineNoCov">          0 :         R_ECX,</span>
+<span class="lineNum">     162 </span>            :         R_RCX,
+<span class="lineNum">     163 </span>            : 
+<span class="lineNum">     164 </span>            :         R_DL,
+<span class="lineNum">     165 </span>            :         R_DH,
+<span class="lineNum">     166 </span>            :         R_DX,
+<span class="lineNum">     167 </span>            :         R_EDX,
+<span class="lineNum">     168 </span>            :         R_RDX,
+<span class="lineNum">     169 </span>            : 
+<span class="lineNum">     170 </span>            :         R_SIL,
+<span class="lineNum">     171 </span>            :         R_SI,
+<span class="lineNum">     172 </span>            :         R_ESI,
+<span class="lineNum">     173 </span>            :         R_RSI,
+<span class="lineNum">     174 </span>            :         R_DIL,
+<span class="lineNum">     175 </span>            :         R_DI,
+<span class="lineNum">     176 </span>            :         R_EDI,
+<span class="lineNum">     177 </span>            :         R_RDI,
+<span class="lineNum">     178 </span>            :         R_BP,
+<span class="lineNum">     179 </span>            :         R_EBP,
+<span class="lineNum">     180 </span>            :         R_SPL,
+<span class="lineNum">     181 </span>            :         R_SP,
+<span class="lineNum">     182 </span>            :         R_ESP,
+<span class="lineNum">     183 </span>            :         R_RSP,
+<span class="lineNum">     184 </span>            : 
+<span class="lineNum">     185 </span>            :         /* segment registers */
+<span class="lineNum">     186 </span>            :         R_CS,
+<span class="lineNum">     187 </span>            :         R_DS,
+<span class="lineNum">     188 </span>            :         R_SS,
+<span class="lineNum">     189 </span>            :         R_ES,
+<span class="lineNum">     190 </span>            :         R_FS,
+<span class="lineNum">     191 </span>            :         R_GS,
+<span class="lineNum">     192 </span>            : 
+<span class="lineNum">     193 </span>            :         /* EFLAGS */
+<span class="lineNum">     194 </span>            :         R_F,
+<span class="lineNum">     195 </span>            :         R_EF,
+<span class="lineNum">     196 </span>            : 
+<span class="lineNum">     197 </span>            :         /* EIP */
+<span class="lineNum">     198 </span>            :         R_IP,
+<span class="lineNum">     199 </span>            :         R_EIP,
+<span class="lineNum">     200 </span>            :         R_RIP,
+<span class="lineNum">     201 </span>            : 
+<span class="lineNum">     202 </span>            :         /* floating point registers */
+<span class="lineNum">     203 </span>            :         R_ST0,
+<span class="lineNum">     204 </span>            :         R_ST1,
+<span class="lineNum">     205 </span>            :         R_ST2,
+<span class="lineNum">     206 </span>            :         R_ST3,
+<span class="lineNum">     207 </span>            :         R_ST4,
+<span class="lineNum">     208 </span>            :         R_ST5,
+<span class="lineNum">     209 </span>            :         R_ST6,
+<span class="lineNum">     210 </span>            :         R_ST7,
+<span class="lineNum">     211 </span>            : 
+<span class="lineNum">     212 </span>            :         /* Extra registers in 64bit mode */
+<span class="lineNum">     213 </span>            :         R_R8L,
+<span class="lineNum">     214 </span>            :         R_R8W,
+<span class="lineNum">     215 </span>            :         R_R8D,
+<span class="lineNum">     216 </span>            :         R_R8,
+<span class="lineNum">     217 </span>            : 
+<span class="lineNum">     218 </span>            :         R_R9L,
+<span class="lineNum">     219 </span>            :         R_R9W,
+<span class="lineNum">     220 </span>            :         R_R9D,
+<span class="lineNum">     221 </span>            :         R_R9,
+<span class="lineNum">     222 </span>            : 
+<span class="lineNum">     223 </span>            :         R_R10L,
+<span class="lineNum">     224 </span>            :         R_R10W,
+<span class="lineNum">     225 </span>            :         R_R10D,
+<span class="lineNum">     226 </span>            :         R_R10,
+<span class="lineNum">     227 </span>            : 
+<span class="lineNum">     228 </span>            :         R_R11L,
+<span class="lineNum">     229 </span>            :         R_R11W,
+<span class="lineNum">     230 </span>            :         R_R11D,
+<span class="lineNum">     231 </span>            :         R_R11,
+<span class="lineNum">     232 </span>            : 
+<span class="lineNum">     233 </span>            :         R_R12L,
+<span class="lineNum">     234 </span>            :         R_R12W,
+<span class="lineNum">     235 </span>            :         R_R12D,
+<span class="lineNum">     236 </span>            :         R_R12,
+<span class="lineNum">     237 </span>            : 
+<span class="lineNum">     238 </span>            :         R_R13L,
+<span class="lineNum">     239 </span>            :         R_R13W,
+<span class="lineNum">     240 </span>            :         R_R13D,
+<span class="lineNum">     241 </span>            :         R_R13,
+<span class="lineNum">     242 </span>            : 
+<span class="lineNum">     243 </span>            :         R_R14L,
+<span class="lineNum">     244 </span>            :         R_R14W,
+<span class="lineNum">     245 </span>            :         R_R14D,
+<span class="lineNum">     246 </span>            :         R_R14,
+<span class="lineNum">     247 </span>            : 
+<span class="lineNum">     248 </span>            :         R_R15L,
+<span class="lineNum">     249 </span>            :         R_R15W,
+<span class="lineNum">     250 </span>            :         R_R15D,
+<span class="lineNum">     251 </span>            :         R_R15,
+<span class="lineNum">     252 </span>            : 
+<span class="lineNum">     253 </span>            :         /* MMX registers */
+<span class="lineNum">     254 </span>            :         R_MM0,
+<span class="lineNum">     255 </span>            :         R_MM1,
+<span class="lineNum">     256 </span>            :         R_MM2,
+<span class="lineNum">     257 </span>            :         R_MM3,
+<span class="lineNum">     258 </span>            :         R_MM4,
+<span class="lineNum">     259 </span>            :         R_MM5,
+<span class="lineNum">     260 </span>            :         R_MM6,
+<span class="lineNum">     261 </span>            :         R_MM7,
+<span class="lineNum">     262 </span>            : 
+<span class="lineNum">     263 </span>            :         /* SSE/SSE2 registers */
+<span class="lineNum">     264 </span>            :         R_XMM0,
+<span class="lineNum">     265 </span>            :         R_XMM1,
+<span class="lineNum">     266 </span>            :         R_XMM2,
+<span class="lineNum">     267 </span>            :         R_XMM3,
+<span class="lineNum">     268 </span>            :         R_XMM4,
+<span class="lineNum">     269 </span>            :         R_XMM5,
+<span class="lineNum">     270 </span>            :         R_XMM6,
+<span class="lineNum">     271 </span>            :         R_XMM7,
+<span class="lineNum">     272 </span>            :         R_XMM8,
+<span class="lineNum">     273 </span>            :         R_XMM9,
+<span class="lineNum">     274 </span>            :         R_XMM10,
+<span class="lineNum">     275 </span>            :         R_XMM11,
+<span class="lineNum">     276 </span>            :         R_XMM12,
+<span class="lineNum">     277 </span>            :         R_XMM13,
+<span class="lineNum">     278 </span>            :         R_XMM14,
+<span class="lineNum">     279 </span>            :         R_XMM15,
+<span class="lineNum">     280 </span>            : 
+<span class="lineNum">     281 </span>            :         R_END,
+<span class="lineNum">     282 </span>            : 
+<span class="lineNum">     283 </span>            :         /* Valore immediato interno all'istruzione (D0, D1) */
+<span class="lineNum">     284 </span>            :         IMMED_1,                /* il valore 1 */
+<span class="lineNum">     285 </span>            : };
+<span class="lineNum">     286 </span>            : 
+<span class="lineNum">     287 </span><span class="lineNoCov">          0 : enum operand_type {</span>
+<span class="lineNum">     288 </span>            :         OP_0,                   /* nessun tipo */
+<span class="lineNum">     289 </span>            :         OP_A,                   /* due oper da 1 word o 2 operandi dword in mem (dipende dall'attr opsize) */
+<span class="lineNum">     290 </span>            :         OP_B,                   /* byte, indifferentemente dall'attrib opsize */
+<span class="lineNum">     291 </span>            :         OP_C,                   /* byte o word, a seconda dell'attrib opsize */
+<span class="lineNum">     292 </span>            :         OP_D,                   /* dword, indifferentemente dall'attributo opsize */
+<span class="lineNum">     293 </span>            :         OP_DQ,                  /* dqword, indifferentemebre dall'attr opsize */
+<span class="lineNum">     294 </span>            :         OP_P,                   /* puntatore di 32 o 48 bit a seconda dell'attributo opsize */
+<span class="lineNum">     295 </span>            :         OP_PI,                  /* Registro MMX qword */
+<span class="lineNum">     296 </span>            :         OP_PS,                  /* 128 bit packed single float [FV] o 256 bit */
+<span class="lineNum">     297 </span>            :         OP_Q,                   /* qword, indifferentemente dall'att opsize */
+<span class="lineNum">     298 </span>            :         OP_S,                   /* 6 byte pseudo-descriptor */
+<span class="lineNum">     299 </span>            :         OP_SS,                  /* Elemento scalare di un packed single float a 128 bit */
+<span class="lineNum">     300 </span>            :         OP_SI,                  /* registro dword (es: eax) */
+<span class="lineNum">     301 </span>            :         OP_V,                   /* word o dword, a seconda dell'attributo opsize */
+<span class="lineNum">     302 </span>            :         OP_W,                   /* word, indifferentemente dall'attributo opsize */
+<span class="lineNum">     303 </span>            :         OP_PD,                  /* registri dqword o xmm [FV] 128 bit o 256 bit packed double-precision float */
+<span class="lineNum">     304 </span>            :         OP_SD,                  /* registri qword o xmm */
+<span class="lineNum">     305 </span>            :         OP_E,                   /* usato quando i registri sono codificati direttamente */
+<span class="lineNum">     306 </span>            :         OP_Y,                   /* [FV] doubleword o quadword (in modalita' 64 bit), a seconda dell'attributo operand-size */
+<span class="lineNum">     307 </span>            :         OP_FS,                  /* [FV] 14 o 24 byte in memoria, a seconda di operand-size (usato da istruzioni load/store FPU state) */
+<span class="lineNum">     308 </span>            :         OP_FSR,                 /* [FV] 94 o 108 byte in memoria, a seconda di operand-size (usato da istruzioni FRSTOR/FSAVE FPU
+<span class="lineNum">     309 </span>            :                                  * state piu' 80 bit registri FPU) */
+<span class="lineNum">     310 </span>            :         OP_M80,                 /* 80 bit in memoria */
+<span class="lineNum">     311 </span>            :         OP_M512byte             /* 512 byte in memoria */
+<span class="lineNum">     312 </span>            : };
+<span class="lineNum">     313 </span>            : 
+<span class="lineNum">     314 </span><span class="lineNoCov">          0 : enum op_size {</span>
+<span class="lineNum">     315 </span>            :         SIZE_8,                 //Alice
+<span class="lineNum">     316 </span>            :         SIZE_16,
+<span class="lineNum">     317 </span>            :         SIZE_32,
+<span class="lineNum">     318 </span>            :         SIZE_64
+<span class="lineNum">     319 </span>            : };
+<span class="lineNum">     320 </span>            : 
+<span class="lineNum">     321 </span>            : /* dimensione operando / indirizzo */
+<span class="lineNum">     322 </span><span class="lineNoCov">          0 : enum reg_size {</span>
+<span class="lineNum">     323 </span>            :         REG_SIZE_8, REG_SIZE_16, REG_SIZE_32, REG_SIZE_64, REG_SIZE_128
+<span class="lineNum">     324 </span>            : };
+<span class="lineNum">     325 </span>            : 
+<span class="lineNum">     326 </span>            : // Per tenere traccia dello stato dell'interpretazione
+<span class="lineNum">     327 </span>            : struct disassembly_state {
+<span class="lineNum">     328 </span>            :         enum op_size opd_size;  // Dimensione dell'operando corrente
+<span class="lineNum">     329 </span>            :         enum op_size addr_size; // Dimensione dell'indirizzo corrente
+<span class="lineNum">     330 </span>            :         unsigned char *text;    // Sezione testo corrente (su cui si opera)
+<span class="lineNum">     331 </span>            :         unsigned long pos;      // Posizione corrente nel testo
+<span class="lineNum">     332 </span>            :         unsigned char rex;      // Il byte REX, o 0x00
+<span class="lineNum">     333 </span>            :         bool mode64;            // Stiamo eseguendo a 32 o a 64 bit?
+<span class="lineNum">     334 </span>            :         unsigned char opcode[2];        // Opcode corrente
+<span class="lineNum">     335 </span>            :         unsigned char modrm;    // Byte ModR/M o 0x00
+<span class="lineNum">     336 </span>            :         bool read_modrm;        // Indica se il byte ModR/M è stato letto
+<span class="lineNum">     337 </span>            :         unsigned char sib;      // Byte SIB o 0x00
+<span class="lineNum">     338 </span>            :         unsigned long disp_offset;      // L'inizio del displacement o 0
+<span class="lineNum">     339 </span>            :         int disp_size;          // Dimensione in byte del displacement
+<span class="lineNum">     340 </span>            :         unsigned long immed_offset;     // L'inizio dei dati immediati o 0
+<span class="lineNum">     341 </span>            :         int immed_size;         // La dimensione dei dati immediati
+<span class="lineNum">     342 </span>            :         enum addr_method addr[3];       // Codice per il metodo di indirizzamento
+<span class="lineNum">     343 </span>            :         enum operand_type op[3];        // Codice per il tipo di operando
+<span class="lineNum">     344 </span>            :         unsigned char prefix[4];        // Prefissi all'istruzione o 0x00
+<span class="lineNum">     345 </span>            :         unsigned char sse_prefix;       // Terzo byte dell'istruzione SSE/SSE2
+<span class="lineNum">     346 </span>            :         unsigned long orig_pos; // Posizione iniziale nel testo
+<span class="lineNum">     347 </span>            :         bool read_dest;         // Indica se è stata analizzata la destinazione
+<span class="lineNum">     348 </span>            : 
+<span class="lineNum">     349 </span>            :         // [FV] Flag indicante se l'istruzione usa un indirizzamento RIP_Relative o meno
+<span class="lineNum">     350 </span>            :         bool uses_rip;
+<span class="lineNum">     351 </span>            : 
+<span class="lineNum">     352 </span>            :         insn_info_x86 *instrument;      // Struttura dati per gestire l'instrumentazione
+<span class="lineNum">     353 </span>            : };
+<span class="lineNum">     354 </span>            : 
+<span class="lineNum">     355 </span>            : struct _insn {
+<span class="lineNum">     356 </span>            :         char *instruction;      // Nome dell'istruzione (es: &quot;mov&quot;)
+<span class="lineNum">     357 </span>            :         enum addr_method addr_method[3];        // Metodo di indirizzamento (Appendice A di IA-32 SDM)
+<span class="lineNum">     358 </span>            :         enum operand_type operand_type[3];      // Tipo corrispondete (sempre dall'appendice A)
+<span class="lineNum">     359 </span>            :         void (*esc_function)(struct disassembly_state *);       // Gestore dei byte addizionali dell'opcode
+<span class="lineNum">     360 </span>            :         unsigned long flags;    // Flag contenente info utili sull'istruzione (così come definiti in &quot;instruction.h&quot;)
+<span class="lineNum">     361 </span>            : };
+<span class="lineNum">     362 </span>            : 
+<span class="lineNum">     363 </span><span class="lineNoCov">          0 : typedef struct _insn insn, *insn_table;</span>
+<span class="lineNum">     364 </span>            : 
+<span class="lineNum">     365 </span><span class="lineNoCov">          0 : extern void x86_disassemble_instruction(unsigned char *text, unsigned long *pos, insn_info_x86 * instrument, char flags);</span>
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.12</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>

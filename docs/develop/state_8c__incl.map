@@ -1,0 +1,30 @@
+<map id="src/mm/state.c" name="src/mm/state.c">
+<area shape="rect" id="node5" href="$core_8h.html" title="Core ROOT&#45;Sim functionalities. " alt="" coords="665,557,759,584"/>
+<area shape="rect" id="node19" href="$init_8h.html" title="Initialization routines. " alt="" coords="1111,80,1196,107"/>
+<area shape="rect" id="node20" href="$statistics_8h.html" title="Statistics module. " alt="" coords="1052,155,1204,181"/>
+<area shape="rect" id="node21" href="$process_8h.html" title="LP control blocks. " alt="" coords="870,229,1021,256"/>
+<area shape="rect" id="node22" href="$state_8h.html" title="LP state management. " alt="" coords="1190,319,1287,345"/>
+<area shape="rect" id="node31" href="$mm_8h.html" title="Memory Manager main header. " alt="" coords="176,483,267,509"/>
+<area shape="rect" id="node34" href="$list_8h.html" title="Generic Lists. " alt="" coords="1421,557,1541,584"/>
+<area shape="rect" id="node40" href="$communication_8h.html" title="Communication Routines. " alt="" coords="143,319,379,345"/>
+<area shape="rect" id="node43" href="$timer_8h.html" title="Timers. " alt="" coords="1723,80,1821,107"/>
+<area shape="rect" id="node46" href="$ccgs_8h.html" title="Consistent and Committed Global State. " alt="" coords="1279,229,1366,256"/>
+<area shape="rect" id="node47" href="$scheduler_8h.html" title="The ROOT&#45;Sim scheduler main module header. " alt="" coords="665,80,826,107"/>
+<area shape="rect" id="node6" href="$ROOT-Sim_8h.html" title="ROOT&#45;Sim header for model development. " alt="" coords="1117,632,1216,659"/>
+<area shape="rect" id="node14" href="$thread_8h.html" title="Generic thread management facilities. " alt="" coords="481,632,589,659"/>
+<area shape="rect" id="node15" href="$atomic_8h.html" title="Atomic operations. " alt="" coords="671,707,782,733"/>
+<area shape="rect" id="node23" href="$numerical_8h.html" title="Numerical Library. " alt="" coords="1331,408,1445,435"/>
+<area shape="rect" id="node24" href="$abm__layer_8h_source.html" title="lib/abm_layer.h" alt="" coords="905,408,1023,435"/>
+<area shape="rect" id="node25" href="$topology_8h_source.html" title="lib/topology.h" alt="" coords="1099,408,1205,435"/>
+<area shape="rect" id="node33" href="$ecs_8h.html" title="Event &amp; Cross State Synchornization. " alt="" coords="737,319,823,345"/>
+<area shape="rect" id="node36" href="$msgchannel_8h.html" title="A (M, 1) channel for messages. " alt="" coords="737,483,917,509"/>
+<area shape="rect" id="node37" href="$ult_8h.html" title="User&#45;Level Threads Headers. " alt="" coords="528,319,611,345"/>
+<area shape="rect" id="node41" href="$cross__state__manager_8h.html" title="Per&#45;thread page table. " alt="" coords="899,304,1064,360"/>
+<area shape="rect" id="node26" href="$jsmn__helper_8h_source.html" title="lib/jsmn_helper.h" alt="" coords="1315,483,1445,509"/>
+<area shape="rect" id="node29" href="$bitmap_8h.html" title="Bitmap data type. " alt="" coords="992,483,1139,509"/>
+<area shape="rect" id="node27" href="$jsmn_8h_source.html" title="lib/jsmn.h" alt="" coords="1315,557,1397,584"/>
+<area shape="rect" id="node38" href="$jmp_8h.html" title="Architecture&#45;independent ULT header. " alt="" coords="463,408,553,435"/>
+<area shape="rect" id="node39" href="$x86_2jmp_8h.html" title="x86 ULT support header " alt="" coords="443,483,560,509"/>
+<area shape="rect" id="node48" href="$queues_8h.html" title="Message queueing subsystem. " alt="" coords="605,155,737,181"/>
+<area shape="rect" id="node49" href="$stf_8h.html" title="O(n) scheduling algorithm. " alt="" coords="761,155,876,181"/>
+</map>

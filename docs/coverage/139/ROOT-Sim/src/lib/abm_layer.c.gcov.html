@@ -1,0 +1,725 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - doc-coverage.info - ROOT-Sim/src/lib/abm_layer.c</title>
+  <link rel="stylesheet" type="text/css" href="../../../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../../../index.html">top level</a> - <a href="index.html">ROOT-Sim/src/lib</a> - abm_layer.c</td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">doc-coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">14</td>
+            <td class="headerCovTableEntry">46</td>
+            <td class="headerCovTableEntryLo">30.4 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2020-03-30 23:29:41</td>
+            <td></td>
+          </tr>
+          <tr><td><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<span class="lineNum">       1 </span><span class="lineCov">          1 : /**</span>
+<span class="lineNum">       2 </span>            :  *                      Copyright (C) 2008-2018 HPDCS Group
+<span class="lineNum">       3 </span>            :  *                      http://www.dis.uniroma1.it/~hpdcs
+<span class="lineNum">       4 </span>            :  *
+<span class="lineNum">       5 </span>            :  *
+<span class="lineNum">       6 </span>            :  * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
+<span class="lineNum">       7 </span>            :  *
+<span class="lineNum">       8 </span>            :  * ROOT-Sim is free software; you can redistribute it and/or modify it under the
+<span class="lineNum">       9 </span>            :  * terms of the GNU General Public License as published by the Free Software
+<span class="lineNum">      10 </span>            :  * Foundation; only version 3 of the License applies.
+<span class="lineNum">      11 </span>            :  *
+<span class="lineNum">      12 </span>            :  * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
+<span class="lineNum">      13 </span>            :  * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+<span class="lineNum">      14 </span>            :  * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+<span class="lineNum">      15 </span>            :  *
+<span class="lineNum">      16 </span>            :  * You should have received a copy of the GNU General Public License along with
+<span class="lineNum">      17 </span>            :  * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
+<span class="lineNum">      18 </span>            :  * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+<span class="lineNum">      19 </span>            :  *
+<span class="lineNum">      20 </span>            :  * @file abm_layer.c
+<span class="lineNum">      21 </span>            :  * @brief This file contains the implementation of the
+<span class="lineNum">      22 </span>            :  *        the agent based modeling interface offered by ROOT-Sim
+<span class="lineNum">      23 </span>            :  * @author Andrea Piccione
+<span class="lineNum">      24 </span>            :  * @date 16/06/2018
+<span class="lineNum">      25 </span>            :  */
+<span class="lineNum">      26 </span>            : 
+<span class="lineNum">      27 </span>            : #include &lt;ROOT-Sim.h&gt;
+<span class="lineNum">      28 </span>            : #include &lt;lib/abm_layer.h&gt;
+<span class="lineNum">      29 </span>            : 
+<span class="lineNum">      30 </span>            : #include &lt;core/init.h&gt;
+<span class="lineNum">      31 </span>            : #include &lt;scheduler/scheduler.h&gt;
+<span class="lineNum">      32 </span>            : #include &lt;lib/topology.h&gt;
+<span class="lineNum">      33 </span>            : #include &lt;datatypes/array.h&gt;
+<span class="lineNum">      34 </span>            : #include &lt;datatypes/hash_map.h&gt;
+<span class="lineNum">      35 </span>            : 
+<span class="lineNum">      36 </span><span class="lineNoCov">          0 : #define ACTION_START INIT</span>
+<span class="lineNum">      37 </span>            : 
+<span class="lineNum">      38 </span><span class="lineNoCov">          0 : #define retrieve_agent(agent_id) ({ \</span>
+<span class="lineNum">      39 </span>            :         struct _agent_abm_t *__ret = hash_map_lookup(current-&gt;region-&gt;agents_table, agent_id); \
+<span class="lineNum">      40 </span>            :         if(unlikely(!__ret)) \
+<span class="lineNum">      41 </span>            :                 rootsim_error(true, &quot;Looking for non existing agent id!&quot;); \
+<span class="lineNum">      42 </span>            :         assert(agent_id == __ret-&gt;key); \
+<span class="lineNum">      43 </span>            :         __ret; \
+<span class="lineNum">      44 </span>            : })
+<span class="lineNum">      45 </span>            : 
+<span class="lineNum">      46 </span><span class="lineNoCov">          0 : struct _visit_abm_t{</span>
+<span class="lineNum">      47 </span><span class="lineNoCov">          0 :         unsigned region;</span>
+<span class="lineNum">      48 </span><span class="lineNoCov">          0 :         unsigned action;</span>
+<span class="lineNum">      49 </span><span class="lineNoCov">          0 :         simtime_t time;</span>
+<span class="lineNum">      50 </span>            : };
+<span class="lineNum">      51 </span>            : 
+<span class="lineNum">      52 </span><span class="lineNoCov">          0 : struct _agent_abm_t {</span>
+<span class="lineNum">      53 </span><span class="lineNoCov">          0 :         unsigned long long key;         //! UUID that uniquely identifies the agent (this must be the first field of the struct for various reasons)</span>
+<span class="lineNum">      54 </span><span class="lineCov">          1 :         unsigned user_data_size;        //! This must be the seonc filed of this struct for serialization reasons</span>
+<span class="lineNum">      55 </span><span class="lineCov">          1 :         char *user_data;</span>
+<span class="lineNum">      56 </span><span class="lineNoCov">          0 :         simtime_t leave_time;</span>
+<span class="lineNum">      57 </span>            :         rootsim_array(struct _visit_abm_t) future;
+<span class="lineNum">      58 </span>            :         rootsim_array(struct _visit_abm_t) past;
+<span class="lineNum">      59 </span>            : };
+<span class="lineNum">      60 </span>            : 
+<span class="lineNum">      61 </span><span class="lineNoCov">          0 : struct _region_abm_t {</span>
+<span class="lineNum">      62 </span><span class="lineNoCov">          0 :         rootsim_hash_map(struct _agent_abm_t) agents_table;</span>
+<span class="lineNum">      63 </span>            :         unsigned long long next_mark;
+<span class="lineNum">      64 </span>            :         unsigned published_data_offset;
+<span class="lineNum">      65 </span>            :         unsigned char *tracked_data;
+<span class="lineNum">      66 </span>            :         unsigned chkp_size;
+<span class="lineNum">      67 </span>            :         struct _n_info_t{
+<span class="lineNum">      68 </span>            :                 unsigned data_offset;
+<span class="lineNum">      69 </span>            :                 unsigned int src_lp;
+<span class="lineNum">      70 </span><span class="lineNoCov">          0 :         } neighbours_info[];</span>
+<span class="lineNum">      71 </span>            : };
+<span class="lineNum">      72 </span>            : 
+<span class="lineNum">      73 </span><span class="lineNoCov">          0 : struct _leave_evt{</span>
+<span class="lineNum">      74 </span><span class="lineNoCov">          0 :         unsigned long long key;</span>
+<span class="lineNum">      75 </span><span class="lineNoCov">          0 :         unsigned leave_code;</span>
+<span class="lineNum">      76 </span>            : };
+<span class="lineNum">      77 </span>            : 
+<span class="lineNum">      78 </span><span class="lineNoCov">          0 : static inline unsigned long long get_agent_mark(region_abm_t *region){</span>
+<span class="lineNum">      79 </span>            :         unsigned long long ret = region-&gt;next_mark;
+<span class="lineNum">      80 </span>            :         region-&gt;next_mark += RegionsCount();
+<span class="lineNum">      81 </span>            :         return ret;
+<span class="lineNum">      82 </span>            : }
+<span class="lineNum">      83 </span>            : 
+<span class="lineNum">      84 </span>            : 
+<span class="lineNum">      85 </span>            : /**
+<span class="lineNum">      86 </span>            : * Compute the size in bytes of an eventual agent serialization.
+<span class="lineNum">      87 </span>            : *
+<span class="lineNum">      88 </span>            : * @param agent A pointer to the agent
+<span class="lineNum">      89 </span>            : */
+<span class="lineNum">      90 </span><span class="lineCov">          1 : static unsigned agent_dump_size(const struct _agent_abm_t *agent) {</span>
+<span class="lineNum">      91 </span>            :         return (unsigned)(sizeof(agent-&gt;key) + sizeof(agent-&gt;user_data_size) + agent-&gt;user_data_size
+<span class="lineNum">      92 </span>            :                         + array_dump_size(agent-&gt;future) + abm_settings.keep_history * array_dump_size(agent-&gt;past));
+<span class="lineNum">      93 </span>            : }
+<span class="lineNum">      94 </span>            : 
+<span class="lineNum">      95 </span>            : 
+<span class="lineNum">      96 </span>            : /**
+<span class="lineNum">      97 </span>            : * Deserialize an agent from a buffer.
+<span class="lineNum">      98 </span>            : *
+<span class="lineNum">      99 </span>            : * @param event_content A pointer to the buffer containing the serialzied agent
+<span class="lineNum">     100 </span>            : * @param event_size The size in bytes of the buffer
+<span class="lineNum">     101 </span>            : * @return a newly instantiated agent struct, the deserialized agent
+<span class="lineNum">     102 </span>            : */
+<span class="lineNum">     103 </span><span class="lineCov">          1 : static struct _agent_abm_t* agent_from_buffer(const unsigned char* event_content, unsigned event_size){</span>
+<span class="lineNum">     104 </span>            :         // keep track of original pointer
+<span class="lineNum">     105 </span>            :         const unsigned char *buffer = event_content;
+<span class="lineNum">     106 </span>            :         // allocate the memory for the visiting agent
+<span class="lineNum">     107 </span>            :         struct _agent_abm_t *agent = hash_map_reserve_elem(current-&gt;region-&gt;agents_table, *((const unsigned long long *)event_content));
+<span class="lineNum">     108 </span>            :         agent-&gt;leave_time = -1.0;
+<span class="lineNum">     109 </span>            :         // copy uuid and user data size
+<span class="lineNum">     110 </span>            :         memcpy(agent, buffer, sizeof(agent-&gt;user_data_size) + sizeof(agent-&gt;key));
+<span class="lineNum">     111 </span>            :         buffer += sizeof(agent-&gt;user_data_size) + sizeof(agent-&gt;key);
+<span class="lineNum">     112 </span>            :         // copy user data
+<span class="lineNum">     113 </span>            :         agent-&gt;user_data = rsalloc(agent-&gt;user_data_size);
+<span class="lineNum">     114 </span>            :         memcpy(agent-&gt;user_data, buffer, agent-&gt;user_data_size);
+<span class="lineNum">     115 </span>            :         buffer += agent-&gt;user_data_size;
+<span class="lineNum">     116 </span>            :         // load the arrays
+<span class="lineNum">     117 </span>            :         array_load(agent-&gt;future, buffer);
+<span class="lineNum">     118 </span>            :         if(abm_settings.keep_history)
+<span class="lineNum">     119 </span>            :                 array_load(agent-&gt;past, buffer);
+<span class="lineNum">     120 </span>            :         else
+<span class="lineNum">     121 </span>            :                 memset(&amp;agent-&gt;past, 0, sizeof(agent-&gt;past));
+<span class="lineNum">     122 </span>            : 
+<span class="lineNum">     123 </span>            :         //sanity check
+<span class="lineNum">     124 </span>            :         assert(buffer == event_content + event_size);
+<span class="lineNum">     125 </span>            :         return agent;
+<span class="lineNum">     126 </span>            : }
+<span class="lineNum">     127 </span>            : 
+<span class="lineNum">     128 </span>            : 
+<span class="lineNum">     129 </span>            : /**
+<span class="lineNum">     130 </span>            : * Serialize an agent into a buffer, the buffer is caller supplied and its
+<span class="lineNum">     131 </span>            : * required size can be calculated with the function agent_dump_size.
+<span class="lineNum">     132 </span>            : *
+<span class="lineNum">     133 </span>            : * @param agent A pointer to the agent struct to be serialized
+<span class="lineNum">     134 </span>            : * @param buffer A pointer to the buffer to fill with the serialized agent
+<span class="lineNum">     135 </span>            : */
+<span class="lineNum">     136 </span><span class="lineCov">          1 : static void agent_to_buffer(struct _agent_abm_t *agent, unsigned char* buffer){</span>
+<span class="lineNum">     137 </span>            :         // we use buffer as a mobile pointer so we need to save the original value
+<span class="lineNum">     138 </span>            :         unsigned char *to_send = buffer;
+<span class="lineNum">     139 </span>            :         // copy relevant fields
+<span class="lineNum">     140 </span>            :         memcpy(buffer, agent, sizeof(agent-&gt;user_data_size) + sizeof(agent-&gt;key));
+<span class="lineNum">     141 </span>            :         buffer += sizeof(agent-&gt;user_data_size) + sizeof(agent-&gt;key);
+<span class="lineNum">     142 </span>            :         memcpy(buffer, agent-&gt;user_data, agent-&gt;user_data_size);
+<span class="lineNum">     143 </span>            :         buffer += agent-&gt;user_data_size;
+<span class="lineNum">     144 </span>            :         // dumping the arrays
+<span class="lineNum">     145 </span>            :         array_dump(agent-&gt;future, buffer);
+<span class="lineNum">     146 </span>            :         if(abm_settings.keep_history)
+<span class="lineNum">     147 </span>            :                 array_dump(agent-&gt;past, buffer);
+<span class="lineNum">     148 </span>            :         // sanity check
+<span class="lineNum">     149 </span>            :         assert(buffer == to_send +  agent_dump_size(agent));
+<span class="lineNum">     150 </span>            : }
+<span class="lineNum">     151 </span>            : 
+<span class="lineNum">     152 </span>            : 
+<span class="lineNum">     153 </span>            : /**
+<span class="lineNum">     154 </span>            : * Checkpoint the region state, saving it into a buffer.
+<span class="lineNum">     155 </span>            : * This is periodically called by the checkpointing module to save the region state.
+<span class="lineNum">     156 </span>            : * The returned buffer needs to be freed.
+<span class="lineNum">     157 </span>            : *
+<span class="lineNum">     158 </span>            : * @param region A pointer to the region struct to be checkpointed
+<span class="lineNum">     159 </span>            : * @return A malloc'ed buffer holding all the region data
+<span class="lineNum">     160 </span>            : */
+<span class="lineNum">     161 </span><span class="lineCov">          1 : unsigned char * abm_do_checkpoint(region_abm_t *region){</span>
+<span class="lineNum">     162 </span>            :         // calculate dump size
+<span class="lineNum">     163 </span>            :         size_t chkp_size_tot = region-&gt;chkp_size;
+<span class="lineNum">     164 </span>            :         chkp_size_tot += hash_map_dump_size(region-&gt;agents_table);
+<span class="lineNum">     165 </span>            :         struct _agent_abm_t *agent;
+<span class="lineNum">     166 </span>            :         unsigned i = hash_map_count(region-&gt;agents_table);
+<span class="lineNum">     167 </span>            :         while(i--){
+<span class="lineNum">     168 </span>            :                 agent = &amp;hash_map_items(region-&gt;agents_table)[i];
+<span class="lineNum">     169 </span>            :                 chkp_size_tot += array_dump_size(agent-&gt;future);
+<span class="lineNum">     170 </span>            :                 if(abm_settings.keep_history)
+<span class="lineNum">     171 </span>            :                         chkp_size_tot += array_dump_size(agent-&gt;past);
+<span class="lineNum">     172 </span>            :                 chkp_size_tot += agent-&gt;user_data_size;
+<span class="lineNum">     173 </span>            :         }
+<span class="lineNum">     174 </span>            :         // allocate and populate the checkpoint
+<span class="lineNum">     175 </span>            :         unsigned char *ret = rsalloc(chkp_size_tot), *chk = ret;
+<span class="lineNum">     176 </span>            :         memcpy(ret, region, region-&gt;chkp_size);
+<span class="lineNum">     177 </span>            :         ret += region-&gt;chkp_size;
+<span class="lineNum">     178 </span>            :         hash_map_dump(region-&gt;agents_table, ret);
+<span class="lineNum">     179 </span>            :         i = hash_map_count(region-&gt;agents_table);
+<span class="lineNum">     180 </span>            :         while(i--){
+<span class="lineNum">     181 </span>            :                 agent = &amp;hash_map_items(region-&gt;agents_table)[i];
+<span class="lineNum">     182 </span>            :                 array_dump(agent-&gt;future, ret);
+<span class="lineNum">     183 </span>            :                 if(abm_settings.keep_history)
+<span class="lineNum">     184 </span>            :                         array_dump(agent-&gt;past, ret);
+<span class="lineNum">     185 </span>            :                 memcpy(ret, agent-&gt;user_data, agent-&gt;user_data_size);
+<span class="lineNum">     186 </span>            :                 ret += agent-&gt;user_data_size;
+<span class="lineNum">     187 </span>            :         }
+<span class="lineNum">     188 </span>            :         assert(chk + chkp_size_tot == ret);
+<span class="lineNum">     189 </span>            :         return chk;
+<span class="lineNum">     190 </span>            : }
+<span class="lineNum">     191 </span>            : 
+<span class="lineNum">     192 </span>            : /**
+<span class="lineNum">     193 </span>            : * Restore a region struct from a previously checkpointed state.
+<span class="lineNum">     194 </span>            : *
+<span class="lineNum">     195 </span>            : * @param data A pointer to the region struct to be checkpointed
+<span class="lineNum">     196 </span>            : * @return A malloc'ed buffer holding all the region data
+<span class="lineNum">     197 </span>            : */
+<span class="lineNum">     198 </span><span class="lineCov">          1 : void abm_restore_checkpoint(unsigned char *data, region_abm_t *region){</span>
+<span class="lineNum">     199 </span>            :         struct _agent_abm_t *agent;
+<span class="lineNum">     200 </span>            : 
+<span class="lineNum">     201 </span>            :         assert(((region_abm_t *)data)-&gt;chkp_size == region-&gt;chkp_size);
+<span class="lineNum">     202 </span>            :         // free the region allocations
+<span class="lineNum">     203 </span>            :         unsigned i = hash_map_count(region-&gt;agents_table);
+<span class="lineNum">     204 </span>            :         while(i--){
+<span class="lineNum">     205 </span>            :                 agent = &amp;(hash_map_items(region-&gt;agents_table)[i]);
+<span class="lineNum">     206 </span>            :                 array_fini(agent-&gt;future);
+<span class="lineNum">     207 </span>            :                 if(abm_settings.keep_history)
+<span class="lineNum">     208 </span>            :                         array_fini(agent-&gt;past);
+<span class="lineNum">     209 </span>            :                 rsfree(agent-&gt;user_data);
+<span class="lineNum">     210 </span>            :         }
+<span class="lineNum">     211 </span>            :         hash_map_fini(region-&gt;agents_table);
+<span class="lineNum">     212 </span>            :         // copy the region back
+<span class="lineNum">     213 </span>            :         memcpy(region, data, region-&gt;chkp_size);
+<span class="lineNum">     214 </span>            :         data += region-&gt;chkp_size;
+<span class="lineNum">     215 </span>            :         //load the other allocations
+<span class="lineNum">     216 </span>            :         hash_map_load(region-&gt;agents_table, data);
+<span class="lineNum">     217 </span>            :         i = hash_map_count(region-&gt;agents_table);
+<span class="lineNum">     218 </span>            :         while(i--){
+<span class="lineNum">     219 </span>            :                 agent = &amp;(hash_map_items(region-&gt;agents_table)[i]);
+<span class="lineNum">     220 </span>            :                 array_load(agent-&gt;future, data);
+<span class="lineNum">     221 </span>            :                 if(abm_settings.keep_history)
+<span class="lineNum">     222 </span>            :                         array_load(agent-&gt;past, data);
+<span class="lineNum">     223 </span>            :                 agent-&gt;user_data = rsalloc(agent-&gt;user_data_size);
+<span class="lineNum">     224 </span>            :                 memcpy(agent-&gt;user_data, data, agent-&gt;user_data_size);
+<span class="lineNum">     225 </span>            :                 data += agent-&gt;user_data_size;
+<span class="lineNum">     226 </span>            :         }
+<span class="lineNum">     227 </span>            : }
+<span class="lineNum">     228 </span>            : 
+<span class="lineNum">     229 </span>            : 
+<span class="lineNum">     230 </span>            : /**
+<span class="lineNum">     231 </span>            : * Initializes the abm layer internals for all the lps hosted on the machine.
+<span class="lineNum">     232 </span>            : * This needs to be called before starting processing events, after basic
+<span class="lineNum">     233 </span>            : * initialization of the lps.
+<span class="lineNum">     234 </span>            : */
+<span class="lineNum">     235 </span><span class="lineCov">          1 : void abm_layer_init(void) {</span>
+<span class="lineNum">     236 </span>            : 
+<span class="lineNum">     237 </span>            :         unsigned actual_neighbours, i, region_alloc_size;
+<span class="lineNum">     238 </span>            :         unsigned data_offset;
+<span class="lineNum">     239 </span>            :         region_abm_t *region;
+<span class="lineNum">     240 </span>            : 
+<span class="lineNum">     241 </span>            :         // settings_abm is a weak symbol, we check for its existence
+<span class="lineNum">     242 </span>            :         if(!&amp;abm_settings){
+<span class="lineNum">     243 </span>            :                 return;
+<span class="lineNum">     244 </span>            :         }
+<span class="lineNum">     245 </span>            : 
+<span class="lineNum">     246 </span>            :         const unsigned directions = DirectionsCount();
+<span class="lineNum">     247 </span>            :         // the ABM API needs an underlying topology for meaningful operations!!!
+<span class="lineNum">     248 </span>            :         if(!directions){
+<span class="lineNum">     249 </span>            :                 rootsim_error(true, &quot;Topology has not been initialized!&quot;);
+<span class="lineNum">     250 </span>            :                 return;
+<span class="lineNum">     251 </span>            :         }
+<span class="lineNum">     252 </span>            : 
+<span class="lineNum">     253 </span>            :         foreach_lp(lp){
+<span class="lineNum">     254 </span>            :                 // we count valid neighbours
+<span class="lineNum">     255 </span>            :                 // todo: for constant topologies we can do better than this, we can just select not crossable regions
+<span class="lineNum">     256 </span>            :                 actual_neighbours = NeighboursCount(lp-&gt;gid.to_int);
+<span class="lineNum">     257 </span>            : 
+<span class="lineNum">     258 </span>            :                 region_alloc_size = (unsigned)(sizeof(region_abm_t) + (sizeof(struct _n_info_t) * directions) + (abm_settings.neighbour_data_size * (actual_neighbours + 1)));
+<span class="lineNum">     259 </span>            :                 // instantiates region struct
+<span class="lineNum">     260 </span>            :                 region = rsalloc(region_alloc_size);
+<span class="lineNum">     261 </span>            :                 memset(region, 0, region_alloc_size);
+<span class="lineNum">     262 </span>            :                 // memory layout is as follows:
+<span class="lineNum">     263 </span>            :                 // BASE REGION STRUCT | ARRAY OF NEIGHBOUR INFOS | PUBLISHED DATA BY SELF | ARRAY OF PUBLISHED DATA BY OTHER REGIONS
+<span class="lineNum">     264 </span>            :                 region-&gt;chkp_size = region_alloc_size;
+<span class="lineNum">     265 </span>            :                 // helper offset variable for easier assignment of memory regions
+<span class="lineNum">     266 </span>            :                 data_offset = (unsigned)(sizeof(region_abm_t) + (sizeof(struct _n_info_t) * directions));
+<span class="lineNum">     267 </span>            :                 // the nearest block is used to keep track of published data
+<span class="lineNum">     268 </span>            :                 region-&gt;published_data_offset = data_offset;
+<span class="lineNum">     269 </span>            :                 // here we assign a memory region only to valid neighbours
+<span class="lineNum">     270 </span>            :                 for(i = 0; i &lt; directions; ++i){
+<span class="lineNum">     271 </span>            :                         if((region-&gt;neighbours_info[i].src_lp = GetReceiver(lp-&gt;gid.to_int, i, false)) == DIRECTION_INVALID){
+<span class="lineNum">     272 </span>            :                                 region-&gt;neighbours_info[i].data_offset = UINT_MAX;
+<span class="lineNum">     273 </span>            :                         }else{
+<span class="lineNum">     274 </span>            :                                 data_offset += abm_settings.neighbour_data_size;
+<span class="lineNum">     275 </span>            :                                 region-&gt;neighbours_info[i].data_offset = data_offset;
+<span class="lineNum">     276 </span>            :                         }
+<span class="lineNum">     277 </span>            :                 }
+<span class="lineNum">     278 </span>            :                 // default
+<span class="lineNum">     279 </span>            :                 region-&gt;tracked_data = NULL;
+<span class="lineNum">     280 </span>            : 
+<span class="lineNum">     281 </span>            :                 // initialize the hash_map for agents
+<span class="lineNum">     282 </span>            :                 hash_map_init(region-&gt;agents_table);
+<span class="lineNum">     283 </span>            :                 // initialize mark
+<span class="lineNum">     284 </span>            :                 region-&gt;next_mark = lp-&gt;gid.to_int;
+<span class="lineNum">     285 </span>            :                 // Save pointer in LP state
+<span class="lineNum">     286 </span>            :                 lp-&gt;region = region;
+<span class="lineNum">     287 </span>            :         }
+<span class="lineNum">     288 </span>            : }
+<span class="lineNum">     289 </span>            : 
+<span class="lineNum">     290 </span><span class="lineCov">          1 : static void receive_update(void);</span>
+<span class="lineNum">     291 </span><span class="lineCov">          1 : static void update_neighbours(void);</span>
+<span class="lineNum">     292 </span>            : 
+<span class="lineNum">     293 </span>            : /**
+<span class="lineNum">     294 </span>            : * Handle a visit to a region. This is called by the abm layer when a visit message is received.
+<span class="lineNum">     295 </span>            : * We expect the event to have the serialized visiting agent as payload.
+<span class="lineNum">     296 </span>            : */
+<span class="lineNum">     297 </span><span class="lineCov">          1 : static void on_abm_visit(void){</span>
+<span class="lineNum">     298 </span>            :         struct _visit_abm_t vis;
+<span class="lineNum">     299 </span>            :         // parse the entering agent
+<span class="lineNum">     300 </span>            :         struct _agent_abm_t *agent = agent_from_buffer(current_evt-&gt;event_content, current_evt-&gt;size);
+<span class="lineNum">     301 </span>            : 
+<span class="lineNum">     302 </span>            :         if(array_empty(agent-&gt;future) || array_get_at(agent-&gt;future, 0).region != current-&gt;gid.to_int){
+<span class="lineNum">     303 </span>            :                 // this is an intermediate objective to reach the next destination
+<span class="lineNum">     304 </span>            :                 vis.action = abm_settings.traverse_handler;
+<span class="lineNum">     305 </span>            :                 vis.region = current-&gt;gid.to_int;
+<span class="lineNum">     306 </span>            :         } else {
+<span class="lineNum">     307 </span>            :                 vis = array_remove_at(agent-&gt;future, 0);
+<span class="lineNum">     308 </span>            :         }
+<span class="lineNum">     309 </span>            :         if(abm_settings.keep_history){
+<span class="lineNum">     310 </span>            :                 vis.time = current_evt-&gt;timestamp;
+<span class="lineNum">     311 </span>            :                 // move the visit into the past ones
+<span class="lineNum">     312 </span>            :                 array_push(agent-&gt;past, vis);
+<span class="lineNum">     313 </span>            :         }
+<span class="lineNum">     314 </span>            : 
+<span class="lineNum">     315 </span>            :         // seems all ok: user, do whatever you want now (passing current_evt-&gt;content works as long as the first
+<span class="lineNum">     316 </span>            :         // field of the agent struct is the agent key
+<span class="lineNum">     317 </span>            :         switch_to_application_mode();
+<span class="lineNum">     318 </span>            :         current-&gt;ProcessEvent(current-&gt;gid.to_int, current_evt-&gt;timestamp, vis.action, current_evt-&gt;event_content, sizeof(agent-&gt;key), current-&gt;current_base_pointer);
+<span class="lineNum">     319 </span>            :         switch_to_platform_mode();
+<span class="lineNum">     320 </span>            : }
+<span class="lineNum">     321 </span>            : 
+<span class="lineNum">     322 </span>            : /**
+<span class="lineNum">     323 </span>            : * Handle an agent departure. This is called by the abm layer when a leave message is received.
+<span class="lineNum">     324 </span>            : * We expect the event to have the the agent key as payload.
+<span class="lineNum">     325 </span>            : */
+<span class="lineNum">     326 </span><span class="lineCov">          1 : static void on_abm_leave(void){</span>
+<span class="lineNum">     327 </span>            :         struct _visit_abm_t vis;
+<span class="lineNum">     328 </span>            :         unsigned char* to_send;
+<span class="lineNum">     329 </span>            :         unsigned buffer_size;
+<span class="lineNum">     330 </span>            :         // we search for the agent who's leaving
+<span class="lineNum">     331 </span>            :         assert(current_evt-&gt;size == sizeof(struct _leave_evt));
+<span class="lineNum">     332 </span>            :         struct _agent_abm_t *agent = hash_map_lookup(current-&gt;region-&gt;agents_table, ((struct _leave_evt *)current_evt-&gt;event_content)-&gt;key);
+<span class="lineNum">     333 </span>            :         if(!agent || agent-&gt;leave_time &gt; current_evt-&gt;timestamp) {
+<span class="lineNum">     334 </span>            :                 // the exiting agent has been killed or already left or the agent is trying to leave too early (can happen if user decides so)
+<span class="lineNum">     335 </span>            :                 return; // since this is spurious we can directly return
+<span class="lineNum">     336 </span>            :         }
+<span class="lineNum">     337 </span>            : 
+<span class="lineNum">     338 </span>            :         // seems all ok: user, do whatever you want now
+<span class="lineNum">     339 </span>            :         switch_to_application_mode();
+<span class="lineNum">     340 </span>            :         current-&gt;ProcessEvent(current-&gt;gid.to_int, current_evt-&gt;timestamp, ((struct _leave_evt *)current_evt-&gt;event_content)-&gt;leave_code, current_evt-&gt;event_content, sizeof(agent-&gt;key), current-&gt;current_base_pointer);
+<span class="lineNum">     341 </span>            :         switch_to_platform_mode();
+<span class="lineNum">     342 </span>            :         // we search again for the agent who's leaving (the user could have possibly killed him)
+<span class="lineNum">     343 </span>            :         agent = hash_map_lookup(current-&gt;region-&gt;agents_table, ((struct _leave_evt *)current_evt-&gt;event_content)-&gt;key);
+<span class="lineNum">     344 </span>            :         if(!agent || agent-&gt;leave_time &gt; current_evt-&gt;timestamp){
+<span class="lineNum">     345 </span>            :                 // the capricious user has decided against the agent departure
+<span class="lineNum">     346 </span>            :                 return;
+<span class="lineNum">     347 </span>            :         }
+<span class="lineNum">     348 </span>            :         // well, the agent is actually leaving after all...
+<span class="lineNum">     349 </span>            :         unsigned next_hop = UINT_MAX;
+<span class="lineNum">     350 </span>            :         switch(topology_settings.type){
+<span class="lineNum">     351 </span>            :                 case TOPOLOGY_OBSTACLES:
+<span class="lineNum">     352 </span>            :                         // fixme: the user may want to use binary topologies with wandering agents
+<span class="lineNum">     353 </span>            :                 case TOPOLOGY_COSTS:
+<span class="lineNum">     354 </span>            :                         // if we have no set destination no point in selecting a next hop
+<span class="lineNum">     355 </span>            :                         if(!array_empty(agent-&gt;future)){
+<span class="lineNum">     356 </span>            :                                 if(array_peek(agent-&gt;future).region == current-&gt;gid.to_int){
+<span class="lineNum">     357 </span>            :                                         // we don't need to move
+<span class="lineNum">     358 </span>            :                                         next_hop = current-&gt;gid.to_int;
+<span class="lineNum">     359 </span>            :                                 }else{
+<span class="lineNum">     360 </span>            :                                         // we get one step closer to the next destination
+<span class="lineNum">     361 </span>            :                                         next_hop = FindReceiverToward(array_peek(agent-&gt;future).region);
+<span class="lineNum">     362 </span>            :                                 }
+<span class="lineNum">     363 </span>            :                         }
+<span class="lineNum">     364 </span>            :                         break;
+<span class="lineNum">     365 </span>            :                 case TOPOLOGY_PROBABILITIES:
+<span class="lineNum">     366 </span>            :                         // in topology probabilities the agents just wander
+<span class="lineNum">     367 </span>            :                         next_hop = FindReceiver();
+<span class="lineNum">     368 </span>            :                         break;
+<span class="lineNum">     369 </span>            :                 default:
+<span class="lineNum">     370 </span>            :                         rootsim_error(true, &quot;unsupported&quot;);
+<span class="lineNum">     371 </span>            :         }
+<span class="lineNum">     372 </span>            : 
+<span class="lineNum">     373 </span>            :         if(next_hop == UINT_MAX){
+<span class="lineNum">     374 </span>            :                 // TODO communicate the user about the failed leave, maybe call user's ProcessEvent()
+<span class="lineNum">     375 </span>            :                 // with a proper event type, this can happen legitimately (for example the agents is
+<span class="lineNum">     376 </span>            :                 // surrounded by obstacles regions)
+<span class="lineNum">     377 </span>            :                 return;
+<span class="lineNum">     378 </span>            :         }
+<span class="lineNum">     379 </span>            : 
+<span class="lineNum">     380 </span>            :         if(current-&gt;gid.to_int == next_hop) {
+<span class="lineNum">     381 </span>            :                 // if the next chosen destination is the very same region we are already in
+<span class="lineNum">     382 </span>            :                 // we simply call ProcessEvent() again
+<span class="lineNum">     383 </span>            :                 if(array_empty(agent-&gt;future) || array_peek(agent-&gt;future).region != current-&gt;gid.to_int){
+<span class="lineNum">     384 </span>            :                         vis.region = current-&gt;gid.to_int;
+<span class="lineNum">     385 </span>            :                         vis.action = abm_settings.traverse_handler;
+<span class="lineNum">     386 </span>            :                 }else{
+<span class="lineNum">     387 </span>            :                         // we remove the current visit
+<span class="lineNum">     388 </span>            :                         vis = array_remove_at(agent-&gt;future, 0);
+<span class="lineNum">     389 </span>            :                 }
+<span class="lineNum">     390 </span>            :                 if(abm_settings.keep_history){
+<span class="lineNum">     391 </span>            :                         // set the visit time
+<span class="lineNum">     392 </span>            :                         vis.time = current_evt-&gt;timestamp;
+<span class="lineNum">     393 </span>            :                         // we move the visit into the past ones
+<span class="lineNum">     394 </span>            :                         array_push(agent-&gt;past, vis);
+<span class="lineNum">     395 </span>            :                 }
+<span class="lineNum">     396 </span>            :                 // seems all ok: user, do whatever you want now
+<span class="lineNum">     397 </span>            :                 switch_to_application_mode();
+<span class="lineNum">     398 </span>            :                 current-&gt;ProcessEvent(current-&gt;gid.to_int, current_evt-&gt;timestamp, vis.action, current_evt-&gt;event_content, sizeof(agent-&gt;key), current-&gt;current_base_pointer);
+<span class="lineNum">     399 </span>            :                 switch_to_platform_mode();
+<span class="lineNum">     400 </span>            :         } else {
+<span class="lineNum">     401 </span>            :                 buffer_size = agent_dump_size(agent);
+<span class="lineNum">     402 </span>            : 
+<span class="lineNum">     403 </span>            :                 to_send = rsalloc(buffer_size);
+<span class="lineNum">     404 </span>            : 
+<span class="lineNum">     405 </span>            :                 agent_to_buffer(agent, to_send);
+<span class="lineNum">     406 </span>            :                 // finally we schedule the agent
+<span class="lineNum">     407 </span>            :                 UncheckedScheduleNewEvent(next_hop, current_evt-&gt;timestamp, ABM_VISITING, to_send, buffer_size);
+<span class="lineNum">     408 </span>            :                 // now we can get rid of it
+<span class="lineNum">     409 </span>            :                 KillAgent(agent-&gt;key);
+<span class="lineNum">     410 </span>            :                 // remember to free that stuff if we mallocated it!
+<span class="lineNum">     411 </span>            :                 rsfree(to_send);
+<span class="lineNum">     412 </span>            :         }
+<span class="lineNum">     413 </span>            : }
+<span class="lineNum">     414 </span>            : 
+<span class="lineNum">     415 </span>            : /**
+<span class="lineNum">     416 </span>            : * Handle an update receive. This updates the corresponding entry in the region struct, which will be used to
+<span class="lineNum">     417 </span>            : * serve fresh neighbour data to the user.
+<span class="lineNum">     418 </span>            : */
+<span class="lineNum">     419 </span>            : static void receive_update(void){
+<span class="lineNum">     420 </span>            :         //if(abm_settings.neighbour_data_size != current_evt-&gt;size)
+<span class="lineNum">     421 </span>            :                 //rootsim_error(true, &quot;Misuse of ABM api, regions do not agree on neighbours info size! EXITING!&quot;);
+<span class="lineNum">     422 </span>            : 
+<span class="lineNum">     423 </span>            :         region_abm_t *region = current-&gt;region;
+<span class="lineNum">     424 </span>            :         unsigned i = DirectionsCount();
+<span class="lineNum">     425 </span>            :         while(i--){// FIXME linear search, maybe sort them at init for log search or sort by direction for constant indexing
+<span class="lineNum">     426 </span>            :                 if(region-&gt;neighbours_info[i].src_lp == current_evt-&gt;sender.to_int){
+<span class="lineNum">     427 </span>            :                         memcpy(((unsigned char *)region) + region-&gt;neighbours_info[i].data_offset, current_evt-&gt;event_content, abm_settings.neighbour_data_size);
+<span class="lineNum">     428 </span>            :                         return;
+<span class="lineNum">     429 </span>            :                 }
+<span class="lineNum">     430 </span>            :         }
+<span class="lineNum">     431 </span>            :         rootsim_error(true, &quot;Misuse of ABM api, unable to find neighbours info's memory area! EXITING!&quot;);
+<span class="lineNum">     432 </span>            : }
+<span class="lineNum">     433 </span>            : 
+<span class="lineNum">     434 </span>            : /**
+<span class="lineNum">     435 </span>            : * Keep updated the neighbours of changes in the tracked data. This is called after each event and boradcasts eventual
+<span class="lineNum">     436 </span>            : * changes to neighbours
+<span class="lineNum">     437 </span>            : */
+<span class="lineNum">     438 </span>            : static void update_neighbours(void){
+<span class="lineNum">     439 </span>            :         region_abm_t *region = current-&gt;region;
+<span class="lineNum">     440 </span>            :         unsigned char* published_data = ((unsigned char *)region) + region-&gt;published_data_offset;
+<span class="lineNum">     441 </span>            :         // we check whether we need to update our neighbours about some changes in the tracked data
+<span class="lineNum">     442 </span>            :         if(!region-&gt;tracked_data || !memcmp(published_data, region-&gt;tracked_data, abm_settings.neighbour_data_size))
+<span class="lineNum">     443 </span>            :                 return;
+<span class="lineNum">     444 </span>            : 
+<span class="lineNum">     445 </span>            :         // copy the new data into the tracked one
+<span class="lineNum">     446 </span>            :         memcpy(published_data, region-&gt;tracked_data, abm_settings.neighbour_data_size);
+<span class="lineNum">     447 </span>            : 
+<span class="lineNum">     448 </span>            :         // let's propagate the changes to other regions too
+<span class="lineNum">     449 </span>            :         unsigned i = DirectionsCount();
+<span class="lineNum">     450 </span>            :         while(i--){
+<span class="lineNum">     451 </span>            :                 if(region-&gt;neighbours_info[i].src_lp != DIRECTION_INVALID){
+<span class="lineNum">     452 </span>            :                         UncheckedScheduleNewEvent(region-&gt;neighbours_info[i].src_lp, current_evt-&gt;timestamp, ABM_UPDATE, published_data, abm_settings.neighbour_data_size);
+<span class="lineNum">     453 </span>            :                 }
+<span class="lineNum">     454 </span>            :         }
+<span class="lineNum">     455 </span>            : }
+<span class="lineNum">     456 </span>            : 
+<span class="lineNum">     457 </span>            : /**
+<span class="lineNum">     458 </span>            : * The event handler which gets called instead of the user supplied ProcessEvent() function when the abm_layer is in use.
+<span class="lineNum">     459 </span>            : * The unrecognized events get passed to ProcessEventTopology() since the abm layer is based on the topology APIs.
+<span class="lineNum">     460 </span>            : */
+<span class="lineNum">     461 </span><span class="lineCov">          1 : void ProcessEventABM(void) {</span>
+<span class="lineNum">     462 </span>            :         switch (current_evt-&gt;type) {
+<span class="lineNum">     463 </span>            : 
+<span class="lineNum">     464 </span>            :                 case ABM_VISITING:
+<span class="lineNum">     465 </span>            :                         on_abm_visit();
+<span class="lineNum">     466 </span>            :                         break;
+<span class="lineNum">     467 </span>            : 
+<span class="lineNum">     468 </span>            :                 case ABM_LEAVING:
+<span class="lineNum">     469 </span>            :                         on_abm_leave();
+<span class="lineNum">     470 </span>            :                         break;
+<span class="lineNum">     471 </span>            : 
+<span class="lineNum">     472 </span>            :                 case ABM_UPDATE:
+<span class="lineNum">     473 </span>            :                         receive_update();
+<span class="lineNum">     474 </span>            :                         // we didn't give control to the user, no need to check changes in the
+<span class="lineNum">     475 </span>            :                         // neighbours infos memory.
+<span class="lineNum">     476 </span>            :                         return;
+<span class="lineNum">     477 </span>            :                 default:
+<span class="lineNum">     478 </span>            :                         // uninteresting stuff, do as we don't exist
+<span class="lineNum">     479 </span>            :                         ProcessEventTopology();
+<span class="lineNum">     480 </span>            :                         break;
+<span class="lineNum">     481 </span>            : 
+<span class="lineNum">     482 </span>            :         }
+<span class="lineNum">     483 </span>            :         update_neighbours();
+<span class="lineNum">     484 </span>            : }
+<span class="lineNum">     485 </span>            : 
+<span class="lineNum">     486 </span><span class="lineNoCov">          0 : int GetNeighbourInfo(direction_t i, unsigned int *region_id, void **data_p){</span>
+<span class="lineNum">     487 </span>            :         region_abm_t *region = current-&gt;region;
+<span class="lineNum">     488 </span>            :         if(unlikely(i &gt;= DirectionsCount()))
+<span class="lineNum">     489 </span>            :                 rootsim_error(true, &quot;bad argument in abm call&quot;);
+<span class="lineNum">     490 </span>            : 
+<span class="lineNum">     491 </span>            :         if(region-&gt;neighbours_info[i].src_lp == DIRECTION_INVALID)
+<span class="lineNum">     492 </span>            :                 return -1;
+<span class="lineNum">     493 </span>            : 
+<span class="lineNum">     494 </span>            :         *region_id = region-&gt;neighbours_info[i].src_lp;
+<span class="lineNum">     495 </span>            :         *data_p = ((unsigned char *)region) + region-&gt;neighbours_info[i].data_offset;
+<span class="lineNum">     496 </span>            :         return 0;
+<span class="lineNum">     497 </span>            : }
+<span class="lineNum">     498 </span>            : 
+<span class="lineNum">     499 </span><span class="lineNoCov">          0 : void TrackNeighbourInfo(void *neighbour_data) {</span>
+<span class="lineNum">     500 </span>            :         current-&gt;region-&gt;tracked_data = neighbour_data;
+<span class="lineNum">     501 </span>            : }
+<span class="lineNum">     502 </span>            : 
+<span class="lineNum">     503 </span><span class="lineNoCov">          0 : bool IterAgents(agent_t *agent_p) {</span>
+<span class="lineNum">     504 </span>            :         switch_to_platform_mode();
+<span class="lineNum">     505 </span>            :         // fixme preemption breaks this
+<span class="lineNum">     506 </span>            :         static __thread map_size_t closure = 0;
+<span class="lineNum">     507 </span>            :         if(!agent_p || closure &gt;= hash_map_count(current-&gt;region-&gt;agents_table)) {
+<span class="lineNum">     508 </span>            :                 closure = 0;
+<span class="lineNum">     509 </span>            :                 return false;
+<span class="lineNum">     510 </span>            :         }
+<span class="lineNum">     511 </span>            :         *agent_p = hash_map_items(current-&gt;region-&gt;agents_table)[closure++].key;
+<span class="lineNum">     512 </span>            :         switch_to_application_mode();
+<span class="lineNum">     513 </span>            :         return true;
+<span class="lineNum">     514 </span>            : }
+<span class="lineNum">     515 </span>            : 
+<span class="lineNum">     516 </span><span class="lineNoCov">          0 : unsigned CountAgents(void) {</span>
+<span class="lineNum">     517 </span>            :         return hash_map_count(current-&gt;region-&gt;agents_table);
+<span class="lineNum">     518 </span>            : }
+<span class="lineNum">     519 </span>            : 
+<span class="lineNum">     520 </span><span class="lineNoCov">          0 : agent_t SpawnAgent(unsigned user_data_size) {</span>
+<span class="lineNum">     521 </span>            :         switch_to_platform_mode();
+<span class="lineNum">     522 </span>            : 
+<span class="lineNum">     523 </span>            :         unsigned long long new_key = get_agent_mark(current-&gt;region);
+<span class="lineNum">     524 </span>            :         // new agent
+<span class="lineNum">     525 </span>            :         struct _agent_abm_t *ret = hash_map_reserve_elem(current-&gt;region-&gt;agents_table, new_key);
+<span class="lineNum">     526 </span>            : 
+<span class="lineNum">     527 </span>            :         array_init(ret-&gt;future);
+<span class="lineNum">     528 </span>            : 
+<span class="lineNum">     529 </span>            :         ret-&gt;user_data_size = user_data_size;
+<span class="lineNum">     530 </span>            :         ret-&gt;user_data = rsalloc(user_data_size);
+<span class="lineNum">     531 </span>            :         ret-&gt;key = new_key;
+<span class="lineNum">     532 </span>            : 
+<span class="lineNum">     533 </span>            :         // we register the visit to THIS region
+<span class="lineNum">     534 </span>            :         if(abm_settings.keep_history){
+<span class="lineNum">     535 </span>            :                 array_init(ret-&gt;past);
+<span class="lineNum">     536 </span>            :                 struct _visit_abm_t start_visit = { current-&gt;gid.to_int, ACTION_START, current_evt-&gt;timestamp };
+<span class="lineNum">     537 </span>            :                 array_push(ret-&gt;past, start_visit);
+<span class="lineNum">     538 </span>            :         }else{
+<span class="lineNum">     539 </span>            :                 memset(&amp;ret-&gt;past, 0, sizeof(ret-&gt;past));
+<span class="lineNum">     540 </span>            :         }
+<span class="lineNum">     541 </span>            :         switch_to_application_mode();
+<span class="lineNum">     542 </span>            :         return ret-&gt;key;
+<span class="lineNum">     543 </span>            : }
+<span class="lineNum">     544 </span>            : 
+<span class="lineNum">     545 </span><span class="lineNoCov">          0 : void KillAgent(agent_t agent_id) {</span>
+<span class="lineNum">     546 </span>            :         switch_to_platform_mode();
+<span class="lineNum">     547 </span>            :         struct _agent_abm_t *agent = retrieve_agent(agent_id);
+<span class="lineNum">     548 </span>            : 
+<span class="lineNum">     549 </span>            :         array_fini(agent-&gt;future);
+<span class="lineNum">     550 </span>            :         if(abm_settings.keep_history)
+<span class="lineNum">     551 </span>            :                 array_fini(agent-&gt;past);
+<span class="lineNum">     552 </span>            :         rsfree(agent-&gt;user_data);
+<span class="lineNum">     553 </span>            : 
+<span class="lineNum">     554 </span>            :         hash_map_delete_elem(current-&gt;region-&gt;agents_table, agent);
+<span class="lineNum">     555 </span>            :         switch_to_application_mode();
+<span class="lineNum">     556 </span>            : }
+<span class="lineNum">     557 </span>            : 
+<span class="lineNum">     558 </span><span class="lineNoCov">          0 : void * DataAgent(agent_t agent_id, unsigned *data_size_p){</span>
+<span class="lineNum">     559 </span>            :         struct _agent_abm_t *agent = retrieve_agent(agent_id);
+<span class="lineNum">     560 </span>            :         if(data_size_p)
+<span class="lineNum">     561 </span>            :                 *data_size_p = agent-&gt;user_data_size;
+<span class="lineNum">     562 </span>            :         return agent-&gt;user_data;
+<span class="lineNum">     563 </span>            : }
+<span class="lineNum">     564 </span>            : 
+<span class="lineNum">     565 </span><span class="lineNoCov">          0 : void ScheduleNewLeaveEvent(simtime_t time, unsigned int event_type, agent_t agent_id) {</span>
+<span class="lineNum">     566 </span>            :         switch_to_platform_mode();
+<span class="lineNum">     567 </span>            : 
+<span class="lineNum">     568 </span>            :         struct _agent_abm_t *agent = retrieve_agent(agent_id);
+<span class="lineNum">     569 </span>            :         // we mark the agent with the intended leave time so we can later compare it
+<span class="lineNum">     570 </span>            :         // to check for spurious events
+<span class="lineNum">     571 </span>            :         agent-&gt;leave_time = time;
+<span class="lineNum">     572 </span>            : 
+<span class="lineNum">     573 </span>            :         struct _leave_evt leave_evt = {agent_id, event_type};
+<span class="lineNum">     574 </span>            : 
+<span class="lineNum">     575 </span>            :         UncheckedScheduleNewEvent(current-&gt;gid.to_int, agent-&gt;leave_time, ABM_LEAVING, &amp;leave_evt, sizeof(leave_evt));
+<span class="lineNum">     576 </span>            :         //array_push(current-&gt;region-&gt;agents_leaving, agent-&gt;key);
+<span class="lineNum">     577 </span>            : 
+<span class="lineNum">     578 </span>            :         switch_to_application_mode();
+<span class="lineNum">     579 </span>            : }
+<span class="lineNum">     580 </span>            : 
+<span class="lineNum">     581 </span><span class="lineNoCov">          0 : unsigned CountPastVisits(agent_t agent_id){</span>
+<span class="lineNum">     582 </span>            :         return array_count(retrieve_agent(agent_id)-&gt;past);
+<span class="lineNum">     583 </span>            : }
+<span class="lineNum">     584 </span>            : 
+<span class="lineNum">     585 </span><span class="lineNoCov">          0 : void GetPastVisit(agent_t agent_id, unsigned *region_p, unsigned *event_type_p, simtime_t *time_p, unsigned i){</span>
+<span class="lineNum">     586 </span>            :         switch_to_platform_mode();
+<span class="lineNum">     587 </span>            : 
+<span class="lineNum">     588 </span>            :         struct _agent_abm_t *agent = retrieve_agent(agent_id);
+<span class="lineNum">     589 </span>            :         if(unlikely(i &gt;= array_count(agent-&gt;past)))
+<span class="lineNum">     590 </span>            :                 rootsim_error(true, &quot;trying to access an out of bounds past visit from agent %llu&quot;, agent_id);
+<span class="lineNum">     591 </span>            :         // we count backward to map the nearest event in the past to index 0
+<span class="lineNum">     592 </span>            :         *region_p = array_get_at(agent-&gt;past, array_count(agent-&gt;past) - 1 - i).region;
+<span class="lineNum">     593 </span>            :         *event_type_p = array_get_at(agent-&gt;past, array_count(agent-&gt;past) - 1 - i).action;
+<span class="lineNum">     594 </span>            :         *time_p = array_get_at(agent-&gt;past, array_count(agent-&gt;past) - 1 - i).time;
+<span class="lineNum">     595 </span>            : 
+<span class="lineNum">     596 </span>            :         switch_to_application_mode();
+<span class="lineNum">     597 </span>            : }
+<span class="lineNum">     598 </span>            : 
+<span class="lineNum">     599 </span><span class="lineNoCov">          0 : unsigned CountVisits(agent_t agent_id){</span>
+<span class="lineNum">     600 </span>            :         return array_count(retrieve_agent(agent_id)-&gt;future);
+<span class="lineNum">     601 </span>            : }
+<span class="lineNum">     602 </span>            : 
+<span class="lineNum">     603 </span><span class="lineNoCov">          0 : void GetVisit(agent_t agent_id, unsigned *region_p, unsigned *event_type_p, unsigned i){</span>
+<span class="lineNum">     604 </span>            :         struct _agent_abm_t *agent = retrieve_agent(agent_id);
+<span class="lineNum">     605 </span>            :         if(unlikely(i &gt;= array_count(agent-&gt;future)))
+<span class="lineNum">     606 </span>            :                 rootsim_error(true, &quot;trying to access an out of bounds future visit from agent %llu&quot;, agent_id);
+<span class="lineNum">     607 </span>            : 
+<span class="lineNum">     608 </span>            :         *region_p = array_get_at(agent-&gt;future, i).region;
+<span class="lineNum">     609 </span>            :         *event_type_p = array_get_at(agent-&gt;future, i).action;
+<span class="lineNum">     610 </span>            : }
+<span class="lineNum">     611 </span>            : 
+<span class="lineNum">     612 </span><span class="lineNoCov">          0 : void SetVisit(agent_t agent_id, unsigned region, unsigned event_type, unsigned i){</span>
+<span class="lineNum">     613 </span>            :         struct _agent_abm_t *agent = retrieve_agent(agent_id);
+<span class="lineNum">     614 </span>            :         if(unlikely(i &gt;= array_count(agent-&gt;future) || event_type == ACTION_START || region &gt;= RegionsCount())) {
+<span class="lineNum">     615 </span>            :                 rootsim_error(true, &quot;bad argument in abm call for agent %llu&quot;, agent_id);
+<span class="lineNum">     616 </span>            :         }
+<span class="lineNum">     617 </span>            : 
+<span class="lineNum">     618 </span>            :         array_items(agent-&gt;future)[i].region = region;
+<span class="lineNum">     619 </span>            :         array_items(agent-&gt;future)[i].action = event_type;
+<span class="lineNum">     620 </span>            : }
+<span class="lineNum">     621 </span>            : 
+<span class="lineNum">     622 </span><span class="lineNoCov">          0 : void EnqueueVisit(agent_t agent_id, unsigned region, unsigned event_type){</span>
+<span class="lineNum">     623 </span>            :         struct _agent_abm_t *agent = retrieve_agent(agent_id);
+<span class="lineNum">     624 </span>            :         if(unlikely(event_type == ACTION_START || region &gt;= RegionsCount())) {
+<span class="lineNum">     625 </span>            :                 rootsim_error(true, &quot;bad argument in abm call for agent %llu&quot;, agent_id);
+<span class="lineNum">     626 </span>            :         }
+<span class="lineNum">     627 </span>            : 
+<span class="lineNum">     628 </span>            :         struct _visit_abm_t visit = {region, event_type, INFINITY};
+<span class="lineNum">     629 </span>            :         array_push(agent-&gt;future, visit);
+<span class="lineNum">     630 </span>            : }
+<span class="lineNum">     631 </span>            : 
+<span class="lineNum">     632 </span><span class="lineNoCov">          0 : void AddVisit(agent_t agent_id, unsigned region, unsigned event_type, unsigned i){</span>
+<span class="lineNum">     633 </span>            :         struct _agent_abm_t *agent = retrieve_agent(agent_id);
+<span class="lineNum">     634 </span>            :         if(unlikely(i &gt; array_count(agent-&gt;future) || event_type == ACTION_START || region &gt;= RegionsCount())) {
+<span class="lineNum">     635 </span>            :                 rootsim_error(true, &quot;bad argument in abm call for agent %llu&quot;, agent_id);
+<span class="lineNum">     636 </span>            :         }
+<span class="lineNum">     637 </span>            : 
+<span class="lineNum">     638 </span>            :         struct _visit_abm_t visit = {region, event_type, INFINITY};
+<span class="lineNum">     639 </span>            : 
+<span class="lineNum">     640 </span>            :         if(i == array_count(agent-&gt;future))
+<span class="lineNum">     641 </span>            :                 array_push(agent-&gt;future, visit);
+<span class="lineNum">     642 </span>            :         else
+<span class="lineNum">     643 </span>            :                 array_add_at(agent-&gt;future, i, visit);
+<span class="lineNum">     644 </span>            : }
+<span class="lineNum">     645 </span>            : 
+<span class="lineNum">     646 </span><span class="lineNoCov">          0 : void RemoveVisit(agent_t agent_id, unsigned i) {</span>
+<span class="lineNum">     647 </span>            :         struct _agent_abm_t *agent = retrieve_agent(agent_id);
+<span class="lineNum">     648 </span>            :         if(i &gt;= array_count(agent-&gt;future)) {
+<span class="lineNum">     649 </span>            :                 rootsim_error(true, &quot;bad argument in abm call for agent %llu&quot;, agent_id);
+<span class="lineNum">     650 </span>            :         }
+<span class="lineNum">     651 </span>            : 
+<span class="lineNum">     652 </span>            :         array_remove_at(agent-&gt;future, i);
+<span class="lineNum">     653 </span>            : }
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.12</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>

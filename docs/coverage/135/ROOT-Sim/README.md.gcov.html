@@ -1,0 +1,157 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - doc-coverage.info - ROOT-Sim/README.md</title>
+  <link rel="stylesheet" type="text/css" href="../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../index.html">top level</a> - <a href="index.html">ROOT-Sim</a> - README.md</td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">doc-coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">0</td>
+            <td class="headerCovTableEntry">1</td>
+            <td class="headerCovTableEntryLo">0.0 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2020-01-30 13:56:10</td>
+            <td></td>
+          </tr>
+          <tr><td><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<span class="lineNum">       1 </span><span class="lineNoCov">          0 : # The ROme OpTimistic Simulator (ROOT-Sim) 2.0.0</span>
+<span class="lineNum">       2 </span>            : 
+<span class="lineNum">       3 </span>            : [![Build Status](https://travis-ci.org/HPDCS/ROOT-Sim.svg?branch=master)](https://travis-ci.org/HPDCS/ROOT-Sim)
+<span class="lineNum">       4 </span>            : [![codecov.io](https://codecov.io/gh/HPDCS/ROOT-Sim/branch/master/graphs/badge.svg)](http://codecov.io/github/HPDCS/ROOT-Sim)
+<span class="lineNum">       5 </span>            : [![coverage](https://img.shields.io/endpoint?url=https%3A%2F%2Fhpdcs.github.io%2FROOT-Sim%2Fdocs%2Fcoverage%2Fmaster.json)](https://hpdcs.github.io/ROOT-Sim//documentation.html)
+<span class="lineNum">       6 </span>            : [![GitHub issues](https://img.shields.io/github/issues/HPDCS/ROOT-Sim)](https://github.com/HPDCS/ROOT-Sim/issues)
+<span class="lineNum">       7 </span>            : [![GitHub](https://img.shields.io/github/license/HPDCS/ROOT-Sim)](https://github.com/HPDCS/ROOT-Sim/blob/master/COPYING)
+<span class="lineNum">       8 </span>            : 
+<span class="lineNum">       9 </span>            : 
+<span class="lineNum">      10 </span>            : *Brought to you by the [High Performance and Dependable Computing Systems (HPDCS)](https://hpdcs.github.io/) Research Group*
+<span class="lineNum">      11 </span>            : 
+<span class="lineNum">      12 </span>            : ----------------------------------------------------------------------------------------
+<span class="lineNum">      13 </span>            : 
+<span class="lineNum">      14 </span>            : The ROme OpTimistic Simulator is an x86-64 Open Source, distributed multithreaded parallel
+<span class="lineNum">      15 </span>            : simulation library developed using C/POSIX technology. It transparently supports all the
+<span class="lineNum">      16 </span>            : mechanisms associated with parallelization and distribution of workload across the nodes
+<span class="lineNum">      17 </span>            : (e.g., mapping of simulation objects on different kernel instances) and
+<span class="lineNum">      18 </span>            : optimistic synchronization (e.g., state recoverability).    
+<span class="lineNum">      19 </span>            : Distributed simulations rely on MPI3. In particular, global synchronization across
+<span class="lineNum">      20 </span>            : the different nodes relies on asynchronous MPI primitives, for increased efficiency.
+<span class="lineNum">      21 </span>            : 
+<span class="lineNum">      22 </span>            : The programming model supported by ROOT-Sim allows the simulation model developer 
+<span class="lineNum">      23 </span>            : to use a simple application-callback function named `ProcessEvent()` as the event handler,
+<span class="lineNum">      24 </span>            : whose parameters determine which simulation object is currently taking control for
+<span class="lineNum">      25 </span>            : processing its next event, and where the state of this object is located in memory. 
+<span class="lineNum">      26 </span>            : An object is a data structure, whose state can be scattered on dynamically allocated
+<span class="lineNum">      27 </span>            : memory chunks, hence the memory address passed to the callback locates a top level
+<span class="lineNum">      28 </span>            : data structure implementing the object state-layout.
+<span class="lineNum">      29 </span>            : 
+<span class="lineNum">      30 </span>            : ROOT-Sim's development started as a research project late back in 1987, and is currently
+<span class="lineNum">      31 </span>            : maintained by the High Performance and Dependable Computing Systems group, a joint
+<span class="lineNum">      32 </span>            : research group between Sapienza, University of Rome and University of Rome &quot;Tor Vergata&quot;.
+<span class="lineNum">      33 </span>            : 
+<span class="lineNum">      34 </span>            : ## Installation Notes
+<span class="lineNum">      35 </span>            : 
+<span class="lineNum">      36 </span>            : ROOT-Sim uses autotools to provide an installation workflow which is
+<span class="lineNum">      37 </span>            : common for all supported platforms. This repository does not provide
+<span class="lineNum">      38 </span>            : already-generated installation scripts (while released tarballs do),
+<span class="lineNum">      39 </span>            : rather we provide the convenience `autogen.sh` script which should
+<span class="lineNum">      40 </span>            : build everything on the target machine. Using autotools, `autoconf`,
+<span class="lineNum">      41 </span>            : `automake` and `libtoolize` are required to let `autogen.sh` generate
+<span class="lineNum">      42 </span>            : the correct `configure` script.
+<span class="lineNum">      43 </span>            : 
+<span class="lineNum">      44 </span>            : Briefly, the shell commands `./configure; make; make install` should
+<span class="lineNum">      45 </span>            : configure, build, and install this package.
+<span class="lineNum">      46 </span>            : Also, you can also type `make uninstall` to remove the installed files.
+<span class="lineNum">      47 </span>            : 
+<span class="lineNum">      48 </span>            : By default, `make install` installs the package's commands under
+<span class="lineNum">      49 </span>            : `/usr/local/bin`, include files under `/usr/local/include`, etc.  You
+<span class="lineNum">      50 </span>            : can specify an installation prefix other than `/usr/local` by giving
+<span class="lineNum">      51 </span>            : `configure` the option `--prefix=PREFIX`, where `PREFIX` must be an
+<span class="lineNum">      52 </span>            : absolute path name.
+<span class="lineNum">      53 </span>            : 
+<span class="lineNum">      54 </span>            : ROOT-Sim uses many `gcc` extensions, so the currently supported
+<span class="lineNum">      55 </span>            : compiler is only `gcc`.
+<span class="lineNum">      56 </span>            : 
+<span class="lineNum">      57 </span>            : For full configuration notes, and a discussion on the subsystems
+<span class="lineNum">      58 </span>            : which this simulation library offers, please refer to the 
+<span class="lineNum">      59 </span>            : [wiki](https://github.com/HPDCS/ROOT-Sim/wiki).
+<span class="lineNum">      60 </span>            : 
+<span class="lineNum">      61 </span>            : 
+<span class="lineNum">      62 </span>            : ## Usage Notes
+<span class="lineNum">      63 </span>            : 
+<span class="lineNum">      64 </span>            : When running `make install`, the `rootsim-cc` compiler is added to the path.
+<span class="lineNum">      65 </span>            : 
+<span class="lineNum">      66 </span>            : To compile a simulaton model, simply `cd` into the project's directory
+<span class="lineNum">      67 </span>            : and type `rootsim-cc *.c -o model`. This will create the `model`
+<span class="lineNum">      68 </span>            : executable, which is the model code already linked with the ROOT-sim library.
+<span class="lineNum">      69 </span>            : `rootsim-cc` ultimately relies on `gcc`, so any flag supported by
+<span class="lineNum">      70 </span>            : `gcc` can be passed to `rootsim-cc`.
+<span class="lineNum">      71 </span>            : 
+<span class="lineNum">      72 </span>            : To test the correctness of the model, it can be run sequentially, typing    
+<span class="lineNum">      73 </span>            : `./model --sequential --lp &lt;number of required LPs&gt;`
+<span class="lineNum">      74 </span>            : This allows to spot errors in the implementation more easily.
+<span class="lineNum">      75 </span>            : 
+<span class="lineNum">      76 </span>            : Then, to run it in parallel, type    
+<span class="lineNum">      77 </span>            : `./model --wt &lt;number of desired threads&gt; --lp &lt;number of required LPs&gt;`
+<span class="lineNum">      78 </span>            : 
+<span class="lineNum">      79 </span>            : To run in a distributed environment, you can use standard MPI commands,
+<span class="lineNum">      80 </span>            : such as:    
+<span class="lineNum">      81 </span>            : `mpiexec -n 2 --hostfile hosts --map-by node ./model --wt 2 --lp 16`
+<span class="lineNum">      82 </span>            : 
+<span class="lineNum">      83 </span>            : This command runs the simulation model on two nodes (`-n 2`) specified in the
+<span class="lineNum">      84 </span>            : `hosts` file. Each node uses two concurrent threads (`--wt 2`). The simulation
+<span class="lineNum">      85 </span>            : involves 16 total Logical Processes (`--lp 16`).
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.12</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>

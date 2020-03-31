@@ -1,0 +1,12 @@
+<map id="src/communication/mpi.h" name="src/communication/mpi.h">
+<area shape="rect" id="node2" href="$communication_8c.html" title="Communication Routines. " alt="" coords="5,81,264,108"/>
+<area shape="rect" id="node3" href="$communication_2gvt_8c.html" title="Distributed GVT Support module. " alt="" coords="288,81,467,108"/>
+<area shape="rect" id="node4" href="$mpi_8c.html" title="MPI Support Module. " alt="" coords="426,156,609,182"/>
+<area shape="rect" id="node5" href="$wnd_8c.html" title="Message delivery support. " alt="" coords="660,156,844,182"/>
+<area shape="rect" id="node6" href="$wnd_8h.html" title="Message delivery support. " alt="" coords="542,81,727,108"/>
+<area shape="rect" id="node7" href="$init_8c.html" title="Initialization routines. " alt="" coords="803,81,909,108"/>
+<area shape="rect" id="node8" href="$ccgs_8c.html" title="Consistent and Committed Global State. " alt="" coords="933,81,1043,108"/>
+<area shape="rect" id="node9" href="$gvt_2gvt_8c.html" title="Global Virtual Time. " alt="" coords="1067,81,1167,108"/>
+<area shape="rect" id="node10" href="$main_8c.html" title="This module contains the entry point for the simulator, and some core functions. " alt="" coords="1192,81,1280,108"/>
+<area shape="rect" id="node11" href="$statistics_8c.html" title="Statistics module. " alt="" coords="1305,81,1479,108"/>
+</map>

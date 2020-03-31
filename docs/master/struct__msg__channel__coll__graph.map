@@ -1,0 +1,7 @@
+<map id="_msg_channel" name="_msg_channel">
+<area shape="rect" id="node2" href="$structspinlock__t.html" title="spinlock_t" alt="" coords="5,201,91,228"/>
+<area shape="rect" id="node3" href="$struct__msg__buff.html" title="_msg_buff" alt="" coords="115,201,203,228"/>
+<area shape="rect" id="node4" href="$struct__msg__t.html" title="Message Type definition. " alt="" coords="124,111,193,137"/>
+<area shape="rect" id="node5" href="$struct__gid__t.html" title="Definition of a GID. " alt="" coords="129,5,189,32"/>
+<area shape="rect" id="node6" href="$structatomic__t.html" title="atomic_t" alt="" coords="227,201,306,228"/>
+</map>

@@ -1,0 +1,545 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - doc-coverage.info - ROOT-Sim/src/lib/numerical.c</title>
+  <link rel="stylesheet" type="text/css" href="../../../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../../../index.html">top level</a> - <a href="index.html">ROOT-Sim/src/lib</a> - numerical.c</td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">doc-coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">11</td>
+            <td class="headerCovTableEntry">17</td>
+            <td class="headerCovTableEntryLo">64.7 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2020-01-30 13:56:10</td>
+            <td></td>
+          </tr>
+          <tr><td><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<span class="lineNum">       1 </span><span class="lineCov">          1 : /**</span>
+<span class="lineNum">       2 </span>            : * @file lib/numerical.c
+<span class="lineNum">       3 </span>            : *
+<span class="lineNum">       4 </span>            : * @brief Numerical Library
+<span class="lineNum">       5 </span>            : *
+<span class="lineNum">       6 </span>            : * Piece-Wise Deterministic Random Number Generators.
+<span class="lineNum">       7 </span>            : *
+<span class="lineNum">       8 </span>            : * @copyright
+<span class="lineNum">       9 </span>            : * Copyright (C) 2008-2019 HPDCS Group
+<span class="lineNum">      10 </span>            : * https://hpdcs.github.io
+<span class="lineNum">      11 </span>            : *
+<span class="lineNum">      12 </span>            : * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
+<span class="lineNum">      13 </span>            : *
+<span class="lineNum">      14 </span>            : * ROOT-Sim is free software; you can redistribute it and/or modify it under the
+<span class="lineNum">      15 </span>            : * terms of the GNU General Public License as published by the Free Software
+<span class="lineNum">      16 </span>            : * Foundation; only version 3 of the License applies.
+<span class="lineNum">      17 </span>            : *
+<span class="lineNum">      18 </span>            : * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
+<span class="lineNum">      19 </span>            : * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+<span class="lineNum">      20 </span>            : * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+<span class="lineNum">      21 </span>            : *
+<span class="lineNum">      22 </span>            : * You should have received a copy of the GNU General Public License along with
+<span class="lineNum">      23 </span>            : * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
+<span class="lineNum">      24 </span>            : * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+<span class="lineNum">      25 </span>            : *
+<span class="lineNum">      26 </span>            : * @author Alessandro Pellegrini
+<span class="lineNum">      27 </span>            : *
+<span class="lineNum">      28 </span>            : * @date March 16, 2011
+<span class="lineNum">      29 </span>            : */
+<span class="lineNum">      30 </span>            : 
+<span class="lineNum">      31 </span>            : #include &lt;stdlib.h&gt;
+<span class="lineNum">      32 </span>            : #include &lt;stdio.h&gt;
+<span class="lineNum">      33 </span>            : #include &lt;math.h&gt;
+<span class="lineNum">      34 </span>            : #include &lt;unistd.h&gt;
+<span class="lineNum">      35 </span>            : #include &lt;sys/stat.h&gt;
+<span class="lineNum">      36 </span>            : #include &lt;fcntl.h&gt;
+<span class="lineNum">      37 </span>            : 
+<span class="lineNum">      38 </span>            : #include &lt;ROOT-Sim.h&gt;
+<span class="lineNum">      39 </span>            : 
+<span class="lineNum">      40 </span>            : #include &lt;core/init.h&gt;
+<span class="lineNum">      41 </span>            : #include &lt;communication/communication.h&gt;
+<span class="lineNum">      42 </span>            : #include &lt;mm/mm.h&gt;
+<span class="lineNum">      43 </span>            : #include &lt;scheduler/process.h&gt;
+<span class="lineNum">      44 </span>            : #include &lt;scheduler/scheduler.h&gt;
+<span class="lineNum">      45 </span>            : #include &lt;statistics/statistics.h&gt; // To have _mkdir helper function
+<span class="lineNum">      46 </span>            : 
+<span class="lineNum">      47 </span>            : /**
+<span class="lineNum">      48 </span>            :  * Master seed to initialize local seeds of all LPs. This is
+<span class="lineNum">      49 </span>            :  * taken from the configuration file in ~/.rootsim if available,
+<span class="lineNum">      50 </span>            :  * or from /dev/urand the first time a ROOT-Sim model is run.
+<span class="lineNum">      51 </span>            :  */
+<span class="lineNum">      52 </span><span class="lineCov">          1 : static seed_type master_seed;</span>
+<span class="lineNum">      53 </span>            : 
+<span class="lineNum">      54 </span><span class="lineNoCov">          0 : static double do_random(void)</span>
+<span class="lineNum">      55 </span>            : {
+<span class="lineNum">      56 </span>            :         uint32_t *seed1;
+<span class="lineNum">      57 </span>            :         uint32_t *seed2;
+<span class="lineNum">      58 </span>            : 
+<span class="lineNum">      59 </span>            :         seed1 = (uint32_t *) &amp; (current-&gt;numerical.seed);
+<span class="lineNum">      60 </span>            :         seed2 =
+<span class="lineNum">      61 </span>            :             (uint32_t *) ((char *)&amp;(current-&gt;numerical.seed) +
+<span class="lineNum">      62 </span>            :                           (sizeof(uint32_t)));
+<span class="lineNum">      63 </span>            : 
+<span class="lineNum">      64 </span>            :         *seed1 = 36969u * (*seed1 &amp; 0xFFFFu) + (*seed1 &gt;&gt; 16u);
+<span class="lineNum">      65 </span>            :         *seed2 = 18000u * (*seed2 &amp; 0xFFFFu) + (*seed2 &gt;&gt; 16u);
+<span class="lineNum">      66 </span>            : 
+<span class="lineNum">      67 </span>            :         // The magic number below is 1/(2^32 + 2).
+<span class="lineNum">      68 </span>            :         // The result is strictly between 0 and 1.
+<span class="lineNum">      69 </span>            :         return (((*seed1 &lt;&lt; 16u) + (*seed1 &gt;&gt; 16u) + *seed2) +
+<span class="lineNum">      70 </span>            :                 1.0) * 2.328306435454494e-10;
+<span class="lineNum">      71 </span>            : 
+<span class="lineNum">      72 </span>            : }
+<span class="lineNum">      73 </span>            : 
+<span class="lineNum">      74 </span>            : /**
+<span class="lineNum">      75 </span>            : * This function returns a number in between (0,1), according to a Uniform Distribution.
+<span class="lineNum">      76 </span>            : * It is based on Multiply with Carry by George Marsaglia
+<span class="lineNum">      77 </span>            : *
+<span class="lineNum">      78 </span>            : * @return A random number, in between (0,1)
+<span class="lineNum">      79 </span>            : */
+<span class="lineNum">      80 </span><span class="lineCov">          1 : double Random(void)</span>
+<span class="lineNum">      81 </span>            : {
+<span class="lineNum">      82 </span>            :         double ret;
+<span class="lineNum">      83 </span>            :         switch_to_platform_mode();
+<span class="lineNum">      84 </span>            : 
+<span class="lineNum">      85 </span>            :         ret = do_random();
+<span class="lineNum">      86 </span>            : 
+<span class="lineNum">      87 </span>            :         switch_to_application_mode();
+<span class="lineNum">      88 </span>            :         return ret;
+<span class="lineNum">      89 </span>            : }
+<span class="lineNum">      90 </span>            : 
+<span class="lineNum">      91 </span><span class="lineNoCov">          0 : int RandomRange(int min, int max)</span>
+<span class="lineNum">      92 </span>            : {
+<span class="lineNum">      93 </span>            :         double ret;
+<span class="lineNum">      94 </span>            :         switch_to_platform_mode();
+<span class="lineNum">      95 </span>            : 
+<span class="lineNum">      96 </span>            :         ret = (int)floor(do_random() * (max - min + 1)) + min;
+<span class="lineNum">      97 </span>            : 
+<span class="lineNum">      98 </span>            :         switch_to_application_mode();
+<span class="lineNum">      99 </span>            :         return ret;
+<span class="lineNum">     100 </span>            : }
+<span class="lineNum">     101 </span>            : 
+<span class="lineNum">     102 </span><span class="lineNoCov">          0 : int RandomRangeNonUniform(int x, int min, int max)</span>
+<span class="lineNum">     103 </span>            : {
+<span class="lineNum">     104 </span>            :         double ret;
+<span class="lineNum">     105 </span>            :         switch_to_platform_mode();
+<span class="lineNum">     106 </span>            : 
+<span class="lineNum">     107 </span>            :         ret = (((RandomRange(0, x) | RandomRange(min, max))) % (max - min + 1)) + min;
+<span class="lineNum">     108 </span>            : 
+<span class="lineNum">     109 </span>            :         switch_to_application_mode();
+<span class="lineNum">     110 </span>            :         return ret;
+<span class="lineNum">     111 </span>            : }
+<span class="lineNum">     112 </span>            : 
+<span class="lineNum">     113 </span>            : /**
+<span class="lineNum">     114 </span>            : * This function returns a random number according to an Exponential distribution.
+<span class="lineNum">     115 </span>            : * The mean value of the distribution must be passed as the mean value.
+<span class="lineNum">     116 </span>            : *
+<span class="lineNum">     117 </span>            : * @param mean Mean value of the distribution
+<span class="lineNum">     118 </span>            : * @return A random number
+<span class="lineNum">     119 </span>            : */
+<span class="lineNum">     120 </span><span class="lineCov">          1 : double Expent(double mean)</span>
+<span class="lineNum">     121 </span>            : {
+<span class="lineNum">     122 </span>            :         double ret;
+<span class="lineNum">     123 </span>            :         switch_to_platform_mode();
+<span class="lineNum">     124 </span>            : 
+<span class="lineNum">     125 </span>            :         if (unlikely(mean &lt; 0)) {
+<span class="lineNum">     126 </span>            :                 rootsim_error(true,
+<span class="lineNum">     127 </span>            :                               &quot;Expent() has been passed a negative mean value\n&quot;);
+<span class="lineNum">     128 </span>            :         }
+<span class="lineNum">     129 </span>            : 
+<span class="lineNum">     130 </span>            :         ret = (-mean * log(1 - do_random()));
+<span class="lineNum">     131 </span>            : 
+<span class="lineNum">     132 </span>            :         switch_to_application_mode();
+<span class="lineNum">     133 </span>            :         return ret;
+<span class="lineNum">     134 </span>            : }
+<span class="lineNum">     135 </span>            : 
+<span class="lineNum">     136 </span>            : /**
+<span class="lineNum">     137 </span>            : * This function returns a number according to a Normal Distribution with mean 0
+<span class="lineNum">     138 </span>            : *
+<span class="lineNum">     139 </span>            : * @return A random number
+<span class="lineNum">     140 </span>            : */
+<span class="lineNum">     141 </span><span class="lineCov">          1 : double Normal(void)</span>
+<span class="lineNum">     142 </span>            : {
+<span class="lineNum">     143 </span>            :         double fac, rsq, v1, v2;
+<span class="lineNum">     144 </span>            :         bool *iset;
+<span class="lineNum">     145 </span>            :         double *gset;
+<span class="lineNum">     146 </span>            : 
+<span class="lineNum">     147 </span>            :         iset = &amp;current-&gt;numerical.iset;
+<span class="lineNum">     148 </span>            :         gset = &amp;current-&gt;numerical.gset;
+<span class="lineNum">     149 </span>            : 
+<span class="lineNum">     150 </span>            :         if (*iset == false) {
+<span class="lineNum">     151 </span>            :                 do {
+<span class="lineNum">     152 </span>            :                         v1 = 2.0 * Random() - 1.0;
+<span class="lineNum">     153 </span>            :                         v2 = 2.0 * Random() - 1.0;
+<span class="lineNum">     154 </span>            :                         rsq = v1 * v1 + v2 * v2;
+<span class="lineNum">     155 </span>            :                 } while (rsq &gt;= 1.0 || D_EQUAL_ZERO(rsq));
+<span class="lineNum">     156 </span>            : 
+<span class="lineNum">     157 </span>            :                 fac = sqrt(-2.0 * log(rsq) / rsq);
+<span class="lineNum">     158 </span>            : 
+<span class="lineNum">     159 </span>            :                 // Perform Box-Muller transformation to get two normal deviates. Return one
+<span class="lineNum">     160 </span>            :                 // and save the other for next time.
+<span class="lineNum">     161 </span>            :                 *gset = v1 * fac;
+<span class="lineNum">     162 </span>            :                 *iset = true;
+<span class="lineNum">     163 </span>            :                 return v2 * fac;
+<span class="lineNum">     164 </span>            :         } else {
+<span class="lineNum">     165 </span>            :                 // A deviate is already available
+<span class="lineNum">     166 </span>            :                 *iset = false;
+<span class="lineNum">     167 </span>            :                 return *gset;
+<span class="lineNum">     168 </span>            :         }
+<span class="lineNum">     169 </span>            : }
+<span class="lineNum">     170 </span>            : 
+<span class="lineNum">     171 </span>            : /**
+<span class="lineNum">     172 </span>            : * This function returns a number in according to a Gamma Distribution of Integer Order ia,
+<span class="lineNum">     173 </span>            : * a waiting time to the ia-th event in a Poisson process of unit mean.
+<span class="lineNum">     174 </span>            : *
+<span class="lineNum">     175 </span>            : * @author D. E. Knuth
+<span class="lineNum">     176 </span>            : * @param ia Integer Order of the Gamma Distribution
+<span class="lineNum">     177 </span>            : * @return A random number
+<span class="lineNum">     178 </span>            : */
+<span class="lineNum">     179 </span><span class="lineCov">          1 : double Gamma(int ia)</span>
+<span class="lineNum">     180 </span>            : {
+<span class="lineNum">     181 </span>            :         int j;
+<span class="lineNum">     182 </span>            :         double am, e, s, v1, v2, x, y;
+<span class="lineNum">     183 </span>            : 
+<span class="lineNum">     184 </span>            :         if (unlikely(ia &lt; 1)) {
+<span class="lineNum">     185 </span>            :                 rootsim_error(false,
+<span class="lineNum">     186 </span>            :                               &quot;Gamma distribution must have a ia value &gt;= 1. Defaulting to 1...&quot;);
+<span class="lineNum">     187 </span>            :                 ia = 1;
+<span class="lineNum">     188 </span>            :         }
+<span class="lineNum">     189 </span>            : 
+<span class="lineNum">     190 </span>            :         if (ia &lt; 6) {
+<span class="lineNum">     191 </span>            :                 // Use direct method, adding waiting times
+<span class="lineNum">     192 </span>            :                 x = 1.0;
+<span class="lineNum">     193 </span>            :                 for (j = 1; j &lt;= ia; j++)
+<span class="lineNum">     194 </span>            :                         x *= Random();
+<span class="lineNum">     195 </span>            :                 x = -log(x);
+<span class="lineNum">     196 </span>            :         } else {
+<span class="lineNum">     197 </span>            :                 // Use rejection method
+<span class="lineNum">     198 </span>            :                 do {
+<span class="lineNum">     199 </span>            :                         do {
+<span class="lineNum">     200 </span>            :                                 do {
+<span class="lineNum">     201 </span>            :                                         v1 = Random();
+<span class="lineNum">     202 </span>            :                                         v2 = 2.0 * Random() - 1.0;
+<span class="lineNum">     203 </span>            :                                 } while (v1 * v1 + v2 * v2 &gt; 1.0);
+<span class="lineNum">     204 </span>            : 
+<span class="lineNum">     205 </span>            :                                 y = v2 / v1;
+<span class="lineNum">     206 </span>            :                                 am = (double)(ia - 1);
+<span class="lineNum">     207 </span>            :                                 s = sqrt(2.0 * am + 1.0);
+<span class="lineNum">     208 </span>            :                                 x = s * y + am;
+<span class="lineNum">     209 </span>            :                         } while (x &lt; 0.0);
+<span class="lineNum">     210 </span>            : 
+<span class="lineNum">     211 </span>            :                         e = (1.0 + y * y) * exp(am * log(x / am) - s * y);
+<span class="lineNum">     212 </span>            :                 } while (Random() &gt; e);
+<span class="lineNum">     213 </span>            :         }
+<span class="lineNum">     214 </span>            : 
+<span class="lineNum">     215 </span>            :         return x;
+<span class="lineNum">     216 </span>            : }
+<span class="lineNum">     217 </span>            : 
+<span class="lineNum">     218 </span>            : /**
+<span class="lineNum">     219 </span>            : * This function returns the waiting time to the next event in a Poisson process of unit mean.
+<span class="lineNum">     220 </span>            : *
+<span class="lineNum">     221 </span>            : * @return A random number
+<span class="lineNum">     222 </span>            : */
+<span class="lineNum">     223 </span><span class="lineCov">          1 : double Poisson(void)</span>
+<span class="lineNum">     224 </span>            : {
+<span class="lineNum">     225 </span>            :         return Gamma(1);
+<span class="lineNum">     226 </span>            : }
+<span class="lineNum">     227 </span>            : 
+<span class="lineNum">     228 </span>            : /**
+<span class="lineNum">     229 </span>            : * This function returns a random sample from a Zipf distribution.
+<span class="lineNum">     230 </span>            : * Based on the rejection method by Luc Devroye for sampling:
+<span class="lineNum">     231 </span>            : * &quot;Non-Uniform Random Variate Generation, page 550, Springer-Verlag, 1986
+<span class="lineNum">     232 </span>            : *
+<span class="lineNum">     233 </span>            : * @param skew The skew of the distribution
+<span class="lineNum">     234 </span>            : * @param limit The largest sample to retrieve
+<span class="lineNum">     235 </span>            : * @return A random number
+<span class="lineNum">     236 </span>            : */
+<span class="lineNum">     237 </span><span class="lineCov">          1 : int Zipf(double skew, int limit)</span>
+<span class="lineNum">     238 </span>            : {
+<span class="lineNum">     239 </span>            :         double a = skew;
+<span class="lineNum">     240 </span>            :         double b = pow(2., a - 1.);
+<span class="lineNum">     241 </span>            :         double x, t, u, v;
+<span class="lineNum">     242 </span>            :         do {
+<span class="lineNum">     243 </span>            :                 u = Random();
+<span class="lineNum">     244 </span>            :                 v = Random();
+<span class="lineNum">     245 </span>            :                 x = floor(pow(u, -1. / a - 1.));
+<span class="lineNum">     246 </span>            :                 t = pow(1. + 1. / x, a - 1.);
+<span class="lineNum">     247 </span>            :         } while (v * x * (t - 1.) / (b - 1.) &gt; (t / b) || x &gt; limit);
+<span class="lineNum">     248 </span>            :         return (int)x;
+<span class="lineNum">     249 </span>            : }
+<span class="lineNum">     250 </span>            : 
+<span class="lineNum">     251 </span>            : /**
+<span class="lineNum">     252 </span>            : * MwC random number generators suffer from bad seeds. Since initial LPs' seeds are derived randomly
+<span class="lineNum">     253 </span>            : * from a random master seed, chances are that we incur in a bad seed. This would create a strong
+<span class="lineNum">     254 </span>            : * bias in the generation of random numbers for certain LPs.
+<span class="lineNum">     255 </span>            : * This function checks whether a randomly generated seed is a bad one, and switch to a different
+<span class="lineNum">     256 </span>            : * safe initial state.
+<span class="lineNum">     257 </span>            : * This generation is deterministic, therefore it is good for PWD executions of different simulations
+<span class="lineNum">     258 </span>            : * using the same initial master seed.
+<span class="lineNum">     259 </span>            : *
+<span class="lineNum">     260 </span>            : * @param cur_seed The current seed which has been generated and must be checked
+<span class="lineNum">     261 </span>            : * @return A sanitized seed
+<span class="lineNum">     262 </span>            : */
+<span class="lineNum">     263 </span><span class="lineCov">          1 : static seed_type sanitize_seed(seed_type cur_seed)</span>
+<span class="lineNum">     264 </span>            : {
+<span class="lineNum">     265 </span>            : 
+<span class="lineNum">     266 </span>            :         uint32_t *seed1 = (uint32_t *) &amp;(cur_seed);
+<span class="lineNum">     267 </span>            :         uint32_t *seed2 = (uint32_t *) ((char *)&amp;(cur_seed) + (sizeof(uint32_t)));
+<span class="lineNum">     268 </span>            : 
+<span class="lineNum">     269 </span>            :         // Sanitize seed1
+<span class="lineNum">     270 </span>            :         // Any integer multiple of 0x9068FFFF, including 0, is a bad state
+<span class="lineNum">     271 </span>            :         uint32_t state_orig;
+<span class="lineNum">     272 </span>            :         uint32_t temp;
+<span class="lineNum">     273 </span>            : 
+<span class="lineNum">     274 </span>            :         state_orig = *seed1;
+<span class="lineNum">     275 </span>            :         temp = state_orig;
+<span class="lineNum">     276 </span>            : 
+<span class="lineNum">     277 </span>            :         // The following is equivalent to % 0x9068FFFF, without using modulo
+<span class="lineNum">     278 </span>            :         // operation which may be expensive on embedded targets. For
+<span class="lineNum">     279 </span>            :         // uint32_t and this divisor, we only need 'if' rather than 'while'.
+<span class="lineNum">     280 </span>            :         if (temp &gt;= UINT32_C(0x9068FFFF))
+<span class="lineNum">     281 </span>            :                 temp -= UINT32_C(0x9068FFFF);
+<span class="lineNum">     282 </span>            :         if (temp == 0) {
+<span class="lineNum">     283 </span>            :                 // Any integer multiple of 0x9068FFFF, including 0, is a bad state.
+<span class="lineNum">     284 </span>            :                 // Use an alternate state value by inverting the original value.
+<span class="lineNum">     285 </span>            :                 temp = state_orig ^ UINT32_C(0xFFFFFFFF);
+<span class="lineNum">     286 </span>            :                 if (temp &gt;= UINT32_C(0x9068FFFF))
+<span class="lineNum">     287 </span>            :                         temp -= UINT32_C(0x9068FFFF);
+<span class="lineNum">     288 </span>            :         }
+<span class="lineNum">     289 </span>            :         *seed1 = temp;
+<span class="lineNum">     290 </span>            : 
+<span class="lineNum">     291 </span>            :         // Sanitize seed2
+<span class="lineNum">     292 </span>            :         // Any integer multiple of 0x464FFFFF, including 0, is a bad state.
+<span class="lineNum">     293 </span>            :         state_orig = *seed2;
+<span class="lineNum">     294 </span>            :         temp = state_orig;
+<span class="lineNum">     295 </span>            : 
+<span class="lineNum">     296 </span>            :         // The following is equivalent to % 0x464FFFFF, without using modulo
+<span class="lineNum">     297 </span>            :         // operation which may be expensive on some targets. For
+<span class="lineNum">     298 </span>            :         // uint32_t and this divisor, it may loop up to 3 times.
+<span class="lineNum">     299 </span>            :         while (temp &gt;= UINT32_C(0x464FFFFF))
+<span class="lineNum">     300 </span>            :                 temp -= UINT32_C(0x464FFFFF);
+<span class="lineNum">     301 </span>            :         if (temp == 0) {
+<span class="lineNum">     302 </span>            :                 // Any integer multiple of 0x464FFFFF, including 0, is a bad state.
+<span class="lineNum">     303 </span>            :                 // Use an alternate state value by inverting the original value.
+<span class="lineNum">     304 </span>            :                 temp = state_orig ^ UINT32_C(0xFFFFFFFF);
+<span class="lineNum">     305 </span>            :                 while (temp &gt;= UINT32_C(0x464FFFFF))
+<span class="lineNum">     306 </span>            :                         temp -= UINT32_C(0x464FFFFF);
+<span class="lineNum">     307 </span>            :         }
+<span class="lineNum">     308 </span>            : 
+<span class="lineNum">     309 </span>            :         *seed2 = temp;
+<span class="lineNum">     310 </span>            : 
+<span class="lineNum">     311 </span>            :         return cur_seed;
+<span class="lineNum">     312 </span>            : }
+<span class="lineNum">     313 </span>            : 
+<span class="lineNum">     314 </span>            : /**
+<span class="lineNum">     315 </span>            : * This function is used by ROOT-Sim to load the initial value of the seed.
+<span class="lineNum">     316 </span>            : *
+<span class="lineNum">     317 </span>            : * A configuration file is used to store the last master seed, amongst different
+<span class="lineNum">     318 </span>            : * invocations of the simulator. Using the first value stored in the file, a random
+<span class="lineNum">     319 </span>            : * number is generated, which is used as a row-offset in the file istelf, where a
+<span class="lineNum">     320 </span>            : * specified seed will be found.
+<span class="lineNum">     321 </span>            : * The first line is the replaced with the subsequent seed generated by the Random
+<span class="lineNum">     322 </span>            : * function.
+<span class="lineNum">     323 </span>            : *
+<span class="lineNum">     324 </span>            : * @return The master seed
+<span class="lineNum">     325 </span>            : */
+<span class="lineNum">     326 </span><span class="lineCov">          1 : static void load_seed(void)</span>
+<span class="lineNum">     327 </span>            : {
+<span class="lineNum">     328 </span>            : 
+<span class="lineNum">     329 </span>            :         static bool single_print = false; // To print only once a message about manual initialization
+<span class="lineNum">     330 </span>            :         seed_type new_seed;
+<span class="lineNum">     331 </span>            :         char conf_file[512];
+<span class="lineNum">     332 </span>            :         FILE *fp;
+<span class="lineNum">     333 </span>            : 
+<span class="lineNum">     334 </span>            :         // Get the path to the configuration file
+<span class="lineNum">     335 </span>            :         sprintf(conf_file, &quot;%s/.rootsim/numerical.conf&quot;, getenv(&quot;HOME&quot;));
+<span class="lineNum">     336 </span>            : 
+<span class="lineNum">     337 </span>            :         // Check if the file exists. If not, we have to create configuration
+<span class="lineNum">     338 </span>            :         if ((fp = fopen(conf_file, &quot;r+&quot;)) == NULL) {
+<span class="lineNum">     339 </span>            : 
+<span class="lineNum">     340 </span>            :                 // Try to build the path to the configuration folder.
+<span class="lineNum">     341 </span>            :                 sprintf(conf_file, &quot;%s/.rootsim&quot;, getenv(&quot;HOME&quot;));
+<span class="lineNum">     342 </span>            :                 _mkdir(conf_file);
+<span class="lineNum">     343 </span>            : 
+<span class="lineNum">     344 </span>            :                 // Create and initialize the file
+<span class="lineNum">     345 </span>            :                 sprintf(conf_file, &quot;%s/.rootsim/numerical.conf&quot;, getenv(&quot;HOME&quot;));
+<span class="lineNum">     346 </span>            :                 if ((fp = fopen(conf_file, &quot;w&quot;)) == NULL) {
+<span class="lineNum">     347 </span>            :                         rootsim_error(true, &quot;Unable to create the numerical library configuration file %s. Aborting...&quot;, conf_file);
+<span class="lineNum">     348 </span>            :                 }
+<span class="lineNum">     349 </span>            : 
+<span class="lineNum">     350 </span>            :                 // We now initialize the first long random number. Thanks Unix!
+<span class="lineNum">     351 </span>            :                 // TODO: THIS IS NOT PORTABLE!
+<span class="lineNum">     352 </span>            :                 int fd;
+<span class="lineNum">     353 </span>            :                 if ((fd = open(&quot;/dev/random&quot;, O_RDONLY)) == -1) {
+<span class="lineNum">     354 </span>            :                         rootsim_error(true, &quot;Unable to initialize the numerical library configuration file %s. Aborting...&quot;, conf_file);
+<span class="lineNum">     355 </span>            : 
+<span class="lineNum">     356 </span>            :                 }
+<span class="lineNum">     357 </span>            :                 read(fd, &amp;new_seed, sizeof(seed_type));
+<span class="lineNum">     358 </span>            :                 close(fd);
+<span class="lineNum">     359 </span>            :                 fprintf(fp, &quot;%llu\n&quot;, (unsigned long long)new_seed);  // We cast, so that we get an integer representing just a bit sequence
+<span class="lineNum">     360 </span>            :                 fclose(fp);
+<span class="lineNum">     361 </span>            : 
+<span class="lineNum">     362 </span>            :         }
+<span class="lineNum">     363 </span>            : 
+<span class="lineNum">     364 </span>            :         // Is seed manually specified?
+<span class="lineNum">     365 </span>            :         if (rootsim_config.set_seed &gt; 0) {
+<span class="lineNum">     366 </span>            : 
+<span class="lineNum">     367 </span>            :                 if (!single_print) {
+<span class="lineNum">     368 </span>            :                         single_print = true;
+<span class="lineNum">     369 </span>            :                         printf(&quot;Manually setting master seed to %llu\n&quot;, (unsigned long long)rootsim_config.set_seed);
+<span class="lineNum">     370 </span>            :                 }
+<span class="lineNum">     371 </span>            :                 master_seed = rootsim_config.set_seed;
+<span class="lineNum">     372 </span>            :         }
+<span class="lineNum">     373 </span>            : 
+<span class="lineNum">     374 </span>            :         // Load the configuration for the numerical library
+<span class="lineNum">     375 </span>            :         if ((fp = fopen(conf_file, &quot;r+&quot;)) == NULL) {
+<span class="lineNum">     376 </span>            :                 rootsim_error(true, &quot;Unable to load numerical distribution configuration: %s. Aborting...&quot;, conf_file);
+<span class="lineNum">     377 </span>            :         }
+<span class="lineNum">     378 </span>            : 
+<span class="lineNum">     379 </span>            :         // Load the initial seed
+<span class="lineNum">     380 </span>            :         fscanf(fp, &quot;%llu&quot;, (unsigned long long *)&amp;master_seed);
+<span class="lineNum">     381 </span>            : 
+<span class="lineNum">     382 </span>            :         // Replace the initial seed
+<span class="lineNum">     383 </span>            :         if (rootsim_config.deterministic_seed == false) {
+<span class="lineNum">     384 </span>            :                 rewind(fp);
+<span class="lineNum">     385 </span>            :                 srandom(master_seed);
+<span class="lineNum">     386 </span>            :                 new_seed = random();
+<span class="lineNum">     387 </span>            :                 fprintf(fp, &quot;%llu\n&quot;, (unsigned long long)new_seed);
+<span class="lineNum">     388 </span>            :         }
+<span class="lineNum">     389 </span>            : 
+<span class="lineNum">     390 </span>            :         fclose(fp);
+<span class="lineNum">     391 </span>            : }
+<span class="lineNum">     392 </span>            : 
+<span class="lineNum">     393 </span>            : 
+<span class="lineNum">     394 </span>            : // TODO: con un (non tanto) alto numero di processi logici (&gt; numero di bit di un intero!!), lo shift
+<span class="lineNum">     395 </span>            : // circolare restituisce a due LP differenti lo stesso seme iniziale. Questo fa sì che, se la logica di
+<span class="lineNum">     396 </span>            : // programma è la stessa e basata soltanto su numeri casuali, due o più nodi eseguano sempre la stessa
+<span class="lineNum">     397 </span>            : // sequenza di eventi agli stessi timestamp!!!
+<span class="lineNum">     398 </span>            : 
+<span class="lineNum">     399 </span><span class="lineNoCov">          0 : #define RS_WORD_LENGTH (8 * sizeof(seed_type))</span>
+<span class="lineNum">     400 </span><span class="lineNoCov">          0 : #define ROR(value, places) (value &lt;&lt; (places)) | (value &gt;&gt; (RS_WORD_LENGTH - places))       // Circular shift</span>
+<span class="lineNum">     401 </span><span class="lineNoCov">          0 : void numerical_init(void)</span>
+<span class="lineNum">     402 </span>            : {
+<span class="lineNum">     403 </span>            :         // Initialize the master seed
+<span class="lineNum">     404 </span>            :         load_seed();
+<span class="lineNum">     405 </span>            : 
+<span class="lineNum">     406 </span>            :         // Initialize the per-LP seed
+<span class="lineNum">     407 </span>            :         foreach_lp(lp) {
+<span class="lineNum">     408 </span>            :                 lp-&gt;numerical.seed = sanitize_seed(ROR((int64_t) master_seed, lp-&gt;gid.to_int % RS_WORD_LENGTH));
+<span class="lineNum">     409 </span>            :         }
+<span class="lineNum">     410 </span>            : 
+<span class="lineNum">     411 </span>            : }
+<span class="lineNum">     412 </span>            : 
+<span class="lineNum">     413 </span>            : #undef RS_WORD_LENGTH
+<span class="lineNum">     414 </span>            : #undef ROR
+<span class="lineNum">     415 </span>            : 
+<span class="lineNum">     416 </span>            : 
+<span class="lineNum">     417 </span>            : /**
+<span class="lineNum">     418 </span>            : * Calculates a sum within double variables with bounded approximation error
+<span class="lineNum">     419 </span>            : *
+<span class="lineNum">     420 </span>            : * This implements a variant of the Kahan summation algorithm:
+<span class="lineNum">     421 </span>            : * https://en.wikipedia.org/wiki/Kahan_summation_algorithm
+<span class="lineNum">     422 </span>            : * This is used in the topology module to calculate minimum costs and weighted probabilities
+<span class="lineNum">     423 </span>            : * since the classic iterated floating point sum may result in unbounded errors
+<span class="lineNum">     424 </span>            : * originated from the limited precision of the underlying floating point representation.
+<span class="lineNum">     425 </span>            : *
+<span class="lineNum">     426 </span>            : * @author Andrea Piccione
+<span class="lineNum">     427 </span>            : * @param cnt the number of addendums to sum
+<span class="lineNum">     428 </span>            : * @param addendums a pointer to a sequence of cnt doubles
+<span class="lineNum">     429 </span>            : * @return the sum between the addendums with bounded error
+<span class="lineNum">     430 </span>            : */
+<span class="lineNum">     431 </span>            : __attribute__((const))
+<span class="lineNum">     432 </span><span class="lineCov">          1 : double NeumaierSum(unsigned cnt, double addendums[cnt]) {</span>
+<span class="lineNum">     433 </span>            :         if(!cnt)
+<span class="lineNum">     434 </span>            :                 return 0.0;
+<span class="lineNum">     435 </span>            :         double sum = addendums[0];
+<span class="lineNum">     436 </span>            :         double crt = 0.0;
+<span class="lineNum">     437 </span>            :         double tmp;
+<span class="lineNum">     438 </span>            :         while (--cnt) {
+<span class="lineNum">     439 </span>            :                 tmp = sum + addendums[cnt];
+<span class="lineNum">     440 </span>            :                 if(fabs(sum) &gt;= fabs(addendums[cnt])) {
+<span class="lineNum">     441 </span>            :                         crt += (sum - tmp) + addendums[cnt];
+<span class="lineNum">     442 </span>            :                 } else {
+<span class="lineNum">     443 </span>            :                         crt += (addendums[cnt] - tmp) + sum;
+<span class="lineNum">     444 </span>            :                 }
+<span class="lineNum">     445 </span>            :                 sum = tmp;
+<span class="lineNum">     446 </span>            :         }
+<span class="lineNum">     447 </span>            :         return sum + crt;
+<span class="lineNum">     448 </span>            : }
+<span class="lineNum">     449 </span>            : 
+<span class="lineNum">     450 </span>            : 
+<span class="lineNum">     451 </span>            : /**
+<span class="lineNum">     452 </span>            : * Calculates a partial sum within double variables with bounded approximation error
+<span class="lineNum">     453 </span>            : *
+<span class="lineNum">     454 </span>            : * This has similar utilization to &lt;NeumaierSum&gt;() with the difference that this can be used
+<span class="lineNum">     455 </span>            : * to calculate partial sums, adding doubles one by one.
+<span class="lineNum">     456 </span>            : *
+<span class="lineNum">     457 </span>            : * @author Andrea Piccione
+<span class="lineNum">     458 </span>            : * @param sh a struct _sum_helper_t holding the partial result typically from a previous sum
+<span class="lineNum">     459 </span>            : * @param addendum the double floating point value to add
+<span class="lineNum">     460 </span>            : * @return a struct _sum_helper_t holding the sum between sh and addendum
+<span class="lineNum">     461 </span>            : */
+<span class="lineNum">     462 </span>            : __attribute__((const))
+<span class="lineNum">     463 </span>            : struct _sum_helper_t PartialNeumaierSum(struct _sum_helper_t sh, double addendum){
+<span class="lineNum">     464 </span>            :         double tmp = sh.sum + addendum;
+<span class="lineNum">     465 </span>            :         if(fabs(sh.sum) &gt;= fabs(addendum)) {
+<span class="lineNum">     466 </span>            :                 sh.crt += (sh.sum - tmp) + addendum;
+<span class="lineNum">     467 </span>            :         } else {
+<span class="lineNum">     468 </span>            :                 sh.crt += (addendum - tmp) + sh.sum;
+<span class="lineNum">     469 </span>            :         }
+<span class="lineNum">     470 </span>            :         sh.sum = tmp;
+<span class="lineNum">     471 </span>            :         return sh;
+<span class="lineNum">     472 </span>            : }
+<span class="lineNum">     473 </span>            : 
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.12</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>

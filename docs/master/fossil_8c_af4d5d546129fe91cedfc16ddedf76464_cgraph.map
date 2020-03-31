@@ -1,0 +1,7 @@
+<map id="fossil_collection" name="fossil_collection">
+<area shape="rect" id="node2" href="$checkpoints_8c.html#a727e4cd3fa1d7b332b9f212733eec8d3" title="log_delete" alt="" coords="197,5,285,32"/>
+<area shape="rect" id="node3" href="$communication_8c.html#a323ad017762155352c38983e67e8adeb" title="Release a message buffer. " alt="" coords="189,56,293,83"/>
+<area shape="rect" id="node6" href="$communication_8c.html#a762b3dacaa82c4590e0572ac08117153" title="Release a message header. " alt="" coords="175,107,307,133"/>
+<area shape="rect" id="node4" href="$communication_8c.html#ae6b96249d35969d688d0d84209919c8f" title="Find a slab to allocate a message buffer. " alt="" coords="355,56,495,83"/>
+<area shape="rect" id="node5" href="$core_8c.html#a6793e4c70d69277f24ff0e494ed8ed10" title="find_kernel_by_gid" alt="" coords="543,56,681,83"/>
+</map>

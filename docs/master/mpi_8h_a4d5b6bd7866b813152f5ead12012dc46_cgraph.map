@@ -1,0 +1,5 @@
+<map id="syncronize_all" name="syncronize_all">
+<area shape="rect" id="node2" href="$thread_8c.html#a9f5993fbefc809165c4b74bb8da463d0" title="thread_barrier" alt="" coords="164,31,277,57"/>
+<area shape="rect" id="node3" href="$atomic_8h.html#a52336e036d2da5656c6db69b121458ba" title="atomic_dec" alt="" coords="355,5,451,32"/>
+<area shape="rect" id="node4" href="$atomic_8h.html#ab61334506e238ad3190ce02fc53af0fb" title="atomic_inc_and_test" alt="" coords="325,56,480,83"/>
+</map>

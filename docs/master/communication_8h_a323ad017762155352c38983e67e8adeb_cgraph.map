@@ -1,0 +1,4 @@
+<map id="msg_release" name="msg_release">
+<area shape="rect" id="node2" href="$communication_8c.html#ae6b96249d35969d688d0d84209919c8f" title="Find a slab to allocate a message buffer. " alt="" coords="157,5,297,32"/>
+<area shape="rect" id="node3" href="$core_8c.html#a6793e4c70d69277f24ff0e494ed8ed10" title="find_kernel_by_gid" alt="" coords="345,5,484,32"/>
+</map>

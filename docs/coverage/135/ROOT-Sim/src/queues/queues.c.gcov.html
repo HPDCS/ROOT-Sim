@@ -1,0 +1,348 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - doc-coverage.info - ROOT-Sim/src/queues/queues.c</title>
+  <link rel="stylesheet" type="text/css" href="../../../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../../../index.html">top level</a> - <a href="index.html">ROOT-Sim/src/queues</a> - queues.c</td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">doc-coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">6</td>
+            <td class="headerCovTableEntry">6</td>
+            <td class="headerCovTableEntryHi">100.0 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2020-01-30 13:56:10</td>
+            <td></td>
+          </tr>
+          <tr><td><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<span class="lineNum">       1 </span><span class="lineCov">          1 : /**</span>
+<span class="lineNum">       2 </span>            : * @file queues/queues.c
+<span class="lineNum">       3 </span>            : *
+<span class="lineNum">       4 </span>            : * @brief Message queueing subsystem
+<span class="lineNum">       5 </span>            : *
+<span class="lineNum">       6 </span>            : * This module implements the event/message queues subsystem.
+<span class="lineNum">       7 </span>            : *
+<span class="lineNum">       8 </span>            : * @copyright
+<span class="lineNum">       9 </span>            : * Copyright (C) 2008-2019 HPDCS Group
+<span class="lineNum">      10 </span>            : * https://hpdcs.github.io
+<span class="lineNum">      11 </span>            : *
+<span class="lineNum">      12 </span>            : * This file is part of ROOT-Sim (ROme OpTimistic Simulator).
+<span class="lineNum">      13 </span>            : *
+<span class="lineNum">      14 </span>            : * ROOT-Sim is free software; you can redistribute it and/or modify it under the
+<span class="lineNum">      15 </span>            : * terms of the GNU General Public License as published by the Free Software
+<span class="lineNum">      16 </span>            : * Foundation; only version 3 of the License applies.
+<span class="lineNum">      17 </span>            : *
+<span class="lineNum">      18 </span>            : * ROOT-Sim is distributed in the hope that it will be useful, but WITHOUT ANY
+<span class="lineNum">      19 </span>            : * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+<span class="lineNum">      20 </span>            : * A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+<span class="lineNum">      21 </span>            : *
+<span class="lineNum">      22 </span>            : * You should have received a copy of the GNU General Public License along with
+<span class="lineNum">      23 </span>            : * ROOT-Sim; if not, write to the Free Software Foundation, Inc.,
+<span class="lineNum">      24 </span>            : * 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+<span class="lineNum">      25 </span>            : *
+<span class="lineNum">      26 </span>            : * @author Francesco Quaglia
+<span class="lineNum">      27 </span>            : * @author Roberto Vitali
+<span class="lineNum">      28 </span>            : * @author Alessandro Pellegrini
+<span class="lineNum">      29 </span>            : *
+<span class="lineNum">      30 </span>            : * @date March 16, 2011
+<span class="lineNum">      31 </span>            : */
+<span class="lineNum">      32 </span>            : 
+<span class="lineNum">      33 </span>            : #include &lt;stdlib.h&gt;
+<span class="lineNum">      34 </span>            : #include &lt;string.h&gt;
+<span class="lineNum">      35 </span>            : #include &lt;assert.h&gt;
+<span class="lineNum">      36 </span>            : 
+<span class="lineNum">      37 </span>            : #include &lt;scheduler/process.h&gt;
+<span class="lineNum">      38 </span>            : #include &lt;core/core.h&gt;
+<span class="lineNum">      39 </span>            : #include &lt;arch/atomic.h&gt;
+<span class="lineNum">      40 </span>            : #include &lt;arch/thread.h&gt;
+<span class="lineNum">      41 </span>            : #include &lt;datatypes/list.h&gt;
+<span class="lineNum">      42 </span>            : #include &lt;datatypes/msgchannel.h&gt;
+<span class="lineNum">      43 </span>            : #include &lt;queues/queues.h&gt;
+<span class="lineNum">      44 </span>            : #include &lt;mm/state.h&gt;
+<span class="lineNum">      45 </span>            : #include &lt;mm/mm.h&gt;
+<span class="lineNum">      46 </span>            : #include &lt;scheduler/scheduler.h&gt;
+<span class="lineNum">      47 </span>            : #include &lt;communication/communication.h&gt;
+<span class="lineNum">      48 </span>            : #include &lt;communication/gvt.h&gt;
+<span class="lineNum">      49 </span>            : #include &lt;statistics/statistics.h&gt;
+<span class="lineNum">      50 </span>            : #include &lt;gvt/gvt.h&gt;
+<span class="lineNum">      51 </span>            : 
+<span class="lineNum">      52 </span>            : /**
+<span class="lineNum">      53 </span>            : * This function return the timestamp of the next-to-execute event
+<span class="lineNum">      54 </span>            : *
+<span class="lineNum">      55 </span>            : * @author Alessandro Pellegrini
+<span class="lineNum">      56 </span>            : * @author Francesco Quaglia
+<span class="lineNum">      57 </span>            : *
+<span class="lineNum">      58 </span>            : * @param lp A pointer to the LP's lp_struct for which we want to discover
+<span class="lineNum">      59 </span>            : *           the timestamp of the next event
+<span class="lineNum">      60 </span>            : * @return The timestamp of the next-to-execute event
+<span class="lineNum">      61 </span>            : */
+<span class="lineNum">      62 </span><span class="lineCov">          1 : simtime_t next_event_timestamp(struct lp_struct *lp)</span>
+<span class="lineNum">      63 </span>            : {
+<span class="lineNum">      64 </span>            :         msg_t *evt;
+<span class="lineNum">      65 </span>            : 
+<span class="lineNum">      66 </span>            :         // The bound can be NULL in the first execution or if it has gone back
+<span class="lineNum">      67 </span>            :         if (unlikely(lp-&gt;bound == NULL &amp;&amp; !list_empty(lp-&gt;queue_in))) {
+<span class="lineNum">      68 </span>            :                 return list_head(lp-&gt;queue_in)-&gt;timestamp;
+<span class="lineNum">      69 </span>            :         } else {
+<span class="lineNum">      70 </span>            :                 evt = list_next(lp-&gt;bound);
+<span class="lineNum">      71 </span>            :                 if (likely(evt != NULL)) {
+<span class="lineNum">      72 </span>            :                         return evt-&gt;timestamp;
+<span class="lineNum">      73 </span>            :                 }
+<span class="lineNum">      74 </span>            :         }
+<span class="lineNum">      75 </span>            : 
+<span class="lineNum">      76 </span>            :         return INFTY;
+<span class="lineNum">      77 </span>            : 
+<span class="lineNum">      78 </span>            : }
+<span class="lineNum">      79 </span>            : 
+<span class="lineNum">      80 </span>            : /**
+<span class="lineNum">      81 </span>            : * This function advances the pointer to the last correctly executed event (bound).
+<span class="lineNum">      82 </span>            : * It is called right before the execution of it. This means that after this
+<span class="lineNum">      83 </span>            : * call, before the actual call to ProcessEvent(), bound is pointing to a
+<span class="lineNum">      84 </span>            : * not-yet-executed event. This is the only case where this can happen.
+<span class="lineNum">      85 </span>            : *
+<span class="lineNum">      86 </span>            : * @author Alessandro Pellegrini
+<span class="lineNum">      87 </span>            : * @author Francesco Quaglia
+<span class="lineNum">      88 </span>            : *
+<span class="lineNum">      89 </span>            : * @param lp A pointer to the LP's lp_struct which should have its bound
+<span class="lineNum">      90 </span>            : *           updated in order to point to the next event to be processed
+<span class="lineNum">      91 </span>            : * @return The pointer to the event is going to be processed
+<span class="lineNum">      92 </span>            : */
+<span class="lineNum">      93 </span><span class="lineCov">          1 : msg_t *advance_to_next_event(struct lp_struct *lp)</span>
+<span class="lineNum">      94 </span>            : {
+<span class="lineNum">      95 </span>            :         if (likely(list_next(lp-&gt;bound) != NULL)) {
+<span class="lineNum">      96 </span>            :                 lp-&gt;bound = list_next(lp-&gt;bound);
+<span class="lineNum">      97 </span>            :         } else {
+<span class="lineNum">      98 </span>            :                 return NULL;
+<span class="lineNum">      99 </span>            :         }
+<span class="lineNum">     100 </span>            : 
+<span class="lineNum">     101 </span>            :         return lp-&gt;bound;
+<span class="lineNum">     102 </span>            : }
+<span class="lineNum">     103 </span>            : 
+<span class="lineNum">     104 </span>            : /**
+<span class="lineNum">     105 </span>            : * Insert a message in the bottom halft of a locally-hosted LP. Of course,
+<span class="lineNum">     106 </span>            : * the LP must be locally hosted. This is guaranteed by the fact
+<span class="lineNum">     107 </span>            : * that the only point where this function is called is from Send(),
+<span class="lineNum">     108 </span>            : * which checks whether the LP is hosted locally from this kernel
+<span class="lineNum">     109 </span>            : * instance or not.
+<span class="lineNum">     110 </span>            : *
+<span class="lineNum">     111 </span>            : * @author Alessandro Pellegrini
+<span class="lineNum">     112 </span>            : *
+<span class="lineNum">     113 </span>            : * @param msg The message to be added into some LP's bottom half.
+<span class="lineNum">     114 </span>            : */
+<span class="lineNum">     115 </span><span class="lineCov">          1 : void insert_bottom_half(msg_t * msg)</span>
+<span class="lineNum">     116 </span>            : {
+<span class="lineNum">     117 </span>            :         struct lp_struct *lp = find_lp_by_gid(msg-&gt;receiver);
+<span class="lineNum">     118 </span>            : 
+<span class="lineNum">     119 </span>            :         validate_msg(msg);
+<span class="lineNum">     120 </span>            : 
+<span class="lineNum">     121 </span>            :         insert_msg(lp-&gt;bottom_halves, msg);
+<span class="lineNum">     122 </span>            : #ifdef HAVE_PREEMPTION
+<span class="lineNum">     123 </span>            :         update_min_in_transit(lp-&gt;worker_thread, msg-&gt;timestamp);
+<span class="lineNum">     124 </span>            : #endif
+<span class="lineNum">     125 </span>            : }
+<span class="lineNum">     126 </span>            : 
+<span class="lineNum">     127 </span>            : /**
+<span class="lineNum">     128 </span>            : * Process bottom halves received by all the LPs hosted by the current KLT
+<span class="lineNum">     129 </span>            : *
+<span class="lineNum">     130 </span>            : * @author Alessandro Pellegrini
+<span class="lineNum">     131 </span>            : */
+<span class="lineNum">     132 </span><span class="lineCov">          1 : void process_bottom_halves(void)</span>
+<span class="lineNum">     133 </span>            : {
+<span class="lineNum">     134 </span>            :         struct lp_struct *receiver;
+<span class="lineNum">     135 </span>            : 
+<span class="lineNum">     136 </span>            :         msg_t *msg_to_process;
+<span class="lineNum">     137 </span>            :         msg_t *matched_msg;
+<span class="lineNum">     138 </span>            : 
+<span class="lineNum">     139 </span>            :         foreach_bound_lp(lp) {
+<span class="lineNum">     140 </span>            : 
+<span class="lineNum">     141 </span>            :                 while ((msg_to_process = get_msg(lp-&gt;bottom_halves)) != NULL) {
+<span class="lineNum">     142 </span>            :                         receiver = find_lp_by_gid(msg_to_process-&gt;receiver);
+<span class="lineNum">     143 </span>            : 
+<span class="lineNum">     144 </span>            :                         // Sanity check
+<span class="lineNum">     145 </span>            :                         if (unlikely
+<span class="lineNum">     146 </span>            :                             (msg_to_process-&gt;timestamp &lt; get_last_gvt()))
+<span class="lineNum">     147 </span>            :                                 rootsim_error(true,
+<span class="lineNum">     148 </span>            :                                               &quot;The impossible happened: I'm receiving a message before the GVT\n&quot;);
+<span class="lineNum">     149 </span>            : 
+<span class="lineNum">     150 </span>            :                         // Handle control messages
+<span class="lineNum">     151 </span>            :                         if (unlikely(!receive_control_msg(msg_to_process))) {
+<span class="lineNum">     152 </span>            :                                 msg_release(msg_to_process);
+<span class="lineNum">     153 </span>            :                                 continue;
+<span class="lineNum">     154 </span>            :                         }
+<span class="lineNum">     155 </span>            : 
+<span class="lineNum">     156 </span>            :                         switch (msg_to_process-&gt;message_kind) {
+<span class="lineNum">     157 </span>            : 
+<span class="lineNum">     158 </span>            :                                 // It's an antimessage
+<span class="lineNum">     159 </span>            :                         case negative:
+<span class="lineNum">     160 </span>            : 
+<span class="lineNum">     161 </span>            :                                 statistics_post_data(receiver, STAT_ANTIMESSAGE, 1.0);
+<span class="lineNum">     162 </span>            : 
+<span class="lineNum">     163 </span>            :                                 // Find the message matching the antimessage
+<span class="lineNum">     164 </span>            :                                 matched_msg = list_tail(receiver-&gt;queue_in);
+<span class="lineNum">     165 </span>            :                                 while (matched_msg != NULL
+<span class="lineNum">     166 </span>            :                                        &amp;&amp; matched_msg-&gt;mark !=
+<span class="lineNum">     167 </span>            :                                        msg_to_process-&gt;mark) {
+<span class="lineNum">     168 </span>            :                                         matched_msg = list_prev(matched_msg);
+<span class="lineNum">     169 </span>            :                                 }
+<span class="lineNum">     170 </span>            : 
+<span class="lineNum">     171 </span>            :                                 // Sanity check
+<span class="lineNum">     172 </span>            :                                 if (unlikely(matched_msg == NULL)) {
+<span class="lineNum">     173 </span>            :                                         rootsim_error(false,
+<span class="lineNum">     174 </span>            :                                                       &quot;LP %d Received an antimessage, but no such mark has been found!\n&quot;,
+<span class="lineNum">     175 </span>            :                                                       receiver-&gt;gid.to_int);
+<span class="lineNum">     176 </span>            :                                         dump_msg_content(msg_to_process);
+<span class="lineNum">     177 </span>            :                                         rootsim_error(true, &quot;Aborting...\n&quot;);
+<span class="lineNum">     178 </span>            :                                 }
+<span class="lineNum">     179 </span>            :                                 // If the matched message is in the past, we have to rollback
+<span class="lineNum">     180 </span>            :                                 if (matched_msg-&gt;timestamp &lt;= lvt(receiver)) {
+<span class="lineNum">     181 </span>            : 
+<span class="lineNum">     182 </span>            :                                         receiver-&gt;bound = list_prev(matched_msg);
+<span class="lineNum">     183 </span>            :                                         while ((receiver-&gt;bound != NULL)
+<span class="lineNum">     184 </span>            :                                                 &amp;&amp; D_EQUAL(receiver-&gt;bound-&gt;timestamp, msg_to_process-&gt;timestamp)) {
+<span class="lineNum">     185 </span>            :                                                 receiver-&gt;bound = list_prev(receiver-&gt;bound);
+<span class="lineNum">     186 </span>            :                                         }
+<span class="lineNum">     187 </span>            :                                         
+<span class="lineNum">     188 </span>            :                                         receiver-&gt;state = LP_STATE_ROLLBACK;
+<span class="lineNum">     189 </span>            :                                 }
+<span class="lineNum">     190 </span>            : #ifdef HAVE_MPI
+<span class="lineNum">     191 </span>            :                                 register_incoming_msg(msg_to_process);
+<span class="lineNum">     192 </span>            : #endif
+<span class="lineNum">     193 </span>            : 
+<span class="lineNum">     194 </span>            :                                 // Delete the matched message
+<span class="lineNum">     195 </span>            :                                 list_delete_by_content(receiver-&gt;queue_in,
+<span class="lineNum">     196 </span>            :                                                        matched_msg);
+<span class="lineNum">     197 </span>            :                                 msg_release(matched_msg);
+<span class="lineNum">     198 </span>            : 
+<span class="lineNum">     199 </span>            :                                 break;
+<span class="lineNum">     200 </span>            : 
+<span class="lineNum">     201 </span>            :                                 // It's a positive message
+<span class="lineNum">     202 </span>            :                         case positive:
+<span class="lineNum">     203 </span>            : 
+<span class="lineNum">     204 </span>            :                                 // A positive message is directly placed in the queue
+<span class="lineNum">     205 </span>            :                                 list_insert(receiver-&gt;queue_in, timestamp,
+<span class="lineNum">     206 </span>            :                                             msg_to_process);
+<span class="lineNum">     207 </span>            : 
+<span class="lineNum">     208 </span>            :                                 // Check if we've just inserted an out-of-order event.
+<span class="lineNum">     209 </span>            :                                 // Here we check for a strictly minor timestamp since
+<span class="lineNum">     210 </span>            :                                 // the queue is FIFO for same-timestamp events. Therefore,
+<span class="lineNum">     211 </span>            :                                 // A contemporaneous event does not cause a causal violation.
+<span class="lineNum">     212 </span>            :                                 if (msg_to_process-&gt;timestamp &lt; lvt(receiver)) {
+<span class="lineNum">     213 </span>            : 
+<span class="lineNum">     214 </span>            :                                         receiver-&gt;bound = list_prev(msg_to_process);
+<span class="lineNum">     215 </span>            :                                         while ((receiver-&gt;bound != NULL)
+<span class="lineNum">     216 </span>            :                                                &amp;&amp; D_EQUAL(receiver-&gt;bound-&gt;timestamp, msg_to_process-&gt;timestamp)) {
+<span class="lineNum">     217 </span>            :                                                 receiver-&gt;bound = list_prev(receiver-&gt;bound);
+<span class="lineNum">     218 </span>            :                                         }
+<span class="lineNum">     219 </span>            : 
+<span class="lineNum">     220 </span>            :                                         receiver-&gt;state = LP_STATE_ROLLBACK;
+<span class="lineNum">     221 </span>            :                                 }
+<span class="lineNum">     222 </span>            : #ifdef HAVE_MPI
+<span class="lineNum">     223 </span>            :                                 register_incoming_msg(msg_to_process);
+<span class="lineNum">     224 </span>            : #endif
+<span class="lineNum">     225 </span>            :                                 break;
+<span class="lineNum">     226 </span>            : 
+<span class="lineNum">     227 </span>            :                                 // It's a control message
+<span class="lineNum">     228 </span>            :                         case control:
+<span class="lineNum">     229 </span>            : 
+<span class="lineNum">     230 </span>            :                                 // Check if it is an anti control message
+<span class="lineNum">     231 </span>            :                                 if (!anti_control_message(msg_to_process)) {
+<span class="lineNum">     232 </span>            :                                         msg_release(msg_to_process);
+<span class="lineNum">     233 </span>            :                                         continue;
+<span class="lineNum">     234 </span>            :                                 }
+<span class="lineNum">     235 </span>            : 
+<span class="lineNum">     236 </span>            :                                 break;
+<span class="lineNum">     237 </span>            : 
+<span class="lineNum">     238 </span>            :                         default:
+<span class="lineNum">     239 </span>            :                                 rootsim_error(true, &quot;Received a message which is neither positive nor negative. Aborting...\n&quot;);
+<span class="lineNum">     240 </span>            :                         }
+<span class="lineNum">     241 </span>            :                 }
+<span class="lineNum">     242 </span>            :         }
+<span class="lineNum">     243 </span>            : 
+<span class="lineNum">     244 </span>            :         // We have processed all in transit messages.
+<span class="lineNum">     245 </span>            :         // Actually, during this operation, some new in transit messages could
+<span class="lineNum">     246 </span>            :         // be placed by other threads. In this case, we loose their presence.
+<span class="lineNum">     247 </span>            :         // This is not a correctness error. The only issue could be that the
+<span class="lineNum">     248 </span>            :         // preemptive scheme will not detect this, and some events could
+<span class="lineNum">     249 </span>            :         // be in fact executed out of order.
+<span class="lineNum">     250 </span>            : #ifdef HAVE_PREEMPTION
+<span class="lineNum">     251 </span>            :         reset_min_in_transit(local_tid);
+<span class="lineNum">     252 </span>            : #endif
+<span class="lineNum">     253 </span>            : }
+<span class="lineNum">     254 </span>            : 
+<span class="lineNum">     255 </span>            : /**
+<span class="lineNum">     256 </span>            : * This function generates a mark value that is unique w.r.t. the previous values for each Logical Process.
+<span class="lineNum">     257 </span>            : * It is based on the Cantor Pairing Function, which maps 2 naturals to a single natural.
+<span class="lineNum">     258 </span>            : * The two naturals are the LP gid (which is unique in the system) and a non decreasing number
+<span class="lineNum">     259 </span>            : * which gets incremented (on a per-LP basis) upon each function call.
+<span class="lineNum">     260 </span>            : * It's fast to calculate the mark, it's not fast to invert it. Therefore, inversion is not
+<span class="lineNum">     261 </span>            : * supported at all in the simulator code (but an external utility is provided for debugging purposes,
+<span class="lineNum">     262 </span>            : * which can be found in src/lp_mark_inverse.c)
+<span class="lineNum">     263 </span>            : *
+<span class="lineNum">     264 </span>            : * @author Alessandro Pellegrini
+<span class="lineNum">     265 </span>            : *
+<span class="lineNum">     266 </span>            : * @param lp A pointer to the LP's lp_struct for which we want to generate
+<span class="lineNum">     267 </span>            : *           a system-wide unique mark
+<span class="lineNum">     268 </span>            : * @return A value to be used as a unique mark for the message within the LP
+<span class="lineNum">     269 </span>            : */
+<span class="lineNum">     270 </span><span class="lineCov">          1 : unsigned long long generate_mark(struct lp_struct *lp)</span>
+<span class="lineNum">     271 </span>            : {
+<span class="lineNum">     272 </span>            :         unsigned long long k1 = (unsigned long long)lp-&gt;gid.to_int;
+<span class="lineNum">     273 </span>            :         unsigned long long k2 = lp-&gt;mark++;
+<span class="lineNum">     274 </span>            : 
+<span class="lineNum">     275 </span>            :         return (unsigned long long)(((k1 + k2) * (k1 + k2 + 1) / 2) + k2);
+<span class="lineNum">     276 </span>            : }
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.12</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>

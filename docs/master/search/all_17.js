@@ -1,0 +1,20 @@
+var searchData=
+[
+  ['wait_5fwhite_5fmsg_5fredux',['wait_white_msg_redux',['../communication_2gvt_8c.html#a4c4efc6874baad6133dd05ed355fe8d8',1,'wait_white_msg_redux(void):&#160;gvt.c'],['../communication_2gvt_8h.html#a4c4efc6874baad6133dd05ed355fe8d8',1,'wait_white_msg_redux(void):&#160;gvt.c']]],
+  ['which_5fslab_5fto_5fuse',['which_slab_to_use',['../communication_8c.html#ae6b96249d35969d688d0d84209919c8f',1,'communication.c']]],
+  ['white_5f0',['white_0',['../communication_2gvt_8h.html#a7c7599e49403998b2cd1069c62b46c2ea9b654fcd835dce255c4410ca6a9dc014',1,'gvt.h']]],
+  ['white_5f0_5fmsg_5frecv',['white_0_msg_recv',['../communication_2gvt_8c.html#a943588095f11794c91092610ff513342',1,'gvt.c']]],
+  ['white_5f1',['white_1',['../communication_2gvt_8h.html#a7c7599e49403998b2cd1069c62b46c2eab6161dff6757b88da99e657ccc8ae6d7',1,'gvt.h']]],
+  ['white_5f1_5fmsg_5frecv',['white_1_msg_recv',['../communication_2gvt_8c.html#a7c5bf507fc67fec650614adcb3bf5a78',1,'gvt.c']]],
+  ['white_5fcount_5fcomm',['white_count_comm',['../communication_2gvt_8c.html#a93ed03c46ed4898eb43880cfdc7818c7',1,'gvt.c']]],
+  ['white_5fcount_5flock',['white_count_lock',['../communication_2gvt_8c.html#a8620b7dcfe0486c757dcbcd2e569b692',1,'gvt.c']]],
+  ['white_5fcount_5freq',['white_count_req',['../communication_2gvt_8c.html#a6c3a3f661a96c329f9bb2954e9e280ed',1,'gvt.c']]],
+  ['white_5fmsg_5frecv',['white_msg_recv',['../communication_2gvt_8c.html#a7d8761a9e2f01cdff70593723d0c0abd',1,'gvt.c']]],
+  ['white_5fmsg_5fredux_5fcompleted',['white_msg_redux_completed',['../communication_2gvt_8c.html#ad754b4a17c642f9672743a0a246e6467',1,'white_msg_redux_completed(void):&#160;gvt.c'],['../communication_2gvt_8h.html#ad754b4a17c642f9672743a0a246e6467',1,'white_msg_redux_completed(void):&#160;gvt.c']]],
+  ['white_5fmsg_5fsent',['white_msg_sent',['../communication_2gvt_8c.html#a39fd394b547fafedf9907b606565298a',1,'gvt.c']]],
+  ['white_5fmsg_5fsent_5fbuff',['white_msg_sent_buff',['../communication_2gvt_8c.html#aedd8c6fb4f095c541650ecbef4501ebb',1,'gvt.c']]],
+  ['wnd_2ec',['wnd.c',['../wnd_8c.html',1,'']]],
+  ['wnd_2eh',['wnd.h',['../wnd_8h.html',1,'']]],
+  ['worker_5fthread',['worker_thread',['../structlp__struct.html#aa59ca8980ddb8941a35c11a0f60e792b',1,'lp_struct']]],
+  ['wrapper_2ec',['wrapper.c',['../wrapper_8c.html',1,'']]]
+];

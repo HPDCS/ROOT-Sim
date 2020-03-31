@@ -1,0 +1,173 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - doc-coverage.info - ROOT-Sim/src/lib/jsmn_helper.h</title>
+  <link rel="stylesheet" type="text/css" href="../../../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../../../index.html">top level</a> - <a href="index.html">ROOT-Sim/src/lib</a> - jsmn_helper.h</td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">doc-coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">10</td>
+            <td class="headerCovTableEntry">20</td>
+            <td class="headerCovTableEntryLo">50.0 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2020-01-30 13:56:10</td>
+            <td></td>
+          </tr>
+          <tr><td><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<span class="lineNum">       1 </span><span class="lineNoCov">          0 : #ifndef JSMN_HELPER_H_</span>
+<span class="lineNum">       2 </span>            : #define JSMN_HELPER_H_
+<span class="lineNum">       3 </span>            : 
+<span class="lineNum">       4 </span>            : #include &lt;lib/jsmn.h&gt;
+<span class="lineNum">       5 </span>            : #include &lt;stdbool.h&gt;
+<span class="lineNum">       6 </span>            : 
+<span class="lineNum">       7 </span>            : // This typedef is useful in avoiding accidental token modifications
+<span class="lineNum">       8 </span><span class="lineNoCov">          0 : typedef const jsmntok_t c_jsmntok_t;</span>
+<span class="lineNum">       9 </span>            : 
+<span class="lineNum">      10 </span><span class="lineNoCov">          0 : int load_and_parse_json_file(const char *file_name, char **file_str_p, jsmntok_t **tokens_p);</span>
+<span class="lineNum">      11 </span>            : 
+<span class="lineNum">      12 </span>            : //! This struct is given for the use in conjunction with next_get_token function().
+<span class="lineNum">      13 </span>            : //! Treat it as an opaque data type.
+<span class="lineNum">      14 </span><span class="lineCov">          1 : struct _gnt_closure_t{</span>
+<span class="lineNum">      15 </span><span class="lineNoCov">          0 :         int a;</span>
+<span class="lineNum">      16 </span><span class="lineNoCov">          0 :         unsigned b;</span>
+<span class="lineNum">      17 </span>            : };
+<span class="lineNum">      18 </span>            : 
+<span class="lineNum">      19 </span>            : //! use example: struct _gnt_closure_t iterator = GNT_CLOSURE_INITIALIZER;
+<span class="lineNum">      20 </span><span class="lineCov">          1 : #define GNT_CLOSURE_INITIALIZER {0, 0}</span>
+<span class="lineNum">      21 </span>            : 
+<span class="lineNum">      22 </span>            : /// Alternatively this function can be used
+<span class="lineNum">      23 </span><span class="lineCov">          1 : void            init_gnt_closure        (struct _gnt_closure_t *closure);</span>
+<span class="lineNum">      24 </span>            : 
+<span class="lineNum">      25 </span>            : /**
+<span class="lineNum">      26 </span>            :  * This is a useful function which iterates over the children tokens
+<span class="lineNum">      27 </span>            :  * of the JSON object or array represented by token t.
+<span class="lineNum">      28 </span>            :  * Keep in mind that in case t is an object, this function will iterate over keys
+<span class="lineNum">      29 </span>            :  * (corresponding values can be obtained by taking the key+1 token)
+<span class="lineNum">      30 </span>            :  * @param base_t the root token of the JSMN parse
+<span class="lineNum">      31 </span>            :  * @param t the JSON array or object token we want to iterate over
+<span class="lineNum">      32 </span>            :  * @param closure the struct needed to keep state of the iteration, the definition and the initializer are given above
+<span class="lineNum">      33 </span>            :  * @return the next value token in case of an array, the next key token in case of an object, NULL at iteration end
+<span class="lineNum">      34 </span>            :  */
+<span class="lineNum">      35 </span><span class="lineCov">          1 : c_jsmntok_t*    get_next_token          (c_jsmntok_t *base_t, c_jsmntok_t *t, struct _gnt_closure_t *closure);</span>
+<span class="lineNum">      36 </span>            : 
+<span class="lineNum">      37 </span>            : /**
+<span class="lineNum">      38 </span>            :  * This function directly retrieves from the object token t_obj the value token associated with the supplied key.
+<span class="lineNum">      39 </span>            :  * @param base_t the root token of the JSMN parse
+<span class="lineNum">      40 </span>            :  * @param base the start of the base string (the JSON document)
+<span class="lineNum">      41 </span>            :  * @param t_obj the JSON object token
+<span class="lineNum">      42 </span>            :  * @param key the key
+<span class="lineNum">      43 </span>            :  * @return the value token associated in t_obj associated with the given key, NULL in case of failure
+<span class="lineNum">      44 </span>            :  */
+<span class="lineNum">      45 </span><span class="lineCov">          1 : c_jsmntok_t*    get_value_token_by_key  (c_jsmntok_t *base_t, const char *base, c_jsmntok_t *t_obj, const char *key);</span>
+<span class="lineNum">      46 </span>            : 
+<span class="lineNum">      47 </span>            : /**
+<span class="lineNum">      48 </span>            :  * This function retrieves from the token t the number of child tokens. In case t is a JSON object token, it returns
+<span class="lineNum">      49 </span>            :  * the number of key-value pairs.
+<span class="lineNum">      50 </span>            :  * @param base_t the root token of the JSMN parse
+<span class="lineNum">      51 </span>            :  * @param t the JSON object/array token
+<span class="lineNum">      52 </span>            :  * @return the child count of t, 0 in case of errors
+<span class="lineNum">      53 </span>            :  */
+<span class="lineNum">      54 </span><span class="lineCov">          1 : size_t          children_count_token    (c_jsmntok_t *base_t, c_jsmntok_t *t);</span>
+<span class="lineNum">      55 </span>            : 
+<span class="lineNum">      56 </span>            : /**
+<span class="lineNum">      57 </span>            :  * This function retrieves from the token t his i-th child, in case t is an object the i-th key token is returned
+<span class="lineNum">      58 </span>            :  * @param base_t the root token of the JSMN parse
+<span class="lineNum">      59 </span>            :  * @param t the JSON object/array token
+<span class="lineNum">      60 </span>            :  * @param i the index of the desired child token
+<span class="lineNum">      61 </span>            :  * @return the token representing the i-th child of t, NULL in case of failure
+<span class="lineNum">      62 </span>            :  */
+<span class="lineNum">      63 </span><span class="lineCov">          1 : c_jsmntok_t*    get_at_token            (c_jsmntok_t *base_t, c_jsmntok_t *t, size_t i);</span>
+<span class="lineNum">      64 </span>            : 
+<span class="lineNum">      65 </span>            : /**
+<span class="lineNum">      66 </span>            :  * This function parses a floating point double value from a JSMN token
+<span class="lineNum">      67 </span>            :  * @param base the start of the base string (the JSON document)
+<span class="lineNum">      68 </span>            :  * @param t the JSON number token to parse
+<span class="lineNum">      69 </span>            :  * @param result a pointer to a valid double variable which will hold the parsed value
+<span class="lineNum">      70 </span>            :  * @return 0 in case of success, -1 for failure
+<span class="lineNum">      71 </span>            :  */
+<span class="lineNum">      72 </span><span class="lineCov">          1 : int             parse_double_token      (const char *base, c_jsmntok_t *t, double *result);</span>
+<span class="lineNum">      73 </span>            : 
+<span class="lineNum">      74 </span>            : /**
+<span class="lineNum">      75 </span>            :  * This function parses a unsigned int value from a JSMN token
+<span class="lineNum">      76 </span>            :  * @param base the start of the base string (the JSON document)
+<span class="lineNum">      77 </span>            :  * @param t the JSON number token to parse
+<span class="lineNum">      78 </span>            :  * @param result a pointer to a valid unsigned int variable which will hold the parsed value
+<span class="lineNum">      79 </span>            :  * @return 0 in case of success, -1 for failure
+<span class="lineNum">      80 </span>            :  */
+<span class="lineNum">      81 </span><span class="lineCov">          1 : int             parse_unsigned_token    (const char *base, c_jsmntok_t *t, unsigned *result);</span>
+<span class="lineNum">      82 </span>            : 
+<span class="lineNum">      83 </span>            : /**
+<span class="lineNum">      84 </span>            :  * This function behaves like standard strcmp() with the difference that the first argument is a JSMN token
+<span class="lineNum">      85 </span>            :  * @param base the start of the base string (the JSON document)
+<span class="lineNum">      86 </span>            :  * @param t the JSON string token to compare
+<span class="lineNum">      87 </span>            :  * @param str the string to compare against the string token
+<span class="lineNum">      88 </span>            :  * @return a positive, zero or negative value if the string token is respectively, more than, equal
+<span class="lineNum">      89 </span>            :  * or less than the string @p str.
+<span class="lineNum">      90 </span>            :  */
+<span class="lineNum">      91 </span><span class="lineCov">          1 : int             strcmp_token            (const char *base, c_jsmntok_t *t, const char* str);</span>
+<span class="lineNum">      92 </span>            : 
+<span class="lineNum">      93 </span><span class="lineNoCov">          0 : int             parse_unsigned_by_key   (c_jsmntok_t *base_t, const char *base, c_jsmntok_t *t_obj, const char *key, unsigned *result);</span>
+<span class="lineNum">      94 </span><span class="lineNoCov">          0 : int             parse_double_by_key     (c_jsmntok_t *base_t, const char *base, c_jsmntok_t *t_obj, const char *key, double *result);</span>
+<span class="lineNum">      95 </span><span class="lineNoCov">          0 : int             parse_boolean_by_key    (c_jsmntok_t *base_t, const char *base, c_jsmntok_t *t_obj, const char *key, bool *result);</span>
+<span class="lineNum">      96 </span>            : 
+<span class="lineNum">      97 </span><span class="lineNoCov">          0 : int             parse_double_array      (c_jsmntok_t *base_t, const char *base, c_jsmntok_t *t_arr, unsigned expected_count, double *result);</span>
+<span class="lineNum">      98 </span><span class="lineNoCov">          0 : unsigned        parse_string_choice     (c_jsmntok_t *base_t, const char *base, c_jsmntok_t *t_str, unsigned cnt, const char *choices[cnt]);</span>
+<span class="lineNum">      99 </span>            : 
+<span class="lineNum">     100 </span>            : 
+<span class="lineNum">     101 </span>            : #endif /* JSMN_HELPER_H_ */
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.12</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>

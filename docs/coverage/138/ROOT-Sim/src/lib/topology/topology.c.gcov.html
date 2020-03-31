@@ -1,0 +1,764 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - doc-coverage.info - ROOT-Sim/src/lib/topology/topology.c</title>
+  <link rel="stylesheet" type="text/css" href="../../../../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../../../../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../../../../index.html">top level</a> - <a href="index.html">ROOT-Sim/src/lib/topology</a> - topology.c</td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">doc-coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">8</td>
+            <td class="headerCovTableEntry">21</td>
+            <td class="headerCovTableEntryLo">38.1 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2020-02-28 13:00:44</td>
+            <td></td>
+          </tr>
+          <tr><td><img src="../../../../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../../../../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<span class="lineNum">       1 </span><span class="lineNoCov">          0 : /*</span>
+<span class="lineNum">       2 </span>            :  * topology_custom.c
+<span class="lineNum">       3 </span>            :  *
+<span class="lineNum">       4 </span>            :  *  Created on: 24 mag 2018
+<span class="lineNum">       5 </span>            :  *      Author: andrea
+<span class="lineNum">       6 </span>            :  */
+<span class="lineNum">       7 </span>            : 
+<span class="lineNum">       8 </span>            : #include &lt;ROOT-Sim.h&gt;
+<span class="lineNum">       9 </span>            : #include &lt;lib/topology.h&gt;
+<span class="lineNum">      10 </span>            : 
+<span class="lineNum">      11 </span>            : #include &lt;math.h&gt;
+<span class="lineNum">      12 </span>            : 
+<span class="lineNum">      13 </span>            : #include &lt;scheduler/scheduler.h&gt;
+<span class="lineNum">      14 </span>            : #include &lt;lib/jsmn_helper.h&gt;
+<span class="lineNum">      15 </span>            : #include &lt;lib/numerical.h&gt;
+<span class="lineNum">      16 </span>            : #include &lt;datatypes/bitmap.h&gt;
+<span class="lineNum">      17 </span>            : #include &lt;datatypes/array.h&gt;
+<span class="lineNum">      18 </span>            : #include &lt;datatypes/heap.h&gt;
+<span class="lineNum">      19 </span>            : #include &lt;scheduler/process.h&gt;
+<span class="lineNum">      20 </span>            : #include &lt;core/init.h&gt;
+<span class="lineNum">      21 </span>            : #include &lt;serial/serial.h&gt;
+<span class="lineNum">      22 </span>            : 
+<span class="lineNum">      23 </span>            : struct _topology_global_t topology_global;
+<span class="lineNum">      24 </span>            : 
+<span class="lineNum">      25 </span>            : //used internally (also in abm_layer module) to schedule our reserved events TODO: move in a more system-like module
+<span class="lineNum">      26 </span><span class="lineNoCov">          0 : void UncheckedScheduleNewEvent(unsigned int gid_receiver, simtime_t timestamp, unsigned int event_type, void *event_content, unsigned int event_size){</span>
+<span class="lineNum">      27 </span>            : 
+<span class="lineNum">      28 </span>            :         msg_t *event;
+<span class="lineNum">      29 </span>            :         GID_t receiver;
+<span class="lineNum">      30 </span>            : 
+<span class="lineNum">      31 </span>            :         if(unlikely(rootsim_config.serial)){
+<span class="lineNum">      32 </span>            :                 SerialScheduleNewEvent(gid_receiver, timestamp, event_type, event_content, event_size);
+<span class="lineNum">      33 </span>            :                 return;
+<span class="lineNum">      34 </span>            :         }
+<span class="lineNum">      35 </span>            : 
+<span class="lineNum">      36 </span>            :         // Internally to the platform, the receiver is a GID, while models
+<span class="lineNum">      37 </span>            :         // have no difference across GIDs and LIDs. We convert here the passed
+<span class="lineNum">      38 </span>            :         // id to a GID.
+<span class="lineNum">      39 </span>            :         set_gid(receiver, gid_receiver);
+<span class="lineNum">      40 </span>            : 
+<span class="lineNum">      41 </span>            :         // In Silent execution, we do not send again already sent messages
+<span class="lineNum">      42 </span>            :         if(current-&gt;state == LP_STATE_SILENT_EXEC) {
+<span class="lineNum">      43 </span>            :                 return;
+<span class="lineNum">      44 </span>            :         }
+<span class="lineNum">      45 </span>            : 
+<span class="lineNum">      46 </span>            : #ifndef NDEBUG
+<span class="lineNum">      47 </span>            :         // Check whether the destination LP is out of range
+<span class="lineNum">      48 </span>            :         if(receiver.to_int &gt;= n_prc_tot) { // It's unsigned, so no need to check whether it's &lt; 0
+<span class="lineNum">      49 </span>            :                 rootsim_error(true, &quot;Warning: the destination LP %u %lf %u is out of range. The event has been ignored\n&quot;, receiver.to_int, timestamp, event_type);
+<span class="lineNum">      50 </span>            :                 return;
+<span class="lineNum">      51 </span>            :         }
+<span class="lineNum">      52 </span>            : 
+<span class="lineNum">      53 </span>            :         // Check if the associated timestamp is negative
+<span class="lineNum">      54 </span>            :         if(timestamp &lt; lvt(current)) {
+<span class="lineNum">      55 </span>            :                 rootsim_error(true, &quot;LP %u is trying to generate an event (type %d) to %u in the past! (Current LVT = %f, generated event's timestamp = %f) Aborting...\n&quot;, current, event_type, receiver.to_int, lvt(current), timestamp);
+<span class="lineNum">      56 </span>            :         }
+<span class="lineNum">      57 </span>            : #endif
+<span class="lineNum">      58 </span>            : 
+<span class="lineNum">      59 </span>            :         // Copy all the information into the event structure
+<span class="lineNum">      60 </span>            :         pack_msg(&amp;event, current-&gt;gid, receiver, event_type, timestamp, lvt(current), event_size, event_content);
+<span class="lineNum">      61 </span>            :         event-&gt;mark = generate_mark(current);
+<span class="lineNum">      62 </span>            : 
+<span class="lineNum">      63 </span>            :         insert_outgoing_msg(event);
+<span class="lineNum">      64 </span>            : }
+<span class="lineNum">      65 </span>            : 
+<span class="lineNum">      66 </span>            : /**
+<span class="lineNum">      67 </span>            :  * Utility function which returns the expected number of neighbours
+<span class="lineNum">      68 </span>            :  * depending on the geometry of the topology.
+<span class="lineNum">      69 </span>            :  */
+<span class="lineNum">      70 </span><span class="lineCov">          1 : static unsigned directions_count(void) {</span>
+<span class="lineNum">      71 </span>            :         switch (topology_global.geometry) {
+<span class="lineNum">      72 </span>            :                 case TOPOLOGY_GRAPH:
+<span class="lineNum">      73 </span>            :                         return topology_global.lp_cnt - 1;
+<span class="lineNum">      74 </span>            :                 case TOPOLOGY_HEXAGON:
+<span class="lineNum">      75 </span>            :                         return 6;
+<span class="lineNum">      76 </span>            :                 case TOPOLOGY_TORUS:
+<span class="lineNum">      77 </span>            :                 case TOPOLOGY_SQUARE:
+<span class="lineNum">      78 </span>            :                         return 4;
+<span class="lineNum">      79 </span>            :                 case TOPOLOGY_STAR:
+<span class="lineNum">      80 </span>            :                         return 2;
+<span class="lineNum">      81 </span>            :                 case TOPOLOGY_RING:
+<span class="lineNum">      82 </span>            :                         return 1;
+<span class="lineNum">      83 </span>            :                 case TOPOLOGY_BIDRING:
+<span class="lineNum">      84 </span>            :                         return 2;
+<span class="lineNum">      85 </span>            :         }
+<span class="lineNum">      86 </span>            :         return UINT_MAX;
+<span class="lineNum">      87 </span>            : }
+<span class="lineNum">      88 </span>            : 
+<span class="lineNum">      89 </span>            : /**
+<span class="lineNum">      90 </span>            :  * This loads a topology file:
+<span class="lineNum">      91 </span>            :  * it checks for the correctness of the JSON file,
+<span class="lineNum">      92 </span>            :  * it sets the correct values for the global struct,
+<span class="lineNum">      93 </span>            :  * it calls the right specific topology parser,
+<span class="lineNum">      94 </span>            :  * it makes cleanup (the returned malloc'ed area needs to be freed at simulation shutdown)
+<span class="lineNum">      95 </span>            :  * @param file_name the path of the file containing the topology info
+<span class="lineNum">      96 </span>            :  * @return an opaque malloc'ed area used by the specific topology initiators
+<span class="lineNum">      97 </span>            :  */
+<span class="lineNum">      98 </span><span class="lineCov">          1 : static void *load_topology_file(const char *file_name) {</span>
+<span class="lineNum">      99 </span>            :         char *json_base;
+<span class="lineNum">     100 </span>            :         jsmntok_t *root_token;
+<span class="lineNum">     101 </span>            :         c_jsmntok_t *t;
+<span class="lineNum">     102 </span>            : 
+<span class="lineNum">     103 </span>            :         unsigned lp_cnt;
+<span class="lineNum">     104 </span>            :         enum _topology_type_t t_type;
+<span class="lineNum">     105 </span>            :         enum _topology_geometry_t geometry;
+<span class="lineNum">     106 </span>            : 
+<span class="lineNum">     107 </span><span class="lineNoCov">          0 :         void *ret = NULL;</span>
+<span class="lineNum">     108 </span>            : 
+<span class="lineNum">     109 </span>            :         // load and parse the file with given file_name
+<span class="lineNum">     110 </span>            :         if(load_and_parse_json_file(file_name, &amp;json_base, &amp;root_token) &lt; 0)
+<span class="lineNum">     111 </span>            :                 rootsim_error(true, &quot;The specified topology file at \&quot;%s\&quot; is either non accessible, non existing, or is not a properly formed JSON file&quot;, file_name);
+<span class="lineNum">     112 </span>            :         // parse the regions count and check its validity
+<span class="lineNum">     113 </span>            :         if(parse_unsigned_by_key(root_token, json_base, root_token, &quot;regions_count&quot;, &amp;lp_cnt) &lt; 0)
+<span class="lineNum">     114 </span>            :                 rootsim_error(true, &quot;Invalid or missing json value with key \&quot;regions_count\&quot; (must be an unsigned integer)&quot;);
+<span class="lineNum">     115 </span>            :         // sanity checks on the number of instantiated LPs
+<span class="lineNum">     116 </span>            :         if(lp_cnt + topology_settings.out_of_topology &gt; n_prc_tot)
+<span class="lineNum">     117 </span>            :                 rootsim_error(true, &quot;This topology needs an higher number of available LPs (%lu versus %lu available LPs)&quot;, lp_cnt, n_prc_tot);
+<span class="lineNum">     118 </span>            :         if(lp_cnt + topology_settings.out_of_topology &lt; n_prc_tot)
+<span class="lineNum">     119 </span>            :                 rootsim_error(true, &quot;The requested regions are fewer than the available LPs (%lu versus %lu available LPs)&quot;, lp_cnt, n_prc_tot);
+<span class="lineNum">     120 </span>            : 
+<span class="lineNum">     121 </span>            :         // look for the topology type
+<span class="lineNum">     122 </span>            :         const char *type_choices[] = {
+<span class="lineNum">     123 </span>            :                         [TOPOLOGY_COSTS] =      &quot;costs&quot;,
+<span class="lineNum">     124 </span>            :                         [TOPOLOGY_OBSTACLES] =  &quot;obstacles&quot;,
+<span class="lineNum">     125 </span>            :                         [TOPOLOGY_PROBABILITIES] = &quot;probabilities&quot;
+<span class="lineNum">     126 </span>            :         };
+<span class="lineNum">     127 </span>            :         // look for the type key and retrieve its value
+<span class="lineNum">     128 </span>            :         t = get_value_token_by_key(root_token, json_base, root_token, &quot;type&quot;);
+<span class="lineNum">     129 </span>            :         // parse the choice from the expected string value
+<span class="lineNum">     130 </span>            :         if((t_type = parse_string_choice(root_token, json_base, t, sizeof(type_choices)/sizeof(const char *), type_choices)) == UINT_MAX)
+<span class="lineNum">     131 </span>            :                 rootsim_error(true, &quot;Invalid or missing json value with key \&quot;type\&quot; (must be a recognizable string)&quot;);
+<span class="lineNum">     132 </span>            :         // sanity check between the topology type requested by the model and what we found
+<span class="lineNum">     133 </span>            :         if(t_type != topology_settings.type){
+<span class="lineNum">     134 </span>            :                 rootsim_error(true, &quot;The specified topology has a different type from the one requested by the model&quot;);
+<span class="lineNum">     135 </span>            :         }
+<span class="lineNum">     136 </span>            : 
+<span class="lineNum">     137 </span>            :         // look for the topology type
+<span class="lineNum">     138 </span>            :         const char *geometry_choices[] = {
+<span class="lineNum">     139 </span>            :                         [TOPOLOGY_HEXAGON - TOPOLOGY_GEOMETRY_OFFSET] = &quot;hexagons&quot;,
+<span class="lineNum">     140 </span>            :                         [TOPOLOGY_SQUARE - TOPOLOGY_GEOMETRY_OFFSET] =  &quot;squares&quot;,
+<span class="lineNum">     141 </span>            :                         [TOPOLOGY_GRAPH - TOPOLOGY_GEOMETRY_OFFSET] =   &quot;graph&quot;,
+<span class="lineNum">     142 </span>            :                         [TOPOLOGY_STAR - TOPOLOGY_GEOMETRY_OFFSET] =    &quot;star&quot;,
+<span class="lineNum">     143 </span>            :                         [TOPOLOGY_RING - TOPOLOGY_GEOMETRY_OFFSET] =    &quot;ring&quot;,
+<span class="lineNum">     144 </span>            :                         [TOPOLOGY_BIDRING - TOPOLOGY_GEOMETRY_OFFSET] = &quot;bidring&quot;,
+<span class="lineNum">     145 </span>            :                         [TOPOLOGY_TORUS - TOPOLOGY_GEOMETRY_OFFSET] =   &quot;torus&quot;
+<span class="lineNum">     146 </span>            :         };
+<span class="lineNum">     147 </span>            :         // look for the geometry key and retrieve its value
+<span class="lineNum">     148 </span>            :         t = get_value_token_by_key(root_token, json_base, root_token, &quot;geometry&quot;);
+<span class="lineNum">     149 </span>            :         // parse the choice from the expected string value
+<span class="lineNum">     150 </span>            :         if((geometry = parse_string_choice(root_token, json_base, t, sizeof(geometry_choices)/sizeof(const char *), geometry_choices)) == UINT_MAX)
+<span class="lineNum">     151 </span>            :                 rootsim_error(true, &quot;Invalid or missing json value with key \&quot;geometry\&quot; (must be a recognizable string)&quot;);
+<span class="lineNum">     152 </span>            :         // we sum the offset of the enum to obtain a valid geometry number
+<span class="lineNum">     153 </span>            :         geometry += TOPOLOGY_GEOMETRY_OFFSET;
+<span class="lineNum">     154 </span>            :         // we set the known fields of the global struct
+<span class="lineNum">     155 </span>            :         topology_global.geometry = geometry;
+<span class="lineNum">     156 </span>            :         topology_global.lp_cnt = lp_cnt;
+<span class="lineNum">     157 </span>            :         topology_global.directions = directions_count();
+<span class="lineNum">     158 </span>            :         // we give control to the right specific parser
+<span class="lineNum">     159 </span>            :         switch (t_type) {
+<span class="lineNum">     160 </span>            :                 case TOPOLOGY_PROBABILITIES:
+<span class="lineNum">     161 </span>            :                         ret = load_topology_file_probabilities(root_token, json_base);
+<span class="lineNum">     162 </span>            :                         break;
+<span class="lineNum">     163 </span>            : 
+<span class="lineNum">     164 </span>            :                 case TOPOLOGY_COSTS:
+<span class="lineNum">     165 </span>            :                         ret = load_topology_file_costs(root_token, json_base);
+<span class="lineNum">     166 </span>            :                         break;
+<span class="lineNum">     167 </span>            : 
+<span class="lineNum">     168 </span>            :                 case TOPOLOGY_OBSTACLES:
+<span class="lineNum">     169 </span>            :                         ret = load_topology_file_obstacles(root_token, json_base);
+<span class="lineNum">     170 </span>            :                         break;
+<span class="lineNum">     171 </span>            :         }
+<span class="lineNum">     172 </span>            :         // cleanup
+<span class="lineNum">     173 </span>            :         rsfree(root_token);
+<span class="lineNum">     174 </span>            :         rsfree(json_base);
+<span class="lineNum">     175 </span>            :         // return the topology specific data
+<span class="lineNum">     176 </span>            :         return ret;
+<span class="lineNum">     177 </span>            : }
+<span class="lineNum">     178 </span>            : 
+<span class="lineNum">     179 </span>            : /**
+<span class="lineNum">     180 </span>            :  * This pre-computes the edge of the topology;
+<span class="lineNum">     181 </span>            :  * the &lt;sqrt&gt;&quot;()&quot; is expensive and so we cache its value
+<span class="lineNum">     182 </span>            :  */
+<span class="lineNum">     183 </span><span class="lineCov">          1 : static void compute_edge(void){</span>
+<span class="lineNum">     184 </span>            :         unsigned edge;
+<span class="lineNum">     185 </span>            :         const unsigned lp_cnt = topology_global.lp_cnt;
+<span class="lineNum">     186 </span>            :         switch (topology_global.geometry) {
+<span class="lineNum">     187 </span>            :                 case TOPOLOGY_SQUARE:
+<span class="lineNum">     188 </span>            :                 case TOPOLOGY_HEXAGON:
+<span class="lineNum">     189 </span>            :                 case TOPOLOGY_TORUS:
+<span class="lineNum">     190 </span>            :                         edge = sqrt(lp_cnt);
+<span class="lineNum">     191 </span>            :                         // we make sure there are no &quot;lonely&quot; LPs
+<span class="lineNum">     192 </span>            :                         if(edge * edge != lp_cnt)
+<span class="lineNum">     193 </span>            :                                 rootsim_error(true, &quot;Invalid number of regions for this topology geometry (must be a square number)&quot;);
+<span class="lineNum">     194 </span>            :                         break;
+<span class="lineNum">     195 </span>            :                 default:
+<span class="lineNum">     196 </span>            :                         // the edge value is actually unused
+<span class="lineNum">     197 </span>            :                         edge = 0;
+<span class="lineNum">     198 </span>            :                         break;
+<span class="lineNum">     199 </span>            :         }
+<span class="lineNum">     200 </span>            :         // set the edge value
+<span class="lineNum">     201 </span>            :         topology_global.edge = edge;
+<span class="lineNum">     202 </span>            : }
+<span class="lineNum">     203 </span>            : 
+<span class="lineNum">     204 </span>            : /**
+<span class="lineNum">     205 </span>            :  * Initialize the topology module for each LP hosted on the machine.
+<span class="lineNum">     206 </span>            :  * This needs to be called right after LP basic initialization before starting to process events.
+<span class="lineNum">     207 </span>            :  */
+<span class="lineNum">     208 </span><span class="lineCov">          1 : void topology_init(void) {</span>
+<span class="lineNum">     209 </span>            :         if(!&amp;topology_settings)
+<span class="lineNum">     210 </span>            :                 // the weak symbol isn't defined: we aren't needed
+<span class="lineNum">     211 </span>            :                 return;
+<span class="lineNum">     212 </span>            : 
+<span class="lineNum">     213 </span>            :         // this is the data extracted from the topology file
+<span class="lineNum">     214 </span>            :         void *t_data = NULL;
+<span class="lineNum">     215 </span>            :         // basic sanity check
+<span class="lineNum">     216 </span>            :         if(topology_settings.out_of_topology &gt;= n_prc_tot)
+<span class="lineNum">     217 </span>            :                 rootsim_error(true, &quot;Not enough LPs to run even a default topology with %u control LPs&quot;, topology_settings.out_of_topology);
+<span class="lineNum">     218 </span>            :         // set default values
+<span class="lineNum">     219 </span>            :         topology_global.lp_cnt = n_prc_tot - topology_settings.out_of_topology;
+<span class="lineNum">     220 </span>            :         topology_global.geometry = topology_settings.default_geometry;
+<span class="lineNum">     221 </span>            :         topology_global.directions = directions_count();
+<span class="lineNum">     222 </span>            :         // load settings from file if specified
+<span class="lineNum">     223 </span>            :         if(topology_settings.topology_path)
+<span class="lineNum">     224 </span>            :                 t_data = load_topology_file(topology_settings.topology_path);
+<span class="lineNum">     225 </span>            :         // compute the edge value for topologies it makes sense for
+<span class="lineNum">     226 </span>            :         compute_edge();
+<span class="lineNum">     227 </span>            :         // compute the topology struct size (used also for check-pointing)
+<span class="lineNum">     228 </span>            :         switch(topology_settings.type){
+<span class="lineNum">     229 </span>            :                 case TOPOLOGY_COSTS:
+<span class="lineNum">     230 </span>            :                         topology_global.chkp_size = size_checkpoint_costs();
+<span class="lineNum">     231 </span>            :                         break;
+<span class="lineNum">     232 </span>            :                 case TOPOLOGY_PROBABILITIES:
+<span class="lineNum">     233 </span>            :                         topology_global.chkp_size = size_checkpoint_probabilities();
+<span class="lineNum">     234 </span>            :                         break;
+<span class="lineNum">     235 </span>            :                 case TOPOLOGY_OBSTACLES:
+<span class="lineNum">     236 </span>            :                         topology_global.chkp_size = size_checkpoint_obstacles();
+<span class="lineNum">     237 </span>            :                         break;
+<span class="lineNum">     238 </span>            :         }
+<span class="lineNum">     239 </span>            :         // initialize the topology struct
+<span class="lineNum">     240 </span>            :         foreach_lp(lp){
+<span class="lineNum">     241 </span>            :                 if(lp-&gt;gid.to_int &gt;= topology_global.lp_cnt){
+<span class="lineNum">     242 </span>            :                         // this LP isn't part of the underlying topology
+<span class="lineNum">     243 </span>            :                         lp-&gt;topology = NULL;
+<span class="lineNum">     244 </span>            :                 }
+<span class="lineNum">     245 </span>            :                 switch(topology_settings.type){
+<span class="lineNum">     246 </span>            :                         case TOPOLOGY_COSTS:
+<span class="lineNum">     247 </span>            :                                 lp-&gt;topology = topology_costs_init(lp-&gt;gid.to_int, t_data);
+<span class="lineNum">     248 </span>            :                                 break;
+<span class="lineNum">     249 </span>            :                         case TOPOLOGY_OBSTACLES:
+<span class="lineNum">     250 </span>            :                                 lp-&gt;topology = topology_obstacles_init(lp-&gt;gid.to_int, t_data);
+<span class="lineNum">     251 </span>            :                                 break;
+<span class="lineNum">     252 </span>            :                         case TOPOLOGY_PROBABILITIES:
+<span class="lineNum">     253 </span>            :                                 lp-&gt;topology = topology_probabilities_init(lp-&gt;gid.to_int, t_data);
+<span class="lineNum">     254 </span>            :                                 break;
+<span class="lineNum">     255 </span>            :                 }
+<span class="lineNum">     256 </span>            :         }
+<span class="lineNum">     257 </span>            :         // free the topology data read from file
+<span class="lineNum">     258 </span>            :         rsfree(t_data);
+<span class="lineNum">     259 </span>            : }
+<span class="lineNum">     260 </span>            : 
+<span class="lineNum">     261 </span><span class="lineCov">          1 : void SetValueTopology(unsigned from, unsigned to, double value) {</span>
+<span class="lineNum">     262 </span>            :         switch_to_platform_mode();
+<span class="lineNum">     263 </span>            :         const unsigned lp_cnt = topology_global.lp_cnt;
+<span class="lineNum">     264 </span>            : 
+<span class="lineNum">     265 </span>            :         if(unlikely(!topology_settings.write_enabled))
+<span class="lineNum">     266 </span>            :                 rootsim_error(true, &quot;SetValueTopology(): called with write_enable false&quot;);
+<span class="lineNum">     267 </span>            : 
+<span class="lineNum">     268 </span>            :         if(unlikely(from &gt;= lp_cnt || to &gt;= lp_cnt))
+<span class="lineNum">     269 </span>            :                 rootsim_error(true, &quot;SetValueTopology(): from % u, to %u when lp_cnt is %u&quot;, from, to, lp_cnt);
+<span class="lineNum">     270 </span>            : 
+<span class="lineNum">     271 </span>            :         if(unlikely(value &lt; 0))
+<span class="lineNum">     272 </span>            :                 rootsim_error(true, &quot;SetValueTopology(): negative values are not supported&quot;, value);
+<span class="lineNum">     273 </span>            : 
+<span class="lineNum">     274 </span>            :         switch (topology_settings.type) {
+<span class="lineNum">     275 </span>            :                 case TOPOLOGY_COSTS:
+<span class="lineNum">     276 </span>            :                         set_value_topology_costs(from, to, value);
+<span class="lineNum">     277 </span>            :                         break;
+<span class="lineNum">     278 </span>            :                 case TOPOLOGY_PROBABILITIES:
+<span class="lineNum">     279 </span>            :                         set_value_topology_probabilities(from, to, value);
+<span class="lineNum">     280 </span>            :                         break;
+<span class="lineNum">     281 </span>            :                 case TOPOLOGY_OBSTACLES:
+<span class="lineNum">     282 </span>            :                         set_value_topology_obstacles(from, to, value);
+<span class="lineNum">     283 </span>            :                         break;
+<span class="lineNum">     284 </span>            :         }
+<span class="lineNum">     285 </span>            :         switch_to_application_mode();
+<span class="lineNum">     286 </span>            : }
+<span class="lineNum">     287 </span>            : 
+<span class="lineNum">     288 </span><span class="lineCov">          1 : double GetValueTopology(unsigned from, unsigned to) {</span>
+<span class="lineNum">     289 </span>            :         switch_to_platform_mode();
+<span class="lineNum">     290 </span>            :         const unsigned lp_cnt = topology_global.lp_cnt;
+<span class="lineNum">     291 </span>            : 
+<span class="lineNum">     292 </span>            :         double ret = -1;
+<span class="lineNum">     293 </span>            : 
+<span class="lineNum">     294 </span>            :         if(from &gt;= lp_cnt || to &gt;= lp_cnt)
+<span class="lineNum">     295 </span>            :                 rootsim_error(true, &quot;SetValueTopology(): from % u, to %u when lp_cnt is %u&quot;, from, to, lp_cnt);
+<span class="lineNum">     296 </span>            : 
+<span class="lineNum">     297 </span>            :         switch (topology_settings.type) {
+<span class="lineNum">     298 </span>            :                 case TOPOLOGY_COSTS:
+<span class="lineNum">     299 </span>            :                         ret = get_value_topology_costs(from, to);
+<span class="lineNum">     300 </span>            :                         break;
+<span class="lineNum">     301 </span>            :                 case TOPOLOGY_PROBABILITIES:
+<span class="lineNum">     302 </span>            :                         ret = get_value_topology_probabilities(from, to);
+<span class="lineNum">     303 </span>            :                         break;
+<span class="lineNum">     304 </span>            :                 case TOPOLOGY_OBSTACLES:
+<span class="lineNum">     305 </span>            :                         ret = get_value_topology_obstacles(from, to);
+<span class="lineNum">     306 </span>            :                         break;
+<span class="lineNum">     307 </span>            :         }
+<span class="lineNum">     308 </span>            :         switch_to_application_mode();
+<span class="lineNum">     309 </span>            :         return ret;
+<span class="lineNum">     310 </span>            : }
+<span class="lineNum">     311 </span>            : 
+<span class="lineNum">     312 </span><span class="lineNoCov">          0 : void ProcessEventTopology(void){</span>
+<span class="lineNum">     313 </span>            :         switch(current_evt-&gt;type){
+<span class="lineNum">     314 </span>            :                 case TOPOLOGY_UPDATE:
+<span class="lineNum">     315 </span>            :                         switch (topology_settings.type) {
+<span class="lineNum">     316 </span>            :                                 case TOPOLOGY_COSTS:
+<span class="lineNum">     317 </span>            :                                         update_topology_costs();
+<span class="lineNum">     318 </span>            :                                         break;
+<span class="lineNum">     319 </span>            :                                 case TOPOLOGY_PROBABILITIES:
+<span class="lineNum">     320 </span>            :                                         update_topology_probabilities();
+<span class="lineNum">     321 </span>            :                                         break;
+<span class="lineNum">     322 </span>            :                                 case TOPOLOGY_OBSTACLES:
+<span class="lineNum">     323 </span>            :                                         update_topology_obstacles();
+<span class="lineNum">     324 </span>            :                                         break;
+<span class="lineNum">     325 </span>            :                                 default:
+<span class="lineNum">     326 </span>            :                                         rootsim_error(true, &quot;This shouldn't happen. Contact the maintainer&quot;);
+<span class="lineNum">     327 </span>            :                         }
+<span class="lineNum">     328 </span>            :                         break;
+<span class="lineNum">     329 </span>            :                 default:
+<span class="lineNum">     330 </span>            :                         switch_to_application_mode();
+<span class="lineNum">     331 </span>            :                         current-&gt;ProcessEvent(current-&gt;gid.to_int, current_evt-&gt;timestamp, current_evt-&gt;type, current_evt-&gt;event_content, current_evt-&gt;size, current-&gt;current_base_pointer);
+<span class="lineNum">     332 </span>            :                         switch_to_platform_mode();
+<span class="lineNum">     333 </span>            :         }
+<span class="lineNum">     334 </span>            : }
+<span class="lineNum">     335 </span>            : 
+<span class="lineNum">     336 </span><span class="lineNoCov">          0 : unsigned int RegionsCount(void) {</span>
+<span class="lineNum">     337 </span>            :         return topology_global.lp_cnt;
+<span class="lineNum">     338 </span>            : }
+<span class="lineNum">     339 </span>            : 
+<span class="lineNum">     340 </span><span class="lineNoCov">          0 : unsigned int DirectionsCount(void) {</span>
+<span class="lineNum">     341 </span>            :         return topology_global.directions;
+<span class="lineNum">     342 </span>            : }
+<span class="lineNum">     343 </span>            : 
+<span class="lineNum">     344 </span><span class="lineNoCov">          0 : static bool is_reachable(unsigned int to){</span>
+<span class="lineNum">     345 </span>            :         bool result = false;
+<span class="lineNum">     346 </span>            :         switch (topology_settings.type) {
+<span class="lineNum">     347 </span>            :                 case TOPOLOGY_PROBABILITIES:
+<span class="lineNum">     348 </span>            :                         result = is_reachable_probabilities(to);
+<span class="lineNum">     349 </span>            :                         break;
+<span class="lineNum">     350 </span>            :                 case TOPOLOGY_OBSTACLES:
+<span class="lineNum">     351 </span>            :                         result = is_reachable_obstacles(to);
+<span class="lineNum">     352 </span>            :                         break;
+<span class="lineNum">     353 </span>            :                 case TOPOLOGY_COSTS:
+<span class="lineNum">     354 </span>            :                         result = is_reachable_costs(to);
+<span class="lineNum">     355 </span>            :                         break;
+<span class="lineNum">     356 </span>            :         }
+<span class="lineNum">     357 </span>            :         return result;
+<span class="lineNum">     358 </span>            : }
+<span class="lineNum">     359 </span>            : 
+<span class="lineNum">     360 </span><span class="lineNoCov">          0 : unsigned int NeighboursCount(unsigned region){</span>
+<span class="lineNum">     361 </span>            :         switch_to_platform_mode();
+<span class="lineNum">     362 </span>            :         unsigned i = topology_global.directions;
+<span class="lineNum">     363 </span>            :         unsigned res = 0;
+<span class="lineNum">     364 </span>            :         unsigned lp_id;
+<span class="lineNum">     365 </span>            :         while(i--){
+<span class="lineNum">     366 </span>            :                 if((lp_id = get_raw_receiver(region, i)) != DIRECTION_INVALID)
+<span class="lineNum">     367 </span>            :                         res++;
+<span class="lineNum">     368 </span>            :         }
+<span class="lineNum">     369 </span>            :         switch_to_application_mode();
+<span class="lineNum">     370 </span>            :         return res;
+<span class="lineNum">     371 </span>            : }
+<span class="lineNum">     372 </span>            : 
+<span class="lineNum">     373 </span>            : /**
+<span class="lineNum">     374 </span>            :  * Compute the id of the LP positioned in the specified direction adjacent to the given LP.
+<span class="lineNum">     375 </span>            :  * @param from The id of the starting point LP
+<span class="lineNum">     376 </span>            :  * @param direction The direction needed to get to the desired neighbour
+<span class="lineNum">     377 </span>            :  * @return the id of the adjacent LP in the requested direction or INVALID_DIRECTION if there's no LP satisfying the
+<span class="lineNum">     378 </span>            :  * request
+<span class="lineNum">     379 </span>            :  */
+<span class="lineNum">     380 </span><span class="lineCov">          1 : unsigned int get_raw_receiver(unsigned int from, direction_t direction) {</span>
+<span class="lineNum">     381 </span>            :         unsigned int x, y;
+<span class="lineNum">     382 </span>            :         unsigned receiver;
+<span class="lineNum">     383 </span>            :         // const so we don't accidentally modify it
+<span class="lineNum">     384 </span>            :         const unsigned sender = from;
+<span class="lineNum">     385 </span>            :         // the pre-computed edge length for geometries which require it
+<span class="lineNum">     386 </span>            :         const unsigned edge = topology_global.edge;
+<span class="lineNum">     387 </span>            :         // without modifications we would fail
+<span class="lineNum">     388 </span>            :         receiver = DIRECTION_INVALID;
+<span class="lineNum">     389 </span>            : 
+<span class="lineNum">     390 </span>            :         switch (topology_global.geometry) {
+<span class="lineNum">     391 </span>            : 
+<span class="lineNum">     392 </span>            :                 case TOPOLOGY_HEXAGON:
+<span class="lineNum">     393 </span>            :                         // Convert linear coords to square coords
+<span class="lineNum">     394 </span>            :                         y = sender / edge;
+<span class="lineNum">     395 </span>            :                         x = sender - y * edge;
+<span class="lineNum">     396 </span>            : 
+<span class="lineNum">     397 </span>            :                         switch (direction) {
+<span class="lineNum">     398 </span>            :                                 case DIRECTION_NW:
+<span class="lineNum">     399 </span>            :                                         x += (y &amp; 1U) - 1;
+<span class="lineNum">     400 </span>            :                                         y -= 1;
+<span class="lineNum">     401 </span>            :                                         break;
+<span class="lineNum">     402 </span>            :                                 case DIRECTION_NE:
+<span class="lineNum">     403 </span>            :                                         x += (y &amp; 1U);
+<span class="lineNum">     404 </span>            :                                         y -= 1;
+<span class="lineNum">     405 </span>            :                                         break;
+<span class="lineNum">     406 </span>            :                                 case DIRECTION_SW:
+<span class="lineNum">     407 </span>            :                                         x += (y &amp; 1U) - 1;
+<span class="lineNum">     408 </span>            :                                         y += 1;
+<span class="lineNum">     409 </span>            :                                         break;
+<span class="lineNum">     410 </span>            :                                 case DIRECTION_SE:
+<span class="lineNum">     411 </span>            :                                         x += (y &amp; 1U);
+<span class="lineNum">     412 </span>            :                                         y += 1;
+<span class="lineNum">     413 </span>            :                                         break;
+<span class="lineNum">     414 </span>            :                                 case DIRECTION_E:
+<span class="lineNum">     415 </span>            :                                         x += 1;
+<span class="lineNum">     416 </span>            :                                         break;
+<span class="lineNum">     417 </span>            :                                 case DIRECTION_W:
+<span class="lineNum">     418 </span>            :                                         x -= 1;
+<span class="lineNum">     419 </span>            :                                         break;
+<span class="lineNum">     420 </span>            :                                 default:
+<span class="lineNum">     421 </span>            :                                         goto out;
+<span class="lineNum">     422 </span>            :                         }
+<span class="lineNum">     423 </span>            : 
+<span class="lineNum">     424 </span>            :                         if(likely(x &lt; edge &amp;&amp; y &lt; edge))
+<span class="lineNum">     425 </span>            :                                 receiver = y * edge + x;
+<span class="lineNum">     426 </span>            : 
+<span class="lineNum">     427 </span>            :                         break;
+<span class="lineNum">     428 </span>            : 
+<span class="lineNum">     429 </span>            :                 case TOPOLOGY_SQUARE:
+<span class="lineNum">     430 </span>            :                         // Convert linear coords to square coords
+<span class="lineNum">     431 </span>            :                         y = sender / edge;
+<span class="lineNum">     432 </span>            :                         x = sender - y * edge;
+<span class="lineNum">     433 </span>            : 
+<span class="lineNum">     434 </span>            :                         switch (direction) {
+<span class="lineNum">     435 </span>            :                                 case DIRECTION_N:
+<span class="lineNum">     436 </span>            :                                         y -= 1;
+<span class="lineNum">     437 </span>            :                                         break;
+<span class="lineNum">     438 </span>            :                                 case DIRECTION_S:
+<span class="lineNum">     439 </span>            :                                         y += 1;
+<span class="lineNum">     440 </span>            :                                         break;
+<span class="lineNum">     441 </span>            :                                 case DIRECTION_E:
+<span class="lineNum">     442 </span>            :                                         x += 1;
+<span class="lineNum">     443 </span>            :                                         break;
+<span class="lineNum">     444 </span>            :                                 case DIRECTION_W:
+<span class="lineNum">     445 </span>            :                                         x -= 1;
+<span class="lineNum">     446 </span>            :                                         break;
+<span class="lineNum">     447 </span>            :                                 default:
+<span class="lineNum">     448 </span>            :                                         goto out;
+<span class="lineNum">     449 </span>            :                         }
+<span class="lineNum">     450 </span>            : 
+<span class="lineNum">     451 </span>            :                         if(likely(x &lt; edge &amp;&amp; y &lt; edge))
+<span class="lineNum">     452 </span>            :                                 receiver = y * edge + x;
+<span class="lineNum">     453 </span>            : 
+<span class="lineNum">     454 </span>            :                         break;
+<span class="lineNum">     455 </span>            : 
+<span class="lineNum">     456 </span>            :                 case TOPOLOGY_TORUS:
+<span class="lineNum">     457 </span>            :                         // Convert linear coords to square coords
+<span class="lineNum">     458 </span>            :                         y = sender / edge;
+<span class="lineNum">     459 </span>            :                         x = sender - y * edge;
+<span class="lineNum">     460 </span>            : 
+<span class="lineNum">     461 </span>            :                         switch (direction) {
+<span class="lineNum">     462 </span>            :                                 case DIRECTION_N:
+<span class="lineNum">     463 </span>            :                                         y -= 1;
+<span class="lineNum">     464 </span>            :                                         if(unlikely(y &gt;= edge)){
+<span class="lineNum">     465 </span>            :                                                 y = edge - 1;
+<span class="lineNum">     466 </span>            :                                         }
+<span class="lineNum">     467 </span>            :                                         break;
+<span class="lineNum">     468 </span>            :                                 case DIRECTION_S:
+<span class="lineNum">     469 </span>            :                                         y += 1;
+<span class="lineNum">     470 </span>            :                                         if(unlikely(y &gt;= edge)){
+<span class="lineNum">     471 </span>            :                                                 y = 0;
+<span class="lineNum">     472 </span>            :                                         }
+<span class="lineNum">     473 </span>            :                                         break;
+<span class="lineNum">     474 </span>            :                                 case DIRECTION_E:
+<span class="lineNum">     475 </span>            :                                         x += 1;
+<span class="lineNum">     476 </span>            :                                         if(unlikely(x &gt;= edge)){
+<span class="lineNum">     477 </span>            :                                                 x = 0;
+<span class="lineNum">     478 </span>            :                                         }
+<span class="lineNum">     479 </span>            :                                         break;
+<span class="lineNum">     480 </span>            :                                 case DIRECTION_W:
+<span class="lineNum">     481 </span>            :                                         x -= 1;
+<span class="lineNum">     482 </span>            :                                         if(unlikely(x &gt;= edge)){
+<span class="lineNum">     483 </span>            :                                                 x = edge - 1;
+<span class="lineNum">     484 </span>            :                                         }
+<span class="lineNum">     485 </span>            :                                         break;
+<span class="lineNum">     486 </span>            :                                 default:
+<span class="lineNum">     487 </span>            :                                         goto out;
+<span class="lineNum">     488 </span>            :                         }
+<span class="lineNum">     489 </span>            : 
+<span class="lineNum">     490 </span>            :                         // Convert back to linear coordinates
+<span class="lineNum">     491 </span>            :                         receiver = y * edge + x;
+<span class="lineNum">     492 </span>            : 
+<span class="lineNum">     493 </span>            :                         break;
+<span class="lineNum">     494 </span>            : 
+<span class="lineNum">     495 </span>            :                 case TOPOLOGY_GRAPH:
+<span class="lineNum">     496 </span>            :                         if(likely(direction &lt; topology_global.lp_cnt))
+<span class="lineNum">     497 </span>            :                                 receiver = direction;
+<span class="lineNum">     498 </span>            :                         break;
+<span class="lineNum">     499 </span>            : 
+<span class="lineNum">     500 </span>            :                 case TOPOLOGY_BIDRING:
+<span class="lineNum">     501 </span>            :                         if(direction == DIRECTION_W) {
+<span class="lineNum">     502 </span>            :                                 if(sender == 0) {
+<span class="lineNum">     503 </span>            :                                         receiver = topology_global.lp_cnt - 1;
+<span class="lineNum">     504 </span>            :                                 } else {
+<span class="lineNum">     505 </span>            :                                         receiver =sender - 1;
+<span class="lineNum">     506 </span>            :                                 }
+<span class="lineNum">     507 </span>            :                         } else if(likely(direction == DIRECTION_E)) {
+<span class="lineNum">     508 </span>            :                                 if(sender + 1 == topology_global.lp_cnt)
+<span class="lineNum">     509 </span>            :                                         receiver = 0;
+<span class="lineNum">     510 </span>            :                                 else
+<span class="lineNum">     511 </span>            :                                         receiver = sender + 1;
+<span class="lineNum">     512 </span>            :                         }
+<span class="lineNum">     513 </span>            : 
+<span class="lineNum">     514 </span>            :                         break;
+<span class="lineNum">     515 </span>            : 
+<span class="lineNum">     516 </span>            :                 case TOPOLOGY_RING:
+<span class="lineNum">     517 </span>            :                         if(likely(direction == DIRECTION_E)) {
+<span class="lineNum">     518 </span>            :                                 receiver = sender + 1;
+<span class="lineNum">     519 </span>            : 
+<span class="lineNum">     520 </span>            :                                 if(receiver == topology_global.lp_cnt) {
+<span class="lineNum">     521 </span>            :                                         receiver = 0;
+<span class="lineNum">     522 </span>            :                                 }
+<span class="lineNum">     523 </span>            :                         }
+<span class="lineNum">     524 </span>            : 
+<span class="lineNum">     525 </span>            :                         break;
+<span class="lineNum">     526 </span>            : 
+<span class="lineNum">     527 </span>            :                 case TOPOLOGY_STAR:
+<span class="lineNum">     528 </span>            :                         if(sender) {
+<span class="lineNum">     529 </span>            :                                 if(direction)
+<span class="lineNum">     530 </span>            :                                         goto out;
+<span class="lineNum">     531 </span>            :                                 receiver = 0;
+<span class="lineNum">     532 </span>            :                         } else {
+<span class="lineNum">     533 </span>            :                                 if(direction + 1 &gt;= topology_global.lp_cnt)
+<span class="lineNum">     534 </span>            :                                         goto out;
+<span class="lineNum">     535 </span>            :                                 receiver = direction + 1;
+<span class="lineNum">     536 </span>            :                         }
+<span class="lineNum">     537 </span>            : 
+<span class="lineNum">     538 </span>            :                         break;
+<span class="lineNum">     539 </span>            : 
+<span class="lineNum">     540 </span>            :                 default:
+<span class="lineNum">     541 </span>            :                         rootsim_error(true, &quot;This shouldn't happen. Aborting...&quot;);
+<span class="lineNum">     542 </span>            :         }
+<span class="lineNum">     543 </span>            : 
+<span class="lineNum">     544 </span>            :         out:
+<span class="lineNum">     545 </span>            :         return receiver;
+<span class="lineNum">     546 </span>            : }
+<span class="lineNum">     547 </span>            : 
+<span class="lineNum">     548 </span><span class="lineNoCov">          0 : unsigned int GetReceiver(unsigned int from, direction_t direction, bool reachable) {</span>
+<span class="lineNum">     549 </span>            :         unsigned receiver;
+<span class="lineNum">     550 </span>            :         switch_to_platform_mode();
+<span class="lineNum">     551 </span>            :         // sanity check
+<span class="lineNum">     552 </span>            :         if(unlikely(topology_global.lp_cnt &lt;= from))
+<span class="lineNum">     553 </span>            :                 rootsim_error(true, &quot;GetReceiver(): region argument not included in topology!&quot;);
+<span class="lineNum">     554 </span>            : 
+<span class="lineNum">     555 </span>            :         receiver = get_raw_receiver(from, direction);
+<span class="lineNum">     556 </span>            :         if(reachable &amp;&amp; !is_reachable(receiver))
+<span class="lineNum">     557 </span>            :                 receiver = UINT_MAX;
+<span class="lineNum">     558 </span>            :         switch_to_application_mode();
+<span class="lineNum">     559 </span>            :         return receiver;
+<span class="lineNum">     560 </span>            : }
+<span class="lineNum">     561 </span>            : 
+<span class="lineNum">     562 </span><span class="lineNoCov">          0 : bool IsReachable(unsigned int to){</span>
+<span class="lineNum">     563 </span>            :         bool result;
+<span class="lineNum">     564 </span>            :         switch_to_platform_mode();
+<span class="lineNum">     565 </span>            :         result = is_reachable(to);
+<span class="lineNum">     566 </span>            :         switch_to_application_mode();
+<span class="lineNum">     567 </span>            :         return result;
+<span class="lineNum">     568 </span>            : }
+<span class="lineNum">     569 </span>            : 
+<span class="lineNum">     570 </span><span class="lineNoCov">          0 : unsigned int FindReceiver(void) {</span>
+<span class="lineNum">     571 </span>            :         switch_to_platform_mode();
+<span class="lineNum">     572 </span>            : 
+<span class="lineNum">     573 </span>            :         const unsigned lp_cnt = topology_global.lp_cnt;
+<span class="lineNum">     574 </span>            :         unsigned receiver = DIRECTION_INVALID;
+<span class="lineNum">     575 </span>            : 
+<span class="lineNum">     576 </span>            :         if(unlikely(lp_cnt &lt;= current-&gt;gid.to_int))
+<span class="lineNum">     577 </span>            :                 rootsim_error(true, &quot;FindReceiver(): source region %u when topology includes %u regions&quot;, current-&gt;gid.to_int, lp_cnt);
+<span class="lineNum">     578 </span>            : 
+<span class="lineNum">     579 </span>            :         switch (topology_settings.type) {
+<span class="lineNum">     580 </span>            :                 case TOPOLOGY_PROBABILITIES:
+<span class="lineNum">     581 </span>            :                         receiver = find_receiver_probabilities();
+<span class="lineNum">     582 </span>            :                         break;
+<span class="lineNum">     583 </span>            :                 case TOPOLOGY_OBSTACLES:
+<span class="lineNum">     584 </span>            :                         receiver = find_receiver_obstacles();
+<span class="lineNum">     585 </span>            :                         break;
+<span class="lineNum">     586 </span>            :                 default:
+<span class="lineNum">     587 </span>            :                         rootsim_error(true, &quot;FindReceiver(): topology type not supported!&quot;);
+<span class="lineNum">     588 </span>            :         }
+<span class="lineNum">     589 </span>            : 
+<span class="lineNum">     590 </span>            :         switch_to_application_mode();
+<span class="lineNum">     591 </span>            :         return receiver;
+<span class="lineNum">     592 </span>            : }
+<span class="lineNum">     593 </span>            : 
+<span class="lineNum">     594 </span><span class="lineNoCov">          0 : unsigned int FindReceiverToward(unsigned int to) {</span>
+<span class="lineNum">     595 </span>            :         switch_to_platform_mode();
+<span class="lineNum">     596 </span>            : 
+<span class="lineNum">     597 </span>            :         const unsigned lp_cnt = topology_global.lp_cnt;
+<span class="lineNum">     598 </span>            :         // fail by default
+<span class="lineNum">     599 </span>            :         unsigned receiver = DIRECTION_INVALID;
+<span class="lineNum">     600 </span>            :         // sanity checks
+<span class="lineNum">     601 </span>            :         if(unlikely(to &gt;= lp_cnt || current-&gt;gid.to_int &gt;= lp_cnt))
+<span class="lineNum">     602 </span>            :                 rootsim_error(true, &quot;Calling FindReceiverToward() from or toward a region not included in the topology&quot;);
+<span class="lineNum">     603 </span>            : 
+<span class="lineNum">     604 </span>            :         switch (topology_settings.type) {
+<span class="lineNum">     605 </span>            :                 case TOPOLOGY_COSTS:
+<span class="lineNum">     606 </span>            :                         receiver = find_receiver_toward_costs(to);
+<span class="lineNum">     607 </span>            :                         break;
+<span class="lineNum">     608 </span>            :                 case TOPOLOGY_OBSTACLES:
+<span class="lineNum">     609 </span>            :                         receiver = find_receiver_toward_obstacles(to);
+<span class="lineNum">     610 </span>            :                         break;
+<span class="lineNum">     611 </span>            :                 default:
+<span class="lineNum">     612 </span>            :                         rootsim_error(true, &quot;FindReceiverToward(): unsupported topology type&quot;);
+<span class="lineNum">     613 </span>            :         }
+<span class="lineNum">     614 </span>            :         switch_to_application_mode();
+<span class="lineNum">     615 </span>            :         return receiver;
+<span class="lineNum">     616 </span>            : }
+<span class="lineNum">     617 </span>            : 
+<span class="lineNum">     618 </span>            : /**
+<span class="lineNum">     619 </span>            :  * Compute the path from 2 LPs given a tree rooted in @p source represented as a parent array (the classic output of the
+<span class="lineNum">     620 </span>            :  * Dijkstra algorithm). We expect source and dest to be different LP ids.
+<span class="lineNum">     621 </span>            :  *
+<span class="lineNum">     622 </span>            :  * @param lp_cnt The size of the tree
+<span class="lineNum">     623 </span>            :  * @param result A caller supplied array which will hold the path as sequence of LP ids
+<span class="lineNum">     624 </span>            :  * @param previous The tree represented as a parent array (the i-th entry is the id of the parent of the LP with id i)
+<span class="lineNum">     625 </span>            :  * @param source The id of the source LP
+<span class="lineNum">     626 </span>            :  * @param dest The id of the destination LP which must be different from the source
+<span class="lineNum">     627 </span>            :  * @return 0 if there's no path between the 2 specified LPs in the given tree, else the number of hops in the returned path
+<span class="lineNum">     628 </span>            :  */
+<span class="lineNum">     629 </span><span class="lineCov">          1 : unsigned build_path(unsigned lp_cnt, unsigned result[lp_cnt], const unsigned int previous[lp_cnt], unsigned source, unsigned dest) {</span>
+<span class="lineNum">     630 </span>            :         unsigned mid_cell;
+<span class="lineNum">     631 </span>            :         unsigned *res_aux;
+<span class="lineNum">     632 </span>            : 
+<span class="lineNum">     633 </span>            :         if(previous[dest] == UINT_MAX) {
+<span class="lineNum">     634 </span>            :                 // the wished destination is unreachable
+<span class="lineNum">     635 </span>            :                 return 0;
+<span class="lineNum">     636 </span>            :         }
+<span class="lineNum">     637 </span>            :         // we point to the latest element (we still don't know how long is the path)
+<span class="lineNum">     638 </span>            :         res_aux = result + lp_cnt - 1;
+<span class="lineNum">     639 </span>            :         // we fill in the obvious last hop
+<span class="lineNum">     640 </span>            :         *res_aux = dest;
+<span class="lineNum">     641 </span>            : 
+<span class="lineNum">     642 </span>            :         unsigned hops = 1;
+<span class="lineNum">     643 </span>            : 
+<span class="lineNum">     644 </span>            :         mid_cell = previous[dest];
+<span class="lineNum">     645 </span>            :         // while the previous hop is not the actual source
+<span class="lineNum">     646 </span>            :         while (mid_cell != source) {
+<span class="lineNum">     647 </span>            :                 // we go further behind
+<span class="lineNum">     648 </span>            :                 res_aux--;
+<span class="lineNum">     649 </span>            :                 // we fill in the intermediate step
+<span class="lineNum">     650 </span>            :                 *res_aux = mid_cell;
+<span class="lineNum">     651 </span>            :                 // go behind you too!
+<span class="lineNum">     652 </span>            :                 mid_cell = previous[mid_cell];
+<span class="lineNum">     653 </span>            :                 // one more hop
+<span class="lineNum">     654 </span>            :                 ++hops;
+<span class="lineNum">     655 </span>            :         }
+<span class="lineNum">     656 </span>            :         // we move back the computed path
+<span class="lineNum">     657 </span>            :         memmove(result, res_aux, ((result + lp_cnt) - res_aux) * sizeof(unsigned));
+<span class="lineNum">     658 </span>            :         return hops;
+<span class="lineNum">     659 </span>            : }
+<span class="lineNum">     660 </span>            : 
+<span class="lineNum">     661 </span><span class="lineNoCov">          0 : double ComputeMinTour(unsigned int source, unsigned int dest, unsigned int result[RegionsCount()]) {</span>
+<span class="lineNum">     662 </span>            :         switch_to_platform_mode();
+<span class="lineNum">     663 </span>            : 
+<span class="lineNum">     664 </span>            :         const unsigned lp_cnt = topology_global.lp_cnt;
+<span class="lineNum">     665 </span>            :         double ret = -1.0;
+<span class="lineNum">     666 </span>            : 
+<span class="lineNum">     667 </span>            :         if(unlikely(source &gt;= lp_cnt)) {
+<span class="lineNum">     668 </span>            :                 rootsim_error(true, &quot;Invalid source passed to ComputeMinTour(): %u.\n&quot;, source);
+<span class="lineNum">     669 </span>            :                 return UINT_MAX;
+<span class="lineNum">     670 </span>            :         }
+<span class="lineNum">     671 </span>            :         if(unlikely(dest &gt;= lp_cnt)) {
+<span class="lineNum">     672 </span>            :                 rootsim_error(true, &quot;Invalid destination passed to ComputeMinTour(): %u.\n&quot;, dest);
+<span class="lineNum">     673 </span>            :                 return UINT_MAX;
+<span class="lineNum">     674 </span>            :         }
+<span class="lineNum">     675 </span>            :         if(unlikely(source == dest)) {
+<span class="lineNum">     676 </span>            :                 rootsim_error(true, &quot;Asking ComputeMinTour() to find a path from a source equal to the destination\n&quot;);
+<span class="lineNum">     677 </span>            :                 return UINT_MAX;
+<span class="lineNum">     678 </span>            :         }
+<span class="lineNum">     679 </span>            : 
+<span class="lineNum">     680 </span>            :         switch (topology_settings.type) {
+<span class="lineNum">     681 </span>            :                 case TOPOLOGY_COSTS:
+<span class="lineNum">     682 </span>            :                         ret = compute_min_tour_costs(source, dest, result);
+<span class="lineNum">     683 </span>            :                         break;
+<span class="lineNum">     684 </span>            :                 case TOPOLOGY_OBSTACLES:
+<span class="lineNum">     685 </span>            :                         ret = compute_min_tour_obstacles(source, dest, result);
+<span class="lineNum">     686 </span>            :                         break;
+<span class="lineNum">     687 </span>            :                 default:
+<span class="lineNum">     688 </span>            :                         rootsim_error(true, &quot;ComputeMinTour(): unsupported topology type %u&quot;, topology_settings.type);
+<span class="lineNum">     689 </span>            :         }
+<span class="lineNum">     690 </span>            :         switch_to_application_mode();
+<span class="lineNum">     691 </span>            :         return ret;
+<span class="lineNum">     692 </span>            : }
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../../../../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.12</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>
