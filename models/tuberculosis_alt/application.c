@@ -49,7 +49,7 @@ static error_t model_parse(int key, char *arg, struct argp_state *state) {
 				printf("Unable to open tbc stats file");
 				exit(EXIT_FAILURE);
 			}
-			fprintf(stats_file, "***");
+			fprintf(stats_file, "*** %s\n", approximated ? "approximated" : "precise");
 			break;
 
 		default:
