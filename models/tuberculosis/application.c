@@ -10,8 +10,12 @@
 #include "guy_init.h"
 
 #include <math.h>
+#include <stdio.h>
 
 static bool approximated = true;
+static FILE *stats_file;
+
+static unsigned class_stats[1600][END_TIME][5];
 
 enum{
 	OPT_PREC = 128 /// this tells argp to not assign short options
@@ -31,6 +35,7 @@ const struct argp_option model_options[] = {
 
 static error_t model_parse(int key, char *arg, struct argp_state *state) {
 	(void)state;
+	(void)arg;
 
 	switch (key) {
 		case OPT_PREC:
@@ -40,6 +45,12 @@ static error_t model_parse(int key, char *arg, struct argp_state *state) {
 		case ARGP_KEY_SUCCESS:
 			printf("\t* ROOT-Sim's TBC model - Current Configuration *\n");
 			printf("approximated: %d\n", approximated);
+			stats_file = fopen("tbc_stats.txt", "a");
+			if(!stats_file){
+				printf("Unable to open tbc stats file");
+				exit(EXIT_FAILURE);
+			}
+			fprintf(stats_file, "*** %s\n", approximated ? "approximated" : "precise");
 			break;
 
 		default:
@@ -110,7 +121,7 @@ static void move_healthy_people(unsigned me, region_t *region, simtime_t now){
 void ProcessEvent(unsigned int me, simtime_t now, int event_type,
 		union {agent_t *agent; unsigned *n; infection_t *i_m; init_t *in_m;} payload, unsigned int event_size, region_t *state) {
 
-	if(!me && event_type != INIT)
+	if(event_type != INIT)
 		state->now = now;
 
 	switch (event_type) {
@@ -127,7 +138,18 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type,
 				printf("INIT 0 complete\n");
 			}
 			ScheduleNewEvent(me, now + 1.25 + Random()/2, MIDNIGHT, NULL, 0);
+			ScheduleNewEvent(me, 1.0, STATS_COMPUTE, NULL, 0);
 			RollbackModeSet(approximated);
+			break;
+
+		case STATS_COMPUTE:
+			if(now < END_TIME)
+				ScheduleNewEvent(me, now + 1.0, STATS_COMPUTE, NULL, 0);
+
+			class_stats[me][(unsigned)now - 1][0] = state->healthy;
+
+
+			guy_stats(&class_stats[me][(unsigned)now - 1][1]);
 			break;
 
 		case MIDNIGHT:
@@ -164,14 +186,22 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type,
 }
 
 int OnGVT(unsigned int me, region_t *snapshot) {
-	if(!me){
-		printf("healthy %u, infected %u\n", snapshot->healthy, CountAgents());
-		return snapshot->now > END_TIME;
+	if(snapshot->now > END_TIME){
+		for(unsigned i = 0; i < END_TIME; ++i){
+			fprintf(stats_file, "%u %u %u %u %u %u %u\n", i, me,
+					class_stats[me][i][0],
+					class_stats[me][i][1],
+					class_stats[me][i][2],
+					class_stats[me][i][3],
+					class_stats[me][i][4]);
+		}
 	}
-	return true;
+
+	return snapshot->now > END_TIME;
 }
 
 void RestoreApproximated(void *ptr)
 {
+	(void)ptr;
 }
 

@@ -40,7 +40,8 @@
  * If messages are smaller than this size, then message buffers are taken
  * from the slab. Otherwise, the buddy system is queried directly.
  */
-#define SLAB_MSG_SIZE		512
+
+//#define SLAB_MSG_SIZE		512
 
 /**
  * @brief Simulation Platform Control Messages

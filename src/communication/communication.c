@@ -32,6 +32,7 @@
 #include <stdlib.h>
 #include <float.h>
 
+#include <core/init.h>
 #include <core/core.h>
 #include <gvt/gvt.h>
 #include <queues/queues.h>
@@ -162,7 +163,7 @@ msg_hdr_t *get_msg_hdr_from_slab(struct lp_struct *lp)
 	// TODO: The magnitude of this hack compares to that of the national debt.
 	// We are wasting a lot of memory from the LP buddy just to keep antimessages!
 	msg_hdr_t *msg = (msg_hdr_t *) get_msg_from_slab(lp);
-	bzero(msg, SLAB_MSG_SIZE);
+	bzero(msg, rootsim_config.slab_msg_size);
 	return msg;
 }
 
@@ -192,7 +193,7 @@ msg_hdr_t *get_msg_hdr_from_slab(struct lp_struct *lp)
 msg_t *get_msg_from_slab(struct lp_struct *lp)
 {
 	msg_t *msg = (msg_t *) slab_alloc(lp->mm->slab);
-	bzero(msg, SLAB_MSG_SIZE);
+	bzero(msg, rootsim_config.slab_msg_size);
 	return msg;
 }
 
@@ -225,7 +226,7 @@ void msg_release(msg_t *msg)
 {
 	struct lp_struct *lp;
 
-	if (likely(sizeof(msg_t) + msg->size <= SLAB_MSG_SIZE)) {
+	if (likely(sizeof(msg_t) + msg->size <= rootsim_config.slab_msg_size)) {
 		lp = which_slab_to_use(msg->sender, msg->receiver);
 		slab_free(lp->mm->slab, msg);
 	} else {
@@ -492,7 +493,7 @@ void send_outgoing_msgs(struct lp_struct *lp)
 void pack_msg(msg_t **msg, GID_t sender, GID_t receiver, int type, simtime_t timestamp, simtime_t send_time, size_t size, void *payload)
 {
 	// Check if we can rely on a slab to initialize the message
-	if (likely(sizeof(msg_t) + size <= SLAB_MSG_SIZE)) {
+	if (likely(sizeof(msg_t) + size <= rootsim_config.slab_msg_size)) {
 		*msg = get_msg_from_slab(which_slab_to_use(sender, receiver));
 	} else {
 		*msg = rsalloc(sizeof(msg_t) + size);

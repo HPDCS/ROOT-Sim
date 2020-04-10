@@ -34,6 +34,7 @@
 
 #include <mm/dymelor.h>
 #include <mm/ecs.h>
+#include <core/init.h>
 #include <arch/x86/linux/cross_state_manager/cross_state_manager.h>
 #include <scheduler/process.h>
 
@@ -145,7 +146,7 @@ void initialize_memory_map(struct lp_struct *lp)
 
 	lp->mm->segment = get_segment(lp->gid);
 	lp->mm->buddy = buddy_new(PER_LP_PREALLOCATED_MEMORY);
-	lp->mm->slab = slab_init(SLAB_MSG_SIZE);
+	lp->mm->slab = slab_init(rootsim_config.slab_msg_size);
 	lp->mm->m_state = malloc_state_init();
 }
 

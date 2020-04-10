@@ -24,6 +24,7 @@ enum _event_t{
 	GUY_VISIT,
 	GUY_LEAVE,
 	GUY_INIT,
+	STATS_COMPUTE,
 	_TRAVERSE
 };
 // this samples a random number with binomial distribution TODO could be useful in the numeric library

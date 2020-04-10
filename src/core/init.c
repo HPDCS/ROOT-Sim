@@ -91,6 +91,7 @@ enum _opt_codes{
 	OPT_SERIAL,
 	OPT_NO_CORE_BINDING,
 	OPT_PREEMPTION,
+	OPT_SLAB_MSG_SIZE,
 	OPT_LAST
 };
 
@@ -171,6 +172,7 @@ static const struct argp_option argp_options[] = {
 	{"sequential",		OPT_SERIAL,		0,		OPTION_ALIAS,	NULL, 0},
 	{"no-core-binding",	OPT_NO_CORE_BINDING,	0,		0,		"Disable the binding of threads to specific physical processing cores", 0},
 	{"no-preemption",	OPT_PREEMPTION,		0,		0,		"Disable Preemptive Time Warp", 0},
+	{"slab-msg-size",	OPT_SLAB_MSG_SIZE,	"VALUE",	0,		"Sets the Slab allocator message size", 0},
 	{0}
 };
 
@@ -235,6 +237,10 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 
 		case OPT_OUTPUT_DIR:
 			rootsim_config.output_dir = arg;
+			break;
+		
+		case OPT_SLAB_MSG_SIZE:
+			rootsim_config.slab_msg_size = parse_ullong_limits(512, 4096);
 			break;
 
 		handle_string_option(OPT_SCHEDULER, rootsim_config.scheduler);
@@ -326,6 +332,7 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 			rootsim_config.serial = false;
 			rootsim_config.core_binding = true;
 			rootsim_config.disable_preemption = false;
+			rootsim_config.slab_msg_size = 512;
 			break;
 
 		case ARGP_KEY_SUCCESS:

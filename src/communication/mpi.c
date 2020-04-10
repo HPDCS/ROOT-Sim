@@ -40,6 +40,7 @@
 #include <communication/gvt.h>
 #include <communication/communication.h>
 #include <queues/queues.h>
+#include <core/init.h>
 #include <core/core.h>
 #include <arch/atomic.h>
 #include <statistics/statistics.h>
@@ -232,7 +233,7 @@ void receive_remote_msgs(void)
 
 		MPI_Get_count(&status, MPI_BYTE, &size);
 
-		if (likely(MSG_PADDING + size <= SLAB_MSG_SIZE)) {
+		if (likely(MSG_PADDING + size <= rootsim_config.slab_msg_size)) {
 			set_gid(gid, status.MPI_TAG);
 			lp = find_lp_by_gid(gid);
 			msg = get_msg_from_slab(lp);

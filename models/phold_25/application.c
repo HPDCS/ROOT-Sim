@@ -191,9 +191,10 @@ void RestoreApproximated(void *ptr) {
 	buffer *tmp = state->head;
 
 	while(i--) {
-	    for(unsigned j = 0; j < (unsigned) tmp->count; j++) {
+	    for(unsigned j = 0; j < (unsigned) ((int)(tmp->count * 0.25)); j++) {
                 tmp->data[j] = RandomRange(0, INT_MAX);
             }
+
             tmp = tmp->next;
 	}
 }
