@@ -24,6 +24,10 @@ jobs:
           - libc++abi-7-dev
           - mpich
           - libmpich-dev
+          - lcov
+          - python3-setuptools
+          - python3-pip
+          - jq
       env:
           - CC=mpicc
           - MPICH_CC=clang-7
@@ -73,10 +77,15 @@ env:
   global:
     secure: JvReZBJUpYGDbrSbsshimBKu2HXLA3nniHSTVdTdWCOIo2mwAAU/qBh3gqExTsihdI9/6OaK4RoL6kvgRoKZ4HllkKxHtP5ttKpVguRYAzWLJWnlJm7s7v1AEs1txdQLa9kgGGHJsNnMYI+dX5BCG+huVdI+phf8BhVcCi04EGw=
 
+before_install:
+  - pip3 install --upgrade pip
+  - pip3 install --user $(whoami) coverxygen
+
 before_script:
   - mpiexec --version
   - mpicc --version
   - $CC --version
+  - gcov-7 --version
   - gcov --version
   - m4 --version
   - automake --version
@@ -86,10 +95,10 @@ before_script:
 script:
   - ./scripts/travis-build.sh
   - ./scripts/tests.sh
-  - ./scripts/travis-docs.sh
+  - ./scripts/travis-build-doc.sh
 
 after_success:
-  - bash <(curl -s https://codecov.io/bash)
+  - bash <(curl -s https://codecov.io/bash) -x gcov-7
 
 # Documentation autodeploy script
 deploy:

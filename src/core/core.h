@@ -69,7 +69,7 @@ enum {
 	VERBOSE_NO		/**< xxx documentation */
 };
 
-extern jmp_buf exit_jmp;
+extern __thread jmp_buf exit_jmp;
 
 /// Optimize the branch as likely taken
 #define likely(exp) __builtin_expect(exp, 1)

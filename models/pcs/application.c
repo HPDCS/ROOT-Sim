@@ -1,17 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <strings.h>
-#include <math.h>
 #include <ROOT-Sim.h>
-
-extern bool pcs_statistics,
-	fading_check,
-	variable_ta;
-extern unsigned complete_calls,
-	channels_per_cell;
-extern double 	ref_ta,
-	ta_duration,
-	ta_change;
 
 #include "application.h"
 
@@ -57,7 +47,7 @@ const struct argp_option model_options[] = {
 
 static error_t model_parse (int key, char *arg, struct argp_state *state) {
 	(void)state;
-
+	
 	switch (key) {
 		HANDLE_CASE(OPT_TA, "%lf", ref_ta);
 		HANDLE_CASE(OPT_TAD, "%lf", ta_duration);
@@ -94,7 +84,7 @@ struct _topology_settings_t topology_settings = {.default_geometry = TOPOLOGY_HE
 
 void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_type *event_content, unsigned int size, void *ptr) {
 	(void)size;
-
+	
 	unsigned int w;
 
 	//printf("%d executing %d at %f\n", me, event_type, now);
@@ -116,12 +106,11 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 		state->executed_events++;
 	}
 
-//	printf("INIT=%d, START_CALL=%d, END_CALL=%d, HANDOFF_LEAVE=%d, HANDOFF_RECV=%d, FADING_RECHECK=%d\n", INIT, START_CALL, END_CALL, HANDOFF_LEAVE, HANDOFF_RECV, FADING_RECHECK);
-//	printf("Event type = %d (time %f)\n", event_type, now);
+
 	switch(event_type) {
 
 		case INIT:
-//			printf("INIT\n");
+
 			// Initialize the LP's state
 			state = (lp_state_type *)malloc(sizeof(lp_state_type));
 			if (state == NULL){
@@ -135,7 +124,6 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 
 			state->channel_counter = channels_per_cell;
 			state->ta = ref_ta;
-			state->me = me;
 
 			// Setup channel state
 			state->channel_state = malloc(sizeof(unsigned int) * 2 * (CHANNELS_PER_CELL / BITS + 1));
@@ -157,7 +145,6 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 
 		case START_CALL:
 
-//			printf("START_CALL\n");
 			state->arriving_calls++;
 
 			if (state->channel_counter == 0) {
@@ -238,7 +225,6 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 
 		case END_CALL:
 
-//			printf("END_CALL\n");
 			state->channel_counter++;
 			state->complete_calls++;
 			deallocation(me, state, event_content->channel, now);
@@ -247,7 +233,6 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 
 		case HANDOFF_LEAVE:
 
-//			printf("HANDOFF_LEAVE");
 			state->channel_counter++;
 			state->leaving_handoffs++;
 			deallocation(me, state, event_content->channel, now);
@@ -259,19 +244,13 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 			break;
 
 		case HANDOFF_RECV:
-
 			state->arriving_handoffs++;
 			state->arriving_calls++;
 
-/*			if(Random() < 0.3 && me == 1 && event_content->from == 2){//&& state->dummy_flag == false) {
-				*(event_content->dummy) = 1;
-				state->dummy_flag = true;
-				printf("write on %p\n", &state->dummy);
-			}
-*/
-			if (state->channel_counter == 0) {
+
+			if (state->channel_counter == 0)
 				state->blocked_on_handoff++;
-			} else {
+			else {
 				state->channel_counter--;
 
 				new_event_content.channel = allocation(state);
@@ -331,9 +310,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 
 bool OnGVT(unsigned int me, lp_state_type *snapshot) {
 	(void)me;
-
-	//printf("\t\t[%d] OnGVT: complete calls is %d (%f%%)\n", me, snapshot->complete_calls, (double)snapshot->complete_calls / complete_calls);
-
+	
 	if (snapshot->complete_calls < complete_calls)
 		return false;
 	return true;

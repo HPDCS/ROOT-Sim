@@ -38,6 +38,7 @@
 #include <core/core.h>
 #include <core/init.h>
 #include <core/timer.h>
+#include <gvt/ccgs.h>
 #include <datatypes/list.h>
 #include <scheduler/process.h>
 #include <scheduler/scheduler.h>
@@ -115,17 +116,18 @@ bool LogState(struct lp_struct *lp)
 		new_state->state = lp->state;
 		new_state->base_pointer = lp->current_base_pointer;
 
-		// Log library-related states
-		memcpy(&new_state->numerical, &lp->numerical,
-		       sizeof(numerical_state_t));
+		// Early evaluation of simulation termination.
+		new_state->simulation_completed = ccgs_lp_can_halt(lp);
 
-		if(&topology_settings && topology_settings.write_enabled){
+		// Log library-related states
+		memcpy(&new_state->numerical, &lp->numerical, sizeof(numerical_state_t));
+
+		if(&topology_settings && topology_settings.write_enabled) {
 			new_state->topology = rsalloc(topology_global.chkp_size);
-			memcpy(new_state->topology, lp->topology,
-					topology_global.chkp_size);
+			memcpy(new_state->topology, lp->topology, topology_global.chkp_size);
 		}
 
-		if(&abm_settings){
+		if(&abm_settings) {
 			new_state->region_data = abm_do_checkpoint(lp->region);
 		}
 

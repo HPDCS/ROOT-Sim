@@ -47,7 +47,7 @@ enum {
 
 /// Structure for LP's state
 typedef struct _state_t {
-	// Pointers to chain this structure to the state queue
+	/* Members to support the management of the states and of the simulation */
 	struct _state_t *next;
 	struct _state_t *prev;
 
@@ -62,10 +62,15 @@ typedef struct _state_t {
 
 	/// Execution state
 	short unsigned int state;
+
 	/// This is a pointer used to keep track of changes to simulation states via SetState()
 	void *base_pointer;
 
+	/// Termination predicate for this LP
+	bool simulation_completed;
+
 	/* Library state fields */
+
 	numerical_state_t numerical;
 
 	topology_t *topology;

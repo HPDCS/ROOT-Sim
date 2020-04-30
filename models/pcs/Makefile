@@ -2,7 +2,7 @@ CC = rootsim-cc
 CFLAGS = -Wall -Wextra
 TARGET = pcs
 
-SRCS = application.c
+SRCS = application.c functions_app.c
 OBJS = $(SRCS:.c=.o)
 
 .PHONY: clean

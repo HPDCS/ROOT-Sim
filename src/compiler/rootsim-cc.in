@@ -128,7 +128,19 @@ done
 $LD -r ${OBJECTS//.o/.o.rs} -o APP.o
 check_term
 
-$LD -r -L $libdir --wrap strcpy\
+$LD -r -L $libdir \
+		  --wrap printf\
+		  --wrap fprintf\
+		  --wrap fwrite\
+		  --wrap puts\
+		  --wrap fputs\
+		  --wrap fputc\
+		  --wrap putc\
+		  --wrap putchar\
+		  --wrap vdprintf\
+		  --wrap vprintf\
+		  --wrap vfprintf\
+		  --wrap strcpy\
 		  --wrap strncpy\
 		  --wrap strcat\
 		  --wrap strncat\
