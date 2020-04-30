@@ -75,15 +75,15 @@ AC_PROG_CXX_C_O
 AC_SUBST([LLVMFLAGS],[$(llvm-config --cppflags)])
 
 #----------------------------------------------------------------------------
-# Check for LLVM development headers
+# Check for LLVM development headers FIXME
 #----------------------------------------------------------------------------
-AC_LANG_PUSH([C++])
-AC_CHECK_HEADER([llvm/Pass.h], [ac_llvm_headers=yes], [ac_llvm_headers=no])
-if test "x$ac_llvm_headers" = "xno"
-then
-	AC_MSG_ERROR([Cannot find LLVM development headers. Please install them.])
-fi
-AC_LANG_POP()
+# AC_LANG_PUSH([C++])
+# AC_CHECK_HEADER([llvm/Pass.h], [ac_llvm_headers=yes], [ac_llvm_headers=no])
+# if test "x$ac_llvm_headers" = "xno"
+# then
+#	 AC_MSG_ERROR([Cannot find LLVM development headers. Please install them.])
+# fi
+# AC_LANG_POP()
 
 #----------------------------------------------------------------------------
 # Check for an MPI environment

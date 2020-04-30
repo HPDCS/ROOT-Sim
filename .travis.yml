@@ -27,11 +27,14 @@ jobs:
           - lcov
           - python3-setuptools
           - python3-pip
+          - doxygen
+          - graphviz
           - jq
       env:
           - CC=mpicc
           - MPICH_CC=clang-7
           - CXX=clang++-7
+          - LLVM_CONFIG=llvm-config-7
     - addons:
        apt:
          packages:
@@ -44,12 +47,17 @@ jobs:
           - libc++abi-8-dev
           - mpich
           - libmpich-dev
+          - lcov
+          - python3-setuptools
+          - python3-pip
           - doxygen
           - graphviz
+          - jq
       env:
           - CC=mpicc
           - MPICH_CC=clang-8
           - CXX=clang++-8
+          - LLVM_CONFIG=llvm-config-8
     - addons:
        sources:
         - sourceline: 'deb http://apt.llvm.org/bionic/ llvm-toolchain-bionic-9 main'
@@ -65,12 +73,17 @@ jobs:
           - libc++abi-9-dev
           - mpich
           - libmpich-dev
+          - lcov
+          - python3-setuptools
+          - python3-pip
           - doxygen
           - graphviz
+          - jq
       env:
           - CC=mpicc
           - MPICH_CC=clang-9
           - CXX=clang++-9
+          - LLVM_CONFIG=llvm-config-9
           - deploy=true
      
 env:
@@ -90,6 +103,7 @@ before_script:
   - m4 --version
   - automake --version
   - autoconf --version
+  - ./scripts/travis-select-llvm.sh $LLVM_CONFIG
   - llvm-config --cppflags
 
 script:

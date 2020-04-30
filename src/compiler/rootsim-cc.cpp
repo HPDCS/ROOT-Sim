@@ -1,8 +1,14 @@
+#include "llvm/Config/llvm-config.h"
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
 #include "llvm/IR/InstIterator.h"
 #include "llvm/Transforms/Utils/Cloning.h"
 #include "llvm/IR/IntrinsicInst.h"
+#include "llvm/IR/DerivedTypes.h"
+#include "llvm/IR/GlobalValue.h"
+#include "llvm/Support/Casting.h"
+#include "llvm/PassAnalysisSupport.h"
+#include "llvm/Analysis/TargetLibraryInfo.h"
 
 // TODO: this list should be automatically generated
 const char *rootsim_exposed_functions[] = {
@@ -74,7 +80,8 @@ public:
 	bool runOnModule(Module &M)
 	{
 		errs() << "Instrumenting module " << raw_ostream::CYAN <<
-			M.getName() << raw_ostream::RESET << "\n";
+			M.getName() << "\n";
+		errs().resetColor();
 
 		this->M = &M;
 
@@ -127,11 +134,13 @@ public:
 		}
 
 		errs() << "Found " << tot_instr << " memory writing IR instructions\n";
-		errs() << raw_ostream::GREEN << "Instrumented\n" << raw_ostream::RESET;
+		errs() << raw_ostream::GREEN << "Instrumented\n";
+		errs().resetColor();
 		errs() << "\t " << memset_instr << " memset-like IR instructions\n";
 		errs() << "\t " << memcpy_instr << " memcopy-like IR instructions\n";
 		errs() << "\t " << store_instr << " store IR instructions\n";
-		errs() << raw_ostream::GREEN << "Ignored\n" << raw_ostream::RESET;
+		errs() << raw_ostream::GREEN << "Ignored\n";
+		errs().resetColor();
 		errs() << "\t " << atomic_instr << " atomic IR instructions\n";
 		errs() << "\t " << call_instr << " call IR instructions\n";
 		errs() << "\t " << unknown_instr << " unknown IR instructions\n";
@@ -165,7 +174,11 @@ private:
 		enum llvm::LibFunc LLF;
 		return F->getIntrinsicID() || F->doesNotReturn() ||
 			getAnalysis<TargetLibraryInfoWrapperPass>()
+#if LLVM_VERSION_MAJOR >= 10
 			.getTLI(F->getFunction()).getLibFunc(F->getFunction(), LLF);
+#else
+			.getTLI().getLibFunc(F->getFunction(), LLF);
+#endif
 	}
 
 	void InstrumentInstruction(Instruction *TI)
