@@ -1,177 +1,283 @@
-#include "llvm/Pass.h"
-#include "llvm/IR/CallSite.h"
-#include "llvm/IR/BasicBlock.h"
-#include "llvm/PassRegistry.h"
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
-#include "llvm/IR/Module.h"
-#include "llvm/IR/IRBuilder.h"
-#include "llvm/IR/InlineAsm.h"
-#include "llvm/Support/raw_ostream.h"
-#include "llvm/IR/InlineAsm.h"
+#include "llvm/IR/InstIterator.h"
 #include "llvm/Transforms/Utils/Cloning.h"
-#include "llvm/IR/Function.h"
-#include "llvm/ExecutionEngine/ExecutionEngine.h"
-#include <iostream>
-#include <vector>
+#include "llvm/IR/IntrinsicInst.h"
+
+// TODO: this list should be automatically generated
+const char *rootsim_exposed_functions[] = {
+	"SetState",
+	"FindReceiver",
+	"GetVisit",
+	"SetValueTopology",
+	"SetVisit",
+	"FindReceiverToward",
+	"CountVisits",
+	"Expent",
+	"GetReceiver",
+	"Poisson",
+	"TrackNeighbourInfo",
+	"GetPastVisit",
+	"GetValueTopology",
+	"Gamma",
+	"RemoveVisit",
+	"CountPastVisits",
+	"ComputeMinTour",
+	"ScheduleNewLeaveEvent",
+	"AddVisit",
+	"RegionsCount",
+	"Random",
+	"KillAgent",
+	"DataAgent",
+	"Normal",
+	"Zipf",
+	"DirectionsCount",
+	"RandomRangeNonUniform",
+	"CountAgents",
+	"SpawnAgent",
+	"NeighboursCount",
+	"IterAgents",
+	"GetNeighbourInfo",
+	"SetTopology",
+	"EnqueueVisit",
+	"RandomRange",
+	"CapabilityAvailable",
+	nullptr
+};
 
 using namespace llvm;
+
 namespace {
+class ROOTSimCC: public ModulePass {
+public:
+	ROOTSimCC() : ModulePass(ID)
+	{
+		unsigned i = 0;
+		while(rootsim_exposed_functions[i]) {
+			++i;
+		}
 
-    struct ROOTSimCC : public ModulePass {
-        static char ID;
-        FunctionCallee memtraceFunction;
-        ROOTSimCC() : ModulePass(ID) {}
+		rootsim_functions = new StringRef*[i + 1];
+		rootsim_functions[i] = nullptr;
 
-        bool runOnModule(Module &M) {
+		while(i--){
+			rootsim_functions[i] =
+				new StringRef(rootsim_exposed_functions[i]);
+		}
+	}
 
-            std::vector < Function * > functions;
-            std::map<const StringRef, Function *> clonedFunctions;
+	virtual void getAnalysisUsage(AnalysisUsage &AU) const
+	{
+		AU.addRequired<TargetLibraryInfoWrapperPass>();
+	}
 
-            for (Module::iterator F = M.begin(), E = M.end(); F != E; ++F) {
-                if (!F->isDeclaration()) {
-                    functions.push_back(&*F);
-                }
-            }
+	bool runOnModule(Module &M)
+	{
+		errs() << "Instrumenting module " << raw_ostream::CYAN <<
+			M.getName() << raw_ostream::RESET << "\n";
 
-            for (std::vector<Function *>::iterator F = functions.begin(), E = functions.end(); F != E; ++F) {
-                Function *clonedFunction = clone_llvm_function(*F, &M);
-                clonedFunctions[(*F)->getName()] = clonedFunction;
-                //TODO: identify functions by name and number and type of arguments
-            }
+		this->M = &M;
 
-            for (std::pair<const StringRef, Function *> theGuy : clonedFunctions) {
-                for (Function::iterator BI = theGuy.second->begin(), BE = theGuy.second->end(); BI != BE; ++BI) {
-                    for (BasicBlock::iterator BB = BI->begin(), BBE = BI->end(); BB != BBE; ++BB) {
-                        if (CallInst * inst = dyn_cast<CallInst>(&(*BB))) {
+		Type *MemtraceArgs[] = {
+			PointerType::getUnqual(Type::getVoidTy(M.getContext())),
+			IntegerType::get(M.getContext(), sizeof(size_t) * CHAR_BIT)
+		};
 
-                            Function *func = inst->getCalledFunction();
-                            if (!func) { //this means it is an indirect call (ASM)
-                                continue;
-                            }
+		std::vector <Function *> functions;
+		for (Module::iterator F = M.begin(), E = M.end(); F != E; ++F) {
 
-                            auto funIterator = clonedFunctions.find(inst->getCalledFunction()->getName());
+			if (isSystemSide(&*F))
+				continue;
+#if LOG_LEVEL <= LOG_DEBUG
+			errs() << "Found function " << F->getName()  << "\n";
+#endif
+			functions.push_back(&*F);
+		}
 
-                            if (funIterator == clonedFunctions.end()) {
-                                continue;
-                            }
+		FC = M.getOrInsertFunction(
+			"__write_mem",
+			FunctionType::get(
+				Type::getVoidTy(M.getContext()),
+				MemtraceArgs,
+				false
+			)
+		);
 
-                            Function *fun = funIterator->second;
+		ValueToValueMapTy VMap;
+		for (std::vector<Function *>::iterator F = functions.begin(),
+			E = functions.end(); F != E; ++F) {
+			VMap[*F] = CloneStubInstr(*F);
+		}
 
-                            inst->setCalledFunction(fun);
-                        }
-                    }
-                }
-            }
-            
-            memtraceFunction = initMemtraceCall(&M);
+		for (Module::iterator F = M.begin(), E = M.end(); F != E; ++F) {
+			if (	VMap.count(&*F) == 0 ||
+				F->isDeclaration() ||
+				isSystemSide(&*F))
+				continue;
+			Function *Cloned = &cast<Function>(*VMap[&*F]);
+#if LOG_LEVEL <= LOG_DEBUG
+			errs() << "Instrumenting " << Cloned->getName() << "\n";
+#endif
+			ClonedCodeInfo CloneInfo;
+			CloneFunctionIntoInstr(Cloned, &*F, VMap, &CloneInfo);
+			for (inst_iterator I = inst_begin(Cloned),
+					E = inst_end(Cloned); I != E; ++I){
+				InstrumentInstruction(&*I);
+			}
+		}
 
-            for (Module::iterator F = M.begin(), E = M.end(); F != E; ++F) {
+		errs() << "Found " << tot_instr << " memory writing IR instructions\n";
+		errs() << raw_ostream::GREEN << "Instrumented\n" << raw_ostream::RESET;
+		errs() << "\t " << memset_instr << " memset-like IR instructions\n";
+		errs() << "\t " << memcpy_instr << " memcopy-like IR instructions\n";
+		errs() << "\t " << store_instr << " store IR instructions\n";
+		errs() << raw_ostream::GREEN << "Ignored\n" << raw_ostream::RESET;
+		errs() << "\t " << atomic_instr << " atomic IR instructions\n";
+		errs() << "\t " << call_instr << " call IR instructions\n";
+		errs() << "\t " << unknown_instr << " unknown IR instructions\n";
+		return functions.size() != 0;
+	}
 
-                if(F->getName().find("_instr") == std::string::npos) {
-                    continue;
-                }
+private:
+	static char ID;
+	Module *M = nullptr;
+	FunctionCallee FC = nullptr;
+	StringRef **rootsim_functions;
 
-                //loop over each function within the file
-                for (Function::iterator BB = F->begin(), E = F->end(); BB != E; ++BB) {
-                    //loop over each instruction inside function
-                    for (BasicBlock::iterator BI = BB->begin(), BE = BB->end(); BI != BE; ++BI) {
+	unsigned tot_instr = 0;
+	unsigned memset_instr = 0;
+	unsigned memcpy_instr = 0;
+	unsigned store_instr = 0;
+	unsigned atomic_instr = 0;
+	unsigned call_instr = 0;
+	unsigned unknown_instr = 0;
 
-                        if(!BI->mayWriteToMemory()) {
-                            continue;
-                        }
+	bool isSystemSide(Function *F)
+	{
+		unsigned i = 0;
+		const StringRef Fname = F->getName();
+		while (rootsim_functions[i]) {
+			if(Fname.equals(*rootsim_functions[i]))
+				return true;
+			++i;
+		}
 
-                        if (StoreInst *inst = dyn_cast<StoreInst>(&(*BI))) {
-                            //Retrieve parse version of data related to the inst
-                            Value *address_of_store = inst->getPointerOperand();
+		enum llvm::LibFunc LLF;
+		return F->getIntrinsicID() || F->doesNotReturn() ||
+			getAnalysis<TargetLibraryInfoWrapperPass>()
+			.getTLI(F->getFunction()).getLibFunc(F->getFunction(), LLF);
+	}
 
-                            PointerType *pointerType = cast<PointerType>(address_of_store->getType());
-                            //Returns the maximum number of bytes that may be overwritten by storing the specified type.
-                            DataLayout *dataLayout = new DataLayout(&M);
-                            uint64_t storeSize = dataLayout->getTypeStoreSize(pointerType->getPointerElementType());
+	void InstrumentInstruction(Instruction *TI)
+	{
+		if (!TI->mayWriteToMemory()) {
+			return;
+		}
 
-                            insertCallBefore(inst, &M, address_of_store, storeSize);
+		++tot_instr;
+		Value *args[2];
 
-                        } else if (isa<MemSetInst>(&(*BI))) {
-                            MemSetInst *inst = dyn_cast<MemSetInst>(&(*BI));
+		if (StoreInst *SI = dyn_cast<StoreInst>(TI)) {
+			Value *V = SI->getPointerOperand();
+			PointerType *pointerType = cast<PointerType>(V->getType());
+			uint64_t storeSize = M->getDataLayout()
+				.getTypeStoreSize(pointerType->getPointerElementType());
+			args[0] = V;
+			args[1] = ConstantInt::get(IntegerType::get(M->getContext(),
+				sizeof(size_t) * CHAR_BIT), storeSize);
+			++store_instr;
+		} else if (MemSetInst *MSI = dyn_cast<MemSetInst>(TI)) {
+			args[0] = MSI->getRawDest();
+			args[1] = MSI->getLength();
+			++memset_instr;
+		} else if (MemCpyInst *MCI = dyn_cast<MemCpyInst>(TI)) {
+			args[0] = MCI->getRawDest();
+			args[1] = MCI->getLength();
+			++memcpy_instr;
+		} else {
+			 if (isa<CallBase>(TI)) {
+				++call_instr;
 
-                            insertCallBefore(inst, &M, inst->getRawDest(), (uint64_t) inst->getLength());
+			} else if (TI->isAtomic()) {
+#if LOG_LEVEL <= LOG_DEBUG
+				errs() << "Encountered an atomic non-store instruction in function "
+					<< TI->getParent()->getParent()->getName() << "\n";
+#endif
+				++atomic_instr;
+			} else {
+				errs() << "Encountered an unknown memory writing instruction in function "
+					<< TI->getParent()->getParent()->getName() << "\n";
+				++unknown_instr;
+			}
+			return;
+		}
 
-                        } else if (isa<MemCpyInst>(&(*BI))) {
-                            MemCpyInst *inst = dyn_cast<MemCpyInst>(&(*BI));
+		CallInst::Create(FC, args, "", TI);
+	}
 
-                            insertCallBefore(inst, &M, inst->getRawDest(), (uint64_t) inst->getLength());
+	Function* CloneStubInstr(Function *F)
+	{
+		std::vector<Type*> ArgTypes;
 
-                        } else {
-                            if (isa<CallInst>(&(*BI))) continue;
-                            errs() << "[UNRECOGNIZED!1!]";
-                        }
-                    }
-                }
-            }
-            return true;
-        }
+		for (const Argument &I : F->args())
+			ArgTypes.push_back(I.getType());
 
-        llvm::Function *clone_llvm_function(llvm::Function *toClone, Module *M) {
-            ValueToValueMapTy VMap;
-            Function *NewF = Function::Create(toClone->getFunctionType(),
-                                              toClone->getLinkage(),
-                                              toClone->getName() + "_instr",
-                                              M);
-            ClonedCodeInfo info;
-            Function::arg_iterator DestI = NewF->arg_begin();
-            for (Function::const_arg_iterator I = toClone->arg_begin(), E = toClone->arg_end(); I != E; ++I) {
-                DestI->setName(I->getName());    // Copy the name over...
-                VMap[&*I] = &*DestI++;        // Add mapping to VMap
-            }
+		FunctionType *FTy = FunctionType::get(
+			F->getFunctionType()->getReturnType(),
+			ArgTypes,
+			F->getFunctionType()->isVarArg()
+		);
 
-            // Necessary in case the function is self referential
-            VMap[&*toClone] = NewF;
+		std::string NewFName = F->getName().str() + "_instr";
+		Function *NewF = Function::Create(
+			FTy,
+			F->getLinkage(),
+			F->getAddressSpace(),
+			NewFName,
+			F->getParent()
+		);
 
-            SmallVector < ReturnInst * , 8 > Returns;
-            llvm::CloneFunctionInto(NewF, toClone, VMap, true, Returns, "", NULL, NULL, NULL);
+		return NewF;
+	}
 
-            return NewF;
-        }
+	static void CloneFunctionIntoInstr(Function *NewF, Function *F,
+		ValueToValueMapTy &VMap, ClonedCodeInfo *CodeInfo)
+	{
+		Function::arg_iterator DestI = NewF->arg_begin();
+		for (const Argument &I : F->args()){
+			DestI->setName(I.getName());
+			VMap[&I] = &*DestI++;
+		}
 
-        void insertCallBefore(Instruction *theInstruction, Module *M, Value *arg1, uint64_t arg2) {
-            IRBuilder<> builder(M->getContext());
-            
-            Value *args[] = {
-            	builder.CreatePointerCast(arg1, arg1->getType()),
-                builder.getInt64(arg2)
-            };
-
-            (builder.CreateCall(memtraceFunction, args))->insertBefore(theInstruction);
-        }
-
-        //This needs to be called before insertCallBefore 
-        FunctionCallee initMemtraceCall(Module *M) {
-        	Type *memtraceArgs[] = {
-				PointerType::getUnqual(Type::getVoidTy(M->getContext())),
-				IntegerType::get(M->getContext(), 64) //TODO: number of bits depends on architecture
-			};
-
-            return M->getOrInsertFunction("__write_mem",
-                                                    FunctionType::get(Type::getVoidTy(M->getContext()), memtraceArgs, false));
-        }
-
-    };
+		SmallVector<ReturnInst*, 8> Returns;
+		CloneFunctionInto(
+			NewF,
+			F,
+			VMap,
+			true,
+			Returns,
+			"_instr",
+			CodeInfo
+		);
+	}
+};
 }
 
+char ROOTSimCC::ID = 0;
 
-// Pass info
-char ROOTSimCC::ID = 0; // LLVM ignores the actual value: it referes to the pointer.
-
-// Pass loading stuff
-// To use, run: clang -Xclang -load -Xclang <your-pass>.so <other-args> ...
-
-// This function is of type PassManagerBuilder::ExtensionFn
-static void loadPass(const PassManagerBuilder &Builder, llvm::legacy::PassManagerBase &PM) {
-    PM.add(new ROOTSimCC());
+static void loadPass(
+	const PassManagerBuilder &Builder,
+	llvm::legacy::PassManagerBase &PM
+) {
+	(void)Builder;
+	PM.add(new ROOTSimCC());
 }
 
-// These constructors add our pass to a list of global extensions.
-static RegisterStandardPasses clangtoolLoader_Ox(PassManagerBuilder::EP_OptimizerLast, loadPass);
-static RegisterStandardPasses clangtoolLoader_O0(PassManagerBuilder::EP_EnabledOnOptLevel0, loadPass);
-
+static RegisterStandardPasses clangtoolLoader_Ox(
+	PassManagerBuilder::EP_OptimizerLast,
+	loadPass
+);
+static RegisterStandardPasses clangtoolLoader_O0(
+	PassManagerBuilder::EP_EnabledOnOptLevel0,
+	loadPass
+);
