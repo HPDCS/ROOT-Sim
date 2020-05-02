@@ -330,6 +330,12 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 			break;
 
 		case ARGP_KEY_SUCCESS:
+			// TODO: we have to make sure that setting serial unsets all parallel related options since the serial runtime
+			// relies on common code and default values
+			if(rootsim_config.serial && rootsim_config.snapshot != SNAPSHOT_FULL){
+				rootsim_error(false, "Running a serial simulation, resetting SNAPSHOT setting");
+				rootsim_config.snapshot = SNAPSHOT_FULL;
+			}
 
 			// sanity checks
 			if(!rootsim_config.serial && !bitmap_check(scanned, OPT_NP - OPT_FIRST))

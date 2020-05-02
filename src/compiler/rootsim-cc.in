@@ -1,3 +1,5 @@
+#!/bin/bash
+
 OMPI_CC=clang
 MPICH_CC=clang
 CC="@COMPILER@"

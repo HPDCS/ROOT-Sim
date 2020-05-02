@@ -151,7 +151,7 @@ do_test collector 4
 do_test stupid_model 16
 
 # Additional tests to increase code coverage
-do_test_custom pcs --lp 16 --output-dir dummy --npwd --gvt 500 --gvt-snapshot-cycles 3 --verbose info --seed 12345 --scheduler stf --cktrm-mode normal --simulation-time 1000
+do_test_custom pcs --lp 16 --output-dir dummy --npwd --gvt 500 --verbose info --seed 12345 --scheduler stf --cktrm-mode normal --simulation-time 1000
 do_test_custom pcs --lp 4 --silent-output
 do_test_custom pcs --lp 16 --inc
 
