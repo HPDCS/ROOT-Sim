@@ -56,20 +56,31 @@ public:
 
 			if (isSystemSide(&*F))
 				continue;
-#if LOG_LEVEL <= LOG_DEBUG
-			errs() << "Found function " << F->getName()  << "\n";
-#endif
+
 			functions.push_back(&*F);
 		}
 
-		FC = M.getOrInsertFunction(
-			"__write_mem",
-			FunctionType::get(
-				Type::getVoidTy(M.getContext()),
-				MemtraceArgs,
-				false
-			)
+		write_mem_fnc_type = FunctionType::get(
+			Type::getVoidTy(M.getContext()),
+			MemtraceArgs,
+			false
 		);
+
+#if LLVM_VERSION_MAJOR >= 8
+		FunctionCallee FC = M.getOrInsertFunction(
+			"__write_mem",
+			write_mem_fnc_type
+		);
+
+		write_mem_fnc = FC.getCallee();
+#else
+		write_mem_fnc = M.getOrInsertFunction(
+			"__write_mem",
+			Type::getVoidTy(M.getContext()),
+			MemtraceArgs,
+			false
+		);
+#endif
 
 		ValueToValueMapTy VMap;
 		for (std::vector<Function *>::iterator F = functions.begin(),
@@ -83,9 +94,6 @@ public:
 				isSystemSide(&*F))
 				continue;
 			Function *Cloned = &cast<Function>(*VMap[&*F]);
-#if LOG_LEVEL <= LOG_DEBUG
-			errs() << "Instrumenting " << Cloned->getName() << "\n";
-#endif
 			ClonedCodeInfo CloneInfo;
 			CloneFunctionIntoInstr(Cloned, &*F, VMap, &CloneInfo);
 			for (inst_iterator I = inst_begin(Cloned),
@@ -111,7 +119,8 @@ public:
 private:
 	static char ID;
 	Module *M = nullptr;
-	FunctionCallee FC = nullptr;
+	FunctionType *write_mem_fnc_type = nullptr;
+	Value *write_mem_fnc = nullptr;
 	StringRef **rootsim_functions;
 
 	unsigned tot_instr = 0;
@@ -134,7 +143,11 @@ private:
 
 		enum llvm::LibFunc LLF;
 		return F->getIntrinsicID() || F->doesNotReturn() ||
+#if LLVM_VERSION_MAJOR >= 8
 			getAnalysis<TargetLibraryInfoWrapperPass>()
+#else
+			getAnalysis<TargetLibraryInfoWrapperPass>(F)
+#endif
 #if LLVM_VERSION_MAJOR >= 10
 			.getTLI(F->getFunction()).getLibFunc(F->getFunction(), LLF);
 #else
@@ -186,7 +199,7 @@ private:
 			return;
 		}
 
-		CallInst::Create(FC, args, "", TI);
+		CallInst::Create(write_mem_fnc_type, write_mem_fnc, args, "", TI);
 	}
 
 	Function* CloneStubInstr(Function *F)
