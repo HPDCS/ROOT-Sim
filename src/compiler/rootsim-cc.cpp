@@ -66,7 +66,7 @@ public:
 			false
 		);
 
-#if LLVM_VERSION_MAJOR >= 8
+#if LLVM_VERSION_MAJOR >= 9
 		FunctionCallee FC = M.getOrInsertFunction(
 			"__write_mem",
 			write_mem_fnc_type
@@ -143,7 +143,7 @@ private:
 
 		enum llvm::LibFunc LLF;
 		return F->getIntrinsicID() || F->doesNotReturn() ||
-#if LLVM_VERSION_MAJOR >= 8
+#if LLVM_VERSION_MAJOR >= 9
 			getAnalysis<TargetLibraryInfoWrapperPass>()
 #else
 			getAnalysis<TargetLibraryInfoWrapperPass>(F)

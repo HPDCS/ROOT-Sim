@@ -15,28 +15,6 @@ jobs:
     - addons:
        apt:
          packages:
-          - clang-7
-          - libclang-7-dev
-          - llvm-7
-          - llvm-7-dev
-          - llvm-7-tools
-          - libc++-7-dev
-          - libc++abi-7-dev
-          - mpich
-          - libmpich-dev
-          - lcov
-          - python3-setuptools
-          - python3-pip
-          - doxygen
-          - graphviz
-          - jq
-      env:
-          - CC=clang-7
-          - CXX=clang++-7
-          - LLVM_CONFIG=llvm-config-7
-    - addons:
-       apt:
-         packages:
           - clang-8
           - libclang-8-dev
           - llvm-8
