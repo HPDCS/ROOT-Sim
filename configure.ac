@@ -102,6 +102,8 @@ AS_IF([test x"$enable_mpi" = xyes],[
 # newer asynchronous primitives, e.g. MPI_Ireduce_scatter_block.
 # We test here for the availability of such primitives
 AS_IF([test x"$with_mpi" = xyes],[
+	# Base C compiler, we will "inject" it into mpicc, later 
+	BASE_CC="$CC"
 	# Use our MPICC compiler
 	CC="$MPICC"
 
@@ -339,7 +341,7 @@ AM_CONDITIONAL([NO_KERNEL_MODULES], [test "x$ac_disable_modules" = "xyes"])
 # Workaround to have MPI use clang for compilation
 AC_SUBST([COMPILER], [$CC])
 AS_IF([test x"$with_mpi" = xyes],[
-	CC="OMPI_CC=clang MPICH_CC=clang $CC"
+	CC="OMPI_CC=$BASE_CC MPICH_CC=$BASE_CC $CC"
 ])
 
 # Generate Makefiles for all these subfolders
