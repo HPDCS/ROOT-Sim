@@ -31,8 +31,7 @@ jobs:
           - graphviz
           - jq
       env:
-          - CC=mpicc
-          - MPICH_CC=clang-7
+          - CC=clang-7
           - CXX=clang++-7
           - LLVM_CONFIG=llvm-config-7
     - addons:
@@ -54,8 +53,7 @@ jobs:
           - graphviz
           - jq
       env:
-          - CC=mpicc
-          - MPICH_CC=clang-8
+          - CC=clang-8
           - CXX=clang++-8
           - LLVM_CONFIG=llvm-config-8
     - addons:
@@ -80,8 +78,7 @@ jobs:
           - graphviz
           - jq
       env:
-          - CC=mpicc
-          - MPICH_CC=clang-9
+          - CC=clang-9
           - CXX=clang++-9
           - LLVM_CONFIG=llvm-config-9
           - deploy=true
