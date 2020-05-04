@@ -61,3 +61,4 @@ modules.order
 
 /dymelor
 /numerical
+src/compiler/rootsim_exposed_functions.cpp

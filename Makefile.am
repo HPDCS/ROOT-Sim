@@ -41,6 +41,10 @@ src/arch/asm_defines.h: src/arch/asm_defines.c
 	echo "Generating defines for assembly modules..."
 	@$(COMPILE) -DASM_DEFINES -S $< -o - | $(AWK) '($$1 == "#####") { print "#define " $$2 " " substr($$3, 2) }' > $(top_srcdir)/$@
 
+src/compiler/rootsim_exposed_functions.cpp: src/ROOT-Sim.h scripts/rootsim_gen_exposed.sh
+	echo "Generating exposed functions table..."
+	scripts/rootsim_gen_exposed.sh
+
 
 # ROOT-Sim compiler-related stuff
 dist_bin_SCRIPTS = rootsim-cc
@@ -58,7 +62,7 @@ rootsim-cc: src/compiler/rootsim-cc.in
 	@chmod +x rootsim-cc
 
 
-librootsimcc_la_SOURCES = src/compiler/rootsim-cc.cpp
+librootsimcc_la_SOURCES = src/compiler/rootsim-cc.cpp src/compiler/rootsim_exposed_functions.cpp
 librootsimcc_la_CPPFLAGS = @LLVMFLAGS@
 librootsimcc_la_LDFLAGS = -version-info 0:0:0
 

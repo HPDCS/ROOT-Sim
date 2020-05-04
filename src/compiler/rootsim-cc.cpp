@@ -10,46 +10,7 @@
 #include "llvm/PassAnalysisSupport.h"
 #include "llvm/Analysis/TargetLibraryInfo.h"
 
-// TODO: this list should be automatically generated
-const char *rootsim_exposed_functions[] = {
-	"SetState",
-	"FindReceiver",
-	"GetVisit",
-	"SetValueTopology",
-	"SetVisit",
-	"FindReceiverToward",
-	"CountVisits",
-	"Expent",
-	"GetReceiver",
-	"Poisson",
-	"TrackNeighbourInfo",
-	"GetPastVisit",
-	"GetValueTopology",
-	"Gamma",
-	"RemoveVisit",
-	"CountPastVisits",
-	"ComputeMinTour",
-	"ScheduleNewLeaveEvent",
-	"AddVisit",
-	"RegionsCount",
-	"Random",
-	"KillAgent",
-	"DataAgent",
-	"Normal",
-	"Zipf",
-	"DirectionsCount",
-	"RandomRangeNonUniform",
-	"CountAgents",
-	"SpawnAgent",
-	"NeighboursCount",
-	"IterAgents",
-	"GetNeighbourInfo",
-	"SetTopology",
-	"EnqueueVisit",
-	"RandomRange",
-	"CapabilityAvailable",
-	nullptr
-};
+extern const char *rootsim_exposed_functions[];
 
 using namespace llvm;
 
