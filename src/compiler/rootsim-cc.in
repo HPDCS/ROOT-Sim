@@ -1,6 +1,6 @@
 #!/bin/bash
 
-CC="@COMPILER@"
+CC="env @COMPILER@"
 CFLAGS="@CFLAGS@"
 VERSION="@VERSION@"
 libdir="@libdir@"

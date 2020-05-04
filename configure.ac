@@ -339,10 +339,10 @@ AM_CONDITIONAL([NO_KERNEL_MODULES], [test "x$ac_disable_modules" = "xyes"])
 
 
 # Workaround to have MPI use clang for compilation
-AC_SUBST([COMPILER], [$CC])
 AS_IF([test x"$with_mpi" = xyes],[
 	CC="OMPI_CC=$BASE_CC MPICH_CC=$BASE_CC $CC"
 ])
+AC_SUBST([COMPILER], [$CC])
 
 # Generate Makefiles for all these subfolders
 AC_CONFIG_FILES([Makefile
