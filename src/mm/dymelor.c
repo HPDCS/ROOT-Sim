@@ -131,7 +131,7 @@ void malloc_state_wipe(struct memory_map *mm)
 static size_t compute_size(size_t size)
 {
 	// Account for the space needed to keep the pointer to the malloc area
-	size += sizeof(long long);
+	size += sizeof(malloc_state **);
 	size_t size_new;
 
 	size_new = POWEROF2(size);
@@ -166,7 +166,7 @@ static void find_next_free(malloc_area * m_area)
 void *do_malloc(struct lp_struct *lp, size_t size)
 {
 	malloc_area *m_area, *prev_area = NULL;
-	void *ptr;
+	unsigned char *ret_chk;
 	size_t area_size, bitmap_size;
 	malloc_state *m_state;
 
@@ -270,7 +270,7 @@ void *do_malloc(struct lp_struct *lp, size_t size)
 
 		area_size = sizeof(malloc_area *) + bitmap_size * 2 + m_area->num_chunks * size;
 
-		m_area->self_pointer = (malloc_area *)allocate_buddy_memory(lp->mm->buddy, lp->mm->segment->base, area_size);
+		m_area->self_pointer = allocate_buddy_memory(lp->mm->buddy, lp->mm->segment->base, area_size);
 		__real_memset(m_area->self_pointer, 0, area_size);
 
 		if (unlikely(m_area->self_pointer == NULL)) {
@@ -278,18 +278,13 @@ void *do_malloc(struct lp_struct *lp, size_t size)
 		}
 
 		m_area->dirty_chunks = 0;
-		*(unsigned long long *)(m_area->self_pointer) =
-		    (unsigned long long)m_area;
+		*m_area->self_pointer = m_area;
 
-		m_area->use_bitmap =
-		    ((unsigned char *)m_area->self_pointer +
-		     sizeof(malloc_area *));
+		m_area->use_bitmap = (rootsim_bitmap *)(m_area->self_pointer + 1);
 
-		m_area->dirty_bitmap =
-		    ((unsigned char *)m_area->use_bitmap + bitmap_size);
+		m_area->dirty_bitmap = m_area->use_bitmap + bitmap_size;
 
-		m_area->area =
-		    (void *)((char *)m_area->dirty_bitmap + bitmap_size);
+		m_area->area = m_area->dirty_bitmap + bitmap_size;
 	}
 
 	if (unlikely(m_area->area == NULL)) {
@@ -302,7 +297,7 @@ void *do_malloc(struct lp_struct *lp, size_t size)
 	}
 #endif
 
-	ptr = (void *)((char *)m_area->area + (m_area->next_chunk * size));
+	ret_chk = ((unsigned char *)m_area->area + (m_area->next_chunk * size));
 
 	bitmap_set(m_area->use_bitmap, m_area->next_chunk);
 
@@ -333,19 +328,19 @@ void *do_malloc(struct lp_struct *lp, size_t size)
 	#ifndef NDEBUG
 	// In debug mode we set the chunk to a known value. If during a restore
 	// operation we find this value, then the metadata in the log are likely broken.
-	__real_memset(ptr, 0xe8, size);
+	__real_memset(ret_chk + sizeof(malloc_area **), 0xe8, size - sizeof(malloc_area **));
 	#else
-	__real_memset(ptr, 0, size);
+	__real_memset(ret_chk + sizeof(malloc_area **), 0, size - sizeof(malloc_area **));
 	#endif
 
 	// Keep track of the malloc_area which this chunk belongs to
-	*(unsigned long long *)ptr = (unsigned long long)m_area->self_pointer;
+	memcpy(ret_chk, m_area->self_pointer, sizeof(*m_area->self_pointer));
 
 #ifndef NDEBUG
 	atomic_dec(&m_area->presence);
 #endif
 
-	return (void *)((char *)ptr + sizeof(long long));
+	return ret_chk + sizeof(malloc_area **);
 }
 
 void do_free(struct lp_struct *lp, void *ptr)

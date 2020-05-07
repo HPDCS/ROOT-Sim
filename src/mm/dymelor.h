@@ -104,7 +104,7 @@ struct _malloc_area {
 	int idx;
 	int state_changed;
 	simtime_t last_access;
-	struct _malloc_area *self_pointer;	// This pointer is used in a free operation. Each chunk points here. If malloc_area is moved, only this is updated.
+	struct _malloc_area **self_pointer;	// This pointer is used in a free operation. Each chunk points here. If malloc_area is moved, only this is updated.
 	rootsim_bitmap *use_bitmap;
 	rootsim_bitmap *dirty_bitmap;
 	void *area;
@@ -129,9 +129,7 @@ typedef struct _malloc_state malloc_state;
 
 #define is_incremental(ckpt) (((malloc_state *)ckpt)->is_incremental == true)
 
-#define get_top_pointer(ptr) ((unsigned long long *)((char *)ptr - sizeof(unsigned long long)))
-#define get_area_top_pointer(ptr) ( (malloc_area **)(*get_top_pointer(ptr)) )
-#define get_area(ptr) ( *(get_area_top_pointer(ptr)) )
+#define get_area(ptr) (*(((malloc_area **)ptr) - 1))
 
 #define PER_LP_PREALLOCATED_MEMORY (262144L * PAGE_SIZE)	// This should be power of 2 multiplied by a page size. This is 1GB per LP.
 #define BUDDY_GRANULARITY PAGE_SIZE	// This is the smallest chunk released by the buddy in bytes. PER_LP_PREALLOCATED_MEMORY/BUDDY_GRANULARITY must be integer and a power of 2

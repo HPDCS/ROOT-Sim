@@ -31,6 +31,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <fcntl.h>
+#include <stdint.h>
 
 #include <mm/dymelor.h>
 #include <core/timer.h>
@@ -209,7 +210,8 @@ void *log_full(struct lp_struct *lp)
 *         along with the relative meta-data which can be used to perform a restore operation.
 */
 void *log_incremental(struct lp_struct *lp) {
-	unsigned char *ptr, *ckpt;
+	unsigned char *ptr;
+	malloc_state *ckpt;
 	int i;
 	size_t size, chunk_size, bitmap_size;
 	malloc_area *m_area;
@@ -220,13 +222,13 @@ void *log_incremental(struct lp_struct *lp) {
 
 	size = m_state->total_inc_size;
 	ckpt = __real_malloc(size);
-	ptr = ckpt;
+	ptr = (unsigned char *)ckpt;
 
 	// Copy malloc_state into the log
 	__real_memcpy(ptr, m_state, sizeof(malloc_state));
 	ptr += sizeof(malloc_state);
-	((malloc_state *)ckpt)->timestamp = lvt(lp);
-	((malloc_state *)ckpt)->is_incremental = true;
+	ckpt->timestamp = lvt(lp);
+	ckpt->is_incremental = true;
 
 	for(i = 0; i < m_state->num_areas; i++){
 
@@ -274,8 +276,8 @@ void *log_incremental(struct lp_struct *lp) {
 	} // for each dirty m_area in m_state
 
 	// Sanity check
-	if (ckpt + size != ptr){
-		rootsim_error(true, "Actual (inc) log size different from the estimated one! Aborting...\n\tlog = %x expected size = %d, actual size = %d, ptr = %x\n", ckpt, size, ptr-ckpt, ptr);
+	if ((uintptr_t)ptr != (uintptr_t)ckpt + size){
+		rootsim_error(true, "Actual (inc) log size different from the estimated one! Aborting...\n\tlog = %x expected size = %d, actual size = %d, ptr = %x\n", ckpt, size, (uintptr_t)ptr-(uintptr_t)ckpt, ptr);
 	}
 
 	m_state->total_inc_size = sizeof(malloc_state);
@@ -340,20 +342,21 @@ void *log_state(struct lp_struct *lp)
 * @param ckpt A pointer to the checkpoint to take the previous content of
 *             the buffers to be restored
 */
-void restore_full(struct lp_struct *lp, void *ckpt)
+void restore_full(struct lp_struct *lp, void *raw_ckpt)
 {
-	char *ptr, *target_ptr;
+	unsigned char *ptr, *target_ptr;
 	int i, original_num_areas;
-	size_t chunk_size, bitmap_size;
+	size_t chunk_size, bitmap_size, ckpt_size;
 	malloc_area *m_area;
 	malloc_state *m_state;
+	malloc_state *ckpt = raw_ckpt;
 
 	// Timers for simulation platform self-tuning
 	timer recovery_timer;
 	timer_start(recovery_timer);
-	ptr = ckpt;
+	ptr = raw_ckpt;
+	target_ptr = ptr + ((malloc_state *)raw_ckpt)->total_log_size;
 	m_state = lp->mm->m_state;
-	target_ptr = ptr + ((malloc_state *) ptr)->total_log_size;
 	original_num_areas = m_state->num_areas;
 
 	// restore the old malloc state except for the malloc areas array
@@ -376,7 +379,7 @@ void restore_full(struct lp_struct *lp, void *ckpt)
 			__real_memset(m_area->dirty_bitmap, 0, bitmap_size);
 		}
 
-		if (ptr >= target_ptr || m_area->idx != ((malloc_area *) ptr)->idx) {
+		if (ptr >= target_ptr || memcmp(&m_area->idx, ptr + offsetof(malloc_area, idx), sizeof(m_area->idx))) {
 
 			m_area->alloc_chunks = 0;
 			m_area->next_chunk = 0;
@@ -478,7 +481,8 @@ void restore_full(struct lp_struct *lp, void *ckpt)
 * 		     logical process.
 */
 void restore_incremental(struct lp_struct *lp, state_t *queue_node) {
-	unsigned char *ptr, *log;
+	unsigned char *ptr;
+	malloc_state *ckpt;
 	rootsim_bitmap *bitmap_pointer, **to_be_restored;
 	size_t chunk_size, bitmap_size, log_size;
 	malloc_area *m_area, *logged_m_area;
@@ -510,10 +514,10 @@ void restore_incremental(struct lp_struct *lp, state_t *queue_node) {
 	// Handle incremental logs
 	while(is_incremental(curr_node->log)) {
 
-		log = curr_node->log;
-		ptr = log;
+		ckpt = curr_node->log;
+		ptr = curr_node->log;
 
-		log_size = ((malloc_state *)ptr)->total_inc_size;
+		log_size = ckpt->total_inc_size;
 
 		// Skip malloc_state
 		ptr += sizeof(malloc_state);
@@ -521,12 +525,12 @@ void restore_incremental(struct lp_struct *lp, state_t *queue_node) {
 		// Handle areas in current incremental log
 		for(i = 0; i < m_state->num_areas; i++) {
 
-		        if (ptr - log >= log_size) {
+		        if ((uintptr_t)ptr >= (uintptr_t)ckpt + log_size) {
                             break;
 		        }
 
 			// Get current malloc_area
-		        logged_m_area = (malloc_area *)ptr;
+		        __real_memcpy(&logged_m_area, &ptr, sizeof(ptr));
 			m_area = &m_state->areas[logged_m_area->idx];
 
 			ptr += sizeof(malloc_area);
@@ -580,7 +584,7 @@ void restore_incremental(struct lp_struct *lp, state_t *queue_node) {
 		}
 
 		// Sanity check
-		if (ptr != (unsigned char *)log + ((malloc_state *)log)->total_inc_size){
+		if ((uintptr_t)ptr - (uintptr_t)ckpt != log_size){
 			rootsim_error(true, "The incremental log size does not match. Aborting...\n");
 		}
 
@@ -596,22 +600,22 @@ void restore_incremental(struct lp_struct *lp, state_t *queue_node) {
 	/* Full log reached */
 
 	// Handle areas in the full log reached
-	log = curr_node->log;
-	ptr = log;
+	ckpt = curr_node->log;
+	ptr = curr_node->log;
 
-        log_size = ((malloc_state *)ptr)->total_log_size;
+        log_size = ckpt->total_log_size;
 
     // Skip malloc_state
 	ptr += sizeof(malloc_state);
 
 	for(i = 0; i < m_state->num_areas; i++) {
 
-                if (ptr - log >= log_size) {
-                    break;
-                }
+		if ((uintptr_t)ptr >= (uintptr_t)ckpt + log_size) {
+		    break;
+		}
 
 		// Get current malloc_area
-                logged_m_area = (malloc_area *)ptr;
+		__real_memcpy(&logged_m_area, &ptr, sizeof(ptr));
 
 		m_area = (malloc_area *)&m_state->areas[logged_m_area->idx];
 		ptr += sizeof(malloc_area);
@@ -675,8 +679,8 @@ void restore_incremental(struct lp_struct *lp, state_t *queue_node) {
 	}
 
 	// Sanity check
-	if (ptr != (unsigned char *)log + ((malloc_state *)log)->total_log_size){
-		rootsim_error(true, "The full log size does not match. Aborting...\n");
+	if ((uintptr_t)ptr - (uintptr_t)ckpt != log_size){
+		rootsim_error(true, "The incremental log size does not match. Aborting...\n");
 	}
 
 	// Check whether there are more allocated areas which are not present in the log

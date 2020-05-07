@@ -52,6 +52,7 @@
 __attribute__((used))
 void __write_mem(void *address, size_t size)
 {
+	(void)size;
 	void *stack = __builtin_frame_address(0);
 
 	malloc_area *m_area;
