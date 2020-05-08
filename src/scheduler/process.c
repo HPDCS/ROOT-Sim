@@ -95,7 +95,9 @@ void initialize_lps(void)
 		lp->gid = gid;
 
 		// Initialize memory map
-		initialize_memory_map(lp);
+		allocator_init(lp);
+
+		lp->slab = slab_init(SLAB_MSG_SIZE);
 
 		// Allocate memory for the outgoing buffer
 		lp->outgoing_buffer.max_size = INIT_OUTGOING_MSG;

@@ -37,8 +37,8 @@
 #include <string.h>
 
 #include <core/core.h>
-#include <mm/dymelor.h>
 #include <mm/mm.h>
+#include <mm/slab.h>
 
 #define SLOTS_ALL_ZERO ((uint64_t) 0)
 #define SLOTS_FIRST ((uint64_t) 1)

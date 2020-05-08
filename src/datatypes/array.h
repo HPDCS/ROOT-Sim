@@ -26,8 +26,6 @@
 #ifndef ARRAY_H_
 #define ARRAY_H_
 
-#include <mm/dymelor.h>
-
 #include <memory.h>
 
 // TODO: add some type checking and size checking (is it necessary?)

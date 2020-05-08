@@ -102,7 +102,7 @@ bool LogState(struct lp_struct *lp)
 		new_state->last_event = lp->bound;
 
 		// Log simulation model buffers
-		new_state->log = log_state(lp);
+		new_state->checkpoint_i = allocator_checkpoint_take(lp);
 
 		// Log members of lp_struct which must be restored
 		new_state->state = lp->state;
@@ -247,7 +247,6 @@ void rollback(struct lp_struct *lp)
 	while (restore_state != NULL && restore_state->lvt > last_correct_event->timestamp) {	// It's > rather than >= because we have already taken into account simultaneous events
 		s = restore_state;
 		restore_state = list_prev(restore_state);
-		log_delete(s->log);
 #ifndef NDEBUG
 		s->last_event = (void *)0xBABEBEEF;
 #endif

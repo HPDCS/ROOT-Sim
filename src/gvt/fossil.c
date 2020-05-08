@@ -57,7 +57,6 @@ void fossil_collection(struct lp_struct *lp, simtime_t time_barrier)
 	// nodes. We therefore manually scan the list and free the memory.
 	while ((state = list_head(lp->queue_states)) != NULL
 	       && state->lvt < time_barrier) {
-		log_delete(state->log);
 		if(&topology_settings && topology_settings.write_enabled)
 			rsfree(state->topology);
 		if(&abm_settings)

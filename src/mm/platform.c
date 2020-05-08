@@ -30,7 +30,6 @@
 #include <stddef.h>
 #include <stdlib.h>
 
-#include <mm/dymelor.h>
 #include <core/core.h>
 
 extern void *__real_malloc(size_t);

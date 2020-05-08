@@ -53,8 +53,8 @@ typedef struct _state_t {
 
 	/// Simulation time associated with the state log
 	simtime_t lvt;
-	/// A pointer to the actual log
-	void *log;
+	/// A reference to the allocator checkpoint
+	uint32_t checkpoint_i;
 	/// This log has been taken after the execution of this event
 	msg_t *last_event;
 

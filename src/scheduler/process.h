@@ -35,7 +35,10 @@
 #include <stdbool.h>
 
 #include <mm/state.h>
+#include <mm/slab.h>
+
 #include <mm/mm.h>
+#include <exc/allocator/allocator.h>
 #include <mm/ecs.h>
 #include <datatypes/list.h>
 #include <datatypes/msgchannel.h>
@@ -73,7 +76,9 @@ struct lp_struct {
 	void *stack;
 
 	/// Memory map of the LP
-	struct memory_map *mm;
+	struct memory_map mm;
+	/// sLaB
+	struct slab_chain *slab;
 
 	/// Local ID of the LP
 	LID_t lid;

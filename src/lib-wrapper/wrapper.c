@@ -35,7 +35,6 @@
 #include <core/timer.h>
 #include <core/init.h>
 #include <scheduler/scheduler.h>
-#include <mm/dymelor.h>
 
 // Definitions to functions which will be wrapped by the linker
 char *__real_strcpy(char *, const char *);
