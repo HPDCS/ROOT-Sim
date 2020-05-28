@@ -112,9 +112,6 @@ void adopt_new_gvt(simtime_t new_gvt)
 		// Execute the fossil collection
 		fossil_collection(lp, time_barrier_pointer[i]->lvt);
 
-		// Actually release memory buffer allocated by the LPs and then released via free() calls
-		clean_buffers_on_gvt(lp, time_barrier_pointer[i]->lvt);
-
 		i++;
 	}
 }

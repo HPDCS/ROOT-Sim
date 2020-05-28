@@ -40,6 +40,8 @@
 #include <mm/mm.h>
 #include <mm/slab.h>
 
+size_t __page_size;
+
 #define SLOTS_ALL_ZERO ((uint64_t) 0)
 #define SLOTS_FIRST ((uint64_t) 1)
 #define FIRST_FREE_SLOT(s) ((size_t) __builtin_ctzll(s))

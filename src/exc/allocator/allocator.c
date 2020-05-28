@@ -45,7 +45,6 @@ void allocator_init(struct lp_struct *lp)
 	memset(self->aggr_written, 0, sizeof(self->aggr_written));
 
 	self->current = 0;
-	self->used_mem = 0;
 	self->base_mem = __real_malloc((1 << B_TOTAL_EXP) * (B_LOGS_COUNT + 2));
 }
 
@@ -130,7 +129,6 @@ void *__wrap_malloc(size_t req_size)
 
 	/* update the *longest* value back */
 	self->longest[i] = 0;
-	self->used_mem += 1 << node_size;
 
 	uint_fast32_t offset = ((i + 1) << node_size) - (1 << B_TOTAL_EXP);
 
@@ -172,7 +170,6 @@ void __wrap_free(void *ptr)
 	}
 
 	self->longest[i] = node_size;
-	self->used_mem -= 1 << node_size;
 
 	while (i) {
 		i = parent(i);

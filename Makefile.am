@@ -136,6 +136,7 @@ librootsim_a_SOURCES =	src/main.c \
 libwrapperl_a_SOURCES = src/lib-wrapper/wrapper.c
 
 libdymelor_a_SOURCES = 	\
+			src/mm/platform.c \
 			src/exc/allocator/allocator.c \
 			src/exc/asm/asm_io.S \
 			src/mm/slab.c

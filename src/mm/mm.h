@@ -53,7 +53,6 @@ extern void *log_full(struct lp_struct *);
 extern void *log_state(struct lp_struct *);
 extern void log_restore(struct lp_struct *, state_t *);
 extern void log_delete(void *);
-extern void clean_buffers_on_gvt(struct lp_struct *, simtime_t);
 
 /* Simulation Platform Memory APIs */
 extern inline void *rsalloc(size_t);
