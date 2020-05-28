@@ -44,6 +44,7 @@
 #include <arch/atomic.h>
 #include <arch/ult.h>
 #include <arch/thread.h>
+#include <exc/allocator/allocator.h>
 #include <core/init.h>
 #include <scheduler/binding.h>
 #include <scheduler/process.h>
@@ -58,10 +59,7 @@
 
 #include <mm/mm.h>
 #include <statistics/statistics.h>
-#include <arch/thread.h>
-#include <communication/communication.h>
 #include <gvt/gvt.h>
-#include <statistics/statistics.h>
 #include <arch/x86/linux/cross_state_manager/cross_state_manager.h>
 #include <queues/xxhash.h>
 
@@ -156,6 +154,7 @@ void LP_main_loop(void *args)
 			hash1 = XXH64(current_evt->event_content, current_evt->size, current->gid);
 		}
 #endif
+		allocator_processing_start(current);
 
 		timer event_timer;
 		timer_start(event_timer);

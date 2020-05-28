@@ -134,7 +134,7 @@ bool LogState(struct lp_struct *lp)
 void RestoreState(struct lp_struct *lp, state_t * restore_state)
 {
 	// Restore simulation model buffers
-	log_restore(lp, restore_state);
+	allocator_checkpoint_restore(lp, restore_state->checkpoint_i);
 
 	// Restore members of lp_struct which have been checkpointed
 	lp->current_base_pointer = restore_state->base_pointer;
