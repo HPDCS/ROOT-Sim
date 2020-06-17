@@ -561,6 +561,12 @@ void statistics_stop(int exit_code)
 			print_termination_status(f, exit_code);
 			fflush(f);
 
+			// TERRIBLE HACK FOR STEFANO; REMOVE
+			print_timer_stats(stdout, &simulation_timer, &simulation_finished, total_time);
+			print_common_stats(stdout, &system_wide_stats, total_time, false, true);
+			print_termination_status(stdout, exit_code);
+			fflush(stdout);
+
 			#ifdef HAVE_MPI
 			mpi_reduce_statistics(&global_stats, &system_wide_stats);
 			if(master_kernel() && n_ker > 1){
