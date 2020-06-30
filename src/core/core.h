@@ -52,7 +52,8 @@
 enum {
 	SNAPSHOT_INVALID = 0,	/**< By convention 0 is the invalid field */
 	SNAPSHOT_FULL,		/**< Full State Saving */
-	SNAPSHOT_INCREMENTAL,	/**< Incremental State Saving */
+	SNAPSHOT_SOFTINC,	/**< Incremental State Saving (software based) */
+	SNAPSHOT_HARDINC,	/**< Incremental State Saving (hardware based) */
 };
 
 /// Maximum number of kernels the distributed simulator can handle

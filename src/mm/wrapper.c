@@ -27,6 +27,7 @@
 * @author Alessandro Pellegrini
 */
 
+#include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
 #include <core/init.h>
@@ -48,49 +49,49 @@ int __real_vfprintf(FILE *stream, const char *format, va_list ap);
 // Actual wrappers
 __visible char *__wrap_strcpy(char *s, const char *ct)
 {
-	if(rootsim_config.snapshot == SNAPSHOT_INCREMENTAL)
+	if(rootsim_config.snapshot == SNAPSHOT_SOFTINC)
 		__write_mem((unsigned char *)s, SIZE_MAX);
 	return __real_strcpy(s, ct);
 }
 
 __visible char *__wrap_strncpy(char *s, const char *ct, size_t n)
 {
-	if(rootsim_config.snapshot == SNAPSHOT_INCREMENTAL)
+	if(rootsim_config.snapshot == SNAPSHOT_SOFTINC)
 		__write_mem((unsigned char *)s, n);
 	return __real_strncpy(s, ct, n);
 }
 
 __visible char *__wrap_strcat(char *s, const char *ct)
 {
-	if(rootsim_config.snapshot == SNAPSHOT_INCREMENTAL)
+	if(rootsim_config.snapshot == SNAPSHOT_SOFTINC)
 		__write_mem((unsigned char *)s, SIZE_MAX);
 	return __real_strcat(s, ct);
 }
 
 __visible char *__wrap_strncat(char *s, const char *ct, size_t n)
 {
-	if(rootsim_config.snapshot == SNAPSHOT_INCREMENTAL)
+	if(rootsim_config.snapshot == SNAPSHOT_SOFTINC)
 		__write_mem((unsigned char *)s, n);
 	return __real_strncat(s, ct, n);
 }
 
 __visible void *__wrap_memcpy(void *s, const void *ct, size_t n)
 {
-	if(rootsim_config.snapshot == SNAPSHOT_INCREMENTAL)
+	if(rootsim_config.snapshot == SNAPSHOT_SOFTINC)
 		__write_mem((unsigned char *)s, n);
 	return __real_memcpy(s, ct, n);
 }
 
 __visible void *__wrap_memmove(void *s, const void *ct, size_t n)
 {
-	if(rootsim_config.snapshot == SNAPSHOT_INCREMENTAL)
+	if(rootsim_config.snapshot == SNAPSHOT_SOFTINC)
 		__write_mem((unsigned char *)s, n);
 	return __real_memmove(s, ct, n);
 }
 
 __visible void *__wrap_memset(void *s, int c, size_t n)
 {
-	if(rootsim_config.snapshot == SNAPSHOT_INCREMENTAL)
+	if(rootsim_config.snapshot == SNAPSHOT_SOFTINC)
 		__write_mem((unsigned char *)s, n);
 	return __real_memset(s, c, n);
 }
@@ -104,7 +105,7 @@ __visible char *__wrap_strdup(const char *s)
 {
 	char *ret = (char *)__wrap_malloc(strlen(s) + 1);
 	__real_strcpy(ret, s);
-	if(rootsim_config.snapshot == SNAPSHOT_INCREMENTAL)
+	if(rootsim_config.snapshot == SNAPSHOT_SOFTINC)
 		__write_mem((unsigned char *)ret, strlen(s));
 	return ret;
 }
@@ -113,7 +114,7 @@ __visible char *__wrap_strndup(const char *s, size_t n)
 {
 	char *ret = (char *)__wrap_malloc(n);
 	__real_strncpy(ret, s, n);
-	if(rootsim_config.snapshot == SNAPSHOT_INCREMENTAL)
+	if(rootsim_config.snapshot == SNAPSHOT_SOFTINC)
 		__write_mem((unsigned char *)ret, n);
 	return ret;
 }

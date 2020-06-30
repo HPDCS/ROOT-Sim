@@ -108,10 +108,10 @@ void initialize_lps(void)
 		lp->bottom_halves = init_channel();
 
 		// Which version of OnGVT and ProcessEvent should we use?
-		if (rootsim_config.snapshot == SNAPSHOT_FULL) {
+		if (rootsim_config.snapshot == SNAPSHOT_FULL || rootsim_config.snapshot == SNAPSHOT_HARDINC) {
 			lp->OnGVT = &OnGVT;
 			lp->ProcessEvent = &ProcessEvent;
-		} else if(rootsim_config.snapshot == SNAPSHOT_INCREMENTAL) {
+		} else if(rootsim_config.snapshot == SNAPSHOT_SOFTINC) {
 			lp->OnGVT = &OnGVT_instr;
 			lp->ProcessEvent = &ProcessEvent_instr;
 		} else {

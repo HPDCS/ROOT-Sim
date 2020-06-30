@@ -43,7 +43,7 @@
 #include <lib/abm_layer.h>
 #include <lib/topology.h>
 #include <communication/communication.h>
-#include <arch/x86/linux/cross_state_manager/cross_state_manager.h>
+#include <arch/x86/linux/rootsim/ioctl.h>
 
 #define LP_STACK_SIZE	4194304	// 4 MB
 
@@ -80,6 +80,12 @@ struct lp_struct {
 	/// Global ID of the LP
 	GID_t gid;
 
+	/// Logical Process lock, used to serialize accesses to concurrent data structures
+	spinlock_t	lock;
+
+	/// Seed to generate pseudo-random values
+	seed_type	seed;
+
 	/// ID of the worker thread towards which the LP is bound
 	unsigned int worker_thread;
 
@@ -111,16 +117,16 @@ struct lp_struct {
 	msg_t *bound;
 
 	/// Output messages queue
-	 list(msg_hdr_t) queue_out;
+	list(msg_hdr_t) queue_out;
 
 	/// Saved states queue
-	 list(state_t) queue_states;
+	list(state_t) queue_states;
 
 	/// Bottom halves
 	msg_channel *bottom_halves;
 
 	/// Processed rendezvous queue
-	 list(msg_t) rendezvous_queue;
+	list(msg_t) rendezvous_queue;
 
 	/// Unique identifier within the LP
 	unsigned long long mark;

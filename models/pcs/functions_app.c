@@ -25,8 +25,6 @@
 #define NIGHT_FACTOR		4.5
 #define WEEKEND_FACTOR		5
 
-
-
 double recompute_ta(double ref_ta, simtime_t time_now) {
 
 	int now = (int)time_now;

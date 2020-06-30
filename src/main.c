@@ -53,6 +53,12 @@
 #include <core/init.h>
 #undef _INIT_FROM_MAIN
 
+#ifdef HAVE_PMU
+#include <arch/x86/linux/rootsim/ioctl.h>
+#include <sys/ioctl.h>  /* ioctl syscall*/
+#include <unistd.h>	/* close syscall */
+#endif
+
 /**
  * This jump buffer allows rootsim_error, in case of a failure, to jump
  * out of any point in the code to the final part of the loop in which
@@ -90,6 +96,8 @@ static bool end_computing(void)
 extern atomic_t preempt_count;
 extern atomic_t overtick_platform;
 extern atomic_t would_preempt;
+extern atomic_t overtick_user;
+extern atomic_t need_resched;
 #endif
 
 /**
@@ -101,15 +109,46 @@ extern atomic_t would_preempt;
 static void *main_simulation_loop(void *arg) __attribute__((noreturn));
 static void *main_simulation_loop(void *arg)
 {
-
 	(void)arg;
 
 	simtime_t my_time_barrier = -1.0;
+
+#ifdef HAVE_PMU
+	if (rootsim_config.snapshot == SNAPSHOT_HARDINC) {
+		fd = open("/dev/rootsim", 666);
+		if (fd < 0) {
+			printf("Error, cannot open %s\n", "/dev/rootsim");
+			abort();
+		}
+	}
+#endif
 
 #ifdef HAVE_CROSS_STATE
 	lp_alloc_thread_init();
 #endif
 
+#ifdef HAVE_PMU
+	pid_t pid;
+	if (rootsim_config.snapshot == SNAPSHOT_HARDINC) {
+		pid = getpid();
+		if (ioctl(fd, IOCTL_ADD_THREAD, pid)) {
+			printf("Cannot register thread to  %s\n", "/dev/rootsim");
+			abort();
+		} else {
+			printf("THREAD %u registered\n", pid);
+		}
+
+		/* Init memory_trace struct - Check it */
+		memory_trace.addresses = (unsigned long long *) malloc(4096 * 16);
+		if (!memory_trace.addresses) {
+			printf("memory_trace init failed, malloc error\n");
+			abort();
+		}
+		memory_trace.length = (4096 * 16) / sizeof(unsigned long long);
+		memory_trace.cpu = sched_getcpu();
+		/* IOCTL to register thread */
+	}
+#endif
 	// Do the initial (local) LP binding, then execute INIT at all (local) LPs
 	initialize_worker_thread();
 
@@ -158,7 +197,6 @@ static void *main_simulation_loop(void *arg)
 				     atomic_read(&would_preempt));
 #else
 				printf("TIME BARRIER %f\n", my_time_barrier);
-
 #endif
 
 				fflush(stdout);
@@ -169,7 +207,19 @@ static void *main_simulation_loop(void *arg)
 #endif
 	}
 
- leave_for_error:
+leave_for_error:
+#ifdef HAVE_PMU
+	if (rootsim_config.snapshot == SNAPSHOT_HARDINC) {
+		free(memory_trace.addresses);
+		if (!pid || ioctl(fd, IOCTL_DEL_THREAD, pid)) {
+			printf("Cannot unregister thread to  %s\n", "/dev/rootsim");
+		} else {
+			printf("THREAD %u unregistered\n", pid);
+		}
+		if (fd) close(fd);
+		/* IOCTL to unregister thread */
+	}
+#endif
 	thread_barrier(&all_thread_barrier);
 
 	// If we're exiting due to an error, we neatly shut down the simulation

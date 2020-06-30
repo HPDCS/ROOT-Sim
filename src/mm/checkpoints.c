@@ -310,7 +310,7 @@ void *log_incremental(struct lp_struct *lp) {
 void *log_state(struct lp_struct *lp)
 {
 	statistics_post_data(lp, STAT_CKPT, 1.0);
-	if(rootsim_config.snapshot == SNAPSHOT_INCREMENTAL && !lp->state_log_full_forced) {
+	if(rootsim_config.snapshot != SNAPSHOT_FULL && !lp->state_log_full_forced) {
 		return log_incremental(lp);
 	}
 	

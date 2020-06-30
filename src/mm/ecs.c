@@ -54,7 +54,7 @@
 #include <arch/ult.h>
 #include <arch/x86/disassemble.h>
 
-#include <arch/x86/linux/cross_state_manager/cross_state_manager.h>
+#include <arch/x86/linux/rootsim/ioctl.h>
 
 #define __NR_OPEN 2
 

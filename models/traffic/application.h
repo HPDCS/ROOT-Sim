@@ -31,7 +31,7 @@
 
 // Execution time must be specified in seconds
 #ifndef EXECUTION_TIME
-	#define EXECUTION_TIME	(1 * WEEK)
+	#define EXECUTION_TIME	(1 * DAY)
 #endif
 
 

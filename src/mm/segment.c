@@ -36,7 +36,6 @@
 #include <mm/dymelor.h>
 #include <mm/mm.h>
 #include <mm/ecs.h>
-#include <arch/x86/linux/cross_state_manager/cross_state_manager.h>
 #include <scheduler/process.h>
 
 size_t __page_size = 0;

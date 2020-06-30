@@ -78,6 +78,7 @@ librootsim_a_SOURCES =	src/main.c \
 			src/arch/ult.c \
 			src/arch/x86.c \
 			src/arch/x86/disassemble.c \
+			src/arch/x86/ime.c \
 			src/arch/x86/jmp.S \
 			src/arch/x86/ecs_callback.S \
 			src/arch/x86/preempt_callback.S \

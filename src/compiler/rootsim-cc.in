@@ -1,6 +1,6 @@
 #!/bin/bash
 
-CC="env @COMPILER@"
+CC="env clang"
 CFLAGS="@CFLAGS@"
 VERSION="@VERSION@"
 libdir="@libdir@"

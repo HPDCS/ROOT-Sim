@@ -21,7 +21,7 @@ AM_CONDITIONAL([DEBUG], [test x$enable_debug = xyes])
 
 # Setup compilation flags
 CFLAGS_COMMON="-std=c11 -fvisibility=hidden -fno-omit-frame-pointer -fno-common -fstrict-aliasing -fgnu89-inline -U_FORTIFY_SOURCE -D_GNU_SOURCE"
-CFLAGS_WARNINGS="-Wall -Wextra -Wcast-align -Wpointer-arith -Wstrict-overflow=5 -Wstrict-prototypes -Winline -Wundef -Wnested-externs -Wshadow -Wunreachable-code -Wfloat-equal -Wredundant-decls -Wold-style-definition -Wno-switch-enum"
+CFLAGS_WARNINGS="-Wall -Wextra -Wmisleading-indentation -Wcast-align -Wpointer-arith -Wstrict-overflow=5 -Wstrict-prototypes -Winline -Wundef -Wnested-externs -Wshadow -Wunreachable-code -Wfloat-equal -Wredundant-decls -Wold-style-definition -Wno-switch-enum"
 #CFLAGS_WARNINGS="$CFLAGS_WARNINGS -Wconversion"
 
 # Flag to enable debugging the platform
@@ -41,6 +41,7 @@ AS_HELP_STRING([--enable-extra-checks],[Enable extra checks on models (kills per
 AS_IF([test "x$enable_extra_checks" = "xyes"], [
 	AC_DEFINE([EXTRA_CHECKS])
 ])
+
 
 # Code profiling flag
 AC_ARG_ENABLE([profile],
@@ -66,7 +67,7 @@ AM_COND_IF([HAVE_DOXYGEN], [AC_CONFIG_FILES([docs/Makefile])])
 # Check for languages and compilation support
 #----------------------------------------------------------------------------
 AC_LANG([C])
-AC_PROG_CC([clang])
+AC_PROG_CC([gcc])
 AC_PROG_CXX([clang++])
 AC_PROG_CC_C_O
 AC_PROG_CXXCPP
@@ -166,7 +167,6 @@ esac
 # Checks for C header files and libraries
 #----------------------------------------------------------------------------
 
-
 # Check for POSIX thread support
 AX_PTHREAD([], [AC_MSG_ERROR([PTHREAD support not found])])
 
@@ -178,6 +178,7 @@ AC_SUBST([LIBS])
 AC_SUBST([CFLAGS])
 AC_SUBST([CC])
 AC_SUBST([CXX])
+
 
 
 #----------------------------------------------------------------------------
@@ -228,6 +229,48 @@ AS_IF([test "x$enable_rebinding" != "xno"], [
 ])
 
 
+#------------------------------------------------------------
+# Check for availability of Intel performance counters
+#------------------------------------------------------------
+AC_MSG_CHECKING([if we can use Intel PMU])
+
+AC_RUN_IFELSE([AC_LANG_PROGRAM([[
+#define BIT(nr)			(1UL << (nr))
+#define BIT_ULL(nr)		(1ULL << (nr))
+
+#define cpuid(_a) \
+	a = (_a); \
+	__asm__ __volatile__("cpuid" \
+			: "=a" (a), "=b" (b), "=c" (c), "=d" (d) \
+			: "0" (a), "2" (c))
+]], [[
+  unsigned a = 0, b = 0, c = 0, d = 0;
+
+  cpuid(0); // Check vendor
+  if (!(b == 0x756e6547 && c == 0x6c65746e && d == 0x49656e69))
+    return -1;
+
+  cpuid(0xa); // Architectural performance monitoring version ID
+  if(!((a & 0xFF) > 1 && ((a >> 8) & 0XFF) > 0))
+    return -1;
+
+  cpuid(0x1); // Debug Store (DS) support
+  if(!(!!(d & BIT(21)) && !!(c & BIT(15))))
+    return -1;
+
+  return 0;
+]])], [
+AC_DEFINE([HAVE_PMU])
+AC_MSG_RESULT([yes])
+ac_pmu="(PMU available)"
+ac_pmu_cc="xyes"
+ac_iss="Enabled (Hardware based)"
+], [
+AC_MSG_RESULT([no])
+ac_pmu=""
+ac_pmu_cc="xno"
+])
+
 
 #------------------------------------------------------------
 # Linux specific subsystems.
@@ -239,100 +282,34 @@ ac_kernel_headers=no
 ac_disable_modules=yes
 ac_system_map=no
 
-#if test "x$ac_on_linux" = "xyes"
-#then
-
-	# If our libtimestretch library is installed, then we can use Preemptive Time Warp
-#	AC_CHECK_LIB(timestretch, ts_start, [libtimestretch=yes], [libtimestretch=no])
-#	if test "x$libtimestretch" = "xyes"
-#	then
-			#
-			# We have found everything that we need, but the user can disable the subsystem
-			#
-
-#		AC_ARG_ENABLE([preemption],
-#		AS_HELP_STRING([--disable-preemption], [Disable Preemptive Time Warp)]))
-
-#		AS_IF([test "x$enable_preemption" != "xno"], [
-#			AC_DEFINE([HAVE_PREEMPTION])
-#			ac_have_preemption=yes
-#			CFLAGS="$CFLAGS -ltimestretch"
-#		])
-#	fi
-
+if test "x$ac_on_linux" = "xyes"
+then
 	# Test for linux headers, to compile kernel modules
-#	ac_kernel_headers=no
-#	AC_CHECK_HEADERS([linux/ioctl.h],
-#		[ac_kernel_headers=yes])
+	ac_kernel_headers=no
+	AC_CHECK_HEADERS([linux/ioctl.h],
+		[ac_kernel_headers=yes])
 
-#	if test "x$ac_kernel_headers" = "xyes"
-#	then
+	if test "x$ac_kernel_headers" = "xyes"
+	then
 		# Configure kernel module paths
-#		AC_SUBST([with_kernel], [`uname -r`])
-#		AC_SUBST([with_kernel_mod], [/lib/modules/$with_kernel/extra])
-#		AC_SUBST([KERNEL_SRC], [/lib/modules/$with_kernel/build])
-#		AC_SUBST([KERNEL_MOD], [$with_kernel_mod])
-#	fi
+		AC_SUBST([with_kernel], [`uname -r`])
+		AC_SUBST([with_kernel_mod], [/lib/modules/$with_kernel/extra])
+		AC_SUBST([KERNEL_SRC], [/lib/modules/$with_kernel/build])
+		AC_SUBST([KERNEL_MOD], [$with_kernel_mod])
+	fi
 
 	# We might want to disable all kernel modules explicitly. This is useful, for example,
 	# when installing the simulator in a per-user space, in a system where the modules
 	# were already installed. Using the --disable-modules won't compile nor try to
 	# install any module.
-	#AC_ARG_ENABLE([modules],
-	#	AS_HELP_STRING([--enable-modules], [Enable compilation/installation of kernel modules]))
+	AC_ARG_ENABLE([modules],
+		AS_HELP_STRING([--enable-modules], [Enable compilation/installation of kernel modules]))
 
-#	AS_IF([test "x$enable_modules" = "xyes"], [
-#		ac_disable_modules=no
-#		ac_kernel_headers=yes
-#	])
-
-
-	# Check if System.map is available. Some kernel modules require access to special symbols
-	# which are not exported, but are available in System.map.
-#	AC_CHECK_FILE("/boot/System.map-$(uname -r)", [ac_system_map=yes])
-
-	# Per-module checks. To be run only if we are on Linux and kernel headers are available
-#	if test "x$ac_kernel_headers" = "xyes"
-#	then
-
-		# Here go modules which require System.map
-#		if test "x$ac_system_map" = "xyes"
-#		then
-
-			# Get finish_task_switch in the current kernel
-#			AC_MSG_CHECKING([for finish_task_switch in the current kernel])
-#			fts_line=$($GREP -n finish_task_switch /boot/System.map-$(uname -r) | $SED 's/:.*//')
-#			finish_task_switch=$($SED "${fts_line}q;d" /boot/System.map-$(uname -r) | $SED 's/ .*//')
-#			if test -z "$finish_task_switch"; then
-#				AC_MSG_ERROR([Address of finish_task_switch not found in kernel map])
-#			fi
-#			AC_MSG_RESULT([found at 0x$finish_task_switch])
-#			AC_SUBST([FTS_ADDR], [0x$finish_task_switch])
-
-			# Get function after finish_task_switch in the current kernel
-#			AC_MSG_CHECKING([the address of function next to finish_task_switch in the current kernel])
-#			let fts_line=$fts_line+1
-#			finish_task_switch_next=$($SED "${fts_line}q;d" /boot/System.map-$(uname -r) | $SED 's/ .*//')
-#			if test -z "$finish_task_switch_next"; then
-#				AC_MSG_ERROR([Address of function after finish_task_switch not found in kernel map])
-#			fi
-#			AC_MSG_RESULT([found at 0x$finish_task_switch_next])
-#			AC_SUBST([FTS_ADDR_NEXT], [0x$finish_task_switch_next])
-
-#		fi # closes the System.map modules check
-
-#	fi # closes the global Linux kernel headers availability check
-
-	# Event Cross State dependency manager
-	#AC_ARG_ENABLE([ecs],
-	#AS_HELP_STRING([--enable-ecs], [Enable Event Cross-State Management]))
-
-#	AS_IF([test "x$enable_ecs" = "xyes"], [
-#		AC_DEFINE([HAVE_CROSS_STATE])
-#		ac_have_cross_state=yes
-#	])
-
-#fi # Closes che global check for Linux availability
+	AS_IF([test "x$enable_modules" = "xyes"], [
+		ac_disable_modules=no
+		ac_kernel_headers=yes
+	])
+fi # Closes che global check for Linux availability
 
 # This instructs the Makefile to build kernel modules only when possible
 AM_CONDITIONAL([NO_KERNEL_MODULES], [test "x$ac_disable_modules" = "xyes"])
@@ -344,9 +321,28 @@ AS_IF([test x"$with_mpi" = xyes],[
 ])
 AC_SUBST([COMPILER], [$CC])
 
+#----------------------------------------------------------------------------
+# Configure rootsim-cc.
+# The compiler script is dynamically built in order to create ad compile
+# time linker scripts which will be used to produce the final version
+# of the executable. We compute here the sizes of those cat'd scripts
+# in order to make the compiler behave consistently with the last version
+# of the linker scripts provided in the installation.
+# Also, we must tell the compiler if ISS is available or not
+#----------------------------------------------------------------------------
+AC_MSG_CHECKING([compiler and linker scripts sizes])
+AC_SUBST([cc_script_lines], [$(wc -l scripts/rootsim-cc.in | sed 's,\ .*,,g')])
+AC_SUBST([cc_lddata1_lines], [$(wc -l scripts/ld-data1 | sed 's,\ .*,,g')])
+AC_SUBST([cc_lddata2_lines], [$(wc -l scripts/ld-data2 | sed 's,\ .*,,g')])
+AC_SUBST([cc_ldfinal_lines], [$(wc -l scripts/ld-final | sed 's,\ .*,,g')])
+AC_SUBST([iss_support], ["x$ac_gcc_headers"])
+AC_SUBST([pmu_support], ["$ac_pmu_cc"])
+AC_MSG_RESULT([ok])
+
 # Generate Makefiles for all these subfolders
 AC_CONFIG_FILES([Makefile
 		 man/Makefile
+		 scripts/Makefile
 		 src/arch/x86/linux/Makefile])
 AC_OUTPUT
 
@@ -454,12 +450,13 @@ cat<<EOF
 
    * ROOT-Sim Configuration on Current Machine *
 
-CPU Architecture.......... : ${host_cpu} (C: ${CC}, C++: ${CXX})
+CPU Architecture.......... : ${host_cpu} ${ac_pmu} (C: ${CC}, C++: ${CXX})
 Operating System.......... : ${host_os}
 Debugging Support......... : ${enable_debug}
 MPI....................... : ${enable_mpi}
 LP Preemption Support..... : ${ac_preemption}
 LP Rebinding.............. : ${ac_lp_rebinding}
-
+Linux Kernel Modules...... : ${ac_modules}
+Incremental State Saving.. : ${ac_iss}
 
 EOF
