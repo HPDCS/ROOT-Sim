@@ -1,6 +1,5 @@
 #include <asm-generic/errno-base.h>
-#include <asm/uaccess.h>
-
+#include <linux/uaccess.h>
 #include "rootsim.h"
 #include "ioctl.h"
 #include "ime/pmu.h"

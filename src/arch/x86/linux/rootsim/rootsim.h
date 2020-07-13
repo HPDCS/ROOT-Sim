@@ -3,7 +3,7 @@
 #include <linux/types.h>
 #include <linux/fs.h>
 #include <asm/special_insns.h>
-#include <asm/desc.h>
+//#include <asm/desc.h>
 
 // main.c
 extern int rootsim_open(struct inode *inode, struct file *filp) ;
