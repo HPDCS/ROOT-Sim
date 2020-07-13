@@ -70,7 +70,7 @@ void __write_mem(void *address, size_t size)
 	m_state = current->mm->m_state;
 	m_area = malloc_area_get(address, &chunk);
 
-	if(!m_area)
+	if(!m_area || !bitmap_check(m_area->use_bitmap, chunk))
 		return;
 
 	chk_size = UNTAGGED_CHUNK_SIZE(m_area);
