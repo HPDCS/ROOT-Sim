@@ -70,6 +70,9 @@ void __write_mem(void *address, size_t size)
 	m_state = current->mm->m_state;
 	m_area = malloc_area_get(address, &chunk);
 
+	if(!m_area)
+		return;
+
 	chk_size = UNTAGGED_CHUNK_SIZE(m_area);
 	bitmap_size = bitmap_required_size(m_area->num_chunks);
 
