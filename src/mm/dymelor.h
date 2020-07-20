@@ -174,6 +174,7 @@ struct slab_chain {
 
 // DyMeLoR API
 extern malloc_area* malloc_area_get (void *address, int *chunk_ret);
+extern void mark_mem(void *address, size_t size);
 __attribute__((used)) void __write_mem(void *address, size_t size);
 extern size_t get_state_size(int);
 extern size_t get_log_size(malloc_state *);

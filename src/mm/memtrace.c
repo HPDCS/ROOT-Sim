@@ -37,35 +37,13 @@
 #include <mm/mm.h>
 #include <scheduler/scheduler.h>
 
-/**
-* This function marks a memory chunk as dirty.
-* It is invoked from assembly modules invoked by calls injected by the instrumentor, and from the
-* third-party library wrapper. Invocations from other parts of the kernel should be handled with
-* great care.
-*
-* @author Alessandro Pellegrini
-* @author Roberto Vitali
-*
-* @param base The initial to the start address of the update
-* @param size The number of bytes being updated
-*/
-__attribute__((used))
-void __write_mem(void *address, size_t size)
-{
-	(void)size;
-	void *stack = __builtin_frame_address(0);
 
+void mark_mem(void *address, size_t size)
+{
 	malloc_area *m_area;
 	malloc_state *m_state;
 	size_t bitmap_size, chk_size;
 	int chunk;
-
-	if(address > stack)
-		return;
-
-	assert(current != NULL);
-
-	switch_to_platform_mode();
 
 	m_state = current->mm->m_state;
 	m_area = malloc_area_get(address, &chunk);
@@ -89,7 +67,35 @@ void __write_mem(void *address, size_t size)
 
 		m_area->dirty_chunks++;
 	}
+
+}
+/**
+* This function marks a memory chunk as dirty.
+* It is invoked from assembly modules invoked by calls injected by the instrumentor, and from the
+* third-party library wrapper. Invocations from other parts of the kernel should be handled with
+* great care.
+*
+* @author Alessandro Pellegrini
+* @author Roberto Vitali
+*
+* @param base The initial to the start address of the update
+* @param size The number of bytes being updated
+*/
+__attribute__((used))
+void __write_mem(void *address, size_t size)
+{
+	(void)size;
+	void *stack = __builtin_frame_address(0);
+
+	if(address > stack)
+		return;
+
+	assert(current != NULL);
+
+	switch_to_platform_mode();
+
+	mark_mem(address, size);
+
 	switch_to_application_mode();
 	return;
 }
-

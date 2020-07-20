@@ -196,16 +196,12 @@ void LP_main_loop(void *args)
 
 #ifdef HAVE_PMU
 		if (rootsim_config.snapshot == SNAPSHOT_HARDINC) {
-			pmu_enabled = false;
 			size_t size, i;
-
 			do {
 				size = ioctl(fd, IOCTL_GET_MEM_TRACE, &memory_trace);
 				for (i = 0; i < size; ++i)
-					__write_mem((void *)memory_trace.addresses[i], 1);
+					mark_mem((void *)memory_trace.addresses[i], 1);
 			} while(size > 0 && size == memory_trace.length);
-
-			pmu_enabled = true;
 		}
 #endif
 
