@@ -5,7 +5,6 @@
 #include <linux/version.h>
 
 #include "rootsim.h"
-#include "ime/core.h"
 
 MODULE_AUTHOR("Alessandro Pellegrini <pellegrini@dis.uniroma1.it>");
 MODULE_AUTHOR("Francesco Quaglia <francesco.quaglia@uniroma2.it>");
@@ -70,34 +69,13 @@ int rootsim_release(struct inode *inode, struct file *filp)
 
 static int __init rootsim_init(void)
 {
-	int err;
-	
-	major = register_chrdev(0, KBUILD_MODNAME, &fops);
-
-	// Dynamically allocate a major for the device
-	if (major < 0) {
-		printk(KERN_ERR "%s: Failed registering char device\n", KBUILD_MODNAME);
-		err = major;
-		goto failed_chrdevreg;
-	}
-		
-	// Create a class for the device
-	dev_cl = class_create(THIS_MODULE, "rootsim");
-	if (IS_ERR(dev_cl)) {
-		printk(KERN_ERR "%s: failed to register device class\n", KBUILD_MODNAME);
-		err = PTR_ERR(dev_cl);
-		goto failed_classreg;
-	}
-		
-	// Create a device in the previously created class
-	device = device_create(dev_cl, NULL, MKDEV(major, 0), NULL, KBUILD_MODNAME);
-	if (IS_ERR(device)) {
-		printk(KERN_ERR "%s: failed to create device\n", KBUILD_MODNAME);
-		err = PTR_ERR(device);
-		goto failed_devreg;
+	int err = device_init(&fops);
+	if (err) {
+		pr_err("%s: Error while device initialization\n", KBUILD_MODNAME);
+		goto failed_device;
 	}
 
-	printk(KERN_INFO "%s: ROOT-Sim device registered with major number %d\n", KBUILD_MODNAME, major);
+	printk(KERN_INFO "%s: ROOT-Sim device registered\n", KBUILD_MODNAME);
 
 	scheduler_init();
 	timer_init();
@@ -105,34 +83,26 @@ static int __init rootsim_init(void)
 
 	err = ime_init();
 	if (err) goto failed_ime;
-	
 	return 0;
-failed_ime:
 
-failed_devreg:
-	class_unregister(dev_cl);
-	class_destroy(dev_cl);
-failed_classreg:
-	unregister_chrdev(major, KBUILD_MODNAME);
-failed_chrdevreg:
+failed_ime:
+	device_fini();
+failed_device:
 	return err;
 }
 
 static void __exit rootsim_exit(void)
 {
-	// restore_idt();
 	ime_fini();
 	fault_fini();
 	timer_fini();
 	scheduler_fini();
-	
-	device_destroy(dev_cl, MKDEV(major, 0));
-	class_unregister(dev_cl);
-	class_destroy(dev_cl);
-	unregister_chrdev(major, KBUILD_MODNAME);
+	device_fini();
 }
 
 
 module_init(rootsim_init)
 module_exit(rootsim_exit)
 
+MODULE_LICENSE("GPL");
+MODULE_AUTHOR("HPDCS Group");

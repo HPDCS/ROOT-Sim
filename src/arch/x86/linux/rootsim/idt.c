@@ -8,11 +8,13 @@ static struct desc_ptr bkp_idtr = {0, 0};
 static void smp_load_idt(void *addr)
 {
 	struct desc_ptr *idtr;
-	preempt_disable();
+	int cpu = get_cpu();
+
 	idtr = (struct desc_ptr *) addr;
 	load_idt(idtr);
-	pr_info("[CPU %u]: loaded IDT at %lx\n", smp_processor_id(), idtr->address);
-	preempt_enable();
+	pr_info("[CPU %u]: loaded IDT at %lx\n", cpu, idtr->address);
+
+	put_cpu();
 }// smp_load_idt
 
 gate_desc *clone_current_idt(void)

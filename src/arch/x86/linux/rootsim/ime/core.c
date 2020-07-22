@@ -1,12 +1,13 @@
 #include <asm/apic.h>
 #include <linux/vmalloc.h>
 
-#include "core.h"
 #include "irq.h"
 #include "pmu.h"
 #include "msr_config.h"
-#include "intel_pmc_events.h"
 #include "../rootsim.h" /* idt features */
+
+#define EVENT(e, u) ((u << 8) | e)
+#define EVT_MEM_INST_RETIRED_ALL_STORES		EVENT(0xD0, 0x82)
 
 DEFINE_PER_CPU(struct mem_data, pcpu_mem_data);
 
@@ -76,7 +77,7 @@ static int hw_init(void)
 		// cfg->reset = ~0ULL;
 	}
 
-	sync_system_pmu_state	();
+	sync_system_pmu_state();
 	pr_info("SYSTEM ON\n");
 
 	goto out;
@@ -192,6 +193,7 @@ res_failed:
 	hw_fini();
 hw_failed:
 	irq_fini();
+	pr_err("Error while starting IME\n");
 out:
 	return err;
 }// ime_init
@@ -208,7 +210,7 @@ void ime_fini(void)
 	res_fini();
 
 	hw_fini();
-	
+
 	irq_fini();
 	
 	pr_info("IME off\n");

@@ -50,6 +50,10 @@ static inline void unprotect_memory(void)
 	write_cr0(cr0 & ~0x00010000);
 }
 
+// device.c
+extern int device_init(struct file_operations *fops);
+extern void device_fini(void);
+
 // ime/core.c
 extern int ime_init(void);
 extern void ime_fini(void);

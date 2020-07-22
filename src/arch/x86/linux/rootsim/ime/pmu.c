@@ -82,8 +82,12 @@ struct pmc_cfg *get_pmc_config(unsigned pmc_id, unsigned cpu)
  */
 static void pmc_init_on_cpu(void *dummy)
 {
-	per_cpu(pcpu_lvt_bkp, smp_processor_id()) = apic_read(APIC_LVTPC); 
+	int cpu = get_cpu();
+
+	per_cpu(pcpu_lvt_bkp, cpu) = apic_read(APIC_LVTPC); 
 	apic_write(APIC_LVTPC, 241);
+
+	put_cpu();
 }
 
 int pmc_init(void)
@@ -121,7 +125,9 @@ static void pebs_init_on_cpu(void *dummy)
 {
 
 	u64 msr;
-	struct debug_store *ds = per_cpu_ptr(&pcpu_ds, get_cpu());
+	int cpu = get_cpu();
+
+	struct debug_store *ds = per_cpu_ptr(&pcpu_ds, cpu);
 
 	/* Setup the Debug Store area */
 	wrmsrl(MSR_IA32_DS_AREA, (u64) ds);
@@ -242,7 +248,10 @@ void pebs_fini(void)
 static inline void sync_pmu_state(unsigned pmc_id, struct pmc_cfg *cfg)
 {
 	u64 msr;
-	struct debug_store *ds = per_cpu_ptr(&pcpu_ds, get_cpu());
+	// This function is called with preemption disabled
+	int cpu = smp_processor_id();
+
+	struct debug_store *ds = per_cpu_ptr(&pcpu_ds, cpu);
 	u64 *c_reset = &(ds->pebs_counter0_reset);
 
 	pr_info("DS[%u] at %llx\n", smp_processor_id(),  ds);
@@ -285,10 +294,14 @@ static void smp_sync_pmu_state(void *dummy)
 {
 	/* Preemption must be disabled */
 	unsigned i;
+	preempt_disable();
+
 	struct pmc_cfg *cfg = __this_cpu_read(pcpu_pmc_cfg);
 	for (i = 0; i <  NR_PMCS; ++i, ++cfg) {
 		sync_pmu_state(i, cfg);
 	}
+
+	preempt_enable();
 }
 
 void sync_system_pmu_state(void)
@@ -385,8 +398,8 @@ void flush_pebs_buffer(unsigned check)
 	/* Sanity check */
 	if (check && md->read) {
 		msr = rdtsc();
-		pr_err("[IRQ] [%llx] STOP - Samples copied: p %u - i %u - r %u - s%u\n",
-		msr, md->pos, md->index, md->read, md->buf_size);
+		// pr_err("[IRQ] [%llx] STOP - Samples copied: p %u - i %u - r %u - s%u\n",
+		// msr, md->pos, md->index, md->read, md->buf_size);
 		rdmsrl(MSR_IA32_PERFEVTSEL(0), msr);
 		wrmsrl(MSR_IA32_PERFEVTSEL(0), msr & ~BIT(22));
 		return;
@@ -395,13 +408,13 @@ void flush_pebs_buffer(unsigned check)
 
 	for (; i < offset; i += (PEBS_SAMPLE_SIZE / MEM_SAMPLE_SIZE)) {
 		if (md->pos >= md->nr_buf) {
-			pr_info("[IRQ] No available buffer: %u\n", md->pos);
+			// pr_info("[IRQ] No available buffer: %u\n", md->pos);
 			return;
 		}
 		md->buf_poll[md->pos][md->index] = base[i];
 		if (++(md->index) >= md->buf_size) {
 			md->pos++;
-			pr_info("[IRQ] Buffer is full\n");
+			// pr_info("[IRQ] Buffer is full\n");
 			// md->index = 0;
 		}
 	}
