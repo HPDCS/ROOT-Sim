@@ -46,7 +46,7 @@
  * wants us to know who is what thread from its point of view, although
  * we don't care at all.
  */
-static tid_t os_tid;
+tid_t os_tid;
 
 
 /**
@@ -120,10 +120,6 @@ static void *__helper_create_thread(void *arg)
 
 	// ...and make it globally unique
 	tid = to_global_tid(kid, _local_tid);
-
-	// Set the affinity on a CPU core, for increased performance
-	if (likely(rootsim_config.core_binding))
-		set_affinity(local_tid);
 
 	// Now get into the real thread's entry point
 	real_arg->start_routine(real_arg->arg);

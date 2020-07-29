@@ -346,10 +346,9 @@ void restore_full(struct lp_struct *lp, void *raw_ckpt)
 {
 	unsigned char *ptr, *target_ptr;
 	int i, original_num_areas;
-	size_t chunk_size, bitmap_size, ckpt_size;
+	size_t chunk_size, bitmap_size;
 	malloc_area *m_area;
 	malloc_state *m_state;
-	malloc_state *ckpt = raw_ckpt;
 
 	// Timers for simulation platform self-tuning
 	timer recovery_timer;

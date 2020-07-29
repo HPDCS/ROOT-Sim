@@ -47,6 +47,7 @@
 #include <core/init.h>
 #include <mm/dymelor.h>
 #include <scheduler/binding.h>
+#include <scheduler/ht_sched.h>
 #include <scheduler/process.h>
 #include <scheduler/scheduler.h>
 #include <scheduler/stf.h>
@@ -174,6 +175,8 @@ void LP_main_loop(void *args)
 		}
 #endif
 
+		idle_thread_activate();
+
 		timer event_timer;
 		timer_start(event_timer);
 
@@ -193,6 +196,8 @@ void LP_main_loop(void *args)
 		}
 
 		int delta_event_timer = timer_value_micro(event_timer);
+
+		idle_thread_deactivate();
 
 #ifdef HAVE_PMU
 		if (rootsim_config.snapshot == SNAPSHOT_HARDINC) {

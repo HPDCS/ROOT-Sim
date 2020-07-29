@@ -171,6 +171,7 @@ typedef struct {
 					} while (0)
 
 
+extern tid_t os_tid;
 extern __thread unsigned int tid;
 extern __thread unsigned int local_tid;
 

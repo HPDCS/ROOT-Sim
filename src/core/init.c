@@ -46,6 +46,7 @@
 #include <core/init.h>
 #include <datatypes/bitmap.h>
 #include <scheduler/process.h>
+#include <scheduler/ht_sched.h>
 #include <gvt/gvt.h>
 #include <gvt/ccgs.h>
 #include <scheduler/scheduler.h>
@@ -448,6 +449,7 @@ void SystemInit(int argc, char **argv)
 	// All init routines are executed serially (there is no notion of threads in there)
 	// and the order of invocation can matter!
 	base_init();
+	ht_sched_init();
 	segment_init();
 	initialize_lps();
 	remote_memory_init();

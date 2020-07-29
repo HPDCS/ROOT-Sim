@@ -38,8 +38,10 @@
 #include <statistics/statistics.h>
 #include <gvt/ccgs.h>
 #include <scheduler/binding.h>
+#include <scheduler/ht_sched.h>
 #include <scheduler/scheduler.h>
 #include <scheduler/process.h>
+#include <scheduler/ht_sched.h>
 #include <gvt/gvt.h>
 #include <mm/mm.h>
 
@@ -111,6 +113,8 @@ static void *main_simulation_loop(void *arg) __attribute__((noreturn));
 static void *main_simulation_loop(void *arg)
 {
 	(void)arg;
+
+	smart_set_affinity();
 
 	simtime_t my_time_barrier = -1.0;
 
@@ -255,9 +259,6 @@ int main(int argc, char **argv)
 #endif
 
 	SystemInit(argc, argv);
-
-	if (rootsim_config.core_binding)
-		set_affinity(0);
 
 	if (rootsim_config.serial) {
 		serial_simulation();

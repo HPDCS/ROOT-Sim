@@ -34,13 +34,6 @@
 #include <mm/dymelor.h>
 
 // Definitions to functions which will be wrapped by the linker
-char *__real_strcpy(char *, const char *);
-char *__real_strncpy(char *, const char *, size_t);
-char *__real_strcat(char *, const char *);
-char *__real_strncat(char *, const char *, size_t);
-void *__real_memcpy(void *, const void *, size_t);
-void *__real_memmove(void *, const void *, size_t);
-void *__real_memset(void *, int, size_t);
 size_t __real_fwrite(const void *ptr, size_t size, size_t nmemb, FILE *stream);
 int __real_fputc(int c, FILE *stream);
 int __real_fputs(const char *s, FILE *stream);

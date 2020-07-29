@@ -107,6 +107,7 @@ librootsim_a_SOURCES =	src/main.c \
 			src/queues/queues.c \
 			src/queues/xxhash.c \
 			src/scheduler/binding.c \
+			src/scheduler/ht_sched.c \
 			src/scheduler/control.c \
 			src/scheduler/preempt.c \
 			src/scheduler/process.c \
@@ -160,6 +161,7 @@ librootsim_a_SOURCES =	src/main.c \
 			src/core/core.h \
 			src/core/init.h \
 			src/scheduler/binding.h \
+			src/scheduler/ht_sched.h \
 			src/scheduler/process.h \
 			src/scheduler/scheduler.h \
 			src/scheduler/stf.h
