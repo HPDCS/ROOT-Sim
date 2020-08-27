@@ -95,9 +95,9 @@ __thread jmp_buf exit_jmp;
 		return true;
 	}
 
-	if(rootsim_config.powercap > 0.0) {
-		return current_exploit_steps > 2;
-	}
+	//if(rootsim_config.powercap > 0.0) {
+	//	return current_exploit_steps > 10;
+	//}
 
 	return false;
 }

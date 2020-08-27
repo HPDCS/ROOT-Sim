@@ -99,7 +99,8 @@ enum stat_msg_t {
 	STAT_SILENT,
 	STAT_GVT_ROUND_TIME,
 	STAT_GET_SIMTIME_ADVANCEMENT,	//xxx totally unused
-	STAT_GET_EVENT_TIME_LP
+	STAT_GET_EVENT_TIME_LP,
+	STAT_ABORT
 };
 
 enum stats_levels {
@@ -120,6 +121,7 @@ struct stat_t {
 			double tot_antimessages,
 			    tot_events,
 			    committed_events,
+			    aborted_events,
 			    reprocessed_events,
 			    tot_rollbacks,
 			    tot_ckpts,

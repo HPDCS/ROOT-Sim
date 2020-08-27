@@ -248,6 +248,7 @@ void rollback(struct lp_struct *lp)
 		s = restore_state;
 		restore_state = list_prev(restore_state);
 		log_delete(s->log);
+		statistics_post_data(lp, STAT_ABORT, (double)lp->ckpt_period); 
 #ifndef NDEBUG
 		s->last_event = (void *)0xBABEBEEF;
 #endif
@@ -259,6 +260,7 @@ void rollback(struct lp_struct *lp)
 	last_restored_event = restore_state->last_event;
 	reprocessed_events = silent_execution(lp, last_restored_event, last_correct_event);
 	statistics_post_data(lp, STAT_SILENT, (double)reprocessed_events);
+ 	statistics_post_data(lp, STAT_ABORT, -((double)reprocessed_events));
 
 	// TODO: silent execution resets the LP state to the previous
 	// value, so it should be the last function to be called within rollback()

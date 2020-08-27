@@ -127,5 +127,5 @@ bool OnGVT(unsigned int me, lp_state_type *snapshot) {
 //	if(snapshot->lvt < COMPLETE_TIME) {
         return false;
     }
-    return true;
+    return false;
 }

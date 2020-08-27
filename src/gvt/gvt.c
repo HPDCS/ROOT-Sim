@@ -179,8 +179,6 @@ void gvt_fini(void)
  */
 inline simtime_t get_last_gvt(void)
 {
-	if(last_gvt != new_gvt)
-		return new_gvt; // this possibly breaks GVT algorithm in a corner case which I don't remember!
 	return last_gvt;
 }
 
