@@ -185,6 +185,7 @@ typedef struct _msg_t {
 	unsigned long long mark;	/// Unique identifier of the message, used for antimessages
 	unsigned long long rendezvous_mark;	/// Unique identifier of the message, used for rendez-vous events
 
+	unsigned int sample_id;
 	// Model data
 	unsigned int size;
 	unsigned char event_content[];

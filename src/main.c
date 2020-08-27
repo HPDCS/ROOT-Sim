@@ -185,6 +185,7 @@ static void *main_simulation_loop(void *arg)
 				fflush(stdout);
 			}
 		}
+		process_statistics();
 #ifdef HAVE_MPI
 		collect_termination();
 #endif

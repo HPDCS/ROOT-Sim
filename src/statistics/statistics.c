@@ -78,7 +78,7 @@
 #ifdef HAVE_MPI
 #include <communication/mpi.h>
 #endif
-
+ 
 #define GVT_BUFF_ROWS   50
 
 struct _gvt_buffer {
@@ -124,20 +124,19 @@ static double *current_thread_committed_delta;
 struct stat_t global_stats = {.gvt_round_time_min = INFTY};
 #endif
 
-static __thread unsigned int last_cumulated_committed_events = 0;
-
-
-static __thread unsigned long last_rolledback_events = 0;
-static __thread unsigned long last_executed_events = 0;
-static __thread unsigned long last_committed_events = 0;
-static __thread unsigned long last_rollbacks = 0;
-
+static __thread unsigned int  last_cumulated_committed_events = 0;
+static __thread unsigned long last_rolledback_events 		  = 0;
+static __thread unsigned long last_executed_events 			  = 0;
+static __thread unsigned long last_committed_events 		  = 0;
+static __thread unsigned long last_rollbacks 				  = 0;
 
 static unsigned long* res_rolledback_events;
 static unsigned long* res_executed_events;
 static unsigned long* res_committed_events;
 static unsigned long* res_rollbacks;
 
+
+#include "new_stats.c"
 
 /**
  * This is a pseudo asprintf() implementation needed in order to stop GCC 8 from complaining
@@ -663,12 +662,11 @@ inline void statistics_on_gvt(double gvt)
 	__sync_fetch_and_add(&res_rolledback_events[tid], last_rolledback_events);
 	__sync_fetch_and_add(&res_rollbacks[tid], last_rollbacks);
 	__sync_fetch_and_add(&res_committed_events[tid], last_committed_events);
-	last_executed_events = 0;
-	last_rolledback_events = 0;
-	last_rollbacks = 0;
-	last_committed_events = 0;
+	last_executed_events 	= 0;
+	last_rolledback_events 	= 0;
+	last_rollbacks 			= 0;
+	last_committed_events 	= 0;
 }
-
 
 inline void statistics_on_gvt_serial(double gvt)
 {
@@ -770,14 +768,16 @@ void statistics_init(void)
 	bzero(thread_stats, n_cores * sizeof(struct stat_t));
 	current_thread_committed_delta = rsalloc(n_cores * sizeof(double));
 	bzero(current_thread_committed_delta, n_cores * sizeof(double));
+
 	res_executed_events = rsalloc(n_cores*sizeof(unsigned long));
 	res_committed_events = rsalloc(n_cores*sizeof(unsigned long));
 	res_rollbacks = rsalloc(n_cores*sizeof(unsigned long));
 	res_rolledback_events = rsalloc(n_cores*sizeof(unsigned long));
 	bzero(res_executed_events , n_cores*sizeof(unsigned long));
 	bzero(res_committed_events, n_cores*sizeof(unsigned long));
-       	bzero(res_rollbacks, n_cores*sizeof(unsigned long));
+    bzero(res_rollbacks, n_cores*sizeof(unsigned long));
 	bzero(res_rolledback_events, n_cores*sizeof(unsigned long));
+	init_new_statistics();
 }
 
 #undef assign_new_file
@@ -847,8 +847,8 @@ void statistics_post_data(struct lp_struct *lp, enum stat_msg_t type, double dat
 
 		case STAT_EVENT:
 			lp_stats_gvt[lid].tot_events += 1.0;
-		        last_executed_events++;
-                        break;
+		    last_executed_events++;
+            break;
 
 		case STAT_EVENT_TIME:
 			lp_stats_gvt[lid].event_time += data;
@@ -863,7 +863,7 @@ void statistics_post_data(struct lp_struct *lp, enum stat_msg_t type, double dat
 		case STAT_COMMITTED:
 			lp_stats_gvt[lid].committed_events += data;
 			last_committed_events+=data;
-                        break;
+            break;
 
 		case STAT_ROLLBACK:
 			lp_stats_gvt[lid].tot_rollbacks += 1.0;

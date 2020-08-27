@@ -193,7 +193,7 @@ void LP_main_loop(void *args)
 		statistics_post_data(current, STAT_EVENT, 1.0);
 		statistics_post_data(current, STAT_EVENT_TIME,
 				     delta_event_timer);
-
+		on_process_event_forward(current_evt);
 		// Give back control to the simulation kernel's user-level thread
 		context_switch(&current->context, &kernel_context);
 	}

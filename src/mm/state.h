@@ -58,6 +58,8 @@ typedef struct _state_t {
 	/// This log has been taken after the execution of this event
 	msg_t *last_event;
 
+	unsigned int executed_events;
+	unsigned int sample_id;
 	/* Per-LP fields which should be transparently rolled back */
 
 	/// Execution state

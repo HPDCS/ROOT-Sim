@@ -125,6 +125,7 @@ bool LogState(struct lp_struct *lp)
 
 		// Link the new checkpoint to the state chain
 		list_insert_tail(lp->queue_states, new_state);
+		on_log_state(new_state);
 
 	}
 
@@ -198,6 +199,7 @@ unsigned int silent_execution(struct lp_struct *lp, msg_t *evt, msg_t *final_evt
 		}
 
 		events++;
+		on_process_event_silent(evt);
 		activate_LP(lp, evt);
 		evt = list_next(evt);
 	}
@@ -242,12 +244,14 @@ void rollback(struct lp_struct *lp)
 	// Send antimessages
 	send_antimessages(lp, last_correct_event->timestamp);
 
+	on_log_restore();
 	// Find the state to be restored, and prune the wrongly computed states
 	restore_state = list_tail(lp->queue_states);
 	while (restore_state != NULL && restore_state->lvt > last_correct_event->timestamp) {	// It's > rather than >= because we have already taken into account simultaneous events
 		s = restore_state;
 		restore_state = list_prev(restore_state);
 		log_delete(s->log);
+		on_log_discarded(s);
 		statistics_post_data(lp, STAT_ABORT, (double)lp->ckpt_period); 
 #ifndef NDEBUG
 		s->last_event = (void *)0xBABEBEEF;
