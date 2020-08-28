@@ -136,8 +136,8 @@ void process_statistics(){
 					ae  += __sync_lock_test_and_set(&stat_collection[i].aborted_events			, 0);
 					sr  += __sync_lock_test_and_set(&stat_collection[i].sampled_rollbacks		, 0);
 				}
-				printf("Time: %llu Exec: %f.0, ExecTh:%.0f, Aborted: %f.0, PA: %.2f%, Rollbacks: %f.0, PR: %.2f%\n", current_time-begin_time,
-					fee, fee/(MICRO_PERIOD_US), ae, ae*100.0/fee, sr, sr*100.0/fee);
+				printf("Time: %llu Exec: %f.0, ExecTh:%.2f, Aborted: %f.0, PA: %.2f%, Rollbacks: %f.0, PR: %.2f%\n", current_time-begin_time,
+					fee, fee/((double)MICRO_PERIOD_US/1000000), ae, ae*100.0/fee, sr, sr*100.0/fee);
 			}
 			//	print forward_executed_events AbortedEvents
 			start_macro_time = current_time;	
