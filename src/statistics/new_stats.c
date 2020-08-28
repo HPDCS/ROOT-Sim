@@ -113,7 +113,7 @@ void OnSamplingPeriodEnd(){
 	// TODO atomic update
 
 
-	printf("Exec: %u, Aborted: %u, Rollbacks: %u\n", forward_executed_events, aborted_events, sampled_rollbacks);
+//	printf("Exec: %u, Aborted: %u, Rollbacks: %u\n", forward_executed_events, aborted_events, sampled_rollbacks);
 	__sync_fetch_and_add(&stat_collection[tid].forward_executed_events, forward_executed_events);
 	__sync_fetch_and_add(&stat_collection[tid].aborted_events, aborted_events);
 	__sync_fetch_and_add(&stat_collection[tid].sampled_rollbacks, sampled_rollbacks);
@@ -122,7 +122,7 @@ void OnSamplingPeriodEnd(){
 
 void process_statistics(){
 	current_time = clock_us();
-	if(start_macro_time == 0)	{begin_time = start_macro_time = current_time;printf("SETUP\n");}
+	if(start_macro_time == 0)	{begin_time = start_macro_time = current_time;}
 	
 	if(!sampling_enabled){
 		if((current_time - start_macro_time) >= MACRO_PERIOD_US){

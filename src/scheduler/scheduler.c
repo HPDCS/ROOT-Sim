@@ -161,6 +161,7 @@ void LP_main_loop(void *args)
 		timer_start(event_timer);
 
 		// Process the event
+on_process_event_forward(current_evt);
 		if(&abm_settings){
 			ProcessEventABM();
 		}else if (&topology_settings){
@@ -174,8 +175,8 @@ void LP_main_loop(void *args)
 				      current->current_base_pointer);
 			switch_to_platform_mode();
 		}
+		
 		int delta_event_timer = timer_value_micro(event_timer);
-
 #ifdef EXTRA_CHECKS
 		if (current->bound->size > 0) {
 			hash2 =
@@ -193,7 +194,7 @@ void LP_main_loop(void *args)
 		statistics_post_data(current, STAT_EVENT, 1.0);
 		statistics_post_data(current, STAT_EVENT_TIME,
 				     delta_event_timer);
-		on_process_event_forward(current_evt);
+		//on_process_event_forward(current_evt);
 		// Give back control to the simulation kernel's user-level thread
 		context_switch(&current->context, &kernel_context);
 	}
