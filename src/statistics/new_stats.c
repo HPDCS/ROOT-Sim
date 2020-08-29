@@ -1,10 +1,14 @@
 #include <core/core.h>
 #include <mm/state.h>
 
-#define MACRO_PERIOD_US 1000000
-#define MICRO_PERIOD_US 500000
-#define MICRO_PERIOD_DELAY 1000
+//#define MACRO_PERIOD_US 	1000000
+#define MICRO_PERIOD_MS		 200
+#define MICRO_PERIOD_DLY_MS      100
+
+#define MICRO_PERIOD_US 	 (MICRO_PERIOD_MS*1000)
+#define MICRO_PERIOD_DELAY 	 (MICRO_PERIOD_DLY_MS*1000)
 #define CLOCKS_PER_US 2200
+
 
 
 /// This overflows if the machine is not restarted in about 50-100 years (on 64 bits archs)
@@ -36,10 +40,12 @@ static __thread unsigned int aborted_events 			= 0;
 	TIME VARS
 ****************/
 
-static __thread unsigned long long begin_time = 0;
-static __thread unsigned long long start_macro_time = 0;
+static unsigned long long begin_time = 0;
+static unsigned long long start_macro_time = 0;
 static __thread unsigned long long current_time = 0;
 static __thread bool hard = 0;
+static unsigned long long sampling_time = 0;
+static unsigned long long delta_time = 0;
 
 typedef struct _new_stats{
 	unsigned int sampled_rollbacks;
@@ -120,7 +126,9 @@ void OnSamplingPeriodEnd(){
 }
 
 void collect_statistics(){
+	current_time = clock_us();
 	if(master_thread()){  
+		if(start_macro_time == 0)    {begin_time = start_macro_time = current_time; return;}
 		double fee = 0, ae = 0, sr = 0;
 		  int i;
 		  for(i = 0; i < active_threads; i++){
@@ -129,22 +137,32 @@ void collect_statistics(){
                 	 ae  += __sync_lock_test_and_set(&stat_collection[i].aborted_events                      , 0);
                 	 sr  += __sync_lock_test_and_set(&stat_collection[i].sampled_rollbacks           , 0);
    		 }
-  		 printf("[MICRO STATS] Time: %llu Exec: %f.0, ExecTh:%.2f, E[Th]:%.2f, Aborted: %f.0, PA: %.2f%, Rollbacks: %f.0, PR: %.2f%\n", current_time-begin_time,
-  		     fee, fee/((double)MICRO_PERIOD_US/1000000), (fee-ae)/((double)MICRO_PERIOD_US/1000000), ae, ae*100.0/fee, sr, sr*100.0/fee);
+  		 printf("[MICRO STATS] Time: %f Exec: %f, ExecTh:%.2f, E[Th]:%.2f, Aborted: %f.0, PA: %.2f%, Rollbacks: %f.0, PR: %.2f%\n", ((double)delta_time/1000.0),
+  		     fee, fee/((double)delta_time/1000000.0), (fee-ae)/((double)delta_time/1000000.0), ae, ae*100.0/fee, sr, sr*100.0/fee);
+		start_macro_time = current_time;
 	}
-	start_macro_time = current_time;
 }
 
 void process_statistics(){
 	current_time = clock_us();
-	if(start_macro_time == 0)	{begin_time = start_macro_time = current_time;}
+	//if(master_thread() && start_macro_time == 0)	{begin_time = start_macro_time = current_time;}
 	
 	if(!sampling_enabled){
-		if((current_time - start_macro_time) >= MACRO_PERIOD_US) collect_statistics();
+		//if((current_time - start_macro_time) >= MACRO_PERIOD_US) collect_statistics();
 		
-		if((current_time - start_macro_time) >= MICRO_PERIOD_DELAY) OnSamplingPeriodBegin();
+		if((current_time - start_macro_time) >= MICRO_PERIOD_DELAY){
+			if(master_thread()) sampling_time = current_time;		
+ 			OnSamplingPeriodBegin();
+		}
+	}
+	if(sampling_enabled && ((current_time - sampling_time) >=  (MICRO_PERIOD_US)) ){
+		 if(master_thread()){
+//			printf("A time----%llu\n", sampling_time);			
+			 sampling_time = current_time - sampling_time;
+//			printf("B time----%llu\n", sampling_time);
+			delta_time = sampling_time;
+		}
+	 	OnSamplingPeriodEnd();
 	}
 
-	if(sampling_enabled && ((current_time - start_macro_time) >=  (MICRO_PERIOD_DELAY + MICRO_PERIOD_US)) ) OnSamplingPeriodEnd();
-	
 }
