@@ -264,7 +264,9 @@ void rollback(struct lp_struct *lp)
 	last_restored_event = restore_state->last_event;
 	reprocessed_events = silent_execution(lp, last_restored_event, last_correct_event);
 	statistics_post_data(lp, STAT_SILENT, (double)reprocessed_events);
- 	statistics_post_data(lp, STAT_ABORT, -((double)reprocessed_events));
+statistics_post_data(lp, STAT_ABORT, (double)lp->ckpt_period);
+//	if(lp->ckpt_period < reprocessed_events) printf("AHAH %u %u\n", lp->ckpt_period, reprocessed_events);
+ 	statistics_post_data(lp, STAT_ABORT, (-1.0*reprocessed_events));
 
 	// TODO: silent execution resets the LP state to the previous
 	// value, so it should be the last function to be called within rollback()

@@ -856,8 +856,8 @@ void statistics_post_data(struct lp_struct *lp, enum stat_msg_t type, double dat
 			break;
 		
 		case STAT_ABORT:
-			lp_stats_gvt[lid].aborted_events+=1.0;
-			last_rolledback_events++;
+			lp_stats_gvt[lid].aborted_events+=data;
+			last_rolledback_events+= ((int) data);
 			break;
 
 		case STAT_COMMITTED:
@@ -944,7 +944,7 @@ double statistics_get_current_throughput(void)
 		rolledback += __sync_lock_test_and_set(&res_rolledback_events[i], 0);
 		rollbacks += __sync_lock_test_and_set(&res_rollbacks[i], 0);
 	}
-	printf("Exec: %f.0, ExecTh:%.0f, PA*ExecTh=E[Th]:%.0f, Com: %f.0, ComTh:%.0f, Aborted: %f.0, PA: %.2f%, Rollbacks: %f.0, PR: %.2f%\n", 
+	printf("[ GVT2 STATS] Exec: %f.0, ExecTh:%.0f, PA*ExecTh=E[Th]:%.0f, Com: %f.0, ComTh:%.0f, Aborted: %f.0, PA: %.2f%, Rollbacks: %f.0, PR: %.2f%\n", 
 		events, events/time_period, events*(1.0-rolledback/events)/time_period, committed, committed/time_period, rolledback, rolledback*100.0/events, rollbacks, rollbacks*100.0/events);
 //	printf("Cumulated events in phase: %f\n", throughput);
 
