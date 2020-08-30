@@ -51,7 +51,9 @@ typedef struct _new_stats{
 	unsigned int sampled_rollbacks;
 	unsigned int aborted_events;
 	unsigned int forward_executed_events;
-	unsigned int pad[13];
+	unsigned int last_sample_id;
+	unsigned long long delta;
+	unsigned int pad[10];
 } new_stats;
 
 /****************
@@ -118,12 +120,15 @@ void OnSamplingPeriodBegin(){
 void OnSamplingPeriodEnd(){
 	sampling_enabled= 0 ;
 	current_sample_id = 0;
+
 	// TODO atomic update
 
 //	printf("Exec: %u, Aborted: %u, Rollbacks: %u\n", forward_executed_events, aborted_events, sampled_rollbacks);
 	__sync_fetch_and_add(&stat_collection[tid].forward_executed_events, forward_executed_events);
 	__sync_fetch_and_add(&stat_collection[tid].aborted_events, aborted_events);
 	__sync_fetch_and_add(&stat_collection[tid].sampled_rollbacks, sampled_rollbacks);
+	__sync_fetch_and_add(&stat_collection[tid].last_sample_id, last_sample_id);
+	__sync_fetch_and_add(&stat_collection[tid].delta, (current_time - sampling_time));
 
 }
 
@@ -139,6 +144,7 @@ void collect_statistics(void){
                 	 fee += __sync_lock_test_and_set(&stat_collection[i].forward_executed_events     , 0);
                 	 ae  += __sync_lock_test_and_set(&stat_collection[i].aborted_events              , 0);
                 	 sr  += __sync_lock_test_and_set(&stat_collection[i].sampled_rollbacks           , 0);
+                	 printf("%u %llu\n", stat_collection[i].last_sample_id, stat_collection[i].delta);
    		 }
   		 printf("[MICRO STATS] Time: %f Exec: %f, ExecTh:%.2f, E[Th]:%.2f, Aborted: %f.0, PA: %.2f%, Rollbacks: %f.0, PR: %.2f%\n", ((double)delta_time/1000.0),
   		     fee, fee/((double)delta_time/1000000.0), (fee-ae)/((double)delta_time/1000000.0), ae, ae*100.0/fee, sr, sr*100.0/fee);
