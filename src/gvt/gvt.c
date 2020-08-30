@@ -308,7 +308,11 @@ simtime_t gvt_operations(void)
 
 		if (start_new_gvt() &&
 		    iCAS(&current_GVT_round, my_GVT_round, my_GVT_round + 1)) {
-
+			
+			
+			
+			collect_statistics();
+			
 			timer_start(gvt_round_timer);
 
 #ifdef HAVE_MPI
