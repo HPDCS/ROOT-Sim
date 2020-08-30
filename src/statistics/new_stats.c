@@ -2,8 +2,8 @@
 #include <mm/state.h>
 
 //#define MACRO_PERIOD_US 	1000000
-#define MICRO_PERIOD_MS		 100
-#define MICRO_PERIOD_DLY_MS      100
+#define MICRO_PERIOD_MS		 200
+#define MICRO_PERIOD_DLY_MS      10
 
 #define MICRO_PERIOD_US 	 (MICRO_PERIOD_MS*1000)
 #define MICRO_PERIOD_DELAY 	 (MICRO_PERIOD_DLY_MS*1000)
@@ -26,7 +26,7 @@
 ****************/
 static __thread unsigned int current_executed_events 		= 0;
 static __thread unsigned int current_sample_id 			= 0;
-static __thread unsigned int last_sample_id 			= 0;
+static unsigned int last_sample_id 			= 0;
 static __thread unsigned int sampling_enabled 			= 0;
 
 /****************
@@ -40,10 +40,8 @@ static __thread unsigned int aborted_events 			= 0;
 	TIME VARS
 ****************/
 
-static unsigned long long begin_time = 0;
 static unsigned long long start_macro_time = 0;
 static __thread unsigned long long current_time = 0;
-static __thread bool hard = 0;
 static unsigned long long sampling_time = 0;
 static unsigned long long delta_time = 0;
 
@@ -88,7 +86,6 @@ void on_log_restore(){
 	aborted_events		+= current_executed_events;
 	forward_executed_events	+= current_executed_events;
 	current_executed_events	 = 0;
-	if(aborted_events == 0) hard = 1;
 }
 
 /* state.c (rollback) */
@@ -99,7 +96,6 @@ void on_log_discarded(state_t *log){
 /* state.c (silent_exec) */
 void on_process_event_silent(msg_t *evt){
 	if(evt->sample_id == last_sample_id && last_sample_id != 0) {
-		//if(hard) printf("[MICRO STATS] AAAAAAAAAAAAAAAARGH\n");
 		aborted_events -= 1;
 		forward_executed_events -=1;
 		current_executed_events +=1;
@@ -109,7 +105,6 @@ void on_process_event_silent(msg_t *evt){
 
 void OnSamplingPeriodBegin(){
 	sampling_enabled=1;
-	last_sample_id++;
 	current_sample_id = last_sample_id;
 	forward_executed_events = 0;
 	aborted_events = 0;
@@ -118,62 +113,73 @@ void OnSamplingPeriodBegin(){
 }
 
 void OnSamplingPeriodEnd(){
-	sampling_enabled= 0 ;
-	current_sample_id = 0;
-
-	// TODO atomic update
-
-//	printf("Exec: %u, Aborted: %u, Rollbacks: %u\n", forward_executed_events, aborted_events, sampled_rollbacks);
 	__sync_fetch_and_add(&stat_collection[tid].forward_executed_events, forward_executed_events);
 	__sync_fetch_and_add(&stat_collection[tid].aborted_events, aborted_events);
 	__sync_fetch_and_add(&stat_collection[tid].sampled_rollbacks, sampled_rollbacks);
-	__sync_fetch_and_add(&stat_collection[tid].last_sample_id, last_sample_id);
+	__sync_fetch_and_add(&stat_collection[tid].last_sample_id, current_sample_id);
 	__sync_fetch_and_add(&stat_collection[tid].delta, (current_time - sampling_time));
-
+	current_sample_id = 0;
+	sampling_enabled= 0 ;
+        forward_executed_events = 0;
+        aborted_events = 0;
+        sampled_rollbacks = 0;
+        current_executed_events=0;
 }
 
-/* this must be executed by a unique thread upon GVT start */
+/* this must be executed by a unique thread, e.g. by GVT trigger */
 void collect_statistics(void){
 	current_time = clock_us();
 	{
 		// collect stats	
-	double fee = 0, ae = 0, sr = 0;
-		  int i;
-		  for(i = 0; i < active_threads; i++){
-
+		double fee = 0, ae = 0, sr = 0, tm = 0;
+		int i;
+		for(i = 0; i < active_threads; i++){
                 	 fee += __sync_lock_test_and_set(&stat_collection[i].forward_executed_events     , 0);
                 	 ae  += __sync_lock_test_and_set(&stat_collection[i].aborted_events              , 0);
                 	 sr  += __sync_lock_test_and_set(&stat_collection[i].sampled_rollbacks           , 0);
-                	 printf("%u %llu\n", stat_collection[i].last_sample_id, stat_collection[i].delta);
-   		 }
-  		 printf("[MICRO STATS] Time: %f Exec: %f, ExecTh:%.2f, E[Th]:%.2f, Aborted: %f.0, PA: %.2f%, Rollbacks: %f.0, PR: %.2f%\n", ((double)delta_time/1000.0),
-  		     fee, fee/((double)delta_time/1000000.0), (fee-ae)/((double)delta_time/1000000.0), ae, ae*100.0/fee, sr, sr*100.0/fee);
-		start_macro_time = 0; // reset computation
+                	 printf("%u %llu\n", stat_collection[i].last_sample_id, stat_collection[i].delta/1000);
+			 __sync_lock_test_and_set(&stat_collection[i].last_sample_id          , 0);
+			 tm += __sync_lock_test_and_set(&stat_collection[i].delta           , 0ULL);
+   		}
+  		printf( "[MICRO STATS] "
+			"Time: %f Exec: %f, ExecTh:%.2f, E[Th]:%.2f,"
+			" Aborted: %f.0, PA: %.2f%, Rollbacks: %f.0, PR: %.2f, "
+			"AVG Delta:%.2f, Delta: %.2f\n", 
+		((double)delta_time/1000.0), fee, fee/((double)delta_time/1000000.0), (fee-ae)/((double)delta_time/1000000.0), 
+		ae, ae*100.0/fee, sr, sr*100.0/fee, 
+		(tm/active_threads)/1000.0, delta_time/1000.0);
+	 	start_macro_time = 0; // reset computation
+		sampling_time = 0;
 	}
+}
+
+/* 
+also this routine must be executed by a single thread 
+This is invoked at the end of the binding	
+*/
+void start_sampling(){
+        if(start_macro_time == 0)       {
+                __sync_fetch_and_add(&last_sample_id, 1);
+                start_macro_time = clock_us();
+        }
 }
 
 void process_statistics(){
 	current_time = clock_us();
-	if(master_thread()){
-		if(start_macro_time == 0)	{begin_time = start_macro_time = current_time;}
-	}	
 	
-	if(!sampling_enabled){
-		//if((current_time - start_macro_time) >= MACRO_PERIOD_US) collect_statistics();
-		
-		if((current_time - start_macro_time) >= MICRO_PERIOD_DELAY){
-			if(master_thread()) sampling_time = current_time;		
- 			OnSamplingPeriodBegin();
+	if(!sampling_enabled && start_macro_time != 0){
+		if((current_time - start_macro_time) >= MICRO_PERIOD_DELAY 
+		&& (current_time - start_macro_time) <= (MICRO_PERIOD_DELAY + MICRO_PERIOD_US)){
+			if(master_thread()) 	sampling_time = current_time;		
+ 			if(sampling_time != 0)	OnSamplingPeriodBegin();
 		}
 	}
-	if(sampling_enabled && ((current_time - sampling_time) >=  (MICRO_PERIOD_US)) ){
-		 if(master_thread()){
-//			printf("A time----%llu\n", sampling_time);			
-			 sampling_time = current_time - sampling_time;
-//			printf("B time----%llu\n", sampling_time);
-			delta_time = sampling_time;
-		}
-	 	OnSamplingPeriodEnd();
+
+	if(
+		sampling_enabled 
+		&& ((current_time - sampling_time) >=  (MICRO_PERIOD_US)) ){
+		  if(master_thread())	delta_time = current_time - sampling_time;
+	 	  OnSamplingPeriodEnd();
 	}
 
 }
