@@ -931,15 +931,8 @@ void heuristic(double throughput, double power, long time){
 	}
 	else{	// Workload change detection
 		if(detection_mode == 1){
-			if( throughput > (best_throughput*(1+(detection_tp_threshold/100))) || throughput < (best_throughput*(1-(detection_tp_threshold/100))) || power > (power_limit*(1+(detection_pwr_threshold/100))) || power < (power_limit*(1-(detection_pwr_threshold/100))) ){
-				stopped_searching = 0;
-				set_pstate(max_pstate);
-				set_threads(starting_threads);
-				best_throughput = -1;
-				best_threads = starting_threads;
-				best_pstate = max_pstate;
-				printf("Workload change detected. Restarting heuristic search\n");
-			}		
+				printf("Detection mode 1 is not currently supported\n");
+				exit(1);
 		}
 		else if(detection_mode == 3){
 			if(heuristic_mode == 15){

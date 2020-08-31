@@ -956,13 +956,16 @@ double statistics_get_current_throughput(void)
 	last_throughput_time = throughput_time;
 
 
-	printf("[GVT BASE STATS] E[Th]: %.2f")
+	printf("[GVT BASE STATS] E[Th]: %.2f\n", throughput);
 
 	printf("[GVT2 STATS] Exec: %f.0, ExecTh:%.2f, PA*ExecTh=E[Th]:%.2f, Com: %f.0, ComTh:%.0f, Aborted: %f.0, PA: %.2f%, Rollbacks: %f.0, PR: %.2f%\n", 
 		events, events/time_period, events*(1.0-rolledback/events)/time_period, committed, committed/time_period, rolledback, rolledback*100.0/events, rollbacks, rollbacks*100.0/events);
 
 	// MICRO STATS based throughput. Check statistics/new_stats.c. Also prints
 	micro_throughput = collect_statistics();
+
+	printf("[TP-COMPARISON] %.2f - %.2f - %.2f\n", throughput, events*(1.0-rolledback/events)/time_period, micro_throughput);
+
 
 	// Return a different value of throughput based on the value of throughput_measure in config.txt 
 	switch(throughput_measure){
@@ -976,7 +979,7 @@ double statistics_get_current_throughput(void)
 			returned_throughput = micro_throughput;
 			break;
 		default: 
-			printf("Invalid value for throughput_measure in config.txt. Aborting ..\n", );
+			printf("Invalid value for throughput_measure in config.txt. Aborting ..\n");
 			exit(1);
 	}
 

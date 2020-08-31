@@ -541,11 +541,13 @@ void load_config_file(void) {
 		printf("Error opening POWERCAP configuration file.\n");
 		exit(1);
 	}
-	if (fscanf(config_file, "STARTING_THREADS=%d STATIC_PSTATE=%d POWER_LIMIT=%lf COMMITS_ROUND=%d THROUGHPUT_MEASURE=%lf HEURISTIC_MODE=%d DETECTION_MODE=%d EXPLOIT_STEPS=%d EXTRA_RANGE_PERCENTAGE=%lf WINDOW_SIZE=%d HYSTERESIS=%lf POWER_UNCORE=%lf CORE_PACKING=%d LOWER_SAMPLED_MODEL_PSTATE=%d", 
+	if (fscanf(config_file, "STARTING_THREADS=%d STATIC_PSTATE=%d POWER_LIMIT=%lf COMMITS_ROUND=%d THROUGHPUT_MEASURE=%d HEURISTIC_MODE=%d DETECTION_MODE=%d EXPLOIT_STEPS=%d EXTRA_RANGE_PERCENTAGE=%lf WINDOW_SIZE=%d HYSTERESIS=%lf POWER_UNCORE=%lf CORE_PACKING=%d LOWER_SAMPLED_MODEL_PSTATE=%d", 
 			 &starting_threads, &static_pstate, &power_limit, &total_commits_round, &throughput_measure, &heuristic_mode, &detection_mode, &exploit_steps, &extra_range_percentage, &window_size, &hysteresis, &power_uncore, &core_packing, &lower_sampled_model_pstate)!=14) {
 		printf("The number of input parameters of the POWERCAP configuration file does not match the number of required parameters.\n");
 		exit(1);
 	}
+
+	printf("THE VALUE OF throughput_measure is: %d\n", throughput_measure);
 
 	if(throughput_measure < 0 || throughput_measure > 2){
 		printf("The value throughput_measure in config.txt is set to an invalid value. Should be set to either 0, 1 or 2\n");

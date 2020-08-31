@@ -24,17 +24,17 @@
 /****************
 	TMP STATS
 ****************/
-static __thread unsigned int current_executed_events 		= 0;
-static __thread unsigned int current_sample_id 			= 0;
-static unsigned int last_sample_id 			= 0;
-static __thread unsigned int sampling_enabled 			= 0;
+static __thread int current_executed_events 		= 0;
+static __thread int current_sample_id 			= 0;
+static  int last_sample_id 			= 0;
+static __thread int sampling_enabled 			= 0;
 
 /****************
 	REAL STATS
 ****************/
-static __thread unsigned int sampled_rollbacks 			= 0;
-static __thread unsigned int forward_executed_events 		= 0;
-static __thread unsigned int aborted_events 			= 0;
+static __thread int sampled_rollbacks 			= 0;
+static __thread int forward_executed_events 		= 0;
+static __thread int aborted_events 			= 0;
 
 /****************
 	TIME VARS
@@ -46,10 +46,10 @@ static unsigned long long sampling_time = 0;
 static unsigned long long delta_time = 0;
 
 typedef struct _new_stats{
-	unsigned int sampled_rollbacks;
-	unsigned int aborted_events;
-	unsigned int forward_executed_events;
-	unsigned int last_sample_id;
+	int sampled_rollbacks;
+	int aborted_events;
+	int forward_executed_events;
+	int last_sample_id;
 	unsigned long long delta;
 	unsigned int pad[10];
 } new_stats;
@@ -76,7 +76,7 @@ void on_process_event_forward(msg_t *evt){
 void on_log_state(state_t *log){
 	forward_executed_events	+= current_executed_events;
 	log->executed_events  	 = current_executed_events;
-	log->sample_id 		 = last_sample_id;
+	log->sample_id 		 = current_sample_id;
 	current_executed_events	 = 0;
 }
 
@@ -90,12 +90,12 @@ void on_log_restore(){
 
 /* state.c (rollback) */
 void on_log_discarded(state_t *log){
-	if((log->sample_id == last_sample_id))	aborted_events+= log->executed_events;	
+	if((log->sample_id == current_sample_id) && current_sample_id != 0)	aborted_events+= log->executed_events;	
 }
 
 /* state.c (silent_exec) */
 void on_process_event_silent(msg_t *evt){
-	if(evt->sample_id == last_sample_id && last_sample_id != 0) {
+	if(evt->sample_id == current_sample_id && current_sample_id != 0) {
 		aborted_events -= 1;
 		forward_executed_events -=1;
 		current_executed_events +=1;
@@ -134,11 +134,13 @@ double collect_statistics(void){
 		double fee = 0, ae = 0, sr = 0, tm = 0, throughput = 0;
 		int i;
 		for(i = 0; i < active_threads; i++){
-                	 fee += __sync_lock_test_and_set(&stat_collection[i].forward_executed_events     , 0);
-                	 ae  += __sync_lock_test_and_set(&stat_collection[i].aborted_events              , 0);
+//                	 fee += __sync_lock_test_and_set(&stat_collection[i].forward_executed_events     , 0);
+ //               	 ae  += __sync_lock_test_and_set(&stat_collection[i].aborted_events              , 0);
                 	 sr  += __sync_lock_test_and_set(&stat_collection[i].sampled_rollbacks           , 0);
-                	 printf("%u %llu\n", stat_collection[i].last_sample_id, stat_collection[i].delta/1000);
-			 __sync_lock_test_and_set(&stat_collection[i].last_sample_id          , 0);
+                	 printf("[THSTATS] %d %llu %d %d\n", stat_collection[i].last_sample_id, stat_collection[i].delta/1000, stat_collection[i].aborted_events, stat_collection[i].forward_executed_events);
+
+                         fee += __sync_lock_test_and_set(&stat_collection[i].forward_executed_events     , 0);
+                         ae  += __sync_lock_test_and_set(&stat_collection[i].aborted_events              , 0);			 __sync_lock_test_and_set(&stat_collection[i].last_sample_id          , 0);
 			 tm += __sync_lock_test_and_set(&stat_collection[i].delta           , 0ULL);
    		}
 

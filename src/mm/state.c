@@ -249,9 +249,9 @@ void rollback(struct lp_struct *lp)
 	restore_state = list_tail(lp->queue_states);
 	while (restore_state != NULL && restore_state->lvt > last_correct_event->timestamp) {	// It's > rather than >= because we have already taken into account simultaneous events
 		s = restore_state;
+		on_log_discarded(s);
 		restore_state = list_prev(restore_state);
 		log_delete(s->log);
-		on_log_discarded(s);
 		statistics_post_data(lp, STAT_ABORT, (double)lp->ckpt_period); 
 #ifndef NDEBUG
 		s->last_event = (void *)0xBABEBEEF;
