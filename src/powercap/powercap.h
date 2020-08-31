@@ -80,6 +80,8 @@ extern int detection_mode; 			// Defines the detection mode. Value 0 means detec
 extern int core_packing;				// 0-> threads scheduling, 1 -> core packing
 extern int lower_sampled_model_pstate;	// Define the lower sampled pstate to compute the model
 extern int throughput_measure;			// Defines how the throughput is measured. This is specific for time warp executions. If set to 0, it relies on regular GVT computation, value set to 1 means that it is computed as an estimation from the rate of forward event processed and rollbacks in a given period. If set to 2, the throughput estimation relies on the MACRO-MICRO sample approach 
+extern int micro_period_ms;			// Defines the duration in milliseconds of the micro period in the MACRO-MICRO sample approach. Only effectively used by the heuristics when throughput_measure is set to 2. 
+extern int micro_period_dly_ms;		// Defines after how many milliseconds of the macro period the micro period begins in the MACRO-MICRO sample approach. Only effectively used by the heuristics when throughput_measure is set to 2. 
 
 
 // Barrier detection variables

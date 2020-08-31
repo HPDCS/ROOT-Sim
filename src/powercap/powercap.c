@@ -97,6 +97,8 @@ int detection_mode; 			// Defines the detection mode. Value 0 means detection is
 int core_packing;				// 0-> threads scheduling, 1 -> core packing
 int lower_sampled_model_pstate;	// Define the lower sampled pstate to compute the model
 int throughput_measure;			// Defines how the throughput is measured. This is specific for time warp executions. If set to 0, it relies on regular GVT computation, value set to 1 means that it is computed as an estimation from the rate of forward event processed and rollbacks in a given period. If set to 2, the throughput estimation relies on the MACRO-MICRO sample approach 
+int micro_period_ms;			// Defines the duration in milliseconds of the micro period in the MACRO-MICRO sample approach. Only effectively used by the heuristics when throughput_measure is set to 2. 
+int micro_period_dly_ms;		// Defines after how many milliseconds of the macro period the micro period begins in the MACRO-MICRO sample approach. Only effectively used by the heuristics when throughput_measure is set to 2. 
 
 // Barrier detection variables
 int barrier_detected; 			// If set to 1 should drop current statistics round, had to wake up all threads in order to overcome a barrier
@@ -541,8 +543,8 @@ void load_config_file(void) {
 		printf("Error opening POWERCAP configuration file.\n");
 		exit(1);
 	}
-	if (fscanf(config_file, "STARTING_THREADS=%d STATIC_PSTATE=%d POWER_LIMIT=%lf COMMITS_ROUND=%d THROUGHPUT_MEASURE=%d HEURISTIC_MODE=%d DETECTION_MODE=%d EXPLOIT_STEPS=%d EXTRA_RANGE_PERCENTAGE=%lf WINDOW_SIZE=%d HYSTERESIS=%lf POWER_UNCORE=%lf CORE_PACKING=%d LOWER_SAMPLED_MODEL_PSTATE=%d", 
-			 &starting_threads, &static_pstate, &power_limit, &total_commits_round, &throughput_measure, &heuristic_mode, &detection_mode, &exploit_steps, &extra_range_percentage, &window_size, &hysteresis, &power_uncore, &core_packing, &lower_sampled_model_pstate)!=14) {
+	if (fscanf(config_file, "STARTING_THREADS=%d STATIC_PSTATE=%d POWER_LIMIT=%lf COMMITS_ROUND=%d THROUGHPUT_MEASURE=%d MICRO_PERIOD_MS=%d MICRO_PERIOD_DLY_MS=%d HEURISTIC_MODE=%d DETECTION_MODE=%d EXPLOIT_STEPS=%d EXTRA_RANGE_PERCENTAGE=%lf WINDOW_SIZE=%d HYSTERESIS=%lf POWER_UNCORE=%lf CORE_PACKING=%d LOWER_SAMPLED_MODEL_PSTATE=%d", 
+			 &starting_threads, &static_pstate, &power_limit, &total_commits_round, &throughput_measure, &micro_period_ms, &micro_period_dly_ms, &heuristic_mode, &detection_mode, &exploit_steps, &extra_range_percentage, &window_size, &hysteresis, &power_uncore, &core_packing, &lower_sampled_model_pstate)!=16) {
 		printf("The number of input parameters of the POWERCAP configuration file does not match the number of required parameters.\n");
 		exit(1);
 	}
@@ -551,6 +553,11 @@ void load_config_file(void) {
 
 	if(throughput_measure < 0 || throughput_measure > 2){
 		printf("The value throughput_measure in config.txt is set to an invalid value. Should be set to either 0, 1 or 2\n");
+		exit(1);
+	}
+
+	if(micro_period_ms < 0 || micro_period_dly_ms < 0 ){
+		printf("The values micro_period_ms or micro_period_dly_ms in config.txt are set to invalid values. Should be both positive integer\n");
 		exit(1);
 	}
 

@@ -1,12 +1,9 @@
 #include <core/core.h>
 #include <mm/state.h>
+#include <powercap/powercap.h>
 
-//#define MACRO_PERIOD_US 	1000000
-#define MICRO_PERIOD_MS		 200
-#define MICRO_PERIOD_DLY_MS      10
-
-#define MICRO_PERIOD_US 	 (MICRO_PERIOD_MS*1000)
-#define MICRO_PERIOD_DELAY 	 (MICRO_PERIOD_DLY_MS*1000)
+#define MICRO_PERIOD_US 	 (micro_period_ms*1000)
+#define MICRO_PERIOD_DELAY 	 (micro_period_dly_ms*1000)
 #define CLOCKS_PER_US 2200
 
 
