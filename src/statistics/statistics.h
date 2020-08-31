@@ -163,5 +163,5 @@ extern double statistics_get_lp_data(struct lp_struct *, unsigned int type);
 extern double statistics_get_current_throughput(void);
 extern int statistics_get_current_gvt_round(void);
 extern int statistics_get_execution_time(void);
-extern void collect_statistics(void);
+extern double collect_statistics(void);
 extern void start_sampling();

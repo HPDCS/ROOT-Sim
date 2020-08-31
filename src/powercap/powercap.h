@@ -74,14 +74,13 @@ extern double** power_profile; 		// Power consumption matrix of the machine. Pre
 extern double power_limit;				// Maximum power that should be used by the application expressed in Watt. Defined in config.txt
 extern double energy_per_tx_limit;		// Maximum energy per tx that should be drawn by the application expressed in micro Joule. Defined in config.txt
 extern int heuristic_mode;				// Used to switch between different heuristics mode. Can be set from 0 to 14.
-extern double jump_percentage;			// Used by heuristic mode 2. It defines how near power_limit we expect the optimal configuration to be
 extern volatile int shutdown;			// Used to check if should shutdown
 extern long effective_commits; 		// Number of commits during the phase managed by the heuristics. Necessary due to the delay at the end of execution with less than max threads
 extern int detection_mode; 			// Defines the detection mode. Value 0 means detection is disabled. 1 restarts the exploration from the start. Detection mode 2 resets the execution after a given number of steps. Defined in config.txt and loaded at startup
-extern double detection_tp_threshold;	// Defines the percentage of throughput variation of the current optimal configuration compared to the results at the moment of convergece that should trigger a new exploration. Defined in config.txt
-extern double detection_pwr_threshold; // Defines the percentage of power consumption variation of the current optimal configuration compared to the results at the moment of convergece that should trigger a new exploration. Defined in config.txt
 extern int core_packing;				// 0-> threads scheduling, 1 -> core packing
 extern int lower_sampled_model_pstate;	// Define the lower sampled pstate to compute the model
+extern int throughput_measure;			// Defines how the throughput is measured. This is specific for time warp executions. If set to 0, it relies on regular GVT computation, value set to 1 means that it is computed as an estimation from the rate of forward event processed and rollbacks in a given period. If set to 2, the throughput estimation relies on the MACRO-MICRO sample approach 
+
 
 // Barrier detection variables
 extern int barrier_detected; 			// If set to 1 should drop current statistics round, had to wake up all threads in order to overcome a barrier

@@ -127,11 +127,11 @@ void OnSamplingPeriodEnd(){
 }
 
 /* this must be executed by a unique thread, e.g. by GVT trigger */
-void collect_statistics(void){
+double collect_statistics(void){
 	current_time = clock_us();
 	{
 		// collect stats	
-		double fee = 0, ae = 0, sr = 0, tm = 0;
+		double fee = 0, ae = 0, sr = 0, tm = 0, throughput = 0;
 		int i;
 		for(i = 0; i < active_threads; i++){
                 	 fee += __sync_lock_test_and_set(&stat_collection[i].forward_executed_events     , 0);
@@ -141,15 +141,20 @@ void collect_statistics(void){
 			 __sync_lock_test_and_set(&stat_collection[i].last_sample_id          , 0);
 			 tm += __sync_lock_test_and_set(&stat_collection[i].delta           , 0ULL);
    		}
+
+   		throughput = (fee-ae)/((double)delta_time/1000000.0);
+
   		printf( "[MICRO STATS] "
 			"Time: %f Exec: %f, ExecTh:%.2f, E[Th]:%.2f,"
 			" Aborted: %f.0, PA: %.2f%, Rollbacks: %f.0, PR: %.2f, "
 			"AVG Delta:%.2f, Delta: %.2f\n", 
-		((double)delta_time/1000.0), fee, fee/((double)delta_time/1000000.0), (fee-ae)/((double)delta_time/1000000.0), 
+		((double)delta_time/1000.0), fee, fee/((double)delta_time/1000000.0), throughput, 
 		ae, ae*100.0/fee, sr, sr*100.0/fee, 
 		(tm/active_threads)/1000.0, delta_time/1000.0);
 	 	start_macro_time = 0; // reset computation
 		sampling_time = 0;
+
+		return throughput;
 	}
 }
 

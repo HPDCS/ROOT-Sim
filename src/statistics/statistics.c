@@ -928,6 +928,8 @@ double statistics_get_current_throughput(void)
 {
 	unsigned int i;
 	double throughput = 0;
+	double returned_throughput = 0;
+	double micro_throughput = 0;
 	static double last_throughput_time = 0;
 	double throughput_time;
 	double events = 0, committed = 0, rolledback = 0, rollbacks = 0;
@@ -937,24 +939,48 @@ double statistics_get_current_throughput(void)
 		return -1.0;
 	throughput_time = timer_value_seconds(simulation_timer); 	
 	time_period = (throughput_time - last_throughput_time);
+
 	for(i = 0; i < active_threads; i++){
+		// GVT base throughput
 		throughput += current_thread_committed_delta[i];
+
+		// GVT2 approach
 		events += __sync_lock_test_and_set(&res_executed_events[i], 0);
 		committed += __sync_lock_test_and_set(&res_committed_events[i], 0);
 		rolledback += __sync_lock_test_and_set(&res_rolledback_events[i], 0);
 		rollbacks += __sync_lock_test_and_set(&res_rollbacks[i], 0);
 	}
-	//collect_statistics();
-	printf("[ GVT2 STATS] Exec: %f.0, ExecTh:%.0f, PA*ExecTh=E[Th]:%.0f, Com: %f.0, ComTh:%.0f, Aborted: %f.0, PA: %.2f%, Rollbacks: %f.0, PR: %.2f%\n", 
-		events, events/time_period, events*(1.0-rolledback/events)/time_period, committed, committed/time_period, rolledback, rolledback*100.0/events, rollbacks, rollbacks*100.0/events);
-//	printf("Cumulated events in phase: %f\n", throughput);
 
-//	throughput_time = timer_value_seconds(simulation_timer);
+	// GVT base throughput
 	throughput /= (throughput_time - last_throughput_time);
-//	printf("Throughput: %f - time: %f - last time %f\n", throughput, throughput_time, last_throughput_time);
 	last_throughput_time = throughput_time;
 
-	return throughput;
+
+	printf("[GVT BASE STATS] E[Th]: %.2f")
+
+	printf("[GVT2 STATS] Exec: %f.0, ExecTh:%.2f, PA*ExecTh=E[Th]:%.2f, Com: %f.0, ComTh:%.0f, Aborted: %f.0, PA: %.2f%, Rollbacks: %f.0, PR: %.2f%\n", 
+		events, events/time_period, events*(1.0-rolledback/events)/time_period, committed, committed/time_period, rolledback, rolledback*100.0/events, rollbacks, rollbacks*100.0/events);
+
+	// MICRO STATS based throughput. Check statistics/new_stats.c. Also prints
+	micro_throughput = collect_statistics();
+
+	// Return a different value of throughput based on the value of throughput_measure in config.txt 
+	switch(throughput_measure){
+		case 0:
+			returned_throughput = throughput;
+			break; 
+		case 1:
+			returned_throughput = events*(1.0-rolledback/events)/time_period;
+			break;
+		case 2:
+			returned_throughput = micro_throughput;
+			break;
+		default: 
+			printf("Invalid value for throughput_measure in config.txt. Aborting ..\n", );
+			exit(1);
+	}
+
+	return returned_throughput;
 }
 
 int statistics_get_current_gvt_round(void)
