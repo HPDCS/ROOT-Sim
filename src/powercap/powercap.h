@@ -51,9 +51,9 @@ extern pthread_t* pthread_ids;			// Array of pthread id's to be used with signal
 extern int total_threads;				// Total number of threads that could be used by the transcational operation
 extern volatile int powercap_active_threads;	// Number of currently active threads, reflects the number of 1's in running_array
 extern int nb_cores; 					// Number of cores. Detected at startup and used to set DVFS parameters for all cores
-extern int nb_packages;				// Number of system package. Necessary to monitor energy consumption of all packages in th system
-extern int cache_line_size;			// Size in byte of the cache line. Detected at startup and used to alloc memory cache aligned
-extern int* pstate;					// Array of p-states initialized at startup with available scaling frequencies
+extern int nb_packages;					// Number of system package. Necessary to monitor energy consumption of all packages in th system
+extern int cache_line_size;				// Size in byte of the cache line. Detected at startup and used to alloc memory cache aligned
+extern int* pstate;						// Array of p-states initialized at startup with available scaling frequencies
 extern int max_pstate;					// Maximum index of available pstate for the running machine
 extern int current_pstate;				// Value of current pstate, index of pstate array which contains frequencies
 extern int total_commits_round; 		// Number of total commits for each heuristics step
@@ -65,28 +65,29 @@ extern int current_exploit_steps;		// Current number of steps since the last com
 extern double extra_range_percentage;	// Defines the range in percentage over power_limit which is considered valid for the HIGH and LOW configurations. Used by dynamic_heuristic1. Defined in config.txt
 extern int window_size; 				// Defines the lenght of the window, defined in steps, that should achieve a power consumption within power_limit. Used by dynamic_heuristic1. Defined in config.txt
 extern double hysteresis;				// Defines the amount in percentage of hysteresis that should be applied when deciding the next step in a window based on the current value of window_power. Used by dynamic_heuristic1. Defined in config.txt
-extern double power_uncore;			// System specific parameter that defines the amount of power consumption used by the uncore part of the system, which we consider to be constant. Defined in config.txt
+extern double power_uncore;				// System specific parameter that defines the amount of power consumption used by the uncore part of the system, which we consider to be constant. Defined in config.txt
 
 extern stats_t** stats_array;			// Pointer to pointers of struct stats_s, one for each thread
-extern volatile int round_completed;   // Defines if round completed and thread 0 should collect stats and call the heuristic function
-extern double** power_profile; 		// Power consumption matrix of the machine. Precomputed using profiler.c included in root folder.
-					// Rows are threads, columns are p-states. It has total_threads+1 rows as first row is filled with 0 for the profile with 0 threads
+extern volatile int round_completed;	// Defines if round completed and thread 0 should collect stats and call the heuristic function
+extern double** power_profile; 			// Power consumption matrix of the machine. Precomputed using profiler.c included in root folder.
+										// Rows are threads, columns are p-states. It has total_threads+1 rows as first row is filled with 0 for the profile with 0 threads
 extern double power_limit;				// Maximum power that should be used by the application expressed in Watt. Defined in config.txt
 extern double energy_per_tx_limit;		// Maximum energy per tx that should be drawn by the application expressed in micro Joule. Defined in config.txt
 extern int heuristic_mode;				// Used to switch between different heuristics mode. Can be set from 0 to 14.
 extern volatile int shutdown;			// Used to check if should shutdown
-extern long effective_commits; 		// Number of commits during the phase managed by the heuristics. Necessary due to the delay at the end of execution with less than max threads
-extern int detection_mode; 			// Defines the detection mode. Value 0 means detection is disabled. 1 restarts the exploration from the start. Detection mode 2 resets the execution after a given number of steps. Defined in config.txt and loaded at startup
+extern long effective_commits; 			// Number of commits during the phase managed by the heuristics. Necessary due to the delay at the end of execution with less than max threads
+extern int detection_mode; 				// Defines the detection mode. Value 0 means detection is disabled. 1 restarts the exploration from the start. Detection mode 2 resets the execution after a given number of steps. Defined in config.txt and loaded at startup
 extern int core_packing;				// 0-> threads scheduling, 1 -> core packing
 extern int lower_sampled_model_pstate;	// Define the lower sampled pstate to compute the model
 extern int throughput_measure;			// Defines how the throughput is measured. This is specific for time warp executions. If set to 0, it relies on regular GVT computation, value set to 1 means that it is computed as an estimation from the rate of forward event processed and rollbacks in a given period. If set to 2, the throughput estimation relies on the MACRO-MICRO sample approach 
-extern int micro_period_ms;			// Defines the duration in milliseconds of the micro period in the MACRO-MICRO sample approach. Only effectively used by the heuristics when throughput_measure is set to 2. 
-extern int micro_period_dly_ms;		// Defines after how many milliseconds of the macro period the micro period begins in the MACRO-MICRO sample approach. Only effectively used by the heuristics when throughput_measure is set to 2. 
-
+extern int micro_period_ms;				// Defines the duration in milliseconds of the micro period in the MACRO-MICRO sample approach. Only effectively used by the heuristics when throughput_measure is set to 2. 
+extern int micro_period_dly_ms;			// Defines after how many milliseconds of the macro period the micro period begins in the MACRO-MICRO sample approach. Only effectively used by the heuristics when throughput_measure is set to 2. 
+extern int alternated_threads;			// Defines the number of threads of the alternated configuration used with heuristic_mode 17. 
+extern int alternated_pstate;			// Defines the p-state of the alternated configuration used with heuristic_mode 17. 
 
 // Barrier detection variables
 extern int barrier_detected; 			// If set to 1 should drop current statistics round, had to wake up all threads in order to overcome a barrier
-extern int pre_barrier_threads;	    // Number of threads before entering the barrier, should be restored afterwards
+extern int pre_barrier_threads;	    	// Number of threads before entering the barrier, should be restored afterwards
 
 // Timeline plot related variables
 extern FILE* timeline_plot_file;		// File used to plot the timeline of execution

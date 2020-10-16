@@ -857,6 +857,18 @@ void baseline_enhanced(double throughput, double power){
 	heuristic_highest_threads(throughput, power);
 }
 
+// Alternates between the starting configuration and the second configuration provided in config.txt
+void alternate_configuration(double throughput, double power){
+	if(current_pstate == static_pstate && powercap_active_threads == starting_threads){
+		set_threads(alternated_threads);
+		set_pstate(alternated_pstate);
+	}
+	else{
+		set_threads(starting_threads);
+		set_pstate(static_pstate);
+	}
+}
+
 
 ///////////////////////////////////////////////////////////////
 // Main heuristic function
@@ -866,9 +878,15 @@ void baseline_enhanced(double throughput, double power){
 // Takes decision on frequency and number of active threads based on statistics of current round 
 void heuristic(double throughput, double power, long time){
 	
-	#ifdef DEBUG_HEURISTICS 
-		printf("Throughput: %lf- Power: %lf Watt - Time: %lf microseconds\n",
-			throughput, power, ((double) time/1000000));
+	#ifdef DEBUG_HEURISTICS
+		if(heuristic_mode == 17){
+			if(current_pstate == static_pstate && powercap_active_threads == starting_threads)
+				printf("BASE - Throughput: %lf- Power: %lf Watt - Time: %lf microseconds\n",
+					throughput, power, ((double) time/1000000));
+			else printf("ALTERNATED - Throughput: %lf- Power: %lf Watt - Time: %lf microseconds\n",
+					throughput, power, ((double) time/1000000));
+		} else printf("Throughput: %lf- Power: %lf Watt - Time: %lf microseconds\n",
+					throughput, power, ((double) time/1000000));
 	#endif
 
 	#ifdef TIMELINE_PLOT
@@ -919,6 +937,9 @@ void heuristic(double throughput, double power, long time){
 				break;
 			case 16:
 				baseline_enhanced(throughput, power);
+				break;
+			case 17:
+				alternate_configuration(throughput, power);
 				break;
 		}
 
