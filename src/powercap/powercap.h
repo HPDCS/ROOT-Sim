@@ -58,6 +58,7 @@ extern int max_pstate;					// Maximum index of available pstate for the running 
 extern int current_pstate;				// Value of current pstate, index of pstate array which contains frequencies
 extern int total_commits_round; 		// Number of total commits for each heuristics step
 extern int starting_threads;			// Number of threads running at the start of the heuristic search. Defined in config.txt
+extern int static_threads;				// Immutable value, initially set as the same value of starting_threads 
 extern int static_pstate;				// Static -state used for the execution with heuristic 8. Defined in config.txt
 extern int steps;						// Number of steps required for the heuristic to converge
 extern int exploit_steps;				// Number of steps that should be waited until the next exploration is started. Defined in config.txt

@@ -859,12 +859,12 @@ void baseline_enhanced(double throughput, double power){
 
 // Alternates between the starting configuration and the second configuration provided in config.txt
 void alternate_configuration(double throughput, double power){
-	if(current_pstate == static_pstate && powercap_active_threads == starting_threads){
+	if(current_pstate == static_pstate && powercap_active_threads == static_threads){
 		set_threads(alternated_threads);
 		set_pstate(alternated_pstate);
 	}
 	else{
-		set_threads(starting_threads);
+		set_threads(static_threads);
 		set_pstate(static_pstate);
 	}
 }
@@ -880,7 +880,7 @@ void heuristic(double throughput, double power, long time){
 	
 	#ifdef DEBUG_HEURISTICS
 		if(heuristic_mode == 17){
-			if(current_pstate == static_pstate && powercap_active_threads == starting_threads)
+			if(current_pstate == static_pstate && powercap_active_threads == static_threads)
 				printf("BASE - Throughput: %lf- Power: %lf Watt - Time: %lf microseconds\n",
 					throughput, power, ((double) time/1000000));
 			else printf("ALTERNATED - Throughput: %lf- Power: %lf Watt - Time: %lf microseconds\n",

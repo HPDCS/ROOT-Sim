@@ -75,6 +75,8 @@ int max_pstate;					// Maximum index of available pstate for the running machine
 int current_pstate;				// Value of current pstate, index of pstate array which contains frequencies
 int total_commits_round; 		// Number of total commits for each heuristics step
 int starting_threads;			// Number of threads running at the start of the heuristic search. Defined in config.txt
+int static_threads;				// Immutable value, initially set as the same value of starting_threads 
+
 int static_pstate;				// Static -state used for the execution with heuristic 8. Defined in config.txt
 int steps;						// Number of steps required for the heuristic to converge
 int exploit_steps;				// Number of steps that should be waited until the next exploration is started. Defined in config.txt
@@ -551,6 +553,7 @@ void load_config_file(void) {
 		printf("The number of input parameters of the POWERCAP configuration file does not match the number of required parameters.\n");
 		exit(1);
 	}
+	static_threads = starting_threads;
 
 	printf("THE VALUE OF throughput_measure is: %d\n", throughput_measure);
 
