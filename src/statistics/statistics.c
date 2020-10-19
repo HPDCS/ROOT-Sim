@@ -964,7 +964,12 @@ double statistics_get_current_throughput(void)
 	// MICRO STATS based throughput. Check statistics/new_stats.c. Also prints
 	micro_throughput = collect_statistics();
 
-	printf("[TP-COMPARISON] %.2f - %.2f - %.2f\n", throughput, events*(1.0-rolledback/events)/time_period, micro_throughput);
+	if(heuristic_mode == 17){
+		if(current_pstate == static_pstate && powercap_active_threads == static_threads)
+			printf("[TP-COMPARISON] - BASE - %.2f - %.2f - %.2f\n", throughput, events*(1.0-rolledback/events)/time_period, micro_throughput);
+		else printf("[TP-COMPARISON] - ALTERNATED - %.2f - %.2f - %.2f\n", throughput, events*(1.0-rolledback/events)/time_period, micro_throughput);
+		
+	} else printf("[TP-COMPARISON] %.2f - %.2f - %.2f\n", throughput, events*(1.0-rolledback/events)/time_period, micro_throughput);
 
 
 	// Return a different value of throughput based on the value of throughput_measure in config.txt 
