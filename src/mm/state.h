@@ -60,6 +60,7 @@ typedef struct _state_t {
 
 	unsigned int executed_events;
 	unsigned int sample_id;
+	unsigned int gvt2_executed_events;
 	/* Per-LP fields which should be transparently rolled back */
 
 	/// Execution state

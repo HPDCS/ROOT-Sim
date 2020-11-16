@@ -34,6 +34,14 @@ static __thread int forward_executed_events 		= 0;
 static __thread int aborted_events 			= 0;
 
 /****************
+	TMP STATS_gvt2
+****************/
+static __thread int gvt2_current_executed_events 	= 0;
+static __thread int gvt2_sampled_rollbacks 			= 0;
+static __thread int gvt2_forward_executed_events 	= 0;
+static __thread int gvt2_aborted_events 			= 0;
+
+/****************
 	TIME VARS
 ****************/
 
@@ -56,38 +64,57 @@ typedef struct _new_stats{
 ****************/
 
 static new_stats* stat_collection;
+static new_stats* stat_collection_gvt2;
 
 /* statistics.c */
 void init_new_statistics(){
 	stat_collection = rsalloc(n_cores*sizeof(new_stats));
+	stat_collection_gvt2 = rsalloc(n_cores*sizeof(new_stats));
 	bzero(stat_collection , n_cores*sizeof(new_stats));
+	bzero(stat_collection_gvt2 , n_cores*sizeof(new_stats));
 }
 
 /* scheduler.c */
 void on_process_event_forward(msg_t *evt){
-	current_executed_events	+= sampling_enabled;
+	current_executed_events			+= sampling_enabled;
 	evt->sample_id = current_sample_id;
+
+	// GV2
+	gvt2_current_executed_events	+= 1;
 }
 
 /* state.c */
 void on_log_state(state_t *log){
-	forward_executed_events	+= current_executed_events;
-	log->executed_events  	 = current_executed_events;
-	log->sample_id 		 = current_sample_id;
-	current_executed_events	 = 0;
+	forward_executed_events			+= current_executed_events;
+	log->executed_events  	 		 = current_executed_events;
+	log->sample_id 		 	 		 = current_sample_id;
+	current_executed_events	 		 = 0;
+
+	// GV2
+	gvt2_forward_executed_events	+= gvt2_current_executed_events;
+	log->gvt2_executed_events  	 	 = gvt2_current_executed_events;
+	gvt2_current_executed_events	 = 0;
 }
 
 /* state.c (rollback) */
 void on_log_restore(){
-	sampled_rollbacks	+= sampling_enabled;
-	aborted_events		+= current_executed_events;
+	sampled_rollbacks		+= sampling_enabled;
+	aborted_events			+= current_executed_events;
 	forward_executed_events	+= current_executed_events;
 	current_executed_events	 = 0;
+
+	// GVT
+	gvt2_aborted_events				+= gvt2_current_executed_events;
+	gvt2_forward_executed_events	+= gvt2_current_executed_events;
+	gvt2_current_executed_events 	 = 0;
+	gvt2_sampled_rollbacks			+= 1;
 }
 
 /* state.c (rollback) */
 void on_log_discarded(state_t *log){
 	if((log->sample_id == current_sample_id) && current_sample_id != 0)	aborted_events+= log->executed_events;	
+	// GVT2
+	gvt2_aborted_events += log->gvt2_executed_events;
 }
 
 /* state.c (silent_exec) */
@@ -98,6 +125,10 @@ void on_process_event_silent(msg_t *evt){
 		current_executed_events +=1;
 	}
 
+	// GVT2
+	gvt2_aborted_events--;
+	gvt2_forward_executed_events--;
+	gvt2_current_executed_events++;
 }
 
 void OnSamplingPeriodBegin(){
@@ -117,10 +148,10 @@ void OnSamplingPeriodEnd(){
 	__sync_fetch_and_add(&stat_collection[tid].delta, (current_time - sampling_time));
 	current_sample_id = 0;
 	sampling_enabled= 0 ;
-        forward_executed_events = 0;
-        aborted_events = 0;
-        sampled_rollbacks = 0;
-        current_executed_events=0;
+    forward_executed_events = 0;
+    aborted_events = 0;
+    sampled_rollbacks = 0;
+    current_executed_events=0;
 }
 
 /* this must be executed by a unique thread, e.g. by GVT trigger */
@@ -130,6 +161,31 @@ double collect_statistics(void){
 		// collect stats	
 		double fee = 0, ae = 0, sr = 0, tm = 0, throughput = 0;
 		int i;
+
+
+		for(i = 0; i < active_threads; i++){
+                	 printf("[GVT2-THSTATS] %d %llu %d %d\n", 
+                	 	stat_collection_gvt2[i].last_sample_id, 
+                	 	stat_collection_gvt2[i].delta/1000, 
+                	 	stat_collection_gvt2[i].aborted_events, 
+                	 	stat_collection_gvt2[i].forward_executed_events);
+                	 sr  += __sync_lock_test_and_set(&stat_collection_gvt2[i].sampled_rollbacks           , 0);
+                     fee += __sync_lock_test_and_set(&stat_collection_gvt2[i].forward_executed_events     , 0);
+                     ae  += __sync_lock_test_and_set(&stat_collection_gvt2[i].aborted_events              , 0);			
+                     tm  += __sync_lock_test_and_set(&stat_collection_gvt2[i].delta           			  , 0ULL);
+   		}
+
+   		throughput = (fee-ae)/((double)delta_time/1000000.0);
+
+  		printf("[GVT2N STATS] "
+			"Time: %f Exec: %f, ExecTh:%.2f, E[Th]:%.2f,"
+			" Aborted: %f.0, PA: %.2f%%, Rollbacks: %f.0, PR: %.2f, "
+			"AVG Delta:%.2f, Delta: %.2f\n", 
+		((double)delta_time/1000.0), fee, fee/((double)delta_time/1000000.0), throughput, 
+		ae, ae*100.0/fee, sr, sr*100.0/fee, 
+		(tm/active_threads)/1000.0, delta_time/1000.0);
+
+  		fee = 0, ae = 0, sr = 0, tm = 0, throughput = 0;
 		for(i = 0; i < active_threads; i++){
 //                	 fee += __sync_lock_test_and_set(&stat_collection[i].forward_executed_events     , 0);
  //               	 ae  += __sync_lock_test_and_set(&stat_collection[i].aborted_events              , 0);
@@ -145,7 +201,7 @@ double collect_statistics(void){
 
   		printf( "[MICRO STATS] "
 			"Time: %f Exec: %f, ExecTh:%.2f, E[Th]:%.2f,"
-			" Aborted: %f.0, PA: %.2f%, Rollbacks: %f.0, PR: %.2f, "
+			" Aborted: %f.0, PA: %.2f%%, Rollbacks: %f.0, PR: %.2f, "
 			"AVG Delta:%.2f, Delta: %.2f\n", 
 		((double)delta_time/1000.0), fee, fee/((double)delta_time/1000000.0), throughput, 
 		ae, ae*100.0/fee, sr, sr*100.0/fee, 

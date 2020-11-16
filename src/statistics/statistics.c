@@ -666,6 +666,15 @@ inline void statistics_on_gvt(double gvt)
 	last_rolledback_events 	= 0;
 	last_rollbacks 			= 0;
 	last_committed_events 	= 0;
+
+	// GVT2
+	__sync_fetch_and_add(&stat_collection_gvt2[tid].forward_executed_events, gvt2_forward_executed_events);
+	__sync_fetch_and_add(&stat_collection_gvt2[tid].aborted_events,			gvt2_aborted_events);
+	__sync_fetch_and_add(&stat_collection_gvt2[tid].sampled_rollbacks, 		gvt2_sampled_rollbacks);
+    gvt2_forward_executed_events = 0;
+    gvt2_aborted_events = 0;
+    gvt2_sampled_rollbacks = 0;
+    gvt2_current_executed_events=0;
 }
 
 inline void statistics_on_gvt_serial(double gvt)
@@ -958,7 +967,7 @@ double statistics_get_current_throughput(void)
 
 	printf("[GVT BASE STATS] E[Th]: %.2f\n", throughput);
 
-	printf("[GVT2 STATS] Exec: %f.0, ExecTh:%.2f, PA*ExecTh=E[Th]:%.2f, Com: %f.0, ComTh:%.0f, Aborted: %f.0, PA: %.2f%, Rollbacks: %f.0, PR: %.2f%\n", 
+	printf("[GVT2 STATS] Exec: %f.0, ExecTh:%.2f, PA*ExecTh=E[Th]:%.2f, Com: %f.0, ComTh:%.0f, Aborted: %f.0, PA: %.2f%, Rollbacks: %f.0, PR: %.2f%%\n", 
 		events, events/time_period, events*(1.0-rolledback/events)/time_period, committed, committed/time_period, rolledback, rolledback*100.0/events, rollbacks, rollbacks*100.0/events);
 
 	// MICRO STATS based throughput. Check statistics/new_stats.c. Also prints
