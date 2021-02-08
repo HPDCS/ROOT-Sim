@@ -5,6 +5,10 @@
 #include "application.h"
 #include <errno.h>
 
+#ifndef DEBUG
+#define DEBUG 0
+#endif
+
 struct _topology_settings_t topology_settings = {.type = TOPOLOGY_OBSTACLES, .default_geometry = TOPOLOGY_GRAPH, .write_enabled = false};
 
 void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *event_content, unsigned int size, void *state) {
@@ -56,7 +60,7 @@ void ProcessEvent(int me, simtime_t now, int event_type, event_content_type *eve
             state_ptr->events = 0;
 
             if(me == 0) {
-                printf("Running a traditional loop-based PHOLD benchmark with counter set to %d, %d total events per LP, lookahead %f\n", LOOP_COUNT, COMPLETE_EVENTS, 0);
+                printf("Running a traditional loop-based PHOLD benchmark with counter set to %d, %d total events per LP, lookahead %f\n", LOOP_COUNT, COMPLETE_EVENTS, 0.);
             }
 
             for(i = 0; i < EVENTS_PER_LP; i++) {
