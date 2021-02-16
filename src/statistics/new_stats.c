@@ -175,15 +175,15 @@ double collect_statistics(void){
                      tm  += __sync_lock_test_and_set(&stat_collection_gvt2[i].delta           			  , 0ULL);
    		}
 
-   		throughput = (fee-ae)/((double)delta_time/1000000.0);
+   		throughput = (fee-ae)/(((double)current_time-sampling_time)/1000000.0);
 
   		printf("[GVT2N STATS] "
 			"Time: %f Exec: %f, ExecTh:%.2f, E[Th]:%.2f,"
 			" Aborted: %f.0, PA: %.2f%%, Rollbacks: %f.0, PR: %.2f, "
 			"AVG Delta:%.2f, Delta: %.2f\n", 
-		((double)delta_time/1000.0), fee, fee/((double)delta_time/1000000.0), throughput, 
+		(((double)current_time-sampling_time)/1000.0), fee, fee/(((double)current_time-sampling_time)/1000000.0), throughput, 
 		ae, ae*100.0/fee, sr, sr*100.0/fee, 
-		(tm/active_threads)/1000.0, delta_time/1000.0);
+		(tm/active_threads)/1000.0, ((double)current_time-sampling_time)/1000.0);
 
   		fee = 0, ae = 0, sr = 0, tm = 0, throughput = 0;
 		for(i = 0; i < active_threads; i++){
