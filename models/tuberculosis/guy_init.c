@@ -62,9 +62,7 @@ static guy_t* new_base_guy(void){
 	return DataAgent(agent, NULL);
 }
 
-static void new_infected(void){
-	guy_t *guy = new_base_guy();
-
+void init_infected(guy_t *guy){
 	// select a random age following the given distribution
 	unsigned i = 0;
 	double p = Random();
@@ -121,9 +119,7 @@ static void sickened_base_setup(guy_t *guy){
 			bitmap_reset(guy->flags, f_smear);
 }
 
-static void new_sick(void){
-	guy_t *guy = new_base_guy();
-
+void init_sick(guy_t *guy){
 	sickened_base_setup(guy);
 
 	define_diagnose(guy, 0.0);
@@ -136,9 +132,7 @@ static void new_sick(void){
 	bitmap_reset(guy->flags, f_treatment);
 }
 
-static void new_treatment(void){
-	guy_t *guy = new_base_guy();
-
+void init_treatment(guy_t *guy){
 	sickened_base_setup(guy);
 	// we suppose this guy has already been under treatment for some time
 	// (notice that this is equivalent to what is done in the original model)
@@ -148,9 +142,7 @@ static void new_treatment(void){
 	bitmap_set(guy->flags, f_treatment);
 }
 
-static void new_treated(void){
-	guy_t *guy = new_base_guy();
-
+void init_treated(guy_t *guy){
 	sickened_base_setup(guy);
 	// we suppose this guy has already been under treatment for some time
 	// (notice that this is equivalent to what is done in the original model)
@@ -168,22 +160,22 @@ void guy_on_init(init_t *init_data, region_t *region){
 	unsigned i = init_data->infected;
 
 	while(i--)
-		new_infected();
+		init_infected(new_base_guy());
 
 	i = init_data->sick;
 
 	while(i--)
-		new_sick();
+		init_sick(new_base_guy());
 
 	i = init_data->treatment;
 
 	while(i--)
-		new_treatment();
+		init_treatment(new_base_guy());
 
 	i = init_data->treated;
 
 	while(i--)
-		new_treated();
+		init_treated(new_base_guy());
 
 	region->healthy = init_data->healthy;
 }
