@@ -82,7 +82,12 @@ extern void SetState(void *new_state);
 /*********************************/
 /**APPROXIMATED*ROLLBACK*LIBRARY**/
 /*********************************/
-extern void RollbackModeSet(bool want_approximated);
+extern enum _rollback_mode_t {
+	PRECISE = 1,
+	APPROXIMATED,
+	AUTONOMIC
+};
+extern void RollbackModeSet(enum _rollback_mode_t mode);
 extern bool RollbackModeCheck(void);
 extern void CoreMemoryUnmark(void *address);
 extern void CoreMemoryMark(void *address);

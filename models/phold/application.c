@@ -125,7 +125,7 @@ void ProcessEvent(unsigned me, simtime_t now, int event_type, unsigned *event_co
 				}
 			}
 
-			RollbackModeSet(approximated);
+			RollbackModeSet(AUTONOMIC);
 
 			ScheduleNewEvent(me, 20 * Random(), LOOP, NULL, 0);
 			break;

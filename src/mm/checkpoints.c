@@ -152,7 +152,6 @@ void *log_full(struct lp_struct *lp)
 			ptr = (void*)((char*)ptr + chunk_size);})
 
 #ifdef HAVE_APPROXIMATED_ROLLBACK
-
 			if (m_state->is_approximated){
 				bitmap_foreach_set(m_area->coredata_bitmap, bitmap_size, copy_from_area);
 			} else {

@@ -11,7 +11,6 @@
 #include <scheduler/scheduler.h>
 #include <mm/dymelor.h>
 
-
 void CoreMemoryMark(void *address)
 {
 	if(unlikely(rootsim_config.serial)){
@@ -74,13 +73,22 @@ bool CoreMemoryCheck(void *address)
 	return ret;
 }
 
-void RollbackModeSet(bool want_approximated)
+bool ask_oracle() {
+	int random_range = Random() * 100;
+	if (random_range < 5) {
+		return true;
+	} else {
+		return false;
+	} 
+}
+
+void RollbackModeSet(enum _rollback_mode_t mode)
 {
 	if(unlikely(rootsim_config.serial)){
 		return;
 	}
 	switch_to_platform_mode();
-	current->mm->m_state->want_approximated = want_approximated;
+	current->mm->m_state->approximated_mode = mode;
 	switch_to_application_mode();
 }
 
@@ -97,7 +105,13 @@ bool RollbackModeCheck(void)
 
 void event_approximation_mark(const struct lp_struct *lp, msg_t *event)
 {
-	bool is_approximated = lp->mm->m_state->want_approximated;
+	bool is_approximated;
+	enum _rollback_mode_t approximated_mode = lp->mm->m_state->approximated_mode;
+	if (approximated_mode == AUTONOMIC) {
+		is_approximated = ask_oracle();
+	} else {
+		is_approximated = approximated_mode == APPROXIMATED? true: false;
+	}
 	lp->mm->m_state->is_approximated = is_approximated;
 	event->is_approximated = is_approximated;
 }
