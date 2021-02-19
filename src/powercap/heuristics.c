@@ -1112,6 +1112,8 @@ void heuristic(double throughput, double power, long time){
 
 			if(current_exploit_steps++ == exploit_steps){
 				
+				abort();
+
 				#ifdef DEBUG_HEURISTICS
 					printf("EXPLORATION RESTARTED. PHASE 0 - INITIAL CONFIGURATION: #threads %d - p_state %d\n", best_threads, best_pstate);
 				#endif
