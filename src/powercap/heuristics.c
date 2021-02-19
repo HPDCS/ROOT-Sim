@@ -95,7 +95,7 @@ void stop_searching(void) {
 
 
     //Set High and Low for fluctuations when running the model
-    if((heuristic_mode == 15 || heuristic_mode == 16 || heuristic_mode == 13) && detection_mode == 2){
+    if((heuristic_mode == 15 || heuristic_mode == 16 || heuristic_mode == 13) && (detection_mode == 2 || detection_mode == 4)){
 
     	high_threads = best_threads;
     	low_threads = best_threads;
@@ -1101,7 +1101,7 @@ void heuristic(double throughput, double power, long time){
 				#endif 
 			}
 		}
-	} else if(detection_mode == 2){
+	} else if(detection_mode == 2 || detection_mode == 4){
 			if(current_pstate == 0 && heuristic_mode != 10 && power > (power_limit*(1+(hysteresis/100))) ){
 				#ifdef DEBUG_HEURISTICS
 					printf("Disabling power boost\n");
@@ -1112,7 +1112,11 @@ void heuristic(double throughput, double power, long time){
 
 			if(current_exploit_steps++ == exploit_steps){
 				
-				abort();
+				if(detection_mode == 4){
+					printf("DETECTION_MODE 4: Aborting execution as it reached the value of EXPLOIT STEPS\n");
+					abort();	
+				}
+				
 
 				#ifdef DEBUG_HEURISTICS
 					printf("EXPLORATION RESTARTED. PHASE 0 - INITIAL CONFIGURATION: #threads %d - p_state %d\n", best_threads, best_pstate);
