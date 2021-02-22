@@ -870,7 +870,7 @@ void alternate_configuration(double throughput, double power){
 
 	if(detection_mode == 17 && steps >= exploit_steps){
 		printf("DETECTION_MODE 4: Aborting execution as it reached the value of EXPLOIT STEPS\n");
-		abort(0);
+		abort();
 	}
 }
 
