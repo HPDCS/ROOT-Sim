@@ -867,6 +867,11 @@ void alternate_configuration(double throughput, double power){
 		set_threads(static_threads);
 		set_pstate(static_pstate);
 	}
+
+	if(detection_mode == 17 && steps >= exploit_steps){
+		printf("DETECTION_MODE 4: Aborting execution as it reached the value of EXPLOIT STEPS\n");
+		abort(0);
+	}
 }
 
 
