@@ -894,6 +894,9 @@ double statistics_get_lp_data(struct lp_struct *lp, unsigned int type)
 		
 		case STAT_GET_RECOVERY_TIME:
 			return lp_stats[lp->lid.to_int].recovery_time;
+
+		case STAT_GET_ROLLBACK_TIME:
+			return (lp_stats[lp->lid.to_int].tot_rollbacks > 0 ? (lp_stats[lp->lid.to_int].tot_events - lp_stats[lp->lid.to_int].committed_events) / lp_stats[lp->lid.to_int].tot_rollbacks : 0);
 		
 		case STAT_GET_CKPT_TIME_APPROX:
 			return lp_stats[lp->lid.to_int].ckpt_time_approx;
@@ -912,6 +915,9 @@ double statistics_get_lp_data(struct lp_struct *lp, unsigned int type)
 		
 		case STAT_GET_RECOVERY_TIME_APPROX:
 			return lp_stats[lp->lid.to_int].recovery_time_approx;
+		
+		case STAT_GET_ROLLBACK_TIME_APPROX:
+			return (lp_stats[lp->lid.to_int].tot_rollbacks_approx > 0 ? (lp_stats[lp->lid.to_int].tot_events_approx - lp_stats[lp->lid.to_int].committed_events_approx) / lp_stats[lp->lid.to_int].tot_rollbacks_approx : 0);
 
 		default:
 			rootsim_error(true, "Wrong statistics get type: %d. Aborting...\n", type);
