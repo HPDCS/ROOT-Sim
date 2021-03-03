@@ -840,6 +840,30 @@ void statistics_post_data(struct lp_struct *lp, enum stat_msg_t type, double dat
 			system_wide_stats.gvt_round_time += data;
 			break;
 
+		case STAT_CKPT_TIME_APPROX:
+			lp_stats_gvt[lid].ckpt_time_approx += data;
+			break;
+
+		case STAT_EVENT_TIME_APPROX:
+			lp_stats_gvt[lid].event_time_approx += data;
+			break;
+			
+		case STAT_ROLLBACK_APPROX:
+			lp_stats_gvt[lid].tot_rollbacks_approx += 1.0;
+			break;
+
+		case STAT_EVENT_APPROX:
+			lp_stats_gvt[lid].tot_events_approx += 1.0;
+			break;
+
+		case STAT_COMMITTED_APPROX:
+			lp_stats_gvt[lid].committed_events_approx += data;
+			break;
+
+		case STAT_RECOVERY_TIME_APPROX:
+			lp_stats_gvt[lid].recovery_time_approx += data;
+			break;
+
 		default:
 			rootsim_error(true, "Wrong LP statistics post type: %d. Aborting...\n", type);
 	}
@@ -850,8 +874,44 @@ double statistics_get_lp_data(struct lp_struct *lp, unsigned int type)
 {
 	switch(type) {
 
-		case STAT_GET_EVENT_TIME_LP:
+		case STAT_GET_CKPT_TIME:
+			return lp_stats[lp->lid.to_int].ckpt_time;
+		
+		case STAT_GET_EVENT_TIME:
+			return lp_stats[lp->lid.to_int].event_time;
+		
+		case STAT_GET_EVENT_TIME_EXP:
 			return lp_stats[lp->lid.to_int].exponential_event_time;
+		
+		case STAT_GET_ROLLBACK:
+			return lp_stats[lp->lid.to_int].tot_rollbacks;
+		
+		case STAT_GET_EVENT:
+			return lp_stats[lp->lid.to_int].tot_events;
+		
+		case STAT_GET_COMMITTED:
+			return lp_stats[lp->lid.to_int].committed_events;
+		
+		case STAT_GET_RECOVERY_TIME:
+			return lp_stats[lp->lid.to_int].recovery_time;
+		
+		case STAT_GET_CKPT_TIME_APPROX:
+			return lp_stats[lp->lid.to_int].ckpt_time_approx;
+		
+		case STAT_GET_EVENT_TIME_APPROX:
+			return lp_stats[lp->lid.to_int].event_time_approx;
+		
+		case STAT_GET_ROLLBACK_APPROX:
+			return lp_stats[lp->lid.to_int].tot_rollbacks_approx;
+
+		case STAT_GET_EVENT_APPROX:
+			return lp_stats[lp->lid.to_int].tot_events_approx;
+		
+		case STAT_GET_COMMITTED_APPROX:
+			return lp_stats[lp->lid.to_int].committed_events_approx;
+		
+		case STAT_GET_RECOVERY_TIME_APPROX:
+			return lp_stats[lp->lid.to_int].recovery_time_approx;
 
 		default:
 			rootsim_error(true, "Wrong statistics get type: %d. Aborting...\n", type);

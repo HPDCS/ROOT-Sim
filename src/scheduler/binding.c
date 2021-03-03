@@ -212,7 +212,7 @@ static void post_local_reduction(void)
 		lp_cost[lp->lid.to_int].workload_factor =
 		    list_sizeof(lp->queue_in);
 		lp_cost[lp->lid.to_int].workload_factor *=
-		    statistics_get_lp_data(lp, STAT_GET_EVENT_TIME_LP);
+		    statistics_get_lp_data(lp, STAT_GET_EVENT_TIME_EXP);
 		lp_cost[lp->lid.to_int].workload_factor /= (last_evt->
 							    timestamp -
 							    first_evt->

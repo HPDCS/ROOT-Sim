@@ -98,7 +98,25 @@ enum stat_msg_t {
 	STAT_IDLE_CYCLES,
 	STAT_SILENT,
 	STAT_GVT_ROUND_TIME,
-	STAT_GET_EVENT_TIME_LP
+	STAT_CKPT_TIME_APPROX,
+	STAT_EVENT_TIME_APPROX,
+	STAT_ROLLBACK_APPROX,
+	STAT_EVENT_APPROX,
+	STAT_COMMITTED_APPROX,
+	STAT_RECOVERY_TIME_APPROX,
+	STAT_GET_CKPT_TIME,
+	STAT_GET_EVENT_TIME,
+	STAT_GET_EVENT_TIME_EXP,
+	STAT_GET_ROLLBACK,
+	STAT_GET_EVENT,
+	STAT_GET_COMMITTED,
+	STAT_GET_RECOVERY_TIME,
+	STAT_GET_CKPT_TIME_APPROX,
+	STAT_GET_EVENT_TIME_APPROX,
+	STAT_GET_ROLLBACK_APPROX,
+	STAT_GET_EVENT_APPROX,
+	STAT_GET_COMMITTED_APPROX,
+	STAT_GET_RECOVERY_TIME_APPROX
 };
 
 enum stats_levels {
@@ -110,7 +128,7 @@ enum stats_levels {
 };
 
 // this is used in order to have more efficient stats additions during gvt reductions
-typedef double vec_double __attribute__((vector_size(16 * sizeof(double))));
+typedef double vec_double __attribute__((vector_size(32 * sizeof(double))));
 
 // Structure to keep track of (incremental) statistics
 struct stat_t {
@@ -130,7 +148,24 @@ struct stat_t {
 			    idle_cycles,
 			    memory_usage,
 			    simtime_advancement,
-			    gvt_computations, exponential_event_time;
+			    gvt_computations, 
+			    exponential_event_time,
+			    ckpt_time_approx,
+			    event_time_approx,
+			    tot_rollbacks_approx,
+			    tot_events_approx,
+			    committed_events_approx,
+			    recovery_time_approx,
+			    dummy_1,
+			    dummy_2,
+			    dummy_3,
+			    dummy_4,
+			    dummy_5,
+			    dummy_6,
+			    dummy_7,
+			    dummy_8,
+			    dummy_9,
+			    dummy_10;
 		};
 		vec_double vec;
 	};
