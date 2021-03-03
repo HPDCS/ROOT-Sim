@@ -43,7 +43,7 @@ void CoreMemoryUnmark(void *address)
 	int chunk;
 	malloc_area *m_area = malloc_area_get(address, &chunk);
 	if(m_area == NULL){
-		rootsim_error(true, "Please, supply an allocated address and range to the CoreMemoryMark API");
+		rootsim_error(true, "Please, supply an allocated address and range to the CoreMemoryUnmark API");
 	}
 
 	malloc_state *m_state = current->mm->m_state;
@@ -66,14 +66,15 @@ bool CoreMemoryCheck(void *address)
 	int chunk;
 	malloc_area *m_area = malloc_area_get(address, &chunk);
 	if(m_area == NULL){
-		rootsim_error(true, "Please, supply an allocated address and range to the CoreMemoryUnmark API");
+		rootsim_error(true, "Please, supply an allocated address and range to the CoreMemoryCheck API");
 	}
 	bool ret = bitmap_check(m_area->coredata_bitmap, chunk);
 	switch_to_application_mode();
 	return ret;
 }
 
-bool ask_oracle() {
+bool ask_oracle() 
+{
 	int random_range = Random() * 100;
 	if (random_range < 5) {
 		return true;
