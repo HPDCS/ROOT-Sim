@@ -6,7 +6,6 @@
  */
 
 #include "guy_init.h"
-#include "guy.h"
 #include "parameters.h"
 
 const unsigned int scale_factor = 50;

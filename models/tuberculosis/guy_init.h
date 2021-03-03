@@ -9,6 +9,7 @@
 #define MODELS_TUBERCOLOSIS_GUY_INIT_H_
 
 #include "application.h"
+#include "guy.h"
 
 typedef struct _init_t init_t;
 
