@@ -139,7 +139,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type,
 			}
 			ScheduleNewEvent(me, now + 1.25 + Random()/2, MIDNIGHT, NULL, 0);
 			ScheduleNewEvent(me, 1.0, STATS_COMPUTE, NULL, 0);
-			RollbackModeSet(approximated);
+			RollbackModeSet(APPROXIMATED);
 			break;
 
 		case STATS_COMPUTE:
@@ -202,6 +202,39 @@ int OnGVT(unsigned int me, region_t *snapshot) {
 
 void RestoreApproximated(void *ptr)
 {
-	(void)ptr;
+	int count = 0;
+	agent_t agent = 0;
+	uint32_t closure = 0;
+	while(IterAgents(&agent, &closure)){
+
+		bool spawned = false;
+		if (!agent) {
+			agent = SpawnAgent(sizeof(guy_t));
+			spawned = true;
+		}
+
+		guy_t *guy = DataAgent(agent, NULL);
+		if (!spawned && CoreMemoryCheck(guy)) {
+			continue;
+		}
+
+		switch (count % 4) {
+		case 0:
+			init_infected(guy);
+			break;
+		case 1:
+			init_sick(guy);
+			break;
+		case 2:
+			init_treatment(guy);
+			break;
+		case 3:
+			init_treated(guy);
+		default:
+			break;
+		}
+
+		count++;
+	}
 }
 

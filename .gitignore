@@ -63,3 +63,6 @@ modules.order
 
 /dymelor
 /numerical
+
+.vscode/
+models/tuberculosis/tbc_stats.txt
