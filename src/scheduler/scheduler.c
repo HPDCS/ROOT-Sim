@@ -163,11 +163,11 @@ void LP_main_loop(void *args)
 		event_approximation_mark(current, current_evt);
 #endif
 		// Process the event
-		if(&abm_settings){
+		if(&abm_settings) {
 			ProcessEventABM();
-		}else if (&topology_settings){
+		} else if (&topology_settings) {
 			ProcessEventTopology();
-		}else{
+		} else {
 			switch_to_application_mode();
 			current->ProcessEvent(current->gid.to_int,
 				      current_evt->timestamp, current_evt->type,
@@ -192,10 +192,16 @@ void LP_main_loop(void *args)
 		}
 #endif
 
+#ifdef HAVE_APPROXIMATED_ROLLBACK
+		if (current_evt->is_approximated) {
+			statistics_post_data(current, STAT_EVENT_APPROX, 1.0);
+			statistics_post_data(current, STAT_EVENT_TIME_APPROX,
+					     delta_event_timer);
+		}
+#endif
 		statistics_post_data(current, STAT_EVENT, 1.0);
 		statistics_post_data(current, STAT_EVENT_TIME,
 				     delta_event_timer);
-
 		// Give back control to the simulation kernel's user-level thread
 		context_switch(&current->context, &kernel_context);
 	}

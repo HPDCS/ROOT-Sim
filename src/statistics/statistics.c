@@ -375,6 +375,8 @@ static void print_common_stats(FILE *f, struct stat_t *stats_p, bool want_thread
 	fprintf(f, "AVERAGE CHECKPOINT COST.... : %.2f us\n",		stats_p->ckpt_time / stats_p->tot_ckpts);
 	fprintf(f, "AVERAGE RECOVERY COST...... : %.2f us\n",		(stats_p->tot_recoveries > 0 ? stats_p->recovery_time / stats_p->tot_recoveries : 0));
 	fprintf(f, "AVERAGE LOG SIZE........... : %s\n",		format_size(stats_p->ckpt_mem / stats_p->tot_ckpts));
+	fprintf(f, "TOTAL APPROX PHASES ....... : %.0f \n",		stats_p->approx_phases);
+	fprintf(f, "TOTAL PRECISE PHASES ...... : %.0f \n",		stats_p->prec_phases);
 	fprintf(f, "\n");
 	fprintf(f, "IDLE CYCLES................ : %.0f\n",		stats_p->idle_cycles);
 	if(!want_thread_stats){
@@ -840,8 +842,8 @@ void statistics_post_data(struct lp_struct *lp, enum stat_msg_t type, double dat
 			system_wide_stats.gvt_round_time += data;
 			break;
 
-		case STAT_CKPT_TIME_APPROX:
-			lp_stats_gvt[lid].ckpt_time_approx += data;
+		case STAT_CKPT_TIME_CORE:
+			lp_stats_gvt[lid].ckpt_time_core += data;
 			break;
 
 		case STAT_EVENT_TIME_APPROX:
@@ -860,8 +862,20 @@ void statistics_post_data(struct lp_struct *lp, enum stat_msg_t type, double dat
 			lp_stats_gvt[lid].committed_events_approx += data;
 			break;
 
-		case STAT_RECOVERY_TIME_APPROX:
-			lp_stats_gvt[lid].recovery_time_approx += data;
+		case STAT_RECOVERY_TIME_CORE:
+			lp_stats_gvt[lid].recovery_time_core += data;
+			break;
+		
+		case STAT_APPROX_PHASE:
+			lp_stats_gvt[lid].approx_phases += 1.0;
+			break;
+
+		case STAT_PREC_PHASE:
+			lp_stats_gvt[lid].prec_phases += 1.0;
+			break;
+
+		case STAT_RESTORE_APPROX:
+			lp_stats_gvt[lid].restore_approx_time += data;
 			break;
 
 		default:
@@ -898,8 +912,8 @@ double statistics_get_lp_data(struct lp_struct *lp, unsigned int type)
 		case STAT_GET_ROLLBACK_TIME:
 			return (lp_stats[lp->lid.to_int].tot_rollbacks > 0 ? (lp_stats[lp->lid.to_int].tot_events - lp_stats[lp->lid.to_int].committed_events) / lp_stats[lp->lid.to_int].tot_rollbacks : 0);
 		
-		case STAT_GET_CKPT_TIME_APPROX:
-			return lp_stats[lp->lid.to_int].ckpt_time_approx;
+		case STAT_GET_CKPT_TIME_CORE:
+			return lp_stats[lp->lid.to_int].ckpt_time_core;
 		
 		case STAT_GET_EVENT_TIME_APPROX:
 			return lp_stats[lp->lid.to_int].event_time_approx;
@@ -913,14 +927,105 @@ double statistics_get_lp_data(struct lp_struct *lp, unsigned int type)
 		case STAT_GET_COMMITTED_APPROX:
 			return lp_stats[lp->lid.to_int].committed_events_approx;
 		
-		case STAT_GET_RECOVERY_TIME_APPROX:
-			return lp_stats[lp->lid.to_int].recovery_time_approx;
+		case STAT_GET_RECOVERY_TIME_CORE:
+			return lp_stats[lp->lid.to_int].recovery_time_core;
 		
 		case STAT_GET_ROLLBACK_TIME_APPROX:
 			return (lp_stats[lp->lid.to_int].tot_rollbacks_approx > 0 ? (lp_stats[lp->lid.to_int].tot_events_approx - lp_stats[lp->lid.to_int].committed_events_approx) / lp_stats[lp->lid.to_int].tot_rollbacks_approx : 0);
+
+		case STAT_GET_APPROX_PHASE:
+			return lp_stats[lp->lid.to_int].approx_phases;
+		
+		case STAT_GET_PREC_PHASE:
+			return lp_stats[lp->lid.to_int].prec_phases;
+			
+		case STAT_GET_RESTORE_APPROX:
+			return lp_stats[lp->lid.to_int].restore_approx_time;
 
 		default:
 			rootsim_error(true, "Wrong statistics get type: %d. Aborting...\n", type);
 	}
 	return 0.0;
 }
+
+#ifdef HAVE_APPROXIMATED_ROLLBACK
+
+/**
+* This function computes the optimal checkpoint interval for both classical 
+* and approximated rollback schemes. The 
+*
+* @author Matteo Principe
+*
+* @param lp a pointer to the lp struct relative to the simlation object the 
+*	    evaluation should be performed.
+* @param approx a boolean telling whether the optimal checkpoint evaluation
+*		is realated to an approximated or precise rollback scheme.
+* @return the optimal checkpoint interval value, namely χ
+*/
+double computeCheckpointInterval(struct lp_struct *lp, bool approx)
+{
+	double evnt_time = lp_stats[lp->lid.to_int].event_time; //𝛿_e
+	double tot_rollbacks = approx ? 
+				lp_stats[lp->lid.to_int].tot_rollbacks_approx : 
+				lp_stats[lp->lid.to_int].tot_rollbacks;
+	double tot_events = approx ? 
+				lp_stats[lp->lid.to_int].tot_events_approx :
+				lp_stats[lp->lid.to_int].tot_events;
+	double roll_freq = tot_rollbacks / (tot_events != 0 ? tot_events : 1); //F_r (or F_r_approx, according to @approx)
+	double ckpt_time = approx ? 
+				lp_stats[lp->lid.to_int].ckpt_time_core : 
+				lp_stats[lp->lid.to_int].ckpt_time; //𝛿_s (or 𝛿_s_core, according to @approx)
+
+	return ceil(sqrt((2 * ckpt_time) / ((roll_freq * evnt_time) != 0 ? (roll_freq * evnt_time) : 1)));
+}
+
+/**
+* This function is the core of the autonomic policy of the approximated rollbacks
+* scheme. Basically, it tells the runtime whether the current mode (namely 
+* PRECISE or APPROXIMATED) should be switched to the opposite according to a 
+* formula based on statistics collected during execution and evaluated at each
+* event execution.
+*
+* @author Matteo Principe
+*
+* @param lp a pointer to the lp struct relative to the simlation object the 
+*	    evaluation should be performed.
+* @return true if approximation mode should be APPROXIMATED, false otherwise.
+*/
+bool shouldSwitchApproximationMode(struct lp_struct *lp)
+{
+	double chi = computeCheckpointInterval(lp, false);		//χ
+	double ckpt_time = lp_stats[lp->lid.to_int].ckpt_time;		//𝛿_s
+	double evnt_time = lp_stats[lp->lid.to_int].event_time;		//𝛿_e
+	double rec_time = lp_stats[lp->lid.to_int].recovery_time;	//𝛿_r
+	double rollbacks = lp_stats[lp->lid.to_int].tot_rollbacks;
+	double events = lp_stats[lp->lid.to_int].tot_events != 0 ? 
+				lp_stats[lp->lid.to_int].tot_events : 1;
+	double roll_freq = rollbacks / events;
+
+	double numerator = (chi * evnt_time) +
+			   (ckpt_time / (chi != 0 ? chi : 1)) +
+			   roll_freq * (rec_time + ((chi - 1) / 2) * evnt_time);
+
+	double chi_approx = computeCheckpointInterval(lp, true);				//χ_a
+	double alpha = chi / (chi_approx != 0 ? chi_approx : 1);				//α
+	double ckpt_time_core = lp_stats[lp->lid.to_int].ckpt_time_core;			//𝛿_s_core
+	double roll_freq_appr = lp_stats[lp->lid.to_int].tot_rollbacks_approx /
+				(lp_stats[lp->lid.to_int].tot_events_approx != 0 ? 
+					lp_stats[lp->lid.to_int].tot_events_approx : 1);	//F_r_approx
+	double rec_time_core = lp_stats[lp->lid.to_int].recovery_time_core;			//𝛿_r_core
+	double restore_fn_time = lp_stats[lp->lid.to_int].restore_approx_time;			//𝛿_cf
+	
+	double denominator = alpha *
+			     (chi_approx * evnt_time +
+			      ckpt_time_core / (chi_approx != 0 ? chi_approx : 1) +
+			      roll_freq_appr * (rec_time_core +
+						restore_fn_time +
+						(((chi_approx - 1) / 2) * evnt_time)));
+
+	if (denominator == 0) return 0;
+
+	return (numerator / denominator) > 1;
+}
+
+#endif

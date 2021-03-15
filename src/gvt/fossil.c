@@ -71,10 +71,19 @@ void fossil_collection(struct lp_struct *lp, simtime_t time_barrier)
 	state = list_head(lp->queue_states);
 	last_kept_event = state->last_event;
 
+#ifdef HAVE_APPROXIMATED_ROLLBACK
+	double committed_approx_events = 0;
+	committed_events = (double)list_trunc_approx(lp->queue_in, timestamp,
+						     last_kept_event->timestamp, 
+						     msg_release, 
+						     committed_approx_events);
+	statistics_post_data(lp, STAT_COMMITTED_APPROX, committed_approx_events);
+#else
 	// Truncate the input queue, accounting for the event which is pointed by the lastly kept state
 	committed_events =
 	    (double)list_trunc(lp->queue_in, timestamp,
 			       last_kept_event->timestamp, msg_release);
+#endif
 	statistics_post_data(lp, STAT_COMMITTED, committed_events);
 
 	// Truncate the output queue

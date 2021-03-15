@@ -157,22 +157,23 @@ unsigned int silent_execution(struct lp_struct *lp, msg_t *evt, msg_t *final_evt
 	unsigned int events = 0;
 	unsigned short int old_state;
 
+	timer silent_exec_timer;
+	timer_start(silent_exec_timer);
 	// current state can be either idle READY, BLOCKED or ROLLBACK, so we save it and then put it back in place
 	old_state = lp->state;
 	lp->state = LP_STATE_SILENT_EXEC;
 
 	// Reprocess events. Outgoing messages are explicitly discarded, as this part of
 	// the simulation has been already executed at least once
-	if(!evt){
-				rootsim_error(true, "DAFAKKK");
-
-			}
-	while(evt != final_evt){
+	if (!evt) {
+		rootsim_error(true, "Starting silent execution from an uninitialized event: aborting...");
+	}
+	while (evt != final_evt) {
 		evt = list_next(evt);
-		if(!evt){
-					rootsim_error(true, "DAFAKKK");
-					break;
-				}
+		if (!evt) {
+			rootsim_error(true, "Found an uninitialized event during silent execution: aborting...");
+			break;
+		}
 		if (unlikely(!reprocess_control_msg(evt))) {
 			continue;
 		}
@@ -213,6 +214,11 @@ void rollback(struct lp_struct *lp)
 	// Discard any possible execution state related to a blocked execution
 	memcpy(&lp->context, &lp->default_context, sizeof(LP_context_t));
 
+#ifdef HAVE_APPROXIMATED_ROLLBACK
+	if (current_evt->is_approximated) {
+		statistics_post_data(lp, STAT_ROLLBACK_APPROX, 1.0);
+	}
+#endif
 	statistics_post_data(lp, STAT_ROLLBACK, 1.0);
 
 	last_correct_event = lp->bound;

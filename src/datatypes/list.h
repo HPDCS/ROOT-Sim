@@ -294,4 +294,35 @@ typedef struct rootsim_list {
 	__deleted;\
 	})
 
+#define list_trunc_approx(list, key_name, key_value, release_fn, approx_events) \
+	({\
+	rootsim_list *__l = (rootsim_list *)(list);\
+	__typeof__(list) __n;\
+	__typeof__(list) __n_adjacent;\
+	unsigned int __deleted = 0;\
+	size_t __key_position = my_offsetof((list), key_name);\
+	assert(__l);\
+	size_t __size_before = __l->size;\
+	/* Attempting to truncate an empty list? */\
+	if(__l->size > 0) {\
+		__n = __l->head;\
+		while(__n != NULL && get_key(__n) < (key_value)) {\
+			if (__n->is_approximated)\
+			approx_events++;\
+			__deleted++;\
+                	__n_adjacent = __n->next;\
+	                __n->next = (void *)0xBAADF00D;\
+        	        __n->prev = (void *)0xBAADF00D;\
+			release_fn(__n);\
+			__n = __n_adjacent;\
+		}\
+		__l->head = __n;\
+		if(__l->head != NULL)\
+		((__typeof__(list))__l->head)->prev = NULL;\
+	}\
+	__l->size -= __deleted;\
+	assert(__l->size == (__size_before - __deleted));\
+	__deleted;\
+	})
+
 #define list_size(list) ((rootsim_list *)(list))->size
