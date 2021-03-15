@@ -205,7 +205,7 @@ void RestoreApproximated(void *ptr)
 	int count = 0;
 	agent_t agent = 0;
 	uint32_t closure = 0;
-	while(IterAgents(&agent, &closure)){
+	while(IterAgents(&agent, &closure)) {
 
 		bool spawned = false;
 		if (!agent) {
