@@ -777,7 +777,7 @@ void statistics_post_data_serial(enum stat_msg_t type, double data)
 }
 
 
-void statistics_post_data(struct lp_struct *lp, enum stat_msg_t type, double data)
+void statistics_post_data(const struct lp_struct *lp, enum stat_msg_t type, double data)
 {
 	// TODO: this is only required to avoid a nasty segfault if we
 	// pass NULL to lp, as we do for the case of STAT_IDLE_CYCLES.
@@ -962,7 +962,7 @@ double statistics_get_lp_data(struct lp_struct *lp, unsigned int type)
 *		is realated to an approximated or precise rollback scheme.
 * @return the optimal checkpoint interval value, namely χ
 */
-double computeCheckpointInterval(struct lp_struct *lp, bool approx)
+double computeCheckpointInterval(const struct lp_struct *lp, bool approx)
 {
 	double evnt_time = lp_stats[lp->lid.to_int].event_time; //𝛿_e
 	double tot_rollbacks = approx ? 
@@ -992,7 +992,7 @@ double computeCheckpointInterval(struct lp_struct *lp, bool approx)
 *	    evaluation should be performed.
 * @return true if approximation mode should be APPROXIMATED, false otherwise.
 */
-bool shouldSwitchApproximationMode(struct lp_struct *lp)
+bool shouldSwitchApproximationMode(const struct lp_struct *lp)
 {
 	double chi = computeCheckpointInterval(lp, false);		//χ
 	double ckpt_time = lp_stats[lp->lid.to_int].ckpt_time;		//𝛿_s

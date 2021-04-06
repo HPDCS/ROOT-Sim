@@ -82,7 +82,7 @@ extern void SetState(void *new_state);
 /*********************************/
 /**APPROXIMATED*ROLLBACK*LIBRARY**/
 /*********************************/
-extern enum _rollback_mode_t {
+enum _rollback_mode_t {
 	PRECISE = 1,
 	APPROXIMATED,
 	AUTONOMIC
