@@ -220,6 +220,8 @@ void *log_state(struct lp_struct *lp)
 	return log_full(lp);
 }
 
+extern void FreeApproximatedAgents(struct lp_struct *lp);
+
 /**
 * This function restores a full log in the address space where the logical process will be
 * able to use it as the current state.
@@ -339,6 +341,8 @@ void restore_full(struct lp_struct *lp, void *ckpt)
 			if (m_state->is_approximated){
 				timer_restart(recovery_timer_core);
 				bitmap_foreach_set(m_area->coredata_bitmap, bitmap_size, copy_to_area);
+				memcpy(m_area->use_bitmap, m_area->coredata_bitmap, bitmap_size);
+				m_state->total_log_size = m_state->approximated_log_size;
 				recovery_timer_core_delta += timer_value_micro(recovery_timer_core);
 			} else {
 #endif
@@ -392,7 +396,9 @@ void restore_full(struct lp_struct *lp, void *ckpt)
 
 #ifdef HAVE_APPROXIMATED_ROLLBACK
 	statistics_post_data(lp, STAT_RECOVERY_TIME_CORE, (double)recovery_timer_core_delta);
+	FreeApproximatedAgents(lp);
 #endif
+
 }
 
 /**

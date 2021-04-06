@@ -596,3 +596,45 @@ void RemoveVisit(agent_t agent_id, unsigned i) {
 
 	array_remove_at(agent->future, i);
 }
+
+void FreeApproximatedAgents(struct lp_struct *lp) 
+{
+	if(!&abm_settings){
+		return;
+	}
+	struct lp_struct *previous = current;
+	current = lp;
+
+	map_size_t i = 0;
+	unsigned j = 0;
+	struct _agent_abm_t *ret;
+	while ((ret = (struct _agent_abm_t *) hash_map_iter(&current->region->agents_table, &i))) { 
+		if (!CoreMemoryCheck(ret->user_data)) {
+			j++;
+		}
+	}
+
+	struct _agent_abm_t **approx_agents = rsalloc(sizeof(*approx_agents) * j);
+	j = 0;
+	i = 0;
+	while ((ret = (struct _agent_abm_t *) hash_map_iter(&current->region->agents_table, &i))) { 
+		if (!CoreMemoryCheck(ret->user_data)) {
+			approx_agents[j] = ret;
+			j++;
+		}
+	}
+
+	
+	while (j--) {
+		struct _agent_abm_t * agent = approx_agents[j];
+		array_fini(agent->future);
+		if(abm_settings.keep_history)
+			array_fini(agent->past);
+
+		hash_map_remove(&current->region->agents_table, agent->key);
+		__wrap_free(agent);
+	}
+
+	rsfree(approx_agents);
+	current = previous;
+}

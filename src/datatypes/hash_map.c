@@ -249,3 +249,5 @@ key_elem_t* hash_map_iter(struct rootsim_hash_map_t *hmap, map_size_t *closure)
 	*closure = 0;
 	return NULL;
 }
+
+

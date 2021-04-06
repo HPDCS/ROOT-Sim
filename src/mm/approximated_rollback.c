@@ -75,7 +75,7 @@ bool CoreMemoryCheck(void *address)
 	malloc_area *m_area = malloc_area_get(address, &chunk);
 	if (m_area == NULL)
 	{
-		rootsim_error(true, "Please, supply an allocated address and range to the CoreMemoryCheck API");
+		return false;
 	}
 	bool ret = bitmap_check(m_area->coredata_bitmap, chunk);
 	switch_to_application_mode();
@@ -126,7 +126,7 @@ void event_approximation_mark(const struct lp_struct *lp, msg_t *event)
 		return;
 	}
 
-	if (is_approximated){
+	if (is_approximated) {
 		statistics_post_data(lp, STAT_APPROX_PHASE, 1.0);
 	} else {
 		statistics_post_data(lp, STAT_PREC_PHASE, 1.0);
