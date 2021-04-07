@@ -13,16 +13,19 @@
 #include <stdio.h>
 
 static bool approximated = true;
+static bool autonomic = false;
 static FILE *stats_file;
 
 static unsigned class_stats[1600][END_TIME][5];
 
 enum{
-	OPT_PREC = 128 /// this tells argp to not assign short options
+	OPT_PREC = 128, /// this tells argp to not assign short options
+	OPT_AUTON
 };
 
 const struct argp_option model_options[] = {
 		{"precise-mode", OPT_PREC, NULL, 0, NULL, 0},
+		{"autonomic-mode", OPT_AUTON, NULL, 0, NULL, 0},
 		{0}
 };
 
@@ -40,17 +43,27 @@ static error_t model_parse(int key, char *arg, struct argp_state *state) {
 	switch (key) {
 		case OPT_PREC:
 			approximated = false;
-		break;
+			break;
+
+		case OPT_AUTON:
+			approximated = false;
+			autonomic = true;
+			break;
 
 		case ARGP_KEY_SUCCESS:
 			printf("\t* ROOT-Sim's TBC model - Current Configuration *\n");
 			printf("approximated: %d\n", approximated);
+			printf("autonomic: %d\n", autonomic);
 			stats_file = fopen("tbc_stats.txt", "a");
 			if(!stats_file){
 				printf("Unable to open tbc stats file");
 				exit(EXIT_FAILURE);
 			}
-			fprintf(stats_file, "*** %s\n", approximated ? "approximated" : "precise");
+			if (autonomic) {
+				fprintf(stats_file, "*** autonomic\n");
+			} else {
+				fprintf(stats_file, "*** %s\n", approximated ? "approximated" : "precise");
+			}
 			break;
 
 		default:
@@ -139,7 +152,15 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type,
 			}
 			ScheduleNewEvent(me, now + 1.25 + Random()/2, MIDNIGHT, NULL, 0);
 			ScheduleNewEvent(me, 1.0, STATS_COMPUTE, NULL, 0);
-			RollbackModeSet(APPROXIMATED);
+
+			if (autonomic) {
+				RollbackModeSet(AUTONOMIC);
+			} else if (approximated) {
+				RollbackModeSet(APPROXIMATED);
+			} else {
+				RollbackModeSet(PRECISE);
+			}
+			
 			break;
 
 		case STATS_COMPUTE:

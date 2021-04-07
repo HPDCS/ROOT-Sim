@@ -8,6 +8,7 @@ static unsigned max_buffers = MAX_BUFFERS;
 static unsigned max_buffer_size = MAX_BUFFER_SIZE;
 static unsigned complete_events = COMPLETE_EVENTS;
 static bool 	new_mode = true,
+		autonomic = false,
 		approximated = true;
 static double 	tau = TAU,
 		send_probability = SEND_PROBABILITY,
@@ -23,7 +24,8 @@ enum{
 	OPT_DEALLOCP,
 	OPT_EVT,
 	OPT_MODE,
-	OPT_PREC
+	OPT_PREC,
+	OPT_AUTON
 };
 
 const struct argp_option model_options[] = {
@@ -35,7 +37,8 @@ const struct argp_option model_options[] = {
 		{"dealloc-probability", OPT_DEALLOCP, "DOUBLE", 0, NULL, 0},
 		{"complete-events", 	OPT_EVT, "INT", 0, NULL, 0},
 		{"old-mode", 		OPT_MODE, NULL, 0, NULL, 0},
-		{"precise-mode", OPT_PREC, NULL, 0, NULL, 0},
+		{"precise-mode", 	OPT_PREC, NULL, 0, NULL, 0},
+		{"autonomic-mode", 	OPT_AUTON, NULL, 0, NULL, 0},
 		{0}
 };
 
@@ -67,6 +70,11 @@ static error_t model_parse(int key, char *arg, struct argp_state *state) {
 			approximated = false;
 		break;
 
+		case OPT_AUTON:
+			autonomic = true;
+			approximated = false;
+		break;
+
 		case ARGP_KEY_SUCCESS:
 			printf("\t* ROOT-Sim's PHOLD Benchmark - Current Configuration *\n");
 			printf("old-mode: %s\n"
@@ -76,10 +84,11 @@ static error_t model_parse(int key, char *arg, struct argp_state *state) {
 				"send-probability: %lf\n"
 				"alloc-probability: %lf\n"
 				"dealloc-probability: %lf\n"
-				"approximated: %d\n",
+				"approximated: %d\n"
+				"autonomic: %d\n",
 				new_mode ? "false" : "true",
 				max_buffers, max_buffer_size, tau,
-				send_probability, alloc_probability, dealloc_probability, approximated);
+				send_probability, alloc_probability, dealloc_probability, approximated, autonomic);
 			break;
 
 		default:
@@ -125,7 +134,14 @@ void ProcessEvent(unsigned me, simtime_t now, int event_type, unsigned *event_co
 				}
 			}
 
-			RollbackModeSet(AUTONOMIC);
+			if (autonomic) {
+				RollbackModeSet(AUTONOMIC);	
+			} else if (approximated) {
+				RollbackModeSet(APPROXIMATED);
+			} else {
+				RollbackModeSet(PRECISE);
+			}
+			
 
 			ScheduleNewEvent(me, 20 * Random(), LOOP, NULL, 0);
 			break;

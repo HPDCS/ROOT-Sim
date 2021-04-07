@@ -119,7 +119,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, event_content_
 
 			state->ta = ref_ta;
 
-                        RollbackModeSet(approximated);
+                        RollbackModeSet(APPROXIMATED);
 
 			// Start the simulation
 			timestamp = (simtime_t) (20 * Random());
