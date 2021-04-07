@@ -56,13 +56,9 @@ buffer* deallocate_buffer(buffer *head, unsigned i)
 
 	if (prev != NULL) {
 		prev->next = to_free->next;
-		free(to_free->data);
-		free(to_free);
 		return head;
 	}
 
 	prev = head->next;
-        free(to_free->data);
-        free(to_free);
 	return prev;
 }
