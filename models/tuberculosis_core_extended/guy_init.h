@@ -16,9 +16,9 @@ typedef struct _init_t init_t;
 void guy_init(void);
 void guy_on_init(init_t *init_data, region_t *region);
 
-void init_infected(guy_t *guy);
-void init_sick(guy_t *guy, simtime_t now);
-void init_treatment(guy_t *guy);
-void init_treated(guy_t *guy);
+void init_infected(struct guy_t *guy, region_t *);
+void init_sick(struct guy_t *guy, region_t *, simtime_t now);
+void init_treatment(struct guy_t *guy, region_t *);
+void init_treated(struct guy_t *guy, region_t *);
 
 #endif /* MODELS_TUBERCOLOSIS_GUY_INIT_H_ */

@@ -8,6 +8,11 @@
 #ifndef MODELS_TUBERCOLOSIS_PARAMETERS_H_
 #define MODELS_TUBERCOLOSIS_PARAMETERS_H_
 
+
+#define DataAgent VAFFANCULO
+#define IterAgents IteraSuStocazzo
+
+
 #define AGE_GROUPS 11
 
 /* Initial values */

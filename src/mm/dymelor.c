@@ -97,6 +97,7 @@ malloc_state *malloc_state_init(void)
 	state->is_approximated = false;
 	state->want_approximated = false;
 	state->approximated_log_size = sizeof(malloc_state);
+	state->approximated_mode = PRECISE;
 #endif
 	state->areas = rsalloc(state->max_num_areas * sizeof(malloc_area));
 	if (unlikely(state->areas == NULL)) {

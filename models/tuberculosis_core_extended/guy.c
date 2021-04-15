@@ -5,8 +5,12 @@
  *      Author: andrea
  */
 
+#include <assert.h>
+#include "application.h"
 #include "guy.h"
 #include "parameters.h"
+
+static const double move_avg = 2.0;
 
 // this flags are used in the infection structure, read below for more infos
 enum _infl_t{
@@ -24,8 +28,66 @@ struct _infection_t{
 	rootsim_bitmap flags[bitmap_required_size(infl_count)];
 };
 
+static unsigned int find_neighbhour(region_t *region)
+{
+	const unsigned neighbours = DirectionsCount();
+	unsigned int tentative, direction;
+
+	do {
+		direction = neighbours * Random() + 1;
+		tentative = GetReceiver(region->me, direction, false);
+	} while(tentative == DIRECTION_INVALID);
+
+	return tentative;
+}
+
+void schedule_guy_for_leave(region_t *region, struct guy_t *guy)
+{
+	struct guy_msg_t msg;
+	msg.id = guy->id;
+	msg.state = guy->state;
+	msg.dest = find_neighbhour(region);
+
+	ScheduleNewEvent(region->me, region->now + Expent(move_avg), GUY_LEAVE, &msg, sizeof(msg));
+}
+
+void guy_remove_entry(struct guy_t **head, struct guy_t *const entry)
+{
+	while((*head) != entry) {
+		head = &(*head)->next;
+	}
+	*head = entry->next;
+	free(entry);
+}
+
+void guy_init_list(struct guy_t **const head)
+{
+	*head = malloc(sizeof(**head));
+	memset(*head, 1, sizeof(**head));
+	(*head)->next = NULL;
+}
+
+void guy_fini_list(struct guy_t **head)
+{
+	while(*head)
+		guy_remove_entry(head, *head);
+}
+
+struct guy_t *guy_list_head(struct guy_t **const head)
+{
+	return (*head)->next;
+}
+
+struct guy_t *guy_add_head(struct guy_t **head, struct guy_t *node)
+{
+	node->next = (*head)->next;
+	(*head)->next = node;
+
+	return node;
+}
+
 // this handles the infection step done by guys in the sick state
-static void infect(unsigned me, guy_t *guy, simtime_t now){
+static void infect(unsigned me, struct guy_t *guy, simtime_t now){
 	// prepare infection data
 	infection_t inf_data = {0};
 	// set gender
@@ -61,8 +123,7 @@ static void infect(unsigned me, guy_t *guy, simtime_t now){
 	}
 }
 
-static void guy_sick_update(agent_t agent, unsigned me, simtime_t now, region_t *region){
-	guy_t *guy = DataAgent(agent, NULL);
+static void guy_sick_update(struct guy_t *guy, unsigned me, simtime_t now, region_t *region){
 	// we check whether this is a sick guy, else we exit
 	if(!bitmap_check(guy->flags, f_sick) || bitmap_check(guy->flags, f_treatment))
 		return;
@@ -86,14 +147,14 @@ static void guy_sick_update(agent_t agent, unsigned me, simtime_t now, region_t 
 }
 
 // this sets the guy with the time on when to start the treatment
-void define_diagnose(guy_t *guy, simtime_t now){
+void define_diagnose(struct guy_t *guy, simtime_t now){
 	double delay = Normal()*diagnose_std + diagnose_mean[bitmap_check(guy->flags, f_foreigner)];
 	// with our data this is extremely rare, but why risk a very rare bug for something that simple?
 	delay = delay < 0 ? 0: delay;
 	guy->treatment_day = now + delay;
 }
 
-void set_risk_factors(guy_t *guy){
+void set_risk_factors(struct guy_t *guy){
 	// set risks factor
 	if(Random() < p_HIV)
 		bitmap_set(guy->flags, f_has_hiv);
@@ -111,7 +172,7 @@ void set_risk_factors(guy_t *guy){
 		bitmap_reset(guy->flags, f_has_diabetes);
 }
 
-void compute_relapse_p(guy_t *guy, simtime_t now){
+void compute_relapse_p(struct guy_t *guy, simtime_t now){
 	// pre-computed value
 	// static const double p_scale = (1 - p_relapse_min)/(t_treatment_max - t_treatment_min);
 	static const double p_scale = (1 - 0.01)/(180 - 15);
@@ -122,8 +183,7 @@ void compute_relapse_p(guy_t *guy, simtime_t now){
 	guy->p_relapse /= 714;
 }
 
-static bool guy_infected_update(agent_t agent, region_t *region, simtime_t now){
-	guy_t *guy = DataAgent(agent, NULL);
+static bool guy_infected_update(struct guy_t *guy, region_t *region, simtime_t now){
 	// we check whether this is a infected guy, else we exit
 	if(bitmap_check(guy->flags, f_sick) || bitmap_check(guy->flags, f_treatment))
 		return false;
@@ -131,7 +191,7 @@ static bool guy_infected_update(agent_t agent, region_t *region, simtime_t now){
 	// we check whether this guy is healing since he has reached the maximum infection time
 	if(now >= guy->infection_day + t_infected_max){
 		// we don't need this agent anymore...
-		KillAgent(agent);
+//		KillAgent(agent);
 		// ...since he becomes a healthy person
 		region->healthy++;
 		if (region->infected > 0) {
@@ -184,8 +244,7 @@ static bool guy_infected_update(agent_t agent, region_t *region, simtime_t now){
 	return false;
 }
 
-static void guy_treatment_update(agent_t agent, simtime_t now, region_t *region){
-	guy_t *guy = DataAgent(agent, NULL);
+static void guy_treatment_update(struct guy_t *guy, simtime_t now, region_t *region){
 	// we check whether this is a guy under treatment, else we exit
 	if(!bitmap_check(guy->flags, f_sick) || !bitmap_check(guy->flags, f_treatment))
 		return;
@@ -206,8 +265,7 @@ static void guy_treatment_update(agent_t agent, simtime_t now, region_t *region)
 	}
 }
 
-static bool guy_treated_update(agent_t agent, region_t *region, simtime_t now){
-	guy_t *guy = DataAgent(agent, NULL);
+static bool guy_treated_update(struct guy_t *guy, region_t *region, simtime_t now){
 	// we check whether this is a treated guy, else we exit
 	if(bitmap_check(guy->flags, f_sick) || !bitmap_check(guy->flags, f_treatment))
 		return false;
@@ -218,7 +276,7 @@ static bool guy_treated_update(agent_t agent, region_t *region, simtime_t now){
 
 	if(now >= t_to_healthy + guy->treatment_day) {
 		// this guy can either recover...
-		KillAgent(agent);
+//		KillAgent(agent);
 		region->healthy++;
 		//TODO: decrement here region->treated
 		return true;
@@ -241,18 +299,18 @@ static bool guy_treated_update(agent_t agent, region_t *region, simtime_t now){
 // switch to the "under treatment" state,
 // then switch to the "treated" state, and then finally switch back to
 // the "sick" state, all in a single iteration of this function.
-void guy_on_visit(agent_t agent, unsigned me, region_t *region, simtime_t now){
+void guy_on_visit(struct guy_t *guy, unsigned me, region_t *region, simtime_t now){
 
-	guy_sick_update(agent, me, now, region);
+	guy_sick_update(guy, me, now, region);
 
-	if(guy_infected_update(agent, region, now))
+	if(guy_infected_update(guy, region, now))
 		return; // the agent pointer is invalid cause we freed the agent
 
-	guy_treatment_update(agent, now, region);
-	if(guy_treated_update(agent, region, now))
+	guy_treatment_update(guy, now, region);
+	if(guy_treated_update(guy, region, now))
 		return;
 
-	ScheduleNewLeaveEvent(now + 0.75 + Random()/2, GUY_LEAVE, agent);
+//	ScheduleNewLeaveEvent(now + 0.75 + Random()/2, GUY_LEAVE, guy);
 }
 
 static double die_probability(unsigned age){
@@ -265,9 +323,24 @@ static double die_probability(unsigned age){
 	return p_die[2];
 }
 
-void guy_on_leave(agent_t agent, simtime_t now, region_t *region){
-	guy_t *guy = DataAgent(agent, NULL);
+struct guy_t *find_guy_from_id(region_t *region, struct guy_msg_t *guy_msg)
+{
+	struct guy_t *list = region->agents[guy_msg->state];
 
+	struct guy_t *current = guy_list_head(&list);
+	while(current) {
+		if(current->id == guy_msg->id)
+			break;
+		current = current->next;
+	}
+	assert(current->id == guy_msg->id);
+	return current;
+}
+
+
+void guy_on_leave(struct guy_msg_t *guy_msg, simtime_t now, region_t *region)
+{
+	struct guy_t *guy = find_guy_from_id(region, guy_msg);
 	bool guy_dies = false;
 	bool sick = bitmap_check(guy->flags, f_sick);
 	bool treatment = bitmap_check(guy->flags, f_treatment);
@@ -298,11 +371,9 @@ void guy_on_leave(agent_t agent, simtime_t now, region_t *region){
 			//TODO: decrement region->treated
 		}
 
-		KillAgent(agent);
-		unsigned one = 1;
-		ScheduleNewEvent(Random()*RegionsCount(), now + 0.001, RECEIVE_HEALTHY, &one, sizeof(unsigned));
-	}else{
-		EnqueueVisit(agent, FindReceiver(), GUY_VISIT);
+		guy_remove_entry(&(region->agents[guy_msg->state]), guy);
+	} else {
+		ScheduleNewEvent(guy_msg->dest, region->now, GUY_VISIT, guy, sizeof(*guy));
 	}
 }
 
@@ -354,8 +425,7 @@ unsigned infected_gender_origin(infection_t *inf){
 
 // this handles an infection message
 void guy_on_infection(infection_t *inf, region_t *region, simtime_t now){
-	agent_t agent;
-	guy_t *guy;
+	struct guy_t *guy = NULL;
 	// as in the original model, each healthy person has the same probability
 	// of becoming infected (but we do this more efficiently using a binomial PRNG)
 	unsigned infections =
@@ -366,8 +436,8 @@ void guy_on_infection(infection_t *inf, region_t *region, simtime_t now){
 
 	while(infections--){
 		// boilerplate initialization
-		agent = SpawnAgent(sizeof(guy_t));
-		guy = DataAgent(agent, NULL);
+//		agent = SpawnAgent(sizeof(struct guy_t));
+//		guy = DataAgent(agent, NULL);
 		// set infection day
 		guy->infection_day = now;
 		// set age
@@ -392,24 +462,23 @@ void guy_on_infection(infection_t *inf, region_t *region, simtime_t now){
 		region->infected++;
 		//TODO: increment region->infected
 		// we immediately schedule the first agent hop
-		ScheduleNewLeaveEvent(now + 0.001, GUY_LEAVE, agent);
+//		ScheduleNewLeaveEvent(now + 0.001, GUY_LEAVE, guy); // TODO: guy rompe tutto: serve id?
 	}
 }
 
 void guy_stats(unsigned guy_counts[4])
 {
-	guy_counts[0] = 0;
-	guy_counts[1] = 0;
-	guy_counts[2] = 0;
-	guy_counts[3] = 0;
-	agent_t agent = 0;
-	unsigned tot = CountAgents();
-	uint32_t closure = 0;
-	while(IterAgents(&agent, &closure)){
-		guy_t *guy = DataAgent(agent, NULL);
-		guy_counts[2 * bitmap_check(guy->flags, f_sick) + bitmap_check(guy->flags, f_treatment)]++;
-		tot--;
-	}
-	if(tot)
-		printf("wrong iteration!");
+//	guy_counts[0] = 0;
+//	guy_counts[1] = 0;
+//	guy_counts[2] = 0;
+//	guy_counts[3] = 0;
+//	unsigned tot = CountAgents();
+//	uint32_t closure = 0;
+//	while(IterAgents(&agent, &closure)){
+//		struct guy_t *guy = DataAgent(agent, NULL); // TODO
+//		guy_counts[2 * bitmap_check(guy->flags, f_sick) + bitmap_check(guy->flags, f_treatment)]++;
+//		tot--;
+//	}
+//	if(tot)
+//		printf("wrong iteration!");
 }
