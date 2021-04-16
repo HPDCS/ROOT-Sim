@@ -384,7 +384,7 @@ static void reduce_stat_vector(struct stat_t *in, struct stat_t *inout, int *len
 static void stats_reduction_init(void)
 {
 	// This is a compilation time fail-safe
-	static_assert(offsetof(struct stat_t, gvt_round_time_max) == (sizeof(double) * 19), "The packing assumptions on struct stat_t are wrong or its definition has been modified");
+	static_assert(offsetof(struct stat_t, gvt_round_time_max) == (sizeof(double) * 35), "The packing assumptions on struct stat_t are wrong or its definition has been modified");
 
 	unsigned i;
 
