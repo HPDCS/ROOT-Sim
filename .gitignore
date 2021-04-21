@@ -66,3 +66,7 @@ modules.order
 
 .vscode/
 models/tuberculosis/tbc_stats.txt
+*.plt
+*.py
+*.dat
+*.txt

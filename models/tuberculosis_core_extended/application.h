@@ -9,31 +9,9 @@
 #define MODELS_TUBERCOLOSIS_APPLICATION_H_
 
 #include <ROOT-Sim.h>
+#include "guy.h"
 
 #define END_TIME 10
-
-enum agent_state {
-	HEALTHY,
-	SICK,
-	INFECTED,
-	TREATED,
-	TREATMENT,
-	END_STATES, // A dummy state to track the size of the enum
-};
-
-struct guy_t;
-
-typedef struct _region_t {
-	unsigned healthy;
-	unsigned infected;
-	unsigned sick;
-	unsigned treatment;
-	unsigned treated;
-	simtime_t now;
-	unsigned int me;
-	unsigned long long counter;
-	struct guy_t *agents[END_STATES];
-} region_t;
 
 enum _event_t {
 	RECEIVE_HEALTHY = INIT + 1,

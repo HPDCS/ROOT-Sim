@@ -13,12 +13,16 @@
 
 typedef struct _init_t init_t;
 
+struct _init_t {
+	unsigned agents_count[END_STATES];
+};
+
 void guy_init(void);
 void guy_on_init(init_t *init_data, region_t *region);
 
-void init_infected(struct guy_t *guy, region_t *);
-void init_sick(struct guy_t *guy, region_t *, simtime_t now);
-void init_treatment(struct guy_t *guy, region_t *);
-void init_treated(struct guy_t *guy, region_t *);
+void init_infected(struct guy_t *guy);
+void init_sick(struct guy_t *guy, simtime_t now);
+void init_treatment(struct guy_t *guy);
+void init_treated(struct guy_t *guy);
 
 #endif /* MODELS_TUBERCOLOSIS_GUY_INIT_H_ */

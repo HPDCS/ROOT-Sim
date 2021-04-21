@@ -92,6 +92,7 @@ extern bool RollbackModeCheck(void);
 extern void CoreMemoryUnmark(void *address);
 extern void CoreMemoryMark(void *address);
 extern bool CoreMemoryCheck(void *address);
+extern bool IsAllocatedMemoryCheck(void *address);
 
 /*********************************/
 /********TOPOLOGY*LIBRARY*********/

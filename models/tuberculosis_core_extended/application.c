@@ -95,46 +95,6 @@ unsigned random_binomial(unsigned trials, double p)
 	return 0;
 }
 
-// this is better than calling FindReceiver() for each healthy person
-//static void move_healthy_people(unsigned me, region_t *region, simtime_t now)
-//{
-//	// these are the theoretical neighbours (that is, NeighboursCount ignores borders)
-//	const unsigned neighbours = DirectionsCount();
-//	unsigned to_send, j, i = neighbours;
-//	// we use this to keep track of the already dispatched neighbours
-//	rootsim_bitmap explored[bitmap_required_size(neighbours)];
-//	bitmap_initialize(explored, neighbours);
-//	// now we count the actual neighbours TODO this is probably a common operation: APIFY IT!
-//	unsigned actual_neighbours = 0;
-//	while(i--) {
-//		if(GetReceiver(me, i, false) != DIRECTION_INVALID) {
-//			actual_neighbours++;
-//		} else
-//			bitmap_set(explored, i); // this way we won't ask for that direction again
-//	}
-//	// we do this in 2 rounds to minimize the effect of the bias of the binomial generator xxx: is it needed? Perform some tests!
-//	while(actual_neighbours) {
-//		// we pick a new random direction
-//		i = Random() * neighbours;
-//		if(bitmap_check(explored, i)) {
-//			continue;
-//		}
-//		// we mark this direction to "explored"
-//		bitmap_set(explored, i);
-//		// we compute the number of healthy people who choose this direction
-//		to_send = random_binomial(region->healthy, 1.0 / actual_neighbours);
-//		// remove to_send agents from the healthy list
-//		for(j = 0; j < to_send; j++)
-//			guy_remove_entry(&(region->agents[HEALTHY]), guy_list_head(&region->agents[HEALTHY]));
-//		// we send the actual event
-//		ScheduleNewEvent(GetReceiver(me, i, false), now, RECEIVE_HEALTHY, &to_send, sizeof(unsigned));
-//		// those people just left this region
-//		region->healthy -= to_send;
-//		// we processed a valid neighbour so we decrease the counter
-//		actual_neighbours--;
-//	}
-//}
-
 // we handle infects visits move at slightly randomized timesteps 1.0, 2.0, 3.0...
 // healthy people are moved at slightly randomized timesteps 0.5, 1.5, 2.5, 3.5...
 // this way we preserve the order of operation as in the original model
@@ -173,64 +133,32 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, union {
 			region->me = me;
 
 			// initialize lists
-			guy_init_list(&(region->agents[HEALTHY]));
-			guy_init_list(&(region->agents[SICK]));
-			guy_init_list(&(region->agents[INFECTED]));
-			guy_init_list(&(region->agents[TREATED]));
-			guy_init_list(&(region->agents[TREATMENT]));
+			int j = END_STATES;
+			while (j--) {
+				guy_init_list(&(region->agents[j]));
+			}
 
 			if(!me) {
 				// this function let LP0 coordinate the init phase
 				guy_init();
 				printf("INIT 0 complete\n");
 			}
-//			ScheduleNewEvent(me, now + 1.25 + Random() / 2, MIDNIGHT, NULL, 0);
-//			ScheduleNewEvent(me, 1.0, STATS_COMPUTE, NULL, 0);
 
 			break;
-
-//		case STATS_COMPUTE:
-//			if(now < END_TIME) {
-//				ScheduleNewEvent(me, now + 1.0, STATS_COMPUTE, NULL, 0);
-//			}
-//
-//			class_stats[me][(unsigned) now - 1][0] = state->healthy;
-//
-//			guy_stats(&class_stats[me][(unsigned) now - 1][1]);
-//			break;
-
-//		case MIDNIGHT:
-//			move_healthy_people(me, state, now);
-//			ScheduleNewEvent(me, now + 0.25 + Random() / 2, MIDNIGHT, NULL, 0);
-//			break;
-
-//		case RECEIVE_HEALTHY:
-//			state->healthy += *(payload.n);
-//			unsigned i = *(payload.n);
-//			while(i--) {
-//				struct guy_t *guy = NULL;
-//				if(!(guy = malloc(sizeof(*guy))))
-//					abort();
-//				memset(guy, 0, sizeof(*guy));
-//				// add the guy to the corresponding list
-//				guy_add_head(&(region->agents[HEALTHY]), guy);
-//			}
-//			break;
 
 		case INFECTION:
 			guy_on_infection(payload.i_m, state, now);
 			break;
 
 		case GUY_VISIT:
-//			guy_on_visit(*payload.agent, me, state, now);
 			guy = malloc(sizeof(*guy));
 			memcpy(guy, payload.agent, sizeof(*guy));
 			guy_add_head(&(state->agents[guy->state]), guy);
-			guy_on_visit(guy, me, state, now);
+			guy_on_visit(guy, me, state);
 			break;
 
 		case GUY_LEAVE:
-			guy_on_leave(payload.agent_msg, now, state);
+			guy_on_leave(payload.agent_msg, state);
 			break;
 
 		case GUY_INIT:
@@ -255,83 +183,14 @@ int OnGVT(unsigned int me, region_t *snapshot)
 	}
 
 	return snapshot->now > END_TIME;
-}
-
-void RestoreApproximated(void *ptr)
-{
-
-//	region_t *region = (region_t *) ptr;
-//	uint32_t closure = 0;
-//	unsigned sicks = region->sick;
-//	unsigned infecteds = region->infected;
-//	unsigned treateds = region->treated;
-//	unsigned treatments = region->treatment;
-//
-//	while(IterAgents(&agent, &closure)) {
-//		if(!agent) {
-//			agent = SpawnAgent(sizeof(struct guy_t));
-//		}
-//
-//		struct guy_t *guy = DataAgent(agent, NULL);
-//
-//		if(sicks > 0) {
-//			init_sick(guy, region->now * 1000);
-//			sicks--;
-//		} else {
-//			if(infecteds > 0) {
-//				init_infected(guy);
-//				infecteds--;
-//			} else {
-//				if(treatments > 0) {
-//					init_treatment(guy);
-//					treatments--;
-//				} else {
-//					if(treateds > 0) {
-//						init_treated(guy);
-//						treateds--;
-//					}
-//				}
-//			}
-//		}
-//	}
-//
-//	if(sicks > 0) {
-//		reinitialize_missing_agents(sicks, SICK, region->now);
-//	}
-//	if(infecteds > 0) {
-//		reinitialize_missing_agents(infecteds, INFECTED, 0.0);
-//	}
-//	if(treatments > 0) {
-//		reinitialize_missing_agents(treatments, TREATMENT, 0.0);
-//	}
-//	if(treateds > 0) {
-//		reinitialize_missing_agents(treateds, TREATED, 0.0);
-//	}
 
 }
 
-void reinitialize_missing_agents(unsigned count, enum agent_state state, simtime_t now)
+void RestoreApproximated(void *ptr) 
 {
-//	while(count > 0) {
-//		agent_t agent = SpawnAgent(sizeof(struct guy_t)); // TODO
-//		struct guy_t *guy = DataAgent(agent, NULL);
-//		switch(state) {
-//			case SICK:
-//				init_sick(guy, now * 1000);
-//				break;
-//			case INFECTED:
-//				init_infected(guy);
-//				break;
-//			case TREATMENT:
-//				init_treatment(guy);
-//				break;
-//			case TREATED:
-//				init_treated(guy);
-//				break;
-//			default:
-//				break;
-//		}
-//		count--;
-//	}
-
+	region_t *region = ptr;
+	init_t init_data;
+	memcpy(&init_data.agents_count, &region->agents_count, sizeof(region->agents_count));
+	init_data.agents_count[SICK] = 0;
+	guy_on_init(&init_data, region);
 }

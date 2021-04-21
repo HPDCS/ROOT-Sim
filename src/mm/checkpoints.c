@@ -395,8 +395,9 @@ void restore_full(struct lp_struct *lp, void *ckpt)
 	statistics_post_data(lp, STAT_RECOVERY_TIME, (double)timer_value_micro(recovery_timer));
 
 #ifdef HAVE_APPROXIMATED_ROLLBACK
+	timer_restart(recovery_timer_core);
+	recovery_timer_core_delta += timer_value_micro(recovery_timer_core);
 	statistics_post_data(lp, STAT_RECOVERY_TIME_CORE, (double)recovery_timer_core_delta);
-	FreeApproximatedAgents(lp);
 #endif
 
 }
@@ -422,7 +423,7 @@ void log_restore(struct lp_struct *lp, state_t *state_queue_node)
 	restore_full(lp, state_queue_node->log);
 #ifdef HAVE_APPROXIMATED_ROLLBACK
 	timer approx_recovery_timer;
-	if(lp->mm->m_state->is_approximated){
+	if(lp->mm->m_state->is_approximated) {
 		struct lp_struct *previous = current;
 		current = lp;
 		timer_start(approx_recovery_timer);

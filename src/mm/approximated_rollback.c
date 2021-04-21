@@ -82,6 +82,19 @@ bool CoreMemoryCheck(void *address)
 	return ret;
 }
 
+bool IsAllocatedMemoryCheck(void *address)
+{
+	if (unlikely(rootsim_config.serial))
+	{
+		return true;
+	}
+	switch_to_platform_mode();
+	int chunk;
+	malloc_area *m_area = malloc_area_get(address, &chunk);
+	switch_to_application_mode();
+	return m_area != NULL;
+}
+
 void RollbackModeSet(enum _rollback_mode_t mode)
 {
 	if (unlikely(rootsim_config.serial))
