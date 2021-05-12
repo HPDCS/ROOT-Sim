@@ -8,7 +8,7 @@
 #include "guy_init.h"
 #include "parameters.h"
 
-const double scale_factor = 30.0;
+const double scale_factor = 50.0;
 
 void guy_init(void)
 {
@@ -154,8 +154,6 @@ static struct guy_t *init_guy(region_t *region, enum agent_state state)
 	region->agents_count[state]++;
 
 	guy_mark_by_state(guy);
-
-	schedule_guy_for_leave(region, guy);
 	
 	return guy;
 }

@@ -99,15 +99,11 @@ unsigned random_binomial(unsigned trials, double p)
 // healthy people are moved at slightly randomized timesteps 0.5, 1.5, 2.5, 3.5...
 // this way we preserve the order of operation as in the original model
 void ProcessEvent(unsigned int me, simtime_t now, int event_type, union {
-	struct guy_msg_t *agent_msg;
-	struct guy_t *agent;
-	unsigned *n;
+	struct guy_t *agents;
 	infection_t *i_m;
 	init_t *in_m;
 } payload, unsigned int event_size, region_t *state)
 {
-	struct guy_t *guy;
-
 	if(event_type != INIT) {
 		state->now = now;
 	}
@@ -150,19 +146,17 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, union {
 			guy_on_infection(payload.i_m, state, now);
 			break;
 
-		case GUY_VISIT:
-			guy = malloc(sizeof(*guy));
-			memcpy(guy, payload.agent, sizeof(*guy));
-			guy_add_head(&(state->agents[guy->state]), guy);
-			guy_on_visit(guy, me, state);
+		case GUY_RECV:
+			guy_recv(me, payload.agents, event_size, state);
 			break;
 
-		case GUY_LEAVE:
-			guy_on_leave(payload.agent_msg, state);
+		case GUY_MOVE:
+			guy_move(me, state);
 			break;
 
 		case GUY_INIT:
 			guy_on_init(payload.in_m, state);
+			guy_move(me, state);
 			break;
 
 		default:

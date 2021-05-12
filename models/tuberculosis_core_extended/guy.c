@@ -28,14 +28,6 @@ struct _infection_t{
 	rootsim_bitmap flags[bitmap_required_size(infl_count)];
 };
 
-void schedule_guy_for_leave(region_t *region, struct guy_t *guy)
-{
-	struct guy_msg_t msg;
-	msg.leaving_guy = guy;
-	msg.id = guy->id;
-	ScheduleNewEvent(region->me, region->now + Expent(move_avg), GUY_LEAVE, &msg, sizeof(msg));
-}
-
 void guy_remove_entry(struct guy_t *const entry)
 {
 	if (entry->prev) {
@@ -50,15 +42,6 @@ void guy_remove_entry(struct guy_t *const entry)
 void guy_init_list(struct guy_t *const head)
 {
 	memset(head, 0, sizeof(*head));
-	head->next = NULL;
-}
-
-void guy_fini_list(struct guy_t **head)
-{
-	while((*head)->next)
-		guy_remove_entry((*head)->next);
-	
-	free(*head);
 }
 
 struct guy_t *guy_list_head(struct guy_t *const head)
@@ -68,8 +51,8 @@ struct guy_t *guy_list_head(struct guy_t *const head)
 
 struct guy_t *guy_add_head(struct guy_t *head, struct guy_t *node)
 {
-	if (node->next) {
-		node->next->prev = node;
+	if (head->next) {
+		head->next->prev = node;
 	}
 	node->next = head->next;
 	head->next = node;
@@ -275,6 +258,19 @@ static bool guy_treated_update(struct guy_t *guy, region_t *region, simtime_t no
 	// ... or finally live "normally" for another day
 }
 
+void guy_recv(unsigned me, struct guy_t *agents, unsigned msg_size, region_t *region) {
+	unsigned agents_count = msg_size / sizeof(struct guy_t);
+
+	while (agents_count--) {
+		struct guy_t *curr_guy = malloc(sizeof(struct guy_t));
+		memcpy(curr_guy, &agents[agents_count], sizeof(struct guy_t));
+		guy_add_head(&region->agents[curr_guy->state], curr_guy);
+		region->agents_count[curr_guy->state]++;
+		guy_on_visit(curr_guy, me, region);
+	}
+
+}
+
 // this is the routine every guy follows when he enters a region.
 // I remained faithful to the original model:
 // for example, a guy in the "sick" state can potentially
@@ -288,7 +284,6 @@ void guy_on_visit(struct guy_t *guy, unsigned me, region_t *region){
 	guy_treatment_update(guy, region->now, region);
 	guy_treated_update(guy, region, region->now);
 
-	schedule_guy_for_leave(region, guy);
 }
 
 static double die_probability(unsigned age){
@@ -301,23 +296,66 @@ static double die_probability(unsigned age){
 	return p_die[2];
 }
 
-struct guy_t *find_guy_from_id(region_t *region, struct guy_msg_t *guy_msg)
+void guy_move(unsigned me, region_t *region) 
 {
-	struct guy_t * guy = guy_msg->leaving_guy;
-	if (!IsAllocatedMemoryCheck(guy) || guy->id != guy_msg->id) {
-		return NULL;
+	int neighbours = NeighboursCount(me);
+	struct guy_t agents[neighbours];
+	memset(agents, 0, sizeof(struct guy_t) * neighbours);
+	
+	int agents_count[neighbours];
+	memset(agents_count, 0, sizeof(int) * neighbours);
+
+	int j = END_STATES;
+	while (j--) {
+		struct guy_t *curr_agent = region->agents[j].next;
+		while (curr_agent) {
+			if (curr_agent->next == curr_agent) {
+				abort();
+			}
+			struct guy_t *old_agent = curr_agent;
+			if (guy_on_leave(old_agent, region)) {
+				curr_agent = curr_agent->next;
+				free(old_agent);
+				continue;	
+			} 
+			int i = Random() * neighbours;
+			curr_agent = curr_agent->next;
+			guy_add_head(&agents[i], old_agent);
+			agents_count[i]++;
+		}
 	}
 
-	return guy;
+	direction_t direction = 0;
+	while (neighbours--){
+		struct guy_t *bundle = malloc(agents_count[neighbours] * sizeof(struct guy_t));
+		struct guy_t *curr_agent = agents[neighbours].next;
+		int k = 0;
+		while (curr_agent) {
+			memcpy(&bundle[k], curr_agent, sizeof(struct guy_t));
+			struct guy_t *old_agent = curr_agent;
+			curr_agent = curr_agent->next;
+			free(old_agent);
+			k++;
+		}
+		unsigned dest;
+		do {
+			dest = GetReceiver(me, direction++, false);
+		} while (dest == DIRECTION_INVALID);
+
+		ScheduleNewEvent(dest, region->now, GUY_RECV, bundle, agents_count[neighbours] * sizeof(struct guy_t));
+		free(bundle);
+	}
+
+	memset(region->agents_count, 0, sizeof(region->agents_count));
+	memset(region->agents, 0, sizeof(region->agents));
+
+	ScheduleNewEvent(me, region->now + Random() * move_avg * 2, GUY_MOVE, NULL, 0);
+	
 }
 
-
-void guy_on_leave(struct guy_msg_t *guy_msg, region_t *region)
+bool guy_on_leave(struct guy_t *guy, region_t *region)
 {
-	struct guy_t *guy = find_guy_from_id(region, guy_msg);
-	if (guy == NULL) {
-		return;
-	}
+
 	bool guy_dies = false;
 	if(guy->state != SICK){
 		// non-sick guy case
@@ -327,15 +365,7 @@ void guy_on_leave(struct guy_msg_t *guy_msg, region_t *region)
 		guy_dies = Random() < p_die_sick;
 	}
 
-	if(guy_dies){
-		//xxx: in the original model, a dead agent became a new healthy one. 
-		//	We're letting them die now! >:)
-		region->agents_count[guy->state]--;
-		guy_remove_entry(guy);
-		free(guy);
-	} else {
-		ScheduleNewEvent(FindReceiver(), region->now, GUY_VISIT, guy, sizeof(*guy));
-	}
+	return guy_dies;
 }
 
 // this function does some shenanigans on the some parameters array

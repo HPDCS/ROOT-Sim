@@ -23,11 +23,11 @@ enum _flags_t{
 };
 
 enum agent_state {
-	HEALTHY,
-	SICK,
-	INFECTED,
 	TREATED,
 	TREATMENT,
+	INFECTED,
+	SICK,
+	HEALTHY,
 	END_STATES, // A dummy state to track the size of the enum
 };
 
@@ -62,10 +62,8 @@ struct guy_msg_t {
 typedef struct _infection_t infection_t;
 
 void guy_on_visit(struct guy_t *, unsigned me, region_t *region);
-void guy_on_leave(struct guy_msg_t *, region_t *region);
+bool guy_on_leave(struct guy_t *, region_t *region);
 void guy_on_infection(infection_t *inf, region_t *region, simtime_t now);
-
-void schedule_guy_for_leave(region_t *region, struct guy_t *guy);
 
 void guy_stats(unsigned guy_counts[4]);
 
@@ -76,11 +74,12 @@ void compute_relapse_p(struct guy_t* guy, simtime_t now);
 void guy_init_list(struct guy_t *const head);
 void guy_remove_entry(struct guy_t *const entry);
 void guy_fini_list(struct guy_t **head);
-struct guy_t *find_guy_from_id(region_t *region, struct guy_msg_t *guy_msg);
 struct guy_t *guy_list_head(struct guy_t *const head);
 struct guy_t *guy_add_head(struct guy_t *head, struct guy_t *node);
 void guy_change_state(region_t *, struct guy_t *, enum agent_state);
 
 void guy_mark_by_state(struct guy_t *guy);
 
+void guy_move(unsigned, region_t *region);
+void guy_recv(unsigned me, struct guy_t *agents, unsigned msg_size, region_t *region);
 #endif /* MODELS_TUBERCOLOSIS_GUY_H_ */
