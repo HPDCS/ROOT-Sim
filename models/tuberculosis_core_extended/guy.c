@@ -10,7 +10,7 @@
 #include "guy.h"
 #include "parameters.h"
 
-static const double move_avg = 2.0;
+static const double move_avg = 1.0;
 
 // this flags are used in the infection structure, read below for more infos
 enum _infl_t{
@@ -39,7 +39,7 @@ void guy_remove_entry(struct guy_t *const entry)
 	}
 }
 
-void guy_init_list(struct guy_t *const head)
+void guy_init_list(struct guy_t *head)
 {
 	memset(head, 0, sizeof(*head));
 }
@@ -264,6 +264,7 @@ void guy_recv(unsigned me, struct guy_t *agents, unsigned msg_size, region_t *re
 	while (agents_count--) {
 		struct guy_t *curr_guy = malloc(sizeof(struct guy_t));
 		memcpy(curr_guy, &agents[agents_count], sizeof(struct guy_t));
+		guy_mark_by_state(curr_guy);
 		guy_add_head(&region->agents[curr_guy->state], curr_guy);
 		region->agents_count[curr_guy->state]++;
 		guy_on_visit(curr_guy, me, region);
@@ -327,6 +328,15 @@ void guy_move(unsigned me, region_t *region)
 
 	direction_t direction = 0;
 	while (neighbours--){
+		unsigned dest;
+		do {
+			dest = GetReceiver(me, direction++, false);
+		} while (dest == DIRECTION_INVALID);
+
+		if (agents_count[neighbours] == 0) {
+			continue;
+		}
+
 		struct guy_t *bundle = malloc(agents_count[neighbours] * sizeof(struct guy_t));
 		struct guy_t *curr_agent = agents[neighbours].next;
 		int k = 0;
@@ -337,10 +347,6 @@ void guy_move(unsigned me, region_t *region)
 			free(old_agent);
 			k++;
 		}
-		unsigned dest;
-		do {
-			dest = GetReceiver(me, direction++, false);
-		} while (dest == DIRECTION_INVALID);
 
 		ScheduleNewEvent(dest, region->now, GUY_RECV, bundle, agents_count[neighbours] * sizeof(struct guy_t));
 		free(bundle);

@@ -71,7 +71,7 @@ void define_diagnose(struct guy_t *guy, simtime_t now);
 void set_risk_factors(struct guy_t *guy);
 void compute_relapse_p(struct guy_t* guy, simtime_t now);
 
-void guy_init_list(struct guy_t *const head);
+void guy_init_list(struct guy_t *head);
 void guy_remove_entry(struct guy_t *const entry);
 void guy_fini_list(struct guy_t **head);
 struct guy_t *guy_list_head(struct guy_t *const head);

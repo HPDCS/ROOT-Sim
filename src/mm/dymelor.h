@@ -131,7 +131,6 @@ typedef struct _malloc_state malloc_state;
 
 #define get_top_malloc_area(ptr) **((malloc_area ***)ptr - 1)
 
-#define PER_LP_PREALLOCATED_MEMORY (262144L * PAGE_SIZE)	// This should be power of 2 multiplied by a page size. This is 1GB per LP.
 #define BUDDY_GRANULARITY PAGE_SIZE	// This is the smallest chunk released by the buddy in bytes. PER_LP_PREALLOCATED_MEMORY/BUDDY_GRANULARITY must be integer and a power of 2
 
 

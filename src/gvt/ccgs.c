@@ -128,16 +128,16 @@ void ccgs_compute_snapshot(state_t * time_barrier_pointer[], simtime_t gvt)
 		// TODO: realign LogState and RestoreState to be compliant with the execution in the committed portion
 
 		// Log the current state so that after we can restore it.
-		current = lp;
-		temporary_log.log = log_state(lp);
-		temporary_log.state = lp->state;
-		temporary_log.base_pointer = lp->current_base_pointer;
+		// current = lp;
+		// temporary_log.log = log_state(lp);
+		// temporary_log.state = lp->state;
+		// temporary_log.base_pointer = lp->current_base_pointer;
 
-		// Restore the time barrier state
-		lp->state = time_barrier_pointer[i]->state;
-		lp->current_base_pointer =
-		    time_barrier_pointer[i]->base_pointer;
-		log_restore(lp, time_barrier_pointer[i]);
+		// // Restore the time barrier state
+		// lp->state = time_barrier_pointer[i]->state;
+		// lp->current_base_pointer =
+		//     time_barrier_pointer[i]->base_pointer;
+		// log_restore(lp, time_barrier_pointer[i]);
 
 /*
 		// If the LP is not blocked, we can reconstruct the state exactly to the GVT
@@ -161,11 +161,11 @@ void ccgs_compute_snapshot(state_t * time_barrier_pointer[], simtime_t gvt)
 		    lp->OnGVT(lp->gid.to_int, lp->current_base_pointer);
 		check_res &= lps_termination[lp->lid.to_int];
 
-		// Restore the current state
-		lp->state = temporary_log.state;
-		lp->current_base_pointer = temporary_log.base_pointer;
-		log_restore(lp, &temporary_log);
-		log_delete(temporary_log.log);
+		// // Restore the current state
+		// lp->state = temporary_log.state;
+		// lp->current_base_pointer = temporary_log.base_pointer;
+		// log_restore(lp, &temporary_log);
+		// log_delete(temporary_log.log);
 
 		// Early stop
 		if (rootsim_config.check_termination_mode == CKTRM_INCREMENTAL && !check_res) {

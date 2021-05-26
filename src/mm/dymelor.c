@@ -393,6 +393,7 @@ void do_free(struct lp_struct *lp, void *ptr)
 		rootsim_error(false, "double free() corruption or address not malloc'd\n");
 		abort();
 	}
+	memset(ptr, 0xe7, chunk_size - sizeof(void*));
 	bitmap_reset(m_area->use_bitmap, idx);
 
 #ifdef HAVE_APPROXIMATED_ROLLBACK

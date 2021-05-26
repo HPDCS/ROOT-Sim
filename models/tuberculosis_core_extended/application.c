@@ -181,10 +181,18 @@ int OnGVT(unsigned int me, region_t *snapshot)
 }
 
 void RestoreApproximated(void *ptr) 
-{
+{	
 	region_t *region = ptr;
 	init_t init_data;
-	memcpy(&init_data.agents_count, &region->agents_count, sizeof(region->agents_count));
+	memcpy(init_data.agents_count, region->agents_count, sizeof(region->agents_count));
+	int j = END_STATES;
+	while (j--) {
+		if (j == SICK)
+			continue;
+		region->agents_count[j] = 0;
+		region->agents[j].next = NULL;
+		region->agents[j].prev = NULL;
+	}
 	init_data.agents_count[SICK] = 0;
 	guy_on_init(&init_data, region);
 }
