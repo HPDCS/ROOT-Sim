@@ -348,7 +348,7 @@ void guy_move(unsigned me, region_t *region)
 			k++;
 		}
 
-		ScheduleNewEvent(dest, region->now, GUY_RECV, bundle, agents_count[neighbours] * sizeof(struct guy_t));
+		ScheduleNewEvent(dest, region->now + Random()/1000, GUY_RECV, bundle, agents_count[neighbours] * sizeof(struct guy_t));
 		free(bundle);
 	}
 
