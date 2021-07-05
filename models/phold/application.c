@@ -151,9 +151,10 @@ void ProcessEvent(unsigned me, simtime_t now, int event_type, unsigned *event_co
 			state_ptr->events++;
 			simtime_t timestamp = now + (Expent(tau));
 			ScheduleNewEvent(me, timestamp, LOOP, NULL, 0);
-			if(Random() < 0.2)
+			if(Random() < 0.2) {
+				timestamp = now + (Expent(tau));
 				ScheduleNewEvent(FindReceiver(), timestamp, LOOP, NULL, 0);
-
+			}
 			if(!new_mode){
 				volatile unsigned j = 0;
 				for(unsigned i = 0; i < LOOP_COUNT; i++) {
