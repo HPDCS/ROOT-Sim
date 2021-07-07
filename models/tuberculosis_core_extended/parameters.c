@@ -53,9 +53,6 @@ const unsigned diagnose_std = 4;
 const double p_abandon = 0.022;
 const double p_relapse_min = 0.01;
 
-/* Probability to infect an close individual */
-const double p_infect = 0.06;
-
 /* Parameters related to age class for new infected.
  * youngster (0-20), adult (20-60), elder (60-) */
 

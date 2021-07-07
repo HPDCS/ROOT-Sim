@@ -426,7 +426,7 @@ void guy_on_infection(infection_t *inf, region_t *region, simtime_t now){
 	// as in the original model, each healthy person has the same probability
 	// of becoming infected (but we do this more efficiently using a binomial PRNG)
 	unsigned infections =
-			random_binomial(region->agents_count[HEALTHY], (1 + bitmap_check(inf->flags, infl_smear))*p_infect);
+			random_binomial(region->agents_count[HEALTHY], (1 + bitmap_check(inf->flags, infl_smear))*infection_p);
 	// the infected guys of course diminish the healthy population
 	unsigned aux;
 

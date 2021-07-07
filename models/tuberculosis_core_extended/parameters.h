@@ -8,10 +8,10 @@
 #ifndef MODELS_TUBERCOLOSIS_PARAMETERS_H_
 #define MODELS_TUBERCOLOSIS_PARAMETERS_H_
 
+/* Defined and populated in application.c */
+extern double infection_p;
 
-#define DataAgent VAFFANCULO
-#define IterAgents IteraSuStocazzo
-
+#define P_INFECT 0.06
 
 #define AGE_GROUPS 11
 
