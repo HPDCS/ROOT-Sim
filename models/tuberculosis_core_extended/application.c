@@ -15,17 +15,18 @@
 
 static bool approximated = true;
 static bool autonomic = false;
+double infection_p = P_INFECT;
 static FILE *stats_file;
-
-static unsigned class_stats[1600][END_TIME][5];
 
 enum {
     OPT_PREC = 128, /// this tells argp to not assign short options
-    OPT_AUTON
+    OPT_AUTON,
+	OPT_INF
 };
 
 const struct argp_option model_options[] = {{"precise-mode",   OPT_PREC,  NULL, 0, NULL, 0},
-					    {"autonomic-mode", OPT_AUTON, NULL, 0, NULL, 0},
+					    {"autonomic-mode", OPT_AUTON, NULL, 0, NULL, 0}, 
+						{"infection-p", OPT_INF, "VALUE", 0, NULL, 0},
 					    {0}};
 
 #define HANDLE_ARGP_CASE(label, fmt, var)        \
@@ -50,11 +51,13 @@ static error_t model_parse(int key, char *arg, struct argp_state *state)
 			autonomic = true;
 			break;
 
+		HANDLE_ARGP_CASE(OPT_INF, "%lf", infection_p);
+
 		case ARGP_KEY_SUCCESS:
 			printf("\t* ROOT-Sim's TBC model - Current Configuration *\n");
 			printf("approximated: %d\n", approximated);
 			printf("autonomic: %d\n", autonomic);
-			stats_file = fopen("tbc_stats.txt", "a");
+			stats_file = fopen("tbc_stats.txt", "w");
 			if(!stats_file) {
 				printf("Unable to open tbc stats file");
 				exit(EXIT_FAILURE);
@@ -168,14 +171,11 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, union {
 
 int OnGVT(unsigned int me, region_t *snapshot)
 {
-	if(snapshot->now > END_TIME) {
-		for(unsigned i = 0; i < END_TIME; ++i) {
-			fprintf(stats_file, "%u %u %u %u %u %u %u\n", i, me, class_stats[me][i][0],
-				class_stats[me][i][1], class_stats[me][i][2], class_stats[me][i][3],
-				class_stats[me][i][4]);
-		}
-	}
-
+	
+	fprintf(stats_file, "%lf %u %u %u %u %u %u\n", snapshot->now, me, snapshot->agents_count[0],
+		snapshot->agents_count[1], snapshot->agents_count[2], snapshot->agents_count[3],
+		snapshot->agents_count[4]);
+	
 	return snapshot->now > END_TIME;
 
 }
