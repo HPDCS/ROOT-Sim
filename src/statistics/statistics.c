@@ -972,12 +972,12 @@ double computeCheckpointInterval(const struct lp_struct *lp, bool approx)
 	double tot_events = approx ? 
 				lp_stats[lp->lid.to_int].tot_events_approx :
 				lp_stats[lp->lid.to_int].tot_events;
-	double roll_freq = tot_rollbacks / (tot_events < DBL_EPSILON ? tot_events : 1); //F_r (or F_r_approx, according to @approx)
+	double roll_freq = tot_rollbacks / (tot_events > DBL_EPSILON ? tot_events : 1); //F_r (or F_r_approx, according to @approx)
 	double ckpt_time = approx ? 
 				lp_stats[lp->lid.to_int].ckpt_time_core : 
 				lp_stats[lp->lid.to_int].ckpt_time; //𝛿_s (or 𝛿_s_core, according to @approx)
 
-	return ceil(sqrt((2 * ckpt_time) / ((roll_freq * evnt_time) < DBL_EPSILON ? (roll_freq * evnt_time) : 1)));
+	return ceil(sqrt((2 * ckpt_time) / ((roll_freq * evnt_time) > DBL_EPSILON ? (roll_freq * evnt_time) : 1)));
 }
 
 /**
@@ -1000,26 +1000,26 @@ bool shouldSwitchApproximationMode(const struct lp_struct *lp)
 	double evnt_time = lp_stats[lp->lid.to_int].event_time;		//𝛿_e
 	double rec_time = lp_stats[lp->lid.to_int].recovery_time;	//𝛿_r
 	double rollbacks = lp_stats[lp->lid.to_int].tot_rollbacks;
-	double events = lp_stats[lp->lid.to_int].tot_events < DBL_EPSILON ?
+	double events = lp_stats[lp->lid.to_int].tot_events > DBL_EPSILON ?
 				lp_stats[lp->lid.to_int].tot_events : 1;
 	double roll_freq = rollbacks / events;
 
 	double numerator = (chi * evnt_time) +
-			   (ckpt_time / (chi < DBL_EPSILON ? chi : 1)) +
+			   (ckpt_time / (chi > DBL_EPSILON ? chi : 1)) +
 			   roll_freq * (rec_time + ((chi - 1) / 2) * evnt_time);
 
 	double chi_approx = computeCheckpointInterval(lp, true);				//χ_a
-	double alpha = chi / (chi_approx < DBL_EPSILON ? chi_approx : 1);				//α
+	double alpha = chi / (chi_approx > DBL_EPSILON ? chi_approx : 1);				//α
 	double ckpt_time_core = lp_stats[lp->lid.to_int].ckpt_time_core;			//𝛿_s_core
 	double roll_freq_appr = lp_stats[lp->lid.to_int].tot_rollbacks_approx /
-				(lp_stats[lp->lid.to_int].tot_events_approx < DBL_EPSILON ?
+				(lp_stats[lp->lid.to_int].tot_events_approx > DBL_EPSILON ?
 					lp_stats[lp->lid.to_int].tot_events_approx : 1);	//F_r_approx
 	double rec_time_core = lp_stats[lp->lid.to_int].recovery_time_core;			//𝛿_r_core
 	double restore_fn_time = lp_stats[lp->lid.to_int].restore_approx_time;			//𝛿_cf
 	
 	double denominator = alpha *
 			     (chi_approx * evnt_time +
-			      ckpt_time_core / (chi_approx < DBL_EPSILON ? chi_approx : 1) +
+			      ckpt_time_core / (chi_approx > DBL_EPSILON ? chi_approx : 1) +
 			      roll_freq_appr * (rec_time_core +
 						restore_fn_time +
 						(((chi_approx - 1) / 2) * evnt_time)));
