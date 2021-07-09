@@ -131,9 +131,11 @@ void event_approximation_mark(const struct lp_struct *lp, msg_t *event)
 		break;
 	case APPROXIMATED:
 		is_approximated = true;
+		updateCheckpointInterval(lp, true);
 		break;
 	case PRECISE:
 		is_approximated = false;
+		updateCheckpointInterval(lp, false);
 		break;
 	default:
 		return;
@@ -147,6 +149,11 @@ void event_approximation_mark(const struct lp_struct *lp, msg_t *event)
 
 	lp->mm->m_state->is_approximated = is_approximated;
 	event->is_approximated = is_approximated;
+}
+
+void updateCheckpointInterval(struct lp_struct *lp, bool approx) {
+		double chi = computeCheckpointInterval(lp, approx);
+		set_checkpoint_period(lp, chi);
 }
 
 #endif

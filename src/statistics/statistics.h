@@ -199,4 +199,5 @@ extern inline void statistics_post_data(const struct lp_struct *, enum stat_msg_
 extern inline void statistics_post_data_serial(enum stat_msg_t type, double data);
 
 extern double statistics_get_lp_data(struct lp_struct *, unsigned int type);
+extern double computeCheckpointInterval(const struct lp_struct *, bool);
 extern bool shouldSwitchApproximationMode(const struct lp_struct *);
