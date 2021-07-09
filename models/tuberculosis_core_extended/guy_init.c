@@ -8,7 +8,7 @@
 #include "guy_init.h"
 #include "parameters.h"
 
-const double scale_factor = 50.0;
+const double scale_factor = 40.0;
 
 void guy_init(void)
 {
@@ -135,7 +135,7 @@ void init_treated(struct guy_t *guy)
 
 }
 
-static struct guy_t *init_guy(region_t *region, enum agent_state state)
+struct guy_t *init_guy(region_t *region, enum agent_state state)
 {
 	struct guy_t *guy;
 

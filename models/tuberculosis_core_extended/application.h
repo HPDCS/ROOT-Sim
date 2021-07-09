@@ -11,7 +11,7 @@
 #include <ROOT-Sim.h>
 #include "guy.h"
 
-#define END_TIME 10
+#define END_TIME 50
 
 enum _event_t {
 	RECEIVE_HEALTHY = INIT + 1,
@@ -27,4 +27,5 @@ unsigned random_binomial(unsigned trials, double p);
 
 void reinitialize_missing_agents(unsigned, enum agent_state, simtime_t);
 
+struct guy_t *init_guy(region_t *, enum agent_state);
 #endif /* MODELS_TUBERCOLOSIS_APPLICATION_H_ */

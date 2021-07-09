@@ -317,6 +317,7 @@ void guy_move(unsigned me, region_t *region)
 			if (guy_on_leave(old_agent, region)) {
 				curr_agent = curr_agent->next;
 				free(old_agent);
+				init_guy(region, HEALTHY);
 				continue;	
 			} 
 			int i = Random() * neighbours;
