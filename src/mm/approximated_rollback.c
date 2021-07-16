@@ -127,7 +127,7 @@ void updateCheckpointInterval(struct lp_struct *lp, bool approx) {
 
 void event_approximation_mark(struct lp_struct *lp, msg_t *event)
 {
-	bool is_approximated;
+	bool is_approximated = lp->mm->m_state->is_approximated;
 	enum _rollback_mode_t approximated_mode = lp->mm->m_state->approximated_mode;
 
 	if (lp->autonomic_events_counter == 0) {
