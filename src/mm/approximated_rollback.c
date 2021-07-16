@@ -12,6 +12,8 @@
 #include <mm/dymelor.h>
 #include <statistics/statistics.h>
 
+#define AUTONOMIC_EVENTS_THRESHOLD 1000
+
 void CoreMemoryMark(void *address)
 {
 	if (unlikely(rootsim_config.serial))
@@ -118,28 +120,37 @@ bool RollbackModeCheck(void)
 	return ret;
 }
 
+void updateCheckpointInterval(struct lp_struct *lp, bool approx) {
+		double chi = computeCheckpointInterval(lp, approx);
+		set_checkpoint_period(lp, chi);
+}
 
-
-void event_approximation_mark(const struct lp_struct *lp, msg_t *event)
+void event_approximation_mark(struct lp_struct *lp, msg_t *event)
 {
 	bool is_approximated;
 	enum _rollback_mode_t approximated_mode = lp->mm->m_state->approximated_mode;
 
-	switch (approximated_mode) {
-	case AUTONOMIC:
-		is_approximated = shouldSwitchApproximationMode(lp);
-		break;
-	case APPROXIMATED:
-		is_approximated = true;
-		updateCheckpointInterval(lp, true);
-		break;
-	case PRECISE:
-		is_approximated = false;
-		updateCheckpointInterval(lp, false);
-		break;
-	default:
-		return;
+	if (lp->autonomic_events_counter == 0) {
+		switch (approximated_mode) {
+			case AUTONOMIC:
+				is_approximated = shouldSwitchApproximationMode(lp);
+				break;
+			case APPROXIMATED:
+				is_approximated = true;
+				updateCheckpointInterval(lp, true);
+				break;
+			case PRECISE:
+				is_approximated = false;
+				updateCheckpointInterval(lp, false);
+				break;
+			default:
+				return;
+		}
+
+		lp->autonomic_events_counter = AUTONOMIC_EVENTS_THRESHOLD;
 	}
+
+	lp->autonomic_events_counter--;
 
 	if (is_approximated) {
 		statistics_post_data(lp, STAT_APPROX_PHASE, 1.0);
@@ -149,11 +160,6 @@ void event_approximation_mark(const struct lp_struct *lp, msg_t *event)
 
 	lp->mm->m_state->is_approximated = is_approximated;
 	event->is_approximated = is_approximated;
-}
-
-void updateCheckpointInterval(struct lp_struct *lp, bool approx) {
-		double chi = computeCheckpointInterval(lp, approx);
-		set_checkpoint_period(lp, chi);
 }
 
 #endif
