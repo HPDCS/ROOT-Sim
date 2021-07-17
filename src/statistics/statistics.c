@@ -844,27 +844,27 @@ void statistics_post_data(const struct lp_struct *lp, enum stat_msg_t type, doub
 			break;
 
 		case STAT_CKPT_TIME_CORE:
-			lp_stats_gvt[lid].ckpt_time_core += data;
+			lp_stats_gvt[lid].ckpt_time_core += 0.1 * data + 0.9 * lp_stats_gvt[lid].ckpt_time_core;
 			break;
 
 		case STAT_EVENT_TIME_APPROX:
-			lp_stats_gvt[lid].event_time_approx += data;
+			lp_stats_gvt[lid].event_time_approx += 0.1 * data + 0.9 * lp_stats_gvt[lid].event_time_approx;
 			break;
 			
 		case STAT_ROLLBACK_APPROX:
-			lp_stats_gvt[lid].tot_rollbacks_approx += 1.0;
+			lp_stats_gvt[lid].tot_rollbacks_approx += 0.1 * data + 0.9 * lp_stats_gvt[lid].tot_rollbacks_approx;
 			break;
 
 		case STAT_EVENT_APPROX:
-			lp_stats_gvt[lid].tot_events_approx += 1.0;
+			lp_stats_gvt[lid].tot_events_approx += 0.1 * data + 0.9 * lp_stats_gvt[lid].tot_events_approx;
 			break;
 
 		case STAT_COMMITTED_APPROX:
-			lp_stats_gvt[lid].committed_events_approx += data;
+			lp_stats_gvt[lid].committed_events_approx +=  0.1 * data + 0.9 * lp_stats_gvt[lid].committed_events_approx;
 			break;
 
 		case STAT_RECOVERY_TIME_CORE:
-			lp_stats_gvt[lid].recovery_time_core += data;
+			lp_stats_gvt[lid].recovery_time_core += 0.1 * data + 0.9 * lp_stats_gvt[lid].recovery_time_core;
 			break;
 		
 		case STAT_APPROX_PHASE:
@@ -876,7 +876,7 @@ void statistics_post_data(const struct lp_struct *lp, enum stat_msg_t type, doub
 			break;
 
 		case STAT_RESTORE_APPROX:
-			lp_stats_gvt[lid].restore_approx_time += data;
+			lp_stats_gvt[lid].restore_approx_time +=  0.1 * data + 0.9 * lp_stats_gvt[lid].restore_approx_time;
 			break;
 
 		default:
