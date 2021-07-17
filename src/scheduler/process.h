@@ -121,7 +121,7 @@ struct lp_struct {
 	unsigned long long mark;
 
 #ifdef HAVE_APPROXIMATED_ROLLBACK
-	short unsigned int autonomic_events_counter;
+	short unsigned int policy_events_counter;
 #endif
 
 	/// Buffer used by KLTs for buffering outgoing messages during the execution of an event

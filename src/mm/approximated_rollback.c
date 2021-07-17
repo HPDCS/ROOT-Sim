@@ -121,36 +121,39 @@ bool RollbackModeCheck(void)
 }
 
 void updateCheckpointInterval(struct lp_struct *lp, bool approx) {
-		double chi = computeCheckpointInterval(lp, approx);
-		set_checkpoint_period(lp, chi);
+	if (lp->policy_events_counter > 0)
+		return;
+
+	double chi = computeCheckpointInterval(lp, approx);
+	set_checkpoint_period(lp, chi);
+	lp->policy_events_counter = AUTONOMIC_EVENTS_THRESHOLD;
 }
 
 void event_approximation_mark(struct lp_struct *lp, msg_t *event)
 {
 	bool is_approximated = lp->mm->m_state->is_approximated;
 	enum _rollback_mode_t approximated_mode = lp->mm->m_state->approximated_mode;
-
-	if (lp->autonomic_events_counter == 0) {
-		switch (approximated_mode) {
-			case AUTONOMIC:
+	
+	switch (approximated_mode) {
+		case AUTONOMIC:
+			if (lp->policy_events_counter == 0) {
 				is_approximated = shouldSwitchApproximationMode(lp);
-				break;
-			case APPROXIMATED:
-				is_approximated = true;
-				updateCheckpointInterval(lp, true);
-				break;
-			case PRECISE:
-				is_approximated = false;
-				updateCheckpointInterval(lp, false);
-				break;
-			default:
-				return;
-		}
-
-		lp->autonomic_events_counter = AUTONOMIC_EVENTS_THRESHOLD;
+				lp->policy_events_counter = AUTONOMIC_EVENTS_THRESHOLD;
+			}
+			break;
+		case APPROXIMATED:
+			is_approximated = true;
+			updateCheckpointInterval(lp, true);
+			break;
+		case PRECISE:
+			is_approximated = false;
+			updateCheckpointInterval(lp, false);
+			break;
+		default:
+			return;
 	}
 
-	lp->autonomic_events_counter--;
+	lp->policy_events_counter--;
 
 	if (is_approximated) {
 		statistics_post_data(lp, STAT_APPROX_PHASE, 1.0);
