@@ -62,7 +62,7 @@ struct guy_t *guy_add_head(struct guy_t *head, struct guy_t *node)
 }
 
 void guy_mark_by_state(struct guy_t *guy) {
-	if (guy->state == SICK) {
+	if (guy->state == HEALTHY) {
 		CoreMemoryMark(guy);
 	} else {
 		CoreMemoryUnmark(guy);

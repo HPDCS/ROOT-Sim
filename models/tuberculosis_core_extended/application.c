@@ -187,12 +187,12 @@ void RestoreApproximated(void *ptr)
 	memcpy(init_data.agents_count, region->agents_count, sizeof(region->agents_count));
 	int j = END_STATES;
 	while (j--) {
-		if (j == SICK)
+		if (j == HEALTHY)
 			continue;
 		region->agents_count[j] = 0;
 		region->agents[j].next = NULL;
 		region->agents[j].prev = NULL;
 	}
-	init_data.agents_count[SICK] = 0;
+	init_data.agents_count[HEALTHY] = 0;
 	guy_on_init(&init_data, region);
 }
