@@ -81,7 +81,7 @@ struct _topology_settings_t topology_settings = {.type = TOPOLOGY_OBSTACLES, .wr
 struct argp model_argp = {model_options, model_parse, NULL, NULL, NULL, NULL, NULL};
 
 // From Luc Devroye's book "Non-Uniform Random Variate Generation." p. 522
-unsigned random_binomial(unsigned trials, double p)
+unsigned random_binomial(unsigned trials, double p, double randomNumber)
 { // this is exposed since it is used also in guy.c
 	if(p >= 1.0 || !trials) {
 		return trials;
@@ -89,7 +89,7 @@ unsigned random_binomial(unsigned trials, double p)
 	unsigned x = 0;
 	double sum = 0, log_q = log(1.0 - p); // todo cache those logarithm value
 	while(1) {
-		sum += log(Random()) / (trials - x);
+		sum += log(randomNumber) / (trials - x);
 		if(sum < log_q || trials == x) {
 			return x;
 		}
@@ -131,6 +131,8 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, union {
 
 			region->me = me;
 
+			srand48_r(Random() * INT_MAX, &(region->random_initialization_buf));
+
 			// initialize lists
 			int j = END_STATES;
 			while (j--) {
@@ -139,14 +141,16 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, union {
 
 			if(!me) {
 				// this function let LP0 coordinate the init phase
-				guy_init();
+				double randomNumber;
+				drand48_r(&(region->random_initialization_buf), &randomNumber);
+				guy_init(randomNumber);
 				printf("INIT 0 complete\n");
 			}
 
 			break;
 
 		case INFECTION:
-			guy_on_infection(payload.i_m, state, now);
+			guy_on_infection(payload.i_m, state);
 			break;
 
 		case GUY_RECV:
