@@ -78,7 +78,7 @@ void guy_change_state(region_t * region, struct guy_t * guy, enum agent_state ne
 	guy->state = new_state;
 
 	guy_mark_by_state(guy);
-		
+
 }
 
 
@@ -146,7 +146,7 @@ void define_diagnose(struct guy_t *guy, simtime_t now){
 }
 
 void set_risk_factors(struct guy_t *guy, region_t *region){
-	double randomNumber; 
+	double randomNumber;
 	drand48_r(&(region->random_initialization_buf), &randomNumber);
 
 	// set risks factor
@@ -154,9 +154,9 @@ void set_risk_factors(struct guy_t *guy, region_t *region){
 		bitmap_set(guy->flags, f_has_hiv);
 	else
 		bitmap_reset(guy->flags, f_has_hiv);
-	
+
 	drand48_r(&(region->random_initialization_buf), &randomNumber);
-	
+
 	if(randomNumber < p_smoking)
 		bitmap_set(guy->flags, f_smokes);
 	else
@@ -318,12 +318,12 @@ static double die_probability(unsigned age){
 	return p_die[2];
 }
 
-void guy_move(unsigned me, region_t *region) 
+void guy_move(unsigned me, region_t *region)
 {
 	int neighbours = NeighboursCount(me);
 	struct guy_t agents[neighbours];
 	memset(agents, 0, sizeof(struct guy_t) * neighbours);
-	
+
 	int agents_count[neighbours];
 	memset(agents_count, 0, sizeof(int) * neighbours);
 
@@ -339,8 +339,8 @@ void guy_move(unsigned me, region_t *region)
 				curr_agent = curr_agent->next;
 				free(old_agent);
 				init_guy(region, HEALTHY);
-				continue;	
-			} 
+				continue;
+			}
 			int i = Random() * neighbours;
 			curr_agent = curr_agent->next;
 			guy_add_head(&agents[i], old_agent);
@@ -378,7 +378,7 @@ void guy_move(unsigned me, region_t *region)
 	memset(region->agents, 0, sizeof(region->agents));
 
 	ScheduleNewEvent(me, region->now + Random() * move_avg * 2, GUY_MOVE, NULL, 0);
-	
+
 }
 
 bool guy_on_leave(struct guy_t *guy, region_t *region)
@@ -447,12 +447,10 @@ unsigned infected_gender_origin(infection_t *inf, region_t *region){
 // this handles an infection message
 void guy_on_infection(infection_t *inf, region_t *region){
 	struct guy_t *guy = NULL;
-	double randomNumber;
-	drand48_r(&(region->random_initialization_buf), &randomNumber);
 	// as in the original model, each healthy person has the same probability
 	// of becoming infected (but we do this more efficiently using a binomial PRNG)
 	unsigned infections =
-			random_binomial(region->agents_count[HEALTHY], (1 + bitmap_check(inf->flags, infl_smear))*infection_p, randomNumber);
+			random_binomial(region->agents_count[HEALTHY], (1 + bitmap_check(inf->flags, infl_smear))*infection_p, &region->random_initialization_buf);
 	// the infected guys of course diminish the healthy population
 	unsigned aux;
 

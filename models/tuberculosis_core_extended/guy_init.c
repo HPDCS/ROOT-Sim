@@ -11,7 +11,7 @@
 
 const double scale_factor = 40.0;
 
-void guy_init(double randomNumber)
+void guy_init(struct drand48_data *rng_state)
 {
 	init_t total = {.agents_count = {num_healthy / scale_factor, num_infected / scale_factor, num_sick / scale_factor,
 			num_treatment / scale_factor, num_treated / scale_factor}};
@@ -33,7 +33,7 @@ void guy_init(double randomNumber)
 		unsigned j = END_STATES;
 		while (j--)
 		{
-			to_send.agents_count[j] = random_binomial(total.agents_count[j], 1.0 / remaining, randomNumber);
+			to_send.agents_count[j] = random_binomial(total.agents_count[j], 1.0 / remaining, rng_state);
 			total.agents_count[j] -= to_send.agents_count[j];
 		}
 
@@ -99,7 +99,7 @@ static void sickened_base_setup(struct guy_t *guy, region_t *region)
 		bitmap_set(guy->flags, f_foreigner);
 	else
 		bitmap_reset(guy->flags, f_foreigner);
-	
+
 	drand48_r(&(region->random_initialization_buf), &p);
 	// select random gender
 	if(p >= p_sickened_male)
@@ -167,7 +167,7 @@ struct guy_t *init_guy(region_t *region, enum agent_state state)
 	region->agents_count[state]++;
 
 	guy_mark_by_state(guy);
-	
+
 	return guy;
 }
 
@@ -179,7 +179,7 @@ void guy_on_init(init_t *init_data, region_t *region)
 	while (j--)
 	{
 		unsigned i = init_data->agents_count[j];
-		
+
 		while (i--)
 		{
 			guy = init_guy(region, j);

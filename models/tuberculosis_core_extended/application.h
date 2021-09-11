@@ -23,7 +23,7 @@ enum _event_t {
 };
 
 // this samples a random number with binomial distribution TODO could be useful in the numeric library
-unsigned random_binomial(unsigned trials, double p, double randomNumber);
+unsigned random_binomial(unsigned trials, double p, struct drand48_data *rng_state);
 
 void reinitialize_missing_agents(unsigned, enum agent_state, simtime_t);
 

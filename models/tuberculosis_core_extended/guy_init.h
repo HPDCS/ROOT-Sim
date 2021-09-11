@@ -17,7 +17,7 @@ struct _init_t {
 	unsigned agents_count[END_STATES];
 };
 
-void guy_init(double randomNumber);
+void guy_init(struct drand48_data *rng_state);
 void guy_on_init(init_t *init_data, region_t *region);
 
 void init_infected(struct guy_t *guy, region_t *region);

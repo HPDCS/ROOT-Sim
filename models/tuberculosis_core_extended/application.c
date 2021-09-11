@@ -25,7 +25,7 @@ enum {
 };
 
 const struct argp_option model_options[] = {{"precise-mode",   OPT_PREC,  NULL, 0, NULL, 0},
-					    {"autonomic-mode", OPT_AUTON, NULL, 0, NULL, 0}, 
+					    {"autonomic-mode", OPT_AUTON, NULL, 0, NULL, 0},
 						{"infection-p", OPT_INF, "VALUE", 0, NULL, 0},
 					    {0}};
 
@@ -81,7 +81,7 @@ struct _topology_settings_t topology_settings = {.type = TOPOLOGY_OBSTACLES, .wr
 struct argp model_argp = {model_options, model_parse, NULL, NULL, NULL, NULL, NULL};
 
 // From Luc Devroye's book "Non-Uniform Random Variate Generation." p. 522
-unsigned random_binomial(unsigned trials, double p, double randomNumber)
+unsigned random_binomial(unsigned trials, double p, struct drand48_data *rng_state)
 { // this is exposed since it is used also in guy.c
 	if(p >= 1.0 || !trials) {
 		return trials;
@@ -89,7 +89,9 @@ unsigned random_binomial(unsigned trials, double p, double randomNumber)
 	unsigned x = 0;
 	double sum = 0, log_q = log(1.0 - p); // todo cache those logarithm value
 	while(1) {
-		sum += log(randomNumber) / (trials - x);
+		double r;
+		drand48_r(rng_state, &r);
+		sum += log(r) / (trials - x);
 		if(sum < log_q || trials == x) {
 			return x;
 		}
@@ -141,9 +143,7 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, union {
 
 			if(!me) {
 				// this function let LP0 coordinate the init phase
-				double randomNumber;
-				drand48_r(&(region->random_initialization_buf), &randomNumber);
-				guy_init(randomNumber);
+				guy_init(&region->random_initialization_buf);
 				printf("INIT 0 complete\n");
 			}
 
@@ -175,17 +175,17 @@ void ProcessEvent(unsigned int me, simtime_t now, int event_type, union {
 
 int OnGVT(unsigned int me, region_t *snapshot)
 {
-	
+
 	fprintf(stats_file, "%lf %u %u %u %u %u %u\n", snapshot->now, me, snapshot->agents_count[0],
 		snapshot->agents_count[1], snapshot->agents_count[2], snapshot->agents_count[3],
 		snapshot->agents_count[4]);
-	
+
 	return snapshot->now > END_TIME;
 
 }
 
-void RestoreApproximated(void *ptr) 
-{	
+void RestoreApproximated(void *ptr)
+{
 	region_t *region = ptr;
 	init_t init_data;
 	memcpy(init_data.agents_count, region->agents_count, sizeof(region->agents_count));
