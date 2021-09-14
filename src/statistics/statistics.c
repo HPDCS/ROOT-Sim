@@ -147,7 +147,10 @@ struct stat_t global_stats = {.gvt_round_time_min = INFTY};
 })
 
 
-static void merge_stats(struct stat_t *s, const struct stat_t *d){
+static void merge_stats(struct stat_t *s, const struct stat_t *d)
+{
+	s->approx_phases += d->approx_phases;
+	s->prec_phases += d->prec_phases;
 	s->tot_events += d->tot_events;
 	s->tot_rollbacks += d->tot_rollbacks;
 	s->tot_events_approx += d->tot_events_approx;
