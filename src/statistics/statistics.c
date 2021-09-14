@@ -1003,8 +1003,8 @@ bool shouldSwitchApproximationMode(const struct lp_struct *lp)
 	struct stat_t *s = &lp_stats[lp->lid.to_int];
 
 	double event_time = s->exponential_event_time;
-	double rollback_p = s->tot_events / (s->tot_rollbacks ? s->tot_rollbacks : 0.1);
-	double rollback_p_approx = s->tot_events_approx / (s->tot_rollbacks_approx ? s->tot_rollbacks_approx : 0.1);
+	double rollback_p = s->tot_rollbacks / s->tot_events;
+	double rollback_p_approx = s->tot_rollbacks_approx / s->tot_events;
 
 	double numerator = (chi * event_time) +
 			   (s->exponential_chk_time / chi) +
