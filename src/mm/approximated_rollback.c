@@ -133,7 +133,7 @@ void event_approximation_mark(struct lp_struct *lp, msg_t *event)
 {
 	bool is_approximated = lp->mm->m_state->is_approximated;
 	enum _rollback_mode_t approximated_mode = lp->mm->m_state->approximated_mode;
-	
+
 	switch (approximated_mode) {
 		case AUTONOMIC:
 			if (lp->policy_events_counter == 0) {

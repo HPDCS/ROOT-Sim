@@ -78,14 +78,12 @@ void *log_full(struct lp_struct *lp)
 
 	void *ptr = NULL, *ckpt = NULL;
 	int i;
-	int ckpt_timer_core_delta = 0;
 	size_t size, chunk_size, bitmap_size;
 	malloc_area *m_area;
 	malloc_state *m_state;
 
 	// Timers for self-tuning of the simulation platform
 	timer checkpoint_timer;
-	timer checkpoint_timer_core;
 	timer_start(checkpoint_timer);
 
 	m_state = lp->mm->m_state;
@@ -133,10 +131,8 @@ void *log_full(struct lp_struct *lp)
 		ptr = (void *)((char *)ptr + bitmap_size);
 
 #ifdef HAVE_APPROXIMATED_ROLLBACK
-		timer_start(checkpoint_timer_core);
 		memcpy(ptr, m_area->coredata_bitmap, bitmap_size);
 		ptr = (void *)((char *)ptr + bitmap_size);
-		ckpt_timer_core_delta += timer_value_micro(checkpoint_timer_core);
 #endif
 
 		chunk_size = UNTAGGED_CHUNK_SIZE(m_area);
@@ -157,9 +153,7 @@ void *log_full(struct lp_struct *lp)
 
 #ifdef HAVE_APPROXIMATED_ROLLBACK
 			if (m_state->is_approximated){
-				timer_restart(checkpoint_timer_core);
 				bitmap_foreach_set(m_area->coredata_bitmap, bitmap_size, copy_from_area);
-				ckpt_timer_core_delta += timer_value_micro(checkpoint_timer_core);
 			} else {
 #endif
 				// Copy only the allocated chunks
@@ -187,9 +181,13 @@ void *log_full(struct lp_struct *lp)
 	m_state->total_inc_size = sizeof(malloc_state);
 
 #ifdef HAVE_APPROXIMATED_ROLLBACK
-	statistics_post_data(lp, STAT_CKPT_TIME_CORE, (double)ckpt_timer_core_delta);
+	if (m_state->is_approximated) {
+		statistics_post_data(lp, STAT_CKPT_TIME_APPROX, (double)timer_value_micro(checkpoint_timer));
+	} else
 #endif
-	statistics_post_data(lp, STAT_CKPT_TIME, (double)timer_value_micro(checkpoint_timer));
+	{
+		statistics_post_data(lp, STAT_CKPT_TIME, (double)timer_value_micro(checkpoint_timer));
+	}
 	statistics_post_data(lp, STAT_CKPT_MEM, (double)size);
 
 	return ckpt;
@@ -250,14 +248,12 @@ void restore_full(struct lp_struct *lp, void *ckpt)
 {
 	char *ptr, *target_ptr;
 	int i, original_num_areas;
-	int recovery_timer_core_delta = 0;
 	size_t chunk_size, bitmap_size;
 	malloc_area *m_area;
 	malloc_state *m_state;
 
 	// Timers for simulation platform self-tuning
 	timer recovery_timer;
-	timer recovery_timer_core;
 	timer_start(recovery_timer);
 	ptr = ckpt;
 	m_state = lp->mm->m_state;
@@ -290,9 +286,7 @@ void restore_full(struct lp_struct *lp, void *ckpt)
 				memset(m_area->use_bitmap, 0, bitmap_size);
 				memset(m_area->dirty_bitmap, 0, bitmap_size);
 #ifdef HAVE_APPROXIMATED_ROLLBACK
-				timer_start(recovery_timer_core);
 				memset(m_area->coredata_bitmap, 0, bitmap_size);
-				recovery_timer_core_delta += timer_value_micro(recovery_timer_core);
 #endif
 			}
 			m_area->last_access = m_state->timestamp;
@@ -308,10 +302,8 @@ void restore_full(struct lp_struct *lp, void *ckpt)
 		ptr += bitmap_size;
 
 #ifdef HAVE_APPROXIMATED_ROLLBACK
-		timer_restart(recovery_timer_core);
 		memcpy(m_area->coredata_bitmap, ptr, bitmap_size);
 		ptr = (void *)((char *)ptr + bitmap_size);
-		recovery_timer_core_delta += timer_value_micro(recovery_timer_core);
 #endif
 
 		// Reset dirty bitmap
@@ -339,11 +331,9 @@ void restore_full(struct lp_struct *lp, void *ckpt)
 #ifdef HAVE_APPROXIMATED_ROLLBACK
 
 			if (m_state->is_approximated){
-				timer_restart(recovery_timer_core);
 				bitmap_foreach_set(m_area->coredata_bitmap, bitmap_size, copy_to_area);
 				memcpy(m_area->use_bitmap, m_area->coredata_bitmap, bitmap_size);
 				m_state->total_log_size = m_state->approximated_log_size;
-				recovery_timer_core_delta += timer_value_micro(recovery_timer_core);
 			} else {
 #endif
 				// Copy only the allocated chunks
@@ -379,9 +369,7 @@ void restore_full(struct lp_struct *lp, void *ckpt)
 				memset(m_area->use_bitmap, 0, bitmap_size);
 				memset(m_area->dirty_bitmap, 0, bitmap_size);
 #ifdef HAVE_APPROXIMATED_ROLLBACK
-				timer_restart(recovery_timer_core);
 				memset(m_area->coredata_bitmap, 0, bitmap_size);
-				recovery_timer_core_delta += timer_value_micro(recovery_timer_core);
 #endif
 			}
 		}
@@ -392,14 +380,16 @@ void restore_full(struct lp_struct *lp, void *ckpt)
 	m_state->is_incremental = false;
 	m_state->total_inc_size = sizeof(malloc_state);
 
-	statistics_post_data(lp, STAT_RECOVERY_TIME, (double)timer_value_micro(recovery_timer));
+
 
 #ifdef HAVE_APPROXIMATED_ROLLBACK
-	timer_restart(recovery_timer_core);
-	recovery_timer_core_delta += timer_value_micro(recovery_timer_core);
-	statistics_post_data(lp, STAT_RECOVERY_TIME_CORE, (double)recovery_timer_core_delta);
+	if (m_state->is_approximated) {
+		statistics_post_data(lp, STAT_RECOVERY_TIME_APPROX, (double)timer_value_micro(recovery_timer));
+	} else
 #endif
-
+	{
+		statistics_post_data(lp, STAT_RECOVERY_TIME, (double)timer_value_micro(recovery_timer));
+	}
 }
 
 /**
@@ -428,7 +418,8 @@ void log_restore(struct lp_struct *lp, state_t *state_queue_node)
 		current = lp;
 		timer_start(approx_recovery_timer);
 		RestoreApproximated(lp->current_base_pointer);
-		statistics_post_data(lp, STAT_RESTORE_APPROX, (double)timer_value_micro(approx_recovery_timer));
+		statistics_post_data(lp, STAT_RESTORE_FN_TIME_APPROX,
+				(double)timer_value_micro(approx_recovery_timer));
 		current = previous;
 	}
 #endif

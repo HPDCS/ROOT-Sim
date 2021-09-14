@@ -217,10 +217,11 @@ void rollback(struct lp_struct *lp)
 #ifdef HAVE_APPROXIMATED_ROLLBACK
 	if (current_evt->is_approximated) {
 		statistics_post_data(lp, STAT_ROLLBACK_APPROX, 1.0);
-	}
+	} else
 #endif
-	statistics_post_data(lp, STAT_ROLLBACK, 1.0);
-
+	{
+		statistics_post_data(lp, STAT_ROLLBACK, 1.0);
+	}
 	last_correct_event = lp->bound;
 	// Send antimessages
 	send_antimessages(lp, last_correct_event->timestamp);

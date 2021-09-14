@@ -195,13 +195,12 @@ void LP_main_loop(void *args)
 #ifdef HAVE_APPROXIMATED_ROLLBACK
 		if (current_evt->is_approximated) {
 			statistics_post_data(current, STAT_EVENT_APPROX, 1.0);
-			statistics_post_data(current, STAT_EVENT_TIME_APPROX,
-					     delta_event_timer);
-		}
+		} else
 #endif
-		statistics_post_data(current, STAT_EVENT, 1.0);
-		statistics_post_data(current, STAT_EVENT_TIME,
-				     delta_event_timer);
+		{
+			statistics_post_data(current, STAT_EVENT, 1.0);
+		}
+		statistics_post_data(current, STAT_EVENT_TIME, delta_event_timer);
 		// Give back control to the simulation kernel's user-level thread
 		context_switch(&current->context, &kernel_context);
 	}
