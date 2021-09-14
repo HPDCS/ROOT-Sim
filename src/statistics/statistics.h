@@ -161,9 +161,13 @@ struct stat_t {
 		    tot_rollbacks,
 		    tot_rollbacks_approx,
 		    tot_events,
-		    tot_events_approx;
+		    tot_events_approx,
+			tot_chk_time_approx,
+			tot_chk_time,
+			tot_recovery_time_approx,
+			tot_recovery_time;
 	double
-		    	    	    exponential_event_time,
+		    	    exponential_event_time,
 				    exponential_chk_time_approx,
 				    exponential_chk_time,
 				    exponential_recovery_time,

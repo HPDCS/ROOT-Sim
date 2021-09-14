@@ -155,6 +155,14 @@ static void merge_stats(struct stat_t *s, const struct stat_t *d)
 	s->tot_rollbacks += d->tot_rollbacks;
 	s->tot_events_approx += d->tot_events_approx;
 	s->tot_rollbacks_approx += d->tot_rollbacks_approx;
+	s->memory_usage += d->memory_usage;
+	s->tot_chk_time_approx += d->tot_chk_time_approx;
+	s->tot_chk_time += d->tot_chk_time;
+	s->tot_recovery_time_approx += d->tot_recovery_time_approx;
+	s->tot_recovery_time += d->tot_recovery_time;
+	s->gvt_computations += d->gvt_computations;
+	s->tot_ckpts += d->tot_ckpts;
+	s->tot_recoveries += d->tot_recoveries;
 
 	s->exponential_chk_time = d->exponential_chk_time;
 	s->exponential_chk_time_approx = d->exponential_chk_time_approx;
@@ -390,8 +398,8 @@ static void print_common_stats(FILE *f, struct stat_t *stats_p, bool want_thread
 	fprintf(f, "EFFICIENCY................. : %.2f %%\n",		efficiency);
 	fprintf(f, "AVERAGE EVENT COST......... : %.2f us\n",		stats_p->event_time / stats_p->tot_events);
 	fprintf(f, "AVERAGE EVENT COST (EMA)... : %.2f us\n",		stats_p->exponential_event_time);
-	fprintf(f, "AVERAGE CHECKPOINT COST.... : %.2f us\n",		stats_p->exponential_chk_time);
-	fprintf(f, "AVERAGE RECOVERY COST...... : %.2f us\n",		stats_p->exponential_recovery_time);
+	fprintf(f, "AVERAGE CHECKPOINT COST.... : %.2f us\n",		(stats_p->tot_chk_time + stats_p->tot_chk_time_approx) / stats_p->tot_ckpts);
+	fprintf(f, "AVERAGE RECOVERY COST...... : %.2f us\n",		(stats_p->tot_recovery_time + stats_p->tot_recovery_time_approx) / stats_p->tot_recoveries);
 	fprintf(f, "AVERAGE LOG SIZE........... : %s\n",		format_size(stats_p->ckpt_mem / stats_p->tot_ckpts));
 	fprintf(f, "TOTAL APPROX PHASES ....... : %.0f \n",		stats_p->approx_phases);
 	fprintf(f, "TOTAL PRECISE PHASES ...... : %.0f \n",		stats_p->prec_phases);
@@ -519,8 +527,8 @@ void statistics_stop(int exit_code)
 				fprintf(f, "%15.0lf   ", 	lp_stats[lp_id].tot_rollbacks);
 				fprintf(f, "%15.0lf   ", 	lp_stats[lp_id].tot_antimessages);
 				fprintf(f, "%15lf   ", 		lp_stats[lp_id].event_time / lp_stats[lp_id].tot_events);
-				fprintf(f, "%15.0lf   ", 	lp_stats[lp_id].exponential_chk_time);
-				fprintf(f, "%15.0lf   ", 	lp_stats[lp_id].exponential_recovery_time);
+				fprintf(f, "%15.0lf   ", 	(lp_stats[lp_id].tot_chk_time + lp_stats[lp_id].tot_chk_time_approx) / lp_stats[lp_id].tot_ckpts);
+				fprintf(f, "%15.0lf   ", 	(lp_stats[lp_id].tot_recovery_time + lp_stats[lp_id].tot_recovery_time_approx) / lp_stats[lp_id].tot_recoveries);
 				fprintf(f, "%15.0lf   ", 	lp_stats[lp_id].idle_cycles);
 				fprintf(f, "\n");
 			}
@@ -640,6 +648,12 @@ inline void statistics_on_gvt(double gvt)
 		lp_stats_gvt[lid].tot_rollbacks = 0;
 		lp_stats_gvt[lid].tot_events_approx = 0;
 		lp_stats_gvt[lid].tot_rollbacks_approx = 0;
+		lp_stats_gvt[lid].tot_chk_time = 0;
+		lp_stats_gvt[lid].tot_chk_time_approx = 0;
+		lp_stats_gvt[lid].tot_recovery_time = 0;
+		lp_stats_gvt[lid].tot_recovery_time_approx = 0;
+		lp_stats_gvt[lid].memory_usage = 0;
+		lp_stats_gvt[lid].gvt_computations = 0;
 	}
 }
 
@@ -834,6 +848,7 @@ void statistics_post_data(const struct lp_struct *lp, enum stat_msg_t type, doub
 			break;
 
 		case STAT_CKPT_TIME:
+			lp_stats_gvt[lid].tot_chk_time += data;
 			lp_stats_gvt[lid].exponential_chk_time = 0.1 * data + 0.9 * lp_stats_gvt[lid].exponential_chk_time;
 			break;
 
@@ -842,6 +857,7 @@ void statistics_post_data(const struct lp_struct *lp, enum stat_msg_t type, doub
 			break;
 
 		case STAT_RECOVERY_TIME:
+			lp_stats_gvt[lid].tot_recovery_time += data;
 			lp_stats_gvt[lid].exponential_recovery_time += 0.1 * data + 0.9 * lp_stats_gvt[lid].exponential_recovery_time;
 			break;
 
@@ -860,6 +876,7 @@ void statistics_post_data(const struct lp_struct *lp, enum stat_msg_t type, doub
 			break;
 
 		case STAT_CKPT_TIME_APPROX:
+			lp_stats_gvt[lid].tot_chk_time_approx += data;
 			lp_stats_gvt[lid].exponential_chk_time_approx = 0.1 * data + 0.9 * lp_stats_gvt[lid].exponential_chk_time_approx;
 			break;
 
@@ -876,6 +893,7 @@ void statistics_post_data(const struct lp_struct *lp, enum stat_msg_t type, doub
 			break;
 
 		case STAT_RECOVERY_TIME_APPROX:
+			lp_stats_gvt[lid].tot_recovery_time_approx += data;
 			lp_stats_gvt[lid].exponential_recovery_time_approx = 0.1 * data + 0.9 * lp_stats_gvt[lid].exponential_recovery_time_approx;
 			break;
 
