@@ -991,13 +991,13 @@ unsigned computeCheckpointInterval(const struct lp_struct *lp, bool approx)
 {
 	struct stat_t *s = &lp_stats[lp->lid.to_int];
 
-	double avg_silent_event_time, avg_chk_time;
+	double inv_avg_silent_event_time, avg_chk_time;
 	unsigned long long n_rollback, n_events;
 
 	if (!s->silent_event_time)
 		return 10;
 
-	avg_silent_event_time = ((double)s->silent_event_time) / s->silent_events;
+	inv_avg_silent_event_time = (double)s->silent_events / s->silent_event_time;
 
 	if (approx) {
 		avg_chk_time = ((double)s->tot_ckpts_time_approx) / s->tot_ckpts_approx;
@@ -1009,7 +1009,7 @@ unsigned computeCheckpointInterval(const struct lp_struct *lp, bool approx)
 		n_events = s->tot_events;
 	}
 
-	double r = ceil(sqrt(2 * avg_chk_time * avg_silent_event_time * n_events / n_rollback));
+	double r = ceil(sqrt(2 * avg_chk_time * inv_avg_silent_event_time * n_events / n_rollback));
 
 	return r == 0.0 ? 1.0 : r;
 }
