@@ -83,8 +83,7 @@ void *log_full(struct lp_struct *lp)
 	malloc_state *m_state;
 
 	// Timers for self-tuning of the simulation platform
-	timer checkpoint_timer;
-	timer_start(checkpoint_timer);
+	unsigned long long checkpoint_timer = timer_hr_start();
 
 	m_state = lp->mm->m_state;
 	m_state->is_incremental = false;
@@ -179,16 +178,19 @@ void *log_full(struct lp_struct *lp)
 			      ckpt, size, size, ptr, (char *)ckpt + size);
 
 	m_state->total_inc_size = sizeof(malloc_state);
+	checkpoint_timer = timer_hr_value(checkpoint_timer);
 
 #ifdef HAVE_APPROXIMATED_ROLLBACK
 	if (m_state->is_approximated) {
-		statistics_post_data(lp, STAT_CKPT_TIME_APPROX, (double)timer_value_micro(checkpoint_timer));
+		statistics_post_data(lp, STAT_CKPT_TIME_APPROX, checkpoint_timer);
+		statistics_post_data(lp, STAT_CKPT_APPROX, 1);
 	} else
 #endif
 	{
-		statistics_post_data(lp, STAT_CKPT_TIME, (double)timer_value_micro(checkpoint_timer));
+		statistics_post_data(lp, STAT_CKPT_TIME, checkpoint_timer);
+		statistics_post_data(lp, STAT_CKPT, 1);
 	}
-	statistics_post_data(lp, STAT_CKPT_MEM, (double)size);
+	statistics_post_data(lp, STAT_CKPT_MEM, size);
 
 	return ckpt;
 }
@@ -214,7 +216,6 @@ void *log_full(struct lp_struct *lp)
 */
 void *log_state(struct lp_struct *lp)
 {
-	statistics_post_data(lp, STAT_CKPT, 1.0);
 	return log_full(lp);
 }
 
@@ -253,8 +254,7 @@ void restore_full(struct lp_struct *lp, void *ckpt)
 	malloc_state *m_state;
 
 	// Timers for simulation platform self-tuning
-	timer recovery_timer;
-	timer_start(recovery_timer);
+	unsigned long long recovery_timer = timer_hr_start();
 	ptr = ckpt;
 	m_state = lp->mm->m_state;
 	target_ptr = ptr + get_log_size((malloc_state *)ptr);
@@ -380,15 +380,17 @@ void restore_full(struct lp_struct *lp, void *ckpt)
 	m_state->is_incremental = false;
 	m_state->total_inc_size = sizeof(malloc_state);
 
-
+	recovery_timer = timer_hr_value(recovery_timer);
 
 #ifdef HAVE_APPROXIMATED_ROLLBACK
 	if (m_state->is_approximated) {
-		statistics_post_data(lp, STAT_RECOVERY_TIME_APPROX, (double)timer_value_micro(recovery_timer));
+		statistics_post_data(lp, STAT_RECOVERY_TIME_APPROX, recovery_timer);
+		statistics_post_data(lp, STAT_RECOVERY_APPROX, 1);
 	} else
 #endif
 	{
-		statistics_post_data(lp, STAT_RECOVERY_TIME, (double)timer_value_micro(recovery_timer));
+		statistics_post_data(lp, STAT_RECOVERY_TIME, recovery_timer);
+		statistics_post_data(lp, STAT_RECOVERY, 1);
 	}
 }
 
@@ -408,18 +410,16 @@ void restore_full(struct lp_struct *lp, void *ckpt)
 */
 void log_restore(struct lp_struct *lp, state_t *state_queue_node)
 {
-
-	statistics_post_data(lp, STAT_RECOVERY, 1.0);
 	restore_full(lp, state_queue_node->log);
 #ifdef HAVE_APPROXIMATED_ROLLBACK
-	timer approx_recovery_timer;
+	unsigned long long approx_recovery_timer;
 	if(lp->mm->m_state->is_approximated) {
 		struct lp_struct *previous = current;
 		current = lp;
-		timer_start(approx_recovery_timer);
+		approx_recovery_timer = timer_hr_start();
 		RestoreApproximated(lp->current_base_pointer);
-		statistics_post_data(lp, STAT_RESTORE_FN_TIME_APPROX,
-				(double)timer_value_micro(approx_recovery_timer));
+		approx_recovery_timer = timer_hr_value(approx_recovery_timer);
+		statistics_post_data(lp, STAT_RESTORE_FN_TIME_APPROX, approx_recovery_timer);
 		current = previous;
 	}
 #endif

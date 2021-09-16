@@ -152,13 +152,12 @@ void RestoreState(struct lp_struct *lp, state_t * restore_state)
 *
 * @return The number of events re-processed during the silent execution
 */
-unsigned int silent_execution(struct lp_struct *lp, msg_t *evt, msg_t *final_evt)
+void silent_execution(struct lp_struct *lp, msg_t *evt, msg_t *final_evt)
 {
 	unsigned int events = 0;
 	unsigned short int old_state;
 
-	timer silent_exec_timer;
-	timer_start(silent_exec_timer);
+	unsigned long long silent_exec_timer = timer_hr_start();
 	// current state can be either idle READY, BLOCKED or ROLLBACK, so we save it and then put it back in place
 	old_state = lp->state;
 	lp->state = LP_STATE_SILENT_EXEC;
@@ -181,8 +180,11 @@ unsigned int silent_execution(struct lp_struct *lp, msg_t *evt, msg_t *final_evt
 		++events;
 	}
 
+	silent_exec_timer = timer_hr_value(silent_exec_timer);
+	statistics_post_data(lp, STAT_SILENT_TIME, silent_exec_timer);
+	statistics_post_data(lp, STAT_SILENT, events);
+
 	lp->state = old_state;
-	return events;
 }
 
 /**
@@ -202,7 +204,6 @@ void rollback(struct lp_struct *lp)
 	state_t *restore_state, *s;
 	msg_t *last_correct_event;
 	msg_t *last_restored_event;
-	unsigned int reprocessed_events;
 
 	// Sanity check
 	if (unlikely(lp->state != LP_STATE_ROLLBACK)) {
@@ -241,8 +242,7 @@ void rollback(struct lp_struct *lp)
 	RestoreState(lp, restore_state);
 
 	last_restored_event = restore_state->last_event;
-	reprocessed_events = silent_execution(lp, last_restored_event, last_correct_event);
-	statistics_post_data(lp, STAT_SILENT, (double)reprocessed_events);
+	silent_execution(lp, last_restored_event, last_correct_event);
 
 	// TODO: silent execution resets the LP state to the previous
 	// value, so it should be the last function to be called within rollback()

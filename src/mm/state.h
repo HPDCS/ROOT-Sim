@@ -79,4 +79,4 @@ extern void clean_queue_states(struct lp_struct *, simtime_t new_gvt);
 extern void rebuild_state(struct lp_struct *, state_t * state_pointer, simtime_t time);
 extern void set_checkpoint_period(struct lp_struct *, int period);
 extern void force_LP_checkpoint(struct lp_struct *);
-extern unsigned int silent_execution(struct lp_struct *, msg_t * evt, msg_t * final_evt);
+extern void silent_execution(struct lp_struct *, msg_t * evt, msg_t * final_evt);

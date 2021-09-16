@@ -68,3 +68,37 @@ typedef struct timeval timer;
 					__nowtm = localtime(&__nowtime);\
 					strftime((string), sizeof (string), "%Y-%m-%d %H:%M:%S", __nowtm);\
 				} while(0)
+
+#if defined(__x86_64__) || defined(__i386__)
+#ifdef __WINDOWS
+#include <intrin.h>
+#else
+#include <x86intrin.h>
+#endif
+
+extern __inline unsigned long long
+__attribute__((__gnu_inline__, __always_inline__))
+timer_hr_start(void)
+{
+	return __rdtsc();
+}
+
+#else
+
+extern __inline unsigned long long
+__attribute__((__gnu_inline__, __always_inline__))
+timer_hr_start(void)
+{
+	struct timeval tmptv;
+	gettimeofday(&tmptv, NULL);
+	return tmptv.tv_sec * 1000000U + tmptv.tv_usec;
+}
+
+#endif
+
+extern __inline unsigned long long
+__attribute__((__gnu_inline__, __always_inline__))
+timer_hr_value(unsigned long long start)
+{
+	return timer_hr_start() - start;
+}

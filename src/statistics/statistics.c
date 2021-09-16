@@ -156,20 +156,20 @@ static void merge_stats(struct stat_t *s, const struct stat_t *d)
 	s->tot_events_approx += d->tot_events_approx;
 	s->tot_rollbacks_approx += d->tot_rollbacks_approx;
 	s->memory_usage += d->memory_usage;
-	s->tot_chk_time_approx += d->tot_chk_time_approx;
-	s->tot_chk_time += d->tot_chk_time;
+	s->tot_ckpts_time_approx += d->tot_ckpts_time_approx;
+	s->tot_ckpts_time += d->tot_ckpts_time;
 	s->tot_recovery_time_approx += d->tot_recovery_time_approx;
 	s->tot_recovery_time += d->tot_recovery_time;
 	s->gvt_computations += d->gvt_computations;
 	s->tot_ckpts += d->tot_ckpts;
+	s->tot_ckpts_approx += d->tot_ckpts_approx;
 	s->tot_recoveries += d->tot_recoveries;
+	s->tot_recoveries_approx += d->tot_recoveries_approx;
+	s->silent_events += d->silent_events;
+	s->silent_event_time += d->silent_event_time;
+	s->restore_fn_time_approx += d->restore_fn_time_approx;
 
-	s->exponential_chk_time = d->exponential_chk_time;
-	s->exponential_chk_time_approx = d->exponential_chk_time_approx;
 	s->exponential_event_time = d->exponential_event_time;
-	s->exponential_recovery_time = d->exponential_recovery_time;
-	s->exponential_recovery_time_approx = d->exponential_recovery_time_approx;
-	s->exponential_restore_fn_time_approx = d->exponential_restore_fn_time_approx;
 }
 
 /**
@@ -388,27 +388,27 @@ static void print_common_stats(FILE *f, struct stat_t *stats_p, bool want_thread
 		fprintf(f, "LPs HOSTED BY THREAD ...... : %d \n",	n_prc_per_thread);
 	}
 	fprintf(f, "\n");
-	fprintf(f, "TOTAL EXECUTED EVENTS ..... : %.0f \n",		stats_p->tot_events);
-	fprintf(f, "TOTAL COMMITTED EVENTS..... : %.0f \n",		stats_p->committed_events);
-	fprintf(f, "TOTAL REPROCESSED EVENTS... : %.0f \n",		stats_p->reprocessed_events);
-	fprintf(f, "TOTAL ROLLBACKS EXECUTED... : %.0f \n",		stats_p->tot_rollbacks);
-	fprintf(f, "TOTAL ANTIMESSAGES......... : %.0f \n",		stats_p->tot_antimessages);
+	fprintf(f, "TOTAL EXECUTED EVENTS ..... : %llu \n",		stats_p->tot_events);
+	fprintf(f, "TOTAL COMMITTED EVENTS..... : %llu \n",		stats_p->committed_events);
+	fprintf(f, "TOTAL REPROCESSED EVENTS... : %llu \n",		stats_p->silent_events);
+	fprintf(f, "TOTAL ROLLBACKS EXECUTED... : %llu \n",		stats_p->tot_rollbacks);
+	fprintf(f, "TOTAL ANTIMESSAGES......... : %llu \n",		stats_p->tot_antimessages);
 	fprintf(f, "ROLLBACK FREQUENCY......... : %.2f %%\n",		rollback_frequency * 100);
 	fprintf(f, "ROLLBACK LENGTH............ : %.2f events\n",	rollback_length);
 	fprintf(f, "EFFICIENCY................. : %.2f %%\n",		efficiency);
 	fprintf(f, "AVERAGE EVENT COST......... : %.2f us\n",		stats_p->event_time / stats_p->tot_events);
 	fprintf(f, "AVERAGE EVENT COST (EMA)... : %.2f us\n",		stats_p->exponential_event_time);
-	fprintf(f, "AVERAGE CHECKPOINT COST.... : %.2f us\n",		(stats_p->tot_chk_time + stats_p->tot_chk_time_approx) / stats_p->tot_ckpts);
-	fprintf(f, "AVERAGE RECOVERY COST...... : %.2f us\n",		(stats_p->tot_recovery_time + stats_p->tot_recovery_time_approx) / stats_p->tot_recoveries);
+	fprintf(f, "AVERAGE CHECKPOINT COST.... : %.2f us\n",		(double)(stats_p->tot_ckpts_time + stats_p->tot_ckpts_time_approx) / (stats_p->tot_ckpts + stats_p->tot_ckpts_approx));
+	fprintf(f, "AVERAGE RECOVERY COST...... : %.2f us\n",		(double)(stats_p->tot_recovery_time + stats_p->tot_recovery_time_approx) / (stats_p->tot_recoveries + stats_p->tot_recoveries_approx));
 	fprintf(f, "AVERAGE LOG SIZE........... : %s\n",		format_size(stats_p->ckpt_mem / stats_p->tot_ckpts));
-	fprintf(f, "TOTAL APPROX PHASES ....... : %.0f \n",		stats_p->approx_phases);
-	fprintf(f, "TOTAL PRECISE PHASES ...... : %.0f \n",		stats_p->prec_phases);
+	fprintf(f, "TOTAL APPROX PHASES ....... : %llu \n",		stats_p->approx_phases);
+	fprintf(f, "TOTAL PRECISE PHASES ...... : %llu \n",		stats_p->prec_phases);
 	fprintf(f, "\n");
-	fprintf(f, "IDLE CYCLES................ : %.0f\n",		stats_p->idle_cycles);
+	fprintf(f, "IDLE CYCLES................ : %llu\n",		stats_p->idle_cycles);
 	if(!want_thread_stats){
 		fprintf(f, "LAST COMMITTED GVT ........ : %f\n",	get_last_gvt());
 	}
-	fprintf(f, "NUMBER OF GVT REDUCTIONS... : %.0f\n",		stats_p->gvt_computations);
+	fprintf(f, "NUMBER OF GVT REDUCTIONS... : %llu\n",		stats_p->gvt_computations);
 	if(!want_thread_stats && n_ker > 1){
 		fprintf(f, "MIN GVT ROUND TIME......... : %.2f us\n",	stats_p->gvt_round_time_min);
 		fprintf(f, "MAX GVT ROUND TIME......... : %.2f us\n",	stats_p->gvt_round_time_max);
@@ -484,7 +484,7 @@ void statistics_stop(int exit_code)
 		print_header(f, "SERIAL STATISTICS");
 		print_timer_stats(f, &simulation_timer, &simulation_finished, total_time);
 		fprintf(f, "TOTAL LPs.................. : %d \n", 		n_prc_tot);
-		fprintf(f, "TOTAL EXECUTED EVENTS ..... : %.0f \n", 		system_wide_stats.tot_events);
+		fprintf(f, "TOTAL EXECUTED EVENTS ..... : %llu \n", 		system_wide_stats.tot_events);
 		fprintf(f, "AVERAGE EVENT COST......... : %.3f us\n",		total_time / system_wide_stats.tot_events * 1000 * 1000);
 		fprintf(f, "AVERAGE EVENT COST (EMA)... : %.2f us\n",		system_wide_stats.exponential_event_time);
 		fprintf(f, "\n");
@@ -521,15 +521,15 @@ void statistics_stop(int exit_code)
 
 				fprintf(f, " %15u   ", 		lp->gid.to_int);
 				fprintf(f, "%15u   ", 		lp_id);
-				fprintf(f, "%15.0lf   ", 	lp_stats[lp_id].tot_events);
-				fprintf(f, "%15.0lf   ", 	lp_stats[lp_id].committed_events);
-				fprintf(f, "%15.0lf   ", 	lp_stats[lp_id].reprocessed_events);
-				fprintf(f, "%15.0lf   ", 	lp_stats[lp_id].tot_rollbacks);
-				fprintf(f, "%15.0lf   ", 	lp_stats[lp_id].tot_antimessages);
+				fprintf(f, "%15llu   ", 	lp_stats[lp_id].tot_events);
+				fprintf(f, "%15llu   ", 	lp_stats[lp_id].committed_events);
+				fprintf(f, "%15llu   ", 	lp_stats[lp_id].silent_events);
+				fprintf(f, "%15llu   ", 	lp_stats[lp_id].tot_rollbacks);
+				fprintf(f, "%15llu   ", 	lp_stats[lp_id].tot_antimessages);
 				fprintf(f, "%15lf   ", 		lp_stats[lp_id].event_time / lp_stats[lp_id].tot_events);
-				fprintf(f, "%15.0lf   ", 	(lp_stats[lp_id].tot_chk_time + lp_stats[lp_id].tot_chk_time_approx) / lp_stats[lp_id].tot_ckpts);
-				fprintf(f, "%15.0lf   ", 	(lp_stats[lp_id].tot_recovery_time + lp_stats[lp_id].tot_recovery_time_approx) / lp_stats[lp_id].tot_recoveries);
-				fprintf(f, "%15.0lf   ", 	lp_stats[lp_id].idle_cycles);
+				fprintf(f, "%15.0lf   ", 	(double)(lp_stats[lp_id].tot_ckpts_time + lp_stats[lp_id].tot_ckpts_time_approx) / (lp_stats[lp_id].tot_ckpts + lp_stats[lp_id].tot_ckpts_approx));
+				fprintf(f, "%15.0lf   ", 	(double)(lp_stats[lp_id].tot_recovery_time + lp_stats[lp_id].tot_recovery_time_approx) / (lp_stats[lp_id].tot_recoveries + lp_stats[lp_id].tot_recoveries_approx));
+				fprintf(f, "%15llu   ", 	lp_stats[lp_id].idle_cycles);
 				fprintf(f, "\n");
 			}
 		}
@@ -648,8 +648,8 @@ inline void statistics_on_gvt(double gvt)
 		lp_stats_gvt[lid].tot_rollbacks = 0;
 		lp_stats_gvt[lid].tot_events_approx = 0;
 		lp_stats_gvt[lid].tot_rollbacks_approx = 0;
-		lp_stats_gvt[lid].tot_chk_time = 0;
-		lp_stats_gvt[lid].tot_chk_time_approx = 0;
+		lp_stats_gvt[lid].tot_ckpts_time = 0;
+		lp_stats_gvt[lid].tot_ckpts_time_approx = 0;
 		lp_stats_gvt[lid].tot_recovery_time = 0;
 		lp_stats_gvt[lid].tot_recovery_time_approx = 0;
 		lp_stats_gvt[lid].memory_usage = 0;
@@ -808,57 +808,72 @@ void statistics_post_data_serial(enum stat_msg_t type, double data)
 }
 
 
-void statistics_post_data(const struct lp_struct *lp, enum stat_msg_t type, double data)
+void statistics_post_data(const struct lp_struct *lp, enum stat_msg_t type, unsigned long long data)
 {
 	// TODO: this is only required to avoid a nasty segfault if we
 	// pass NULL to lp, as we do for the case of STAT_IDLE_CYCLES.
 	// We should move stats arrays in struct lp_struct to make the
 	// whole code less ugly.
 	unsigned int lid = lp ? lp->lid.to_int : UINT_MAX;
+	struct stat_t *s = &lp_stats_gvt[lid];
 
 	switch(type) {
 
 		case STAT_ANTIMESSAGE:
-			lp_stats_gvt[lid].tot_antimessages += 1.0;
+			s->tot_antimessages += 1;
 			break;
 
 		case STAT_EVENT:
-			lp_stats_gvt[lid].tot_events += 1.0;
+			s->tot_events += 1;
+			break;
+
+		case STAT_SILENT_TIME:
+			s->silent_event_time += data;
 			break;
 
 		case STAT_EVENT_TIME:
-			lp_stats_gvt[lid].event_time += data;
-			lp_stats_gvt[lid].exponential_event_time = 0.1 * data + 0.9 * lp_stats_gvt[lid].exponential_event_time;
+			s->event_time += data;
+			s->exponential_event_time = 0.1 * data + 0.9 * s->exponential_event_time;
 			break;
 
 		case STAT_COMMITTED:
-			lp_stats_gvt[lid].committed_events += data;
+			s->committed_events += data;
 			break;
 
 		case STAT_ROLLBACK:
-			lp_stats_gvt[lid].tot_rollbacks += 1.0;
+			s->tot_rollbacks += 1;
 			break;
 
 		case STAT_CKPT:
-			lp_stats_gvt[lid].tot_ckpts += 1.0;
+			s->tot_ckpts += 1;
+			break;
+
+		case STAT_CKPT_APPROX:
+			s->tot_ckpts_approx += 1;
 			break;
 
 		case STAT_CKPT_MEM:
-			lp_stats_gvt[lid].ckpt_mem += data;
+			s->ckpt_mem += data;
 			break;
 
 		case STAT_CKPT_TIME:
-			lp_stats_gvt[lid].tot_chk_time += data;
-			lp_stats_gvt[lid].exponential_chk_time = 0.1 * data + 0.9 * lp_stats_gvt[lid].exponential_chk_time;
+			s->tot_ckpts_time += data;
+			break;
+
+		case STAT_CKPT_TIME_APPROX:
+			s->tot_ckpts_time_approx += data;
 			break;
 
 		case STAT_RECOVERY:
-			lp_stats_gvt[lid].tot_recoveries++;
+			s->tot_recoveries++;
+			break;
+
+		case STAT_RECOVERY_APPROX:
+			s->tot_recoveries_approx++;
 			break;
 
 		case STAT_RECOVERY_TIME:
-			lp_stats_gvt[lid].tot_recovery_time += data;
-			lp_stats_gvt[lid].exponential_recovery_time += 0.1 * data + 0.9 * lp_stats_gvt[lid].exponential_recovery_time;
+			s->tot_recovery_time += data;
 			break;
 
 		case STAT_IDLE_CYCLES:
@@ -866,7 +881,7 @@ void statistics_post_data(const struct lp_struct *lp, enum stat_msg_t type, doub
 			break;
 
 		case STAT_SILENT:
-			lp_stats_gvt[lid].reprocessed_events += data;
+			s->silent_events += data;
 			break;
 
 		case STAT_GVT_ROUND_TIME:
@@ -875,38 +890,32 @@ void statistics_post_data(const struct lp_struct *lp, enum stat_msg_t type, doub
 			system_wide_stats.gvt_round_time += data;
 			break;
 
-		case STAT_CKPT_TIME_APPROX:
-			lp_stats_gvt[lid].tot_chk_time_approx += data;
-			lp_stats_gvt[lid].exponential_chk_time_approx = 0.1 * data + 0.9 * lp_stats_gvt[lid].exponential_chk_time_approx;
-			break;
-
 		case STAT_ROLLBACK_APPROX:
-			lp_stats_gvt[lid].tot_rollbacks_approx += 1.0;
+			s->tot_rollbacks_approx += 1;
 			break;
 
 		case STAT_EVENT_APPROX:
-			lp_stats_gvt[lid].tot_events_approx += 1;
+			s->tot_events_approx += 1;
 			break;
 
 		case STAT_COMMITTED_APPROX:
-			lp_stats_gvt[lid].committed_events_approx =  0.1 * data + 0.9 * lp_stats_gvt[lid].committed_events_approx;
+			s->committed_events_approx = 0.1 * data + 0.9 * s->committed_events_approx;
 			break;
 
 		case STAT_RECOVERY_TIME_APPROX:
-			lp_stats_gvt[lid].tot_recovery_time_approx += data;
-			lp_stats_gvt[lid].exponential_recovery_time_approx = 0.1 * data + 0.9 * lp_stats_gvt[lid].exponential_recovery_time_approx;
+			s->tot_recovery_time_approx += data;
 			break;
 
 		case STAT_RESTORE_FN_TIME_APPROX:
-			lp_stats_gvt[lid].exponential_restore_fn_time_approx = 0.1 * data + 0.9 * lp_stats_gvt[lid].exponential_restore_fn_time_approx;
+			s->restore_fn_time_approx += data;
 			break;
 
 		case STAT_APPROX_PHASE:
-			lp_stats_gvt[lid].approx_phases += 1.0;
+			s->approx_phases += 1.0;
 			break;
 
 		case STAT_PREC_PHASE:
-			lp_stats_gvt[lid].prec_phases += 1.0;
+			s->prec_phases += 1.0;
 			break;
 
 		default:
@@ -917,45 +926,46 @@ void statistics_post_data(const struct lp_struct *lp, enum stat_msg_t type, doub
 
 double statistics_get_lp_data(struct lp_struct *lp, unsigned int type)
 {
+	struct stat_t *s = &lp_stats[lp->lid.to_int];
 	switch(type) {
 
 		case STAT_GET_EVENT_TIME:
-			return lp_stats[lp->lid.to_int].event_time;
+			return s->event_time;
 
 		case STAT_GET_EVENT_TIME_EXP:
-			return lp_stats[lp->lid.to_int].exponential_event_time;
+			return s->exponential_event_time;
 
 		case STAT_GET_ROLLBACK:
-			return lp_stats[lp->lid.to_int].tot_rollbacks;
+			return s->tot_rollbacks;
 
 		case STAT_GET_EVENT:
-			return lp_stats[lp->lid.to_int].tot_events;
+			return s->tot_events;
 
 		case STAT_GET_COMMITTED:
-			return lp_stats[lp->lid.to_int].committed_events;
+			return s->committed_events;
 
 
 		case STAT_GET_ROLLBACK_TIME:
-			return (lp_stats[lp->lid.to_int].tot_rollbacks > 0 ? (lp_stats[lp->lid.to_int].tot_events - lp_stats[lp->lid.to_int].committed_events) / lp_stats[lp->lid.to_int].tot_rollbacks : 0);
+			return (s->tot_rollbacks > 0 ? (s->tot_events - s->committed_events) / s->tot_rollbacks : 0);
 
 
 		case STAT_GET_ROLLBACK_APPROX:
-			return lp_stats[lp->lid.to_int].tot_rollbacks_approx;
+			return s->tot_rollbacks_approx;
 
 		case STAT_GET_EVENT_APPROX:
-			return lp_stats[lp->lid.to_int].tot_events_approx;
+			return s->tot_events_approx;
 
 		case STAT_GET_COMMITTED_APPROX:
-			return lp_stats[lp->lid.to_int].committed_events_approx;
+			return s->committed_events_approx;
 
 		case STAT_GET_ROLLBACK_TIME_APPROX:
-			return (lp_stats[lp->lid.to_int].tot_rollbacks_approx > 0 ? (lp_stats[lp->lid.to_int].tot_events_approx - lp_stats[lp->lid.to_int].committed_events_approx) / lp_stats[lp->lid.to_int].tot_rollbacks_approx : 0);
+			return (s->tot_rollbacks_approx > 0 ? (s->tot_events_approx - s->committed_events_approx) / s->tot_rollbacks_approx : 0);
 
 		case STAT_GET_APPROX_PHASE:
-			return lp_stats[lp->lid.to_int].approx_phases;
+			return s->approx_phases;
 
 		case STAT_GET_PREC_PHASE:
-			return lp_stats[lp->lid.to_int].prec_phases;
+			return s->prec_phases;
 
 		default:
 			rootsim_error(true, "Wrong statistics get type: %d. Aborting...\n", type);
@@ -977,26 +987,29 @@ double statistics_get_lp_data(struct lp_struct *lp, unsigned int type)
 *		is realated to an approximated or precise rollback scheme.
 * @return the optimal checkpoint interval value, namely χ
 */
-double computeCheckpointInterval(const struct lp_struct *lp, bool approx)
+unsigned computeCheckpointInterval(const struct lp_struct *lp, bool approx)
 {
-	double avg_event_time, avg_chk_time, n_rollback, n_events;
-	avg_event_time = lp_stats[lp->lid.to_int].exponential_event_time;
+	struct stat_t *s = &lp_stats[lp->lid.to_int];
+
+	double avg_silent_event_time, avg_chk_time;
+	unsigned long long n_rollback, n_events;
+
+	if (!s->silent_event_time)
+		return 10;
+
+	avg_silent_event_time = ((double)s->silent_event_time) / s->silent_events;
 
 	if (approx) {
-		avg_chk_time = lp_stats[lp->lid.to_int].exponential_chk_time_approx;
-		n_rollback = lp_stats[lp->lid.to_int].tot_rollbacks_approx;
-		n_events = lp_stats[lp->lid.to_int].tot_events_approx;
+		avg_chk_time = ((double)s->tot_ckpts_time_approx) / s->tot_ckpts_approx;
+		n_rollback = s->tot_rollbacks_approx;
+		n_events = s->tot_events_approx;
 	} else {
-		avg_chk_time = lp_stats[lp->lid.to_int].exponential_chk_time;
-		n_rollback = lp_stats[lp->lid.to_int].tot_rollbacks;
-		n_events = lp_stats[lp->lid.to_int].tot_events;
+		avg_chk_time = ((double)s->tot_ckpts_time) / s->tot_ckpts;
+		n_rollback = s->tot_rollbacks;
+		n_events = s->tot_events;
 	}
 
-	if (n_rollback == 0) {
-		n_rollback = 0.1;
-	}
-
-	double r = ceil(sqrt(2 * avg_chk_time * avg_event_time * n_events / n_rollback));
+	double r = ceil(sqrt(2 * avg_chk_time * avg_silent_event_time * n_events / n_rollback));
 
 	return r == 0.0 ? 1.0 : r;
 }
@@ -1016,29 +1029,31 @@ double computeCheckpointInterval(const struct lp_struct *lp, bool approx)
 */
 bool shouldSwitchApproximationMode(const struct lp_struct *lp)
 {
-	double chi = computeCheckpointInterval(lp, false);		//χ
-	double chi_approx = computeCheckpointInterval(lp, true);	//χ_a
+	unsigned chi = computeCheckpointInterval(lp, false);		//χ
+	unsigned chi_approx = computeCheckpointInterval(lp, true);	//χ_a
 	struct stat_t *s = &lp_stats[lp->lid.to_int];
 
-	double event_time = s->exponential_event_time;
+	if (!s->silent_events)
+		return false;
+
+	if (!s->tot_events_approx || !s->tot_ckpts_approx || !s->tot_rollbacks_approx)
+		return true;
+
 	double rollback_p = s->tot_rollbacks / s->tot_events;
-	double rollback_p_approx = s->tot_rollbacks_approx / s->tot_events;
+	double rollback_p_approx = s->tot_rollbacks_approx / s->tot_events_approx;
 
-	double numerator = (chi * event_time) +
-			   (s->exponential_chk_time / chi) +
-			   rollback_p * (s->exponential_recovery_time +
-					   ((chi - 1) / 2) * event_time);
-	numerator *= chi_approx;
+	double avg_silent_event_time = ((double)s->silent_event_time) / s->silent_events;
 
-	double denominator = (chi_approx * event_time) +
-			     (s->exponential_chk_time_approx / chi_approx) +
-			      rollback_p_approx * (s->exponential_recovery_time_approx +
-						s->exponential_restore_fn_time_approx +
-						((chi_approx - 1) / 2) * event_time);
+	double rec_avg_time = (double)s->tot_recovery_time / s->tot_recoveries;
+	double rec_avg_time_approx = (double)(s->tot_recovery_time_approx + s->restore_fn_time_approx) / s->tot_recoveries_approx;
 
-	denominator *= chi;
+	double ckpt_avg_time = (double)s->tot_ckpts_time / s->tot_ckpts;
+	double ckpt_avg_time_approx = (double)s->tot_ckpts_time_approx / s->tot_ckpts_approx;
 
-	return numerator > denominator;
+	double prec_avg = rollback_p * (rec_avg_time + ((chi - 1) / 2) * avg_silent_event_time) + ckpt_avg_time / chi;
+	double approx_avg = rollback_p_approx * (rec_avg_time_approx + ((chi_approx - 1) / 2) * avg_silent_event_time) + ckpt_avg_time_approx / chi_approx;
+
+	return prec_avg > approx_avg;
 }
 
 #endif
