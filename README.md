@@ -8,6 +8,15 @@ at Sapienza, University of Rome*
 
 ----------------------------------------------------------------------------------------
 
+## Deprecation Notice
+
+ROOT-Sim has evolved into a complex package ecosystem that forms a modern simulation framework. Therefore, for the 3.0
+release, a single repository did not fit anymore, and ROOT-Sim has moved to the [ROOT-Sim Organization](https://github.com/ROOT-Sim).
+This repository has been archived for historical purposes, while the development of the simulation core is taking
+place in the [ROOT-Sim core](https://github.com/ROOT-Sim/core) repository.
+
+## The ROme OpTimistic Simulator (ROOT-Sim)
+
 The ROme OpTimistic Simulator is an x86-64 Open Source, distributed multithreaded parallel
 simulation library developed using C/POSIX technology. It transparently supports all the
 mechanisms associated with parallelization and distribution of workload across the nodes
